@@ -17,8 +17,9 @@ O roadmap inteiro, com as treze fases e o estado de cada uma, está em
 | 4 | [The engine fails out loud](the-engine-fails-out-loud.md) | A dependency that goes down produces one warning on the way down, silence while it is down, and one warning when it comes back, and no broken notification channel ever costs a ticket a move |
 | 5 | [The lifecycle is proven end to end](the-lifecycle-is-proven-end-to-end.md) | The installed executable walks one ticket from the working status to a QA handoff against a world of stand-ins, twice, with no credential and no network |
 | 6 | [The engine drives a workflow it does not know](the-engine-drives-a-workflow-it-does-not-know.md) | `plugins/serial-engine/src/**` names no workflow package, and a second workflow runs on the same engine by contributing a plan and a runtime |
-| 7 | [What runs is a released version](what-runs-is-a-released-version.md) | A machine with no checkout installs `@amy/cli` from GitHub Packages, `amy --version` names a version changesets published, and a dirty tree only ever says `dev` |
-| 8 | [Plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md) | A second machine runs a ticket with only the plugins it needs installed, and one it never installed is refused by name at boot |
+| 7 | [Friction becomes a plan, and the queue stops needing a ticket](friction-becomes-a-plan.md) | A friction note becomes a pull request adding a plan to the right repository, with no tracker involved and no change to the engine |
+| 8 | [What runs is a released version](what-runs-is-a-released-version.md) | A machine with no checkout installs `@amy/cli` from GitHub Packages, `amy --version` names a version changesets published, and a dirty tree only ever says `dev` |
+| 9 | [Plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md) | A second machine runs a ticket with only the plugins it needs installed, and one it never installed is refused by name at boot |
 
 ## Parked
 

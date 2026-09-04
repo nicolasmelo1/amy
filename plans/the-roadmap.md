@@ -17,7 +17,7 @@ trabalho de hoje. O resto do repositório é em inglês.
 | 7 | entregue | o budget e o teto de reviewer, provados pelo gate `plugin-agent-relay` |
 | 8 | entregue pela metade | a escada de skills por passo existe no `@amy/plugin-agent-relay`; o scaffolder não |
 | 9 | entregue | [the engine fails out loud](the-engine-fails-out-loud.md), gate `plugin-serial-engine`, e o desenho em [docs/design](../docs/design/the-engine-fails-out-loud.md) |
-| 10 | próxima | ainda sem plano próprio neste diretório |
+| 10 | próxima | [friction becomes a plan](friction-becomes-a-plan.md), escrito e ainda não construído |
 | 11 | depois da 10 | ainda sem plano próprio |
 | 12 | depois da 11 | ainda sem plano próprio; sobe para o software-factory |
 | 13 | parada | esperando as três anteriores |
