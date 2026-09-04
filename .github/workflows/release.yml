@@ -25,6 +25,21 @@ jobs:
   # means the tag is pushed by the same run that publishes.
   release:
     runs-on: ubuntu-latest
+    # Dormant until somebody arms it, and green while dormant.
+    #
+    # The first release is deliberately after phase 12, so there is no npm
+    # organisation and no token yet. Unarmed, this job fails on every push to
+    # main — `GitHub Actions is not permitted to create or approve pull
+    # requests` first, and a missing credential after that. A red build that
+    # means nothing trains everybody to ignore the one that does.
+    #
+    # Arm it with one command, once, when the organisation exists:
+    #
+    #     gh variable set AMY_RELEASE --body on
+    #
+    # A variable rather than a secret, because a job condition cannot read a
+    # secret, and because "is the release armed" is not itself a secret.
+    if: vars.AMY_RELEASE == 'on'
     permissions:
       # The action pushes the version branch and the tags it creates.
       contents: write
