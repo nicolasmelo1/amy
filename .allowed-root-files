@@ -1,5 +1,8 @@
 # Files allowed at the repository root. Adding a line here is the
 # deliberate act; NOTES.md appearing without one is the reflex.
+# The pending version bumps, one file per change, consumed by
+# `changeset version`. Empty between releases, and that is not a mistake.
+.changeset
 .env.example
 .githooks
 .github

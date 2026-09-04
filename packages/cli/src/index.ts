@@ -12,12 +12,12 @@ import {
   LogBudget,
   Mounted,
   NodeCommandRunner,
-  buildStamp,
   ceilingFor,
   describeBuild,
   mount,
   parseBudget,
   spendSince,
+  stampId,
   unmetNeeds,
 } from "@amy/core";
 import {
@@ -44,11 +44,17 @@ import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { DEFAULT_PLUGINS, load } from "./loader.js";
 import { hostPlugin } from "./hostPlugin.js";
+import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
 import { paths } from "./paths.js";
 
 const root = process.cwd();
 const runner = new NodeCommandRunner();
+// Read once, at the top, and handed to every log this process opens. A
+// release that logged `dev` would be a stamp that cannot be joined to
+// anything, which is the only thing it is for.
+const stamp = installedStamp();
+const build = stampId(stamp);
 const stopSwitch = new FileStopSwitch(paths(root).stop);
 
 // Before anything reads process.env, so a key kept in .env is picked up.
@@ -77,7 +83,7 @@ async function assemble(): Promise<
     {
       runner,
       now: () => new Date(),
-      log: new FileEventLog(place.log),
+      log: new FileEventLog(place.log, undefined, build),
       paths: hostPaths(config, place.base),
     },
   );
@@ -116,7 +122,7 @@ program
   .description(
     "Drives a work ticket from in-progress to QA handoff, one deterministic move at a time.",
   )
-  .version(describeBuild(buildStamp()));
+  .version(describeBuild(stamp));
 
 program
   .command("init")
@@ -184,7 +190,7 @@ program
   .action((reason: string | undefined) => {
     const why = reason ?? "stopped by hand";
     stopSwitch.request(why);
-    new FileEventLog(paths(root).log).append({
+    new FileEventLog(paths(root).log, undefined, build).append({
       at: new Date().toISOString(),
       kind: "stop.requested",
       detail: { reason: why },
@@ -292,7 +298,7 @@ program
       return;
     }
 
-    const log = new FileEventLog(paths(root).log);
+    const log = new FileEventLog(paths(root).log, undefined, build);
     const now = new Date();
 
     for (const window of BUDGET_WINDOWS) {

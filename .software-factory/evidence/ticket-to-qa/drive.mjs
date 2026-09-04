@@ -85,6 +85,13 @@ function startTracker(root) {
     stdio: "ignore",
   });
 
+  // Written where the shell can reach it, which the world directory is not:
+  // that gets deleted. If this process dies before its `finally`, the trap
+  // upstream is what ends the child.
+  if (process.env.AMY_E2E_PIDFILE) {
+    fs.appendFileSync(process.env.AMY_E2E_PIDFILE, `${child.pid}\n`);
+  }
+
   waitFor(() => fs.existsSync(portFile), "the stand-in tracker to listen");
   return { child, endpoint: `http://127.0.0.1:${fs.readFileSync(portFile, "utf-8").trim()}/graphql` };
 }
@@ -344,6 +351,9 @@ function lifecycle() {
     } else {
       fs.rmSync(root, { recursive: true, force: true });
     }
+    // Recorded after the removal, so the assertion below reads the answer
+    // rather than the intention.
+    world.leftBehind = fs.existsSync(root);
   }
 }
 
@@ -527,6 +537,14 @@ function assertionsFor(first, second) {
     [
       "lifecycle.what_the_agents_spent_is_read_off_the_log",
       budgetRuns === String(first.agentCalls.length) && first.budget.out.includes("allowed"),
+    ],
+
+    // A run that litters is a run nobody repeats. The world is a scratch
+    // directory, the tracker is a child process, and the 64 MB executable is
+    // built inside the directory the harness deletes.
+    [
+      "lifecycle.the_run_leaves_nothing_behind",
+      !first.leftBehind && !second.leftBehind && !fs.existsSync(path.join(first.root, "home")),
     ],
 
     // Reproducible, which is the only way any of the above stays true.

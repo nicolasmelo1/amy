@@ -55,10 +55,9 @@ stamp needed and never had.
 
 **The packages are published, not made private.** Every `@amy/*` package
 except `test-fixtures` is something a second machine installs, so publishing
-is the point rather than the accident to be prevented. They go to GitHub
-Packages, which keeps them private without making the repository public, and
-`publishConfig.registry` on each one is what stops a stray `publish` from
-reaching npmjs instead.
+is the point rather than the accident to be prevented. They go to npmjs under
+the `@amy` scope, and `publishConfig.registry` on each one is what stops an
+ambient configuration from redirecting a publish somewhere nobody meant.
 
 **One tag per package is the release, not noise.** Twenty installable things
 release twenty versions, and `changeset tag` naming each one is the correct
@@ -74,25 +73,37 @@ node, installed from the registry. See
 [plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md)
 for why, and for what happens to the loader.
 
-### The scope has to be decided before anything is published
+### The scope, decided
 
-GitHub Packages only accepts scoped packages, and the scope must be the
-GitHub user or an organization the publisher belongs to. `@amy` is not
-available as a GitHub organization, and neither are the obvious variants. So
-`@amy/*` cannot be published as it stands: either the scope becomes the
-owning account's, or an organization that is actually free gets created and
-the twenty packages are renamed to match it.
+`@amy/*` stays, and that decision is what chose the registry rather than the
+other way round.
 
-This is a rename of every package name in the repository, so it happens
-before the first publish rather than after.
+GitHub Packages was the obvious answer and it cannot have this scope: its npm
+registry requires the scope to be the account that owns the repository, and
+`amy` is taken on GitHub. The scope would have had to become the owner's own,
+or an organization that happens to be free, and either way twenty package
+names move for a reason that has nothing to do with the packages.
+
+On npmjs the scope was unclaimed, so nothing is renamed. What that costs is
+privacy: a public package is a public tarball. So the repository became
+public too, which is a bigger decision than a release path and was taken on
+its own terms — and it was taken by *starting a new repository*, because the
+old history held a different application and two credentials committed in the
+clear. Rewriting a history does not remove it; the commits stay reachable
+through the pull requests that carried them.
+
+What remains of the original worry is real and stays handled: the templates
+and fixtures name nobody, and `L6.FIXTURES_NAME_NOBODY_REAL` is what keeps it
+that way.
 
 ### Two things about changesets that this has to be built around
 
 **A tag pushed with the default `GITHUB_TOKEN` does not start a workflow.**
 GitHub refuses to chain workflow runs off its own token, so a job waiting for
-a tag that a changesets job pushed waits forever. Either the push uses a
-credential that is not `GITHUB_TOKEN`, or the version and publish steps live
-in one workflow. Decide before writing it: the failure mode is silence.
+a tag that a changesets job pushed waits forever. Chosen: the version and the
+publish live in one workflow, `release.yml`, so the tag is pushed by the same
+run that publishes. The failure mode of the other arrangement is silence,
+which is why it is written down here rather than discovered.
 
 **Changesets versions `package.json` and publishes packages, and does nothing
 else.** Anything a release needs beyond that — a checksum, a changelog
@@ -115,38 +126,51 @@ built".
 
 ## Acceptance criteria
 
-- [ ] Every package name is one GitHub Packages will accept, decided and
-      applied before the first publish
-      (proof: deferred:`@amy` is not an available organization)
-- [ ] A change that reaches a published package is refused without a
+- [x] A change that reaches a published package is refused without a
       changeset, so a version cannot stand still through a release
-      (proof: deferred:changesets is not installed yet)
-- [ ] `changeset version` moves every published package to the same number
-      (proof: deferred:the fixed group does not exist yet)
-- [ ] A publish reaches GitHub Packages and cannot reach npmjs, whatever the
-      ambient registry configuration says
-      (proof: deferred:no package declares a publishConfig)
-- [ ] `test-fixtures` is never published, because nothing installs it
-      (proof: deferred:changesets is not installed yet)
-- [ ] The publish workflow actually runs, rather than waiting on a tag pushed
-      by a token that cannot start it
-      (proof: deferred:no publish workflow exists yet)
+      (proof: test:.github/workflows/software-factory.yml)
+- [x] Every publishable package carries what a publish needs, and one that
+      stops carrying it turns the gate red
+      (proof: test:scripts/check-release-config.mjs)
+- [x] Every published package moves to the same number, through one `fixed`
+      group (proof: test:scripts/check-release-config.mjs)
+- [x] A publish cannot be redirected to another registry by whatever
+      configuration happens to be ambient
+      (proof: test:scripts/check-release-config.mjs)
+- [x] `test-fixtures` is never published, because nothing installs it
+      (proof: test:scripts/check-release-config.mjs)
+- [x] The version and the publish happen in one workflow, so nothing waits on
+      a tag that cannot start a run
+      (proof: test:.github/workflows/release.yml)
+- [x] An installed package names the version and the commit it was built
+      from, in `--version` and on every log line it writes
+      (proof: test:packages/cli/tests/stamp.test.ts)
+- [x] A build from a tree with uncommitted changes reports `dev` rather than
+      a version (proof: test:packages/cli/tests/stamp.test.ts)
 - [ ] A machine with no checkout installs `@amy/cli` from the registry and
-      runs (proof: deferred:nothing is published yet)
+      runs (proof: deferred:the npm organization and its token are the
+      operator's to create, and nothing is published yet)
 - [ ] Installing an earlier version replaces a later one, so a bad release
       has somewhere to go back to
-      (proof: deferred:nothing is published yet)
-- [ ] A build from a tree with uncommitted changes reports `dev` rather than
-      a version (proof: test:packages/core/tests/build.test.ts)
+      (proof: deferred:there is one version so far)
 - [ ] Two consecutive releases produce log lines that differ in the version
       half of the stamp, so a window can be attributed to a release
-      (proof: deferred:there is only one version)
+      (proof: deferred:there is one version so far)
 - [ ] The changelog names what moved between two versions, so a stamp in the
       log can be read back to a reason
-      (proof: deferred:changesets is not installed yet)
+      (proof: deferred:the first `changeset version` has not run yet)
 
-**Exit condition:** a second machine installs `@amy/cli` from GitHub Packages
-with no checkout anywhere on it, `amy --version` names a version changesets
-published and tagged, the changelog says what that release changed, and a
-build from an untagged or dirty tree refuses to call itself anything but
-`dev`.
+### What this does not prove, and is worth knowing
+
+The stamp is written into `dist/` at pack time. In a published tarball that is
+the only way it can get there, and a checkout never has one — which is what
+tells a release from a working tree. Locally, a `npm pack` leaves the file
+behind in `dist/`, so a build from a clean tree that is then edited keeps a
+stamp that names the commit before the edit until something packs again. That
+is a nuisance in a checkout and cannot happen in a release, because a publish
+always packs.
+
+**Exit condition:** a second machine installs `@amy/cli` from npmjs with no
+checkout anywhere on it, `amy --version` names a version changesets published
+and tagged, the changelog says what that release changed, and a build from a
+dirty tree refuses to call itself anything but `dev`.

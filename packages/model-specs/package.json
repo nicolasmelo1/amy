@@ -4,6 +4,18 @@
   "description": "What each model costs per token, vendored and versioned.",
   "type": "module",
   "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "packages/model-specs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -18,6 +30,6 @@
     "capabilities.yaml"
   ],
   "dependencies": {
-    "@amy/core": "*"
+    "@amy/core": "^0.1.0"
   }
 }

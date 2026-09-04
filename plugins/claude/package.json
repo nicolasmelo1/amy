@@ -4,6 +4,18 @@
   "description": "The claude CLI as the agent, with git on the side.",
   "type": "module",
   "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/claude"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,11 +29,11 @@
     "capabilities.yaml"
   ],
   "dependencies": {
-    "@amy/agent-kit": "*",
-    "@amy/core": "*",
-    "@amy/model-specs": "*"
+    "@amy/agent-kit": "^0.1.0",
+    "@amy/core": "^0.1.0",
+    "@amy/model-specs": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "*"
+    "@amy/test-fixtures": "^0.1.0"
   }
 }

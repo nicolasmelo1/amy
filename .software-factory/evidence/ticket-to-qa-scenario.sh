@@ -34,9 +34,22 @@ for argument in "$@"; do
 done
 
 bin=$(mktemp -d)
-trap 'rm -rf "$bin"' EXIT
+pids="$bin/trackers.pid"
 
-"$repo/scripts/install.sh" "$bin" >/dev/null
+# The stand-in tracker is a child of the driver, and a driver killed between
+# its start and its `finally` would leave one listening. So every pid it
+# starts is written down and this ends them, whatever happened.
+cleanup() {
+  if [ -f "$pids" ]; then
+    while read -r pid; do
+      kill "$pid" 2>/dev/null || true
+    done < "$pids"
+  fi
+  rm -rf "$bin"
+}
+trap cleanup EXIT INT TERM
+
+AMY_BUILD_OUT="${bin}/amy.built" "$repo/scripts/install.sh" "$bin" >/dev/null
 test -x "$bin/amy" || { echo "the installer produced no executable" >&2; exit 1; }
 
-node "$here/ticket-to-qa/drive.mjs" "$here/ticket-to-qa" "$bin/amy" "$report" $keep
+AMY_E2E_PIDFILE="$pids" node "$here/ticket-to-qa/drive.mjs" "$here/ticket-to-qa" "$bin/amy" "$report" $keep

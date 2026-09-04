@@ -1,0 +1,78 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+# Nothing here may read the repository's secrets by default. The one job that
+# needs to write is the one below, and it says so itself.
+permissions:
+  contents: read
+
+# One release at a time. Two runs racing would both try to open the version
+# pull request, and the loser would leave a branch nobody asked for.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Version and publish in one job, deliberately.
+  #
+  # The obvious shape is two workflows: one that tags, one that publishes on
+  # the tag. It does not work, and it fails silently — GitHub refuses to start
+  # a workflow from a push made with the default `GITHUB_TOKEN`, so the
+  # publish would wait for a tag event that never arrives. Keeping both here
+  # means the tag is pushed by the same run that publishes.
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      # The action pushes the version branch and the tags it creates.
+      contents: write
+      # And opens the pull request that carries the bump.
+      pull-requests: write
+      # npm provenance is signed with a short-lived OIDC token minted here.
+      # Without this the publish still works and the attestation does not
+      # exist, which is the quiet failure worth spelling out.
+      id-token: write
+    steps:
+      # persist-credentials stays on, unlike every other job in this
+      # repository: this is the one that pushes, and `changesets/action`
+      # pushes the version branch and its tags with the checkout's
+      # credential. There is no arrangement that removes it — a token in a
+      # remote URL is the same credential in the same file, spelled worse.
+      #
+      # The suppression below names `artipacked`, and the reason is that the
+      # audit is about that credential reaching an uploaded artifact: this job
+      # uploads none. It runs `npm ci`, the suite, and the changesets action,
+      # and ends.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 # zizmor: ignore[artipacked]
+        with:
+          # The changelog reads history, and a shallow clone has none.
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          # What makes `npm publish` authenticate: the token below is written
+          # into an .npmrc for this registry only.
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      # The suite before the publish, because a release is the one build
+      # nobody can take back. `npm run gate` is not used here on purpose: it
+      # runs `sf`, which this job has no reason to install, and the pull
+      # request that produced this commit already ran it.
+      - run: npm run build
+      - run: npm test
+      - uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+        with:
+          version: npm run release:version
+          publish: npm run release:publish
+          title: "Version packages"
+          commit: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Provenance as an environment variable rather than in
+          # publishConfig: in package.json it would make every local
+          # `npm publish` fail, since a laptop cannot mint an OIDC token.
+          NPM_CONFIG_PROVENANCE: "true"

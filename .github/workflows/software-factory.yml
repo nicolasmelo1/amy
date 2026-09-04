@@ -59,6 +59,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # The changeset check below compares against the base branch, and a
+          # single-branch clone has no such ref to compare with.
+          fetch-depth: 0
           # this job never pushes, so the checkout token has no reason to stay
           # behind in .git/config where a later step can read it back out
           persist-credentials: false
@@ -68,6 +71,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # The release configuration, before the tests: a package that fell out
+      # of the version group is cheaper to hear about here than from a machine
+      # installing a set that does not fit together.
+      - run: npm run check:release
+      # A change to a published package without a changeset is a release that
+      # would leave the version standing still. `--since` scopes it to what
+      # this pull request adds, so a branch is judged on its own diff.
+      - name: Every published change carries a changeset
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          npx changeset status --since "origin/$BASE_REF"
       - run: npm run test:coverage
       - run: npm run lint
       # Dead code is the residue of work that changed direction. Nobody

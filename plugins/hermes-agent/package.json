@@ -4,6 +4,18 @@
   "description": "Hermes as the agent, over its one-shot mode and usage report.",
   "type": "module",
   "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/hermes-agent"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,11 +29,11 @@
     "capabilities.yaml"
   ],
   "dependencies": {
-    "@amy/core": "*",
-    "@amy/agent-kit": "*",
-    "@amy/model-specs": "*"
+    "@amy/core": "^0.1.0",
+    "@amy/agent-kit": "^0.1.0",
+    "@amy/model-specs": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "*"
+    "@amy/test-fixtures": "^0.1.0"
   }
 }

@@ -11,14 +11,18 @@ set -eu
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 target=${1:-${AMY_INSTALL_DIR:-$HOME/.local/bin}}
+# Where the executable is built before it is installed. Overridable so a test
+# run keeps its 64 MB inside the temporary directory it will delete, rather
+# than leaving it in a checkout it was only borrowing.
+built=${AMY_BUILD_OUT:-"$repo/dist/amy"}
 
-"$repo/scripts/build-binary.sh" "$repo/dist/amy"
+"$repo/scripts/build-binary.sh" "$built"
 
 mkdir -p "$target"
 # Replaced rather than written over: overwriting a running binary is what
 # produces a half-written executable on the next invocation.
 tmp="$target/.amy.incoming"
-cp "$repo/dist/amy" "$tmp"
+cp "$built" "$tmp"
 chmod +x "$tmp"
 mv -f "$tmp" "$target/amy"
 
