@@ -1,13 +1,22 @@
 import { vi } from "vitest";
 import { ticket } from "./builders.js";
-import { AgentResult, AgentRun, Event, EventLog, Notifier, StopSwitch, Store, checkEvent } from "@amy/core";
+import {
+  AgentResult,
+  AgentRun,
+  CodeHost,
+  Event,
+  EventLog,
+  Notifier,
+  PullRequestView,
+  StopSwitch,
+  Store,
+  checkEvent,
+} from "@amy/core";
 import { WorkerConfig } from "@amy/plugin-serial-engine";
 import {
   Agent,
-  CodeHost,
   DEFAULT_POLICY,
   Gate,
-  PullRequestView,
   Ticket,
   TicketRecord,
   TicketRuntimeConfig,

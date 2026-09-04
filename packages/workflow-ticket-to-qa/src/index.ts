@@ -22,13 +22,6 @@ export {
   isAutomatedReviewer,
   unresolvedThreads,
 } from "./review.js";
-export type {
-  PullRequestView,
-  ReviewDecision,
-  ReviewState,
-  ReviewSubmission,
-  ReviewThread,
-} from "./review.js";
 
 export { isConfirmedFor, isWorkday, leastLoadedReviewer } from "./roster.js";
 export type { Roster, RosterMember } from "./roster.js";
@@ -48,6 +41,5 @@ export { WORKFLOW_DATA, configSchema, plugin } from "./plugin.js";
 export type { Provider } from "./plugin.js";
 
 export type { FollowUpRequest, Tracker } from "./ports/Tracker.js";
-export type { CodeHost, OpenPullRequestRequest } from "./ports/CodeHost.js";
 export type { Agent } from "./ports/Agent.js";
 export type { Gate } from "./ports/Gate.js";

@@ -1,5 +1,5 @@
 import { Observation, Policy } from "./observation.js";
-import { Plan, Workflow } from "@amy/core";
+import { Plan, PullRequestView, ReviewThread, Workflow } from "@amy/core";
 import { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
 import {
   TicketRecord,
@@ -9,8 +9,6 @@ import {
 } from "./record.js";
 import { TICKET_STATES, TicketState, WAITING_STATES } from "./state.js";
 import {
-  PullRequestView,
-  ReviewThread,
   automatedReviewerSawHead,
   hasReviewedHead,
   unresolvedThreads,

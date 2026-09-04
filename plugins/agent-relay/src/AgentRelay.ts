@@ -1,15 +1,19 @@
-import { AgentResult, AgentRun, EventLog } from "@amy/core";
-import { NamedAgent } from "@amy/agent-kit";
+import { AgentResult, EventLog, ReviewThread } from "@amy/core";
+import {
+  NamedAgent,
+  SkillLadders,
+  handoffNote,
+  nextRung,
+  recordHandoff,
+  recordSkillHandoff,
+} from "@amy/agent-kit";
 import {
   Agent,
   AttemptOutcome,
-  ReviewThread,
   ThreadVerdict,
   Ticket,
   TriageOutcome,
 } from "@amy/workflow-ticket-to-qa";
-import { nextRung } from "./ladder.js";
-import { SkillLadders } from "./skills.js";
 
 export interface RelayDeps {
   log?: EventLog;
@@ -97,7 +101,7 @@ export class AgentRelay implements Agent {
       const next = skills[index + 1];
       if (!next || last.run.outcome === "abandoned") break;
 
-      this.recordSkillHandoff(ticket, step, skill, next, last.run);
+      recordSkillHandoff(this.deps, ticket.id, step, skill, next, last.run);
     }
 
     return last!;
@@ -128,7 +132,7 @@ export class AgentRelay implements Agent {
       if (next === null) return last;
 
       const to = this.ladder[next]!;
-      this.recordHandoff(ticket, action, rung, to, last.run);
+      recordHandoff(this.deps, ticket.id, action, rung, to, last.run);
       handoff = handoffNote(rung, last.run);
       index = next;
     }
@@ -137,70 +141,6 @@ export class AgentRelay implements Agent {
     // an empty one.
     return last!;
   }
-
-  /**
-   * Says which skill gave up and which one is being asked next.
-   *
-   * The same event as a harness handoff, because it is the same question with
-   * a third axis: `moved` already answers "what changed".
-   */
-  private recordSkillHandoff(
-    ticket: Ticket,
-    action: string,
-    from: string,
-    to: string,
-    run: AgentRun,
-  ): void {
-    this.deps.log?.append({
-      at: (this.deps.now ?? (() => new Date()))().toISOString(),
-      kind: "agent.handoff",
-      workId: ticket.id,
-      detail: {
-        action,
-        cause: run.outcome,
-        from: { skill: from },
-        to: { skill: to },
-        moved: "skill",
-      },
-    });
-  }
-
-  private recordHandoff(
-    ticket: Ticket,
-    action: string,
-    from: NamedAgent,
-    to: NamedAgent,
-    run: AgentRun,
-  ): void {
-    this.deps.log?.append({
-      at: (this.deps.now ?? (() => new Date()))().toISOString(),
-      kind: "agent.handoff",
-      workId: ticket.id,
-      detail: {
-        action,
-        cause: run.outcome,
-        from: { harness: from.harness, model: from.model },
-        to: { harness: to.harness, model: to.model },
-        // Which axis moved, which is what a report about reliability wants.
-        moved: from.harness === to.harness ? "model" : "harness",
-      },
-    });
-  }
-}
-
-/** What the next harness is told about the one before it. */
-function handoffNote(from: NamedAgent, run: AgentRun): string {
-  const because =
-    run.outcome === "rate-limited"
-      ? `ran out of quota partway through`
-      : `did not succeed`;
-
-  return [
-    `A previous attempt by ${from.harness} (${from.model}) ${because}.`,
-    `The working tree is exactly as it left it, so this may be half-done work`,
-    `rather than a clean start. Continue it; do not begin again.`,
-    ...(run.output ? [``, `What it said:`, ``, run.output] : []),
-  ].join("\n");
 }
 
 function join(...parts: (string | undefined)[]): string | undefined {

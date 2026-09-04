@@ -1,7 +1,20 @@
+import { Harness } from "@amy/core";
 import { Agent } from "@amy/workflow-ticket-to-qa";
+import { Rung } from "./ladder.js";
 
-/** The collection every harness plugin adds itself to. */
+/** The collection every harness plugin adds its ticket-shaped agents to. */
 export const AGENT_COLLECTION = "agent";
+
+/**
+ * The collection every harness plugin adds the bare CLI to.
+ *
+ * Two collections rather than one, because they are two different things at
+ * two different levels. A `NamedAgent` already knows what a ticket is, which
+ * prompt to send and when to commit; a `NamedHarness` knows none of that and
+ * is what a second workflow wants, so that its own prompts go up the same
+ * ladder as the first workflow's do.
+ */
+export const HARNESS_COLLECTION = "harness";
 
 /**
  * One harness at one model tier, ready to be asked.
@@ -18,11 +31,7 @@ export const AGENT_COLLECTION = "agent";
  * problem wants a different harness and a failure wants a stronger model, and
  * both are choices made in advance.
  */
-export interface NamedAgent {
-  /** How the ladder refers to it, such as `claude:sonnet`. */
-  readonly name: string;
-  readonly harness: string;
-  readonly model: string;
+export interface NamedAgent extends Rung {
   readonly agent: Agent;
   /**
    * The same harness and model, with a named skill doing the step.
@@ -31,4 +40,9 @@ export interface NamedAgent {
    * answers is decided before the call, exactly like which harness does.
    */
   readonly using: (skill: string) => Agent;
+}
+
+/** The same rung of the same ladder, with no workflow's prompts on it. */
+export interface NamedHarness extends Rung {
+  readonly cli: Harness;
 }

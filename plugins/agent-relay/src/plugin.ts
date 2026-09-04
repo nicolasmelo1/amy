@@ -1,9 +1,26 @@
-import { LogBudget, Plugin, PluginContext, Registry, hasACeiling, parseBudget } from "@amy/core";
-import { AGENT_COLLECTION, NamedAgent } from "@amy/agent-kit";
+import {
+  AskContext,
+  HarnessReply,
+  LogBudget,
+  Plugin,
+  PluginContext,
+  Registry,
+  ReviewThread,
+  hasACeiling,
+  parseBudget,
+} from "@amy/core";
+import {
+  AGENT_COLLECTION,
+  HARNESS_COLLECTION,
+  HarnessRelay,
+  NamedAgent,
+  NamedHarness,
+  Rung,
+  SkillLadders,
+} from "@amy/agent-kit";
 import {
   Agent,
   AttemptOutcome,
-  ReviewThread,
   ThreadVerdict,
   Ticket,
   TriageOutcome,
@@ -11,13 +28,7 @@ import {
 import { AgentResult } from "@amy/core";
 import { AgentRelay } from "./AgentRelay.js";
 import { configSchema } from "./config.js";
-import {
-  DEFAULT_SKILL_ROOT,
-  SkillLadders,
-  installedSkills,
-  parseSkills,
-  skillsNamed,
-} from "./skills.js";
+import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
 
 /**
  * The relay built for one mount, keyed by that mount's context.
@@ -28,6 +39,7 @@ import {
  * key.
  */
 const relays = new WeakMap<PluginContext, AgentRelay>();
+const harnesses = new WeakMap<PluginContext, HarnessRelay>();
 
 function relayFor(ctx: PluginContext): AgentRelay {
   const existing = relays.get(ctx);
@@ -36,6 +48,15 @@ function relayFor(ctx: PluginContext): AgentRelay {
   const relay = build(ctx);
   relays.set(ctx, relay);
   return relay;
+}
+
+function harnessFor(ctx: PluginContext): HarnessRelay {
+  const existing = harnesses.get(ctx);
+  if (existing) return existing;
+
+  const built = buildHarness(ctx);
+  harnesses.set(ctx, built);
+  return built;
 }
 
 export const plugin: Plugin = {
@@ -64,7 +85,17 @@ export const plugin: Plugin = {
         lazily().addressThreads(ticket, threads, from),
     };
 
-    registry.port("agent", facade);
+    // One port, two levels of the same thing. The ticket-shaped half is what
+    // `triage` and `implement` reach; `ask` is the half with no vocabulary in
+    // it, which is how a second workflow's own prompts end up on the same
+    // ladder, in the same log and under the same ceiling as the first
+    // workflow's. Neither workflow has to know the other exists.
+    registry.port("agent", {
+      ...facade,
+      ask: (prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply> =>
+        harnessFor(ctx).ask(prompt, cwd, context),
+      name: "relay",
+    });
     mountBudget(registry, ctx);
   },
 
@@ -104,13 +135,35 @@ function mountBudget(registry: Registry, ctx: PluginContext): void {
 
 function build(ctx: PluginContext): AgentRelay {
   const contributed = [...ctx.contributions(AGENT_COLLECTION).values()] as NamedAgent[];
-  const wanted = ctx.config.ladder as string[];
 
-  return new AgentRelay(wanted.length === 0 ? contributed : order(contributed, wanted), {
+  return new AgentRelay(rungs(ctx, contributed), {
     log: ctx.log,
     now: ctx.now,
     skills: skillLadders(ctx),
   });
+}
+
+/**
+ * The same ladder, one level down.
+ *
+ * Built from its own collection rather than by unwrapping the agents, because
+ * the two are contributed together by the same plugin and reading the one you
+ * mean is cheaper to follow than reaching through the other.
+ */
+function buildHarness(ctx: PluginContext): HarnessRelay {
+  const contributed = [...ctx.contributions(HARNESS_COLLECTION).values()] as NamedHarness[];
+
+  return new HarnessRelay(rungs(ctx, contributed), {
+    log: ctx.log,
+    now: ctx.now,
+    skills: skillLadders(ctx),
+  });
+}
+
+/** What the config asked for, in that order, or everything contributed. */
+function rungs<T extends Rung>(ctx: PluginContext, contributed: readonly T[]): T[] {
+  const wanted = ctx.config.ladder as string[];
+  return wanted.length === 0 ? [...contributed] : order(contributed, wanted);
 }
 
 /**
@@ -145,7 +198,7 @@ function skillLadders(ctx: PluginContext): SkillLadders {
  * typo in it would quietly become shorter than the operator believes, and the
  * first symptom would be a ticket escalating for no reason.
  */
-function order(contributed: readonly NamedAgent[], wanted: readonly string[]): NamedAgent[] {
+function order<T extends Rung>(contributed: readonly T[], wanted: readonly string[]): T[] {
   return wanted.map((name) => {
     const found = contributed.find((agent) => agent.name === name);
     if (!found) {

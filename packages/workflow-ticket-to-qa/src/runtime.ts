@@ -2,6 +2,7 @@ import {
   ActionContext,
   ActionHandler,
   AgentRun,
+  CodeHost,
   Event,
   EventKind,
   EventLog,
@@ -10,7 +11,6 @@ import {
   WorkflowRuntime,
 } from "@amy/core";
 import { Agent } from "./ports/Agent.js";
-import { CodeHost } from "./ports/CodeHost.js";
 import { Gate } from "./ports/Gate.js";
 import { Tracker } from "./ports/Tracker.js";
 import { Effect } from "./effects.js";

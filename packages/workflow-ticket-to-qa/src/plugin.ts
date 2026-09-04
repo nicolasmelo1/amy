@@ -1,4 +1,5 @@
 import {
+  CodeHost,
   ConfigSchema,
   Notifier,
   Plan,
@@ -9,7 +10,6 @@ import {
 } from "@amy/core";
 import { Observation, DEFAULT_POLICY, Policy } from "./observation.js";
 import { Agent } from "./ports/Agent.js";
-import { CodeHost } from "./ports/CodeHost.js";
 import { Gate } from "./ports/Gate.js";
 import { Tracker } from "./ports/Tracker.js";
 import { Roster } from "./roster.js";

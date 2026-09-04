@@ -1,12 +1,13 @@
-import { CodeHost, OpenPullRequestRequest } from "@amy/workflow-ticket-to-qa";
-import { CommandRunner } from "@amy/core";
 import {
+  CodeHost,
+  CommandRunner,
+  OpenPullRequestRequest,
   PullRequestView,
   ReviewDecision,
   ReviewState,
   ReviewSubmission,
   ReviewThread,
-} from "@amy/workflow-ticket-to-qa";
+} from "@amy/core";
 
 const PULL_REQUEST_QUERY = `
 query PullRequest($owner: String!, $name: String!, $branch: String!) {

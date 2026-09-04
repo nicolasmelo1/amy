@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { Git, Registry } from "@amy/core";
+import { Git, Harness, Registry } from "@amy/core";
 import { ScriptedRunner, fakeRun, ticket } from "@amy/test-fixtures";
-import { AGENT_COLLECTION, contributeTiers, tierName } from "../src/index.js";
-import { Harness } from "../src/harness.js";
+import {
+  AGENT_COLLECTION,
+  HARNESS_COLLECTION,
+  contributeTiers,
+  tierName,
+} from "../src/index.js";
 
 function fakeHarness(name: string): Harness {
   return {
@@ -24,7 +28,10 @@ function recordingRegistry() {
     port: (kind: string) => void ports.push(kind),
   } as unknown as Registry;
 
-  return { registry, contributions, ports };
+  const named = (collection: string): string[] =>
+    contributions.filter((c) => c.collection === collection).map((c) => c.name);
+
+  return { registry, contributions, ports, named };
 }
 
 const git = () => new Git(new ScriptedRunner([]), { workspaceRoot: "/w", defaultBranch: "main" });
@@ -43,7 +50,7 @@ describe("naming a tier", () => {
 
 describe("contributing tiers", () => {
   it("adds one agent per model, in the order given", () => {
-    const { registry, contributions } = recordingRegistry();
+    const { registry, named } = recordingRegistry();
 
     contributeTiers(registry, {
       harness: "claude",
@@ -52,8 +59,23 @@ describe("contributing tiers", () => {
       make: fakeHarness,
     });
 
-    expect(contributions.map((c) => c.name)).toEqual(["claude:sonnet", "claude:opus"]);
-    expect(contributions.every((c) => c.collection === AGENT_COLLECTION)).toBe(true);
+    expect(named(AGENT_COLLECTION)).toEqual(["claude:sonnet", "claude:opus"]);
+  });
+
+  it("adds the bare harness under the same name, so one ladder names both", () => {
+    // The two collections are read at different levels — the ticket-shaped
+    // agent, and the CLI a second workflow asks its own questions through —
+    // and a ladder in a config file has to mean the same thing to each.
+    const { registry, named } = recordingRegistry();
+
+    contributeTiers(registry, {
+      harness: "claude",
+      models: ["sonnet", "opus"],
+      git: git(),
+      make: fakeHarness,
+    });
+
+    expect(named(HARNESS_COLLECTION)).toEqual(named(AGENT_COLLECTION));
   });
 
   it("declares the harness and the model on each one", () => {
@@ -73,11 +95,11 @@ describe("contributing tiers", () => {
   });
 
   it("contributes one agent when no model was configured", () => {
-    const { registry, contributions } = recordingRegistry();
+    const { registry, named } = recordingRegistry();
 
     contributeTiers(registry, { harness: "hermes", models: [], git: git(), make: fakeHarness });
 
-    expect(contributions.map((c) => c.name)).toEqual(["hermes"]);
+    expect(named(AGENT_COLLECTION)).toEqual(["hermes"]);
   });
 
   it("never mounts the agent port itself", () => {

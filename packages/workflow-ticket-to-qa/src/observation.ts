@@ -1,4 +1,4 @@
-import { PullRequestView } from "./review.js";
+import { PullRequestView } from "@amy/core";
 import { Roster } from "./roster.js";
 import { Ticket } from "./ticket.js";
 
