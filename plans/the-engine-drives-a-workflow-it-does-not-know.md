@@ -83,16 +83,20 @@ workflow would meet.
 - [x] The lifecycle still walks end to end, unchanged, through the installed
       executable
       (proof: assertion:lifecycle.the_ticket_walks_the_lifecycle_in_order)
-- [ ] A second workflow, over a domain sharing no action with this one, runs
+- [x] A second workflow, over a domain sharing no action with this one, runs
       on this engine unmodified
-      (proof: deferred:that workflow is phase 13, and it is the run that
-      settles this rather than an argument about it)
+      (proof: assertion:plan.both_workflows_run_on_the_same_installed_binary)
 
 **Exit condition:** `plugins/serial-engine/src/**` contains no reference to
 any `@amy/workflow-*` package, the five end-to-end scenarios pass unchanged
 against the built artifacts, and a second workflow can be driven by handing
 the same engine a `Workflow` and a `WorkflowRuntime`.
 
-The last criterion is the one that matters and it stays open on purpose. The
-seam is only proven by a second thing going through it, and inventing a
-throwaway second workflow to close a checkbox would prove the checkbox.
+The last criterion was the one that mattered and it stayed open on purpose:
+the seam is only proven by a second thing going through it, and inventing a
+throwaway second workflow to close a checkbox would have proved the checkbox.
+It closed in
+[friction becomes a plan](friction-becomes-a-plan.md), where a workflow that
+was needed for its own reasons went through the seam and found one defect in
+it — every runtime folded the plan into the record twice, because the engine
+had already done it. That is what a real second user is for.

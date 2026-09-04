@@ -282,9 +282,13 @@ function assertionsFor(state) {
 
     // The ceiling.
     [
+      // It held, and when it stopped holding it opened exactly one — so the
+      // ceiling delayed the second plan rather than losing it. Two notes, two
+      // pull requests, and neither of them a third nobody asked for.
       "plan.nothing_new_is_opened_past_the_ceiling",
       held.length > 0 &&
-        (state.host.repos[REPO]?.pulls ?? []).length === 2,
+        (state.host.repos[REPO]?.pulls ?? []).length === 2 &&
+        Boolean(pullFor(state, REPO, BY_HAND_SLUG)),
     ],
     [
       "plan.the_ceiling_is_said_once",

@@ -293,6 +293,26 @@ notify:
   hermes: slack:my-channel   # a Hermes delivery target, or null
   inbox: true        # a file in .amy/needs-input plus a desktop notification
 
+# The second workflow: friction this machine hits becomes a plan in the
+# repository it is about. Leave "repos" out and nothing here is mounted at all
+# — a note would have nowhere to go.
+#
+# The check is the whole quality bar, and it is the repository's own rather
+# than a rubric invented here: a plan with no exit condition, or one missing
+# from the ordered list, is red and goes back to the agent with the finding.
+plans:
+  repos:
+    - Northwind/amy
+    - Northwind/software-factory
+  check:
+    default:
+      - sf check
+  policy:
+    # Past this many plans in flight for one repository, it holds rather than
+    # opening another pull request nobody has read. The reviewer ceiling's
+    # argument with a different number.
+    maxOpenPlansPerRepo: 2
+
 # One slice per plugin, keyed by package name. Nothing here is read by the
 # host: each plugin declares what its own slice looks like, and "amy doctor"
 # refuses a field that is not one the plugin has. A plugin with no slice runs

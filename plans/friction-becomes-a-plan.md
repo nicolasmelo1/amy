@@ -29,10 +29,11 @@ stopped knowing what a ticket is in
 [the engine drives a workflow it does not know](the-engine-drives-a-workflow-it-does-not-know.md),
 so a second workflow now costs a `plan()` and a runtime rather than a fork.
 
-This is also what settles that plan's one open criterion. It stays open there
-until it is a second workflow really going through the seam, and this is that
-workflow — which is the right way round: the proof arrives because something
-needed it, not because a checkbox wanted closing.
+This is also what settled that plan's one open criterion. It stayed open
+there until a second workflow really went through the seam, and this is that
+workflow — which is the right way round: the proof arrived because something
+needed it, not because a checkbox wanted closing. It arrived carrying a
+defect, too, which is the other thing a real second user is for. See below.
 
 The lifecycle is short on purpose, because nothing in it waits on a person:
 
@@ -91,32 +92,31 @@ quality is the floor the repository already enforces on people.
 
 ## Acceptance criteria
 
-- [ ] A work item injected by command reaches the queue and is advanced
+- [x] A work item injected by command reaches the queue and is advanced
       without existing in any tracker
-      (proof: deferred:the second workflow does not exist yet)
-- [ ] A note dropped in the watched directory is picked up by `amy discover`
+      (proof: assertion:plan.work_injected_by_command_reaches_the_queue)
+- [x] A note dropped in the watched directory is picked up by `amy discover`
       alongside anything else that is due
-      (proof: deferred:the watched directory does not exist yet)
-- [ ] The two workflows run on the same engine, the same queue, the same
+      (proof: assertion:plan.a_note_in_the_watched_directory_is_discovered)
+- [x] The two workflows run on the same engine, the same queue, the same
       store, the same log and the same budget, with no engine change between
-      them (proof: deferred:this is the criterion the other plan is waiting
-      on, and it closes here)
-- [ ] The forge port is mounted once and used by both workflows
-      (proof: deferred:`CodeHost` has not moved to the core yet)
-- [ ] A second workflow's agent uses the same harness ladder and the same
+      them (proof: assertion:plan.both_workflows_run_on_the_same_installed_binary)
+- [x] The forge port is mounted once and used by both workflows
+      (proof: test:packages/cli/tests/two-workflows.test.ts)
+- [x] A second workflow's agent uses the same harness ladder and the same
       budget as the first, with its own prompts
-      (proof: deferred:the harnesses contribute no harness yet)
-- [ ] A drafted plan that `sf check` refuses goes back to the agent with the
+      (proof: assertion:plan.what_the_agent_spent_lands_in_the_shared_log)
+- [x] A drafted plan that `sf check` refuses goes back to the agent with the
       finding, rather than reaching a pull request
-      (proof: deferred:the workflow does not exist yet)
-- [ ] A plan that passes reaches a pull request in the repository it is about,
+      (proof: assertion:plan.the_agent_is_told_what_the_check_said)
+- [x] A plan that passes reaches a pull request in the repository it is about,
       naming the friction it came from
-      (proof: deferred:the workflow does not exist yet)
-- [ ] Past `maxOpenPlansPerRepo`, nothing new is opened and the machine says
-      so once (proof: deferred:the ceiling does not exist yet)
-- [ ] A tick that fails in the ticket workflow leaves a note behind, so the
+      (proof: assertion:plan.the_pull_request_names_the_friction_it_came_from)
+- [x] Past `maxOpenPlansPerRepo`, nothing new is opened and the machine says
+      so once (proof: assertion:plan.nothing_new_is_opened_past_the_ceiling)
+- [x] A tick that fails in the ticket workflow leaves a note behind, so the
       thing that broke becomes the thing that gets fixed
-      (proof: deferred:notes cannot be written yet)
+      (proof: test:packages/cli/tests/two-workflows.test.ts)
 
 **Exit condition:** a friction note, written by hand or by a failing tick,
 becomes a pull request adding a plan to software factory, amy or logion —
@@ -124,6 +124,22 @@ with an exit condition and a line in that repository's `next-steps.md`,
 because anything less is refused by that repository's own `sf check` — and
 the machine that did it never touched a tracker, never changed the engine,
 and stopped opening pull requests once the ceiling was reached.
+
+## What going through the seam found
+
+One defect, and it had been there since the seam was cut: every workflow
+runtime's `apply` re-ran `applyPlan`, which the engine had already run. The
+contract says so in as many words — "the engine has already folded the state,
+the attempt count and the history" — and the first runtime ignored its own
+contract. So every retry was counted twice and every move wrote a transition
+from a state to itself. A ceiling of three implement attempts was really one
+and a half.
+
+Nothing had noticed, because the end-to-end run read the states it observed
+rather than the history the record kept, and a doubled attempt count only
+shows up as a ceiling arriving sooner than the config says. The second
+workflow's run asserted its lifecycle against the record's own history, and
+there it was.
 
 ## What this deliberately does not do
 
@@ -134,3 +150,11 @@ machine's judgement is a pull request, not a commit.
 It does not write into a fourth repository. Three are the ones this work
 already lives in, and a note about anything else is a note the operator gets
 told about instead.
+
+It does not run both workflows in one host. `mount()` still claims a single
+workflow and that has not changed, so `--workflow` chooses which one this
+invocation drives. What is shared is everything that matters: one `.amy`, one
+event log and therefore one budget, one handbrake, one notes directory, and
+the same engine, queue, store, relay and forge behind both. Only the records
+and the queue are per workflow, because two workflows reading each other's
+work would be the one thing that genuinely cannot be shared.

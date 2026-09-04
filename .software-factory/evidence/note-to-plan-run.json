@@ -10,7 +10,7 @@
   "observed": {
     "assertions_run": 20,
     "assertions_failed": 0,
-    "version": "0.1.0 (de5215a-dirty, built 2026-09-04T23:31:20Z)",
+    "version": "0.1.0 (8311975-dirty, built 2026-09-04T23:35:35Z)",
     "looks": 47,
     "transitions": [
       "NOTED>DRAFTED",
@@ -42,8 +42,8 @@
     "notes_left": [
       "by-hand.md",
       "not-mine.md",
-      "note-2026-09-04T233122358.md",
-      "note-2026-09-04T233124400.md",
+      "note-2026-09-04T233536368.md",
+      "note-2026-09-04T233538448.md",
       "will-break.md"
     ],
     "budget": "new work: allowed"
