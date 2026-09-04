@@ -1,0 +1,63 @@
+#!/usr/bin/env node
+// The stand-in `sf`: the repository's own quality bar, as much of it as this
+// run depends on.
+//
+// It is not scripted. It reads the plans actually on disk and applies the two
+// rules a plan has to satisfy in a repository like this one — it declares an
+// exit condition, and it sits in the ordered list — which is exactly
+// L4.PLAN_DECLARES_EXIT_CONDITION. A red answer here comes from the file
+// being wrong, so the agent being sent back with it proves the bar rather
+// than proving a fake said no.
+import fs from "node:fs";
+import path from "node:path";
+
+const world = process.env.AMY_E2E_WORLD;
+const argv = process.argv.slice(2);
+
+if (world) {
+  fs.appendFileSync(
+    path.join(world, "sf.log"),
+    `${JSON.stringify({ at: new Date().toISOString(), argv, cwd: process.cwd() })}\n`,
+  );
+}
+
+if (argv[0] === "--version") {
+  process.stdout.write("sf 0.3.0 (stand-in)\n");
+  process.exit(0);
+}
+
+if (argv[0] !== "check") {
+  process.stderr.write(`the stand-in sf does not know \`${argv.join(" ")}\`\n`);
+  process.exit(2);
+}
+
+const plans = path.join(process.cwd(), "plans");
+const order = path.join(plans, "next-steps.md");
+
+if (!fs.existsSync(order)) {
+  process.stdout.write("L4.PLAN_DECLARES_EXIT_CONDITION — this repository has no plans/next-steps.md\n");
+  process.exit(1);
+}
+
+const listed = fs.readFileSync(order, "utf-8");
+const findings = [];
+
+for (const name of fs.readdirSync(plans).filter((f) => f.endsWith(".md"))) {
+  if (name === "next-steps.md") continue;
+
+  const contents = fs.readFileSync(path.join(plans, name), "utf-8");
+
+  if (!contents.includes("**Exit condition:**")) {
+    findings.push(`plans/${name} — L4.PLAN_DECLARES_EXIT_CONDITION: this plan never states what would make it finished`);
+  }
+  if (!listed.includes(name)) {
+    findings.push(`plans/${name} — L4.PLAN_DECLARES_EXIT_CONDITION: this plan is not in the execution order`);
+  }
+}
+
+if (findings.length > 0) {
+  process.stdout.write(`${findings.join("\n")}\n\n${findings.length} finding(s) across 1 rule\n`);
+  process.exit(1);
+}
+
+process.stdout.write("33 rules, no findings\n");

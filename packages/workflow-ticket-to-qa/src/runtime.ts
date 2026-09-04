@@ -15,7 +15,7 @@ import { Gate } from "./ports/Gate.js";
 import { Tracker } from "./ports/Tracker.js";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
-import { EffectOutcomes, applyTicketPlan } from "./outcomes.js";
+import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
 import { Roster } from "./roster.js";
 import { TicketRecord, newRecord } from "./record.js";
 import { Ticket, pullRequestTitle } from "./ticket.js";
@@ -279,7 +279,16 @@ export function ticketRuntime(
       );
     },
 
-    apply(current, plan: Plan, outcomes, observation, now) {
+    /**
+     * Only this workflow's own half of the fold.
+     *
+     * The engine has already put the record through `applyPlan` — the state,
+     * the attempt count and the history — and folding it again here counted
+     * every retry twice and wrote a transition from each state to itself.
+     * `applyTicketPlan` is still what a caller driving the machine *without*
+     * an engine wants, which is why both exist.
+     */
+    apply(current, _plan: Plan, outcomes, observation, now) {
       const folded = outcomes as EffectOutcomes;
 
       // The owner's answer to an escalation arrives as an observation rather
@@ -290,7 +299,7 @@ export function ticketRuntime(
           ? { ...folded, escalationResolvedAt: now.toISOString() }
           : folded;
 
-      return applyTicketPlan(current, plan, settled, now);
+      return applyOutcomes(current, settled);
     },
   };
 }

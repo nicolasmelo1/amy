@@ -15,7 +15,7 @@ import {
 } from "@amy/core";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
-import { EffectOutcomes, applyNotePlan } from "./outcomes.js";
+import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
 import { PlanRecord, newRecord } from "./record.js";
 import { Note, Notes } from "./ports/Notes.js";
 import { PlanCheck } from "./ports/PlanCheck.js";
@@ -222,21 +222,21 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, 
       );
     },
 
-    apply(current, plan: Plan, outcomes, observation, now) {
-      // The repository and the slug are copied off the note rather than
-      // produced by an action, so they are folded here. Without them on the
-      // record, counting what is in flight for a repository would mean
-      // opening every other note to find out what it was about.
-      return applyNotePlan(
-        current,
-        plan,
-        {
-          ...(outcomes as EffectOutcomes),
-          repo: observation.note.repo,
-          slug: slugFor(observation.note),
-        },
-        now,
-      );
+    /**
+     * Only this workflow's own half of the fold: the engine has already put
+     * the record through `applyPlan`.
+     *
+     * The repository and the slug are copied off the note rather than
+     * produced by an action, so they are folded here. Without them on the
+     * record, counting what is in flight for a repository would mean opening
+     * every other note to find out what it was about.
+     */
+    apply(current, _plan: Plan, outcomes, observation, _now) {
+      return applyOutcomes(current, {
+        ...(outcomes as EffectOutcomes),
+        repo: observation.note.repo,
+        slug: slugFor(observation.note),
+      });
     },
   };
 }

@@ -160,6 +160,48 @@ gates:
       - "lifecycle.the_same_run_twice_leaves_the_same_trail"
       - "lifecycle.the_run_leaves_nothing_behind"
 
+  # The second workflow, and the claim the whole plugin model rests on: an
+  # engine that learnt nothing drives it. What no unit test can say is that
+  # the *installed* machine turns a line somebody typed into a pull request
+  # in another repository, with no tracker anywhere in it.
+  #
+  # The activation is the second workflow, the two plugins only it uses, the
+  # notes, the relay's harness half and the CLI, because a change to any of
+  # them means the last run proved a machine that no longer exists. The
+  # engine is in there too: it is the thing claimed not to have changed.
+  note-to-plan:
+    activation:
+      - "packages/workflow-note-to-plan/src/**"
+      - "packages/agent-kit/src/**"
+      - "packages/cli/src/**"
+      - "plugins/file-notes/src/**"
+      - "plugins/plan-check/src/**"
+      - "plugins/agent-relay/src/**"
+      - "plugins/serial-engine/src/**"
+      - "plugins/github/src/**"
+    evidence: ".software-factory/evidence/note-to-plan.json"
+    plan: "plans/friction-becomes-a-plan.md"
+    required_assertions:
+      - "plan.work_injected_by_command_reaches_the_queue"
+      - "plan.a_note_in_the_watched_directory_is_discovered"
+      - "plan.nothing_is_resolved_against_a_tracker"
+      - "plan.a_refused_draft_goes_back_to_the_agent"
+      - "plan.the_agent_is_told_what_the_check_said"
+      - "plan.nothing_reaches_a_pull_request_until_the_check_is_green"
+      - "plan.the_plan_carries_an_exit_condition_and_a_place_in_the_order"
+      - "plan.a_pull_request_is_opened_in_the_repository_the_note_is_about"
+      - "plan.the_pull_request_names_the_friction_it_came_from"
+      - "plan.nothing_new_is_opened_past_the_ceiling"
+      - "plan.the_ceiling_is_said_once"
+      - "plan.a_note_about_another_repository_is_handed_back"
+      - "plan.a_tick_that_gives_up_leaves_a_note_behind"
+      - "plan.both_workflows_run_on_the_same_installed_binary"
+      - "plan.each_workflow_keeps_its_own_queue_and_records"
+      - "plan.what_the_agent_spent_lands_in_the_shared_log"
+      - "plan.the_lifecycle_walks_in_order"
+      - "plan.one_look_makes_at_most_one_move"
+      - "plan.the_machine_settles_instead_of_spinning"
+
 rules:
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:
