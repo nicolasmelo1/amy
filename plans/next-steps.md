@@ -6,6 +6,9 @@ weekly, and the file an agent reads to know what is next.
 A plan not listed here is written, valid, and off the critical path until its
 precondition exists. Park it in the second table rather than deleting it.
 
+O roadmap inteiro, com as treze fases e o estado de cada uma, está em
+[the roadmap](the-roadmap.md). Este arquivo é a ordem de execução dele.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [Every plugin is proven end to end](every-plugin-is-proven-end-to-end.md) | Changing a plugin's source turns the build red until its end-to-end run happens again |
