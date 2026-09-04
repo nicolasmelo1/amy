@@ -46,7 +46,7 @@ export default tseslint.config(
   // of any workspace, so nothing else declares what globals they have. Linted
   // rather than excluded: they are the code that proves the product works.
   {
-    files: [".software-factory/evidence/**/*.mjs"],
+    files: [".software-factory/evidence/**/*.mjs", "scripts/**/*.mjs"],
     languageOptions: { globals: { process: "readonly", console: "readonly" } },
   },
 );

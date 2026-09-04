@@ -4,6 +4,18 @@
   "description": "Announcements over Hermes, which already owns the messaging credentials.",
   "type": "module",
   "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/notify-hermes"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,10 +29,10 @@
     "capabilities.yaml"
   ],
   "dependencies": {
-    "@amy/core": "*",
-    "@amy/plugin-notify-fanout": "*"
+    "@amy/core": "^0.1.0",
+    "@amy/plugin-notify-fanout": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "*"
+    "@amy/test-fixtures": "^0.1.0"
   }
 }

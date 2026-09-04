@@ -14,8 +14,12 @@
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",
     "audit": "npm audit --audit-level=high",
-    "gate": "npm run build && npm run test:coverage && npm run lint && npm run knip && npm run audit && sf check --allow-commands && sf verify",
+    "check:release": "node scripts/check-release-config.mjs",
+    "gate": "npm run build && npm run check:release && npm run test:coverage && npm run lint && npm run knip && npm run audit && sf check --allow-commands && sf verify",
     "e2e": "./.software-factory/evidence/plugin-file-queue-scenario.sh && ./.software-factory/evidence/plugin-agent-relay-scenario.sh && ./.software-factory/evidence/plugin-serial-engine-scenario.sh && ./.software-factory/evidence/installed-binary-scenario.sh && ./.software-factory/evidence/ticket-to-qa-scenario.sh",
+    "changeset": "changeset",
+    "release:version": "changeset version && npm install --package-lock-only",
+    "release:publish": "npm run build && changeset publish",
     "build:binary": "./scripts/build-binary.sh",
     "install:local": "./scripts/install.sh",
     "knip": "knip",
@@ -23,6 +27,7 @@
     "bench:baseline": "vitest bench --run --outputJson=packages/core/tests/bench-baseline.json"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.10",
     "@vitest/coverage-v8": "^4.1.11",

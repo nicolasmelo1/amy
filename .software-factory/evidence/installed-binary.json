@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "installed-binary",
-  "implementation_sha256": "6101e6986a01b2339830e34d9937e4e5fecf54ed447c5529d89ca8623ff2572c",
+  "implementation_sha256": "d33f78ed58aeb9f308eac36397731b2ccda9b60daa1459a3dd92dc54def269fa",
   "runs": [
     {
       "scenario": "installed-binary",
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/installed-binary-scenario.sh against a freshly installed binary on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/installed-binary-run.json",
-      "report_sha256": "30ff028b8b4b3a4a414fd37df803a52b9622e9e283e9e58db4ccdd92bd79f4fe",
+      "report_sha256": "f6c3d0b2df11698f51e16bffb044e786f78d1d265d39a3a22682f1be91650e17",
       "required_assertions": []
     }
   ]

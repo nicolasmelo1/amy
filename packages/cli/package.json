@@ -4,6 +4,21 @@
   "description": "The amy command line.",
   "type": "module",
   "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/write-stamp.mjs"
+  },
   "bin": {
     "amy": "./dist/index.js"
   },
@@ -20,27 +35,27 @@
     "capabilities.yaml"
   ],
   "dependencies": {
-    "@amy/core": "*",
-    "@amy/model-specs": "*",
-    "@amy/plugin-agent-relay": "*",
-    "@amy/plugin-claude": "*",
-    "@amy/plugin-codex": "*",
-    "@amy/plugin-command-gate": "*",
-    "@amy/plugin-file-log": "*",
-    "@amy/plugin-file-queue": "*",
-    "@amy/plugin-file-store": "*",
-    "@amy/plugin-github": "*",
-    "@amy/plugin-hermes-agent": "*",
-    "@amy/plugin-linear": "*",
-    "@amy/plugin-notify-fanout": "*",
-    "@amy/plugin-notify-hermes": "*",
-    "@amy/plugin-notify-inbox": "*",
-    "@amy/plugin-serial-engine": "*",
-    "@amy/workflow-ticket-to-qa": "*",
+    "@amy/core": "^0.1.0",
+    "@amy/model-specs": "^0.1.0",
+    "@amy/plugin-agent-relay": "^0.1.0",
+    "@amy/plugin-claude": "^0.1.0",
+    "@amy/plugin-codex": "^0.1.0",
+    "@amy/plugin-command-gate": "^0.1.0",
+    "@amy/plugin-file-log": "^0.1.0",
+    "@amy/plugin-file-queue": "^0.1.0",
+    "@amy/plugin-file-store": "^0.1.0",
+    "@amy/plugin-github": "^0.1.0",
+    "@amy/plugin-hermes-agent": "^0.1.0",
+    "@amy/plugin-linear": "^0.1.0",
+    "@amy/plugin-notify-fanout": "^0.1.0",
+    "@amy/plugin-notify-hermes": "^0.1.0",
+    "@amy/plugin-notify-inbox": "^0.1.0",
+    "@amy/plugin-serial-engine": "^0.1.0",
+    "@amy/workflow-ticket-to-qa": "^0.1.0",
     "commander": "^14.0.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "*"
+    "@amy/test-fixtures": "^0.1.0"
   }
 }
