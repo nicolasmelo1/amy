@@ -1,0 +1,24 @@
+{
+  "name": "@amy/test-fixtures",
+  "version": "0.1.0",
+  "description": "Shared test builders and scripted doubles. Not published.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/core": "*",
+    "@amy/workflow-ticket-to-qa": "*"
+  }
+}

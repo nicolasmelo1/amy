@@ -1,0 +1,64 @@
+{
+  "scenario": "plugin-file-queue",
+  "status": "passed",
+  "goal": "I am about to trust this queue with work that takes hours. Prove the built artifact claims exactly once, holds an item until it is due, gives back what a dead worker left, sweeps only finished items, and survives the process that made it.",
+  "artifact": {
+    "package": "@amy/plugin-file-queue",
+    "entry": "dist/index.js"
+  },
+  "observed": {
+    "assertions_run": 12,
+    "assertions_failed": 0,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "queue.claims_what_was_enqueued",
+      "status": "passed"
+    },
+    {
+      "type": "queue.is_a_directory_of_files",
+      "status": "passed"
+    },
+    {
+      "type": "queue.refuses_a_second_claim",
+      "status": "passed"
+    },
+    {
+      "type": "queue.completing_clears_the_pending_set",
+      "status": "passed"
+    },
+    {
+      "type": "queue.holds_an_item_until_it_is_due",
+      "status": "passed"
+    },
+    {
+      "type": "queue.hands_it_over_once_due",
+      "status": "passed"
+    },
+    {
+      "type": "queue.recovers_what_a_dead_worker_left",
+      "status": "passed"
+    },
+    {
+      "type": "queue.recovered_item_is_claimable_again",
+      "status": "passed"
+    },
+    {
+      "type": "queue.chains_the_next_look_immediately",
+      "status": "passed"
+    },
+    {
+      "type": "queue.prunes_finished_items",
+      "status": "passed"
+    },
+    {
+      "type": "queue.never_prunes_unfinished_work",
+      "status": "passed"
+    },
+    {
+      "type": "queue.survives_a_restart",
+      "status": "passed"
+    }
+  ]
+}

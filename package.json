@@ -1,0 +1,48 @@
+{
+  "name": "amy-workspace",
+  "version": "0.1.0",
+  "description": "Drives a work ticket from in-progress to QA handoff, one deterministic transition at a time.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "dev": "npm run --workspace @amy/cli dev",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0",
+    "audit": "npm audit --audit-level=high",
+    "gate": "npm run build && npm run test:coverage && npm run lint && npm run knip && npm run audit && sf check --allow-commands && sf verify",
+    "e2e": "./.software-factory/evidence/plugin-file-queue-scenario.sh && ./.software-factory/evidence/plugin-agent-relay-scenario.sh && ./.software-factory/evidence/plugin-serial-engine-scenario.sh && ./.software-factory/evidence/installed-binary-scenario.sh && ./.software-factory/evidence/ticket-to-qa-scenario.sh",
+    "build:binary": "./scripts/build-binary.sh",
+    "install:local": "./scripts/install.sh",
+    "knip": "knip",
+    "bench": "vitest bench --run --compare=packages/core/tests/bench-baseline.json",
+    "bench:baseline": "vitest bench --run --outputJson=packages/core/tests/bench-baseline.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.10",
+    "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^10.9.1",
+    "eslint-plugin-security": "^4.0.1",
+    "knip": "^6.34.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "4.1.11"
+  },
+  "workspaces": [
+    "packages/*",
+    "plugins/*"
+  ],
+  "knip": {
+    "ignore": [
+      ".software-factory/**"
+    ],
+    "ignoreBinaries": [
+      "sf"
+    ]
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "scenario": "plugin-serial-engine",
+  "status": "passed",
+  "goal": "This thing runs unattended, so the day GitHub goes down I want one warning on the way down, silence while it is down, one warning when it comes back, and the ticket still standing where it was. And I want to know that a notification channel I misconfigured, or a log directory I cannot write to, never costs a ticket a move.",
+  "artifact": {
+    "package": "@amy/plugin-serial-engine",
+    "entry": "dist/index.js",
+    "mounted_with": [
+      "@amy/plugin-notify-fanout",
+      "@amy/plugin-file-queue",
+      "@amy/plugin-file-store",
+      "@amy/plugin-file-log",
+      "@amy/plugin-github",
+      "@amy/core"
+    ]
+  },
+  "observed": {
+    "assertions_run": 16,
+    "assertions_failed": 0,
+    "log_lines_written": 40,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "engine.warns_once_on_the_first_failure",
+      "status": "passed"
+    },
+    {
+      "type": "engine.writes_down_that_the_work_degraded",
+      "status": "passed"
+    },
+    {
+      "type": "engine.stays_quiet_on_the_middle_attempts",
+      "status": "passed"
+    },
+    {
+      "type": "engine.warns_once_when_it_recovers",
+      "status": "passed"
+    },
+    {
+      "type": "engine.writes_down_that_the_work_recovered",
+      "status": "passed"
+    },
+    {
+      "type": "engine.carries_on_from_where_it_was",
+      "status": "passed"
+    },
+    {
+      "type": "engine.finishes_the_tick_when_a_channel_throws",
+      "status": "passed"
+    },
+    {
+      "type": "engine.records_the_notification_it_could_not_send",
+      "status": "passed"
+    },
+    {
+      "type": "engine.one_broken_channel_does_not_stop_the_others",
+      "status": "passed"
+    },
+    {
+      "type": "engine.finishes_the_tick_when_every_channel_throws",
+      "status": "passed"
+    },
+    {
+      "type": "engine.records_the_notification_when_nothing_could_send_it",
+      "status": "passed"
+    },
+    {
+      "type": "engine.announces_once_at_the_ceiling",
+      "status": "passed"
+    },
+    {
+      "type": "engine.keeps_the_attempt_count_across_a_park",
+      "status": "passed"
+    },
+    {
+      "type": "engine.finishes_the_tick_when_the_log_cannot_be_written",
+      "status": "passed"
+    },
+    {
+      "type": "engine.says_the_log_is_broken_once",
+      "status": "passed"
+    },
+    {
+      "type": "engine.every_line_matches_the_contract",
+      "status": "passed"
+    }
+  ]
+}

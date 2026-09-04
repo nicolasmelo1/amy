@@ -1,0 +1,27 @@
+{
+  "name": "@amy/plugin-agent-relay",
+  "version": "0.1.0",
+  "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/agent-kit": "*",
+    "@amy/core": "*",
+    "@amy/workflow-ticket-to-qa": "*"
+  },
+  "devDependencies": {
+    "@amy/test-fixtures": "*"
+  }
+}

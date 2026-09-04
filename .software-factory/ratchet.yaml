@@ -1,0 +1,12 @@
+# Frozen violations, one key per line, per rule.
+# These are debt with a due date, not permission. Adding a key by hand
+# to silence a new violation is the one move this file exists to make
+# visible in review.
+version: 1
+rules:
+  L1.COMPLEXITY_CEILING:
+    review_by: 2027-03-03
+    note: 'Both are exhaustive dispatch switches: plan() over every ticket state, and the fake world''s execute() over every action. The branch count is the number of cases, and splitting them would hide the one place that proves nothing was forgotten. Two others used to be here and are not any more: Worker.execute() became a typed handler map, and the doctor became a list of small checks. Revisit if either of these grows logic inside a case rather than delegating out of it.'
+    allow:
+    - packages/workflow-ticket-to-qa/src/machine.ts:plan
+    - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts:execute

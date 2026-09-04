@@ -1,0 +1,11 @@
+# Mutation fixture for L6.FIXTURES_NAME_NOBODY_REAL. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L6.FIXTURES_NAME_NOBODY_REAL
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L6.FIXTURES_NAME_NOBODY_REAL:
+    enabled: true

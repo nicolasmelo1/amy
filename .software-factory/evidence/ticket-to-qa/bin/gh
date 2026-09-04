@@ -1,0 +1,204 @@
+#!/usr/bin/env node
+// The stand-in code host: `gh`, as much of it as amy calls.
+//
+// It is a CLI on the PATH rather than an injected object, so what is proved
+// is the real argv the adapter builds and the real parsing of what comes
+// back. Every invocation is logged, which is how the scenario can assert that
+// no pull request was opened before the gate went green — an ordering no
+// return value shows.
+//
+// The head sha is read from the real repository rather than invented. That is
+// the whole reason a stale review is visible at all: a review is submitted
+// against a commit, and pushing a fix moves the head out from under it.
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+
+const world = process.env.AMY_E2E_WORLD;
+const origins = process.env.AMY_E2E_ORIGINS;
+const stateFile = path.join(world, "code-host.json");
+
+const argv = process.argv.slice(2);
+fs.appendFileSync(
+  path.join(world, "gh.log"),
+  `${JSON.stringify({ at: new Date().toISOString(), argv })}\n`,
+);
+
+const read = () => JSON.parse(fs.readFileSync(stateFile, "utf-8"));
+const write = (state) => fs.writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf-8");
+
+/** `-f name=value` and `-F name=value`, as gh takes them. */
+function fields(args) {
+  const found = {};
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== "-f" && args[index] !== "-F") continue;
+    const pair = args[index + 1] ?? "";
+    const split = pair.indexOf("=");
+    found[pair.slice(0, split)] = pair.slice(split + 1);
+  }
+  return found;
+}
+
+function flag(args, name) {
+  const at = args.indexOf(name);
+  return at === -1 ? undefined : args[at + 1];
+}
+
+/** The commit the branch actually points at, from the repository itself. */
+function headOf(repo, branch) {
+  const gitDir = path.join(origins, `${repo.slice(repo.indexOf("/") + 1)}.git`);
+  try {
+    return execFileSync("git", ["--git-dir", gitDir, "rev-parse", `refs/heads/${branch}`], {
+      encoding: "utf-8",
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function fail(message) {
+  process.stderr.write(`${message}\n`);
+  process.exit(1);
+}
+
+function pullsIn(state, repo) {
+  const entry = state.repos[repo];
+  if (!entry) fail(`no repository called ${repo}`);
+  return entry.pulls;
+}
+
+/** A pull request in the shape the GraphQL query asks for. */
+function pullRequestNode(repo, pull) {
+  return {
+    number: pull.number,
+    isDraft: pull.isDraft,
+    reviewDecision: pull.reviewDecision,
+    headRefOid: headOf(repo, pull.head),
+    reviewRequests: {
+      nodes: pull.requestedReviewers.map((login) => ({
+        requestedReviewer: { __typename: "User", login },
+      })),
+    },
+    reviews: {
+      nodes: pull.reviews.map((review) => ({
+        author: { login: review.author },
+        state: review.state,
+        submittedAt: review.submittedAt,
+        commit: { oid: review.commitSha },
+      })),
+    },
+    reviewThreads: {
+      nodes: pull.threads.map((thread) => ({
+        id: thread.id,
+        isResolved: thread.isResolved,
+        isOutdated: thread.isOutdated,
+        comments: { nodes: [{ author: { login: thread.author }, body: thread.body }] },
+      })),
+    },
+  };
+}
+
+function graphql(state, args) {
+  const { owner, name, branch } = fields(args);
+  const repo = `${owner}/${name}`;
+  const open = pullsIn(state, repo).filter(
+    (pull) => pull.state === "open" && pull.head === branch,
+  );
+
+  return {
+    data: {
+      repository: {
+        pullRequests: { nodes: open.slice(0, 1).map((pull) => pullRequestNode(repo, pull)) },
+      },
+    },
+  };
+}
+
+function openPullRequest(state, repoPath, args) {
+  const repo = repoPath.replace(/^\/repos\//, "").replace(/\/pulls$/, "");
+  const { title, head, base, body } = fields(args);
+  const number = state.nextNumber;
+  state.nextNumber += 1;
+
+  pullsIn(state, repo).push({
+    number,
+    title,
+    body,
+    head,
+    base,
+    state: "open",
+    isDraft: false,
+    reviewDecision: null,
+    requestedReviewers: [],
+    reviews: [],
+    threads: [],
+  });
+  write(state);
+
+  return { number, html_url: `https://code.test/${repo}/pull/${number}` };
+}
+
+function requestReview(state, repoPath, args) {
+  const match = /^\/repos\/(?<repo>[^/]+\/[^/]+)\/pulls\/(?<number>\d+)\/requested_reviewers$/.exec(
+    repoPath,
+  );
+  if (!match) fail(`not a review request path: ${repoPath}`);
+
+  const pull = pullsIn(state, match.groups.repo).find(
+    (candidate) => candidate.number === Number(match.groups.number),
+  );
+  if (!pull) fail(`${match.groups.repo} has no pull request #${match.groups.number}`);
+
+  const who = fields(args)["reviewers[]"];
+  if (!pull.requestedReviewers.includes(who)) pull.requestedReviewers.push(who);
+  write(state);
+
+  return { number: pull.number, requested_reviewers: pull.requestedReviewers.map((login) => ({ login })) };
+}
+
+function api(state, args) {
+  if (args[0] === "graphql") return JSON.stringify(graphql(state, args));
+
+  const method = flag(args, "--method") ?? "GET";
+  const endpoint = args.find((arg) => arg.startsWith("/repos/"));
+  if (!endpoint) fail(`no endpoint in: gh api ${args.join(" ")}`);
+
+  if (method === "GET") {
+    // `--jq .default_branch` returns the bare value, not an object, which is
+    // what the adapter reads straight into a branch name.
+    if (flag(args, "--jq") === ".default_branch") return state.defaultBranch;
+    return JSON.stringify({ default_branch: state.defaultBranch });
+  }
+
+  if (endpoint.endsWith("/pulls")) return JSON.stringify(openPullRequest(state, endpoint, args));
+  if (endpoint.endsWith("/requested_reviewers")) {
+    return JSON.stringify(requestReview(state, endpoint, args));
+  }
+
+  fail(`no stand-in for: gh api --method ${method} ${endpoint}`);
+}
+
+/** `gh pr list --json number,reviewRequests`, per repository. */
+function prList(state, args) {
+  const repo = flag(args, "--repo");
+  return JSON.stringify(
+    pullsIn(state, repo)
+      .filter((pull) => pull.state === "open")
+      .map((pull) => ({
+        number: pull.number,
+        reviewRequests: pull.requestedReviewers.map((login) => ({ login })),
+      })),
+  );
+}
+
+const state = read();
+
+if (argv[0] === "auth" && argv[1] === "status") {
+  process.stdout.write("Logged in to code.test account amy\n");
+} else if (argv[0] === "api") {
+  process.stdout.write(`${api(state, argv.slice(1))}\n`);
+} else if (argv[0] === "pr" && argv[1] === "list") {
+  process.stdout.write(`${prList(state, argv.slice(2))}\n`);
+} else {
+  fail(`no stand-in for: gh ${argv.join(" ")}`);
+}

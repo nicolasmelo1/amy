@@ -1,0 +1,26 @@
+{
+  "name": "@amy/plugin-github",
+  "version": "0.1.0",
+  "description": "GitHub as the code host, through the gh CLI.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/core": "*",
+    "@amy/workflow-ticket-to-qa": "*"
+  },
+  "devDependencies": {
+    "@amy/test-fixtures": "*"
+  }
+}

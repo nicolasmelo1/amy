@@ -1,0 +1,26 @@
+{
+  "name": "@amy/plugin-notify-inbox",
+  "version": "0.1.0",
+  "description": "Announcements as a file on disk plus a desktop notification.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/core": "*",
+    "@amy/plugin-notify-fanout": "*"
+  },
+  "devDependencies": {
+    "@amy/test-fixtures": "*"
+  }
+}

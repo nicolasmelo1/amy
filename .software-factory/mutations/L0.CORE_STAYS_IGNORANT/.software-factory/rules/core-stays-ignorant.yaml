@@ -1,0 +1,24 @@
+id: L0.CORE_STAYS_IGNORANT
+layer: L0
+title: The core imports no workflow and no plugin
+severity: high
+statement: >-
+  Nothing under packages/core/src imports an @amy/workflow-* or @amy/plugin-*
+  package.
+why: >-
+  The core owns the catalogue of actions and the contracts, and nothing else.
+  The moment it imports a workflow it learns a domain, and every workflow
+  after the first becomes a fork instead of a package. This is the one
+  invariant the whole plugin model rests on, and it is a single import away
+  from being lost, by anybody, at any time.
+fix: >-
+  Move the type into the workflow package that owns it, or make the core
+  generic over it and let the workflow narrow it at its own boundary.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope: ["packages/core/src/**"]
+  forbidden:
+    - regex: 'from "@amy/(workflow|plugin)-'
+      message: "The core must not know a workflow or a plugin. Make it generic instead."

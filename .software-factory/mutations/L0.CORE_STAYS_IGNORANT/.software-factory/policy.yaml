@@ -1,0 +1,11 @@
+# Mutation fixture for L0.CORE_STAYS_IGNORANT. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.CORE_STAYS_IGNORANT
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.CORE_STAYS_IGNORANT:
+    enabled: true

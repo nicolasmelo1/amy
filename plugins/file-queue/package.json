@@ -1,0 +1,22 @@
+{
+  "name": "@amy/plugin-file-queue",
+  "version": "0.1.0",
+  "description": "A queue kept as one file per item, claimed by rename.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/core": "*"
+  }
+}

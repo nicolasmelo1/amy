@@ -1,0 +1,46 @@
+{
+  "name": "@amy/cli",
+  "version": "0.1.0",
+  "description": "The amy command line.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "amy": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/core": "*",
+    "@amy/model-specs": "*",
+    "@amy/plugin-agent-relay": "*",
+    "@amy/plugin-claude": "*",
+    "@amy/plugin-codex": "*",
+    "@amy/plugin-command-gate": "*",
+    "@amy/plugin-file-log": "*",
+    "@amy/plugin-file-queue": "*",
+    "@amy/plugin-file-store": "*",
+    "@amy/plugin-github": "*",
+    "@amy/plugin-hermes-agent": "*",
+    "@amy/plugin-linear": "*",
+    "@amy/plugin-notify-fanout": "*",
+    "@amy/plugin-notify-hermes": "*",
+    "@amy/plugin-notify-inbox": "*",
+    "@amy/plugin-serial-engine": "*",
+    "@amy/workflow-ticket-to-qa": "*",
+    "commander": "^14.0.0",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@amy/test-fixtures": "*"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../workflow-ticket-to-qa"
+    },
+    {
+      "path": "../../plugins/file-queue"
+    },
+    {
+      "path": "../../plugins/file-store"
+    },
+    {
+      "path": "../../plugins/serial-engine"
+    },
+    {
+      "path": "../../plugins/linear"
+    },
+    {
+      "path": "../../plugins/github"
+    },
+    {
+      "path": "../../plugins/claude"
+    },
+    {
+      "path": "../../plugins/command-gate"
+    },
+    {
+      "path": "../../plugins/file-log"
+    },
+    {
+      "path": "../../plugins/notify-fanout"
+    },
+    {
+      "path": "../../plugins/notify-hermes"
+    },
+    {
+      "path": "../../plugins/notify-inbox"
+    },
+    {
+      "path": "../model-specs"
+    }
+  ]
+}

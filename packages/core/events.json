@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "kinds": {
+    "run.claimed": {
+      "says": "The engine took an item off the queue, and why it was there.",
+      "requires": [
+        "workId"
+      ],
+      "detail": {
+        "reason": "string"
+      }
+    },
+    "run.idle": {
+      "says": "Nothing was due, so the engine did nothing.",
+      "requires": [],
+      "detail": {}
+    },
+    "work.planned": {
+      "says": "A workflow decided what to do next, and said why.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "plan": "string",
+        "why": "string"
+      }
+    },
+    "work.advanced": {
+      "says": "The work moved to another state.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "from": "string",
+        "why": "string"
+      }
+    },
+    "work.waiting": {
+      "says": "The work stayed where it was, to be looked at again later.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "from": "string",
+        "why": "string"
+      }
+    },
+    "work.settled": {
+      "says": "The work reached a terminal state and left the queue.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {}
+    },
+    "work.failed": {
+      "says": "One attempt at this work threw, and which attempt it was.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "attempt": "number",
+        "error": "string"
+      }
+    },
+    "work.degraded": {
+      "says": "This work started failing, and the engine is still retrying underneath.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "attempt": "number",
+        "error": "string"
+      }
+    },
+    "work.recovered": {
+      "says": "This work is moving again, after however many attempts had failed.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "afterAttempts": "number"
+      }
+    },
+    "action.started": {
+      "says": "One action began.",
+      "requires": [
+        "workId"
+      ],
+      "detail": {
+        "action": "string"
+      }
+    },
+    "action.finished": {
+      "says": "One action finished without throwing.",
+      "requires": [
+        "workId"
+      ],
+      "detail": {
+        "action": "string"
+      }
+    },
+    "action.failed": {
+      "says": "One action threw, and what it said.",
+      "requires": [
+        "workId"
+      ],
+      "detail": {
+        "action": "string",
+        "error": "string"
+      }
+    },
+    "agent.run": {
+      "says": "An agent ran: which harness, which model, what it cost.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "harness": "string",
+        "model": "string?",
+        "outcome": "string",
+        "durationMs": "number",
+        "costSource": "string",
+        "costUsd": "number?",
+        "tokens": "object?"
+      }
+    },
+    "agent.handoff": {
+      "says": "An agent was handed over to another one, and which axis moved.",
+      "requires": [
+        "workId"
+      ],
+      "detail": {
+        "action": "string",
+        "cause": "string",
+        "from": "object",
+        "to": "object",
+        "moved": "string"
+      }
+    },
+    "stop.requested": {
+      "says": "The operator pulled the handbrake.",
+      "requires": [],
+      "detail": {
+        "reason": "string"
+      }
+    },
+    "stop.enforced": {
+      "says": "The engine obeyed the handbrake, and what it did not start.",
+      "requires": [],
+      "detail": {
+        "reason": "string?",
+        "pending": "string?"
+      }
+    },
+    "budget.parked": {
+      "says": "Work was parked because a budget window is nearly spent.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "window": "string",
+        "measure": "string",
+        "used": "number",
+        "limit": "number",
+        "stopAt": "number",
+        "retryAfterMs": "number",
+        "pending": "array"
+      }
+    },
+    "notify.failed": {
+      "says": "An announcement could not be delivered, and what it said.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "error": "string",
+        "text": "string"
+      }
+    }
+  }
+}

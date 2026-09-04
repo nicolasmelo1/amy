@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "gate": "plugin-file-queue",
+  "implementation_sha256": "01383a20e46c03617bded92c0ad4a48148a7a9691b8dbd2cd9431e61c36d0c10",
+  "runs": [
+    {
+      "scenario": "plugin-file-queue",
+      "status": "passed",
+      "actor": "Claude (agent), running .software-factory/evidence/plugin-file-queue-scenario.sh against the built dist on macOS, for Nicolas Melo",
+      "report": ".software-factory/evidence/plugin-file-queue-run.json",
+      "report_sha256": "99b88d6aac234358e94d69c0fc98a41059a4f996ce2ace9d52f4466c8f144437",
+      "required_assertions": []
+    }
+  ]
+}

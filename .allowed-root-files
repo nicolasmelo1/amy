@@ -1,0 +1,24 @@
+# Files allowed at the repository root. Adding a line here is the
+# deliberate act; NOTES.md appearing without one is the reflex.
+.env.example
+.githooks
+.github
+.gitignore
+.npmrc
+.software-factory
+LICENSE
+README.md
+docs
+eslint.config.js
+package-lock.json
+package.json
+plans
+tsconfig.json
+vitest.config.ts
+skills
+packages
+plugins
+# Builds and installs the executable. At the root because it is about the
+# whole workspace, not about one package in it.
+scripts
+tsconfig.base.json

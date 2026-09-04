@@ -1,0 +1,137 @@
+{
+  "scenario": "plugin-agent-relay",
+  "status": "passed",
+  "goal": "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, and hands a step to the skill I named rather than to its own prompt.",
+  "artifact": {
+    "package": "@amy/plugin-agent-relay",
+    "entry": "dist/index.js",
+    "mounted_with": [
+      "@amy/plugin-claude",
+      "@amy/plugin-codex",
+      "@amy/core"
+    ]
+  },
+  "observed": {
+    "assertions_run": 29,
+    "assertions_failed": 0,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "relay.mounts_the_agent_port",
+      "status": "passed"
+    },
+    {
+      "type": "relay.is_the_only_owner_of_the_agent_port",
+      "status": "passed"
+    },
+    {
+      "type": "relay.first_rung_answers_when_it_works",
+      "status": "passed"
+    },
+    {
+      "type": "relay.asks_nobody_else_when_the_first_rung_worked",
+      "status": "passed"
+    },
+    {
+      "type": "relay.escalates_the_model_after_a_failure",
+      "status": "passed"
+    },
+    {
+      "type": "relay.answers_from_the_stronger_model",
+      "status": "passed"
+    },
+    {
+      "type": "relay.does_not_change_harness_on_a_failure",
+      "status": "passed"
+    },
+    {
+      "type": "relay.records_the_handoff_with_its_cause",
+      "status": "passed"
+    },
+    {
+      "type": "relay.records_which_axis_moved",
+      "status": "passed"
+    },
+    {
+      "type": "relay.changes_harness_after_a_rate_limit",
+      "status": "passed"
+    },
+    {
+      "type": "relay.skips_the_rest_of_the_throttled_harness",
+      "status": "passed"
+    },
+    {
+      "type": "relay.records_the_rate_limit_as_the_cause",
+      "status": "passed"
+    },
+    {
+      "type": "relay.records_the_harness_axis",
+      "status": "passed"
+    },
+    {
+      "type": "relay.reports_an_unrunnable_harness_as_abandoned",
+      "status": "passed"
+    },
+    {
+      "type": "relay.starts_nothing_else_after_an_abandoned_run",
+      "status": "passed"
+    },
+    {
+      "type": "relay.refuses_an_unknown_agent_at_boot",
+      "status": "passed"
+    },
+    {
+      "type": "relay.names_the_unknown_agent_and_the_choices",
+      "status": "passed"
+    },
+    {
+      "type": "relay.mounts_no_budget_when_no_ceiling_is_set",
+      "status": "passed"
+    },
+    {
+      "type": "relay.mounts_a_budget_when_a_ceiling_is_set",
+      "status": "passed"
+    },
+    {
+      "type": "relay.stops_new_work_at_the_ceiling",
+      "status": "passed"
+    },
+    {
+      "type": "relay.says_which_window_stopped_the_work",
+      "status": "passed"
+    },
+    {
+      "type": "relay.starts_work_while_the_window_has_room",
+      "status": "passed"
+    },
+    {
+      "type": "relay.refuses_a_budget_it_cannot_mean_at_boot",
+      "status": "passed"
+    },
+    {
+      "type": "relay.hands_the_step_to_the_skill_named_for_it",
+      "status": "passed"
+    },
+    {
+      "type": "relay.asks_no_other_skill_once_one_answered",
+      "status": "passed"
+    },
+    {
+      "type": "relay.moves_to_the_next_skill_when_the_first_did_not_answer",
+      "status": "passed"
+    },
+    {
+      "type": "relay.records_the_skill_axis",
+      "status": "passed"
+    },
+    {
+      "type": "relay.refuses_a_skill_nobody_installed_at_boot",
+      "status": "passed"
+    },
+    {
+      "type": "relay.names_the_skills_there_were_to_choose_from",
+      "status": "passed"
+    }
+  ]
+}

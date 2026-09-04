@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+// The stand-in agent: the `claude` CLI, doing what a coding agent does to a
+// checkout, and printing the envelope amy reads its account out of.
+//
+// It is scripted rather than clever, and the script is the point: an agent
+// that answers the same way every time is what makes the rest of the run
+// deterministic. What it does not fake is the effect — it edits real files in
+// the real checkout it was handed, so the commit, the push and the gate that
+// follow are all doing their actual work.
+//
+// The one thing it reads out of the prompt is which step it is on, and
+// whether the previous attempt was handed back to it, because that handover
+// is a promise amy makes and a fake that ignored it would prove nothing.
+import fs from "node:fs";
+import path from "node:path";
+
+const world = process.env.AMY_E2E_WORLD;
+const scriptFile = path.join(world, "agent.json");
+
+if (process.argv.includes("--version")) {
+  process.stdout.write("2.0.0 (stand-in)\n");
+  process.exit(0);
+}
+
+const model = process.argv[process.argv.indexOf("--model") + 1] ?? "";
+const prompt = fs.readFileSync(0, "utf-8");
+const script = JSON.parse(fs.readFileSync(scriptFile, "utf-8"));
+const file = path.join(process.cwd(), script.file);
+
+const STEPS = [
+  { step: "triage", says: "deciding whether a ticket can be implemented as written" },
+  { step: "implement", says: "Implement this ticket in the current repository." },
+  { step: "address-threads", says: "left comments on the pull request" },
+];
+
+const step = STEPS.find((candidate) => prompt.includes(candidate.says))?.step ?? "unknown";
+const retry = prompt.includes("A previous attempt did not hold");
+
+fs.appendFileSync(
+  path.join(world, "claude.log"),
+  `${JSON.stringify({
+    at: new Date().toISOString(),
+    step,
+    model,
+    retry,
+    cwd: process.cwd(),
+    prompt,
+  })}\n`,
+);
+
+const append = (line) => fs.appendFileSync(file, `${line}\n`, "utf-8");
+
+/** The thread ids the prompt listed, in the order it listed them. */
+function threadsAsked() {
+  return prompt
+    .split("\n")
+    .map((line) => /^\[([^\]]+)\]/.exec(line)?.[1])
+    .filter(Boolean);
+}
+
+/**
+ * The next verdict for a thread, consuming the script.
+ *
+ * A list rather than a value, because the owner settling a disagreement means
+ * the same comment is asked about twice and has to be answered differently
+ * the second time. The last entry stays in force after that.
+ */
+function verdictFor(threadId) {
+  const queued = script.verdicts[threadId] ?? ["fixed"];
+  const verdict = queued.length > 1 ? queued.shift() : queued[0];
+  fs.writeFileSync(scriptFile, `${JSON.stringify(script, null, 2)}\n`, "utf-8");
+  return verdict;
+}
+
+function addressThreads() {
+  const verdicts = threadsAsked().map((threadId) => {
+    const verdict = verdictFor(threadId);
+    if (verdict === "fixed") append(`# answered ${threadId}`);
+    return {
+      threadId,
+      verdict,
+      note:
+        verdict === "fixed"
+          ? `changed the code for ${threadId}`
+          : `${threadId} asks for something the ticket rules out, this needs the owner`,
+    };
+  });
+
+  return JSON.stringify({ verdicts });
+}
+
+function implement() {
+  // The first attempt leaves out what the gate insists on. That is not
+  // decoration: a red gate is the one path that has to work before any of
+  // this is trustworthy, and it has to come from the code being wrong.
+  if (retry) {
+    append(`currency: ${script.currency}`);
+    return "added the currency the total is shown in";
+  }
+
+  fs.writeFileSync(file, ["# invoice total", "", "total: sum(line items)"].join("\n") + "\n", "utf-8");
+  return "worked out the total from the line items";
+}
+
+const ANSWERS = {
+  triage: () => JSON.stringify(script.triage),
+  implement,
+  "address-threads": addressThreads,
+  unknown: () => {
+    process.stderr.write(`the stand-in agent does not know this prompt:\n${prompt}\n`);
+    process.exit(1);
+  },
+};
+
+const result = ANSWERS[step]();
+
+// The shape `claude -p --output-format json` prints, including the model it
+// actually used, which is the full id rather than the alias it was asked for.
+process.stdout.write(
+  `${JSON.stringify({
+    type: "result",
+    subtype: "success",
+    is_error: false,
+    api_error_status: null,
+    result,
+    duration_ms: 1200,
+    total_cost_usd: 0.0231,
+    usage: {
+      input_tokens: 1873,
+      output_tokens: 412,
+      cache_read_input_tokens: 10240,
+      cache_creation_input_tokens: 512,
+      cache_creation: { ephemeral_5m_input_tokens: 512, ephemeral_1h_input_tokens: 0 },
+    },
+    modelUsage: { [`claude-${model || "sonnet"}-4-5[1m]`]: { costUSD: 0.0231 } },
+  })}\n`,
+);

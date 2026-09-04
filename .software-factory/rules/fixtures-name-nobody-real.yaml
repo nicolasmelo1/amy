@@ -1,0 +1,40 @@
+id: L6.FIXTURES_NAME_NOBODY_REAL
+layer: L6
+title: An address in a fixture belongs to nobody
+severity: high
+statement: >-
+  No email address in this repository's source, tests, plans or documentation
+  uses a real top-level domain. Fixtures address the reserved domains RFC 2606
+  set aside for them.
+why: >-
+  An address in a fixture is indistinguishable from an address in production
+  data, and the difference only matters once. The reachable kind gets reached:
+  a notifier pointed at a scratch config, a seed script run against the wrong
+  environment, and sample data has mailed somebody who never agreed to be in
+  the test suite. The larger cost is disclosure, because a repository is
+  forked, published, archived and handed on as a unit, and an address travels
+  with whatever the surrounding fixture says about who that person is and what
+  they work on. Neither failure announces itself in review: a plausible
+  address is exactly what a fixture is supposed to look like. RFC 2606
+  reserves `.test` and `.example` so the question never has to be settled case
+  by case — a reserved domain cannot resolve, cannot receive, and cannot
+  identify anybody.
+fix: >-
+  Replace the domain with `example.test`. Take the local part from the cast
+  the rest of the suite already uses rather than from a real person, so a
+  reader can tell at a glance that nobody is being named.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope:
+    - "packages/**/src/**"
+    - "packages/**/tests/**"
+    - "plugins/**/src/**"
+    - "plugins/**/tests/**"
+    - "plans/**/*.md"
+    - "docs/**/*.md"
+    - "*.md"
+  forbidden:
+    - regex: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.(com|net|org|io|co|dev|ai|app|me|xyz|br)\b'
+      message: "A fixture must not carry a real address. Use example.test, which RFC 2606 reserves for it."

@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/workflow-ticket-to-qa"
+    },
+    {
+      "path": "../../packages/model-specs"
+    },
+    {
+      "path": "../../packages/agent-kit"
+    }
+  ]
+}

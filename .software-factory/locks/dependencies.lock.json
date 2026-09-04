@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "files": {
+    "package.json": "cac4545e08e701fc28f8d5ca2609d4f537cb79d5b03be80de6bee62b30d2d56a",
+    "packages/agent-kit/package.json": "018f5b6cfbd50f9d2d33cb178170778e8e829973ddd5c211fa90e670c7a711c2",
+    "packages/cli/package.json": "4a7520ccd7dd374cf562827531ad195f5a4714da09293c23701a4b15a09595c6",
+    "packages/core/package.json": "d14128cc0f1542511dd7bcd2127c77313ff80bb29217b14c704f7af9e9da0293",
+    "packages/model-specs/package.json": "148eb9a35b499dc5bd349a7a86d98a6d01bb45cc614552d3100c382e1ff17445",
+    "packages/test-fixtures/package.json": "9dfa06af57663dd2c008ad8c3b1f6884e808f9e84664b03e9fc14891aadecf8c",
+    "packages/workflow-ticket-to-qa/package.json": "1fb941c6c38fa45b46088442dd312e97d31b555e934e5ad076760ec37670e081",
+    "plugins/agent-relay/package.json": "7fa409600af4fe1cd2cabbbecb671c46079cecc898db161a9641f23fa092ed20",
+    "plugins/claude/package.json": "d5bc9ccb180ee16c86ac7c6f081fdcf087ef07b1cbeb22fcc5e6e8c67ae1b1cd",
+    "plugins/codex/package.json": "15ce4c87e90b589a0cfcf89789d0f7492c1192458975a7bb0954e2f52f962acf",
+    "plugins/command-gate/package.json": "f37ed8dd88a6c1856bf514930faf679eac6035a756f4bd1b167c512527fd546d",
+    "plugins/file-log/package.json": "6bc9f4634c782e6248c2a643053536f234075aa003f4e36e8d4e3c0d87d7e0e5",
+    "plugins/file-queue/package.json": "61334bb8fbe3ba10e084244583c2de470ffef286d0fb51374c13b3c5dbe930c8",
+    "plugins/file-store/package.json": "85cfbc845b021be555b485c75ea5fdbcbd120281ab30ac25036fde29d5032ac2",
+    "plugins/github/package.json": "01bdb8b750c08b2018ca881c6fabe9ff963f096dff385271742b74a04517ea0b",
+    "plugins/hermes-agent/package.json": "cd969077d5547fe0f110168cbfcdb17d6a247a3ebe42a856928261bc359e041b",
+    "plugins/linear/package.json": "036b05f4acb36f46e86f31afd88065988c8eaeb5127944db3e8c0fff460c1acf",
+    "plugins/notify-fanout/package.json": "5926d5d91ae952b0cc35e7df855e1e702f880a711f7b896eeb657a9dc577de60",
+    "plugins/notify-hermes/package.json": "67a630cbb70ec54382d17e84aae7e0a1a4698e7551290af4e6cb3d8bcce2429f",
+    "plugins/notify-inbox/package.json": "194ebfbdda7a2f44dc719107b72e7559f994d868ce68b1f2a788b9ed6e6ae2b2",
+    "plugins/serial-engine/package.json": "e45af721a767312af2210e3fc572e68f906ff92cee6ef08f512cde3a6ca6ffad"
+  }
+}

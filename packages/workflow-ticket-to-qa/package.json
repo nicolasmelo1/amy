@@ -1,0 +1,25 @@
+{
+  "name": "@amy/workflow-ticket-to-qa",
+  "version": "0.1.0",
+  "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/core": "*"
+  },
+  "devDependencies": {
+    "@amy/test-fixtures": "*"
+  }
+}

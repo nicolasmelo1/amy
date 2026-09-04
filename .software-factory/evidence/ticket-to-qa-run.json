@@ -1,0 +1,208 @@
+{
+  "scenario": "ticket-to-qa",
+  "status": "passed",
+  "goal": "One of my tickets is in progress with a question hanging over it. I want to find it in QA, owned by whoever is on QA today, with a pull request that a person who was not already buried reviewed and approved, the automated reviewer's comments answered, and the one comment I had to settle brought to me instead of guessed at. I want to be told once when it needs me, and I do not want to watch it.",
+  "artifact": {
+    "package": "@amy/cli",
+    "entry": "the installed executable, driven by `amy discover` and `amy tick`",
+    "built_by": "scripts/install.sh"
+  },
+  "observed": {
+    "assertions_run": 29,
+    "assertions_failed": 0,
+    "version": "0.1.0 (28766a9-dirty, built 2026-09-04T15:52:09Z)",
+    "looks": 38,
+    "transitions": [
+      "DISCOVERED>CLARIFYING",
+      "CLARIFYING>READY",
+      "READY>IMPLEMENTING",
+      "IMPLEMENTING>CHECKED",
+      "CHECKED>IMPLEMENTING",
+      "IMPLEMENTING>CHECKED",
+      "CHECKED>PR_OPEN",
+      "PR_OPEN>COPILOT_WAIT",
+      "COPILOT_WAIT>COPILOT_FIX",
+      "COPILOT_FIX>COPILOT_WAIT",
+      "COPILOT_WAIT>REVIEWER_ASSIGNED",
+      "REVIEWER_ASSIGNED>HUMAN_REVIEW",
+      "HUMAN_REVIEW>HUMAN_FIX",
+      "HUMAN_FIX>ESCALATED",
+      "ESCALATED>HUMAN_FIX",
+      "HUMAN_FIX>RE_REVIEW",
+      "RE_REVIEW>HUMAN_REVIEW",
+      "HUMAN_REVIEW>APPROVED",
+      "APPROVED>QA_HANDOFF",
+      "QA_HANDOFF>DONE"
+    ],
+    "held_in": [
+      "DISCOVERED",
+      "CLARIFYING",
+      "IMPLEMENTING",
+      "CHECKED",
+      "IMPLEMENTING",
+      "CHECKED",
+      "PR_OPEN",
+      "COPILOT_WAIT",
+      "COPILOT_FIX",
+      "COPILOT_WAIT",
+      "REVIEWER_ASSIGNED",
+      "HUMAN_REVIEW",
+      "HUMAN_FIX",
+      "ESCALATED",
+      "HUMAN_FIX",
+      "HUMAN_REVIEW",
+      "DONE",
+      "DONE"
+    ],
+    "what_the_world_did": [
+      "a colleague answered the question on the ticket",
+      "the automated reviewer looked at 34d9947 and left one comment",
+      "the automated reviewer looked at 2d81318 and had nothing to say",
+      "one of ada's other reviews was merged, so she is carrying one",
+      "ada asked for changes on 2d81318",
+      "the owner settled the disagreement on the ticket",
+      "ada approved 0727ed5"
+    ],
+    "agent_calls": [
+      "triage",
+      "implement",
+      "implement",
+      "address-threads",
+      "address-threads",
+      "address-threads"
+    ],
+    "gh_calls": 47,
+    "tracker_calls": 127,
+    "commits_on_the_branch": [
+      "BILL-4021: address review comments",
+      "BILL-4021: address review comments",
+      "BILL-4021: address review comments",
+      "BILL-4021: Show the currency on the invoice total",
+      "BILL-4021: Show the currency on the invoice total",
+      "the first commit"
+    ],
+    "reviewer": "ada",
+    "follow_up": "BILL-4024",
+    "final_status": "In QA",
+    "budget": "new work: allowed",
+    "second_run_transitions": 20
+  },
+  "assertions": [
+    {
+      "type": "lifecycle.only_the_working_status_is_picked_up",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.a_blocking_question_is_asked_on_the_ticket",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_operator_is_told_where_to_answer",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_answer_on_the_ticket_releases_the_work",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.a_red_gate_sends_the_work_back_to_the_agent",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_agent_is_told_what_the_gate_said",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_branch_the_tracker_named_is_what_gets_pushed",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_pull_request_is_opened_on_that_branch",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_bot_is_answered_before_a_human_is_asked",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.review_load_is_counted_across_every_repository",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.a_stale_review_does_not_count",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.a_second_review_is_requested_after_changes",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.a_disagreement_goes_to_the_owner_as_a_follow_up",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_owners_answer_reopens_the_judgement",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_ticket_lands_in_qa_owned_by_qa",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_ticket_walks_the_lifecycle_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.one_look_makes_at_most_one_move",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_machine_settles_instead_of_spinning",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.what_the_agents_spent_is_read_off_the_log",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_same_run_twice_leaves_the_same_trail",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.init_writes_the_config_and_the_roster",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.confirming_the_roster_says_who_is_in",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.doctor_passes_before_a_ticket_is_touched",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_roster_is_only_questioned_on_a_workday",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.a_personal_key_is_sent_raw",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.status_says_where_the_work_stands",
+      "status": "passed"
+    }
+  ]
+}

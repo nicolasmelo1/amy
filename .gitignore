@@ -1,0 +1,11 @@
+node_modules
+dist
+.amy
+.env
+.env.*
+!.env.example
+
+# Build state, not source. tsc trusts these over the tree, so a fresh
+# checkout with them committed skips emitting and every downstream package
+# fails to find its types.
+*.tsbuildinfo

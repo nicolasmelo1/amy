@@ -1,0 +1,292 @@
+# Which rules this repository enforces, and how its paths map onto the
+# catalog's neutral vocabulary. `sf explain <RULE>` prints the reasoning
+# behind any rule below.
+version: 1
+project:
+  name: amy
+  languages: [typescript]
+  exclude: []
+
+docs:
+  scan:
+    - "docs/**/*.md"
+    - "*.md"
+
+# A gate activates from the paths a change touches, never from a label
+# or a sentence in a pull request. See L3.GATE_HAS_FRESH_EVIDENCE.
+gates:
+  # Not that the class behaves: that the built artifact, loaded from another
+  # process, claims each item exactly once. The activation paths are the
+  # plugin's own source, so changing it expires the proof, which is correct —
+  # the last run proved a queue that no longer exists.
+  plugin-file-queue:
+    activation:
+      - "plugins/file-queue/src/**"
+    evidence: ".software-factory/evidence/plugin-file-queue.json"
+    plan: "plans/every-plugin-is-proven-end-to-end.md"
+    required_assertions:
+      - "queue.claims_what_was_enqueued"
+      - "queue.refuses_a_second_claim"
+      - "queue.holds_an_item_until_it_is_due"
+      - "queue.recovers_what_a_dead_worker_left"
+      - "queue.never_prunes_unfinished_work"
+      - "queue.survives_a_restart"
+
+  # The relay decides how money gets spent when something goes wrong, and it
+  # only ever runs on the paths nobody tests: a quota refusal, a killed child,
+  # a ladder with a typo. The scenario produces all three against the built
+  # artifacts, with fake CLIs, so none of it needs a credential.
+  #
+  # It also owns the ceiling on that spending and the choice of who does a
+  # step, so the same scenario proves the budget refuses at the ceiling and
+  # that a skill named for a step is what gets asked.
+  plugin-agent-relay:
+    activation:
+      - "plugins/agent-relay/src/**"
+      - "packages/agent-kit/src/**"
+    evidence: ".software-factory/evidence/plugin-agent-relay.json"
+    plan: "plans/the-relay-is-proven-end-to-end.md"
+    required_assertions:
+      - "relay.mounts_the_agent_port"
+      - "relay.escalates_the_model_after_a_failure"
+      - "relay.does_not_change_harness_on_a_failure"
+      - "relay.changes_harness_after_a_rate_limit"
+      - "relay.skips_the_rest_of_the_throttled_harness"
+      - "relay.starts_nothing_else_after_an_abandoned_run"
+      - "relay.refuses_an_unknown_agent_at_boot"
+      - "relay.mounts_a_budget_when_a_ceiling_is_set"
+      - "relay.stops_new_work_at_the_ceiling"
+      - "relay.starts_work_while_the_window_has_room"
+      - "relay.refuses_a_budget_it_cannot_mean_at_boot"
+      - "relay.hands_the_step_to_the_skill_named_for_it"
+      - "relay.asks_no_other_skill_once_one_answered"
+      - "relay.moves_to_the_next_skill_when_the_first_did_not_answer"
+      - "relay.refuses_a_skill_nobody_installed_at_boot"
+      - "relay.names_the_skills_there_were_to_choose_from"
+
+  # The one claim no unit test can make. They all import source from inside
+  # the workspace, so a binary carrying no plugins passes every one of them.
+  # Activation covers the loader table, the stamp and the build scripts,
+  # because those three are what the claim rests on.
+  installed-binary:
+    activation:
+      - "packages/cli/src/loader.ts"
+      - "packages/core/src/build.ts"
+      - "scripts/**"
+    evidence: ".software-factory/evidence/installed-binary.json"
+    plan: "plans/what-runs-is-not-this-repo.md"
+    required_assertions:
+      - "installed.runs_without_a_checkout"
+      - "installed.plugins_are_inside_the_binary"
+      - "installed.every_plugin_resolves"
+      - "installed.does_not_write_into_the_source_tree"
+      - "installed.log_build_matches_the_binary"
+
+  # The last large package without a gate, and the one that decides whether a
+  # ticket gets lost. What it exists to handle is a bad day, and what carries
+  # a bad day is file state between ticks — between processes. No unit test
+  # reaches a real mount, a channel that genuinely throws, or a `gh` that is
+  # not answering.
+  #
+  # notify-fanout is in the activation for the same reason the relay's gate
+  # lists agent-kit: the fan-out is the other half of the isolation claim.
+  # packages/core/src/ports/EventLog.ts is deliberately left out — see the
+  # plan's closing section.
+  plugin-serial-engine:
+    activation:
+      - "plugins/serial-engine/src/**"
+      - "plugins/notify-fanout/src/**"
+    evidence: ".software-factory/evidence/plugin-serial-engine.json"
+    plan: "plans/the-engine-fails-out-loud.md"
+    required_assertions:
+      - "engine.warns_once_on_the_first_failure"
+      - "engine.stays_quiet_on_the_middle_attempts"
+      - "engine.warns_once_when_it_recovers"
+      - "engine.carries_on_from_where_it_was"
+      - "engine.keeps_the_attempt_count_across_a_park"
+      - "engine.announces_once_at_the_ceiling"
+      - "engine.finishes_the_tick_when_a_channel_throws"
+      - "engine.records_the_notification_it_could_not_send"
+      - "engine.finishes_the_tick_when_every_channel_throws"
+      - "engine.finishes_the_tick_when_the_log_cannot_be_written"
+      - "engine.every_line_matches_the_contract"
+
+  # The whole product, in one claim: a ticket goes in the working status and
+  # comes out in QA. Every other gate here proves one artifact; this one
+  # proves the machine, by driving the installed executable through the
+  # lifecycle a move at a time against stand-in services.
+  #
+  # The activation paths are the lifecycle, the engine, the CLI and every
+  # adapter an assertion rests on, because a change to any of them means the
+  # last run proved a machine that no longer exists. That is a wide net on
+  # purpose: this is the run that would have caught it.
+  ticket-to-qa:
+    activation:
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "packages/agent-kit/src/**"
+      - "packages/cli/src/**"
+      - "plugins/serial-engine/src/**"
+      - "plugins/linear/src/**"
+      - "plugins/github/src/**"
+      - "plugins/claude/src/**"
+      - "plugins/command-gate/src/**"
+      - "plugins/notify-fanout/src/**"
+      - "plugins/notify-inbox/src/**"
+    evidence: ".software-factory/evidence/ticket-to-qa.json"
+    plan: "plans/the-lifecycle-is-proven-end-to-end.md"
+    required_assertions:
+      - "lifecycle.only_the_working_status_is_picked_up"
+      - "lifecycle.a_blocking_question_is_asked_on_the_ticket"
+      - "lifecycle.the_operator_is_told_where_to_answer"
+      - "lifecycle.a_waiting_state_makes_no_move_until_the_world_does"
+      - "lifecycle.the_answer_on_the_ticket_releases_the_work"
+      - "lifecycle.a_red_gate_sends_the_work_back_to_the_agent"
+      - "lifecycle.the_agent_is_told_what_the_gate_said"
+      - "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green"
+      - "lifecycle.the_branch_the_tracker_named_is_what_gets_pushed"
+      - "lifecycle.the_pull_request_is_opened_on_that_branch"
+      - "lifecycle.the_bot_is_answered_before_a_human_is_asked"
+      - "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling"
+      - "lifecycle.review_load_is_counted_across_every_repository"
+      - "lifecycle.a_stale_review_does_not_count"
+      - "lifecycle.a_second_review_is_requested_after_changes"
+      - "lifecycle.a_disagreement_goes_to_the_owner_as_a_follow_up"
+      - "lifecycle.the_owners_answer_reopens_the_judgement"
+      - "lifecycle.the_ticket_lands_in_qa_owned_by_qa"
+      - "lifecycle.the_ticket_walks_the_lifecycle_in_order"
+      - "lifecycle.one_look_makes_at_most_one_move"
+      - "lifecycle.the_machine_settles_instead_of_spinning"
+      - "lifecycle.what_the_agents_spent_is_read_off_the_log"
+      - "lifecycle.the_same_run_twice_leaves_the_same_trail"
+
+rules:
+  # L3 — A gate requires every check its plan's criteria name
+  L3.GATE_COVERS_THE_PLAN:
+    enabled: true
+  # L3 — A gate activated by touched paths needs digest-verified, non-stale evidence
+  L3.GATE_HAS_FRESH_EVIDENCE:
+    enabled: true
+  # L0 — Private and generated modules are not imported across the boundary
+  L0.NO_CROSS_LAYER_IMPORT:
+    enabled: true
+  # L0 — Error types live in one canonical module per domain
+  L0.EXCEPTIONS_HAVE_ONE_HOME:
+    enabled: true
+  # L2 — A released rule never gets weaker than the version this repository locked
+  L2.CATALOG_ONLY_TIGHTENS:
+    enabled: true
+  # L2 — Dependency manifests move only with an explicit lock update
+  L2.DEPENDENCIES_CHANGE_DELIBERATELY:
+    enabled: true
+  # L2 — Regenerating the derived artifacts changes nothing
+  L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE:
+    enabled: true
+    options:
+      # docs/rules.md is derived from the rule catalogue. Regenerating it must
+      # change nothing, or the prose and the enforcement have drifted apart.
+      run: sf docs
+  # L2 — The guardrail's own configuration is hash-locked
+  L2.FACTORY_CONFIG_IS_LOCKED:
+    enabled: true
+  # L2 — Generated artifacts are hash-locked and not hand-edited
+  L2.GENERATED_FILES_ARE_LOCKED:
+    enabled: true
+    options:
+      scope:
+        - "docs/rules.md"
+        - "packages/model-specs/specs.json"
+        # Four harnesses, a budget ledger and a reporter read the event
+        # log, so the kinds and the shape of each `detail` are a contract
+        # rather than an internal detail. The lock does not enforce the
+        # version convention; it guarantees the reviewer sees the diff.
+        - "packages/core/events.json"
+  # L2 — Every frozen exception carries a future review date
+  L2.NO_PERMANENT_EXCEPTION:
+    enabled: true
+  # L2 — The guardrail may be strengthened, never quietly weakened
+  L2.POLICY_ONLY_TIGHTENS:
+    enabled: true
+  # L0 — The core imports no workflow and no plugin
+  L0.CORE_STAYS_IGNORANT:
+    enabled: true
+  # L1 — A comment block stays under the line ceiling
+  L1.COMMENT_STAYS_SUCCINCT:
+    enabled: true
+  # L1 — No function exceeds the cyclomatic ceiling
+  L1.COMPLEXITY_CEILING:
+    enabled: true
+  # L1 — Every suppression names a code and a reason
+  L1.NO_BLANKET_SUPPRESSION:
+    enabled: true
+  # L1 — The untyped escape hatch is banned, and the message names the alternative
+  L1.NO_UNTYPED_ESCAPE_HATCH:
+    enabled: true
+  # L1 — A skipped or expected-to-fail test says why
+  L1.SKIPPED_TESTS_STATE_A_REASON:
+    enabled: true
+  # L4 — Every marked promise names the gate that proves it
+  L4.CLAIM_CITES_ITS_EVIDENCE:
+    enabled: true
+  # L4 — Repo-relative documentation links resolve
+  L4.DOC_LINKS_RESOLVE:
+    enabled: true
+  # L4 — Every enabled rule is cited in prose, and every citation resolves
+  L4.EVERY_RULE_HAS_A_WHY:
+    enabled: true
+  # L4 — Every acceptance criterion names the check that proves it
+  L4.PLAN_CRITERION_NAMES_ITS_CHECK:
+    enabled: true
+  # L4 — Every plan declares its exit condition and sits in the execution order
+  L4.PLAN_DECLARES_EXIT_CONDITION:
+    enabled: true
+  # L4 — New top-level files are declared before they appear
+  L4.ROOT_FILES_ARE_DECLARED:
+    enabled: true
+  # L4 — Every command a rule's prose quotes is one this `sf` accepts
+  L4.RULE_PROSE_NAMES_A_REAL_COMMAND:
+    enabled: true
+  # L5 — Every enabled rule has a mutation that proves it fires
+  L5.EVERY_CHECK_HAS_A_MUTATION_TEST:
+    enabled: true
+  # L5 — An enabled rule must be capable of producing a finding
+  L5.NO_INERT_RULE:
+    enabled: true
+  # L6 — Concurrent code is exercised under a race detector
+  L6.DATA_RACES_ARE_DETECTED:
+    # Disabled: there is no dynamic race detector for this language, and the
+    # rule names none. One process, one event loop, and the one thing that is
+    # genuinely concurrent — two workers on one queue — is settled by an
+    # atomic rename rather than by a lock, and proven by the file-queue gate.
+    enabled: false
+  # L6 — Something detects code nothing reaches
+  L6.DEAD_CODE_IS_DETECTED:
+    enabled: true
+  # L6 — Something audits dependencies for known vulnerabilities
+  L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED:
+    enabled: true
+  # L6 — Something scans the code for known-insecure patterns
+  L6.INSECURE_PATTERNS_ARE_SCANNED:
+    enabled: true
+  # L6 — An address in a fixture belongs to nobody
+  L6.FIXTURES_NAME_NOBODY_REAL:
+    enabled: true
+  # L6 — Nothing blocks while a lock is held
+  L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK:
+    # Disabled: the rule has no query for TypeScript, so enabling it here
+    # would be a rule that cannot fire. Nothing in this workspace takes a
+    # lock; the queue is a directory and claiming is a rename.
+    enabled: false
+  # L6 — A function does not acquire a second lock while holding the first
+  L6.ONE_LOCK_AT_A_TIME:
+    # Disabled: same reason as the rule above. No TypeScript query, and no
+    # locks to hold.
+    enabled: false
+  # L6 — Something would notice the code getting slower
+  L6.PERFORMANCE_REGRESSION_IS_GUARDED:
+    enabled: true
+  # L6 — Something scans for committed secrets
+  L6.SECRETS_ARE_SCANNED:
+    enabled: true
+  # L6 — Something scans the CI workflows themselves
+  L6.WORKFLOWS_ARE_SCANNED:
+    enabled: true
