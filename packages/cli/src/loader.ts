@@ -25,6 +25,10 @@ import { Plugin } from "@amy/core";
  * mounting problem naming a package that was never meant to mount.
  */
 const BUILT_INS = {
+  // The workflow is a plugin like anything else: it registers the order its
+  // states happen in, and contributes how each of its actions runs. An
+  // install that drops it has an engine with nothing to drive, and says so.
+  "@amy/workflow-ticket-to-qa": () => import("@amy/workflow-ticket-to-qa"),
   "@amy/plugin-file-queue": () => import("@amy/plugin-file-queue"),
   "@amy/plugin-file-store": () => import("@amy/plugin-file-store"),
   "@amy/plugin-linear": () => import("@amy/plugin-linear"),
@@ -44,6 +48,7 @@ const BUILT_INS = {
 export const COMPILED_IN: readonly string[] = Object.keys(BUILT_INS);
 
 export const DEFAULT_PLUGINS: readonly (keyof typeof BUILT_INS)[] = [
+  "@amy/workflow-ticket-to-qa",
   "@amy/plugin-file-queue",
   "@amy/plugin-file-store",
   "@amy/plugin-linear",

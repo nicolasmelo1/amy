@@ -4,6 +4,9 @@ export type { ActionSpec, PortKind } from "./actions.js";
 export { actionsOf, applyPlan } from "./work.js";
 export type { Action, Plan, Transition, WorkRecord } from "./work.js";
 
+export { WORKFLOW_RUNTIME } from "./runtime.js";
+export type { ActionContext, ActionHandler, WorkflowRuntime } from "./runtime.js";
+
 export type {
   Engine,
   HostPaths,

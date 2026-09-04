@@ -2,7 +2,17 @@ import { vi } from "vitest";
 import { ticket } from "./builders.js";
 import { AgentResult, AgentRun, Event, EventLog, Notifier, StopSwitch, Store, checkEvent } from "@amy/core";
 import { WorkerConfig } from "@amy/plugin-serial-engine";
-import { Agent, CodeHost, DEFAULT_POLICY, Gate, PullRequestView, Ticket, TicketRecord, Tracker } from "@amy/workflow-ticket-to-qa";
+import {
+  Agent,
+  CodeHost,
+  DEFAULT_POLICY,
+  Gate,
+  PullRequestView,
+  Ticket,
+  TicketRecord,
+  TicketRuntimeConfig,
+  Tracker,
+} from "@amy/workflow-ticket-to-qa";
 export class InMemoryStore implements Store {
   public readonly records = new Map<string, TicketRecord>();
 
@@ -113,12 +123,16 @@ export class ThrowingEventLog implements EventLog {
 }
 
 export const workerConfig: WorkerConfig = {
-  repos: ["Northwind/northwind-backend"],
-  qaStatusName: "In QA",
-  policy: DEFAULT_POLICY,
   staleClaimMs: 30 * 60 * 1000,
   retentionDays: 7,
   maxItemAttempts: 5,
+  retryDelayMs: DEFAULT_POLICY.pollBackoffMs,
+};
+
+/** What the ticket runtime needs told to it, for a test. */
+export const runtimeConfig: TicketRuntimeConfig = {
+  repos: ["Northwind/northwind-backend"],
+  qaStatusName: "In QA",
 };
 
 export function ticketFor(overrides: Partial<Ticket> = {}): Ticket {

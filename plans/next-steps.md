@@ -16,8 +16,9 @@ O roadmap inteiro, com as treze fases e o estado de cada uma, está em
 | 3 | [The relay is proven end to end](the-relay-is-proven-end-to-end.md) | A quota refusal, a killed child and a mistyped ladder are each proven against the built artifacts, with no credential involved |
 | 4 | [The engine fails out loud](the-engine-fails-out-loud.md) | A dependency that goes down produces one warning on the way down, silence while it is down, and one warning when it comes back, and no broken notification channel ever costs a ticket a move |
 | 5 | [The lifecycle is proven end to end](the-lifecycle-is-proven-end-to-end.md) | The installed executable walks one ticket from the working status to a QA handoff against a world of stand-ins, twice, with no credential and no network |
-| 6 | [What runs is a released version](what-runs-is-a-released-version.md) | A machine with no checkout installs `@amy/cli` from GitHub Packages, `amy --version` names a version changesets published, and a dirty tree only ever says `dev` |
-| 7 | [Plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md) | A second machine runs a ticket with only the plugins it needs installed, and one it never installed is refused by name at boot |
+| 6 | [The engine drives a workflow it does not know](the-engine-drives-a-workflow-it-does-not-know.md) | `plugins/serial-engine/src/**` names no workflow package, and a second workflow runs on the same engine by contributing a plan and a runtime |
+| 7 | [What runs is a released version](what-runs-is-a-released-version.md) | A machine with no checkout installs `@amy/cli` from GitHub Packages, `amy --version` names a version changesets published, and a dirty tree only ever says `dev` |
+| 8 | [Plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md) | A second machine runs a ticket with only the plugins it needs installed, and one it never installed is refused by name at boot |
 
 ## Parked
 

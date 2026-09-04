@@ -4,16 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { Budget, BudgetDecision, LogBudget } from "@amy/core";
 import { FileQueue } from "@amy/plugin-file-queue";
-import { WORKDAY, record as recordIn, roster } from "@amy/test-fixtures";
+import { WORKDAY, record as recordIn } from "@amy/test-fixtures";
 import {
+  ticketWorkerDeps,
   InMemoryStore,
   RecordingEventLog,
-  RecordingNotifier,
   fakeAgent,
-  fakeGate,
-  fakeHost,
-  fakeTracker,
-  workerConfig,
 } from "@amy/test-fixtures";
 import { Worker, WorkerDeps } from "../src/Worker.js";
 
@@ -53,16 +49,11 @@ describe("Worker, against a budget", () => {
     return new Worker({
       queue,
       records,
-      tracker: fakeTracker(),
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier: new RecordingNotifier(),
-      roster: () => roster(),
-      now: () => clock,
-      log,
-      config: workerConfig,
-      ...overrides,
+      ...ticketWorkerDeps({
+        now: () => clock,
+        log,
+        ...overrides,
+      }),
     });
   }
 

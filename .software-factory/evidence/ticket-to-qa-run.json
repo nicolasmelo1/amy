@@ -10,7 +10,7 @@
   "observed": {
     "assertions_run": 30,
     "assertions_failed": 0,
-    "version": "0.1.0 (1d89185-dirty, built 2026-09-04T21:10:39Z)",
+    "version": "0.1.0 (6c0a1ee-dirty, built 2026-09-04T21:57:00Z)",
     "looks": 38,
     "transitions": [
       "DISCOVERED>CLARIFYING",
@@ -56,12 +56,12 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question on the ticket",
-      "the automated reviewer looked at 2b5ac79 and left one comment",
-      "the automated reviewer looked at daa079d and had nothing to say",
+      "the automated reviewer looked at 770c897 and left one comment",
+      "the automated reviewer looked at 254ac8c and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on daa079d",
+      "ada asked for changes on 254ac8c",
       "the owner settled the disagreement on the ticket",
-      "ada approved 8665126"
+      "ada approved abcbf16"
     ],
     "agent_calls": [
       "triage",

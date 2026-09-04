@@ -4,17 +4,15 @@ import os from "node:os";
 import path from "node:path";
 import { Worker, WorkerDeps } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
-import { WORKDAY, roster } from "@amy/test-fixtures";
+import { WORKDAY } from "@amy/test-fixtures";
 import {
+  ticketWorkerDeps,
   InMemoryStore,
   RecordingEventLog,
   RecordingNotifier,
   ThrowingEventLog,
   ThrowingNotifier,
   fakeAgent,
-  fakeGate,
-  fakeHost,
-  fakeTracker,
   workerConfig,
 } from "@amy/test-fixtures";
 
@@ -47,16 +45,11 @@ describe("a broken notifier and a broken log", () => {
     return new Worker({
       queue,
       records,
-      tracker: fakeTracker(),
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier: new RecordingNotifier(),
-      roster: () => roster(),
-      now: () => clock,
-      config: workerConfig,
-      log,
-      ...overrides,
+      ...ticketWorkerDeps({
+        now: () => clock,
+        log,
+        ...overrides,
+      }),
     });
   }
 
@@ -72,7 +65,7 @@ describe("a broken notifier and a broken log", () => {
 
     const result = await build({
       notifier: new ThrowingNotifier(),
-      decide: announcing,
+      plan: announcing,
     }).tick();
 
     expect(result).toMatchObject({ kind: "worked" });
@@ -81,7 +74,7 @@ describe("a broken notifier and a broken log", () => {
   it("records the notification it could not send", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ notifier: new ThrowingNotifier(), decide: announcing }).tick();
+    await build({ notifier: new ThrowingNotifier(), plan: announcing }).tick();
 
     const [failed] = log.of("notify.failed");
     expect(failed?.workId).toBe("PROJ-1239");
@@ -92,7 +85,7 @@ describe("a broken notifier and a broken log", () => {
   it("still saves the move the announcement was about", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ notifier: new ThrowingNotifier(), decide: announcing }).tick();
+    await build({ notifier: new ThrowingNotifier(), plan: announcing }).tick();
 
     expect(records.load("PROJ-1239")).not.toBeNull();
   });

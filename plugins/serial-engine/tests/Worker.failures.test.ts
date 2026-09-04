@@ -5,14 +5,13 @@ import path from "node:path";
 import { Worker, WorkerDeps } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
 import { LogBudget } from "@amy/core";
-import { WORKDAY, roster } from "@amy/test-fixtures";
+import { WORKDAY } from "@amy/test-fixtures";
 import {
+  ticketWorkerDeps,
   InMemoryStore,
   RecordingEventLog,
   RecordingNotifier,
   fakeAgent,
-  fakeGate,
-  fakeHost,
   fakeTracker,
   workerConfig,
 } from "@amy/test-fixtures";
@@ -47,16 +46,12 @@ describe("a dependency that goes down and comes back", () => {
     return new Worker({
       queue,
       records,
-      tracker: fakeTracker(),
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier,
-      roster: () => roster(),
-      now: () => clock,
-      config: workerConfig,
-      log,
-      ...overrides,
+      ...ticketWorkerDeps({
+        notifier,
+        now: () => clock,
+        log,
+        ...overrides,
+      }),
     });
   }
 
@@ -66,7 +61,7 @@ describe("a dependency that goes down and comes back", () => {
 
   /** Past the backoff, because the retried item is held behind it. */
   function later(): void {
-    clock = new Date(clock.getTime() + workerConfig.policy.pollBackoffMs + 1000);
+    clock = new Date(clock.getTime() + workerConfig.retryDelayMs + 1000);
   }
 
   it("warns once on the first failure", async () => {

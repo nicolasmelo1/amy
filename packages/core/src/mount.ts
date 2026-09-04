@@ -148,6 +148,7 @@ function contextFor(
     paths: host.paths,
     contributions: (collection) => mounted.contributions.get(collection) ?? new Map(),
     port: (kind) => mounted.ports.get(kind),
+    workflow: () => mounted.workflow,
   };
 }
 

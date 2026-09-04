@@ -162,28 +162,39 @@ taken, how each one is dispatched, the generic work record, the plan, and the
 registry that mounts everything else. A state is a string to it and an action
 is a name.
 
-**A workflow is only the order in which actions happen.** It does not define
-actions: a second workflow that needs `implement` reuses the one the core
-ships rather than dragging a whole domain along with it. A new action goes
-into the core.
+**A workflow is only the order in which actions happen, plus how they run.**
+It does not define actions: a second workflow that needs `implement` reuses
+the one the core ships rather than dragging a whole domain along with it. A
+new action goes into the core.
 
 ```text
 @amy/core
   actions:  triage, implement, run-gate, open-pull-request, address-threads,
             assign-reviewer, request-rereview, escalate, hand-off-to-qa,
             announce                    each declares the port it needs
+  contract: Workflow + WorkflowRuntime  what an engine drives, generically
       ▲                                          ▲
       │ composes actions                         │ implements ports
       │                                          │
 @amy/workflow-ticket-to-qa              @amy/plugin-linear       tracker
-  the sixteen states, its typed         @amy/plugin-github       code-host
-  port contracts, and a pure plan()     @amy/plugin-claude       agent
-                                        @amy/plugin-command-gate gate
-                                        @amy/plugin-notify-* notifier
-                                        @amy/plugin-file-queue   queue
-                                        @amy/plugin-file-store   store
-                                        @amy/plugin-serial-engine engine
+  the sixteen states, a pure plan(),    @amy/plugin-github       code-host
+  its typed port contracts, and the     @amy/plugin-claude       agent
+  runtime that runs its actions         @amy/plugin-command-gate gate
+      │                                 @amy/plugin-notify-* notifier
+      │ contributes a runtime           @amy/plugin-file-queue   queue
+      ▼                                 @amy/plugin-file-store   store
+@amy/plugin-serial-engine
+  a queue, a budget, a retry count and a stop switch — and no idea what a
+  ticket is
 ```
+
+**The engine drives a workflow it does not know.** It asks the workflow what
+to do next, asks the *runtime* the workflow contributed to do it, and holds
+the queue, the attempt counts, the budget and the handbrake in between. Every
+noun in `Worker.ts` is one of those; a ticket, a pull request and a reviewer
+appear nowhere in it. So a second workflow over a different domain — the one
+[the roadmap](plans/the-roadmap.md) wants for ARC — costs a `plan()` and a
+runtime, not a fork of the engine.
 
 Plugins are **loaded from the config and assembled**, not constructed by the
 CLI. `mount()` refuses, at boot and by name, a plugin that will not import, a
@@ -356,7 +367,7 @@ agent:
 
 ## State of the build
 
-613 tests. The core, the workflow, the plugins, the CLI and the gate all
+624 tests. The core, the workflow, the plugins, the CLI and the gate all
 pass, and `sf verify` proves all 33 of this repository's own rules fire.
 
 <!-- claim: WALKS_A_TICKET_TO_QA proven-by: ticket-to-qa -->
@@ -444,7 +455,7 @@ catches it.
 
 ### The tests exercise classes. The gates exercise the artifact.
 
-613 tests all import a source file and call a method. That is worth having and
+624 tests all import a source file and call a method. That is worth having and
 it is not the same claim as "the published package works": a barrel that
 forgets an export, or a `dist` nobody built, passes the whole suite and is
 broken on the machine that installs it.

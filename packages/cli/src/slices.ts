@@ -32,13 +32,20 @@ export function pluginSlices(config: AmyConfig): Record<string, unknown> {
       retentionDays: config.retentionDays,
       staleClaimMs: config.staleClaimMs,
     },
-    "@amy/plugin-serial-engine": {
+    // The workflow's own vocabulary: which repositories it counts review
+    // load across, where it hands work over, and the ceilings its decision
+    // function reads.
+    "@amy/workflow-ticket-to-qa": {
       repos: config.repos,
-      policy: config.policy,
       qaStatusName: config.qaStatusName,
+      policy: config.policy,
+    },
+    // The engine's, and none of it names a domain.
+    "@amy/plugin-serial-engine": {
       staleClaimMs: config.staleClaimMs,
       retentionDays: config.retentionDays,
       maxItemAttempts: config.maxItemAttempts,
+      retryDelayMs: config.policy.pollBackoffMs,
     },
   };
 
