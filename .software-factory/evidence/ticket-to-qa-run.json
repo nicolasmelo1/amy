@@ -8,9 +8,9 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 29,
+    "assertions_run": 30,
     "assertions_failed": 0,
-    "version": "0.1.0 (1c09ce1-dirty, built 2026-09-04T21:07:54Z)",
+    "version": "0.1.0 (1d89185-dirty, built 2026-09-04T21:10:39Z)",
     "looks": 38,
     "transitions": [
       "DISCOVERED>CLARIFYING",
@@ -56,12 +56,12 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question on the ticket",
-      "the automated reviewer looked at 9700a1c and left one comment",
-      "the automated reviewer looked at f73d5d3 and had nothing to say",
+      "the automated reviewer looked at 2b5ac79 and left one comment",
+      "the automated reviewer looked at daa079d and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on f73d5d3",
+      "ada asked for changes on daa079d",
       "the owner settled the disagreement on the ticket",
-      "ada approved ccb16d4"
+      "ada approved 8665126"
     ],
     "agent_calls": [
       "triage",
@@ -174,6 +174,10 @@
     },
     {
       "type": "lifecycle.what_the_agents_spent_is_read_off_the_log",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_run_leaves_nothing_behind",
       "status": "passed"
     },
     {

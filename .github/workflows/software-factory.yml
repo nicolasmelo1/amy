@@ -59,6 +59,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # The changeset check below compares against the base branch, and a
+          # single-branch clone has no such ref to compare with.
+          fetch-depth: 0
           # this job never pushes, so the checkout token has no reason to stay
           # behind in .git/config where a later step can read it back out
           persist-credentials: false
@@ -79,7 +82,9 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
-        run: npx changeset status --since "origin/$BASE_REF"
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          npx changeset status --since "origin/$BASE_REF"
       - run: npm run test:coverage
       - run: npm run lint
       # Dead code is the residue of work that changed direction. Nobody

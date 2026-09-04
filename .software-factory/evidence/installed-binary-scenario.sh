@@ -29,7 +29,7 @@ trap 'rm -rf "$work"' EXIT
 
 mkdir -p "$work/bin" "$work/home"
 
-"$repo/scripts/install.sh" "$work/bin" >/dev/null
+AMY_BUILD_OUT="${work}/amy.built" "$repo/scripts/install.sh" "$work/bin" >/dev/null
 amy="$work/bin/amy"
 test -x "$amy" || { echo "the installer produced no executable" >&2; exit 1; }
 

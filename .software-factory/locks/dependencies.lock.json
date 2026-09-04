@@ -3,7 +3,7 @@
   "files": {
     "package.json": "b7df36a9b63201fd3131e03d85021db4aa6a4bdaa2fb2ec9171fd0fb29523ce7",
     "packages/agent-kit/package.json": "598e615704b6a1b73874074509f8acdddd778132777a7f8ab42f53300bd80f55",
-    "packages/cli/package.json": "7c64809bc63fc46f9b55522541c7c2741f529126c20cf68ca19e9ed944fcf304",
+    "packages/cli/package.json": "e2e41a8e361a531cd58a1bd90a85001952efa24810f4c8a879fdcccfdb9332e3",
     "packages/core/package.json": "33cb4c2a8face47cf18c7b7b7fe04d41d29b6d89161689428dd9ec1eacb98bc3",
     "packages/model-specs/package.json": "e81972b7e66201d162e587950f21bbae347b636755f8d6d003d2083fda145919",
     "packages/test-fixtures/package.json": "9dfa06af57663dd2c008ad8c3b1f6884e808f9e84664b03e9fc14891aadecf8c",

@@ -17,7 +17,8 @@
     "registry": "https://registry.npmjs.org"
   },
   "scripts": {
-    "prepack": "node ../../scripts/write-stamp.mjs"
+    "prepack": "node ../../scripts/write-stamp.mjs",
+    "postpack": "node -e \"require('node:fs').rmSync('dist/stamp.json', {force: true})\""
   },
   "bin": {
     "amy": "./dist/index.js"

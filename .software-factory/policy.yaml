@@ -158,6 +158,7 @@ gates:
       - "lifecycle.the_machine_settles_instead_of_spinning"
       - "lifecycle.what_the_agents_spent_is_read_off_the_log"
       - "lifecycle.the_same_run_twice_leaves_the_same_trail"
+      - "lifecycle.the_run_leaves_nothing_behind"
 
 rules:
   # L3 — A gate requires every check its plan's criteria name

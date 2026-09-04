@@ -36,9 +36,16 @@ jobs:
       id-token: write
     steps:
       # persist-credentials stays on, unlike every other job in this
-      # repository: this is the one that pushes, and the action pushes with
-      # the checkout's credential.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # repository: this is the one that pushes, and `changesets/action`
+      # pushes the version branch and its tags with the checkout's
+      # credential. There is no arrangement that removes it — a token in a
+      # remote URL is the same credential in the same file, spelled worse.
+      #
+      # The suppression below names `artipacked`, and the reason is that the
+      # audit is about that credential reaching an uploaded artifact: this job
+      # uploads none. It runs `npm ci`, the suite, and the changesets action,
+      # and ends.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 # zizmor: ignore[artipacked]
         with:
           # The changelog reads history, and a shallow clone has none.
           fetch-depth: 0

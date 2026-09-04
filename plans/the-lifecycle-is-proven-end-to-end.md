@@ -134,6 +134,9 @@ to break.
       (proof: assertion:lifecycle.what_the_agents_spent_is_read_off_the_log)
 - [x] The same run, in a second world, makes exactly the same moves
       (proof: assertion:lifecycle.the_same_run_twice_leaves_the_same_trail)
+- [x] The run leaves nothing behind: no world on disk, no child process still
+      listening, and no build artefact dropped in the checkout
+      (proof: assertion:lifecycle.the_run_leaves_nothing_behind)
 - [ ] One real ticket, in the real tracker, with a real reviewer
       (proof: deferred:the stand-ins cannot prove somebody else's schema, and
       this is the step that has to happen with a person watching)
