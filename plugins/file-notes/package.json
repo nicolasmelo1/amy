@@ -32,8 +32,5 @@
     "@amy/core": "^0.1.0",
     "@amy/plugin-notify-fanout": "^0.1.0",
     "@amy/workflow-note-to-plan": "^0.1.0"
-  },
-  "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
   }
 }
