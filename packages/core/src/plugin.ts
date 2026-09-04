@@ -70,6 +70,14 @@ export interface PluginContext {
   contributions(collection: string): ReadonlyMap<string, object>;
   /** A mounted port, read when asked. */
   port(kind: PortKind): object | undefined;
+  /**
+   * The mounted workflow, read when asked.
+   *
+   * Live for the same reason the two above are: an engine is mounted by a
+   * plugin that may be listed before the workflow's, and mounting order
+   * should not be something an operator has to get right.
+   */
+  workflow(): Workflow<never, never> | undefined;
 }
 
 export interface Registry {

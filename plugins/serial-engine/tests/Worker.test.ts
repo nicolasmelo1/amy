@@ -2,16 +2,17 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { WorkflowRuntime } from "@amy/core";
 import { Worker, WorkerDeps } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
 import { DEFAULT_POLICY } from "@amy/workflow-ticket-to-qa";
 import { USES_ACTIONS, newRecord } from "@amy/workflow-ticket-to-qa";
-import { HEAD, WORKDAY, botReview, pullRequest, roster, thread, ticket } from "@amy/test-fixtures";
+import { HEAD, WORKDAY, botReview, pullRequest, thread, ticket } from "@amy/test-fixtures";
 import {
+  ticketWorkerDeps,
   InMemoryStore,
   RecordingNotifier,
   fakeAgent,
-  fakeGate,
   fakeHost,
   fakeTracker,
   workerConfig,
@@ -40,15 +41,11 @@ describe("Worker", () => {
     return new Worker({
       queue,
       records,
-      tracker: fakeTracker(),
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier,
-      roster: () => roster(),
-      now: () => clock,
-      config: workerConfig,
-      ...overrides,
+      ...ticketWorkerDeps({
+        notifier,
+        now: () => clock,
+        ...overrides,
+      }),
     });
   }
 
@@ -314,14 +311,7 @@ describe("Worker.discover", () => {
     return new Worker({
       queue,
       records,
-      tracker,
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier: new RecordingNotifier(),
-      roster: () => roster(),
-      now: () => WORKDAY,
-      config: workerConfig,
+      ...ticketWorkerDeps({ tracker, now: () => WORKDAY }),
     });
   }
 
@@ -364,15 +354,10 @@ describe("Worker.missingActions", () => {
     return new Worker({
       queue: new FileQueue(path.join(root, "queue")),
       records: new InMemoryStore(),
-      tracker: fakeTracker(),
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier: new RecordingNotifier(),
-      roster: () => roster(),
-      now: () => WORKDAY,
-      config: workerConfig,
-      ...overrides,
+      ...ticketWorkerDeps({
+        now: () => WORKDAY,
+        ...overrides,
+      }),
     });
   }
 
@@ -386,10 +371,35 @@ describe("Worker.missingActions", () => {
     expect(build().missingActions(["check-web-browser"])).toEqual(["check-web-browser"]);
   });
 
-  it("names a core action whose port was never mounted", () => {
-    const withoutGate = build({ gate: undefined as never });
+  // The other half of this question — whether the port an action dispatches
+  // to was mounted at all — is `unmetNeeds` in the core, which reads the
+  // mount. This engine cannot answer that any more, and that is the point: it
+  // does not hold the ports.
+  it("names what the runtime brought no handler for", () => {
+    // Written out in full because it is the extension point: driving a
+    // second workflow means handing the engine one of these, not forking it.
+    const thin: WorkflowRuntime = {
+      policy: {},
+      found: async () => [],
+      newRecord: (id, at) => ({
+        id,
+        state: "NEW",
+        updatedAt: at.toISOString(),
+        attempts: {},
+        history: [],
+      }),
+      observe: async () => ({}),
+      handlers: () => ({ triage: async () => {} }),
+      apply: (record) => record,
+    };
 
-    expect(withoutGate.missingActions(["run-gate"])).toEqual(["run-gate"]);
-    expect(withoutGate.missingActions(["triage"])).toEqual([]);
+    const worker = new Worker({
+      queue: new FileQueue(path.join(root, "queue")),
+      records: new InMemoryStore(),
+      ...ticketWorkerDeps({ now: () => WORKDAY }),
+      runtime: thin,
+    });
+
+    expect(worker.missingActions(["triage", "run-gate"])).toEqual(["run-gate"]);
   });
 });

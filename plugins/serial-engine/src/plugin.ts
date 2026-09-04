@@ -1,33 +1,26 @@
-import { Budget, Engine, Notifier, Plugin, PluginContext, Queue, Store } from "@amy/core";
 import {
-  Agent,
-  CodeHost,
-  Gate,
-  Policy,
-  Roster,
-  TicketRecord,
-  Tracker,
-  DEFAULT_POLICY,
-  ticketToQa,
-} from "@amy/workflow-ticket-to-qa";
+  Budget,
+  Engine,
+  Notifier,
+  Plugin,
+  PluginContext,
+  Queue,
+  Store,
+  WORKFLOW_RUNTIME,
+  Workflow,
+  WorkflowRuntime,
+} from "@amy/core";
 import { Worker } from "./Worker.js";
 import { configSchema } from "./config.js";
-
-/** Something one plugin contributes for another to read when it is needed. */
-export interface Provider<T> {
-  read(): T;
-}
-
-/** The collection the host puts workflow data in, such as today's roster. */
-export const WORKFLOW_DATA = "workflow-data";
 
 export const plugin: Plugin = {
   name: "@amy/plugin-serial-engine",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {
-    // Built on the first tick rather than now, because the ports it needs are
-    // mounted by plugins that may be listed after this one.
+    // Built on the first tick rather than now, because the workflow and the
+    // ports it needs are registered by plugins that may be listed after this
+    // one.
     let worker: Worker | null = null;
     const lazily = (): Worker => (worker ??= build(ctx));
 
@@ -40,42 +33,69 @@ export const plugin: Plugin = {
     };
 
     registry.engine(engine);
-    registry.workflow(ticketToQa);
   },
 };
 
 function build(ctx: PluginContext): Worker {
+  const workflow = ctx.workflow() as Workflow | undefined;
+  if (!workflow) {
+    throw new Error("the serial engine needs a workflow, and no plugin registered one");
+  }
+
+  // The pair first: a workflow with no runtime is an engine that cannot
+  // mean anything, and saying so beats reporting a missing queue to somebody
+  // whose real problem is a half-mounted workflow.
+  const runtime = runtimeFor(ctx, workflow);
+
   return new Worker({
     queue: required<Queue>(ctx, "queue"),
-    records: required<Store<TicketRecord>>(ctx, "store"),
-    tracker: required<Tracker>(ctx, "tracker"),
-    host: required<CodeHost>(ctx, "code-host"),
-    agent: required<Agent>(ctx, "agent"),
-    gate: required<Gate>(ctx, "gate"),
+    records: required<Store>(ctx, "store"),
+    workflow,
+    runtime,
     notifier: required<Notifier>(ctx, "notifier"),
-    roster: () => provided<Roster>(ctx, "roster"),
     now: ctx.now,
     log: ctx.log,
     // Optional: an install that set no ceiling mounts no budget, and this
     // engine then never asks one.
     budget: ctx.port("budget") as Budget | undefined,
     config: {
-      repos: ctx.config.repos as string[],
-      qaStatusName: ctx.config.qaStatusName as string,
-      policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
       staleClaimMs: ctx.config.staleClaimMs as number,
       retentionDays: ctx.config.retentionDays as number,
       maxItemAttempts: ctx.config.maxItemAttempts as number,
+      retryDelayMs: ctx.config.retryDelayMs as number,
     },
   });
 }
 
 /**
- * A port this engine cannot work without.
+ * The runtime the mounted workflow contributed.
+ *
+ * Looked up by the workflow's own name, so an install that mounts two
+ * workflows and one runtime is refused here rather than driving the wrong
+ * half of itself. Naming what there was to choose from, because a
+ * mismatched pair is a config mistake and the fix is a name.
+ */
+function runtimeFor(ctx: PluginContext, workflow: Workflow): WorkflowRuntime {
+  const contributed = ctx.contributions(WORKFLOW_RUNTIME);
+  const runtime = contributed.get(workflow.name);
+
+  if (!runtime) {
+    const offered = [...contributed.keys()].join(", ") || "nothing";
+    throw new Error(
+      `the workflow \`${workflow.name}\` contributed no runtime to \`${WORKFLOW_RUNTIME}\`, ` +
+        `so nothing here knows how to run its actions. Contributed: ${offered}`,
+    );
+  }
+
+  return runtime as WorkflowRuntime;
+}
+
+/**
+ * Something this engine cannot work without.
  *
  * The loader already refuses a mount where an action has no port, so reaching
  * here means something registered an engine without the rest. Saying which
- * port beats a property access on undefined.
+ * one beats a property access on undefined.
  */
 function required<T>(ctx: PluginContext, kind: string): T {
   const port = ctx.port(kind);
@@ -83,12 +103,4 @@ function required<T>(ctx: PluginContext, kind: string): T {
     throw new Error(`the serial engine needs the \`${kind}\` port, and nothing mounted it`);
   }
   return port as T;
-}
-
-function provided<T>(ctx: PluginContext, name: string): T {
-  const entry = ctx.contributions(WORKFLOW_DATA).get(name);
-  if (!entry) {
-    throw new Error(`the serial engine needs \`${name}\` in the \`${WORKFLOW_DATA}\` collection`);
-  }
-  return (entry as Provider<T>).read();
 }

@@ -36,13 +36,16 @@ describe("pluginSlices", () => {
     expect(slices["@amy/plugin-command-gate"]?.commands).toEqual({ "acme/widgets": ["npm test"] });
   });
 
-  it("gives the engine the policy, so a configured ceiling reaches the machine", () => {
+  it("gives the workflow the policy, so a configured ceiling reaches the machine", () => {
     const slices = pluginSlices({
       ...CONFIG,
       policy: { ...CONFIG.policy, maxOpenReviewsPerReviewer: 0 },
     }) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-serial-engine"]?.policy).toMatchObject({
+    // The policy is written in the workflow's vocabulary — attempt ceilings,
+    // backoffs, how many open reviews one person may be handed — so it goes
+    // to the workflow rather than to whatever is driving it.
+    expect(slices["@amy/workflow-ticket-to-qa"]?.policy).toMatchObject({
       maxOpenReviewsPerReviewer: 0,
     });
   });

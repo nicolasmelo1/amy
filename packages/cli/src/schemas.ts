@@ -1,4 +1,5 @@
 import { ConfigSchema } from "@amy/core";
+import { configSchema as ticketToQa } from "@amy/workflow-ticket-to-qa";
 import { configSchema as claude } from "@amy/plugin-claude";
 import { configSchema as commandGate } from "@amy/plugin-command-gate";
 import { configSchema as fileQueue } from "@amy/plugin-file-queue";
@@ -15,6 +16,7 @@ import { configSchema as serialEngine } from "@amy/plugin-serial-engine";
  * that silently never applied.
  */
 export const PLUGIN_SCHEMAS: Readonly<Record<string, ConfigSchema>> = {
+  "@amy/workflow-ticket-to-qa": ticketToQa,
   "@amy/plugin-claude": claude,
   "@amy/plugin-command-gate": commandGate,
   "@amy/plugin-file-queue": fileQueue,

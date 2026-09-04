@@ -67,6 +67,11 @@ const { plugin: store } = await import(dist("plugins", "file-store"));
 const { FileEventLog } = await import(dist("plugins", "file-log"));
 const { plugin: github } = await import(dist("plugins", "github"));
 const { plugin: engine } = await import(dist("plugins", "serial-engine"));
+// The workflow arrives as a plugin now: it registers the order its states
+// happen in and contributes how each of its actions runs. The engine holds
+// neither, which is what lets this scenario drive the real one rather than a
+// copy of it.
+const { plugin: workflow } = await import(dist("packages", "workflow-ticket-to-qa"));
 const { plugin: fanout, CHANNEL_COLLECTION } = await import(dist("plugins", "notify-fanout"));
 
 const assertions = [];
@@ -204,13 +209,10 @@ function refusingBudgetPlugin() {
  */
 async function host({ channels = [channelPlugin("recorder")], extra = [], log } = {}) {
   const outcome = await mount(
-    [queue, store, github, fanout, ...channels, worldPlugin(), ...extra, engine],
+    [queue, store, github, fanout, ...channels, worldPlugin(), workflow, ...extra, engine],
     {
-      "@amy/plugin-serial-engine": {
-        repos: ["acme/widgets"],
-        qaStatusName: "In QA",
-        maxItemAttempts: 5,
-      },
+      "@amy/plugin-serial-engine": { maxItemAttempts: 5 },
+      "@amy/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
     },
     {
       runner: new NodeCommandRunner(),

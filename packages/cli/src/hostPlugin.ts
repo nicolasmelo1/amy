@@ -1,6 +1,5 @@
 import { Plugin } from "@amy/core";
-import { WORKFLOW_DATA } from "@amy/plugin-serial-engine";
-import { Roster } from "@amy/workflow-ticket-to-qa";
+import { Roster, WORKFLOW_DATA } from "@amy/workflow-ticket-to-qa";
 
 /**
  * The host's own glue, mounted like anything else.

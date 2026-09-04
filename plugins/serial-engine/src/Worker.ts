@@ -1,5 +1,6 @@
 import {
-  AgentRun,
+  Action,
+  ActionContext,
   Budget,
   Event,
   EventKind,
@@ -10,52 +11,42 @@ import {
   QueueItem,
   StopSwitch,
   Store,
+  WorkRecord,
+  Workflow,
+  WorkflowRuntime,
   actionsOf,
+  applyPlan,
   dispatchesTo,
-  CORE_ACTIONS,
 } from "@amy/core";
-import {
-  Agent,
-  CodeHost,
-  Effect,
-  EffectOutcomes,
-  Gate,
-  Observation,
-  Policy,
-  Roster,
-  Ticket,
-  TicketRecord,
-  TicketState,
-  Tracker,
-  applyTicketPlan,
-  newRecord,
-  plan,
-  pullRequestTitle,
-} from "@amy/workflow-ticket-to-qa";
 
 export interface WorkerConfig {
-  /** Every repository the team reviews in, for counting review load. */
-  repos: readonly string[];
-  /** The status a ticket moves to when it is handed to QA. */
-  qaStatusName: string;
-  policy: Policy;
   /** How long a claimed item may sit before it is treated as abandoned. */
   staleClaimMs: number;
   /** How long finished queue items are kept before being pruned. */
   retentionDays: number;
-  /** How many times one ticket may fail before the machine gives up on it. */
+  /** How many times one item may fail before the machine gives up on it. */
   maxItemAttempts: number;
+  /** How long to hold a failed item before looking at it again. */
+  retryDelayMs: number;
 }
 
 export interface WorkerDeps {
   queue: Queue;
-  records: Store<TicketRecord>;
-  tracker: Tracker;
-  host: CodeHost;
-  agent: Agent;
-  gate: Gate;
+  records: Store;
+  /** The order the states happen in, and what the workflow says it emits. */
+  workflow: Workflow;
+  /**
+   * How that workflow's actions actually run.
+   *
+   * This is the whole reason this engine is not welded to one domain. What
+   * used to be here — an observation built out of a tracker, a handler per
+   * ticket action, a fold that knew what a gate result is — is on the other
+   * side of this interface now, in the package that knows what those words
+   * mean.
+   */
+  runtime: WorkflowRuntime;
+  /** Core's own port, and the only one left here: a failure has to be sayable. */
   notifier: Notifier;
-  roster: () => Roster;
   now: () => Date;
   config: WorkerConfig;
   /** Optional, so an engine with no log still runs. */
@@ -64,28 +55,7 @@ export interface WorkerDeps {
   stop?: StopSwitch;
   /** Optional, so an engine with no ceiling on spending still runs. */
   budget?: Budget;
-  /**
-   * The workflow to drive. Defaults to the one this engine was written for,
-   * but taking it here is what lets another workflow be mounted instead of
-   * forked, and what lets a test drive a plan this one never emits.
-   */
-  decide?: typeof plan;
 }
-
-interface ActionContext {
-  ticket: Ticket;
-  observation: Observation;
-  record: TicketRecord;
-  outcomes: EffectOutcomes;
-}
-
-/** Exhaustive over the workflow's actions, checked at compile time. */
-type ActionHandlers = {
-  [K in Effect["type"]]: (
-    effect: Extract<Effect, { type: K }>,
-    ctx: ActionContext,
-  ) => Promise<void>;
-};
 
 /** The one result the budget produces, named so the check can return it. */
 export type Parked = Extract<TickResult, { kind: "parked" }>;
@@ -96,45 +66,51 @@ export type TickResult =
   | {
       kind: "worked";
       workId: string;
-      from: TicketState;
-      to: TicketState;
+      from: string;
+      to: string;
       plan: Plan["kind"];
       why: string;
       /** Set when the plan asked to be looked at again later. */
       retryAfterMs?: number;
     }
-  | { kind: "failed"; workId: string; state: TicketState; error: string }
+  | { kind: "failed"; workId: string; state: string; error: string }
   /** The move would have spent an agent, and the budget said not yet. */
   | {
       kind: "parked";
       workId: string;
-      state: TicketState;
+      state: string;
       reason: string;
       retryAfterMs: number;
     };
 
 /**
- * Advances at most one ticket by at most one move, then chains the next look.
+ * Advances at most one piece of work by at most one move, then chains the
+ * next look.
  *
  * Nothing here decides *when* the next step runs. A step that takes a minute
  * and a step that takes an hour both enqueue their successor the moment they
  * finish, so the queue is the schedule.
+ *
+ * Nothing here decides *what* a step is, either. Every noun in this file is
+ * queue, record, attempt, budget or stop; a ticket, a pull request and a
+ * reviewer are all on the far side of `runtime`.
  */
 export class Worker {
   constructor(private readonly deps: WorkerDeps) {}
 
-  /** Puts every ticket in the working status onto the queue. */
+  /** Puts every piece of work the runtime can find onto the queue. */
   async discover(): Promise<string[]> {
     const now = this.deps.now();
     const enqueued: string[] = [];
+    const terminal = this.deps.workflow.terminalStates;
 
-    for (const ticket of await this.deps.tracker.inProgress()) {
-      const existing = this.deps.records.load(ticket.id);
-      if (existing && existing.state === "DONE") continue;
-      if (this.deps.queue.pending().some((i) => i.workId === ticket.id)) continue;
+    for (const workId of await this.deps.runtime.found()) {
+      const existing = this.deps.records.load(workId);
+      if (existing && terminal.includes(existing.state)) continue;
+      if (this.deps.queue.pending().some((item) => item.workId === workId)) continue;
 
-      this.deps.queue.enqueue({ workId: ticket.id, reason: "found in the working status" }, now);
-      enqueued.push(ticket.id);
+      this.deps.queue.enqueue({ workId, reason: "found by the workflow" }, now);
+      enqueued.push(workId);
     }
 
     return enqueued;
@@ -158,7 +134,8 @@ export class Worker {
 
     this.record("run.claimed", { workId: item.workId, detail: { reason: item.reason } });
 
-    const record = this.deps.records.load(item.workId) ?? newRecord(item.workId, now);
+    const record =
+      this.deps.records.load(item.workId) ?? this.deps.runtime.newRecord(item.workId, now);
 
     try {
       return await this.advance(item, record, now);
@@ -167,14 +144,9 @@ export class Worker {
     }
   }
 
-  private async advance(
-    item: QueueItem,
-    record: TicketRecord,
-    now: Date,
-  ): Promise<TickResult> {
-    const observation = await this.observe(record);
-    const decide = this.deps.decide ?? plan;
-    const decision = decide(record, observation, this.deps.config.policy);
+  private async advance(item: QueueItem, record: WorkRecord, now: Date): Promise<TickResult> {
+    const observation = await this.deps.runtime.observe(record);
+    const decision = this.deps.workflow.plan(record, observation, this.deps.runtime.policy);
 
     this.record("work.planned", {
       workId: item.workId,
@@ -199,9 +171,9 @@ export class Worker {
       };
     }
 
-    const effects = actionsOf(decision) as Effect[];
+    const actions = actionsOf(decision);
 
-    const parked = this.parked(record, effects, now);
+    const parked = this.parked(record, actions, now);
     if (parked) {
       this.deps.queue.enqueue(
         {
@@ -219,8 +191,19 @@ export class Worker {
       return parked;
     }
 
-    const outcomes = await this.execute(observation, record, effects);
-    const next = applyTicketPlan(record, decision, outcomes, now);
+    const outcomes = await this.execute(observation, record, actions);
+
+    // The core folds the state, the attempt count and the history; the
+    // runtime folds what only it can read. Two calls rather than one because
+    // the second cannot be written without knowing the domain, and this
+    // engine is the half that does not.
+    const next = this.deps.runtime.apply(
+      applyPlan(record, decision, now),
+      decision,
+      outcomes,
+      observation,
+      now,
+    );
     this.deps.records.save(next);
 
     this.deps.queue.enqueue(
@@ -258,15 +241,17 @@ export class Worker {
    * A budget refusal, when this move would spend an agent and the ceiling is
    * already reached.
    *
-   * The record is deliberately not saved: the ticket keeps its state and its
+   * The record is deliberately not saved: the work keeps its state and its
    * per-state attempt count, and only its next look moves. Parked, not lost.
    * The queue item's own attempt count is carried by the caller, which is a
    * different counter and has to be said, not assumed.
    */
-  private parked(record: TicketRecord, effects: readonly Effect[], now: Date): Parked | null {
+  private parked(record: WorkRecord, actions: readonly Action[], now: Date): Parked | null {
     if (!this.deps.budget) return null;
 
-    const spending = effects.filter((e) => dispatchesTo(e.type, "agent")).map((e) => e.type);
+    const spending = actions
+      .filter((action) => dispatchesTo(action.type, "agent"))
+      .map((action) => action.type);
     if (spending.length === 0) return null;
 
     const decision = this.deps.budget.mayStart(now);
@@ -297,7 +282,7 @@ export class Worker {
 
   private async recordFailure(
     item: QueueItem,
-    record: TicketRecord,
+    record: WorkRecord,
     error: unknown,
   ): Promise<TickResult> {
     const message = error instanceof Error ? error.message : String(error);
@@ -314,7 +299,7 @@ export class Worker {
 
     // Routed through `announce`, not straight at the port. The item is
     // already completed by this point, so a single broken channel used to
-    // throw past `tick()` and the ticket left the queue with no record of why.
+    // throw past `tick()` and the work left the queue with no record of why.
     const notice = this.failureNotice(item, record, attempt, message);
     if (notice) await this.announce(notice, item.workId, record.state);
 
@@ -323,7 +308,7 @@ export class Worker {
         {
           workId: item.workId,
           reason: `retrying after an error: ${message}`,
-          delayMs: this.deps.config.policy.pollBackoffMs,
+          delayMs: this.deps.config.retryDelayMs,
           attempt,
         },
         now,
@@ -349,7 +334,7 @@ export class Worker {
    */
   private failureNotice(
     item: QueueItem,
-    record: TicketRecord,
+    record: WorkRecord,
     attempt: number,
     message: string,
   ): string | null {
@@ -378,7 +363,7 @@ export class Worker {
    * "I have stopped, come and look", and announcing a recovery there would
    * give the machine credit for a person's repair.
    */
-  private async announceRecovery(item: QueueItem, state: TicketState): Promise<void> {
+  private async announceRecovery(item: QueueItem, state: string): Promise<void> {
     if (item.attempt === 0) return;
 
     this.record("work.recovered", {
@@ -394,189 +379,32 @@ export class Worker {
     );
   }
 
-  private async observe(record: TicketRecord): Promise<Observation> {
-    const ticket = await this.requireTicket(record.id);
-
-    const pullRequest = await this.deps.host.findPullRequest(ticket.repo, ticket.branchName);
-
-    // Only fetched where it is used, so a poll that is only waiting for a
-    // review does not hammer the code host counting everybody's workload.
-    const reviewLoad =
-      record.state === "REVIEWER_ASSIGNED"
-        ? await this.deps.host.reviewLoad(this.deps.config.repos)
-        : {};
-
-    const awaitingAnswer = record.triage && !record.triage.clear;
-    const awaitingOwner = record.escalation && !record.escalation.resolvedAt;
-
-    return {
-      ticket,
-      pullRequest,
-      reviewLoad,
-      roster: this.deps.roster(),
-      questionAnswered: awaitingAnswer
-        ? await this.deps.tracker.hasReplyAfter(ticket.id, record.triage!.at)
-        : false,
-      escalationAnswered: awaitingOwner
-        ? await this.deps.tracker.hasReplyAfter(ticket.id, record.escalation!.askedAt)
-        : false,
-      now: this.deps.now(),
-    };
-  }
-
-  private async requireTicket(workId: string): Promise<Ticket> {
-    const ticket = await this.deps.tracker.get(workId);
-    if (!ticket) {
-      throw new Error(`${workId} is not in the tracker any more`);
-    }
-    return ticket;
-  }
-
   /**
-   * What one action needs to do its work, and where it records what happened.
-   */
-  private context(observation: Observation, record: TicketRecord, outcomes: EffectOutcomes) {
-    return { ticket: observation.ticket, observation, record, outcomes };
-  }
-
-  /**
-   * One handler per action, rather than one branch per action.
+   * Actions the workflow says it emits that nothing here could run.
    *
-   * Keyed on the action name and exhaustive over it, so a new action the
-   * workflow can emit will not compile until something here runs it. That is
-   * the same guarantee the switch this replaced gave, without putting every
-   * action's argument shaping in one function.
-   */
-  private handlers(): ActionHandlers {
-    const deps = this.deps;
-
-    return {
-      "triage": async (_effect, ctx) => {
-        const { value, run } = await deps.agent.triage(ctx.ticket);
-        this.recordAgentRun(ctx, run);
-        refuseAnIncompleteRun("triage", run);
-        ctx.outcomes.triage = value;
-      },
-
-      "ask-question": async (effect, ctx) => {
-        await deps.tracker.comment(
-          ctx.ticket.id,
-          effect.questions.map((q) => `- ${q}`).join("\n"),
-        );
-        await this.announce(
-          `${ctx.ticket.id} needs an answer before I can start.`,
-          ctx.ticket.id,
-          ctx.record.state,
-        );
-      },
-
-      "implement": async (effect, ctx) => {
-        const { value, run } = await deps.agent.implement(ctx.ticket, effect.retryContext);
-        this.recordAgentRun(ctx, run);
-        ctx.outcomes.implementation = value;
-      },
-
-      "run-gate": async (_effect, ctx) => {
-        ctx.outcomes.gate = await deps.gate.run(ctx.ticket);
-      },
-
-      "open-pull-request": async (_effect, ctx) => {
-        ctx.outcomes.pullRequestNumber = await deps.host.openPullRequest({
-          repo: ctx.ticket.repo,
-          branch: ctx.ticket.branchName,
-          title: pullRequestTitle(ctx.ticket),
-          // Empty by convention. The ticket is the description.
-          body: "",
-        });
-      },
-
-      "address-threads": async (effect, ctx) => {
-        const threads = (ctx.observation.pullRequest?.threads ?? []).filter((t) =>
-          effect.threadIds.includes(t.id),
-        );
-        const { value, run } = await deps.agent.addressThreads(ctx.ticket, threads, effect.from);
-        this.recordAgentRun(ctx, run);
-        refuseAnIncompleteRun("address-threads", run);
-        ctx.outcomes.verdicts = value;
-      },
-
-      "assign-reviewer": async (effect, ctx) => {
-        await this.requestReview(ctx.observation, ctx.record, effect.host);
-        ctx.outcomes.reviewer = effect.host;
-      },
-
-      "request-rereview": async (effect, ctx) => {
-        await this.requestReview(ctx.observation, ctx.record, effect.host);
-      },
-
-      "escalate": async (effect, ctx) => {
-        const followUpTicketId = await deps.tracker.createFollowUp({
-          parentTicketId: ctx.ticket.id,
-          title: `FUP ${ctx.ticket.id}: review comments need a decision`,
-          body: effect.reason,
-        });
-
-        ctx.outcomes.escalation = {
-          reason: effect.reason,
-          askedAt: deps.now().toISOString(),
-          followUpTicketId,
-        };
-
-        await this.announce(
-          `${ctx.ticket.id} is parked, ${followUpTicketId} has the details.`,
-          ctx.ticket.id,
-          ctx.record.state,
-        );
-      },
-
-      "hand-off-to-qa": async (effect, ctx) => {
-        await deps.tracker.setStatus(ctx.ticket.id, deps.config.qaStatusName);
-        await deps.tracker.assign(ctx.ticket.id, effect.tracker);
-      },
-
-      "announce": async (effect, ctx) => {
-        await this.announce(effect.text, ctx.ticket.id, ctx.record.state);
-      },
-    };
-  }
-
-  /**
-   * Actions the workflow says it emits that this engine could not run.
-   *
-   * Either nothing handles the name, or the core says the action needs a port
-   * this engine has not been given. Asked before a ticket is touched rather
-   * than discovered halfway through one.
+   * The port half of this question is `unmetNeeds` in the core, which reads
+   * the mount. This is the other half: whether the runtime brought a handler
+   * for each name. Asked before any work is touched rather than discovered
+   * halfway through a piece of it.
    */
   missingActions(usesActions: readonly string[]): string[] {
-    const handlers = this.handlers() as Record<string, unknown>;
-    const mounted: Record<string, boolean> = {
-      agent: Boolean(this.deps.agent),
-      tracker: Boolean(this.deps.tracker),
-      "code-host": Boolean(this.deps.host),
-      gate: Boolean(this.deps.gate),
-      notifier: Boolean(this.deps.notifier),
-    };
-
-    return usesActions.filter((name) => {
-      if (!handlers[name]) return true;
-      const spec = CORE_ACTIONS[name];
-      return spec !== undefined && !mounted[spec.port];
-    });
+    const handlers = this.deps.runtime.handlers();
+    return usesActions.filter((name) => !handlers[name]);
   }
 
   private async execute(
-    observation: Observation,
-    record: TicketRecord,
-    effects: readonly Effect[],
-  ): Promise<EffectOutcomes> {
-    const outcomes: EffectOutcomes = {};
-    const ctx = this.context(observation, record, outcomes);
-    const handlers = this.handlers();
+    observation: unknown,
+    record: WorkRecord,
+    actions: readonly Action[],
+  ): Promise<Record<string, unknown>> {
+    const outcomes: Record<string, unknown> = {};
+    const ctx: ActionContext = { record, observation, outcomes };
+    const handlers = this.deps.runtime.handlers();
 
-    for (const effect of effects) {
-      const handler = handlers[effect.type] as (e: Effect, c: typeof ctx) => Promise<void>;
+    for (const action of actions) {
+      const handler = handlers[action.type];
       if (!handler) {
-        throw new Error(`no handler is mounted for the action "${effect.type}"`);
+        throw new Error(`no handler is mounted for the action "${action.type}"`);
       }
 
       // Between actions as well as between ticks, because a plan can carry
@@ -585,20 +413,20 @@ export class Worker {
         this.record("stop.enforced", {
           workId: record.id,
           state: record.state,
-          detail: { pending: effect.type, reason: this.deps.stop.reason() },
+          detail: { pending: action.type, reason: this.deps.stop.reason() },
         });
         break;
       }
 
-      this.record("action.started", { workId: record.id, detail: { action: effect.type } });
+      this.record("action.started", { workId: record.id, detail: { action: action.type } });
       try {
-        await handler(effect, ctx);
-        this.record("action.finished", { workId: record.id, detail: { action: effect.type } });
+        await handler(action, ctx);
+        this.record("action.finished", { workId: record.id, detail: { action: action.type } });
       } catch (error) {
         this.record("action.failed", {
           workId: record.id,
           detail: {
-            action: effect.type,
+            action: action.type,
             error: error instanceof Error ? error.message : String(error),
           },
         });
@@ -606,39 +434,23 @@ export class Worker {
       }
     }
 
-    if (record.escalation && !record.escalation.resolvedAt && observation.escalationAnswered) {
-      outcomes.escalationResolvedAt = this.deps.now().toISOString();
-    }
-
     return outcomes;
   }
 
-  private async requestReview(
-    observation: Observation,
-    record: TicketRecord,
-    host: string,
-  ): Promise<void> {
-    const number = observation.pullRequest?.number ?? record.pullRequestNumber;
-    if (number === undefined) {
-      throw new Error(`${record.id} has no pull request to request a review on`);
-    }
-    await this.deps.host.requestReview(observation.ticket.repo, number, host);
-  }
-
   /**
-   * Says something to the operator, and never lets that cost a ticket.
+   * Says something to the operator, and never lets that cost a piece of work.
    *
    * A port call may only be swallowed when its failure does not make the
    * saved record a lie, and this is the one that qualifies: nothing
-   * downstream reads a notification. The tracker, the code host, the agent
-   * and the gate are all deliberately not wrapped — see
+   * downstream reads a notification. Every other port is reached through the
+   * runtime and is deliberately not wrapped — see
    * `plans/the-engine-fails-out-loud.md`.
    *
    * It lives here rather than only in the fan-out because `notifier` is a
    * port and an install may mount something else behind it. The promise is
    * the engine's, not the mounted plugin's.
    */
-  private async announce(text: string, workId: string, state: TicketState): Promise<void> {
+  private async announce(text: string, workId: string, state: string): Promise<void> {
     try {
       await this.deps.notifier.announce({ text, workId, state });
     } catch (error) {
@@ -651,37 +463,11 @@ export class Worker {
   }
 
   /**
-   * Writes down what an agent run took.
-   *
-   * Every field the relay and the budget will need is here, and `costSource`
-   * says whether the money figure was measured or worked out, so nothing
-   * downstream has to guess which.
-   */
-  private recordAgentRun(ctx: { record: TicketRecord }, run: AgentRun): void {
-    this.record("agent.run", {
-      // The record's id, like every other line, rather than the ticket's.
-      // They agree in production and a log that keys on two different things
-      // cannot be joined.
-      workId: ctx.record.id,
-      state: ctx.record.state,
-      detail: {
-        harness: run.harness,
-        model: run.model,
-        outcome: run.outcome,
-        durationMs: run.durationMs,
-        costSource: run.costSource,
-        ...(run.costUsd === undefined ? {} : { costUsd: run.costUsd }),
-        ...(run.tokens === undefined ? {} : { tokens: { ...run.tokens } }),
-      },
-    });
-  }
-
-  /**
    * Appends to the log if there is one, and shrugs if there is not.
    *
-   * A full disk or a bad permission under `.amy/log` must not cost a ticket a
-   * move, and must not be silent either, or the machine looks healthy while
-   * keeping no record of anything.
+   * A full disk or a bad permission under `.amy/log` must not cost a piece of
+   * work a move, and must not be silent either, or the machine looks healthy
+   * while keeping no record of anything.
    *
    * Once per worker: a broken log throws on every one of the eight or so
    * calls in a tick, and a flood in stderr is its own outage. It does not
@@ -723,26 +509,4 @@ export class Worker {
   private maybePrune(now: Date): void {
     this.deps.queue.prune(this.deps.config.retentionDays, now);
   }
-}
-
-/**
- * Fails an action whose agent run did not complete.
- *
- * By the time this is reached, a relay has already tried every harness and
- * model it was given, so there is nowhere left to go and the action has to
- * fail rather than store an answer nobody gave.
- *
- * `implement` is deliberately not one of these: an attempt that did not hold
- * is a first-class outcome there, and the machine retries it with the reason
- * attached. `triage` and `address-threads` have no such outcome, and taking
- * their empty value as an answer would park a ticket waiting on a question
- * that was never asked, or drop a review comment nobody replied to.
- */
-function refuseAnIncompleteRun(action: string, run: AgentRun): void {
-  if (run.outcome === "completed") return;
-
-  throw new Error(
-    `${action} did not complete: ${run.outcome} on ${run.harness}` +
-      `${run.model ? ` (${run.model})` : ""}${run.output ? `\n\n${run.output}` : ""}`,
-  );
 }

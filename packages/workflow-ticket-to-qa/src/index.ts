@@ -41,6 +41,12 @@ export type { EffectOutcomes } from "./outcomes.js";
 
 export { plan, ticketToQa } from "./machine.js";
 
+export { ticketRuntime } from "./runtime.js";
+export type { TicketRuntimeConfig, TicketRuntimeDeps } from "./runtime.js";
+
+export { WORKFLOW_DATA, configSchema, plugin } from "./plugin.js";
+export type { Provider } from "./plugin.js";
+
 export type { FollowUpRequest, Tracker } from "./ports/Tracker.js";
 export type { CodeHost, OpenPullRequestRequest } from "./ports/CodeHost.js";
 export type { Agent } from "./ports/Agent.js";

@@ -6,8 +6,8 @@
   "observed": {
     "assertions_run": 12,
     "assertions_failed": 0,
-    "version": "0.1.0 (1d89185-dirty, built 2026-09-04T21:10:37Z)",
-    "build_on_log_line": "0.1.0+1d89185-dirty"
+    "version": "0.1.0 (6c0a1ee-dirty, built 2026-09-04T21:56:59Z)",
+    "build_on_log_line": "0.1.0+6c0a1ee-dirty"
   },
   "assertions": [{"type":"installed.reports_a_real_build","status":"passed"},{"type":"installed.stamp_names_version_and_commit","status":"passed"},{"type":"installed.plugins_are_inside_the_binary","status":"passed"},{"type":"installed.every_plugin_resolves","status":"passed"},{"type":"installed.carries_the_whole_default_set","status":"passed"},{"type":"installed.runs_without_a_checkout","status":"passed"},{"type":"installed.keeps_state_beside_the_caller","status":"passed"},{"type":"installed.does_not_write_into_the_source_tree","status":"passed"},{"type":"installed.log_line_names_the_build","status":"passed"},{"type":"installed.log_build_matches_the_binary","status":"passed"},{"type":"installed.stamp_carries_a_commit","status":"passed"},{"type":"installed.is_one_file","status":"passed"}]
 }

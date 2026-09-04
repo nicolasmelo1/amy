@@ -4,18 +4,15 @@ import os from "node:os";
 import path from "node:path";
 import { Worker, WorkerDeps } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
-import { WORKDAY, roster } from "@amy/test-fixtures";
+import { WORKDAY } from "@amy/test-fixtures";
 import {
+  ticketWorkerDeps,
   FakeStopSwitch,
   agentResult,
   InMemoryStore,
   RecordingEventLog,
-  RecordingNotifier,
   fakeAgent,
-  fakeGate,
-  fakeHost,
   fakeTracker,
-  workerConfig,
 } from "@amy/test-fixtures";
 
 describe("the handbrake", () => {
@@ -41,17 +38,12 @@ describe("the handbrake", () => {
     return new Worker({
       queue,
       records,
-      tracker: fakeTracker(),
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier: new RecordingNotifier(),
-      roster: () => roster(),
-      now: () => WORKDAY,
-      config: workerConfig,
-      log,
-      stop,
-      ...overrides,
+      ...ticketWorkerDeps({
+        now: () => WORKDAY,
+        log,
+        stop,
+        ...overrides,
+      }),
     });
   }
 
@@ -101,7 +93,7 @@ describe("the handbrake", () => {
 
     await build({
       tracker,
-      decide: () => ({
+      plan: () => ({
         kind: "act",
         why: "two actions, and the brake comes down after the first",
         effects: [{ type: "ask-question", questions: ["first"] }, { type: "run-gate" }],
@@ -145,16 +137,11 @@ describe("what the engine writes down", () => {
     return new Worker({
       queue,
       records: new InMemoryStore(),
-      tracker: fakeTracker(),
-      host: fakeHost(),
-      agent: fakeAgent(),
-      gate: fakeGate(),
-      notifier: new RecordingNotifier(),
-      roster: () => roster(),
-      now: () => WORKDAY,
-      config: workerConfig,
-      log,
-      ...overrides,
+      ...ticketWorkerDeps({
+        now: () => WORKDAY,
+        log,
+        ...overrides,
+      }),
     });
   }
 

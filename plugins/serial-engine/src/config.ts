@@ -1,17 +1,13 @@
 import { ConfigSchema } from "@amy/core";
 
-/** What this plugin needs told to it, and nothing more. */
+/**
+ * What this plugin needs told to it, and nothing more.
+ *
+ * `repos`, `qaStatusName` and `policy` used to be here. They are the
+ * workflow's vocabulary, not an engine's, and they moved to the workflow's
+ * own slice when the engine stopped knowing what a ticket is.
+ */
 export const configSchema: ConfigSchema = {
-  repos: {
-    type: "string[]",
-    required: true,
-    description: "every repository review load is counted across",
-  },
-  qaStatusName: {
-    type: "string",
-    required: true,
-    description: "the status a ticket moves to when it is handed to QA",
-  },
   staleClaimMs: {
     type: "number",
     description: "how long a claimed item may sit before it counts as abandoned",
@@ -22,15 +18,14 @@ export const configSchema: ConfigSchema = {
     description: "how long a finished queue item is kept before it is pruned",
     default: 7,
   },
-  policy: {
-    type: "record",
-    description:
-      "the workflow's policy: maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs and maxOpenReviewsPerReviewer. Anything left out keeps its default",
-    default: {},
-  },
   maxItemAttempts: {
     type: "number",
-    description: "how many times one ticket may fail before the operator is told",
+    description: "how many times one item may fail before the operator is told and it is dropped",
     default: 5,
+  },
+  retryDelayMs: {
+    type: "number",
+    description: "how long a failed item is held before it is looked at again",
+    default: 5 * 60 * 1000,
   },
 };
