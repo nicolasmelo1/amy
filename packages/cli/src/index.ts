@@ -5,6 +5,8 @@ import { Command } from "commander";
 import { TickResult } from "@amy/plugin-serial-engine";
 import { TicketRecord, isConfirmedFor } from "@amy/workflow-ticket-to-qa";
 import { isWaiting } from "@amy/workflow-ticket-to-qa";
+import { PlanRecord, isWaiting as planIsWaiting } from "@amy/workflow-note-to-plan";
+import { FileNotes } from "@amy/plugin-file-notes";
 import {
   BUDGET_WINDOWS,
   Engine,
@@ -42,7 +44,8 @@ import {
 } from "./config.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
-import { DEFAULT_PLUGINS, load } from "./loader.js";
+import { defaultPlugins, load } from "./loader.js";
+import { DEFAULT_PROFILE, PROFILES, Profile, isProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
@@ -67,19 +70,21 @@ loadEnv(root);
  * that will not import, a setting that is not one it has, two plugins
  * claiming the same port, an action the workflow emits that nothing can run.
  */
-async function assemble(): Promise<
+async function assemble(
+  profile: Profile = DEFAULT_PROFILE,
+): Promise<
   { ok: true; engine: Engine; mounted: Mounted } | { ok: false; problems: string[] }
 > {
   const config = loadConfig(root);
-  const place = paths(root);
-  const specs = pluginList(config, DEFAULT_PLUGINS);
+  const place = paths(root, profile);
+  const specs = pluginList(config, defaultPlugins(profile), profile);
 
   const loaded = await load(specs);
   if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
   const outcome = await mount(
     [...loaded.plugins, hostPlugin(() => loadRoster(root))],
-    pluginSlices(config),
+    pluginSlices(config, profile),
     {
       runner,
       now: () => new Date(),
@@ -104,9 +109,24 @@ async function assemble(): Promise<
   return { ok: true, engine: mounted.engine, mounted };
 }
 
+/**
+ * Which workflow this invocation drives.
+ *
+ * A global option rather than a second executable, because everything either
+ * profile needs is already in this one binary. `mount()` still claims a
+ * single workflow, so the profile is what chooses which.
+ */
+function selected(): Profile {
+  const asked = (program.opts<{ workflow?: string }>().workflow ?? DEFAULT_PROFILE).trim();
+  if (isProfile(asked)) return asked;
+
+  console.error(`there is no \`${asked}\` workflow. Try: ${PROFILES.join(", ")}`);
+  process.exit(1);
+}
+
 /** Assembles, or prints why it could not and stops. */
 async function engineOrExit(): Promise<Engine> {
-  const outcome = await assemble();
+  const outcome = await assemble(selected());
   if (outcome.ok) return outcome.engine;
 
   console.error("amy could not start:");
@@ -122,6 +142,11 @@ program
   .description(
     "Drives a work ticket from in-progress to QA handoff, one deterministic move at a time.",
   )
+  .option(
+    "--workflow <name>",
+    `which workflow to drive: ${PROFILES.join(" or ")}`,
+    DEFAULT_PROFILE,
+  )
   .version(describeBuild(stamp));
 
 program
@@ -131,6 +156,9 @@ program
     const place = paths(root);
     fs.mkdirSync(place.tickets, { recursive: true });
     fs.mkdirSync(place.queue, { recursive: true });
+    // The watched directory, made now rather than on the first note, so it is
+    // somewhere to drop a file into before anything has ever run.
+    fs.mkdirSync(place.notes, { recursive: true });
 
     for (const [file, content] of [
       [place.config, EXAMPLE_CONFIG],
@@ -145,6 +173,7 @@ program
     }
 
     console.log("\nEdit both, then run `amy roster confirm` and `amy doctor`.");
+    console.log(`Friction goes in ${place.notes}, or through \`amy note\`.`);
   });
 
 program
@@ -167,7 +196,7 @@ program
 
     // Asked last, because a mount problem is usually a consequence of one of
     // the checks above rather than a separate fault.
-    const assembled = await assemble();
+    const assembled = await assemble(selected());
     if (!assembled.ok) {
       for (const problem of assembled.problems) console.log(`FAIL ${problem}`);
     } else {
@@ -213,7 +242,7 @@ program
 
 program
   .command("discover")
-  .description("Put every ticket in the working status onto the queue")
+  .description("Put every piece of work the workflow can find onto the queue")
   .action(async () => {
     const queued = await (await engineOrExit()).discover();
     console.log(queued.length ? `queued ${queued.join(", ")}` : "nothing new to queue");
@@ -221,7 +250,7 @@ program
 
 program
   .command("tick")
-  .description("Advance one ticket by one move")
+  .description("Advance one piece of work by one move")
   .action(async () => {
     report((await (await engineOrExit()).tick()) as TickResult);
   });
@@ -256,28 +285,62 @@ program
   });
 
 program
+  .command("note")
+  .description("Write a piece of friction down, and put it on the queue")
+  .argument("<text>", "what went wrong, in your own words")
+  .option("--repo <owner/name>", "the repository it is about")
+  .option("--source <who>", "who noticed", "somebody at a keyboard")
+  .action((text: string, options: { repo?: string; source: string }) => {
+    const config = loadConfig(root);
+    const repo = options.repo ?? config.plans.repos[0];
+
+    if (!repo) {
+      console.error("no repository: pass --repo, or list one under `plans.repos`.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const place = paths(root, "note-to-plan");
+    const now = new Date();
+
+    // Written and queued in one step, with nothing resolved against anything.
+    // That is the point of the command: a piece of work reaches the queue
+    // without existing in a tracker, and the machine advances it from there.
+    const note = new FileNotes(place.notes, { defaultRepo: repo }).write(
+      { repo, text, source: options.source },
+      now,
+    );
+
+    new FileQueue(place.queue).enqueue({ workId: note.id, reason: "written down by hand" }, now);
+
+    console.log(`noted ${note.id} about ${repo}`);
+    console.log("`amy --workflow note-to-plan tick` moves it along.");
+  });
+
+program
   .command("status")
-  .description("Show where every ticket stands and what the queue holds")
+  .description("Show where every piece of work stands and what the queue holds")
   .action(() => {
-    const place = paths(root);
-    const records = new FileStore<TicketRecord>(place.tickets).all();
+    const profile = selected();
+    const place = paths(root, profile);
     const queue = new FileQueue(place.queue);
     const now = new Date();
 
-    if (records.length === 0) console.log("no tickets tracked yet");
-
-    for (const record of records.sort((a: TicketRecord, b: TicketRecord) => a.id.localeCompare(b.id))) {
-      const held = isWaiting(record.state) ? "waiting" : "active";
-      const pr = record.pullRequestNumber ? `#${record.pullRequestNumber}` : "";
-      console.log(
-        `${record.id.padEnd(12)} ${record.state.padEnd(18)} ${held.padEnd(8)} ${pr}`,
-      );
+    if (profile === "note-to-plan") {
+      reportPlans(place.records);
+    } else {
+      reportTickets(place.records);
     }
 
     console.log(
       `\nqueue: ${queue.ready(now).length} due, ${queue.pending().length} pending, ` +
         `${queue.running().length} in flight, ${queue.completed().length} finished`,
     );
+
+    const waitingNotes = fs.existsSync(place.notes)
+      ? fs.readdirSync(place.notes).filter((f) => f.endsWith(".md")).length
+      : 0;
+    if (waitingNotes) console.log(`notes: ${waitingNotes} written down`);
 
     if (fs.existsSync(place.needsInput)) {
       const waiting = fs.readdirSync(place.needsInput).filter((f) => f.endsWith(".md"));
@@ -320,6 +383,31 @@ program
         : `\nnew work: parked, ${decision.reason} (room again in ${Math.round(decision.retryAfterMs / 60000)} min)`,
     );
   });
+
+function reportTickets(directory: string): void {
+  const records = new FileStore<TicketRecord>(directory).all();
+  if (records.length === 0) console.log("no tickets tracked yet");
+
+  for (const record of records.sort((a, b) => a.id.localeCompare(b.id))) {
+    const held = isWaiting(record.state) ? "waiting" : "active";
+    const pr = record.pullRequestNumber ? `#${record.pullRequestNumber}` : "";
+    console.log(`${record.id.padEnd(12)} ${record.state.padEnd(18)} ${held.padEnd(8)} ${pr}`);
+  }
+}
+
+function reportPlans(directory: string): void {
+  const records = new FileStore<PlanRecord>(directory).all();
+  if (records.length === 0) console.log("no notes picked up yet");
+
+  for (const record of records.sort((a, b) => a.id.localeCompare(b.id))) {
+    const held = planIsWaiting(record.state) ? "waiting" : "active";
+    const pr = record.pullRequestNumber ? `#${record.pullRequestNumber}` : "";
+    console.log(
+      `${record.id.padEnd(28)} ${record.state.padEnd(10)} ${held.padEnd(8)} ` +
+        `${(record.repo ?? "").padEnd(30)} ${pr}`,
+    );
+  }
+}
 
 /** The `budget` setting, from the plugin slice the relay is given. */
 function configuredBudget(): unknown {
@@ -418,8 +506,9 @@ pluginCommand
   .command("list")
   .description("The plugins this install mounts, and what they assembled into")
   .action(async () => {
+    const profile = selected();
     const config = loadConfig(root);
-    const specs = pluginList(config, DEFAULT_PLUGINS);
+    const specs = pluginList(config, defaultPlugins(profile), profile);
     const source = config.pluginList.length > 0 ? ".amy/config.yaml" : "the built-in set";
 
     console.log(`${specs.length} plugin(s), from ${source}:\n`);
@@ -431,7 +520,7 @@ pluginCommand
     }
     for (const problem of loaded.problems) console.log(`  ${problem}`);
 
-    const outcome = await assemble();
+    const outcome = await assemble(profile);
     if (!outcome.ok) {
       console.log("\nassembled: no");
       for (const problem of outcome.problems) console.log(`  ${problem}`);
@@ -454,7 +543,8 @@ pluginCommand
   .argument("<spec>", "anything Node can import: a package name, or a path")
   .action((spec: string) => {
     const config = loadConfig(root);
-    const specs = config.pluginList.length > 0 ? config.pluginList : [...DEFAULT_PLUGINS];
+    const specs =
+      config.pluginList.length > 0 ? config.pluginList : [...defaultPlugins(DEFAULT_PROFILE)];
 
     if (specs.includes(spec)) {
       console.log(`${spec} is already mounted`);
@@ -472,7 +562,8 @@ pluginCommand
   .argument("<spec>", "the package name or path to drop")
   .action((spec: string) => {
     const config = loadConfig(root);
-    const specs = config.pluginList.length > 0 ? config.pluginList : [...DEFAULT_PLUGINS];
+    const specs =
+      config.pluginList.length > 0 ? config.pluginList : [...defaultPlugins(DEFAULT_PROFILE)];
 
     if (!specs.includes(spec)) {
       console.log(`${spec} is not mounted`);
@@ -493,7 +584,7 @@ queueCommand
   .action((options: { days?: string }) => {
     const config = loadConfig(root);
     const days = options.days ? Number(options.days) : config.retentionDays;
-    const removed = new FileQueue(paths(root).queue).prune(days, new Date());
+    const removed = new FileQueue(paths(root, selected()).queue).prune(days, new Date());
     console.log(`removed ${removed} finished item(s) older than ${days} day(s)`);
   });
 
@@ -502,7 +593,10 @@ queueCommand
   .description("Return items abandoned by a dead worker")
   .action(() => {
     const config = loadConfig(root);
-    const recovered = new FileQueue(paths(root).queue).recover(config.staleClaimMs, new Date());
+    const recovered = new FileQueue(paths(root, selected()).queue).recover(
+      config.staleClaimMs,
+      new Date(),
+    );
     console.log(`returned ${recovered.length} abandoned item(s)`);
   });
 

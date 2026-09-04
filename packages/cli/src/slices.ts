@@ -1,5 +1,6 @@
 import path from "node:path";
 import { AmyConfig } from "./config.js";
+import { DEFAULT_PROFILE, Profile, directoriesFor } from "./profiles.js";
 
 /**
  * The settings each plugin gets, derived from the top-level config.
@@ -9,7 +10,12 @@ import { AmyConfig } from "./config.js";
  * it. An explicit `plugins:` slice always wins, which is the direction this
  * is moving in.
  */
-export function pluginSlices(config: AmyConfig): Record<string, unknown> {
+export function pluginSlices(
+  config: AmyConfig,
+  profile: Profile = DEFAULT_PROFILE,
+): Record<string, unknown> {
+  const dirs = directoriesFor(profile);
+
   const derived: Record<string, unknown> = {
     "@amy/plugin-linear": {
       workingStatusName: config.workingStatusName,
@@ -29,8 +35,29 @@ export function pluginSlices(config: AmyConfig): Record<string, unknown> {
       commands: config.gate,
     },
     "@amy/plugin-file-queue": {
+      directory: dirs.queue,
       retentionDays: config.retentionDays,
       staleClaimMs: config.staleClaimMs,
+    },
+    "@amy/plugin-file-store": { directory: dirs.records },
+    // Mounted in both profiles: one writes the notes, the other reads them,
+    // and an install running only the first would still be filing the
+    // friction the second will pick up.
+    "@amy/plugin-file-notes": {
+      directory: "notes",
+      repo: config.plans.repos[0] ?? "",
+      writeFailureNotes: config.plans.repos.length > 0,
+    },
+    // The second workflow's own vocabulary: which repositories it may write a
+    // plan into, and the ceilings its decision function reads.
+    "@amy/workflow-note-to-plan": {
+      repos: config.plans.repos,
+      defaultBranch: config.defaultBranch,
+      policy: config.plans.policy,
+    },
+    "@amy/plugin-plan-check": {
+      defaultBranch: config.defaultBranch,
+      commands: config.plans.check,
     },
     // The workflow's own vocabulary: which repositories it counts review
     // load across, where it hands work over, and the ceilings its decision
@@ -98,8 +125,13 @@ export function ladderNames(ladder: readonly string[], harness: string): boolean
 }
 
 /** Which plugins to mount: what the config asked for, or the built-in set. */
-export function pluginList(config: AmyConfig, builtIn: readonly string[]): string[] {
-  if (config.pluginList.length > 0) return [...config.pluginList];
+export function pluginList(
+  config: AmyConfig,
+  builtIn: readonly string[],
+  profile: Profile = DEFAULT_PROFILE,
+): string[] {
+  const asked = profile === "note-to-plan" ? config.plans.pluginList : config.pluginList;
+  if (asked.length > 0) return [...asked];
 
   const ladder = config.agent.ladder ?? [];
 
@@ -108,6 +140,10 @@ export function pluginList(config: AmyConfig, builtIn: readonly string[]): strin
   // mounting one whose binary is not installed only produces a doctor failure
   // for a tool the operator never asked for.
   return builtIn.filter((name) => {
+    // A note needs somewhere to go. An install that named no repository to
+    // write plans into would be watching a directory nothing could ever come
+    // out of, so it does not watch one.
+    if (name === "@amy/plugin-file-notes") return config.plans.repos.length > 0;
     if (name === "@amy/plugin-notify-hermes") return Boolean(config.notify.hermes);
     if (name === "@amy/plugin-notify-inbox") return config.notify.inbox;
     if (name === "@amy/plugin-codex") return ladderNames(ladder, "codex");

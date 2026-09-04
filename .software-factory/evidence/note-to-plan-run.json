@@ -1,0 +1,133 @@
+{
+  "scenario": "note-to-plan",
+  "status": "passed",
+  "goal": "Something in my machine got in its own way, and I want that to turn into a plan in the repository it is about rather than into a shrug. I want to be able to write the friction down in one line, or drop a file in a directory, and find a pull request adding a plan that the repository's own check accepts. I do not want a ticket for it, I do not want twelve of them a day, and I want to be the one who decides whether the work happens.",
+  "artifact": {
+    "package": "@amy/cli",
+    "entry": "the installed executable, driven by `amy note`, `amy discover` and `amy tick`",
+    "built_by": "scripts/install.sh"
+  },
+  "observed": {
+    "assertions_run": 20,
+    "assertions_failed": 0,
+    "version": "0.1.0 (7085612-dirty, built 2026-09-04T23:38:50Z)",
+    "looks": 47,
+    "transitions": [
+      "NOTED>DRAFTED",
+      "DRAFTED>CHECKED",
+      "CHECKED>DRAFTED",
+      "DRAFTED>CHECKED",
+      "CHECKED>PR_OPEN",
+      "PR_OPEN>DONE"
+    ],
+    "by_hand": [
+      "NOTED>DRAFTED",
+      "DRAFTED>CHECKED",
+      "CHECKED>DRAFTED",
+      "DRAFTED>CHECKED",
+      "CHECKED>PR_OPEN",
+      "PR_OPEN>DONE"
+    ],
+    "declined": [
+      "NOTED>DECLINED"
+    ],
+    "gave_up": "PR_OPEN",
+    "agent_calls": 6,
+    "check_calls": 6,
+    "gh_calls": 11,
+    "pull_requests": {
+      "acme/amy": 2,
+      "acme/software-factory": 0
+    },
+    "notes_left": [
+      "by-hand.md",
+      "not-mine.md",
+      "note-2026-09-04T233852124.md",
+      "note-2026-09-04T233854766.md",
+      "will-break.md"
+    ],
+    "budget": "new work: allowed"
+  },
+  "assertions": [
+    {
+      "type": "plan.work_injected_by_command_reaches_the_queue",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_note_in_the_watched_directory_is_discovered",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_is_resolved_against_a_tracker",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_refused_draft_goes_back_to_the_agent",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_agent_is_told_what_the_check_said",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_reaches_a_pull_request_until_the_check_is_green",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_plan_carries_an_exit_condition_and_a_place_in_the_order",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_pull_request_is_opened_in_the_repository_the_note_is_about",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_pull_request_names_the_friction_it_came_from",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_new_is_opened_past_the_ceiling",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_ceiling_is_said_once",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_note_about_another_repository_is_handed_back",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_tick_that_gives_up_leaves_a_note_behind",
+      "status": "passed"
+    },
+    {
+      "type": "plan.both_workflows_run_on_the_same_installed_binary",
+      "status": "passed"
+    },
+    {
+      "type": "plan.each_workflow_keeps_its_own_queue_and_records",
+      "status": "passed"
+    },
+    {
+      "type": "plan.what_the_agent_spent_lands_in_the_shared_log",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_lifecycle_walks_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "plan.one_look_makes_at_most_one_move",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_machine_settles_instead_of_spinning",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_run_leaves_nothing_behind",
+      "status": "passed"
+    }
+  ]
+}

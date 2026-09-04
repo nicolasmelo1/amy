@@ -2,9 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { CORE_ACTIONS, dispatchesTo } from "@amy/core";
-
-/** Which skills answer for a step, in the order they are tried. */
-export type SkillLadders = Readonly<Record<string, readonly string[]>>;
+import { SkillLadders } from "@amy/agent-kit";
 
 export type SkillsResult =
   | { ok: true; ladders: SkillLadders }

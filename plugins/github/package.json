@@ -29,10 +29,10 @@
     "capabilities.yaml"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/workflow-ticket-to-qa": "^0.1.0"
+    "@amy/core": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amy/test-fixtures": "^0.1.0",
+    "@amy/workflow-ticket-to-qa": "^0.1.0"
   }
 }

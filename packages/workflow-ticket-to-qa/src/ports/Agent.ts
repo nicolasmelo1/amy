@@ -1,6 +1,5 @@
-import { AgentResult } from "@amy/core";
+import { AgentResult, ReviewThread } from "@amy/core";
 import { AttemptOutcome, ThreadVerdict, TriageOutcome } from "../record.js";
-import { ReviewThread } from "../review.js";
 import { Ticket } from "../ticket.js";
 
 /**

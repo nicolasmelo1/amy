@@ -1,13 +1,23 @@
 import { vi } from "vitest";
 import { ticket } from "./builders.js";
-import { AgentResult, AgentRun, Event, EventLog, Notifier, StopSwitch, Store, checkEvent } from "@amy/core";
+import {
+  AgentResult,
+  AgentRun,
+  Announcement,
+  CodeHost,
+  Event,
+  EventLog,
+  Notifier,
+  PullRequestView,
+  StopSwitch,
+  Store,
+  checkEvent,
+} from "@amy/core";
 import { WorkerConfig } from "@amy/plugin-serial-engine";
 import {
   Agent,
-  CodeHost,
   DEFAULT_POLICY,
   Gate,
-  PullRequestView,
   Ticket,
   TicketRecord,
   TicketRuntimeConfig,
@@ -92,9 +102,12 @@ export function fakeGate(ok = true, output = ""): Gate {
 
 export class RecordingNotifier implements Notifier {
   public readonly sent: string[] = [];
+  /** The whole announcement, for a test that reads more than the words. */
+  public readonly announcements: Announcement[] = [];
 
-  async announce(announcement: { text: string }): Promise<void> {
+  async announce(announcement: Announcement): Promise<void> {
     this.sent.push(announcement.text);
+    this.announcements.push(announcement);
   }
 }
 

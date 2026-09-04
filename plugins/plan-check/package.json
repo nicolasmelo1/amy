@@ -1,0 +1,38 @@
+{
+  "name": "@amy/plugin-plan-check",
+  "version": "0.1.0",
+  "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/plan-check"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "capabilities.yaml"
+  ],
+  "dependencies": {
+    "@amy/core": "^0.1.0",
+    "@amy/workflow-note-to-plan": "^0.1.0"
+  },
+  "devDependencies": {
+    "@amy/test-fixtures": "^0.1.0"
+  }
+}

@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { GitHubCodeHost } from "../src/GitHubCodeHost.js";
 import { ScriptedRunner, whenArgsInclude } from "@amy/test-fixtures";
+// The adapter no longer depends on this workflow — CodeHost is the core's
+// now — but the predicates that decide what a review *means* are still the
+// ticket workflow's, and the point of this fixture is that the two agree.
 import { automatedReviewerSawHead, hasReviewedHead, unresolvedThreads } from "@amy/workflow-ticket-to-qa";
 
 const HEAD = "a6d7c08aa4de0000000000000000000000000000";

@@ -2,15 +2,17 @@
 name: amy
 description: >-
   Drive amy, the machine that walks a work ticket from the tracker's working
-  status to a QA handoff. Use when asked to pick up a ticket, move work
-  forward, check what amy is waiting on, confirm the reviewer roster, or when
-  amy reports it is stuck. Covers the commands, how to read the status, the
-  one-move-at-a-time rule, and what needs a human.
+  status to a QA handoff, and turns friction it hits into a plan in the
+  repository that friction is about. Use when asked to pick up a ticket, move
+  work forward, write a piece of friction down, check what amy is waiting on,
+  confirm the reviewer roster, or when amy reports it is stuck. Covers the two
+  workflows, the commands, how to read the status, the one-move-at-a-time
+  rule, and what needs a human.
 version: 1.0.0
 platforms: [macos, linux]
 metadata:
   hermes:
-    tags: [amy, linear, github, tickets, pull-requests, review, automation, queue]
+    tags: [amy, linear, github, tickets, pull-requests, review, automation, queue, plans]
     related_skills: [amy-develop]
 ---
 
@@ -50,6 +52,45 @@ exits non-zero when something is wrong, so it is safe to gate on.
 | `amy roster show` | The roster, and whether it is current. |
 | `amy queue prune` | Drops finished queue items past their retention. |
 | `amy queue recover` | Returns items a dead worker left claimed. |
+| `amy note "<text>"` | Writes a piece of friction down and puts it on the plan queue. Takes `--repo` and `--source`. |
+
+Every command above drives the ticket workflow. `--workflow note-to-plan`
+drives the other one, over work that never was a ticket:
+
+```sh
+amy --workflow note-to-plan discover   # picks up every note written down
+amy --workflow note-to-plan tick       # advances one note by one move
+amy --workflow note-to-plan status     # where each note stands
+```
+
+## Friction becomes a plan
+
+When something gets in amy's way — an adapter that lied, a step that needed
+three tries, a limitation somebody worked around — write it down:
+
+```sh
+amy note "the relay retries a harness that already said it was out of quota"
+```
+
+It goes on the queue with no ticket, no tracker and nothing to fill in. A
+longer one can be dropped straight into `.amy/notes/` as a markdown file, by
+an editor or by a hook; `amy --workflow note-to-plan discover` picks it up
+like any other.
+
+From there an agent writes `plans/<slug>.md` and its line in
+`plans/next-steps.md` in the repository the note is about, `sf check` in that
+repository decides whether it holds, and a plan it refuses goes back to the
+agent with the finding. What reaches you is a **pull request**, never a
+commit: whether the work is worth doing is your call.
+
+Two things it will not do. It writes into only the repositories listed under
+`plans.repos`, and a note about anything else is handed back to you. And past
+`plans.policy.maxOpenPlansPerRepo` it holds rather than opening another pull
+request nobody has read — merge or close one and it picks up where it left
+off.
+
+A tick amy gives up on writes its own note, so the thing that broke becomes
+the thing that gets fixed. Those are the ones worth reading first.
 
 ## Every workday, first
 
@@ -98,8 +139,10 @@ gone, the file stays until it is dealt with. `amy status` counts them.
 - **Watch it before trusting it.** On a ticket amy has not handled before,
   use `amy tick` and read each move. Only reach for `amy run` once a whole
   ticket has been through end to end.
-- **Never hand-edit `.amy/tickets/*.json` while a tick could be running.**
-  That file is amy's memory of the ticket. Stop the worker first.
+- **Never hand-edit `.amy/tickets/*.json` or `.amy/plans/*.json` while a tick
+  could be running.** Those files are amy's memory of the work. Stop the
+  worker first. `.amy/notes/*.md` is different: a note is an input, and
+  writing one by hand is how the second workflow is meant to be fed.
 - **A failed tick is not a lost ticket.** amy re-queues it behind a backoff
   and gives up only after several attempts, at which point it announces.
 - **`amy discover` is safe to run any time.** It only reads the tracker and

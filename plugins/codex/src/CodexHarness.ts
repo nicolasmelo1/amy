@@ -1,5 +1,4 @@
-import { AgentOutcome, AgentRun, CommandRunner, TokenUsage } from "@amy/core";
-import { Harness, HarnessReply } from "@amy/agent-kit";
+import { AgentOutcome, AgentRun, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amy/core";
 import { costOf, specFor } from "@amy/model-specs";
 
 export interface CodexHarnessConfig {

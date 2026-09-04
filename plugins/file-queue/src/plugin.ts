@@ -8,6 +8,6 @@ export const plugin: Plugin = {
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {
-    registry.queue(new FileQueue(path.join(ctx.paths.state, "queue")));
+    registry.queue(new FileQueue(path.join(ctx.paths.state, ctx.config.directory as string)));
   },
 };

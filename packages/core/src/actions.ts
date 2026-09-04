@@ -23,6 +23,16 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
   "ask-question": { port: "tracker", method: "comment" },
   "implement": { port: "agent", method: "implement" },
   "run-gate": { port: "gate", method: "run" },
+  /**
+   * Ask the agent for a piece of writing, in whoever asked's own words.
+   *
+   * The one action here that carries no vocabulary at all: a prompt goes in
+   * and an account of what it cost comes back. It is dispatched to the same
+   * port `triage` and `implement` are, which is what puts a second
+   * workflow's agent behind the same ladder and the same ceiling as the
+   * first one's without either knowing about the other.
+   */
+  "draft-plan": { port: "agent", method: "ask" },
   "open-pull-request": { port: "code-host", method: "openPullRequest" },
   "address-threads": { port: "agent", method: "addressThreads" },
   "assign-reviewer": { port: "code-host", method: "requestReview" },

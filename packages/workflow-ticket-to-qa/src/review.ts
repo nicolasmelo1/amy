@@ -1,32 +1,4 @@
-export type ReviewState = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED";
-
-export type ReviewDecision = "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | null;
-
-export interface ReviewSubmission {
-  author: string;
-  state: ReviewState;
-  /** The head the review was submitted against, so a stale review is visible. */
-  commitSha: string;
-  submittedAt: string;
-}
-
-export interface ReviewThread {
-  id: string;
-  author: string;
-  body: string;
-  isResolved: boolean;
-  isOutdated: boolean;
-}
-
-export interface PullRequestView {
-  number: number;
-  headSha: string;
-  isDraft: boolean;
-  reviewDecision: ReviewDecision;
-  reviews: readonly ReviewSubmission[];
-  threads: readonly ReviewThread[];
-  requestedReviewers: readonly string[];
-}
+import { PullRequestView, ReviewThread } from "@amy/core";
 
 /**
  * The automated reviewer answers to three different names depending on which

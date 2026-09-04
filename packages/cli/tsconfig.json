@@ -49,6 +49,15 @@
     },
     {
       "path": "../model-specs"
+    },
+    {
+      "path": "../../packages/workflow-note-to-plan"
+    },
+    {
+      "path": "../../plugins/file-notes"
+    },
+    {
+      "path": "../../plugins/plan-check"
     }
   ]
 }

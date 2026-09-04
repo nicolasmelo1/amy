@@ -1,9 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { plan } from "../src/machine.js";
 import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
-import { actionsOf } from "@amy/core";
+import { PullRequestView, ReviewSubmission, ReviewThread, actionsOf } from "@amy/core";
 import { Observation } from "../src/observation.js";
-import { PullRequestView, ReviewSubmission, ReviewThread } from "../src/review.js";
 import { TicketRecord, newRecord } from "../src/record.js";
 import { TicketState } from "../src/state.js";
 import { WORKDAY, policy, roster, ticket } from "@amy/test-fixtures";

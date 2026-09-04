@@ -17,10 +17,10 @@ trabalho de hoje. O resto do repositório é em inglês.
 | 7 | entregue | o budget e o teto de reviewer, provados pelo gate `plugin-agent-relay` |
 | 8 | entregue pela metade | a escada de skills por passo existe no `@amy/plugin-agent-relay`; o scaffolder não |
 | 9 | entregue | [the engine fails out loud](the-engine-fails-out-loud.md), gate `plugin-serial-engine`, e o desenho em [docs/design](../docs/design/the-engine-fails-out-loud.md) |
-| 10 | próxima | [friction becomes a plan](friction-becomes-a-plan.md), escrito e ainda não construído |
+| 10 | entregue | [friction becomes a plan](friction-becomes-a-plan.md), gate `note-to-plan`: uma nota vira um pull request com um plano, sem tracker nenhum |
 | 11 | depois da 10 | ainda sem plano próprio |
 | 12 | depois da 11 | ainda sem plano próprio; sobe para o software-factory |
-| 13 | parada | esperando as três anteriores |
+| 13 | parada | esperando as duas anteriores. A prova mais forte que ela pedia — um segundo workflow no mesmo engine — já existe: o `note-to-plan` |
 
 O que cada fase entregue provou de verdade está no gate dela, não aqui: uma
 linha nesta tabela envelhece, um digest expira.

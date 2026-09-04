@@ -1,0 +1,90 @@
+#!/usr/bin/env node
+// The stand-in agent, writing plans instead of code.
+//
+// It edits real files in the real checkout it was handed, so the commit, the
+// push and the check that follow are all doing their actual work. What it
+// does badly the first time is deliberate: it leaves out the exit condition
+// and the line in the ordered list, which is precisely what the repository's
+// own check refuses. The second attempt is driven by the finding arriving in
+// the prompt, which is a promise amy makes and a fake that ignored it would
+// prove nothing.
+import fs from "node:fs";
+import path from "node:path";
+
+const world = process.env.AMY_E2E_WORLD;
+const scriptFile = path.join(world, "agent.json");
+
+if (process.argv.includes("--version")) {
+  process.stdout.write("2.0.0 (stand-in)\n");
+  process.exit(0);
+}
+
+const model = process.argv[process.argv.indexOf("--model") + 1] ?? "";
+const prompt = fs.readFileSync(0, "utf-8");
+
+/** The file the prompt told it to write, which is amy's naming and not its own. */
+const planPath = /`(plans\/[^`]+\.md)`/.exec(prompt)?.[1];
+if (!planPath) {
+  process.stderr.write(`the stand-in agent was not told where to write:\n${prompt}\n`);
+  process.exit(1);
+}
+
+const told = prompt.includes("A previous attempt did not hold");
+
+fs.appendFileSync(
+  path.join(world, "claude.log"),
+  `${JSON.stringify({
+    at: new Date().toISOString(),
+    model,
+    told,
+    plan: planPath,
+    cwd: process.cwd(),
+    prompt,
+  })}\n`,
+);
+
+const script = JSON.parse(fs.readFileSync(scriptFile, "utf-8"));
+script.attempts[planPath] = (script.attempts[planPath] ?? 0) + 1;
+fs.writeFileSync(scriptFile, `${JSON.stringify(script, null, 2)}\n`, "utf-8");
+
+const title = path.basename(planPath, ".md").replace(/-/g, " ");
+const file = path.join(process.cwd(), planPath);
+fs.mkdirSync(path.dirname(file), { recursive: true });
+
+const body = [`# ${title}`, ``, `The friction, and what to do about it.`, ``];
+
+// The first pass leaves out both of the things the check insists on. A red
+// check is the one path that has to work before any of this is trustworthy,
+// and it has to come from the plan genuinely being incomplete.
+if (told) {
+  body.push(`**Exit condition:** the friction described above no longer happens.`, ``);
+
+  const order = path.join(process.cwd(), "plans", "next-steps.md");
+  fs.appendFileSync(
+    order,
+    `| 2 | [${title}](${path.basename(planPath)}) | The friction no longer happens |\n`,
+    "utf-8",
+  );
+}
+
+fs.writeFileSync(file, body.join("\n"), "utf-8");
+
+process.stdout.write(
+  `${JSON.stringify({
+    type: "result",
+    subtype: "success",
+    is_error: false,
+    api_error_status: null,
+    result: told ? `rewrote ${planPath} with what the check asked for` : `wrote ${planPath}`,
+    duration_ms: 900,
+    total_cost_usd: 0.0177,
+    usage: {
+      input_tokens: 1421,
+      output_tokens: 388,
+      cache_read_input_tokens: 8192,
+      cache_creation_input_tokens: 256,
+      cache_creation: { ephemeral_5m_input_tokens: 256, ephemeral_1h_input_tokens: 0 },
+    },
+    modelUsage: { [`claude-${model || "sonnet"}-4-5[1m]`]: { costUSD: 0.0177 } },
+  })}\n`,
+);

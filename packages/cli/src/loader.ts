@@ -1,4 +1,5 @@
 import { Plugin } from "@amy/core";
+import { Profile } from "./profiles.js";
 
 /**
  * The plugins a fresh install runs with.
@@ -29,6 +30,12 @@ const BUILT_INS = {
   // states happen in, and contributes how each of its actions runs. An
   // install that drops it has an engine with nothing to drive, and says so.
   "@amy/workflow-ticket-to-qa": () => import("@amy/workflow-ticket-to-qa"),
+  // The second workflow, and the two plugins only it needs. Compiled in for
+  // the same reason every other built-in is: a binary the bundler could not
+  // follow a specifier into is a binary with no plugin in it.
+  "@amy/workflow-note-to-plan": () => import("@amy/workflow-note-to-plan"),
+  "@amy/plugin-plan-check": () => import("@amy/plugin-plan-check"),
+  "@amy/plugin-file-notes": () => import("@amy/plugin-file-notes"),
   "@amy/plugin-file-queue": () => import("@amy/plugin-file-queue"),
   "@amy/plugin-file-store": () => import("@amy/plugin-file-store"),
   "@amy/plugin-linear": () => import("@amy/plugin-linear"),
@@ -47,11 +54,18 @@ const BUILT_INS = {
 /** Which plugins the binary carries, for `amy plugin list` to be honest. */
 export const COMPILED_IN: readonly string[] = Object.keys(BUILT_INS);
 
-export const DEFAULT_PLUGINS: readonly (keyof typeof BUILT_INS)[] = [
-  "@amy/workflow-ticket-to-qa",
+/**
+ * What both profiles mount, whichever workflow is driving.
+ *
+ * This list is the point of the whole plugin model: the queue, the store, the
+ * notes, the forge, the harnesses, the relay that composes them, the ceiling
+ * it carries, every notification channel, and the engine. Not one of them is
+ * duplicated for the second workflow, and not one of them changed to take it.
+ */
+const SHARED: readonly (keyof typeof BUILT_INS)[] = [
   "@amy/plugin-file-queue",
   "@amy/plugin-file-store",
-  "@amy/plugin-linear",
+  "@amy/plugin-file-notes",
   "@amy/plugin-github",
   "@amy/plugin-claude",
   "@amy/plugin-codex",
@@ -60,12 +74,30 @@ export const DEFAULT_PLUGINS: readonly (keyof typeof BUILT_INS)[] = [
   // contribute themselves to it, so dropping this from a config leaves every
   // agent action without a port and the mount is refused at boot.
   "@amy/plugin-agent-relay",
-  "@amy/plugin-command-gate",
   "@amy/plugin-notify-fanout",
   "@amy/plugin-notify-hermes",
   "@amy/plugin-notify-inbox",
   "@amy/plugin-serial-engine",
 ];
+
+export const DEFAULT_PLUGINS: readonly (keyof typeof BUILT_INS)[] = [
+  "@amy/workflow-ticket-to-qa",
+  ...SHARED,
+  "@amy/plugin-linear",
+  "@amy/plugin-command-gate",
+];
+
+/** What the second profile mounts: the same set, and two things only it needs. */
+const PLAN_PLUGINS: readonly (keyof typeof BUILT_INS)[] = [
+  "@amy/workflow-note-to-plan",
+  ...SHARED,
+  "@amy/plugin-plan-check",
+];
+
+/** The built-in set for a profile. */
+export function defaultPlugins(profile: Profile): readonly string[] {
+  return profile === "note-to-plan" ? PLAN_PLUGINS : DEFAULT_PLUGINS;
+}
 
 export interface LoadResult {
   plugins: Plugin[];

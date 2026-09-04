@@ -1,13 +1,11 @@
-import { AgentResult, Git } from "@amy/core";
+import { AgentResult, Git, Harness, HarnessReply, ReviewThread } from "@amy/core";
 import {
   Agent,
   AttemptOutcome,
-  ReviewThread,
   ThreadVerdict,
   Ticket,
   TriageOutcome,
 } from "@amy/workflow-ticket-to-qa";
-import { Harness, HarnessReply } from "./harness.js";
 import { extractJson } from "./json.js";
 
 export interface HarnessAgentConfig {
@@ -226,7 +224,9 @@ export class HarnessAgent implements Agent {
   }
 
   private ask(ticket: Ticket, prompt: string): Promise<HarnessReply> {
-    return this.harness.ask(this.invoke(prompt), this.git.pathFor(ticket.repo));
+    return this.harness.ask(this.invoke(prompt), this.git.pathFor(ticket.repo), {
+      workId: ticket.id,
+    });
   }
 
   /** The prompt, addressed to a skill when one was named. */

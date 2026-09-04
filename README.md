@@ -55,6 +55,42 @@ Four of those states are waiting states: `CLARIFYING`, `COPILOT_WAIT`,
 `HUMAN_REVIEW` and `ESCALATED`. In those the machine has nothing to do until
 somebody else moves, so it backs off instead of spinning.
 
+### And a second one, over work that is not a ticket
+
+```text
+NOTED ──► DRAFTED ──► CHECKED ──► PR_OPEN ──► DONE
+   │         ▲            │
+   │         └────────────┘
+   │          the check is red
+   └──► DECLINED
+```
+
+Friction this machine hits — an adapter that lied, a step that needed three
+tries, a limitation somebody worked around — is written down as a **note**,
+and a note becomes a pull request adding a plan to the repository it is about.
+Nothing resolves it against a tracker, because there is nothing to resolve: it
+exists because somebody, or something, wrote it down.
+
+```sh
+amy note "the relay retries a harness that already said it was out of quota"
+amy --workflow note-to-plan tick
+```
+
+`DRAFTED` is an agent writing `plans/<slug>.md` and its line in
+`next-steps.md`. `CHECKED` is `sf check` in that repository, which is the whole
+quality bar: a plan with no exit condition, or one missing from the ordered
+list, is red and goes back to the agent with the finding. Nobody invented a
+rubric — the repository being written into already has one, and it is the same
+one a human contributor meets.
+
+The two workflows run on the same engine, the same queue and store, the same
+relay and forge, and one event log — so one budget. Only the records and the
+queue are per workflow. `--workflow` chooses which one an invocation drives,
+because `mount()` still claims a single workflow.
+
+And it closes: a tick this machine gives up on leaves a note behind, so the
+thing that broke becomes the thing that gets fixed.
+
 ## The decision is a pure function
 
 ```ts
@@ -169,32 +205,40 @@ new action goes into the core.
 
 ```text
 @amy/core
-  actions:  triage, implement, run-gate, open-pull-request, address-threads,
-            assign-reviewer, request-rereview, escalate, hand-off-to-qa,
-            announce                    each declares the port it needs
+  actions:  triage, implement, run-gate, draft-plan, open-pull-request,
+            address-threads, assign-reviewer, request-rereview, escalate,
+            hand-off-to-qa, announce    each declares the port it needs
+  ports:    Queue, Store, Notifier, EventLog, Budget, StopSwitch,
+            CodeHost, Harness           none of them names a domain
   contract: Workflow + WorkflowRuntime  what an engine drives, generically
       ▲                                          ▲
       │ composes actions                         │ implements ports
       │                                          │
 @amy/workflow-ticket-to-qa              @amy/plugin-linear       tracker
   the sixteen states, a pure plan(),    @amy/plugin-github       code-host
-  its typed port contracts, and the     @amy/plugin-claude       agent
-  runtime that runs its actions         @amy/plugin-command-gate gate
-      │                                 @amy/plugin-notify-* notifier
-      │ contributes a runtime           @amy/plugin-file-queue   queue
-      ▼                                 @amy/plugin-file-store   store
+  its typed port contracts, and the     @amy/plugin-claude       harness
+  runtime that runs its actions         @amy/plugin-agent-relay  agent
+      │                                 @amy/plugin-command-gate gate
+@amy/workflow-note-to-plan              @amy/plugin-plan-check   plan-check
+  five states and one refusal, over     @amy/plugin-file-notes   notes
+  work that never was a ticket          @amy/plugin-notify-*     notifier
+      │                                 @amy/plugin-file-queue   queue
+      │ each contributes a runtime      @amy/plugin-file-store   store
+      ▼
 @amy/plugin-serial-engine
   a queue, a budget, a retry count and a stop switch — and no idea what a
-  ticket is
+  ticket or a plan is
 ```
 
 **The engine drives a workflow it does not know.** It asks the workflow what
 to do next, asks the *runtime* the workflow contributed to do it, and holds
 the queue, the attempt counts, the budget and the handbrake in between. Every
 noun in `Worker.ts` is one of those; a ticket, a pull request and a reviewer
-appear nowhere in it. So a second workflow over a different domain — the one
-[the roadmap](plans/the-roadmap.md) wants for ARC — costs a `plan()` and a
-runtime, not a fork of the engine.
+appear nowhere in it. So a second workflow over a different domain costs a `plan()` and a runtime,
+not a fork of the engine — and `@amy/workflow-note-to-plan` is that second
+workflow, running on this engine unmodified. Building it found one defect in
+the seam: every runtime was folding the plan into the record twice, which
+counted every retry as two. That is what a real second user is for.
 
 Plugins are **loaded from the config and assembled**, not constructed by the
 CLI. `mount()` refuses, at boot and by name, a plugin that will not import, a
@@ -234,11 +278,18 @@ without anybody reading the logic.
 
 ### Where the types live
 
-The core is generic on purpose, so type safety comes from the other side: the
-workflow package declares and exports `Ticket`, `PullRequestView`, `Roster`
-and its own record, and the adapter packages import those from it. The cast
-between a typed ticket record and the core's generic one lives at one
-boundary, in `ticketToQa`, rather than being spread around.
+The core is generic on purpose, so type safety comes from the other side: a
+workflow package declares and exports `Ticket`, `Roster`, `Note` and its own
+record, and narrows the ports it uses to what it needs of them. Two workflows
+share one mounted `agent` port and type it differently — one as an `Agent`
+with `triage` and `implement`, the other as a `Harness` with nothing in it but
+`ask` — and neither has to know the other exists. The cast between a typed
+record and the core's generic one lives at one boundary per workflow, in its
+`Workflow` object, rather than being spread around.
+
+What is genuinely domain-free lives in the core: `CodeHost` and the pull
+request it returns name a repository, a branch and a login, and `Harness` is a
+prompt, a directory and an account of what the answer cost.
 
 Nothing reaches the outside world except through `CommandRunner` or
 `GraphQLClient`, which is why every adapter is tested against a scripted
@@ -367,7 +418,7 @@ agent:
 
 ## State of the build
 
-624 tests. The core, the workflow, the plugins, the CLI and the gate all
+774 tests. The core, both workflows, the plugins, the CLI and the gate all
 pass, and `sf verify` proves all 33 of this repository's own rules fire.
 
 <!-- claim: WALKS_A_TICKET_TO_QA proven-by: ticket-to-qa -->
@@ -375,6 +426,12 @@ The installed executable walks a ticket from the working status to a QA
 handoff, one move at a time, in a test environment where the tracker, the code
 host and the coding agent are stand-ins and the repositories, the commits, the
 pushes and the gate are real.
+
+<!-- claim: TURNS_FRICTION_INTO_A_PLAN proven-by: note-to-plan -->
+The same executable turns a line somebody typed — or a tick it gave up on —
+into a pull request adding a plan to the repository the friction is about,
+with no tracker anywhere in it, and stops opening them once the ceiling is
+reached.
 
 Done: the workspace split, the action catalogue, the generic work record and
 plan, the typed port contracts, and boot-time validation that an action the
@@ -390,8 +447,8 @@ Not done yet, in the order it matters:
    already neutral; the examples are not.
 3. **A `capabilities.yaml` per package**, so Logion can say what each plugin
    reaches before it says whether it works.
-4. **`@amy/plugin-sf-gate`**, so the gate is software factory rather than a
-   list of shell commands.
+4. **`@amy/plugin-sf-gate`**, so the ticket gate is software factory rather
+   than a list of shell commands. The plan workflow's check already is.
 
 And the one that is not code: it has never been pointed at a *real* ticket.
 Everything between the ticket and the handoff is now proven end to end against
@@ -541,9 +598,10 @@ only be ratcheted up. Two complexity findings are frozen in
 ```text
 packages/
 ├── core/                    contracts, the action catalogue, the registry
-├── workflow-ticket-to-qa/   the states, the port contracts, a pure plan()
+├── workflow-ticket-to-qa/   sixteen states, from in progress to QA
+├── workflow-note-to-plan/   five states and a refusal, from friction to a plan
 ├── model-specs/             what a model costs, vendored and locked
-├── agent-kit/               what every harness plugin shares
+├── agent-kit/               what every harness plugin shares, and the ladder
 ├── cli/                     the amy command
 └── test-fixtures/           shared builders and scripted doubles
 
@@ -551,14 +609,16 @@ plugins/
 ├── file-queue/              queue
 ├── file-store/              store
 ├── file-log/                the event log
+├── file-notes/              notes, and the channel that writes one on a failure
 ├── serial-engine/           engine
 ├── linear/                  tracker
 ├── github/                  code host
-├── claude/                  agent
-├── codex/                   agent
-├── hermes-agent/            agent
+├── claude/                  harness
+├── codex/                   harness
+├── hermes-agent/            harness
 ├── agent-relay/             the agent port, and the ladder behind it
 ├── command-gate/            gate
+├── plan-check/              plan-check
 ├── notify-fanout/           notifier, and the channels it fans out to
 ├── notify-hermes/           channel: Hermes
 └── notify-inbox/            channel: a file plus a desktop notification
@@ -569,9 +629,11 @@ publishes as `@amy/plugin-github`. The folder says where it lives, the package
 name says what it is, and only the second one is a promise to anybody outside
 this repository.
 
-`core` depends on no other package here. The workflow depends only on `core`.
-An adapter depends on `core` for infrastructure and on the workflow for the
-types it has to satisfy. Nothing depends on the CLI.
+`core` depends on no other package here. A workflow depends only on `core`.
+An adapter depends on `core` for infrastructure, and on a workflow only for
+the types that workflow declares — which is why `plugins/github` depends on
+neither: `CodeHost` is the core's, and one mounted adapter serves both
+workflows. Nothing depends on the CLI.
 
 ## License
 

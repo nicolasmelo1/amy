@@ -31,7 +31,16 @@ describe("parseSkills", () => {
     // skill for it would never be asked. That is a typo, not a preference.
     const problems = problemsOf({ "open-pull-request": ["/logion"] });
 
-    expect(problems.join("\n")).toContain("triage, implement, address-threads");
+    expect(problems.join("\n")).toContain("triage, implement, draft-plan, address-threads");
+  });
+
+  it("accepts a step that reaches the agent with no vocabulary in it", () => {
+    // `draft-plan` is how a second workflow asks the same agent its own
+    // question, so a skill can answer for it exactly as for `triage`.
+    expect(parseSkills({ "draft-plan": ["/factory-author"] })).toEqual({
+      ok: true,
+      ladders: { "draft-plan": ["factory-author"] },
+    });
   });
 
   it("refuses a step that names nothing", () => {

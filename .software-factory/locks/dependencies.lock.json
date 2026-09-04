@@ -1,26 +1,29 @@
 {
   "schema_version": 1,
   "files": {
-    "package.json": "b7df36a9b63201fd3131e03d85021db4aa6a4bdaa2fb2ec9171fd0fb29523ce7",
+    "package.json": "9940606a66fe0416f3dbb85706d00f5cffeb9982c582cff27e468fc0fe34da50",
     "packages/agent-kit/package.json": "598e615704b6a1b73874074509f8acdddd778132777a7f8ab42f53300bd80f55",
-    "packages/cli/package.json": "e2e41a8e361a531cd58a1bd90a85001952efa24810f4c8a879fdcccfdb9332e3",
+    "packages/cli/package.json": "eb8e6e077df8451fb24185897def5199196994c3fa9d930bfebcc7c0f50c3cc4",
     "packages/core/package.json": "33cb4c2a8face47cf18c7b7b7fe04d41d29b6d89161689428dd9ec1eacb98bc3",
     "packages/model-specs/package.json": "e81972b7e66201d162e587950f21bbae347b636755f8d6d003d2083fda145919",
     "packages/test-fixtures/package.json": "9dfa06af57663dd2c008ad8c3b1f6884e808f9e84664b03e9fc14891aadecf8c",
+    "packages/workflow-note-to-plan/package.json": "60c4d3f449d039c1445a13933f2aa4f84e853bae146278bd4ba569bf059ba137",
     "packages/workflow-ticket-to-qa/package.json": "5a22f3b74d98d8c2df24edbbfa437cfe72db3b409df44a478539fad662af2ff3",
     "plugins/agent-relay/package.json": "2510c782a620a128f28cb384f0524cf5cd8031d7b93fedc76533ba2b02f44cc2",
     "plugins/claude/package.json": "649b75b1dc8cbd5830a19e4c8dabf973f7da0e6bbb917e8321ce8981799451ee",
     "plugins/codex/package.json": "35edb78b84cef24d17c07d01b9c24311d2f46d24eafd433da47a4b59b620453c",
     "plugins/command-gate/package.json": "ee0179d9f91ca4320b0b99fd1b52f88873d6f2a1becf10e38bc2f695270577fc",
     "plugins/file-log/package.json": "15e15e35683a058fa5ff08df1e6cfe1a8ca8ecaf3f1dc291c66da6da91e32c93",
+    "plugins/file-notes/package.json": "01eb79d40b0b9e69afe5d2cc9b722241840feeb8c5c39a6fac6499c3633b86ba",
     "plugins/file-queue/package.json": "915dcff89bb3199ffad69517f7404d461c1565117bcc5f3b8d4da65925077b96",
     "plugins/file-store/package.json": "a1aeef9247298428cccdd5ffdb3e7a8d8cbf1aa6e806dc10fb4a7f2ae7009eb6",
-    "plugins/github/package.json": "0c4b7463495994ec087e12615a612e867f19248c7972e55bab520f317cd5f5c8",
+    "plugins/github/package.json": "fcb21e774d8d4a8d91b6be2121761f1e20f4d75545ea066af816652f9b97b3e2",
     "plugins/hermes-agent/package.json": "e5fd5bcd6dd4a2ca1759afd5c37d9d485995f858ff63d784abc45775270ec51d",
     "plugins/linear/package.json": "7f2e896c209647386f09b95d90a5efe1679ead9956552c9a353a8f017412ab3c",
     "plugins/notify-fanout/package.json": "3e2146046ac058298a77c12bf733cd5ade0c79af24c705f32b7ceb665e574631",
     "plugins/notify-hermes/package.json": "e4464126d15a730953743da0478e47f6dec360a12661014d76193049f4576f72",
     "plugins/notify-inbox/package.json": "adf17e4105285a4534cdaf8c2460461bb2a0af7d0fa8741a0eb8790f2172f945",
+    "plugins/plan-check/package.json": "51827702196115bbfb642a2ea1a6b54f7b130d14c37ae8257de9cdadd89deebf",
     "plugins/serial-engine/package.json": "85b7c2e909e808bbb7dd6a35343847fcbd7e81e44362b966dc37a31268ab5eb6"
   }
 }
