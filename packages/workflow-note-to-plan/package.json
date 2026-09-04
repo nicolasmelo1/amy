@@ -1,7 +1,7 @@
 {
-  "name": "@amy/plugin-github",
+  "name": "@amy/workflow-note-to-plan",
   "version": "0.1.0",
-  "description": "GitHub as the code host, through the gh CLI.",
+  "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nicolasmelo1/amy.git",
-    "directory": "plugins/github"
+    "directory": "packages/workflow-note-to-plan"
   },
   "publishConfig": {
     "access": "public",
@@ -32,7 +32,6 @@
     "@amy/core": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0",
-    "@amy/workflow-ticket-to-qa": "^0.1.0"
+    "@amy/test-fixtures": "^0.1.0"
   }
 }

@@ -1,6 +1,7 @@
 import {
   Action,
   ActionContext,
+  AnnouncementKind,
   Budget,
   Event,
   EventKind,
@@ -301,7 +302,7 @@ export class Worker {
     // already completed by this point, so a single broken channel used to
     // throw past `tick()` and the work left the queue with no record of why.
     const notice = this.failureNotice(item, record, attempt, message);
-    if (notice) await this.announce(notice, item.workId, record.state);
+    if (notice) await this.announce(notice.text, item.workId, record.state, notice.kind);
 
     if (attempt < this.deps.config.maxItemAttempts) {
       this.deps.queue.enqueue(
@@ -337,9 +338,12 @@ export class Worker {
     record: WorkRecord,
     attempt: number,
     message: string,
-  ): string | null {
+  ): { text: string; kind: AnnouncementKind } | null {
     if (attempt >= this.deps.config.maxItemAttempts) {
-      return `${item.workId} failed ${attempt} times in ${record.state}, I have given up, and it is off the queue: ${message}`;
+      return {
+        text: `${item.workId} failed ${attempt} times in ${record.state}, I have given up, and it is off the queue: ${message}`,
+        kind: "gave-up",
+      };
     }
 
     if (item.attempt !== 0) return null;
@@ -350,7 +354,10 @@ export class Worker {
       detail: { attempt, error: message },
     });
 
-    return `${item.workId} is failing in ${record.state} and I am retrying: ${message}`;
+    return {
+      text: `${item.workId} is failing in ${record.state} and I am retrying: ${message}`,
+      kind: "failing",
+    };
   }
 
   /**
@@ -376,6 +383,7 @@ export class Worker {
       `${item.workId} is moving again in ${state} after ${item.attempt} failed attempt(s).`,
       item.workId,
       state,
+      "recovered",
     );
   }
 
@@ -450,9 +458,14 @@ export class Worker {
    * port and an install may mount something else behind it. The promise is
    * the engine's, not the mounted plugin's.
    */
-  private async announce(text: string, workId: string, state: string): Promise<void> {
+  private async announce(
+    text: string,
+    workId: string,
+    state: string,
+    kind?: AnnouncementKind,
+  ): Promise<void> {
     try {
-      await this.deps.notifier.announce({ text, workId, state });
+      await this.deps.notifier.announce({ text, workId, state, ...(kind ? { kind } : {}) });
     } catch (error) {
       this.record("notify.failed", {
         workId,

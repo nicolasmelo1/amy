@@ -1,7 +1,7 @@
 {
-  "name": "@amy/plugin-github",
+  "name": "@amy/plugin-plan-check",
   "version": "0.1.0",
-  "description": "GitHub as the code host, through the gh CLI.",
+  "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nicolasmelo1/amy.git",
-    "directory": "plugins/github"
+    "directory": "plugins/plan-check"
   },
   "publishConfig": {
     "access": "public",
@@ -29,10 +29,10 @@
     "capabilities.yaml"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0"
+    "@amy/core": "^0.1.0",
+    "@amy/workflow-note-to-plan": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0",
-    "@amy/workflow-ticket-to-qa": "^0.1.0"
+    "@amy/test-fixtures": "^0.1.0"
   }
 }

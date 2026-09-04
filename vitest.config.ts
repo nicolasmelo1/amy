@@ -34,10 +34,13 @@ export default defineConfig({
     alias: {
       "@amy/core": resolve(here, "packages/core/src/index.ts"),
       "@amy/workflow-ticket-to-qa": resolve(here, "packages/workflow-ticket-to-qa/src/index.ts"),
+      "@amy/workflow-note-to-plan": resolve(here, "packages/workflow-note-to-plan/src/index.ts"),
       "@amy/model-specs": resolve(here, "packages/model-specs/src/index.ts"),
       "@amy/plugin-file-queue": resolve(here, "plugins/file-queue/src/index.ts"),
       "@amy/plugin-file-log": resolve(here, "plugins/file-log/src/index.ts"),
       "@amy/plugin-file-store": resolve(here, "plugins/file-store/src/index.ts"),
+      "@amy/plugin-file-notes": resolve(here, "plugins/file-notes/src/index.ts"),
+      "@amy/plugin-plan-check": resolve(here, "plugins/plan-check/src/index.ts"),
       "@amy/plugin-serial-engine": resolve(here, "plugins/serial-engine/src/index.ts"),
       "@amy/plugin-linear": resolve(here, "plugins/linear/src/index.ts"),
       "@amy/plugin-github": resolve(here, "plugins/github/src/index.ts"),

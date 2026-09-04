@@ -80,6 +80,9 @@ describe("assembling the built-in set", () => {
       "agent",
       "code-host",
       "gate",
+      // The notes are mounted in both profiles: this one writes them when it
+      // gives up, the other one reads them.
+      "notes",
       "notifier",
       "queue",
       "store",

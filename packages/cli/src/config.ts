@@ -1,10 +1,32 @@
 import fs from "node:fs";
 import yaml from "yaml";
 import { DEFAULT_POLICY, Policy } from "@amy/workflow-ticket-to-qa";
+import { DEFAULT_POLICY as DEFAULT_PLAN_POLICY, Policy as PlanPolicy } from "@amy/workflow-note-to-plan";
 import { Roster } from "@amy/workflow-ticket-to-qa";
 import os from "node:os";
 import path from "node:path";
 import { paths } from "./paths.js";
+
+/**
+ * The second workflow's vocabulary: friction written down becomes a plan.
+ *
+ * Deliberately its own block rather than reusing `repos` and `gate`. The
+ * repositories a plan may be written into are the ones this work lives in,
+ * which is a different list from the ones the team's tickets land in, and the
+ * check that judges a plan is `sf check` rather than the implementation gate.
+ */
+interface PlansConfig {
+  /**
+   * The repositories a plan may be written into. The first is what a note
+   * that does not name one is filed against, which is usually this machine.
+   */
+  repos: string[];
+  /** The check per repository, with a `default` fallback. */
+  check: Record<string, string[]>;
+  policy: Partial<PlanPolicy>;
+  /** Empty means the built-in set for this profile. */
+  pluginList: string[];
+}
 
 interface NotifyConfig {
   /** Comment on the ticket itself. */
@@ -60,6 +82,7 @@ export interface AmyConfig {
    */
   skills: Record<string, string[]>;
   notify: NotifyConfig;
+  plans: PlansConfig;
   /**
    * The plugins to mount, in order. Empty means the built-in set.
    */
@@ -88,6 +111,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   agent: {},
   skills: {},
   notify: { tracker: true, hermes: null, inbox: true },
+  plans: { repos: [], check: { default: ["sf check"] }, policy: {}, pluginList: [] },
   pluginList: [],
   plugins: {},
 };
@@ -116,6 +140,11 @@ export function loadConfig(root: string): AmyConfig {
     pluginList: parsed.pluginList ?? [],
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
+    plans: {
+      ...DEFAULT_CONFIG.plans,
+      ...(parsed.plans ?? {}),
+      policy: { ...DEFAULT_PLAN_POLICY, ...(parsed.plans?.policy ?? {}) },
+    },
     workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
   };
 }

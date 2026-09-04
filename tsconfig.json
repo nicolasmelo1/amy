@@ -11,6 +11,9 @@
       "path": "packages/workflow-ticket-to-qa"
     },
     {
+      "path": "packages/workflow-note-to-plan"
+    },
+    {
       "path": "plugins/file-queue"
     },
     {
@@ -60,6 +63,12 @@
     },
     {
       "path": "packages/test-fixtures"
+    },
+    {
+      "path": "plugins/file-notes"
+    },
+    {
+      "path": "plugins/plan-check"
     }
   ]
 }
