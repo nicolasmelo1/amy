@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "files": {
-    "package.json": "b7df36a9b63201fd3131e03d85021db4aa6a4bdaa2fb2ec9171fd0fb29523ce7",
+    "package.json": "9940606a66fe0416f3dbb85706d00f5cffeb9982c582cff27e468fc0fe34da50",
     "packages/agent-kit/package.json": "598e615704b6a1b73874074509f8acdddd778132777a7f8ab42f53300bd80f55",
     "packages/cli/package.json": "eb8e6e077df8451fb24185897def5199196994c3fa9d930bfebcc7c0f50c3cc4",
     "packages/core/package.json": "33cb4c2a8face47cf18c7b7b7fe04d41d29b6d89161689428dd9ec1eacb98bc3",

@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/installed-binary-scenario.sh against a freshly installed binary on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/installed-binary-run.json",
-      "report_sha256": "1ee38d6d991543467031bc307e920f52803b6a5939975856d110ba06b8445921",
+      "report_sha256": "974ad7afbddec0ca2464e30762ece435dbb7ea3abd7e3ac481fb2668cc00b43a",
       "required_assertions": []
     }
   ]
