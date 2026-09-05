@@ -699,6 +699,11 @@
         },
         {
           "depth": 3,
+          "title": "The version bump regenerates the documentation, so the release can pass its own gate.",
+          "slug": "the-version-bump-regenerates-the-documentation-so-the-release-can-pass-its-own-gate"
+        },
+        {
+          "depth": 3,
           "title": "amy says what it is, rather than what its first workflow does.",
           "slug": "amy-says-what-it-is-rather-than-what-its-first-workflow-does"
         },
@@ -1504,6 +1509,11 @@
           "depth": 2,
           "title": "Checked before it can go wrong",
           "slug": "checked-before-it-can-go-wrong"
+        },
+        {
+          "depth": 2,
+          "title": "The version bump regenerates the documentation",
+          "slug": "the-version-bump-regenerates-the-documentation"
         },
         {
           "depth": 2,
@@ -5561,6 +5571,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-version-bump-regenerates-the-docs",
+        "title": "The version bump regenerates the documentation, so the release can pass its own gate.",
+        "body": "A release moves two things the generated documentation is derived from: every\npackage's version, which `docs/manifest.json` carries, and the pending\nchangesets, which `changeset version` consumes into changelogs.\n\nSo the \"Version packages\" pull request was the one pull request in this\nrepository that could never be green — the drift check would report\n`docs/manifest.json` and `docs/changelog/index.md` as stale, correctly, and\nthere was no way to fix it by hand that the next bump would not undo.\n\n`release:version` now ends in `npm run docs:generate`. Beyond the gate, it\nmeans the news page ships *with* the release rather than after it: by the time\nthe version pull request is reviewed, \"Coming next\" is empty and the changelogs\nit describes exist.\n\nThe released half still cannot write itself, because a GitHub release does not\nexist until the publish has happened. `npm run docs:changelog` after a release\nis what fills it, and until it runs the page says so rather than showing\nnothing.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "what-amy-says-it-is",

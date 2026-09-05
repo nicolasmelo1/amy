@@ -69,12 +69,44 @@ npm run check:release
 Part of `npm run gate`. It checks the release configuration is coherent — the
 kind of thing that is otherwise discovered by a publish that half-worked.
 
+## The version bump regenerates the documentation
+
+```json
+"release:version": "changeset version && npm install --package-lock-only && npm run docs:generate"
+```
+
+The third command is not tidiness. A release moves two things the generated
+documentation is derived from — every package's version, which the manifest
+carries, and the pending changesets, which `changeset version` consumes into
+changelogs. Without regenerating, the version pull request is the one pull
+request in this repository that **could never pass its own gate**:
+
+```
+docs: the code moved and the documentation did not. These are out of date:
+  docs/changelog/index.md
+  docs/manifest.json
+```
+
+It also means the news page ships *with* the release rather than after it: by
+the time the version pull request is reviewed, "Coming next" is empty and the
+changelogs it describes exist.
+
+It needs `dist` to be built, because the generator asks each plugin what it
+mounts by registering it. The release job builds before the changesets action
+runs, and locally the generator says so rather than guessing.
+
 ## The news page
 
 ```sh
 npm run docs:changelog     # fetch releases from GitHub into the cache
 npm run docs:generate      # render /changelog from the cache and the changesets
 ```
+
+The released half is the one thing the release cannot write for itself: the
+GitHub release does not exist until the publish has happened. So after a
+release lands, run those two and commit — the page tells the truth about what
+the cache knows either way, which is why it says "No release has been cut yet"
+rather than showing nothing.
 
 The fetch is a separate command from generating on purpose: generating has to be
 reproducible on any machine at any time, and something that reaches the network
