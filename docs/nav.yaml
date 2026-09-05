@@ -1,0 +1,38 @@
+# The sidebar. Groups are in the order below; the pages inside one come from
+# the directory itself, ordered by the `order` in each page's front matter.
+#
+# So adding a page puts it in the navigation, and there is no second list to
+# forget. What is editorial — which groups exist, what they are called, and
+# what order they read in — is here, because nothing in the file system says
+# that "Start here" comes before "Reference".
+- group: Start here
+  dir: start
+  description: Install it, point it at your work, and watch it make one move.
+
+- group: How it works
+  dir: concepts
+  description: The pieces, and why each one is shaped the way it is.
+
+- group: Build your own
+  dir: build
+  description: Write a plugin or a workflow, prove it, and publish it.
+
+- group: Reference
+  dir: reference
+  description: Generated from the code on every build. If it is here, it is true.
+
+- group: Packages
+  dir: catalog
+  description: What is in the box, and how to get yours listed beside it.
+
+- group: News
+  dir: changelog
+  description: What shipped, and what is about to.
+
+- group: Design notes
+  dir: design
+  description: The argument behind a decision, kept where the decision can link to it.
+
+- group: Development
+  dir: development
+  description: Changing amy itself.

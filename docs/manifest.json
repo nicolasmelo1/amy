@@ -1,0 +1,5569 @@
+{
+  "version": 1,
+  "product": {
+    "name": "amy",
+    "tagline": "Leave it running.",
+    "expansion": "Automate MY work",
+    "description": "A state machine you leave running. Everything in it is a plugin, and the workflow is yours.",
+    "repository": "https://github.com/nicolasmelo1/amy",
+    "license": "MIT",
+    "node": ">=24"
+  },
+  "nav": [
+    {
+      "group": "Start here",
+      "directory": "start",
+      "description": "Install it, point it at your work, and watch it make one move.",
+      "items": [
+        {
+          "title": "Overview",
+          "path": "/start/overview",
+          "description": "What amy is, the one idea the rest follows from, and what it is not."
+        },
+        {
+          "title": "Quickstart",
+          "path": "/start/quickstart",
+          "description": "Five minutes from nothing to one move you can watch."
+        },
+        {
+          "title": "Installation",
+          "path": "/start/installation",
+          "description": "One install per machine, where its state lives, and how to carry only the plugins you use."
+        },
+        {
+          "title": "Configuration",
+          "path": "/start/configuration",
+          "description": "One file, two halves — what the host needs to know, and one slice per plugin."
+        },
+        {
+          "title": "Running it",
+          "path": "/start/running",
+          "description": "One move at a time, the loop, and the difference between pause and stop."
+        },
+        {
+          "title": "Workflows and profiles",
+          "path": "/start/workflows-and-profiles",
+          "description": "A profile is a name in a config, not a case in a switch — and what that costs."
+        },
+        {
+          "title": "Status and doctor",
+          "path": "/start/status-and-doctor",
+          "description": "Reading where things stand, and finding out what is wrong before it touches a ticket."
+        },
+        {
+          "title": "Security",
+          "path": "/start/security",
+          "description": "What amy can reach, what it refuses to do, and the parts that are your call."
+        }
+      ]
+    },
+    {
+      "group": "How it works",
+      "directory": "concepts",
+      "description": "The pieces, and why each one is shaped the way it is.",
+      "items": [
+        {
+          "title": "Architecture",
+          "path": "/concepts/architecture",
+          "description": "What owns what, the one rule everything else follows from, and where the types live."
+        },
+        {
+          "title": "Workflows",
+          "path": "/concepts/workflows",
+          "description": "Two halves — a pure decision and a runtime — and the seven things a workflow declares."
+        },
+        {
+          "title": "Plugins and the registry",
+          "path": "/concepts/plugins",
+          "description": "How a plugin is assembled rather than constructed, and every way mount() refuses."
+        },
+        {
+          "title": "Ports",
+          "path": "/concepts/ports",
+          "description": "Named slots one plugin fills, the contracts behind them, and which are not ports at all."
+        },
+        {
+          "title": "Actions",
+          "path": "/concepts/actions",
+          "description": "The catalogue the core owns, why a workflow composes rather than defines, and when to add one."
+        },
+        {
+          "title": "The queue",
+          "path": "/concepts/the-queue",
+          "description": "Why there is no interval anywhere, and how two workers cannot take the same item."
+        },
+        {
+          "title": "The engine",
+          "path": "/concepts/the-engine",
+          "description": "What one tick does, in order, and why the engine knows nothing about tickets."
+        },
+        {
+          "title": "Harnesses, the ladder and skills",
+          "path": "/concepts/harnesses",
+          "description": "Which agent does a step, what happens when it runs out of quota, and how a named skill answers instead."
+        },
+        {
+          "title": "Budgets and ceilings",
+          "path": "/concepts/budgets",
+          "description": "Two currencies, read from the log rather than a tally, and asked before the call."
+        },
+        {
+          "title": "Events",
+          "path": "/concepts/events",
+          "description": "One append-only log, a versioned contract, and why it is hash-locked."
+        }
+      ]
+    },
+    {
+      "group": "Build your own",
+      "directory": "build",
+      "description": "Write a plugin or a workflow, prove it, and publish it.",
+      "items": [
+        {
+          "title": "Write a plugin",
+          "path": "/build/write-a-plugin",
+          "description": "From an empty package to a mounted, validated, published adapter — with the failure modes named."
+        },
+        {
+          "title": "Write a workflow",
+          "path": "/build/write-a-workflow",
+          "description": "Your process as a package — the pure decision, the runtime, and the walkthrough test that is the only real proof."
+        },
+        {
+          "title": "Testing",
+          "path": "/build/testing",
+          "description": "The three levels, what each one can and cannot prove, and the one every workflow owes."
+        },
+        {
+          "title": "Publishing",
+          "path": "/build/publishing",
+          "description": "Getting your package installable, findable, and listed in the catalogue."
+        }
+      ]
+    },
+    {
+      "group": "Reference",
+      "directory": "reference",
+      "description": "Generated from the code on every build. If it is here, it is true.",
+      "items": [
+        {
+          "title": "CLI",
+          "path": "/reference/cli",
+          "description": "Every command, argument, option and default — read out of the command itself."
+        },
+        {
+          "title": "Plugins",
+          "path": "/reference/plugins",
+          "description": "Every shipped plugin — what it mounts, what it contributes, and every setting it declares."
+        },
+        {
+          "title": "Workflows",
+          "path": "/reference/workflows",
+          "description": "Every shipped workflow — its states, where it waits, and what it emits."
+        },
+        {
+          "title": "Contracts",
+          "path": "/reference/contracts",
+          "description": "Every interface in the core — the ports, and the services lent to every plugin."
+        },
+        {
+          "title": "Events",
+          "path": "/reference/events",
+          "description": "Every event kind and the exact shape of its detail — from the contract the log is validated against."
+        },
+        {
+          "title": "Configuration",
+          "path": "/reference/configuration",
+          "description": "Every key in config.yaml, its type and its default — from the interface that defines it."
+        }
+      ]
+    },
+    {
+      "group": "Packages",
+      "directory": "catalog",
+      "description": "What is in the box, and how to get yours listed beside it.",
+      "items": [
+        {
+          "title": "Packages",
+          "path": "/catalog",
+          "description": "What is in the box, and how a package nobody here wrote is found."
+        },
+        {
+          "title": "Publishing a package",
+          "path": "/catalog/publishing-a-package",
+          "description": "The two conventions that make a package findable, and what a listing should say."
+        }
+      ]
+    },
+    {
+      "group": "News",
+      "directory": "changelog",
+      "description": "What shipped, and what is about to.",
+      "items": [
+        {
+          "title": "News",
+          "path": "/changelog",
+          "description": "What shipped, and what is about to."
+        }
+      ]
+    },
+    {
+      "group": "Design notes",
+      "directory": "design",
+      "description": "The argument behind a decision, kept where the decision can link to it.",
+      "items": [
+        {
+          "title": "Failing out loud",
+          "path": "/design/the-engine-fails-out-loud",
+          "description": "The design behind one warning down, silence, one warning back — and the rule about which port calls may be swallowed."
+        }
+      ]
+    },
+    {
+      "group": "Development",
+      "directory": "development",
+      "description": "Changing amy itself.",
+      "items": [
+        {
+          "title": "Contributing",
+          "path": "/development/contributing",
+          "description": "The five minutes before your first change, and the one rule everything follows from."
+        },
+        {
+          "title": "The gate",
+          "path": "/development/the-gate",
+          "description": "One command, thirty-three rules proven to fire, and seven gates whose proofs expire."
+        },
+        {
+          "title": "Releasing",
+          "path": "/development/releasing",
+          "description": "Changesets, the version pull request, and why the release job is dormant."
+        },
+        {
+          "title": "Documentation",
+          "path": "/development/documentation",
+          "description": "How half of this is generated from the code, why the gate goes red when it drifts, and what a site consumes."
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "path": "/",
+      "file": "docs/index.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/index.md",
+      "title": "amy",
+      "description": "A state machine you leave running. Everything in it is a plugin, and the workflow is yours.",
+      "group": "",
+      "order": 0,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Start here",
+          "slug": "start-here"
+        },
+        {
+          "depth": 2,
+          "title": "The two things people come here to do",
+          "slug": "the-two-things-people-come-here-to-do"
+        },
+        {
+          "depth": 2,
+          "title": "Why the process is not baked in",
+          "slug": "why-the-process-is-not-baked-in"
+        },
+        {
+          "depth": 2,
+          "title": "It lives *under* your tools, not inside one",
+          "slug": "it-lives-under-your-tools-not-inside-one"
+        },
+        {
+          "depth": 2,
+          "title": "About this documentation",
+          "slug": "about-this-documentation"
+        }
+      ]
+    },
+    {
+      "path": "/build/publishing",
+      "file": "docs/build/publishing.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/publishing.md",
+      "title": "Publishing",
+      "description": "Getting your package installable, findable, and listed in the catalogue.",
+      "group": "Build your own",
+      "order": 4,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The package.json that works",
+          "slug": "the-packagejson-that-works"
+        },
+        {
+          "depth": 2,
+          "title": "Versioning",
+          "slug": "versioning"
+        },
+        {
+          "depth": 2,
+          "title": "Being found",
+          "slug": "being-found"
+        },
+        {
+          "depth": 2,
+          "title": "A README people can act on",
+          "slug": "a-readme-people-can-act-on"
+        },
+        {
+          "depth": 2,
+          "title": "Install",
+          "slug": "install"
+        },
+        {
+          "depth": 2,
+          "title": "Configuration",
+          "slug": "configuration"
+        },
+        {
+          "depth": 2,
+          "title": "Environment",
+          "slug": "environment"
+        },
+        {
+          "depth": 2,
+          "title": "Before you publish",
+          "slug": "before-you-publish"
+        },
+        {
+          "depth": 2,
+          "title": "Publishing",
+          "slug": "publishing"
+        }
+      ]
+    },
+    {
+      "path": "/build/testing",
+      "file": "docs/build/testing.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/testing.md",
+      "title": "Testing",
+      "description": "The three levels, what each one can and cannot prove, and the one every workflow owes.",
+      "group": "Build your own",
+      "order": 3,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Unit tests",
+          "slug": "unit-tests"
+        },
+        {
+          "depth": 2,
+          "title": "The walkthrough test",
+          "slug": "the-walkthrough-test"
+        },
+        {
+          "depth": 2,
+          "title": "Artifact tests, and why unit tests are not enough",
+          "slug": "artifact-tests-and-why-unit-tests-are-not-enough"
+        },
+        {
+          "depth": 3,
+          "title": "The shelf life is the point",
+          "slug": "the-shelf-life-is-the-point"
+        },
+        {
+          "depth": 2,
+          "title": "The test environment",
+          "slug": "the-test-environment"
+        },
+        {
+          "depth": 3,
+          "title": "The one thing it cannot make deterministic",
+          "slug": "the-one-thing-it-cannot-make-deterministic"
+        },
+        {
+          "depth": 2,
+          "title": "Testing your own plugin or workflow",
+          "slug": "testing-your-own-plugin-or-workflow"
+        }
+      ]
+    },
+    {
+      "path": "/build/write-a-plugin",
+      "file": "docs/build/write-a-plugin.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/write-a-plugin.md",
+      "title": "Write a plugin",
+      "description": "From an empty package to a mounted, validated, published adapter — with the failure modes named.",
+      "group": "Build your own",
+      "order": 1,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "1. The smallest thing that mounts",
+          "slug": "1-the-smallest-thing-that-mounts"
+        },
+        {
+          "depth": 2,
+          "title": "2. Declare your settings",
+          "slug": "2-declare-your-settings"
+        },
+        {
+          "depth": 2,
+          "title": "3. Fill a port",
+          "slug": "3-fill-a-port"
+        },
+        {
+          "depth": 3,
+          "title": "Reach the world through the runner",
+          "slug": "reach-the-world-through-the-runner"
+        },
+        {
+          "depth": 3,
+          "title": "Never call new Date()",
+          "slug": "never-call-new-date"
+        },
+        {
+          "depth": 2,
+          "title": "4. The other things you can register",
+          "slug": "4-the-other-things-you-can-register"
+        },
+        {
+          "depth": 3,
+          "title": "Contribute to a collection",
+          "slug": "contribute-to-a-collection"
+        },
+        {
+          "depth": 3,
+          "title": "Add an action the core does not have",
+          "slug": "add-an-action-the-core-does-not-have"
+        },
+        {
+          "depth": 3,
+          "title": "Contribute an observation",
+          "slug": "contribute-an-observation"
+        },
+        {
+          "depth": 3,
+          "title": "Mount an engine, a queue or a store",
+          "slug": "mount-an-engine-a-queue-or-a-store"
+        },
+        {
+          "depth": 2,
+          "title": "5. Validate what you cannot judge alone",
+          "slug": "5-validate-what-you-cannot-judge-alone"
+        },
+        {
+          "depth": 2,
+          "title": "6. Do not put state on the plugin object",
+          "slug": "6-do-not-put-state-on-the-plugin-object"
+        },
+        {
+          "depth": 2,
+          "title": "7. Test it",
+          "slug": "7-test-it"
+        },
+        {
+          "depth": 2,
+          "title": "8. Publish it",
+          "slug": "8-publish-it"
+        },
+        {
+          "depth": 2,
+          "title": "The failure modes, in one place",
+          "slug": "the-failure-modes-in-one-place"
+        },
+        {
+          "depth": 2,
+          "title": "Worth reading next",
+          "slug": "worth-reading-next"
+        }
+      ]
+    },
+    {
+      "path": "/build/write-a-workflow",
+      "file": "docs/build/write-a-workflow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/write-a-workflow.md",
+      "title": "Write a workflow",
+      "description": "Your process as a package — the pure decision, the runtime, and the walkthrough test that is the only real proof.",
+      "group": "Build your own",
+      "order": 2,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Before you write anything: answer five questions",
+          "slug": "before-you-write-anything-answer-five-questions"
+        },
+        {
+          "depth": 2,
+          "title": "1. The states",
+          "slug": "1-the-states"
+        },
+        {
+          "depth": 2,
+          "title": "2. The record",
+          "slug": "2-the-record"
+        },
+        {
+          "depth": 2,
+          "title": "3. The typed effects",
+          "slug": "3-the-typed-effects"
+        },
+        {
+          "depth": 2,
+          "title": "4. The observation and the policy",
+          "slug": "4-the-observation-and-the-policy"
+        },
+        {
+          "depth": 2,
+          "title": "5. The decision — and it must stay pure",
+          "slug": "5-the-decision-and-it-must-stay-pure"
+        },
+        {
+          "depth": 2,
+          "title": "6. The runtime — the half that touches the world",
+          "slug": "6-the-runtime-the-half-that-touches-the-world"
+        },
+        {
+          "depth": 2,
+          "title": "7. Wire it up as a plugin",
+          "slug": "7-wire-it-up-as-a-plugin"
+        },
+        {
+          "depth": 2,
+          "title": "8. The walkthrough test — the only real proof",
+          "slug": "8-the-walkthrough-test-the-only-real-proof"
+        },
+        {
+          "depth": 2,
+          "title": "9. Drive it",
+          "slug": "9-drive-it"
+        },
+        {
+          "depth": 2,
+          "title": "The mistakes worth naming",
+          "slug": "the-mistakes-worth-naming"
+        },
+        {
+          "depth": 2,
+          "title": "Worth reading next",
+          "slug": "worth-reading-next"
+        }
+      ]
+    },
+    {
+      "path": "/catalog",
+      "file": "docs/catalog/index.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/catalog/index.md",
+      "title": "Packages",
+      "description": "What is in the box, and how a package nobody here wrote is found.",
+      "group": "Packages",
+      "order": 1,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "In the box",
+          "slug": "in-the-box"
+        },
+        {
+          "depth": 2,
+          "title": "Everything else",
+          "slug": "everything-else"
+        },
+        {
+          "depth": 2,
+          "title": "Installing one is a trust decision",
+          "slug": "installing-one-is-a-trust-decision"
+        },
+        {
+          "depth": 2,
+          "title": "Getting yours listed",
+          "slug": "getting-yours-listed"
+        }
+      ]
+    },
+    {
+      "path": "/catalog/publishing-a-package",
+      "file": "docs/catalog/publishing-a-package.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/catalog/publishing-a-package.md",
+      "title": "Publishing a package",
+      "description": "The two conventions that make a package findable, and what a listing should say.",
+      "group": "Packages",
+      "order": 2,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The two conventions",
+          "slug": "the-two-conventions"
+        },
+        {
+          "depth": 2,
+          "title": "What a good listing says",
+          "slug": "what-a-good-listing-says"
+        },
+        {
+          "depth": 2,
+          "title": "What a listing should not do",
+          "slug": "what-a-listing-should-not-do"
+        },
+        {
+          "depth": 2,
+          "title": "Private packages",
+          "slug": "private-packages"
+        },
+        {
+          "depth": 2,
+          "title": "Keeping it working as amy moves",
+          "slug": "keeping-it-working-as-amy-moves"
+        }
+      ]
+    },
+    {
+      "path": "/changelog",
+      "file": "docs/changelog/index.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/changelog/index.md",
+      "title": "News",
+      "description": "What shipped, and what is about to.",
+      "group": "News",
+      "order": 1,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Coming next",
+          "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "amy is one install per machine, and it stays running.",
+          "slug": "amy-is-one-install-per-machine-and-it-stays-running"
+        },
+        {
+          "depth": 3,
+          "title": "A workflow is a name in a config, and a plugin is installed rather than compiled in.",
+          "slug": "a-workflow-is-a-name-in-a-config-and-a-plugin-is-installed-rather-than-compiled-in"
+        },
+        {
+          "depth": 3,
+          "title": "Documentation that cannot go out of date, and a manifest a site can be built from.",
+          "slug": "documentation-that-cannot-go-out-of-date-and-a-manifest-a-site-can-be-built-from"
+        },
+        {
+          "depth": 3,
+          "title": "Friction becomes a plan, and the queue stops needing a ticket.",
+          "slug": "friction-becomes-a-plan-and-the-queue-stops-needing-a-ticket"
+        },
+        {
+          "depth": 3,
+          "title": "One adapter for every command line tool, instead of one plugin each.",
+          "slug": "one-adapter-for-every-command-line-tool-instead-of-one-plugin-each"
+        },
+        {
+          "depth": 3,
+          "title": "amy btw — something said in passing becomes work.",
+          "slug": "amy-btw-something-said-in-passing-becomes-work"
+        },
+        {
+          "depth": 3,
+          "title": "The engine drives a workflow it does not know.",
+          "slug": "the-engine-drives-a-workflow-it-does-not-know"
+        },
+        {
+          "depth": 3,
+          "title": "The version moves because a change said it should, and an installed package can say which one it is.",
+          "slug": "the-version-moves-because-a-change-said-it-should-and-an-installed-package-can-say-which-one-it-is"
+        },
+        {
+          "depth": 3,
+          "title": "The release workflow stays dormant until AMY_RELEASE is set.",
+          "slug": "the-release-workflow-stays-dormant-until-amyrelease-is-set"
+        },
+        {
+          "depth": 3,
+          "title": "The release workflow calls the changesets action by the names it actually has. Its inputs were renamed in v2 and the old ones are a hard error, so the first run on main stopped before doing anything — which is the failure mode to want.",
+          "slug": "the-release-workflow-calls-the-changesets-action-by-the-names-it-actually-has-its-inputs-were-renamed-in-v2-and-the-old-ones-are-a-hard-error-so-the-first-run-on-main-stopped-before-doing-anything-which-is-the-failure-mode-to-want"
+        },
+        {
+          "depth": 3,
+          "title": "A pull request carries its URL, an errand opens its own as a draft, and the tests are type-checked.",
+          "slug": "a-pull-request-carries-its-url-an-errand-opens-its-own-as-a-draft-and-the-tests-are-type-checked"
+        },
+        {
+          "depth": 3,
+          "title": "amy says what it is, rather than what its first workflow does.",
+          "slug": "amy-says-what-it-is-rather-than-what-its-first-workflow-does"
+        },
+        {
+          "depth": 2,
+          "title": "Released",
+          "slug": "released"
+        },
+        {
+          "depth": 2,
+          "title": "Per-package changelogs",
+          "slug": "per-package-changelogs"
+        },
+        {
+          "depth": 2,
+          "title": "How a change gets here",
+          "slug": "how-a-change-gets-here"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/actions",
+      "file": "docs/concepts/actions.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/actions.md",
+      "title": "Actions",
+      "description": "The catalogue the core owns, why a workflow composes rather than defines, and when to add one.",
+      "group": "How it works",
+      "order": 5,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Why composing and not defining",
+          "slug": "why-composing-and-not-defining"
+        },
+        {
+          "depth": 2,
+          "title": "The catalogue",
+          "slug": "the-catalogue"
+        },
+        {
+          "depth": 2,
+          "title": "What a workflow declares",
+          "slug": "what-a-workflow-declares"
+        },
+        {
+          "depth": 2,
+          "title": "The payload lives in the workflow",
+          "slug": "the-payload-lives-in-the-workflow"
+        },
+        {
+          "depth": 2,
+          "title": "Adding an action",
+          "slug": "adding-an-action"
+        },
+        {
+          "depth": 2,
+          "title": "Actions do not decide anything",
+          "slug": "actions-do-not-decide-anything"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/architecture",
+      "file": "docs/concepts/architecture.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/architecture.md",
+      "title": "Architecture",
+      "description": "What owns what, the one rule everything else follows from, and where the types live.",
+      "group": "How it works",
+      "order": 1,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The one rule",
+          "slug": "the-one-rule"
+        },
+        {
+          "depth": 2,
+          "title": "The layers",
+          "slug": "the-layers"
+        },
+        {
+          "depth": 2,
+          "title": "The workspace",
+          "slug": "the-workspace"
+        },
+        {
+          "depth": 2,
+          "title": "A workflow is only the order",
+          "slug": "a-workflow-is-only-the-order"
+        },
+        {
+          "depth": 2,
+          "title": "The engine drives a workflow it does not know",
+          "slug": "the-engine-drives-a-workflow-it-does-not-know"
+        },
+        {
+          "depth": 2,
+          "title": "The logic is code, the reach is data",
+          "slug": "the-logic-is-code-the-reach-is-data"
+        },
+        {
+          "depth": 2,
+          "title": "Where the types live",
+          "slug": "where-the-types-live"
+        },
+        {
+          "depth": 2,
+          "title": "Nothing reaches the world except through two ports",
+          "slug": "nothing-reaches-the-world-except-through-two-ports"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/budgets",
+      "file": "docs/concepts/budgets.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/budgets.md",
+      "title": "Budgets and ceilings",
+      "description": "Two currencies, read from the log rather than a tally, and asked before the call.",
+      "group": "How it works",
+      "order": 9,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The agent budget",
+          "slug": "the-agent-budget"
+        },
+        {
+          "depth": 3,
+          "title": "Read from the log, never from a tally of its own",
+          "slug": "read-from-the-log-never-from-a-tally-of-its-own"
+        },
+        {
+          "depth": 3,
+          "title": "Asked before the call, not after",
+          "slug": "asked-before-the-call-not-after"
+        },
+        {
+          "depth": 3,
+          "title": "It only mounts when it can refuse",
+          "slug": "it-only-mounts-when-it-can-refuse"
+        },
+        {
+          "depth": 2,
+          "title": "The reviewer ceiling",
+          "slug": "the-reviewer-ceiling"
+        },
+        {
+          "depth": 2,
+          "title": "The errand ceiling",
+          "slug": "the-errand-ceiling"
+        },
+        {
+          "depth": 2,
+          "title": "What a model costs",
+          "slug": "what-a-model-costs"
+        },
+        {
+          "depth": 2,
+          "title": "Reading it back",
+          "slug": "reading-it-back"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/events",
+      "file": "docs/concepts/events.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/events.md",
+      "title": "Events",
+      "description": "One append-only log, a versioned contract, and why it is hash-locked.",
+      "group": "How it works",
+      "order": 10,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Every line names the build that wrote it",
+          "slug": "every-line-names-the-build-that-wrote-it"
+        },
+        {
+          "depth": 2,
+          "title": "The kinds",
+          "slug": "the-kinds"
+        },
+        {
+          "depth": 2,
+          "title": "It is a contract, and it is enforced twice",
+          "slug": "it-is-a-contract-and-it-is-enforced-twice"
+        },
+        {
+          "depth": 2,
+          "title": "Reading a log written by a newer build",
+          "slug": "reading-a-log-written-by-a-newer-build"
+        },
+        {
+          "depth": 2,
+          "title": "The log is local, and may name real work",
+          "slug": "the-log-is-local-and-may-name-real-work"
+        },
+        {
+          "depth": 2,
+          "title": "Failing to log never costs a move",
+          "slug": "failing-to-log-never-costs-a-move"
+        },
+        {
+          "depth": 2,
+          "title": "Adding a kind",
+          "slug": "adding-a-kind"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/harnesses",
+      "file": "docs/concepts/harnesses.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/harnesses.md",
+      "title": "Harnesses, the ladder and skills",
+      "description": "Which agent does a step, what happens when it runs out of quota, and how a named skill answers instead.",
+      "group": "How it works",
+      "order": 8,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Harnesses contribute; the relay mounts",
+          "slug": "harnesses-contribute-the-relay-mounts"
+        },
+        {
+          "depth": 2,
+          "title": "The ladder",
+          "slug": "the-ladder"
+        },
+        {
+          "depth": 3,
+          "title": "What happens after a rung does not work out",
+          "slug": "what-happens-after-a-rung-does-not-work-out"
+        },
+        {
+          "depth": 2,
+          "title": "Skills: who should do the step",
+          "slug": "skills-who-should-do-the-step"
+        },
+        {
+          "depth": 3,
+          "title": "Two ladders, and they answer different questions",
+          "slug": "two-ladders-and-they-answer-different-questions"
+        },
+        {
+          "depth": 3,
+          "title": "A skill named here has to be installed",
+          "slug": "a-skill-named-here-has-to-be-installed"
+        },
+        {
+          "depth": 2,
+          "title": "amy's own skills",
+          "slug": "amys-own-skills"
+        },
+        {
+          "depth": 2,
+          "title": "Writing a harness plugin",
+          "slug": "writing-a-harness-plugin"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/plugins",
+      "file": "docs/concepts/plugins.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/plugins.md",
+      "title": "Plugins and the registry",
+      "description": "How a plugin is assembled rather than constructed, and every way mount() refuses.",
+      "group": "How it works",
+      "order": 3,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Assembled, not constructed",
+          "slug": "assembled-not-constructed"
+        },
+        {
+          "depth": 2,
+          "title": "Every way mount() refuses",
+          "slug": "every-way-mount-refuses"
+        },
+        {
+          "depth": 2,
+          "title": "What a plugin is lent",
+          "slug": "what-a-plugin-is-lent"
+        },
+        {
+          "depth": 2,
+          "title": "The five things a plugin can register",
+          "slug": "the-five-things-a-plugin-can-register"
+        },
+        {
+          "depth": 2,
+          "title": "Collections",
+          "slug": "collections"
+        },
+        {
+          "depth": 2,
+          "title": "ready(), and why it exists",
+          "slug": "ready-and-why-it-exists"
+        },
+        {
+          "depth": 2,
+          "title": "Config schemas",
+          "slug": "config-schemas"
+        },
+        {
+          "depth": 2,
+          "title": "Singletons, and the trap in them",
+          "slug": "singletons-and-the-trap-in-them"
+        },
+        {
+          "depth": 2,
+          "title": "Every shipped plugin",
+          "slug": "every-shipped-plugin"
+        },
+        {
+          "depth": 2,
+          "title": "Writing one",
+          "slug": "writing-one"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/ports",
+      "file": "docs/concepts/ports.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/ports.md",
+      "title": "Ports",
+      "description": "Named slots one plugin fills, the contracts behind them, and which are not ports at all.",
+      "group": "How it works",
+      "order": 4,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The ports that exist",
+          "slug": "the-ports-that-exist"
+        },
+        {
+          "depth": 2,
+          "title": "The contracts",
+          "slug": "the-contracts"
+        },
+        {
+          "depth": 3,
+          "title": "Budget",
+          "slug": "budget"
+        },
+        {
+          "depth": 3,
+          "title": "CodeHost",
+          "slug": "codehost"
+        },
+        {
+          "depth": 3,
+          "title": "CommandRunner",
+          "slug": "commandrunner"
+        },
+        {
+          "depth": 3,
+          "title": "Commands",
+          "slug": "commands"
+        },
+        {
+          "depth": 3,
+          "title": "EventLog",
+          "slug": "eventlog"
+        },
+        {
+          "depth": 3,
+          "title": "GraphQLClient",
+          "slug": "graphqlclient"
+        },
+        {
+          "depth": 3,
+          "title": "Harness",
+          "slug": "harness"
+        },
+        {
+          "depth": 3,
+          "title": "Notifier",
+          "slug": "notifier"
+        },
+        {
+          "depth": 3,
+          "title": "Queue",
+          "slug": "queue"
+        },
+        {
+          "depth": 3,
+          "title": "StopSwitch",
+          "slug": "stopswitch"
+        },
+        {
+          "depth": 3,
+          "title": "Store",
+          "slug": "store"
+        },
+        {
+          "depth": 2,
+          "title": "What is a port, and what is lent to everybody",
+          "slug": "what-is-a-port-and-what-is-lent-to-everybody"
+        },
+        {
+          "depth": 2,
+          "title": "Narrowing a port",
+          "slug": "narrowing-a-port"
+        },
+        {
+          "depth": 2,
+          "title": "Filling a port from your own plugin",
+          "slug": "filling-a-port-from-your-own-plugin"
+        },
+        {
+          "depth": 2,
+          "title": "Registering a port the core has never heard of",
+          "slug": "registering-a-port-the-core-has-never-heard-of"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/the-engine",
+      "file": "docs/concepts/the-engine.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/the-engine.md",
+      "title": "The engine",
+      "description": "What one tick does, in order, and why the engine knows nothing about tickets.",
+      "group": "How it works",
+      "order": 7,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What one tick does",
+          "slug": "what-one-tick-does"
+        },
+        {
+          "depth": 2,
+          "title": "Every noun in it",
+          "slug": "every-noun-in-it"
+        },
+        {
+          "depth": 2,
+          "title": "What a tick returns",
+          "slug": "what-a-tick-returns"
+        },
+        {
+          "depth": 2,
+          "title": "It fails out loud",
+          "slug": "it-fails-out-loud"
+        },
+        {
+          "depth": 3,
+          "title": "The one rule about swallowing a failure",
+          "slug": "the-one-rule-about-swallowing-a-failure"
+        },
+        {
+          "depth": 2,
+          "title": "Serial, and replaceable",
+          "slug": "serial-and-replaceable"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/the-queue",
+      "file": "docs/concepts/the-queue.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/the-queue.md",
+      "title": "The queue",
+      "description": "Why there is no interval anywhere, and how two workers cannot take the same item.",
+      "group": "How it works",
+      "order": 6,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What --every actually is",
+          "slug": "what---every-actually-is"
+        },
+        {
+          "depth": 2,
+          "title": "One file per item",
+          "slug": "one-file-per-item"
+        },
+        {
+          "depth": 2,
+          "title": "Recovery and pruning",
+          "slug": "recovery-and-pruning"
+        },
+        {
+          "depth": 2,
+          "title": "What the queue promises",
+          "slug": "what-the-queue-promises"
+        },
+        {
+          "depth": 2,
+          "title": "Attempts and giving up",
+          "slug": "attempts-and-giving-up"
+        },
+        {
+          "depth": 2,
+          "title": "Replacing it",
+          "slug": "replacing-it"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/workflows",
+      "file": "docs/concepts/workflows.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/workflows.md",
+      "title": "Workflows",
+      "description": "Two halves — a pure decision and a runtime — and the seven things a workflow declares.",
+      "group": "How it works",
+      "order": 2,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The decision half",
+          "slug": "the-decision-half"
+        },
+        {
+          "depth": 2,
+          "title": "The runtime half",
+          "slug": "the-runtime-half"
+        },
+        {
+          "depth": 2,
+          "title": "The seven things a workflow declares",
+          "slug": "the-seven-things-a-workflow-declares"
+        },
+        {
+          "depth": 2,
+          "title": "Effects are described, never performed",
+          "slug": "effects-are-described-never-performed"
+        },
+        {
+          "depth": 2,
+          "title": "Attempts, and why advance does not count",
+          "slug": "attempts-and-why-advance-does-not-count"
+        },
+        {
+          "depth": 2,
+          "title": "The shipped workflows",
+          "slug": "the-shipped-workflows"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/workflow-errand",
+          "slug": "amyworkflow-errand"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/workflow-note-to-plan",
+          "slug": "amyworkflow-note-to-plan"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/workflow-ticket-to-qa",
+          "slug": "amyworkflow-ticket-to-qa"
+        },
+        {
+          "depth": 2,
+          "title": "Writing one",
+          "slug": "writing-one"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-engine-fails-out-loud",
+      "file": "docs/design/the-engine-fails-out-loud.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-engine-fails-out-loud.md",
+      "title": "Failing out loud",
+      "description": "The design behind one warning down, silence, one warning back — and the rule about which port calls may be swallowed.",
+      "group": "Design notes",
+      "order": 1,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Contexto",
+          "slug": "contexto"
+        },
+        {
+          "depth": 2,
+          "title": "Um bug que apareceu no caminho, e que vem primeiro",
+          "slug": "um-bug-que-apareceu-no-caminho-e-que-vem-primeiro"
+        },
+        {
+          "depth": 2,
+          "title": "(a) Um aviso na queda, silêncio no meio, um na volta",
+          "slug": "a-um-aviso-na-queda-silncio-no-meio-um-na-volta"
+        },
+        {
+          "depth": 3,
+          "title": "As edições",
+          "slug": "as-edies"
+        },
+        {
+          "depth": 2,
+          "title": "(b) Isolamento, e onde exatamente fica a linha",
+          "slug": "b-isolamento-e-onde-exatamente-fica-a-linha"
+        },
+        {
+          "depth": 3,
+          "title": "Três edições",
+          "slug": "trs-edies"
+        },
+        {
+          "depth": 2,
+          "title": "(c) O log vira contrato versionado",
+          "slug": "c-o-log-vira-contrato-versionado"
+        },
+        {
+          "depth": 3,
+          "title": "O arquivo",
+          "slug": "o-arquivo"
+        },
+        {
+          "depth": 3,
+          "title": "O que impede o arquivo de apodrecer",
+          "slug": "o-que-impede-o-arquivo-de-apodrecer"
+        },
+        {
+          "depth": 3,
+          "title": "O par que solda nomes em tempo de compilação",
+          "slug": "o-par-que-solda-nomes-em-tempo-de-compilao"
+        },
+        {
+          "depth": 3,
+          "title": "O lock, e o que fica vermelho",
+          "slug": "o-lock-e-o-que-fica-vermelho"
+        },
+        {
+          "depth": 2,
+          "title": "O gate",
+          "slug": "o-gate"
+        },
+        {
+          "depth": 3,
+          "title": "O scenario",
+          "slug": "o-scenario"
+        },
+        {
+          "depth": 3,
+          "title": "O plano no repo",
+          "slug": "o-plano-no-repo"
+        },
+        {
+          "depth": 2,
+          "title": "Ordem",
+          "slug": "ordem"
+        },
+        {
+          "depth": 2,
+          "title": "Verificação",
+          "slug": "verificao"
+        },
+        {
+          "depth": 2,
+          "title": "O que não fica provado, e vai dito",
+          "slug": "o-que-no-fica-provado-e-vai-dito"
+        }
+      ]
+    },
+    {
+      "path": "/development/contributing",
+      "file": "docs/development/contributing.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/contributing.md",
+      "title": "Contributing",
+      "description": "The five minutes before your first change, and the one rule everything follows from.",
+      "group": "Development",
+      "order": 1,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The five minutes before your first change",
+          "slug": "the-five-minutes-before-your-first-change"
+        },
+        {
+          "depth": 2,
+          "title": "What has to be green",
+          "slug": "what-has-to-be-green"
+        },
+        {
+          "depth": 2,
+          "title": "The one architectural rule",
+          "slug": "the-one-architectural-rule"
+        },
+        {
+          "depth": 2,
+          "title": "Conventions that are not negotiable",
+          "slug": "conventions-that-are-not-negotiable"
+        },
+        {
+          "depth": 2,
+          "title": "Changing behaviour",
+          "slug": "changing-behaviour"
+        },
+        {
+          "depth": 2,
+          "title": "Where to ask",
+          "slug": "where-to-ask"
+        }
+      ]
+    },
+    {
+      "path": "/development/documentation",
+      "file": "docs/development/documentation.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/documentation.md",
+      "title": "Documentation",
+      "description": "How half of this is generated from the code, why the gate goes red when it drifts, and what a site consumes.",
+      "group": "Development",
+      "order": 4,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The two commands",
+          "slug": "the-two-commands"
+        },
+        {
+          "depth": 2,
+          "title": "What is derived, and from where",
+          "slug": "what-is-derived-and-from-where"
+        },
+        {
+          "depth": 2,
+          "title": "How a page is generated",
+          "slug": "how-a-page-is-generated"
+        },
+        {
+          "depth": 2,
+          "title": "Every shipped plugin",
+          "slug": "every-shipped-plugin"
+        },
+        {
+          "depth": 2,
+          "title": "What is written wholesale",
+          "slug": "what-is-written-wholesale"
+        },
+        {
+          "depth": 2,
+          "title": "The manifest",
+          "slug": "the-manifest"
+        },
+        {
+          "depth": 2,
+          "title": "The navigation",
+          "slug": "the-navigation"
+        },
+        {
+          "depth": 2,
+          "title": "The news cache",
+          "slug": "the-news-cache"
+        },
+        {
+          "depth": 2,
+          "title": "The part that uses an agent",
+          "slug": "the-part-that-uses-an-agent"
+        },
+        {
+          "depth": 2,
+          "title": "Adding a generated block",
+          "slug": "adding-a-generated-block"
+        },
+        {
+          "depth": 2,
+          "title": "Writing the prose half",
+          "slug": "writing-the-prose-half"
+        }
+      ]
+    },
+    {
+      "path": "/development/releasing",
+      "file": "docs/development/releasing.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/releasing.md",
+      "title": "Releasing",
+      "description": "Changesets, the version pull request, and why the release job is dormant.",
+      "group": "Development",
+      "order": 3,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Every user-visible change carries a changeset",
+          "slug": "every-user-visible-change-carries-a-changeset"
+        },
+        {
+          "depth": 2,
+          "title": "What happens on a push to main",
+          "slug": "what-happens-on-a-push-to-main"
+        },
+        {
+          "depth": 2,
+          "title": "It is dormant until somebody arms it",
+          "slug": "it-is-dormant-until-somebody-arms-it"
+        },
+        {
+          "depth": 2,
+          "title": "Checked before it can go wrong",
+          "slug": "checked-before-it-can-go-wrong"
+        },
+        {
+          "depth": 2,
+          "title": "The news page",
+          "slug": "the-news-page"
+        }
+      ]
+    },
+    {
+      "path": "/development/the-gate",
+      "file": "docs/development/the-gate.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/the-gate.md",
+      "title": "The gate",
+      "description": "One command, thirty-three rules proven to fire, and seven gates whose proofs expire.",
+      "group": "Development",
+      "order": 2,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The rules, and the thing that makes them worth having",
+          "slug": "the-rules-and-the-thing-that-makes-them-worth-having"
+        },
+        {
+          "depth": 3,
+          "title": "Deliberately off",
+          "slug": "deliberately-off"
+        },
+        {
+          "depth": 3,
+          "title": "The one worth naming",
+          "slug": "the-one-worth-naming"
+        },
+        {
+          "depth": 2,
+          "title": "The hazards nobody notices until the day they matter",
+          "slug": "the-hazards-nobody-notices-until-the-day-they-matter"
+        },
+        {
+          "depth": 2,
+          "title": "The gates, and the thing that will surprise you",
+          "slug": "the-gates-and-the-thing-that-will-surprise-you"
+        },
+        {
+          "depth": 3,
+          "title": "A gate's proof expires",
+          "slug": "a-gates-proof-expires"
+        },
+        {
+          "depth": 2,
+          "title": "Coverage and the ratchet",
+          "slug": "coverage-and-the-ratchet"
+        }
+      ]
+    },
+    {
+      "path": "/reference/cli",
+      "file": "docs/reference/cli.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/cli.md",
+      "title": "CLI",
+      "description": "Every command, argument, option and default — read out of the command itself.",
+      "group": "Reference",
+      "order": 1,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Global options",
+          "slug": "global-options"
+        },
+        {
+          "depth": 2,
+          "title": "Every command",
+          "slug": "every-command"
+        },
+        {
+          "depth": 2,
+          "title": "Commands in detail",
+          "slug": "commands-in-detail"
+        },
+        {
+          "depth": 3,
+          "title": "amy btw",
+          "slug": "amy-btw"
+        },
+        {
+          "depth": 3,
+          "title": "amy budget",
+          "slug": "amy-budget"
+        },
+        {
+          "depth": 3,
+          "title": "amy daemon",
+          "slug": "amy-daemon"
+        },
+        {
+          "depth": 3,
+          "title": "amy discover",
+          "slug": "amy-discover"
+        },
+        {
+          "depth": 3,
+          "title": "amy doctor",
+          "slug": "amy-doctor"
+        },
+        {
+          "depth": 3,
+          "title": "amy init",
+          "slug": "amy-init"
+        },
+        {
+          "depth": 3,
+          "title": "amy models",
+          "slug": "amy-models"
+        },
+        {
+          "depth": 3,
+          "title": "amy models refresh",
+          "slug": "amy-models-refresh"
+        },
+        {
+          "depth": 3,
+          "title": "amy models show",
+          "slug": "amy-models-show"
+        },
+        {
+          "depth": 3,
+          "title": "amy note",
+          "slug": "amy-note"
+        },
+        {
+          "depth": 3,
+          "title": "amy pause",
+          "slug": "amy-pause"
+        },
+        {
+          "depth": 3,
+          "title": "amy plugin",
+          "slug": "amy-plugin"
+        },
+        {
+          "depth": 3,
+          "title": "amy plugin add",
+          "slug": "amy-plugin-add"
+        },
+        {
+          "depth": 3,
+          "title": "amy plugin list",
+          "slug": "amy-plugin-list"
+        },
+        {
+          "depth": 3,
+          "title": "amy plugin remove",
+          "slug": "amy-plugin-remove"
+        },
+        {
+          "depth": 3,
+          "title": "amy queue",
+          "slug": "amy-queue"
+        },
+        {
+          "depth": 3,
+          "title": "amy queue prune",
+          "slug": "amy-queue-prune"
+        },
+        {
+          "depth": 3,
+          "title": "amy queue recover",
+          "slug": "amy-queue-recover"
+        },
+        {
+          "depth": 3,
+          "title": "amy resume",
+          "slug": "amy-resume"
+        },
+        {
+          "depth": 3,
+          "title": "amy roster",
+          "slug": "amy-roster"
+        },
+        {
+          "depth": 3,
+          "title": "amy roster confirm",
+          "slug": "amy-roster-confirm"
+        },
+        {
+          "depth": 3,
+          "title": "amy roster show",
+          "slug": "amy-roster-show"
+        },
+        {
+          "depth": 3,
+          "title": "amy run",
+          "slug": "amy-run"
+        },
+        {
+          "depth": 3,
+          "title": "amy skills",
+          "slug": "amy-skills"
+        },
+        {
+          "depth": 3,
+          "title": "amy start",
+          "slug": "amy-start"
+        },
+        {
+          "depth": 3,
+          "title": "amy status",
+          "slug": "amy-status"
+        },
+        {
+          "depth": 3,
+          "title": "amy stop",
+          "slug": "amy-stop"
+        },
+        {
+          "depth": 3,
+          "title": "amy tick",
+          "slug": "amy-tick"
+        },
+        {
+          "depth": 3,
+          "title": "amy workflow",
+          "slug": "amy-workflow"
+        },
+        {
+          "depth": 3,
+          "title": "amy workflow list",
+          "slug": "amy-workflow-list"
+        },
+        {
+          "depth": 3,
+          "title": "amy workflow rm",
+          "slug": "amy-workflow-rm"
+        }
+      ]
+    },
+    {
+      "path": "/reference/configuration",
+      "file": "docs/reference/configuration.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/configuration.md",
+      "title": "Configuration",
+      "description": "Every key in config.yaml, its type and its default — from the interface that defines it.",
+      "group": "Reference",
+      "order": 6,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The host's keys",
+          "slug": "the-hosts-keys"
+        },
+        {
+          "depth": 2,
+          "title": "A workflow profile",
+          "slug": "a-workflow-profile"
+        },
+        {
+          "depth": 2,
+          "title": "Environment variables",
+          "slug": "environment-variables"
+        },
+        {
+          "depth": 2,
+          "title": "The template amy init writes",
+          "slug": "the-template-amy-init-writes"
+        },
+        {
+          "depth": 2,
+          "title": "The roster template",
+          "slug": "the-roster-template"
+        }
+      ]
+    },
+    {
+      "path": "/reference/contracts",
+      "file": "docs/reference/contracts.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/contracts.md",
+      "title": "Contracts",
+      "description": "Every interface in the core — the ports, and the services lent to every plugin.",
+      "group": "Reference",
+      "order": 4,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The mounted port kinds",
+          "slug": "the-mounted-port-kinds"
+        },
+        {
+          "depth": 2,
+          "title": "The action catalogue",
+          "slug": "the-action-catalogue"
+        },
+        {
+          "depth": 2,
+          "title": "What a decision can be",
+          "slug": "what-a-decision-can-be"
+        },
+        {
+          "depth": 2,
+          "title": "The interfaces",
+          "slug": "the-interfaces"
+        },
+        {
+          "depth": 3,
+          "title": "Budget",
+          "slug": "budget"
+        },
+        {
+          "depth": 3,
+          "title": "CodeHost",
+          "slug": "codehost"
+        },
+        {
+          "depth": 3,
+          "title": "CommandRunner",
+          "slug": "commandrunner"
+        },
+        {
+          "depth": 3,
+          "title": "Commands",
+          "slug": "commands"
+        },
+        {
+          "depth": 3,
+          "title": "EventLog",
+          "slug": "eventlog"
+        },
+        {
+          "depth": 3,
+          "title": "GraphQLClient",
+          "slug": "graphqlclient"
+        },
+        {
+          "depth": 3,
+          "title": "Harness",
+          "slug": "harness"
+        },
+        {
+          "depth": 3,
+          "title": "Notifier",
+          "slug": "notifier"
+        },
+        {
+          "depth": 3,
+          "title": "Queue",
+          "slug": "queue"
+        },
+        {
+          "depth": 3,
+          "title": "StopSwitch",
+          "slug": "stopswitch"
+        },
+        {
+          "depth": 3,
+          "title": "Store",
+          "slug": "store"
+        }
+      ]
+    },
+    {
+      "path": "/reference/events",
+      "file": "docs/reference/events.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/events.md",
+      "title": "Events",
+      "description": "Every event kind and the exact shape of its detail — from the contract the log is validated against.",
+      "group": "Reference",
+      "order": 5,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Every kind",
+          "slug": "every-kind"
+        },
+        {
+          "depth": 2,
+          "title": "What each detail holds",
+          "slug": "what-each-detail-holds"
+        }
+      ]
+    },
+    {
+      "path": "/reference/plugins",
+      "file": "docs/reference/plugins.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/plugins.md",
+      "title": "Plugins",
+      "description": "Every shipped plugin — what it mounts, what it contributes, and every setting it declares.",
+      "group": "Reference",
+      "order": 2,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Every shipped plugin",
+          "slug": "every-shipped-plugin"
+        },
+        {
+          "depth": 2,
+          "title": "Settings, plugin by plugin",
+          "slug": "settings-plugin-by-plugin"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-agent-relay",
+          "slug": "amyplugin-agent-relay"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-claude",
+          "slug": "amyplugin-claude"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-codex",
+          "slug": "amyplugin-codex"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-command",
+          "slug": "amyplugin-command"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-command-gate",
+          "slug": "amyplugin-command-gate"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-file-notes",
+          "slug": "amyplugin-file-notes"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-file-queue",
+          "slug": "amyplugin-file-queue"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-file-store",
+          "slug": "amyplugin-file-store"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-file-tasks",
+          "slug": "amyplugin-file-tasks"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-github",
+          "slug": "amyplugin-github"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-hermes-agent",
+          "slug": "amyplugin-hermes-agent"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-linear",
+          "slug": "amyplugin-linear"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-notify-fanout",
+          "slug": "amyplugin-notify-fanout"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-notify-hermes",
+          "slug": "amyplugin-notify-hermes"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-notify-inbox",
+          "slug": "amyplugin-notify-inbox"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-plan-check",
+          "slug": "amyplugin-plan-check"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/plugin-serial-engine",
+          "slug": "amyplugin-serial-engine"
+        },
+        {
+          "depth": 2,
+          "title": "Collections",
+          "slug": "collections"
+        }
+      ]
+    },
+    {
+      "path": "/reference/workflows",
+      "file": "docs/reference/workflows.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/workflows.md",
+      "title": "Workflows",
+      "description": "Every shipped workflow — its states, where it waits, and what it emits.",
+      "group": "Reference",
+      "order": 3,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Every shipped workflow",
+          "slug": "every-shipped-workflow"
+        },
+        {
+          "depth": 2,
+          "title": "In detail",
+          "slug": "in-detail"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/workflow-errand",
+          "slug": "amyworkflow-errand"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/workflow-note-to-plan",
+          "slug": "amyworkflow-note-to-plan"
+        },
+        {
+          "depth": 3,
+          "title": "@amy/workflow-ticket-to-qa",
+          "slug": "amyworkflow-ticket-to-qa"
+        },
+        {
+          "depth": 2,
+          "title": "What a state's kind means",
+          "slug": "what-a-states-kind-means"
+        }
+      ]
+    },
+    {
+      "path": "/rules",
+      "file": "docs/rules.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/rules.md",
+      "title": "Rules amy enforces",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "L0 — Shape: where things live",
+          "slug": "l0-shape-where-things-live"
+        },
+        {
+          "depth": 3,
+          "title": "L0.CORE_STAYS_IGNORANT",
+          "slug": "l0corestaysignorant"
+        },
+        {
+          "depth": 3,
+          "title": "L0.EXCEPTIONS_HAVE_ONE_HOME",
+          "slug": "l0exceptionshaveonehome"
+        },
+        {
+          "depth": 3,
+          "title": "L0.NO_CROSS_LAYER_IMPORT",
+          "slug": "l0nocrosslayerimport"
+        },
+        {
+          "depth": 2,
+          "title": "L1 — Grain: how the code reads",
+          "slug": "l1-grain-how-the-code-reads"
+        },
+        {
+          "depth": 3,
+          "title": "L1.COMMENT_STAYS_SUCCINCT",
+          "slug": "l1commentstayssuccinct"
+        },
+        {
+          "depth": 3,
+          "title": "L1.COMPLEXITY_CEILING",
+          "slug": "l1complexityceiling"
+        },
+        {
+          "depth": 3,
+          "title": "L1.NO_BLANKET_SUPPRESSION",
+          "slug": "l1noblanketsuppression"
+        },
+        {
+          "depth": 3,
+          "title": "L1.NO_UNTYPED_ESCAPE_HATCH",
+          "slug": "l1nountypedescapehatch"
+        },
+        {
+          "depth": 3,
+          "title": "L1.SKIPPED_TESTS_STATE_A_REASON",
+          "slug": "l1skippedtestsstateareason"
+        },
+        {
+          "depth": 2,
+          "title": "L2 — Contract: no drift from the source of truth",
+          "slug": "l2-contract-no-drift-from-the-source-of-truth"
+        },
+        {
+          "depth": 3,
+          "title": "L2.CATALOG_ONLY_TIGHTENS",
+          "slug": "l2catalogonlytightens"
+        },
+        {
+          "depth": 3,
+          "title": "L2.DEPENDENCIES_CHANGE_DELIBERATELY",
+          "slug": "l2dependencieschangedeliberately"
+        },
+        {
+          "depth": 3,
+          "title": "L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE",
+          "slug": "l2derivedartifactsmatchtheirsource"
+        },
+        {
+          "depth": 3,
+          "title": "L2.FACTORY_CONFIG_IS_LOCKED",
+          "slug": "l2factoryconfigislocked"
+        },
+        {
+          "depth": 3,
+          "title": "L2.GENERATED_FILES_ARE_LOCKED",
+          "slug": "l2generatedfilesarelocked"
+        },
+        {
+          "depth": 3,
+          "title": "L2.NO_PERMANENT_EXCEPTION",
+          "slug": "l2nopermanentexception"
+        },
+        {
+          "depth": 3,
+          "title": "L2.POLICY_ONLY_TIGHTENS",
+          "slug": "l2policyonlytightens"
+        },
+        {
+          "depth": 2,
+          "title": "L3 — Effect: a real actor achieved the outcome",
+          "slug": "l3-effect-a-real-actor-achieved-the-outcome"
+        },
+        {
+          "depth": 3,
+          "title": "L3.GATE_COVERS_THE_PLAN",
+          "slug": "l3gatecoverstheplan"
+        },
+        {
+          "depth": 3,
+          "title": "L3.GATE_HAS_FRESH_EVIDENCE",
+          "slug": "l3gatehasfreshevidence"
+        },
+        {
+          "depth": 2,
+          "title": "L4 — Cadence: docs, plans and rules stay attached",
+          "slug": "l4-cadence-docs-plans-and-rules-stay-attached"
+        },
+        {
+          "depth": 3,
+          "title": "L4.CLAIM_CITES_ITS_EVIDENCE",
+          "slug": "l4claimcitesitsevidence"
+        },
+        {
+          "depth": 3,
+          "title": "L4.DOC_LINKS_RESOLVE",
+          "slug": "l4doclinksresolve"
+        },
+        {
+          "depth": 3,
+          "title": "L4.EVERY_RULE_HAS_A_WHY",
+          "slug": "l4everyrulehasawhy"
+        },
+        {
+          "depth": 3,
+          "title": "L4.PLAN_CRITERION_NAMES_ITS_CHECK",
+          "slug": "l4plancriterionnamesitscheck"
+        },
+        {
+          "depth": 3,
+          "title": "L4.PLAN_DECLARES_EXIT_CONDITION",
+          "slug": "l4plandeclaresexitcondition"
+        },
+        {
+          "depth": 3,
+          "title": "L4.ROOT_FILES_ARE_DECLARED",
+          "slug": "l4rootfilesaredeclared"
+        },
+        {
+          "depth": 3,
+          "title": "L4.RULE_PROSE_NAMES_A_REAL_COMMAND",
+          "slug": "l4ruleprosenamesarealcommand"
+        },
+        {
+          "depth": 2,
+          "title": "L5 — Meta: the guardrail is proven to fire",
+          "slug": "l5-meta-the-guardrail-is-proven-to-fire"
+        },
+        {
+          "depth": 3,
+          "title": "L5.EVERY_CHECK_HAS_A_MUTATION_TEST",
+          "slug": "l5everycheckhasamutationtest"
+        },
+        {
+          "depth": 3,
+          "title": "L5.NO_INERT_RULE",
+          "slug": "l5noinertrule"
+        },
+        {
+          "depth": 2,
+          "title": "L6 — Hazard: the defect classes this repository hunts",
+          "slug": "l6-hazard-the-defect-classes-this-repository-hunts"
+        },
+        {
+          "depth": 3,
+          "title": "L6.DEAD_CODE_IS_DETECTED",
+          "slug": "l6deadcodeisdetected"
+        },
+        {
+          "depth": 3,
+          "title": "L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED",
+          "slug": "l6dependencyvulnerabilitiesarescanned"
+        },
+        {
+          "depth": 3,
+          "title": "L6.FIXTURES_NAME_NOBODY_REAL",
+          "slug": "l6fixturesnamenobodyreal"
+        },
+        {
+          "depth": 3,
+          "title": "L6.INSECURE_PATTERNS_ARE_SCANNED",
+          "slug": "l6insecurepatternsarescanned"
+        },
+        {
+          "depth": 3,
+          "title": "L6.PERFORMANCE_REGRESSION_IS_GUARDED",
+          "slug": "l6performanceregressionisguarded"
+        },
+        {
+          "depth": 3,
+          "title": "L6.SECRETS_ARE_SCANNED",
+          "slug": "l6secretsarescanned"
+        },
+        {
+          "depth": 3,
+          "title": "L6.WORKFLOWS_ARE_SCANNED",
+          "slug": "l6workflowsarescanned"
+        }
+      ]
+    },
+    {
+      "path": "/start/configuration",
+      "file": "docs/start/configuration.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/configuration.md",
+      "title": "Configuration",
+      "description": "One file, two halves — what the host needs to know, and one slice per plugin.",
+      "group": "Start here",
+      "order": 4,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The host's own keys",
+          "slug": "the-hosts-own-keys"
+        },
+        {
+          "depth": 2,
+          "title": "A workflow profile",
+          "slug": "a-workflow-profile"
+        },
+        {
+          "depth": 2,
+          "title": "Plugin settings",
+          "slug": "plugin-settings"
+        },
+        {
+          "depth": 2,
+          "title": "The template amy init writes",
+          "slug": "the-template-amy-init-writes"
+        },
+        {
+          "depth": 2,
+          "title": "The roster",
+          "slug": "the-roster"
+        },
+        {
+          "depth": 2,
+          "title": "Credentials",
+          "slug": "credentials"
+        },
+        {
+          "depth": 2,
+          "title": "Two ceilings",
+          "slug": "two-ceilings"
+        }
+      ]
+    },
+    {
+      "path": "/start/installation",
+      "file": "docs/start/installation.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/installation.md",
+      "title": "Installation",
+      "description": "One install per machine, where its state lives, and how to carry only the plugins you use.",
+      "group": "Start here",
+      "order": 3,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Requirements",
+          "slug": "requirements"
+        },
+        {
+          "depth": 2,
+          "title": "Installing from a checkout",
+          "slug": "installing-from-a-checkout"
+        },
+        {
+          "depth": 3,
+          "title": "Carrying a subset",
+          "slug": "carrying-a-subset"
+        },
+        {
+          "depth": 2,
+          "title": "Where it keeps things",
+          "slug": "where-it-keeps-things"
+        },
+        {
+          "depth": 2,
+          "title": "Your working directory should not be a repository",
+          "slug": "your-working-directory-should-not-be-a-repository"
+        },
+        {
+          "depth": 2,
+          "title": "Credentials",
+          "slug": "credentials"
+        },
+        {
+          "depth": 2,
+          "title": "Verifying the install",
+          "slug": "verifying-the-install"
+        },
+        {
+          "depth": 2,
+          "title": "Every line names the build that wrote it",
+          "slug": "every-line-names-the-build-that-wrote-it"
+        }
+      ]
+    },
+    {
+      "path": "/start/overview",
+      "file": "docs/start/overview.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/overview.md",
+      "title": "Overview",
+      "description": "What amy is, the one idea the rest follows from, and what it is not.",
+      "group": "Start here",
+      "order": 1,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The one idea",
+          "slug": "the-one-idea"
+        },
+        {
+          "depth": 2,
+          "title": "The pieces",
+          "slug": "the-pieces"
+        },
+        {
+          "depth": 2,
+          "title": "What \"everything is a plugin\" actually buys you",
+          "slug": "what-everything-is-a-plugin-actually-buys-you"
+        },
+        {
+          "depth": 2,
+          "title": "What it is not",
+          "slug": "what-it-is-not"
+        },
+        {
+          "depth": 2,
+          "title": "Where to go next",
+          "slug": "where-to-go-next"
+        }
+      ]
+    },
+    {
+      "path": "/start/quickstart",
+      "file": "docs/start/quickstart.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/quickstart.md",
+      "title": "Quickstart",
+      "description": "Five minutes from nothing to one move you can watch.",
+      "group": "Start here",
+      "order": 2,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "1. Install — 1 min",
+          "slug": "1-install-1-min"
+        },
+        {
+          "depth": 2,
+          "title": "2. Set it up — 2 min",
+          "slug": "2-set-it-up-2-min"
+        },
+        {
+          "depth": 2,
+          "title": "3. Watch it make one move — 1 min",
+          "slug": "3-watch-it-make-one-move-1-min"
+        },
+        {
+          "depth": 2,
+          "title": "4. Leave it running — 1 min",
+          "slug": "4-leave-it-running-1-min"
+        },
+        {
+          "depth": 2,
+          "title": "5. Put the skills in your harnesses — 30 sec",
+          "slug": "5-put-the-skills-in-your-harnesses-30-sec"
+        },
+        {
+          "depth": 2,
+          "title": "What to read next",
+          "slug": "what-to-read-next"
+        }
+      ]
+    },
+    {
+      "path": "/start/running",
+      "file": "docs/start/running.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/running.md",
+      "title": "Running it",
+      "description": "One move at a time, the loop, and the difference between pause and stop.",
+      "group": "Start here",
+      "order": 5,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The one command that matters",
+          "slug": "the-one-command-that-matters"
+        },
+        {
+          "depth": 2,
+          "title": "The four ways to drive",
+          "slug": "the-four-ways-to-drive"
+        },
+        {
+          "depth": 2,
+          "title": "The queue is the schedule",
+          "slug": "the-queue-is-the-schedule"
+        },
+        {
+          "depth": 2,
+          "title": "Pause and stop are different things",
+          "slug": "pause-and-stop-are-different-things"
+        },
+        {
+          "depth": 2,
+          "title": "Putting work on the queue by hand",
+          "slug": "putting-work-on-the-queue-by-hand"
+        },
+        {
+          "depth": 2,
+          "title": "When something goes down",
+          "slug": "when-something-goes-down"
+        },
+        {
+          "depth": 2,
+          "title": "Tidying up",
+          "slug": "tidying-up"
+        }
+      ]
+    },
+    {
+      "path": "/start/security",
+      "file": "docs/start/security.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/security.md",
+      "title": "Security",
+      "description": "What amy can reach, what it refuses to do, and the parts that are your call.",
+      "group": "Start here",
+      "order": 8,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The threat that actually matters",
+          "slug": "the-threat-that-actually-matters"
+        },
+        {
+          "depth": 2,
+          "title": "Nothing reaches the outside world except through two ports",
+          "slug": "nothing-reaches-the-outside-world-except-through-two-ports"
+        },
+        {
+          "depth": 2,
+          "title": "Credentials",
+          "slug": "credentials"
+        },
+        {
+          "depth": 2,
+          "title": "Your working directory is not a repository",
+          "slug": "your-working-directory-is-not-a-repository"
+        },
+        {
+          "depth": 2,
+          "title": "The log is local, and stays local",
+          "slug": "the-log-is-local-and-stays-local"
+        },
+        {
+          "depth": 2,
+          "title": "What the machine refuses to do",
+          "slug": "what-the-machine-refuses-to-do"
+        },
+        {
+          "depth": 2,
+          "title": "What is your call",
+          "slug": "what-is-your-call"
+        },
+        {
+          "depth": 2,
+          "title": "Supply chain, on amy's own side",
+          "slug": "supply-chain-on-amys-own-side"
+        }
+      ]
+    },
+    {
+      "path": "/start/status-and-doctor",
+      "file": "docs/start/status-and-doctor.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/status-and-doctor.md",
+      "title": "Status and doctor",
+      "description": "Reading where things stand, and finding out what is wrong before it touches a ticket.",
+      "group": "Start here",
+      "order": 7,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "amy doctor",
+          "slug": "amy-doctor"
+        },
+        {
+          "depth": 2,
+          "title": "amy status",
+          "slug": "amy-status"
+        },
+        {
+          "depth": 3,
+          "title": "Reading a stuck piece of work",
+          "slug": "reading-a-stuck-piece-of-work"
+        },
+        {
+          "depth": 2,
+          "title": "The log is the third answer",
+          "slug": "the-log-is-the-third-answer"
+        },
+        {
+          "depth": 2,
+          "title": "amy budget",
+          "slug": "amy-budget"
+        }
+      ]
+    },
+    {
+      "path": "/start/workflows-and-profiles",
+      "file": "docs/start/workflows-and-profiles.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/workflows-and-profiles.md",
+      "title": "Workflows and profiles",
+      "description": "A profile is a name in a config, not a case in a switch — and what that costs.",
+      "group": "Start here",
+      "order": 6,
+      "generated": true,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What ships in the box",
+          "slug": "what-ships-in-the-box"
+        },
+        {
+          "depth": 2,
+          "title": "What is shared, and what is not",
+          "slug": "what-is-shared-and-what-is-not"
+        },
+        {
+          "depth": 2,
+          "title": "One workflow per invocation",
+          "slug": "one-workflow-per-invocation"
+        },
+        {
+          "depth": 2,
+          "title": "Managing profiles",
+          "slug": "managing-profiles"
+        },
+        {
+          "depth": 2,
+          "title": "What a profile mounts",
+          "slug": "what-a-profile-mounts"
+        },
+        {
+          "depth": 2,
+          "title": "Writing your own",
+          "slug": "writing-your-own"
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "actions": [
+      {
+        "name": "address-threads",
+        "port": "agent",
+        "method": "addressThreads",
+        "doc": ""
+      },
+      {
+        "name": "announce",
+        "port": "notifier",
+        "method": "announce",
+        "doc": ""
+      },
+      {
+        "name": "ask-question",
+        "port": "tracker",
+        "method": "comment",
+        "doc": ""
+      },
+      {
+        "name": "assign-reviewer",
+        "port": "code-host",
+        "method": "requestReview",
+        "doc": ""
+      },
+      {
+        "name": "draft-plan",
+        "port": "agent",
+        "method": "ask",
+        "doc": "Ask the agent for a piece of writing, in whoever asked's own words."
+      },
+      {
+        "name": "escalate",
+        "port": "tracker",
+        "method": "createFollowUp",
+        "doc": ""
+      },
+      {
+        "name": "hand-off-to-qa",
+        "port": "tracker",
+        "method": "setStatus",
+        "doc": ""
+      },
+      {
+        "name": "implement",
+        "port": "agent",
+        "method": "implement",
+        "doc": ""
+      },
+      {
+        "name": "open-pull-request",
+        "port": "code-host",
+        "method": "openPullRequest",
+        "doc": ""
+      },
+      {
+        "name": "request-rereview",
+        "port": "code-host",
+        "method": "requestReview",
+        "doc": ""
+      },
+      {
+        "name": "run-errand",
+        "port": "agent",
+        "method": "ask",
+        "doc": "Do the thing somebody asked for, in their own words."
+      },
+      {
+        "name": "run-gate",
+        "port": "gate",
+        "method": "run",
+        "doc": ""
+      },
+      {
+        "name": "triage",
+        "port": "agent",
+        "method": "triage",
+        "doc": ""
+      }
+    ],
+    "contracts": [
+      {
+        "interface": "Budget",
+        "file": "packages/core/src/ports/Budget.ts",
+        "doc": "Whether work that spends an agent may start.",
+        "methods": [
+          {
+            "name": "mayStart",
+            "signature": "mayStart(now: Date): BudgetDecision",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "CodeHost",
+        "file": "packages/core/src/ports/CodeHost.ts",
+        "doc": "The forge: a repository, a branch, a pull request and a login.",
+        "methods": [
+          {
+            "name": "findPullRequest",
+            "signature": "findPullRequest(repo: string, branch: string): Promise<PullRequestView | null>",
+            "doc": ""
+          },
+          {
+            "name": "openPullRequest",
+            "signature": "openPullRequest(request: OpenPullRequestRequest): Promise<number>",
+            "doc": ""
+          },
+          {
+            "name": "requestReview",
+            "signature": "requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>",
+            "doc": ""
+          },
+          {
+            "name": "reviewLoad",
+            "signature": "reviewLoad(repos: readonly string[]): Promise<Record<string, number>>",
+            "doc": "Open reviews per login, counted across every given repository."
+          }
+        ]
+      },
+      {
+        "interface": "CommandRunner",
+        "file": "packages/core/src/ports/CommandRunner.ts",
+        "doc": "Running a child process, behind a port.",
+        "methods": [
+          {
+            "name": "run",
+            "signature": "run(command: string, args: readonly string[], options?: RunOptions): Promise<CommandResult>",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "Commands",
+        "file": "packages/core/src/ports/Commands.ts",
+        "doc": "Any command line tool, reached by a name somebody put in the config.",
+        "methods": [
+          {
+            "name": "run",
+            "signature": "run(name: string, args?: readonly string[], options?: { cwd?: string }): Promise<CommandOutcome>",
+            "doc": ""
+          },
+          {
+            "name": "available",
+            "signature": "available(): readonly string[]",
+            "doc": "What the config allows, for a refusal that names the alternatives."
+          }
+        ]
+      },
+      {
+        "interface": "EventLog",
+        "file": "packages/core/src/ports/EventLog.ts",
+        "doc": "The append-only record of everything that happened.",
+        "methods": [
+          {
+            "name": "append",
+            "signature": "append(event: Event): void",
+            "doc": ""
+          },
+          {
+            "name": "read",
+            "signature": "read(since?: Date): Event[]",
+            "doc": "Events at or after the given instant, oldest first."
+          }
+        ]
+      },
+      {
+        "interface": "GraphQLClient",
+        "file": "packages/core/src/ports/GraphQL.ts",
+        "doc": "A GraphQL endpoint, behind a port.",
+        "methods": [
+          {
+            "name": "request",
+            "signature": "request(query: string, variables?: Record<string, unknown>): Promise<T>",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "Harness",
+        "file": "packages/core/src/ports/Harness.ts",
+        "doc": "One coding agent CLI, reduced to the only thing that differs between them.",
+        "methods": [
+          {
+            "name": "ask",
+            "signature": "ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "Notifier",
+        "file": "packages/core/src/ports/Notifier.ts",
+        "doc": "How the machine reaches the operator when it needs them.",
+        "methods": [
+          {
+            "name": "announce",
+            "signature": "announce(announcement: Announcement): Promise<void>",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "Queue",
+        "file": "packages/core/src/ports/Queue.ts",
+        "doc": "",
+        "methods": [
+          {
+            "name": "enqueue",
+            "signature": "enqueue(request: EnqueueRequest, now: Date): QueueItem",
+            "doc": ""
+          },
+          {
+            "name": "claim",
+            "signature": "claim(now: Date): QueueItem | null",
+            "doc": "Takes the earliest item that is due, and marks it as being worked on so a second worker cannot take it too. Returns null when nothing is due, which is different from the queue being empty."
+          },
+          {
+            "name": "complete",
+            "signature": "complete(item: QueueItem): void",
+            "doc": ""
+          },
+          {
+            "name": "release",
+            "signature": "release(item: QueueItem): void",
+            "doc": "Puts a claimed item back, for a worker that could not finish it."
+          },
+          {
+            "name": "recover",
+            "signature": "recover(olderThanMs: number, now: Date): QueueItem[]",
+            "doc": "Returns items abandoned by a dead worker so they get picked up again."
+          },
+          {
+            "name": "prune",
+            "signature": "prune(retentionDays: number, now: Date): number",
+            "doc": "Deletes finished items past their retention, so the directory stays small."
+          },
+          {
+            "name": "ready",
+            "signature": "ready(now: Date): QueueItem[]",
+            "doc": ""
+          },
+          {
+            "name": "pending",
+            "signature": "pending(): QueueItem[]",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "StopSwitch",
+        "file": "packages/core/src/ports/StopSwitch.ts",
+        "doc": "The handbrake.",
+        "methods": [
+          {
+            "name": "isRequested",
+            "signature": "isRequested(): boolean",
+            "doc": ""
+          },
+          {
+            "name": "reason",
+            "signature": "reason(): string | null",
+            "doc": ""
+          },
+          {
+            "name": "request",
+            "signature": "request(reason: string): void",
+            "doc": ""
+          },
+          {
+            "name": "clear",
+            "signature": "clear(): void",
+            "doc": ""
+          },
+          {
+            "name": "watch",
+            "signature": "watch(onRequested: (reason: string) => void): () => void",
+            "doc": "Calls back as soon as a stop is requested, and returns the function that stops watching."
+          }
+        ]
+      },
+      {
+        "interface": "Store",
+        "file": "packages/core/src/ports/Store.ts",
+        "doc": "Where the record of one piece of work is kept between looks.",
+        "methods": [
+          {
+            "name": "load",
+            "signature": "load(workId: string): R | null",
+            "doc": ""
+          },
+          {
+            "name": "save",
+            "signature": "save(record: R): void",
+            "doc": ""
+          },
+          {
+            "name": "all",
+            "signature": "all(): R[]",
+            "doc": ""
+          }
+        ]
+      }
+    ],
+    "plans": [
+      {
+        "kind": "act",
+        "fields": [
+          "kind: \"act\"",
+          "effects: Action[]",
+          "why: string"
+        ],
+        "doc": "Do the work, stay in this state, and look again straight away. The next look sees whatever the actions recorded, which is how a pure decision function drives work that takes minutes or hours."
+      },
+      {
+        "kind": "advance",
+        "fields": [
+          "kind: \"advance\"",
+          "to: string",
+          "effects: Action[]",
+          "why: string"
+        ],
+        "doc": ""
+      },
+      {
+        "kind": "wait",
+        "fields": [
+          "kind: \"wait\"",
+          "retryAfterMs: number",
+          "why: string",
+          "effects: Action[]"
+        ],
+        "doc": "Nothing to do until the outside world moves. May still carry actions, so a workflow can say why it is stuck without leaving the state."
+      },
+      {
+        "kind": "settled",
+        "fields": [
+          "kind: \"settled\"",
+          "why: string"
+        ],
+        "doc": "Terminal, do not queue anything else."
+      }
+    ],
+    "events": [
+      {
+        "kind": "action.failed",
+        "says": "One action threw, and what it said.",
+        "requires": [
+          "workId"
+        ],
+        "detail": [
+          {
+            "field": "action",
+            "type": "string"
+          },
+          {
+            "field": "error",
+            "type": "string"
+          }
+        ],
+        "summary": "one action threw"
+      },
+      {
+        "kind": "action.finished",
+        "says": "One action finished without throwing.",
+        "requires": [
+          "workId"
+        ],
+        "detail": [
+          {
+            "field": "action",
+            "type": "string"
+          }
+        ],
+        "summary": "one action finished"
+      },
+      {
+        "kind": "action.started",
+        "says": "One action began.",
+        "requires": [
+          "workId"
+        ],
+        "detail": [
+          {
+            "field": "action",
+            "type": "string"
+          }
+        ],
+        "summary": "one action began"
+      },
+      {
+        "kind": "agent.handoff",
+        "says": "An agent was handed over to another one, and which axis moved.",
+        "requires": [
+          "workId"
+        ],
+        "detail": [
+          {
+            "field": "action",
+            "type": "string"
+          },
+          {
+            "field": "cause",
+            "type": "string"
+          },
+          {
+            "field": "from",
+            "type": "object"
+          },
+          {
+            "field": "to",
+            "type": "object"
+          },
+          {
+            "field": "moved",
+            "type": "string"
+          }
+        ],
+        "summary": "an agent was handed over to another one"
+      },
+      {
+        "kind": "agent.run",
+        "says": "An agent ran: which harness, which model, what it cost.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "harness",
+            "type": "string"
+          },
+          {
+            "field": "model",
+            "type": "string?"
+          },
+          {
+            "field": "outcome",
+            "type": "string"
+          },
+          {
+            "field": "durationMs",
+            "type": "number"
+          },
+          {
+            "field": "costSource",
+            "type": "string"
+          },
+          {
+            "field": "costUsd",
+            "type": "number?"
+          },
+          {
+            "field": "tokens",
+            "type": "object?"
+          }
+        ],
+        "summary": "an agent ran, and what it cost"
+      },
+      {
+        "kind": "budget.parked",
+        "says": "Work was parked because a budget window is nearly spent.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "window",
+            "type": "string"
+          },
+          {
+            "field": "measure",
+            "type": "string"
+          },
+          {
+            "field": "used",
+            "type": "number"
+          },
+          {
+            "field": "limit",
+            "type": "number"
+          },
+          {
+            "field": "stopAt",
+            "type": "number"
+          },
+          {
+            "field": "retryAfterMs",
+            "type": "number"
+          },
+          {
+            "field": "pending",
+            "type": "array"
+          }
+        ],
+        "summary": "work was parked against a budget window"
+      },
+      {
+        "kind": "notify.failed",
+        "says": "An announcement could not be delivered, and what it said.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "error",
+            "type": "string"
+          },
+          {
+            "field": "text",
+            "type": "string"
+          }
+        ],
+        "summary": "an announcement never reached anybody"
+      },
+      {
+        "kind": "run.claimed",
+        "says": "The engine took an item off the queue, and why it was there.",
+        "requires": [
+          "workId"
+        ],
+        "detail": [
+          {
+            "field": "reason",
+            "type": "string"
+          }
+        ],
+        "summary": "the engine took an item off the queue"
+      },
+      {
+        "kind": "run.idle",
+        "says": "Nothing was due, so the engine did nothing.",
+        "requires": [],
+        "detail": [],
+        "summary": "nothing was due"
+      },
+      {
+        "kind": "stop.enforced",
+        "says": "The engine obeyed the handbrake, and what it did not start.",
+        "requires": [],
+        "detail": [
+          {
+            "field": "reason",
+            "type": "string?"
+          },
+          {
+            "field": "pending",
+            "type": "string?"
+          }
+        ],
+        "summary": "the engine obeyed the handbrake"
+      },
+      {
+        "kind": "stop.requested",
+        "says": "The operator pulled the handbrake.",
+        "requires": [],
+        "detail": [
+          {
+            "field": "reason",
+            "type": "string"
+          }
+        ],
+        "summary": "the operator pulled the handbrake"
+      },
+      {
+        "kind": "work.advanced",
+        "says": "The work moved to another state.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "from",
+            "type": "string"
+          },
+          {
+            "field": "why",
+            "type": "string"
+          }
+        ],
+        "summary": "the work moved to another state"
+      },
+      {
+        "kind": "work.degraded",
+        "says": "This work started failing, and the engine is still retrying underneath.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "attempt",
+            "type": "number"
+          },
+          {
+            "field": "error",
+            "type": "string"
+          }
+        ],
+        "summary": "this work started failing, and is being retried"
+      },
+      {
+        "kind": "work.failed",
+        "says": "One attempt at this work threw, and which attempt it was.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "attempt",
+            "type": "number"
+          },
+          {
+            "field": "error",
+            "type": "string"
+          }
+        ],
+        "summary": "one attempt at this work threw"
+      },
+      {
+        "kind": "work.planned",
+        "says": "A workflow decided what to do next, and said why.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "plan",
+            "type": "string"
+          },
+          {
+            "field": "why",
+            "type": "string"
+          }
+        ],
+        "summary": "a workflow decided what to do next"
+      },
+      {
+        "kind": "work.recovered",
+        "says": "This work is moving again, after however many attempts had failed.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "afterAttempts",
+            "type": "number"
+          }
+        ],
+        "summary": "this work is moving again after failing"
+      },
+      {
+        "kind": "work.settled",
+        "says": "The work reached a terminal state and left the queue.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [],
+        "summary": "the work reached a terminal state"
+      },
+      {
+        "kind": "work.waiting",
+        "says": "The work stayed where it was, to be looked at again later.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "from",
+            "type": "string"
+          },
+          {
+            "field": "why",
+            "type": "string"
+          }
+        ],
+        "summary": "the work stayed put, to be looked at again later"
+      }
+    ],
+    "cli": {
+      "name": "amy",
+      "description": "A state machine you leave running. Everything in it is a plugin, and the workflow is yours.",
+      "options": [
+        {
+          "flags": "--workflow <name>",
+          "description": "which workflow to drive, by the name the config gives it"
+        }
+      ],
+      "commands": [
+        {
+          "path": [
+            "btw"
+          ],
+          "description": "Something to do, said in passing. Goes on the queue, never becomes a ticket",
+          "arguments": [
+            {
+              "name": "<text>",
+              "required": true,
+              "description": "what to do, in your own words"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--repo <owner/name>",
+              "description": "the repository it is in"
+            },
+            {
+              "flags": "--source <who>",
+              "description": "who asked",
+              "default": "somebody at a keyboard"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "budget"
+          ],
+          "description": "What the agents have spent, and how close that is to the ceiling",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "daemon"
+          ],
+          "description": "The loop itself, in the foreground. `amy start` runs this for you",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--every <seconds>",
+              "description": "how long to wait after finding nothing to do",
+              "default": "60"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "discover"
+          ],
+          "description": "Put every piece of work the workflow can find onto the queue",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "doctor"
+          ],
+          "description": "Check everything the machine depends on before it touches a ticket",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "init"
+          ],
+          "description": "Write the config and roster templates",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "models"
+          ],
+          "description": "What each model is believed to cost",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "models",
+            "refresh"
+          ],
+          "description": "Take the base rates from models.dev, keeping what it does not carry",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--dry-run",
+              "description": "say what would change and write nothing"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "models",
+            "show"
+          ],
+          "description": "The price table in force",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "note"
+          ],
+          "description": "Write a piece of friction down, and put it on the queue",
+          "arguments": [
+            {
+              "name": "<text>",
+              "required": true,
+              "description": "what went wrong, in your own words"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--repo <owner/name>",
+              "description": "the repository it is about"
+            },
+            {
+              "flags": "--source <who>",
+              "description": "who noticed",
+              "default": "somebody at a keyboard"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "pause"
+          ],
+          "description": "Pull the handbrake: end work in flight and start nothing new",
+          "arguments": [
+            {
+              "name": "[reason]",
+              "required": false,
+              "description": "why, so the log says something useful later"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "plugin"
+          ],
+          "description": "What is mounted, and what is not",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "plugin",
+            "add"
+          ],
+          "description": "Mount a plugin, by package name or path",
+          "arguments": [
+            {
+              "name": "<spec>",
+              "required": true,
+              "description": "anything Node can import: a package name, or a path"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "plugin",
+            "list"
+          ],
+          "description": "The plugins this install mounts, and what they assembled into",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "plugin",
+            "remove"
+          ],
+          "description": "Stop mounting a plugin",
+          "arguments": [
+            {
+              "name": "<spec>",
+              "required": true,
+              "description": "the package name or path to drop"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "queue"
+          ],
+          "description": "Inspect and tidy the queue",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "queue",
+            "prune"
+          ],
+          "description": "Delete finished queue items past their retention",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--days <n>",
+              "description": "override the configured retention"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "queue",
+            "recover"
+          ],
+          "description": "Return items abandoned by a dead worker",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "resume"
+          ],
+          "description": "Release the handbrake",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "roster"
+          ],
+          "description": "Who is reviewing today",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "roster",
+            "confirm"
+          ],
+          "description": "Stamp the roster with today's date",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "roster",
+            "show"
+          ],
+          "description": "Print the roster and whether it is current",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "run"
+          ],
+          "description": "Keep advancing until nothing is due",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--max <n>",
+              "description": "stop after this many moves",
+              "default": "100"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "skills"
+          ],
+          "description": "Install amy's skills into the harnesses on this machine",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--all",
+              "description": "every harness found, without asking"
+            },
+            {
+              "flags": "--harness <name>",
+              "description": "one harness by name, without asking"
+            },
+            {
+              "flags": "--dir <path>",
+              "description": "a directory, for a harness this does not know"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "start"
+          ],
+          "description": "Start the loop in the background, and keep it running",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--every <seconds>",
+              "description": "how long to wait after finding nothing to do",
+              "default": "60"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "status"
+          ],
+          "description": "Show where every piece of work stands and what the queue holds",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--json",
+              "description": "the same thing as data, for something else to render"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "stop"
+          ],
+          "description": "Stop the background loop",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "tick"
+          ],
+          "description": "Advance one piece of work by one move",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "workflow"
+          ],
+          "description": "What this install can drive, and what it keeps",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "workflow",
+            "list"
+          ],
+          "description": "Every workflow this install can drive",
+          "arguments": [],
+          "options": [],
+          "isDefault": true
+        },
+        {
+          "path": [
+            "workflow",
+            "rm"
+          ],
+          "description": "Delete a workflow's records, its queue and its entry in the config",
+          "arguments": [
+            {
+              "name": "<name>",
+              "required": true,
+              "description": "the profile to forget"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--yes",
+              "description": "actually delete, rather than saying what would go"
+            }
+          ],
+          "isDefault": false
+        }
+      ]
+    },
+    "skills": [
+      {
+        "name": "amy",
+        "version": "1.0.0",
+        "description": "Drive amy, the machine that walks a work ticket from the tracker's working status to a QA handoff, and turns friction it hits into a plan in the repository that friction is about.",
+        "directory": "packages/cli/skills/amy"
+      },
+      {
+        "name": "amy-btw",
+        "version": "1.0.0",
+        "description": "Capture something said in passing as work amy will actually do — \"btw the deps in the api are stale\", \"also check whether that monitor is still firing\" — without opening a ticket and without leaving what you are doing.",
+        "directory": "packages/cli/skills/amy-btw"
+      },
+      {
+        "name": "amy-init",
+        "version": "1.0.0",
+        "description": "Set amy up on this machine end to end — the state directory, the config, the roster, the plugins it needs installed, the credentials, the notification channel — by reading what is already here and asking only what the machine cannot answer.",
+        "directory": "packages/cli/skills/amy-init"
+      },
+      {
+        "name": "amy-show-me",
+        "version": "1.0.0",
+        "description": "Show what an amy workflow is and where its work has got to, visually — the state machine, the path one piece of work took, what is waiting on what.",
+        "directory": "packages/cli/skills/amy-show-me"
+      },
+      {
+        "name": "amy-status",
+        "version": "1.0.0",
+        "description": "Answer \"where is my work\" from the project's side rather than the machine's — what is open, what amy is working on right now, what is waiting on you, what is stuck — across every workflow at once, as a page you can keep open.",
+        "directory": "packages/cli/skills/amy-status"
+      },
+      {
+        "name": "amy-workflow",
+        "version": "2.0.0",
+        "description": "Design a new amy workflow, or change one that exists, by being interrogated one question at a time until the shape is settled — then write it as its own package.",
+        "directory": "packages/cli/skills/amy-workflow"
+      }
+    ],
+    "ports": [
+      {
+        "kind": "agent",
+        "actions": [
+          "address-threads",
+          "draft-plan",
+          "implement",
+          "run-errand",
+          "triage"
+        ],
+        "mountedBy": [
+          "@amy/plugin-agent-relay"
+        ]
+      },
+      {
+        "kind": "code-host",
+        "actions": [
+          "assign-reviewer",
+          "open-pull-request",
+          "request-rereview"
+        ],
+        "mountedBy": [
+          "@amy/plugin-github"
+        ]
+      },
+      {
+        "kind": "commands",
+        "actions": [
+          "run-command"
+        ],
+        "mountedBy": [
+          "@amy/plugin-command"
+        ]
+      },
+      {
+        "kind": "gate",
+        "actions": [
+          "run-gate"
+        ],
+        "mountedBy": [
+          "@amy/plugin-command-gate"
+        ]
+      },
+      {
+        "kind": "notes",
+        "actions": [],
+        "mountedBy": [
+          "@amy/plugin-file-notes"
+        ]
+      },
+      {
+        "kind": "notifier",
+        "actions": [
+          "announce"
+        ],
+        "mountedBy": [
+          "@amy/plugin-notify-fanout"
+        ]
+      },
+      {
+        "kind": "plan-check",
+        "actions": [
+          "check-plan"
+        ],
+        "mountedBy": [
+          "@amy/plugin-plan-check"
+        ]
+      },
+      {
+        "kind": "queue",
+        "actions": [],
+        "mountedBy": [
+          "@amy/plugin-file-queue"
+        ]
+      },
+      {
+        "kind": "store",
+        "actions": [],
+        "mountedBy": [
+          "@amy/plugin-file-store"
+        ]
+      },
+      {
+        "kind": "tasks",
+        "actions": [],
+        "mountedBy": [
+          "@amy/plugin-file-tasks"
+        ]
+      },
+      {
+        "kind": "tracker",
+        "actions": [
+          "ask-question",
+          "escalate",
+          "hand-off-to-qa"
+        ],
+        "mountedBy": [
+          "@amy/plugin-linear"
+        ]
+      }
+    ],
+    "collections": [
+      {
+        "collection": "agent",
+        "contributors": [
+          {
+            "name": "claude",
+            "package": "@amy/plugin-claude"
+          },
+          {
+            "name": "codex",
+            "package": "@amy/plugin-codex"
+          },
+          {
+            "name": "hermes",
+            "package": "@amy/plugin-hermes-agent"
+          }
+        ]
+      },
+      {
+        "collection": "harness",
+        "contributors": [
+          {
+            "name": "claude",
+            "package": "@amy/plugin-claude"
+          },
+          {
+            "name": "codex",
+            "package": "@amy/plugin-codex"
+          },
+          {
+            "name": "hermes",
+            "package": "@amy/plugin-hermes-agent"
+          }
+        ]
+      },
+      {
+        "collection": "notify-channel",
+        "contributors": [
+          {
+            "name": "hermes",
+            "package": "@amy/plugin-notify-hermes"
+          },
+          {
+            "name": "inbox",
+            "package": "@amy/plugin-notify-inbox"
+          },
+          {
+            "name": "tracker",
+            "package": "@amy/plugin-linear"
+          }
+        ]
+      },
+      {
+        "collection": "workflow-runtime",
+        "contributors": [
+          {
+            "name": "errand",
+            "package": "@amy/workflow-errand"
+          },
+          {
+            "name": "note-to-plan",
+            "package": "@amy/workflow-note-to-plan"
+          },
+          {
+            "name": "ticket-to-qa",
+            "package": "@amy/workflow-ticket-to-qa"
+          }
+        ]
+      }
+    ],
+    "environment": [
+      {
+        "variable": "LINEAR_API_KEY",
+        "package": "@amy/plugin-linear"
+      }
+    ]
+  },
+  "catalog": {
+    "discovery": {
+      "npmKeyword": "amy-plugin",
+      "githubTopic": "amy-plugin",
+      "note": "A package outside this workspace is found by the keyword on npm and the topic on GitHub, at request time."
+    },
+    "shipped": [
+      {
+        "name": "@amy/agent-kit",
+        "version": "0.1.0",
+        "kind": "library",
+        "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
+        "directory": "packages/agent-kit",
+        "npm": "https://www.npmjs.com/package/@amy/agent-kit",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/agent-kit",
+        "readme": "packages/agent-kit/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amy/cli",
+        "version": "0.1.0",
+        "kind": "cli",
+        "description": "The amy command line: one install per machine, reached from any harness.",
+        "directory": "packages/cli",
+        "npm": "https://www.npmjs.com/package/@amy/cli",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/cli",
+        "readme": "packages/cli/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amy/core",
+        "version": "0.1.0",
+        "kind": "library",
+        "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
+        "directory": "packages/core",
+        "npm": "https://www.npmjs.com/package/@amy/core",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/core",
+        "readme": "packages/core/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amy/model-specs",
+        "version": "0.1.0",
+        "kind": "library",
+        "description": "What each model costs per token, vendored and versioned.",
+        "directory": "packages/model-specs",
+        "npm": "https://www.npmjs.com/package/@amy/model-specs",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/model-specs",
+        "readme": "packages/model-specs/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-agent-relay",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
+        "directory": "plugins/agent-relay",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-agent-relay",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/agent-relay",
+        "readme": "plugins/agent-relay/README.md",
+        "mounts": [
+          "agent"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "budget",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "what the agents may spend, per window: perFiveHours and perWeek, each with tokens and/or costUsd, plus stopAt, the fraction of a ceiling at which new work stops being started"
+          },
+          {
+            "name": "ladder",
+            "type": "string[]",
+            "required": false,
+            "default": [],
+            "description": "the contributed agents to try, in order, such as [claude:sonnet, claude:opus, codex:gpt-5]. Empty means every contributed agent, in the order the plugins were mounted"
+          },
+          {
+            "name": "skillRoots",
+            "type": "string[]",
+            "required": false,
+            "default": [],
+            "description": "where installed skills are looked for. Empty means ~/.claude/skills, which is where the harness looks"
+          },
+          {
+            "name": "skills",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "which skills answer for a step, in the order they are tried, keyed by the workflow's action name: {\"triage\": [\"/logion\"]}. A skill named here must be installed, or the mount is refused"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-claude",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "The claude CLI as the agent, with git on the side.",
+        "directory": "plugins/claude",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-claude",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/claude",
+        "readme": "plugins/claude/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "agent",
+            "name": "claude"
+          },
+          {
+            "collection": "harness",
+            "name": "claude"
+          }
+        ],
+        "settings": [
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch new work is cut from, which is not always `main`"
+          },
+          {
+            "name": "model",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "passed to the CLI as --model, which is the flag it accepts"
+          },
+          {
+            "name": "models",
+            "type": "string[]",
+            "required": false,
+            "default": [],
+            "description": "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `claude:<model>`. Empty means a single agent using `model`"
+          },
+          {
+            "name": "reviewerHints",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "guidance appended when answering a particular reviewer, by host login"
+          },
+          {
+            "name": "timeoutMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long one agent call may run before it is given up on"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-codex",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "The codex CLI as the agent, over its JSONL event stream.",
+        "directory": "plugins/codex",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-codex",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/codex",
+        "readme": "plugins/codex/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "agent",
+            "name": "codex"
+          },
+          {
+            "collection": "harness",
+            "name": "codex"
+          }
+        ],
+        "settings": [
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch new work is cut from, which is not always `main`"
+          },
+          {
+            "name": "model",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "passed to the CLI as --model. Empty leaves the choice to codex"
+          },
+          {
+            "name": "models",
+            "type": "string[]",
+            "required": false,
+            "default": [],
+            "description": "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `codex:<model>`. Empty means a single agent named `codex`"
+          },
+          {
+            "name": "reviewerHints",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "guidance appended when answering a particular reviewer, by host login"
+          },
+          {
+            "name": "timeoutMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long one agent call may run before it is given up on"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-command",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Any command line tool, reached by a name the config allows.",
+        "directory": "plugins/command",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-command",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/command",
+        "readme": "plugins/command/README.md",
+        "mounts": [
+          "commands"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "allow",
+            "type": "record",
+            "required": true,
+            "description": "the commands a workflow may run, by name. The name is what a workflow asks for; the value is the command line it stands for, and this is the only place one is written"
+          },
+          {
+            "name": "cwd",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "where a command runs when it does not say, defaulting to the state directory"
+          },
+          {
+            "name": "timeoutMs",
+            "type": "number",
+            "required": false,
+            "default": 300000,
+            "description": "how long one command may run before it is given up on"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-command-gate",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "A gate that runs the target repository's own commands.",
+        "directory": "plugins/command-gate",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-command-gate",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/command-gate",
+        "readme": "plugins/command-gate/README.md",
+        "mounts": [
+          "gate"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "commands",
+            "type": "record",
+            "required": true,
+            "description": "the check commands per repository, with a `default` fallback"
+          },
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch new work is cut from, which is not always `main`"
+          },
+          {
+            "name": "timeoutMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long one check may run before it is given up on"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-file-log",
+        "version": "0.1.0",
+        "kind": "library",
+        "description": "The event log kept as one JSON Lines file per day.",
+        "directory": "plugins/file-log",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-file-log",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-log",
+        "readme": "plugins/file-log/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-file-notes",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
+        "directory": "plugins/file-notes",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-file-notes",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-notes",
+        "readme": "plugins/file-notes/README.md",
+        "mounts": [
+          "notes"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "notes",
+            "description": "where the notes are watched for, relative to the state directory"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "the repository a note is about when it does not say, which is also the one this machine's own failures are filed against"
+          },
+          {
+            "name": "writeFailureNotes",
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "description": "whether a tick this machine gave up on leaves a note behind, so the thing that broke becomes the thing that gets fixed"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-file-queue",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "A queue kept as one file per item, claimed by rename.",
+        "directory": "plugins/file-queue",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-file-queue",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-queue",
+        "readme": "plugins/file-queue/README.md",
+        "mounts": [
+          "queue"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "queue",
+            "description": "where the queue is kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not claim each other's work"
+          },
+          {
+            "name": "retentionDays",
+            "type": "number",
+            "required": false,
+            "default": 7,
+            "description": "how long a finished queue item is kept before it is pruned"
+          },
+          {
+            "name": "staleClaimMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long a claimed item may sit before it counts as abandoned"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-file-store",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Work records kept as one file per item.",
+        "directory": "plugins/file-store",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-file-store",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-store",
+        "readme": "plugins/file-store/README.md",
+        "mounts": [
+          "store"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "tickets",
+            "description": "where the records are kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not read each other's work"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-file-tasks",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
+        "directory": "plugins/file-tasks",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-file-tasks",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-tasks",
+        "readme": "plugins/file-tasks/README.md",
+        "mounts": [
+          "tasks"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "tasks",
+            "description": "where the tasks are kept, relative to the state directory"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "what a task is about when it does not say"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-github",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "GitHub as the code host, through the gh CLI.",
+        "directory": "plugins/github",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-github",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/github",
+        "readme": "plugins/github/README.md",
+        "mounts": [
+          "code-host"
+        ],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-hermes-agent",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Hermes as the agent, over its one-shot mode and usage report.",
+        "directory": "plugins/hermes-agent",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-hermes-agent",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/hermes-agent",
+        "readme": "plugins/hermes-agent/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "agent",
+            "name": "hermes"
+          },
+          {
+            "collection": "harness",
+            "name": "hermes"
+          }
+        ],
+        "settings": [
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch new work is cut from, which is not always `main`"
+          },
+          {
+            "name": "model",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "passed to the CLI as --model. Empty leaves the choice to hermes"
+          },
+          {
+            "name": "models",
+            "type": "string[]",
+            "required": false,
+            "default": [],
+            "description": "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes`"
+          },
+          {
+            "name": "reviewerHints",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "guidance appended when answering a particular reviewer, by host login"
+          },
+          {
+            "name": "timeoutMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long one agent call may run before it is given up on"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-linear",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Linear as the tracker, over its GraphQL API.",
+        "directory": "plugins/linear",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-linear",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/linear",
+        "readme": "plugins/linear/README.md",
+        "mounts": [
+          "tracker"
+        ],
+        "contributes": [
+          {
+            "collection": "notify-channel",
+            "name": "tracker"
+          }
+        ],
+        "settings": [
+          {
+            "name": "defaultRepo",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "the repository used for a team that is not in repoByTeam"
+          },
+          {
+            "name": "endpoint",
+            "type": "string",
+            "required": false,
+            "default": "https://api.linear.app/graphql",
+            "description": "the GraphQL endpoint to talk to. Linear's own by default, and the one thing that has to move for a stand-in tracker to take its place in an end-to-end run"
+          },
+          {
+            "name": "repoByTeam",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "which repository a team's tickets land in, by team key"
+          },
+          {
+            "name": "workingStatusName",
+            "type": "string",
+            "required": true,
+            "description": "the exact status name a ticket must be in to be picked up"
+          }
+        ],
+        "environment": [
+          "LINEAR_API_KEY"
+        ]
+      },
+      {
+        "name": "@amy/plugin-notify-fanout",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
+        "directory": "plugins/notify-fanout",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-notify-fanout",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/notify-fanout",
+        "readme": "plugins/notify-fanout/README.md",
+        "mounts": [
+          "notifier"
+        ],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-notify-hermes",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Announcements over Hermes, which already owns the messaging credentials.",
+        "directory": "plugins/notify-hermes",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-notify-hermes",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/notify-hermes",
+        "readme": "plugins/notify-hermes/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "notify-channel",
+            "name": "hermes"
+          }
+        ],
+        "settings": [
+          {
+            "name": "target",
+            "type": "string",
+            "required": true,
+            "description": "a Hermes delivery target, such as `slack:my-channel` or a bare platform name for its home channel"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-notify-inbox",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Announcements as a file on disk plus a desktop notification.",
+        "directory": "plugins/notify-inbox",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-notify-inbox",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/notify-inbox",
+        "readme": "plugins/notify-inbox/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "notify-channel",
+            "name": "inbox"
+          }
+        ],
+        "settings": [
+          {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "needs-input",
+            "description": "where the questions are left, relative to the workspace"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-plan-check",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
+        "directory": "plugins/plan-check",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-plan-check",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/plan-check",
+        "readme": "plugins/plan-check/README.md",
+        "mounts": [
+          "plan-check"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "commands",
+            "type": "record",
+            "required": false,
+            "default": {
+              "default": [
+                "sf check"
+              ]
+            },
+            "description": "the check commands per repository, with a `default` fallback. `sf check` is the whole quality bar in a repository that has one"
+          },
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch a plan branch is cut from, which is not always `main`"
+          },
+          {
+            "name": "timeoutMs",
+            "type": "number",
+            "required": false,
+            "default": 600000,
+            "description": "how long one check may run before it is given up on"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/plugin-serial-engine",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "Advances one work item by one move per tick.",
+        "directory": "plugins/serial-engine",
+        "npm": "https://www.npmjs.com/package/@amy/plugin-serial-engine",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/serial-engine",
+        "readme": "plugins/serial-engine/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "maxItemAttempts",
+            "type": "number",
+            "required": false,
+            "default": 5,
+            "description": "how many times one item may fail before the operator is told and it is dropped"
+          },
+          {
+            "name": "retentionDays",
+            "type": "number",
+            "required": false,
+            "default": 7,
+            "description": "how long a finished queue item is kept before it is pruned"
+          },
+          {
+            "name": "retryDelayMs",
+            "type": "number",
+            "required": false,
+            "default": 300000,
+            "description": "how long a failed item is held before it is looked at again"
+          },
+          {
+            "name": "staleClaimMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long a claimed item may sit before it counts as abandoned"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/workflow-errand",
+        "version": "0.1.0",
+        "kind": "workflow",
+        "description": "Something said in passing becomes work: capture it, do it, say what happened.",
+        "directory": "packages/workflow-errand",
+        "npm": "https://www.npmjs.com/package/@amy/workflow-errand",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-errand",
+        "readme": "packages/workflow-errand/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "workflow-runtime",
+            "name": "errand"
+          }
+        ],
+        "settings": [
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch an errand branch is cut from, which is not always `main`"
+          },
+          {
+            "name": "policy",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default"
+          },
+          {
+            "name": "repos",
+            "type": "string[]",
+            "required": true,
+            "description": "the repositories an errand may be done in. A task about anything else is handed back to whoever asked"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/workflow-note-to-plan",
+        "version": "0.1.0",
+        "kind": "workflow",
+        "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
+        "directory": "packages/workflow-note-to-plan",
+        "npm": "https://www.npmjs.com/package/@amy/workflow-note-to-plan",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-note-to-plan",
+        "readme": "packages/workflow-note-to-plan/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "workflow-runtime",
+            "name": "note-to-plan"
+          }
+        ],
+        "settings": [
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch a plan branch is cut from, which is not always `main`"
+          },
+          {
+            "name": "policy",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default"
+          },
+          {
+            "name": "repos",
+            "type": "string[]",
+            "required": true,
+            "description": "the repositories a plan may be written into. A note about anything else is handed back to the operator"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amy/workflow-ticket-to-qa",
+        "version": "0.1.0",
+        "kind": "workflow",
+        "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
+        "directory": "packages/workflow-ticket-to-qa",
+        "npm": "https://www.npmjs.com/package/@amy/workflow-ticket-to-qa",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-ticket-to-qa",
+        "readme": "packages/workflow-ticket-to-qa/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "workflow-runtime",
+            "name": "ticket-to-qa"
+          }
+        ],
+        "settings": [
+          {
+            "name": "policy",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs and maxOpenReviewsPerReviewer. Anything left out keeps its default"
+          },
+          {
+            "name": "qaStatusName",
+            "type": "string",
+            "required": true,
+            "description": "the status a ticket moves to when it is handed to QA"
+          },
+          {
+            "name": "repos",
+            "type": "string[]",
+            "required": true,
+            "description": "every repository review load is counted across"
+          }
+        ],
+        "environment": []
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "package": "@amy/workflow-errand",
+      "description": "Something said in passing becomes work: capture it, do it, say what happened.",
+      "name": "errand",
+      "states": [
+        "QUEUED",
+        "WORKING",
+        "PR_OPEN",
+        "DONE",
+        "DECLINED"
+      ],
+      "waitingStates": [
+        "QUEUED"
+      ],
+      "terminalStates": [
+        "DONE",
+        "DECLINED"
+      ],
+      "initialState": "QUEUED",
+      "usesActions": [
+        "announce",
+        "open-pull-request",
+        "run-errand"
+      ],
+      "usesObservers": []
+    },
+    {
+      "package": "@amy/workflow-note-to-plan",
+      "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
+      "name": "note-to-plan",
+      "states": [
+        "NOTED",
+        "DRAFTED",
+        "CHECKED",
+        "PR_OPEN",
+        "DONE",
+        "DECLINED"
+      ],
+      "waitingStates": [
+        "NOTED"
+      ],
+      "terminalStates": [
+        "DONE",
+        "DECLINED"
+      ],
+      "initialState": "NOTED",
+      "usesActions": [
+        "announce",
+        "check-plan",
+        "draft-plan",
+        "open-pull-request"
+      ],
+      "usesObservers": []
+    },
+    {
+      "package": "@amy/workflow-ticket-to-qa",
+      "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
+      "name": "ticket-to-qa",
+      "states": [
+        "DISCOVERED",
+        "CLARIFYING",
+        "READY",
+        "IMPLEMENTING",
+        "CHECKED",
+        "PR_OPEN",
+        "COPILOT_WAIT",
+        "COPILOT_FIX",
+        "REVIEWER_ASSIGNED",
+        "HUMAN_REVIEW",
+        "HUMAN_FIX",
+        "ESCALATED",
+        "RE_REVIEW",
+        "APPROVED",
+        "QA_HANDOFF",
+        "DONE"
+      ],
+      "waitingStates": [
+        "CLARIFYING",
+        "COPILOT_WAIT",
+        "HUMAN_REVIEW",
+        "ESCALATED"
+      ],
+      "terminalStates": [
+        "DONE"
+      ],
+      "initialState": "DISCOVERED",
+      "usesActions": [
+        "address-threads",
+        "announce",
+        "ask-question",
+        "assign-reviewer",
+        "escalate",
+        "hand-off-to-qa",
+        "implement",
+        "open-pull-request",
+        "request-rereview",
+        "run-gate",
+        "triage"
+      ],
+      "usesObservers": []
+    }
+  ],
+  "factory": {
+    "gates": [
+      {
+        "name": "installed-binary",
+        "activation": [
+          "packages/cli/src/stamp.ts",
+          "packages/cli/src/home.ts",
+          "packages/core/src/build.ts",
+          "scripts/**"
+        ],
+        "evidence": ".software-factory/evidence/installed-binary.json",
+        "plan": "plans/what-runs-is-not-this-repo.md",
+        "assertions": [
+          "installed.runs_without_a_checkout",
+          "installed.keeps_state_in_its_own_home",
+          "installed.keeps_nothing_where_you_stand",
+          "installed.does_not_write_into_the_source_tree",
+          "installed.log_line_names_the_build",
+          "installed.log_build_matches_the_binary",
+          "installed.says_dev_only_when_it_is_one"
+        ],
+        "scenario": ".software-factory/evidence/installed-binary-scenario.sh"
+      },
+      {
+        "name": "installed-plugins",
+        "activation": [
+          "packages/cli/src/loader.ts",
+          "packages/cli/src/profiles.ts",
+          "packages/cli/src/paths.ts",
+          "packages/cli/src/slices.ts",
+          "scripts/install.sh",
+          "scripts/write-install-manifest.mjs"
+        ],
+        "evidence": ".software-factory/evidence/installed-plugins.json",
+        "plan": "plans/plugins-are-installed-not-compiled-in.md",
+        "assertions": [
+          "plugins.a_machine_installs_only_what_it_uses",
+          "plugins.resolve_at_run_time_with_no_table",
+          "plugins.a_workflow_from_outside_this_repository_mounts",
+          "plugins.the_engine_drives_it_without_knowing_it",
+          "plugins.work_it_found_reached_the_queue",
+          "plugins.each_workflow_keeps_its_own_state",
+          "plugins.an_unknown_workflow_name_lists_the_ones_there_are",
+          "plugins.a_shipped_workflow_nobody_installed_is_refused_by_name",
+          "plugins.a_missing_plugin_is_refused_at_boot",
+          "plugins.the_refusal_names_what_was_installed_instead",
+          "plugins.nothing_is_touched_before_the_refusal",
+          "plugins.the_listing_tells_installed_from_mounted"
+        ],
+        "scenario": ".software-factory/evidence/installed-plugins-scenario.sh"
+      },
+      {
+        "name": "note-to-plan",
+        "activation": [
+          "packages/workflow-note-to-plan/src/**",
+          "packages/agent-kit/src/**",
+          "packages/cli/src/**",
+          "plugins/file-notes/src/**",
+          "plugins/plan-check/src/**",
+          "plugins/agent-relay/src/**",
+          "plugins/serial-engine/src/**",
+          "plugins/github/src/**"
+        ],
+        "evidence": ".software-factory/evidence/note-to-plan.json",
+        "plan": "plans/friction-becomes-a-plan.md",
+        "assertions": [
+          "plan.work_injected_by_command_reaches_the_queue",
+          "plan.a_note_in_the_watched_directory_is_discovered",
+          "plan.nothing_is_resolved_against_a_tracker",
+          "plan.a_refused_draft_goes_back_to_the_agent",
+          "plan.the_agent_is_told_what_the_check_said",
+          "plan.nothing_reaches_a_pull_request_until_the_check_is_green",
+          "plan.the_plan_carries_an_exit_condition_and_a_place_in_the_order",
+          "plan.a_pull_request_is_opened_in_the_repository_the_note_is_about",
+          "plan.the_pull_request_names_the_friction_it_came_from",
+          "plan.nothing_new_is_opened_past_the_ceiling",
+          "plan.the_ceiling_is_said_once",
+          "plan.a_note_about_another_repository_is_handed_back",
+          "plan.a_tick_that_gives_up_leaves_a_note_behind",
+          "plan.both_workflows_run_on_the_same_installed_binary",
+          "plan.each_workflow_keeps_its_own_queue_and_records",
+          "plan.what_the_agent_spent_lands_in_the_shared_log",
+          "plan.the_lifecycle_walks_in_order",
+          "plan.one_look_makes_at_most_one_move",
+          "plan.the_machine_settles_instead_of_spinning"
+        ],
+        "scenario": ".software-factory/evidence/note-to-plan-scenario.sh"
+      },
+      {
+        "name": "plugin-agent-relay",
+        "activation": [
+          "plugins/agent-relay/src/**",
+          "packages/agent-kit/src/**"
+        ],
+        "evidence": ".software-factory/evidence/plugin-agent-relay.json",
+        "plan": "plans/the-relay-is-proven-end-to-end.md",
+        "assertions": [
+          "relay.mounts_the_agent_port",
+          "relay.escalates_the_model_after_a_failure",
+          "relay.does_not_change_harness_on_a_failure",
+          "relay.changes_harness_after_a_rate_limit",
+          "relay.skips_the_rest_of_the_throttled_harness",
+          "relay.starts_nothing_else_after_an_abandoned_run",
+          "relay.refuses_an_unknown_agent_at_boot",
+          "relay.mounts_a_budget_when_a_ceiling_is_set",
+          "relay.stops_new_work_at_the_ceiling",
+          "relay.starts_work_while_the_window_has_room",
+          "relay.refuses_a_budget_it_cannot_mean_at_boot",
+          "relay.hands_the_step_to_the_skill_named_for_it",
+          "relay.asks_no_other_skill_once_one_answered",
+          "relay.moves_to_the_next_skill_when_the_first_did_not_answer",
+          "relay.refuses_a_skill_nobody_installed_at_boot",
+          "relay.names_the_skills_there_were_to_choose_from"
+        ],
+        "scenario": ".software-factory/evidence/plugin-agent-relay-scenario.sh"
+      },
+      {
+        "name": "plugin-file-queue",
+        "activation": [
+          "plugins/file-queue/src/**"
+        ],
+        "evidence": ".software-factory/evidence/plugin-file-queue.json",
+        "plan": "plans/every-plugin-is-proven-end-to-end.md",
+        "assertions": [
+          "queue.claims_what_was_enqueued",
+          "queue.refuses_a_second_claim",
+          "queue.holds_an_item_until_it_is_due",
+          "queue.recovers_what_a_dead_worker_left",
+          "queue.never_prunes_unfinished_work",
+          "queue.survives_a_restart"
+        ],
+        "scenario": ".software-factory/evidence/plugin-file-queue-scenario.sh"
+      },
+      {
+        "name": "plugin-serial-engine",
+        "activation": [
+          "plugins/serial-engine/src/**",
+          "plugins/notify-fanout/src/**"
+        ],
+        "evidence": ".software-factory/evidence/plugin-serial-engine.json",
+        "plan": "plans/the-engine-fails-out-loud.md",
+        "assertions": [
+          "engine.warns_once_on_the_first_failure",
+          "engine.stays_quiet_on_the_middle_attempts",
+          "engine.warns_once_when_it_recovers",
+          "engine.carries_on_from_where_it_was",
+          "engine.keeps_the_attempt_count_across_a_park",
+          "engine.announces_once_at_the_ceiling",
+          "engine.finishes_the_tick_when_a_channel_throws",
+          "engine.records_the_notification_it_could_not_send",
+          "engine.finishes_the_tick_when_every_channel_throws",
+          "engine.finishes_the_tick_when_the_log_cannot_be_written",
+          "engine.every_line_matches_the_contract"
+        ],
+        "scenario": ".software-factory/evidence/plugin-serial-engine-scenario.sh"
+      },
+      {
+        "name": "ticket-to-qa",
+        "activation": [
+          "packages/workflow-ticket-to-qa/src/**",
+          "packages/agent-kit/src/**",
+          "packages/cli/src/**",
+          "plugins/serial-engine/src/**",
+          "plugins/linear/src/**",
+          "plugins/github/src/**",
+          "plugins/claude/src/**",
+          "plugins/command-gate/src/**",
+          "plugins/notify-fanout/src/**",
+          "plugins/notify-inbox/src/**"
+        ],
+        "evidence": ".software-factory/evidence/ticket-to-qa.json",
+        "plan": "plans/the-lifecycle-is-proven-end-to-end.md",
+        "assertions": [
+          "lifecycle.only_the_working_status_is_picked_up",
+          "lifecycle.a_blocking_question_is_asked_on_the_ticket",
+          "lifecycle.the_operator_is_told_where_to_answer",
+          "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
+          "lifecycle.the_answer_on_the_ticket_releases_the_work",
+          "lifecycle.a_red_gate_sends_the_work_back_to_the_agent",
+          "lifecycle.the_agent_is_told_what_the_gate_said",
+          "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green",
+          "lifecycle.the_branch_the_tracker_named_is_what_gets_pushed",
+          "lifecycle.the_pull_request_is_opened_on_that_branch",
+          "lifecycle.the_bot_is_answered_before_a_human_is_asked",
+          "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling",
+          "lifecycle.review_load_is_counted_across_every_repository",
+          "lifecycle.a_stale_review_does_not_count",
+          "lifecycle.a_second_review_is_requested_after_changes",
+          "lifecycle.a_disagreement_goes_to_the_owner_as_a_follow_up",
+          "lifecycle.the_owners_answer_reopens_the_judgement",
+          "lifecycle.the_ticket_lands_in_qa_owned_by_qa",
+          "lifecycle.the_ticket_walks_the_lifecycle_in_order",
+          "lifecycle.one_look_makes_at_most_one_move",
+          "lifecycle.the_machine_settles_instead_of_spinning",
+          "lifecycle.what_the_agents_spent_is_read_off_the_log",
+          "lifecycle.the_same_run_twice_leaves_the_same_trail",
+          "lifecycle.the_run_leaves_nothing_behind"
+        ],
+        "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
+      }
+    ],
+    "rules": [
+      {
+        "id": "L0.CORE_STAYS_IGNORANT",
+        "enabled": true,
+        "settings": {},
+        "title": "The core imports no workflow and no plugin",
+        "reason": ""
+      },
+      {
+        "id": "L0.EXCEPTIONS_HAVE_ONE_HOME",
+        "enabled": true,
+        "settings": {},
+        "title": "Error types live in one canonical module per domain",
+        "reason": ""
+      },
+      {
+        "id": "L0.NO_CROSS_LAYER_IMPORT",
+        "enabled": true,
+        "settings": {},
+        "title": "Private and generated modules are not imported across the boundary",
+        "reason": ""
+      },
+      {
+        "id": "L1.COMMENT_STAYS_SUCCINCT",
+        "enabled": true,
+        "settings": {},
+        "title": "A comment block stays under the line ceiling",
+        "reason": ""
+      },
+      {
+        "id": "L1.COMPLEXITY_CEILING",
+        "enabled": true,
+        "settings": {},
+        "title": "No function exceeds the cyclomatic ceiling",
+        "reason": ""
+      },
+      {
+        "id": "L1.NO_BLANKET_SUPPRESSION",
+        "enabled": true,
+        "settings": {},
+        "title": "Every suppression names a code and a reason",
+        "reason": ""
+      },
+      {
+        "id": "L1.NO_UNTYPED_ESCAPE_HATCH",
+        "enabled": true,
+        "settings": {},
+        "title": "The untyped escape hatch is banned, and the message names the alternative",
+        "reason": ""
+      },
+      {
+        "id": "L1.SKIPPED_TESTS_STATE_A_REASON",
+        "enabled": true,
+        "settings": {},
+        "title": "A skipped or expected-to-fail test says why",
+        "reason": ""
+      },
+      {
+        "id": "L2.CATALOG_ONLY_TIGHTENS",
+        "enabled": true,
+        "settings": {},
+        "title": "A released rule never gets weaker than the version this repository locked",
+        "reason": ""
+      },
+      {
+        "id": "L2.DEPENDENCIES_CHANGE_DELIBERATELY",
+        "enabled": true,
+        "settings": {},
+        "title": "Dependency manifests move only with an explicit lock update",
+        "reason": ""
+      },
+      {
+        "id": "L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE",
+        "enabled": true,
+        "settings": {
+          "options": {
+            "run": "sf docs"
+          }
+        },
+        "title": "Regenerating the derived artifacts changes nothing",
+        "reason": ""
+      },
+      {
+        "id": "L2.FACTORY_CONFIG_IS_LOCKED",
+        "enabled": true,
+        "settings": {},
+        "title": "The guardrail's own configuration is hash-locked",
+        "reason": ""
+      },
+      {
+        "id": "L2.GENERATED_FILES_ARE_LOCKED",
+        "enabled": true,
+        "settings": {
+          "options": {
+            "scope": [
+              "docs/rules.md",
+              "packages/model-specs/specs.json",
+              "packages/core/events.json"
+            ]
+          }
+        },
+        "title": "Generated artifacts are hash-locked and not hand-edited",
+        "reason": ""
+      },
+      {
+        "id": "L2.NO_PERMANENT_EXCEPTION",
+        "enabled": true,
+        "settings": {},
+        "title": "Every frozen exception carries a future review date",
+        "reason": ""
+      },
+      {
+        "id": "L2.POLICY_ONLY_TIGHTENS",
+        "enabled": true,
+        "settings": {},
+        "title": "The guardrail may be strengthened, never quietly weakened",
+        "reason": ""
+      },
+      {
+        "id": "L3.GATE_COVERS_THE_PLAN",
+        "enabled": true,
+        "settings": {},
+        "title": "A gate requires every check its plan's criteria name",
+        "reason": ""
+      },
+      {
+        "id": "L3.GATE_HAS_FRESH_EVIDENCE",
+        "enabled": true,
+        "settings": {},
+        "title": "A gate activated by touched paths needs digest-verified, non-stale evidence",
+        "reason": ""
+      },
+      {
+        "id": "L4.CLAIM_CITES_ITS_EVIDENCE",
+        "enabled": true,
+        "settings": {},
+        "title": "Every marked promise names the gate that proves it",
+        "reason": ""
+      },
+      {
+        "id": "L4.DOC_LINKS_RESOLVE",
+        "enabled": true,
+        "settings": {},
+        "title": "Repo-relative documentation links resolve",
+        "reason": ""
+      },
+      {
+        "id": "L4.EVERY_RULE_HAS_A_WHY",
+        "enabled": true,
+        "settings": {},
+        "title": "Every enabled rule is cited in prose, and every citation resolves",
+        "reason": ""
+      },
+      {
+        "id": "L4.PLAN_CRITERION_NAMES_ITS_CHECK",
+        "enabled": true,
+        "settings": {},
+        "title": "Every acceptance criterion names the check that proves it",
+        "reason": ""
+      },
+      {
+        "id": "L4.PLAN_DECLARES_EXIT_CONDITION",
+        "enabled": true,
+        "settings": {},
+        "title": "Every plan declares its exit condition and sits in the execution order",
+        "reason": ""
+      },
+      {
+        "id": "L4.ROOT_FILES_ARE_DECLARED",
+        "enabled": true,
+        "settings": {},
+        "title": "New top-level files are declared before they appear",
+        "reason": ""
+      },
+      {
+        "id": "L4.RULE_PROSE_NAMES_A_REAL_COMMAND",
+        "enabled": true,
+        "settings": {},
+        "title": "Every command a rule's prose quotes is one this `sf` accepts",
+        "reason": ""
+      },
+      {
+        "id": "L5.EVERY_CHECK_HAS_A_MUTATION_TEST",
+        "enabled": true,
+        "settings": {},
+        "title": "Every enabled rule has a mutation that proves it fires",
+        "reason": ""
+      },
+      {
+        "id": "L5.NO_INERT_RULE",
+        "enabled": true,
+        "settings": {},
+        "title": "An enabled rule must be capable of producing a finding",
+        "reason": ""
+      },
+      {
+        "id": "L6.DATA_RACES_ARE_DETECTED",
+        "enabled": false,
+        "settings": {},
+        "title": "Concurrent code is exercised under a race detector",
+        "reason": "there is no dynamic race detector for this language, and the rule names none. One process, one event loop, and the one thing that is genuinely concurrent — two workers on one queue — is settled by an atomic rename rather than by a lock, and proven by the file-queue gate."
+      },
+      {
+        "id": "L6.DEAD_CODE_IS_DETECTED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something detects code nothing reaches",
+        "reason": ""
+      },
+      {
+        "id": "L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something audits dependencies for known vulnerabilities",
+        "reason": ""
+      },
+      {
+        "id": "L6.FIXTURES_NAME_NOBODY_REAL",
+        "enabled": true,
+        "settings": {},
+        "title": "An address in a fixture belongs to nobody",
+        "reason": ""
+      },
+      {
+        "id": "L6.INSECURE_PATTERNS_ARE_SCANNED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something scans the code for known-insecure patterns",
+        "reason": ""
+      },
+      {
+        "id": "L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK",
+        "enabled": false,
+        "settings": {},
+        "title": "Nothing blocks while a lock is held",
+        "reason": "the rule has no query for TypeScript, so enabling it here would be a rule that cannot fire. Nothing in this workspace takes a lock; the queue is a directory and claiming is a rename."
+      },
+      {
+        "id": "L6.ONE_LOCK_AT_A_TIME",
+        "enabled": false,
+        "settings": {},
+        "title": "A function does not acquire a second lock while holding the first",
+        "reason": "same reason as the rule above. No TypeScript query, and no locks to hold."
+      },
+      {
+        "id": "L6.PERFORMANCE_REGRESSION_IS_GUARDED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something would notice the code getting slower",
+        "reason": ""
+      },
+      {
+        "id": "L6.SECRETS_ARE_SCANNED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something scans for committed secrets",
+        "reason": ""
+      },
+      {
+        "id": "L6.WORKFLOWS_ARE_SCANNED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something scans the CI workflows themselves",
+        "reason": ""
+      }
+    ],
+    "disabled": [
+      {
+        "id": "L6.DATA_RACES_ARE_DETECTED",
+        "enabled": false,
+        "settings": {},
+        "title": "Concurrent code is exercised under a race detector",
+        "reason": "there is no dynamic race detector for this language, and the rule names none. One process, one event loop, and the one thing that is genuinely concurrent — two workers on one queue — is settled by an atomic rename rather than by a lock, and proven by the file-queue gate."
+      },
+      {
+        "id": "L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK",
+        "enabled": false,
+        "settings": {},
+        "title": "Nothing blocks while a lock is held",
+        "reason": "the rule has no query for TypeScript, so enabling it here would be a rule that cannot fire. Nothing in this workspace takes a lock; the queue is a directory and claiming is a rename."
+      },
+      {
+        "id": "L6.ONE_LOCK_AT_A_TIME",
+        "enabled": false,
+        "settings": {},
+        "title": "A function does not acquire a second lock while holding the first",
+        "reason": "same reason as the rule above. No TypeScript query, and no locks to hold."
+      }
+    ]
+  },
+  "changelog": {
+    "releases": [],
+    "unreleased": [
+      {
+        "id": "a-machine-you-leave-running",
+        "title": "amy is one install per machine, and it stays running.",
+        "body": "**State moved to `~/.amy`.** It used to live in `./.amy`, so `amy status`\nanswered differently depending on where you were standing — and the wrong\nanswer was \"nothing tracked yet\". amy drives work in checkouts all over the\ndisk and is reached from whichever harness you are in, so it cannot be\nper-directory. `AMY_HOME` overrides. **State left in a working directory is\nreported by `amy doctor` and never adopted**, because picking it up silently\nwould restore the behaviour being removed.\n\n**`amy start` and `amy stop` are the loop.** `start` runs it in the background\nwith `--every <seconds>`, outliving the terminal that started it; `stop` ends\nit. `amy status` says whether it is up and since when.\n\n**`amy pause` and `amy resume` are the handbrake**, which is what `stop` and\n`start` used to be. Pausing ends work in flight and starts nothing new while\nthe loop stays up. It survives a reboot because it is a file; the loop does\nnot, because it is a process.\n\n**`amy workflow list` and `amy workflow rm`.** `rm` deletes a profile's\nrecords, its queue and its config entry, and prints what it would do unless\ngiven `--yes`. It never touches the log, which is append-only because the\nbudget is measured off it.\n\n**`amy skills`** installs amy's skills into every harness it finds — Claude\nCode and Hermes today — rather than into one project. They ship inside\n`@amy/cli` so they cannot drift from the amy that ships them. Three new ones:\n`/amy-init`, `/amy-show-me`, `/amy-status`, and `/amy-workflow` is now an\ninterrogation that redraws the workflow after every answer.\n\nChanging amy's own codebase is not one of them: that is what `CONTRIBUTING.md`\nis for. A skill describing a repository the reader does not have is noise in\nthe list an agent reads when deciding what to reach for.\n\n**`amy status --json`** for something else to render.\n\nFixed: a hand-written plugin slice replaced the derived one instead of merging\nwith it, so a config that set `retentionDays` on the queue lost the\n`directory` beside it — and two profiles quietly shared one queue, each\nclaiming the other's work.\n\n`specTable()` now takes the state directory rather than a working directory,\nand `OVERRIDE_PATH` becomes `OVERRIDE_FILE`.",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amy/model-specs",
+            "level": "minor"
+          },
+          {
+            "package": "@amy/plugin-file-notes",
+            "level": "patch"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-workflow-is-a-name-in-a-config",
+        "title": "A workflow is a name in a config, and a plugin is installed rather than compiled in.",
+        "body": "`--workflow` used to accept two literals, so an install could not drive a\nworkflow this repository had not shipped — while the engine underneath it\ncould drive anything. A profile is now an entry under `workflows:` in\n`.amy/config.yaml`: a name, the package that drives it, and optionally the\nplugins to mount under it. The two shipped ones are what a config with no\nsuch block gets.\n\nEach profile keeps its records and queue under `.amy/<name>/`, so a second\nworkflow no longer writes over the first's state. **State from an older\ninstall stays where it was**: `amy doctor` names each directory it found and\nthe one `mv` that moves it.\n\nThe loader's table of literal imports is gone with the compiled binary. What\ninstalls is packages, resolved by name at run time, so a machine carries the\nplugins it uses and nothing else — `AMY_PACKAGES` takes the subset. A plugin\nnamed and not installed is refused at boot with the list of what is, and\n`amy plugin list` reports installed and mounted as the different questions\nthey are.\n\n`@amy/cli` therefore stops depending on ten plugins it never imported, and\n`amy init` prints the `npm install` line for whatever a configured workflow\nneeds and this machine does not have.",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amy/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amy/plugin-file-log",
+            "level": "patch"
+          },
+          {
+            "package": "@amy/plugin-file-notes",
+            "level": "patch"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "documentation-is-generated",
+        "title": "Documentation that cannot go out of date, and a manifest a site can be built from.",
+        "body": "There was one 861-line README and twenty package READMEs, and nothing checked\nany of them against the code. A README is the cheapest thing in a repository to\nleave behind: nothing fails when it stops being true, and the day it matters is\nthe day somebody is trying to write a plugin against a setting that no longer\nexists.\n\n`docs/` is now the documentation, in thirty-eight pages under eight groups, and\n**half of it is read out of the code on every build**. The commands come from\nthe commander chain, the action catalogue and the port contracts from the\nsource, the event kinds from the contract the log is already validated against,\nthe `config.yaml` keys from the interface that defines them, the gates and\nrules from the policy — including the YAML comments, which is where the reason a\nrule is disabled actually lives.\n\nThe interesting one is the plugins. Nothing declares \"this plugin mounts the\n`tracker` port\" in a manifest somebody keeps in step: **each plugin is\nregistered against a registry that only takes notes, and asked.** A plugin that\nreads a credential at mount is handed a placeholder for exactly the variables\nits own source names, for the length of one call, never over a value already in\nthe environment. So the reference tables say what the code does rather than what\nsomebody last remembered to write.\n\n`npm run docs:check` is in `npm run gate`, and it names the file:\n\n```\ndocs: the code moved and the documentation did not. These are out of date:\n  docs/reference/plugins.md\n  plugins/file-queue/README.md\n```\n\nSame promise `L3.GATE_HAS_FRESH_EVIDENCE` already makes about a gate's evidence.\nA block a page names and nothing produces is an error, and so is a block nothing\nplaces — a fact the documentation has and does not show is the same failure as\none that is out of date.\n\nEvery `packages/*/README.md` and `plugins/*/README.md` is generated from the\npackage itself and says so in a banner. The root README is not, deliberately: it\nis the front door, it is argued rather than listed, and it went from 861 lines\nto 278 by linking rather than repeating.\n\n`docs/manifest.json` is one file a website reads instead of the repository — the\nnavigation, every page with its front matter and headings, the full reference\ndata, the catalogue and the news. It carries no timestamp, because a generated\nfile that changes every time it is generated cannot be checked for drift.\n\n`npm run docs:changelog` caches the releases GitHub holds, so the news page\nexists without the build ever needing a network. And `npm run docs:draft` — the\none part that is not deterministic and is deliberately outside the gate — has no\nHTTP client of its own: it mounts amy's own harness plugins through `mount()`\nand asks through the `agent` port, so a draft climbs the same ladder, under the\nsame ceiling, into the same log as everything else. A plugin model that only\nworks for the engine it was written for does not work.",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "friction-becomes-a-plan",
+        "title": "Friction becomes a plan, and the queue stops needing a ticket.",
+        "body": "Two contracts move into the core, because neither of them ever named a domain.\n`CodeHost` and the pull request view it returns — a repository, a branch, a\nlogin — leave `@amy/workflow-ticket-to-qa`, so one mounted `@amy/plugin-github`\nnow serves any workflow. `Harness` joins them: a prompt, a directory, and an\naccount of what the answer cost. The harness plugins contribute the bare CLI\nalongside their ticket-shaped agent, and `@amy/plugin-agent-relay` mounts both\nhalves behind the one `agent` port, so a second workflow's own prompts climb\nthe same ladder, under the same ceiling, in the same log.\n\n`@amy/workflow-note-to-plan` is that second workflow, and it is the proof the\nplugin model was waiting for: it runs on `@amy/plugin-serial-engine`\nunmodified. Going through the seam found one defect in it — every workflow\nruntime re-ran `applyPlan`, which the engine had already run, so every retry\nwas counted twice and every move wrote a transition from a state to itself. A\nceiling of three implement attempts was really one and a half. Fixed, and both\nend-to-end scenarios still pass unchanged.\n\nFor anyone driving this from a config: `@amy/plugin-file-queue` and\n`@amy/plugin-file-store` gained a `directory` setting, so two workflows can\nshare one `.amy` without reading each other's work. `Announcement` gained an\noptional `kind` — `failing`, `gave-up` or `recovered` — so a channel can tell\na step that failed once from a machine that has stopped.\n\nFor anyone typing at it: `amy note \"...\"` writes a piece of friction down and\nqueues it, `.amy/notes/` is watched for the longer ones, and\n`amy --workflow note-to-plan tick` drives them to a pull request adding a plan\nto the repository the friction is about. Nothing in that path touches a\ntracker.",
+        "bumps": [
+          {
+            "package": "@amy/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "one-adapter-for-every-cli",
+        "title": "One adapter for every command line tool, instead of one plugin each.",
+        "body": "`@amy/plugin-command` mounts a `commands` port and a `run-command` action. A\nworkflow asks for a command *by name*; the config is the only place that says\nwhat that name runs:\n\n```yaml\nplugins:\n  \"@amy/plugin-command\":\n    allow:\n      datadog: pup monitors list --json\n      notion: ntn page get\n```\n\nThat split is the security model. A command line assembled from a ticket body,\nan agent's answer or a file somebody dropped in a directory would be a machine\nthat runs whatever a stranger can type into an issue — and this one reads\nissues for a living. Arguments are passed as positional parameters\n(`sh -c 'pup \"$@\"' sh --since 1h`), so an argument carrying a semicolon is an\nargument.\n\nIt was made general by evidence rather than guess: `@amy/plugin-command-gate`\nand `@amy/plugin-plan-check` were already the same shape twice.",
+        "bumps": [
+          {
+            "package": "@amy/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "something-said-in-passing",
+        "title": "`amy btw` — something said in passing becomes work.",
+        "body": "```sh\namy btw \"bump the stale deps in the api package\"\n```\n\nThe cheapest thing to lose is what somebody says while doing something else,\nand a ticket is the wrong shape for it: a ticket has an owner, a date and a\nconversation attached, and a sentence said in passing has none of those. amy\nhad two ways in and neither fit — a ticket is work a tracker already knows\nabout, a note is friction amy itself hit — so there was nowhere for *work\nsomebody wants done that nobody will open a ticket for*.\n\nA third workflow, `@amy/workflow-errand`, picks the task up, works in a branch\nof the repository it names, and either opens a pull request or comes back with\nan answer. **An errand that changed nothing is finished, not failed** — half\nof what people say in passing is \"check whether X\", which ends in a sentence.\n\n**Past a few in flight it holds and says so once.** Capturing costs nothing,\nand the failure that follows from that is thirty open pull requests nobody\nasked to review.\n\n`@amy/plugin-file-tasks` keeps the tasks as a directory of markdown files, so\nan editor or a hook can add one too. `/amy-btw` is the skill: its job is\nturning what was said into a task that survives losing the conversation.\n\nIt cost the core one action name — `run-errand`, the generic \"ask the agent\",\nwhich is now wanted by two workflows under names of their own. Nothing else\nchanged: not the engine, not either other workflow.",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amy/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-engine-drives-any-workflow",
+        "title": "The engine drives a workflow it does not know.",
+        "body": "`WorkflowRuntime` is new in the core: what a workflow contributes so that\nsomething else can run it — how to find work, what the world looks like, one\nhandler per action, and the fold only the workflow can do. The serial engine\ntakes one and keeps the half that names nothing: the queue, the attempt\ncounts, the budget and the handbrake.\n\nFor anyone driving this from a config: `repos`, `qaStatusName` and `policy`\nmoved from the engine's settings slice to the workflow's, and the engine\ngained `retryDelayMs` of its own. `amy` maps both for you; a hand-written\n`plugins:` slice needs the two keys moved.",
+        "bumps": [
+          {
+            "package": "@amy/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-release-path",
+        "title": "The version moves because a change said it should, and an installed package can say which one it is.",
+        "body": "Changesets owns the number, every `@amy/*` package moves together through a\n`fixed` group, and the bump arrives as a pull request rather than as a commit\nsomebody pushed. An installed package reads its identity out of a stamp\nwritten at pack time, and a tree with uncommitted changes gets no stamp at\nall — so `amy --version` says `dev` rather than naming a release that only\nexisted on one laptop.",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-release-stays-dormant",
+        "title": "The release workflow stays dormant until `AMY_RELEASE` is set.",
+        "body": "The first release is deliberately later, and an unarmed release job failed on\nevery push to main: GitHub refuses to let Actions open a pull request unless\nthat is switched on, and there is no npm token behind it yet either. Both are\nreal preconditions, and neither is a reason for main to be red in the\nmeantime.",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-release-workflow-inputs",
+        "title": "The release workflow calls the changesets action by the names it actually has. Its inputs were renamed in v2 and the old ones are a hard error, so the first run on main stopped before doing anything — which is the failure mode to want.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-tests-are-type-checked",
+        "title": "A pull request carries its URL, an errand opens its own as a draft, and the tests are type-checked.",
+        "body": "`PullRequestView` gains `url`, and `OpenPullRequestRequest` gains `draft`.\nThe errand workflow opens as a draft — nobody asked for that work at the\nmoment it landed, and work somebody is waiting on is not a draft — and\nannounces the link rather than the number, because that announcement is read\non a phone more often than anywhere else and a number is a thing you have to\ngo and look up.\n\nAdding a required field is what turned up the rest: **nothing type-checked the\ntest files.** `tsc --build` compiles `src` only, and vitest strips types\nwithout checking them, so a test could name a field that does not exist and\nstay green. `npm run typecheck` now covers them, in the gate and in CI.\n\nIt found 45 errors on the first run. Most were harmless drift, three were not:\n\n- The ticket workflow's walkthrough — the most important test here — typed its\n  effects parameter off `effectsOf`, **a name that does not exist**. TypeScript\n  never saw it because the reference was in type position and esbuild strips\n  those, so the whole `switch` over the workflow's effects was unchecked.\n  Adding an effect would not have failed it.\n- `@amy/plugin-agent-relay`'s doubles returned `{ kind: \"clear\" }` for a\n  `TriageOutcome` that has been `{ clear, questions, at }` for a while, and a\n  `NamedAgent` with no `using`, which is the method the skill ladder calls.\n- Six engine test builders typed their overrides as the engine's own deps\n  rather than the ticket fixture's, so every option they accepted was one the\n  type said could not be passed.",
+        "bumps": [
+          {
+            "package": "@amy/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amy/plugin-github",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "what-amy-says-it-is",
+        "title": "amy says what it is, rather than what its first workflow does.",
+        "body": "The description was \"Drives a work ticket from in-progress to QA handoff\" —\nwhich is one of the three workflows in the box, not the product. What amy is\nis the machine underneath: a state machine you leave running, where the core\nowns the actions and everything else — the workflow, the engine, the tracker,\nthe forge, the agent, every notification channel — is a plugin you assemble\nfor the work you actually do.\n\nAnd it runs *under* the harnesses rather than inside one. Claude Code, Codex,\nHermes and a terminal are doors into the same install, which keeps its state\nwhen any of them closes.",
+        "bumps": [
+          {
+            "package": "@amy/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
+    "changelogs": []
+  },
+  "generatedBlocks": [
+    "catalog-shipped",
+    "changelog-releases",
+    "changelog-unreleased",
+    "cli-commands",
+    "cli-global",
+    "cli-index",
+    "collections",
+    "config-example",
+    "config-fields",
+    "config-profile",
+    "core-actions",
+    "core-contracts",
+    "environment",
+    "event-detail",
+    "event-kinds",
+    "factory-disabled",
+    "factory-gates",
+    "factory-rules",
+    "plan-kinds",
+    "plugin-index",
+    "plugin-settings",
+    "port-kinds",
+    "roster-example",
+    "skills-index",
+    "workflow-index",
+    "workflow-states",
+    "workspace-dependencies",
+    "workspace-layout"
+  ]
+}
