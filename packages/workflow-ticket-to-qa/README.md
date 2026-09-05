@@ -57,7 +57,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `policy` | `record` | no | `{}` | maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs and maxOpenReviewsPerReviewer. Anything left out keeps its default |
+| `policy` | `record` | no | `{}` | maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default |
 | `qaStatusName` | `string` | **yes** |  | the status a ticket moves to when it is handed to QA |
 | `repos` | `string[]` | **yes** |  | every repository review load is counted across |
 

@@ -39,6 +39,21 @@ export interface Policy {
    * the one currency here that cannot be topped up.
    */
   maxOpenReviewsPerReviewer: number;
+  /**
+   * How large a pull request may get before this machine stops handing it to
+   * an agent, in files and in changed lines.
+   *
+   * Asked of a number the forge already knew, before any call, because the
+   * whole point of a ceiling on cost is that reaching it costs nothing. A
+   * five-hundred-file review is where an agent is least likely to help and
+   * most likely to be expensive about it, and the honest move there is to
+   * hand it back rather than to try three times.
+   *
+   * Zero switches the ceiling off, for somebody who would rather it always
+   * tried.
+   */
+  maxPullRequestFiles: number;
+  maxPullRequestLines: number;
 }
 
 export const DEFAULT_POLICY: Policy = {
@@ -47,4 +62,6 @@ export const DEFAULT_POLICY: Policy = {
   pollBackoffMs: 5 * 60 * 1000,
   rosterBackoffMs: 30 * 60 * 1000,
   maxOpenReviewsPerReviewer: 2,
+  maxPullRequestFiles: 60,
+  maxPullRequestLines: 2000,
 };

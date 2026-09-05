@@ -644,6 +644,11 @@
         },
         {
           "depth": 3,
+          "title": "A pull request carries its size, and a review too large for an agent is handed back before one is called.",
+          "slug": "a-pull-request-carries-its-size-and-a-review-too-large-for-an-agent-is-handed-back-before-one-is-called"
+        },
+        {
+          "depth": 3,
           "title": "A workflow is a name in a config, and a plugin is installed rather than compiled in.",
           "slug": "a-workflow-is-a-name-in-a-config-and-a-plugin-is-installed-rather-than-compiled-in"
         },
@@ -4784,7 +4789,7 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs and maxOpenReviewsPerReviewer. Anything left out keeps its default"
+            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default"
           },
           {
             "name": "qaStatusName",
@@ -5416,6 +5421,18 @@
           {
             "package": "@amykit/plugin-file-notes",
             "level": "patch"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-pull-request-carries-its-size",
+        "title": "A pull request carries its size, and a review too large for an agent is handed back before one is called.",
+        "body": "`PullRequestView` gained `changedFiles`, `additions` and `deletions`. The\nforge already knew all three and was throwing them away, and fetching the diff\nto work them out later costs the exact thing the number exists to avoid.\n\n`@amykit/workflow-ticket-to-qa` uses them for two new ceilings,\n`maxPullRequestFiles` (60) and `maxPullRequestLines` (2000). Past either, a\nreview is escalated to the ticket owner instead of handed to an agent —\nnaming which ceiling was passed and by how much, because \"I am not doing this\none\" without a number is a refusal nobody can act on. Zero on either switches\nit off.\n\nThe point is *when* it refuses. The decision is a pure predicate over a\nnumber the observation already carried, so it costs nothing at the one moment\nwhere making the call would have cost the most. A five-hundred-file review is\nwhere an agent is least likely to help and most likely to be expensive about\nit, and three attempts before giving up is the worst of both.\n\nIt reuses `ESCALATED` rather than adding a state: that state already means\n\"this needs the person whose ticket it is\", which is exactly what a change\nnobody should automate needs. It escalates once and then holds, rather than\nfiling the same thing on every look.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
           }
         ],
         "level": "minor"

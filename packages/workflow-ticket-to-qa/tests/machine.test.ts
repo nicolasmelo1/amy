@@ -288,6 +288,119 @@ describe("COPILOT_FIX", () => {
   });
 });
 
+describe("a change too large to hand to an agent", () => {
+  const huge = { changedFiles: 500, additions: 19_000, deletions: 1_000 };
+
+  it("hands a five-hundred-file review back instead of spending an agent", () => {
+    const obs = observation({
+      pullRequest: pullRequest({
+        ...huge,
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" })],
+      }),
+    });
+
+    const p = expectAdvance(plan(record("COPILOT_FIX"), obs, policy));
+
+    expect(p.to).toBe("ESCALATED");
+    expect(p.effects.map((effect) => effect.type)).toEqual(["escalate"]);
+  });
+
+  it("says which ceiling was passed and by how much", () => {
+    const obs = observation({
+      pullRequest: pullRequest({
+        ...huge,
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" })],
+      }),
+    });
+
+    const p = expectAdvance(plan(record("COPILOT_FIX"), obs, policy));
+
+    expect(p.why).toContain("500 files changed");
+    expect(p.why).toContain(String(policy.maxPullRequestFiles));
+  });
+
+  it("counts both sides of the diff, so a rewrite of one file still counts", () => {
+    const obs = observation({
+      pullRequest: pullRequest({
+        changedFiles: 1,
+        additions: 1_500,
+        deletions: 1_400,
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" })],
+      }),
+    });
+
+    expect(expectAdvance(plan(record("COPILOT_FIX"), obs, policy)).to).toBe("ESCALATED");
+  });
+
+  it("holds rather than escalating twice while the owner has it", () => {
+    const r = record("COPILOT_FIX", {
+      escalation: { reason: "too big", askedAt: "2026-09-05T09:00:00.000Z" },
+    });
+    const obs = observation({
+      pullRequest: pullRequest({
+        ...huge,
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" })],
+      }),
+    });
+
+    expect(expectWait(plan(r, obs, policy)).why).toContain("waiting on the owner");
+  });
+
+  it("hands a large human review back too", () => {
+    const obs = observation({
+      pullRequest: pullRequest({
+        ...huge,
+        reviews: [review({ author: "ada", state: "CHANGES_REQUESTED" })],
+        threads: [thread({ id: "H1", author: "ada" })],
+      }),
+    });
+
+    expect(expectAdvance(plan(record("HUMAN_FIX"), obs, policy)).to).toBe("ESCALATED");
+  });
+
+  it("costs nothing to decide, so it never reaches the agent", () => {
+    // The whole point of the ceiling: it is read off the pull request the
+    // observation already carried, so refusing is free where the call it
+    // prevents is the most expensive one in the lifecycle.
+    const obs = observation({
+      pullRequest: pullRequest({
+        ...huge,
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" })],
+      }),
+    });
+
+    const p = plan(record("COPILOT_FIX"), obs, policy);
+    const types = p.kind === "settled" ? [] : p.effects.map((effect) => effect.type);
+
+    expect(types).not.toContain("address-threads");
+  });
+
+  it("does the work when the ceiling is switched off", () => {
+    const obs = observation({
+      pullRequest: pullRequest({
+        ...huge,
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" })],
+      }),
+    });
+
+    const p = expectAct(
+      plan(record("COPILOT_FIX"), obs, {
+        ...policy,
+        maxPullRequestFiles: 0,
+        maxPullRequestLines: 0,
+      }),
+    );
+
+    expect(p.effects.map((effect) => effect.type)).toEqual(["address-threads"]);
+  });
+});
+
 describe("REVIEWER_ASSIGNED", () => {
   it("picks the reviewer carrying the fewest open reviews", () => {
     const obs = observation({
