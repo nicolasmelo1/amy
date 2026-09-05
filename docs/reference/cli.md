@@ -39,7 +39,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy daemon`](#amy-daemon) | The loop itself, in the foreground. `amy start` runs this for you |
 | [`amy discover`](#amy-discover) | Put every piece of work the workflow can find onto the queue |
 | [`amy doctor`](#amy-doctor) | Check everything the machine depends on before it touches a ticket |
-| [`amy init`](#amy-init) | Write the config and roster templates |
+| [`amy init`](#amy-init) | Write the config and roster templates, and install what they need |
 | [`amy models`](#amy-models) | What each model is believed to cost |
 | [`amy models refresh`](#amy-models-refresh) | Take the base rates from models.dev, keeping what it does not carry |
 | [`amy models show`](#amy-models-show) | The price table in force |
@@ -127,11 +127,16 @@ amy doctor
 
 ### `amy init`
 
-Write the config and roster templates
+Write the config and roster templates, and install what they need
 
 ```sh
-amy init
+amy init [options]
 ```
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--install` |  | install the missing packages without asking |
+| `--no-install` |  | only print what is missing |
 
 ### `amy models`
 

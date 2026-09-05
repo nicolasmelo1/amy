@@ -21,28 +21,67 @@ Only the first two are required by amy itself. The rest are required by the
 installer: a machine with no `codex` on it should not be carrying the plugin
 that shells out to one.
 
-## Installing from a checkout
+## Installing
 
 ```sh
-git clone https://github.com/nicolasmelo1/amy && cd amy
-npm ci
-npm run install:local     # packs every package, installs to ~/.local/bin/amy
+npm install -g @amykit/cli
 amy --version
 ```
 
-`install:local` packs every workspace package and installs them, then puts the
-executable on your `PATH`. It is the supported path today; publishing to npm is
-[dormant until somebody arms it](../development/releasing.md).
+That is the command itself. **It carries nothing else**, deliberately: a plugin
+is resolved by name at run time, and a machine with no `codex` on it has no
+reason to hold the plugin that shells out to one.
 
-### Carrying a subset
+What your config needs is installed by the step after it:
 
 ```sh
-AMY_PACKAGES="@amykit/cli @amykit/workflow-errand @amykit/plugin-file-queue" npm run install:local
+amy init
 ```
 
-`AMY_PACKAGES` takes the list to install instead of everything. A plugin that is
-not installed is not an error until a config names it, and then it is an error
-with a name:
+`init` writes the templates, works out which packages the workflows in your
+config need, and offers to install the ones this machine has not got:
+
+```text
+These are not installed yet:
+  @amykit/plugin-linear
+  @amykit/plugin-github
+  @amykit/plugin-claude
+  @amykit/plugin-agent-relay
+
+Install them now? [Y/n]
+```
+
+It asks rather than assuming, because installing into a global prefix is a
+change to the machine and not to amy. With nothing to ask on — a script, a
+pipe, CI — it prints the command instead of running it, and `--install` is how
+a pipeline says yes:
+
+```sh
+amy init --install        # install without asking
+amy init --no-install     # only print what is missing
+```
+
+Adding a workflow later is the same two steps: name it in the config, run
+`amy init` again.
+
+### Why global
+
+Node resolves a package by walking up from the importing module, so a package
+installed beside the command is one the command can import. That is what lets
+an install carry a plugin this repository has never heard of:
+
+```sh
+npm install -g @acme/plugin-jira
+```
+
+If npm exits zero and a package still does not resolve, `amy init` says so
+rather than leaving you with a mount that refuses by name later. The usual
+cause is a global prefix that is not the one amy is installed under —
+`npm prefix -g` is the thing to compare.
+
+### A plugin a config names and nothing installed
+
+Refused at boot, by name, with the list of what there was:
 
 ```
 amy could not start:
@@ -51,8 +90,28 @@ amy could not start:
 Installed: @amykit/plugin-claude, @amykit/plugin-file-queue, …
 ```
 
-`amy init` prints the `npm install` line for whatever a configured workflow needs
-and this machine does not have.
+`amy init` is what stops you meeting that: it works the missing set out before
+anything touches a ticket.
+
+### Windows, macOS, Linux
+
+There is no install script and nothing to clone. It is npm, so the three work
+the same, and the `amy` command is put on the PATH by npm's own shim.
+
+### Installing from a checkout
+
+Only for working on amy itself, and for the gates that prove an install works
+without a registry at all:
+
+```sh
+git clone https://github.com/nicolasmelo1/amy && cd amy
+npm ci
+npm run install:local     # packs every package, installs to ~/.local/bin/amy
+```
+
+`AMY_PACKAGES` takes a subset of what to install, which is what the
+`installed-plugins` gate uses to build a machine carrying four packages and a
+workflow written elsewhere. See [The gate](../development/the-gate.md).
 
 ## Where it keeps things
 

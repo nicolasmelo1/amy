@@ -2312,13 +2312,28 @@
         },
         {
           "depth": 2,
-          "title": "Installing from a checkout",
-          "slug": "installing-from-a-checkout"
+          "title": "Installing",
+          "slug": "installing"
         },
         {
           "depth": 3,
-          "title": "Carrying a subset",
-          "slug": "carrying-a-subset"
+          "title": "Why global",
+          "slug": "why-global"
+        },
+        {
+          "depth": 3,
+          "title": "A plugin a config names and nothing installed",
+          "slug": "a-plugin-a-config-names-and-nothing-installed"
+        },
+        {
+          "depth": 3,
+          "title": "Windows, macOS, Linux",
+          "slug": "windows-macos-linux"
+        },
+        {
+          "depth": 3,
+          "title": "Installing from a checkout",
+          "slug": "installing-from-a-checkout"
         },
         {
           "depth": 2,
@@ -3374,9 +3389,18 @@
           "path": [
             "init"
           ],
-          "description": "Write the config and roster templates",
+          "description": "Write the config and roster templates, and install what they need",
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "flags": "--install",
+              "description": "install the missing packages without asking"
+            },
+            {
+              "flags": "--no-install",
+              "description": "only print what is missing"
+            }
+          ],
           "isDefault": false
         },
         {

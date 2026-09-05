@@ -99,14 +99,16 @@ you have to be able to read.
 ## Five minutes
 
 ```sh
-npm run install:local     # packs every package, installs to ~/.local/bin/amy
-amy init                  # writes ~/.amy/config.yaml and ~/.amy/roster.yaml
-amy doctor                # every dependency, checked before it touches a ticket
-amy discover && amy tick  # exactly one move, then exit
+npm install -g @amykit/cli   # macOS, Linux, Windows — it is just npm
+amy init                     # templates, and the packages your config needs
+amy doctor                   # every dependency, checked before it touches a ticket
+amy discover && amy tick     # exactly one move, then exit
 ```
 
-`tick` is the whole product in one command. Run it until you trust it, then
-`amy start --every 60` leaves the loop running in the background.
+`init` installs only what the workflows in your config actually name, and asks
+before touching a global prefix. `tick` is the whole product in one command:
+run it until you trust it, then `amy start --every 60` leaves the loop running
+in the background.
 
 → [Quickstart](docs/start/quickstart.md) · [Installation](docs/start/installation.md) · [Configuration](docs/start/configuration.md)
 
