@@ -97,6 +97,15 @@ function openReview(number, head, reviewer) {
     state: "open",
     isDraft: false,
     reviewDecision: "REVIEW_REQUIRED",
+    // What the forge knows about the branch, in the shape the real one sends
+    // it. Small, green and clean, so the walk is about the lifecycle and a
+    // run that means to be about a broken branch has to say so.
+    changedFiles: 3,
+    additions: 40,
+    deletions: 12,
+    mergeable: "MERGEABLE",
+    mergeStateStatus: "CLEAN",
+    checks: "SUCCESS",
     requestedReviewers: [reviewer],
     reviews: [],
     threads: [],

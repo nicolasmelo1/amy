@@ -18,6 +18,49 @@ export interface ReviewThread {
   isOutdated: boolean;
 }
 
+/**
+ * What the forge's own checks say. `none` where it runs none at all, which is
+ * a different answer from "not passing" and the workflow has to tell them
+ * apart: a repository with no CI must not wait forever for a verdict.
+ */
+export type ChecksState = "passing" | "failing" | "running" | "none";
+
+export interface ChecksView {
+  state: ChecksState;
+  /**
+   * The commit they ran against.
+   *
+   * Carried for the same reason a review carries one: a green rollup from
+   * three pushes ago says nothing about the head, and a workflow that could
+   * not tell would hand a broken branch to a person.
+   */
+  commitSha: string;
+}
+
+/**
+ * What stands between the branch and its base, as the forge sees it.
+ *
+ * Only the states a workflow can act on itself, plus not-yet-known — the
+ * forge works a merge out asynchronously, and `unknown` is the honest answer
+ * while it does rather than a guess in either direction.
+ *
+ * Everything else a forge reports here — blocked on a required review,
+ * unstable because checks are red — is already carried by `reviewDecision`
+ * and `checks`. A second name for it would be two fields free to disagree.
+ */
+export type MergeState = "mergeable" | "conflicting" | "behind" | "unknown";
+
+/** One pull request waiting on somebody's review. */
+export interface ReviewRequest {
+  repo: string;
+  number: number;
+  url: string;
+  title: string;
+  author: string;
+  /** The head it is asking about, so a review of an older one is visible. */
+  headSha: string;
+}
+
 export interface PullRequestView {
   number: number;
   /**
@@ -44,6 +87,9 @@ export interface PullRequestView {
   additions: number;
   deletions: number;
   reviewDecision: ReviewDecision;
+  /** What the forge's own checks say about the head, or null where it runs none. */
+  checks: ChecksView | null;
+  mergeState: MergeState;
   reviews: readonly ReviewSubmission[];
   threads: readonly ReviewThread[];
   requestedReviewers: readonly string[];
@@ -92,4 +138,17 @@ export interface CodeHost {
    * quiet in that one.
    */
   reviewLoad(repos: readonly string[]): Promise<Record<string, number>>;
+
+  /**
+   * The open pull requests waiting on one login's review, in these
+   * repositories and no others.
+   *
+   * Scoped to the list because a forge search is account-wide: asked without
+   * it, this machine would pick up work from every repository its credential
+   * can see, including ones nobody meant it to touch. `reviewLoad` answers
+   * "how buried is each reviewer"; this answers "what is waiting on me", and
+   * the second cannot be derived from the first — it counts, it does not say
+   * which.
+   */
+  reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>;
 }

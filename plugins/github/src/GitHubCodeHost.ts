@@ -1,9 +1,12 @@
 import {
+  ChecksView,
   CodeHost,
   CommandRunner,
+  MergeState,
   OpenPullRequestRequest,
   PullRequestView,
   ReviewDecision,
+  ReviewRequest,
   ReviewState,
   ReviewSubmission,
   ReviewThread,
@@ -22,6 +25,11 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
         changedFiles
         additions
         deletions
+        mergeable
+        mergeStateStatus
+        commits(last: 1) {
+          nodes { commit { oid statusCheckRollup { state } } }
+        }
         reviewRequests(first: 20) {
           nodes {
             requestedReviewer {
@@ -53,6 +61,31 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
   }
 }`;
 
+const REVIEW_REQUESTS_QUERY = `
+query ReviewRequests($query: String!) {
+  search(query: $query, type: ISSUE, first: 50) {
+    nodes {
+      ... on PullRequest {
+        number
+        title
+        url
+        headRefOid
+        author { login }
+        repository { nameWithOwner }
+      }
+    }
+  }
+}`;
+
+interface RawReviewRequest {
+  number?: number;
+  title?: string;
+  url?: string;
+  headRefOid?: string;
+  author?: { login: string } | null;
+  repository?: { nameWithOwner: string };
+}
+
 interface RawPullRequest {
   number: number;
   url: string;
@@ -62,6 +95,11 @@ interface RawPullRequest {
   changedFiles: number;
   additions: number;
   deletions: number;
+  mergeable: string | null;
+  mergeStateStatus: string | null;
+  commits?: {
+    nodes: { commit: { oid: string; statusCheckRollup: { state: string } | null } }[];
+  };
   reviewRequests: {
     nodes: { requestedReviewer: { login?: string; slug?: string } | null }[];
   };
@@ -175,6 +213,40 @@ export class GitHubCodeHost implements CodeHost {
     return load;
   }
 
+  /**
+   * What is waiting on one person, in these repositories and no others.
+   *
+   * The scope is not a convenience. A forge search runs across the account,
+   * so asked without it this returns pull requests from every repository the
+   * credential can see — including ones nobody meant this machine to touch.
+   * An empty list is therefore nothing to search rather than everything.
+   */
+  async reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]> {
+    if (repos.length === 0) return [];
+
+    const scope = repos.map((repo) => `repo:${repo}`).join(" ");
+    const data = await this.graphql<{ search: { nodes: RawReviewRequest[] } }>(
+      REVIEW_REQUESTS_QUERY,
+      { query: `is:pr is:open review-requested:${login} ${scope}` },
+    );
+
+    return data.search.nodes.flatMap<ReviewRequest>((node) => {
+      // The search returns issues too, and the fragment leaves those empty.
+      if (node.number === undefined || !node.repository) return [];
+
+      return [
+        {
+          repo: node.repository.nameWithOwner,
+          number: node.number,
+          url: node.url ?? "",
+          title: node.title ?? "",
+          author: node.author?.login ?? "",
+          headSha: node.headRefOid ?? "",
+        },
+      ];
+    });
+  }
+
   private async defaultBranch(repo: string): Promise<string> {
     return this.gh(["api", `/repos/${repo}`, "--jq", ".default_branch"]);
   }
@@ -232,6 +304,8 @@ function toView(node: RawPullRequest): PullRequestView {
     additions: node.additions,
     deletions: node.deletions,
     reviewDecision: toDecision(node.reviewDecision),
+    checks: toChecks(node),
+    mergeState: toMergeState(node.mergeable, node.mergeStateStatus),
     requestedReviewers: node.reviewRequests.nodes
       .map((request) => request.requestedReviewer?.login ?? request.requestedReviewer?.slug)
       .filter((who): who is string => Boolean(who)),
@@ -264,6 +338,47 @@ function toView(node: RawPullRequest): PullRequestView {
       ];
     }),
   };
+}
+
+/**
+ * The forge's verdict on the head, or nothing where it runs no checks.
+ *
+ * A null rollup is a real answer and not a failure: a repository with no CI
+ * reports one, and a workflow told "not passing" would wait for a verdict
+ * that is never coming. Seen in the wild on a release pull request whose
+ * workflows are all skipped.
+ */
+function toChecks(node: RawPullRequest): ChecksView | null {
+  const commit = node.commits?.nodes[0]?.commit;
+  if (!commit?.statusCheckRollup) return null;
+
+  return { state: toChecksState(commit.statusCheckRollup.state), commitSha: commit.oid };
+}
+
+function toChecksState(state: string): NonNullable<ChecksView>["state"] {
+  switch (state) {
+    case "SUCCESS":
+      return "passing";
+    case "FAILURE":
+    case "ERROR":
+      return "failing";
+    default:
+      // EXPECTED and PENDING both mean "no verdict yet", and an unrecognised
+      // state is treated the same way: waiting is the answer that costs
+      // nothing, where guessing either verdict costs a wrong move.
+      return "running";
+  }
+}
+
+/**
+ * A conflict outranks being behind, because a branch can be both and only one
+ * of them is what has to be dealt with first.
+ */
+function toMergeState(mergeable: string | null, mergeStateStatus: string | null): MergeState {
+  if (mergeable === "CONFLICTING" || mergeStateStatus === "DIRTY") return "conflicting";
+  if (mergeStateStatus === "BEHIND") return "behind";
+  if (mergeable === "MERGEABLE") return "mergeable";
+  return "unknown";
 }
 
 function toDecision(value: string | null): ReviewDecision {

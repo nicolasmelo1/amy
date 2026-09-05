@@ -23,6 +23,14 @@ const REAL_RESPONSE = {
             isDraft: false,
             reviewDecision: "CHANGES_REQUESTED",
             headRefOid: HEAD,
+            changedFiles: 7,
+            additions: 214,
+            deletions: 31,
+            mergeable: "MERGEABLE",
+            mergeStateStatus: "CLEAN",
+            commits: {
+              nodes: [{ commit: { oid: HEAD, statusCheckRollup: { state: "SUCCESS" } } }],
+            },
             reviewRequests: {
               nodes: [
                 { requestedReviewer: { __typename: "User", login: "adamwbm" } },
@@ -285,3 +293,165 @@ describe("GitHubCodeHost.reviewLoad", () => {
     ).resolves.toEqual({});
   });
 });
+
+/** The base fixture with one pull request field replaced. */
+function withNode(fields: Record<string, unknown>): unknown {
+  const node = REAL_RESPONSE.data.repository.pullRequests.nodes[0];
+  return {
+    data: { repository: { pullRequests: { nodes: [{ ...node, ...fields }] } } },
+  };
+}
+
+describe("GitHubCodeHost: what the forge says about the branch", () => {
+  it("maps the size the forge already counted", async () => {
+    const { host } = hostFor(REAL_RESPONSE);
+
+    expect(await host.findPullRequest("Northwind/northwind-backend", "b")).toMatchObject({
+      changedFiles: 7,
+      additions: 214,
+      deletions: 31,
+    });
+  });
+
+  it("keeps the commit the checks ran against, so a green older head is visible", async () => {
+    const { host } = hostFor(
+      withNode({
+        commits: { nodes: [{ commit: { oid: OLDER, statusCheckRollup: { state: "SUCCESS" } } }] },
+      }),
+    );
+
+    const pr = (await host.findPullRequest("Northwind/northwind-backend", "b"))!;
+
+    expect(pr.checks).toEqual({ state: "passing", commitSha: OLDER });
+    expect(pr.headSha).toBe(HEAD);
+  });
+
+  // Seen on a real release pull request whose workflows are all skipped.
+  // Told apart from "not passing", or a repository with no CI waits forever.
+  it("reports no checks where the forge ran none", async () => {
+    const { host } = hostFor(
+      withNode({ commits: { nodes: [{ commit: { oid: HEAD, statusCheckRollup: null } }] } }),
+    );
+
+    expect((await host.findPullRequest("Northwind/northwind-backend", "b"))?.checks).toBeNull();
+  });
+
+  // A forge that answered without the head commit ran no checks. Reading it
+  // as a crash takes the tick down and the ticket with it, which is a worse
+  // answer than the true one.
+  it("reports no checks where the forge did not answer with a head commit", async () => {
+    const node = REAL_RESPONSE.data.repository.pullRequests.nodes[0];
+    const { commits: _dropped, ...withoutCommits } = node as typeof node & { commits: unknown };
+    const { host } = hostFor({
+      data: { repository: { pullRequests: { nodes: [withoutCommits] } } },
+    });
+
+    expect((await host.findPullRequest("Northwind/northwind-backend", "b"))?.checks).toBeNull();
+  });
+
+  it.each([
+    ["SUCCESS", "passing"],
+    ["FAILURE", "failing"],
+    ["ERROR", "failing"],
+    ["PENDING", "running"],
+    ["EXPECTED", "running"],
+  ])("reads a %s rollup as %s", async (state, expected) => {
+    const { host } = hostFor(
+      withNode({
+        commits: { nodes: [{ commit: { oid: HEAD, statusCheckRollup: { state } } }] },
+      }),
+    );
+
+    expect((await host.findPullRequest("Northwind/northwind-backend", "b"))?.checks?.state).toBe(
+      expected,
+    );
+  });
+
+  it.each([
+    ["MERGEABLE", "CLEAN", "mergeable"],
+    ["CONFLICTING", "DIRTY", "conflicting"],
+    ["MERGEABLE", "BEHIND", "behind"],
+    ["UNKNOWN", "UNKNOWN", "unknown"],
+    // The forge works a merge out asynchronously, and says so. Guessing
+    // either way here is how a branch gets handed over as mergeable before
+    // anybody knows whether it is.
+    ["UNKNOWN", "CLEAN", "unknown"],
+  ])("reads %s/%s as %s", async (mergeable, mergeStateStatus, expected) => {
+    const { host } = hostFor(withNode({ mergeable, mergeStateStatus }));
+
+    expect((await host.findPullRequest("Northwind/northwind-backend", "b"))?.mergeState).toBe(
+      expected,
+    );
+  });
+
+  // Both at once is a real state, and only one of them is what has to be
+  // dealt with first.
+  it("calls a branch that both conflicts and is behind a conflict", async () => {
+    const { host } = hostFor(withNode({ mergeable: "CONFLICTING", mergeStateStatus: "BEHIND" }));
+
+    expect((await host.findPullRequest("Northwind/northwind-backend", "b"))?.mergeState).toBe(
+      "conflicting",
+    );
+  });
+});
+
+const SEARCH_RESPONSE = {
+  data: {
+    search: {
+      nodes: [
+        {
+          number: 4886,
+          title: "Improve logging around knit syncs",
+          url: "https://github.example.test/Northwind/northwind-backend/pull/4886",
+          headRefOid: HEAD,
+          author: { login: "alan" },
+          repository: { nameWithOwner: "Northwind/northwind-backend" },
+        },
+        // The search returns issues too, and the fragment leaves those empty.
+        {},
+      ],
+    },
+  },
+};
+
+describe("GitHubCodeHost.reviewsRequestedOf", () => {
+  it("asks only about the repositories it was given", async () => {
+    const { runner, host } = hostFor(SEARCH_RESPONSE);
+
+    await host.reviewsRequestedOf("edsger", [
+      "Northwind/northwind-backend",
+      "Northwind/northwind-frontend",
+    ]);
+
+    const asked = runner.argvFor("gh").join(" ");
+    expect(asked).toContain("review-requested:edsger");
+    expect(asked).toContain("repo:Northwind/northwind-backend");
+    expect(asked).toContain("repo:Northwind/northwind-frontend");
+    expect(asked).toContain("is:open");
+  });
+
+  // The one that matters. A forge search runs across the account, so an
+  // unscoped one returns work from every repository the credential can see.
+  it("searches nothing at all when it was given no repository", async () => {
+    const { runner, host } = hostFor(SEARCH_RESPONSE);
+
+    expect(await host.reviewsRequestedOf("edsger", [])).toEqual([]);
+    expect(runner.calls).toHaveLength(0);
+  });
+
+  it("maps a pull request and drops what is not one", async () => {
+    const { host } = hostFor(SEARCH_RESPONSE);
+
+    expect(await host.reviewsRequestedOf("edsger", ["Northwind/northwind-backend"])).toEqual([
+      {
+        repo: "Northwind/northwind-backend",
+        number: 4886,
+        title: "Improve logging around knit syncs",
+        url: "https://github.example.test/Northwind/northwind-backend/pull/4886",
+        author: "alan",
+        headSha: HEAD,
+      },
+    ]);
+  });
+});
+

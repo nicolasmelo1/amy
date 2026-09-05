@@ -28,10 +28,14 @@ export type { GraphQLClient } from "./ports/GraphQL.js";
 export type { CommandOutcome, Commands } from "./ports/Commands.js";
 export type { AskContext, Harness, HarnessReply } from "./ports/Harness.js";
 export type {
+  ChecksState,
+  ChecksView,
   CodeHost,
+  MergeState,
   OpenPullRequestRequest,
   PullRequestView,
   ReviewDecision,
+  ReviewRequest,
   ReviewState,
   ReviewSubmission,
   ReviewThread,

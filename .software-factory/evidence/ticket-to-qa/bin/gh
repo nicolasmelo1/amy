@@ -74,6 +74,21 @@ function pullRequestNode(repo, pull) {
     isDraft: pull.isDraft,
     reviewDecision: pull.reviewDecision,
     headRefOid: headOf(repo, pull.head),
+    changedFiles: pull.changedFiles,
+    additions: pull.additions,
+    deletions: pull.deletions,
+    mergeable: pull.mergeable,
+    mergeStateStatus: pull.mergeStateStatus,
+    commits: {
+      nodes: [
+        {
+          commit: {
+            oid: headOf(repo, pull.head),
+            statusCheckRollup: pull.checks === null ? null : { state: pull.checks },
+          },
+        },
+      ],
+    },
     reviewRequests: {
       nodes: pull.requestedReviewers.map((login) => ({
         requestedReviewer: { __typename: "User", login },
@@ -129,6 +144,12 @@ function openPullRequest(state, repoPath, args) {
     state: "open",
     isDraft: false,
     reviewDecision: null,
+    changedFiles: 3,
+    additions: 40,
+    deletions: 12,
+    mergeable: "MERGEABLE",
+    mergeStateStatus: "CLEAN",
+    checks: "SUCCESS",
     requestedReviewers: [],
     reviews: [],
     threads: [],

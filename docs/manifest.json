@@ -699,6 +699,11 @@
         },
         {
           "depth": 3,
+          "title": "The forge says whether it can merge, whether its checks passed, and what is waiting on you.",
+          "slug": "the-forge-says-whether-it-can-merge-whether-its-checks-passed-and-what-is-waiting-on-you"
+        },
+        {
+          "depth": 3,
           "title": "The version moves because a change said it should, and an installed package can say which one it is.",
           "slug": "the-version-moves-because-a-change-said-it-should-and-an-installed-package-can-say-which-one-it-is"
         },
@@ -2778,6 +2783,11 @@
             "name": "reviewLoad",
             "signature": "reviewLoad(repos: readonly string[]): Promise<Record<string, number>>",
             "doc": "Open reviews per login, counted across every given repository."
+          },
+          {
+            "name": "reviewsRequestedOf",
+            "signature": "reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>",
+            "doc": "The open pull requests waiting on one login's review, in these repositories and no others."
           }
         ]
       },
@@ -5615,6 +5625,18 @@
         "id": "the-engine-drives-any-workflow",
         "title": "The engine drives a workflow it does not know.",
         "body": "`WorkflowRuntime` is new in the core: what a workflow contributes so that\nsomething else can run it — how to find work, what the world looks like, one\nhandler per action, and the fold only the workflow can do. The serial engine\ntakes one and keeps the half that names nothing: the queue, the attempt\ncounts, the budget and the handbrake.\n\nFor anyone driving this from a config: `repos`, `qaStatusName` and `policy`\nmoved from the engine's settings slice to the workflow's, and the engine\ngained `retryDelayMs` of its own. `amy` maps both for you; a hand-written\n`plugins:` slice needs the two keys moved.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-forge-says-if-it-can-merge",
+        "title": "The forge says whether it can merge, whether its checks passed, and what is waiting on you.",
+        "body": "Three things the forge always knew and nothing here could ask it. Each one is\na `CodeHost` question, so any workflow gets them and none of them is the\nticket workflow's private vocabulary.\n\n**`checks`** — what CI says about the head, and the commit it says it about.\nCarried with the sha for the same reason a review carries one: a green rollup\nfrom three pushes ago says nothing about what is there now. `none` is a\nseparate answer from `failing`, because a repository that runs no checks\nreports exactly that, and a machine reading it as \"not passing\" would hold\nevery pull request for a verdict nobody is coming to give. Seen in the wild on\na release pull request whose workflows are all skipped.\n\n**`mergeState`** — `conflicting`, `behind`, `mergeable` or `unknown`. Only the\nstates a workflow can act on itself, plus not-yet-known, because the forge\nworks a merge out asynchronously and guessing either way is how a branch gets\nhanded over as mergeable before anybody knows. Everything else a forge reports\nhere is already carried by `reviewDecision` and `checks`, and a second name for\nit would be two fields free to disagree.\n\n**`reviewsRequestedOf(login, repos)`** — the open pull requests waiting on one\nperson. `reviewLoad` counts; it does not say which, and the second cannot be\nderived from the first. Scoped to the repositories given, and an empty list is\nnothing to search rather than everything: a forge search runs across the\naccount, so an unscoped one returns work from every repository the credential\ncan see.\n\n**Nothing is offered to a reviewer that the forge already says is broken.**\nRed checks, a conflict, or a branch sitting on a base it has moved off now go\nback to the ticket's owner instead of onto somebody's pile. Review time is the\none currency here nobody can top up — the reason the per-reviewer ceiling\nexists — and a reading of a branch about to change is a reading done twice.\nA verdict still running is waited for, bounded by the same ceiling the local\ngate answers to, because a check that is configured and never reports would\notherwise be a ticket that stops with nobody told.",
         "bumps": [
           {
             "package": "@amykit/core",

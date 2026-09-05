@@ -63,6 +63,7 @@ function fakeHost(overrides: Partial<CodeHost> = {}): CodeHost {
     openPullRequest: vi.fn<CodeHost["openPullRequest"]>().mockResolvedValue(12),
     requestReview: vi.fn<CodeHost["requestReview"]>().mockResolvedValue(undefined),
     reviewLoad: vi.fn<CodeHost["reviewLoad"]>().mockResolvedValue({}),
+    reviewsRequestedOf: vi.fn<CodeHost["reviewsRequestedOf"]>().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -399,6 +400,8 @@ describe("the pull request the machine can see", () => {
       additions: 40,
       deletions: 12,
       reviewDecision: null,
+      checks: { state: "passing", commitSha: "head" },
+      mergeState: "mergeable",
       reviews: [],
       threads: [],
       requestedReviewers: [],
