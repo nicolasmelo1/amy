@@ -14,8 +14,7 @@
     }
   },
   "files": [
-    "dist",
-    "capabilities.yaml"
+    "dist"
   ],
   "dependencies": {
     "@amy/core": "*",

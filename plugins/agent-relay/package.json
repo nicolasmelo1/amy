@@ -25,8 +25,7 @@
     }
   },
   "files": [
-    "dist",
-    "capabilities.yaml"
+    "dist"
   ],
   "dependencies": {
     "@amy/agent-kit": "^0.1.0",
