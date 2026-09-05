@@ -659,6 +659,11 @@
         },
         {
           "depth": 3,
+          "title": "Installing is npm install -g @amykit/cli, and amy init supplies the rest.",
+          "slug": "installing-is-npm-install--g-amykitcli-and-amy-init-supplies-the-rest"
+        },
+        {
+          "depth": 3,
           "title": "One adapter for every command line tool, instead of one plugin each.",
           "slug": "one-adapter-for-every-command-line-tool-instead-of-one-plugin-each"
         },
@@ -5448,6 +5453,18 @@
         "bumps": [
           {
             "package": "@amykit/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "install-is-one-npm-command",
+        "title": "Installing is `npm install -g @amykit/cli`, and `amy init` supplies the rest.",
+        "body": "Installing meant cloning the repository and running a shell script. That asks\nsomebody to fetch a whole checkout to use a released product, and the script\nis POSIX, so Windows was not supported at all — for a tool whose entire job is\nto run unattended on whichever machine you leave it on.\n\nNow it is npm, which is the same three words on macOS, Linux and Windows, and\nnpm's own shim puts `amy` on the PATH.\n\nThe command still carries nothing but itself. A plugin resolves by name at run\ntime, and a machine with no `codex` on it has no reason to hold the plugin\nthat shells out to one — so what gets installed is what your config actually\nnames, and `amy init` is what works that out:\n\n```\nThese are not installed yet:\n  @amykit/plugin-linear\n  @amykit/plugin-github\n\nInstall them now? [Y/n]\n```\n\nIt asks rather than assuming, because installing into a global prefix is a\nchange to the machine and not to amy. With nothing to ask on — a script, a\npipe, CI — it prints the command instead of running it, and `--install` is how\na pipeline says yes. `--no-install` keeps the old printing behaviour.\n\nWhat it offers is what the profile **will mount**, not what is recommended for\nit. That distinction is the bug this fixes as much as the ergonomics: a config\nnaming `@acme/plugin-jira` is exactly the case worth installing, and a\nrecommendation cannot know about a package this repository never shipped.\n\nTwo failures it reports rather than leaves you to meet later: npm exiting\nnon-zero, and npm exiting zero while the packages still do not resolve —\nusually a global prefix that is not the one amy is installed under, which\nwould otherwise surface as a mount refusing by name on the first tick.\n\n`npm run install:local` stays, and is now what it always really was: how the\ngates prove an install works with no registry in the picture at all.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
             "level": "minor"
           }
         ],

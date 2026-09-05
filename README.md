@@ -17,7 +17,8 @@
 </p>
 
 <p>
-  <a href="docs/start/quickstart.md"><strong>Quickstart</strong></a> ·
+  <a href="#install"><strong>Install</strong></a> ·
+  <a href="docs/start/quickstart.md">Quickstart</a> ·
   <a href="docs/">Documentation</a> ·
   <a href="docs/build/write-a-workflow.md">Write a workflow</a> ·
   <a href="docs/build/write-a-plugin.md">Write a plugin</a> ·
@@ -30,6 +31,31 @@
 
 **Leave it running, and it does the long part of your work while you are
 somewhere else — built the way *you* work, not the way somebody else does.**
+
+## Install
+
+```sh
+npm install -g @amykit/cli
+```
+
+macOS, Linux and Windows — it is npm, so there is nothing to clone and no
+install script. One install per machine, not one per repository.
+
+```sh
+amy init                     # templates, and the packages your config needs
+amy doctor                   # every dependency, checked before it touches a ticket
+amy discover && amy tick     # exactly one move, then exit
+```
+
+The command carries nothing but itself: a plugin resolves by name at run time,
+and a machine with no `codex` on it has no reason to hold the plugin that
+shells out to one. `amy init` works out what the workflows in *your* config
+name, and asks before installing anything.
+
+`tick` is the whole product in one command. Run it until you trust it, then
+`amy start --every 60` leaves the loop running in the background.
+
+→ [Quickstart](docs/start/quickstart.md) · [Installation](docs/start/installation.md) · [Configuration](docs/start/configuration.md)
 
 ## What it is, in a minute
 
@@ -95,22 +121,6 @@ conversation you happened to be having.
 
 And it is open source, because a machine that runs *your* process is a machine
 you have to be able to read.
-
-## Five minutes
-
-```sh
-npm install -g @amykit/cli   # macOS, Linux, Windows — it is just npm
-amy init                     # templates, and the packages your config needs
-amy doctor                   # every dependency, checked before it touches a ticket
-amy discover && amy tick     # exactly one move, then exit
-```
-
-`init` installs only what the workflows in your config actually name, and asks
-before touching a global prefix. `tick` is the whole product in one command:
-run it until you trust it, then `amy start --every 60` leaves the loop running
-in the background.
-
-→ [Quickstart](docs/start/quickstart.md) · [Installation](docs/start/installation.md) · [Configuration](docs/start/configuration.md)
 
 ## The one idea
 
