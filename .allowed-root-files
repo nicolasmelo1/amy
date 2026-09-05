@@ -3,6 +3,8 @@
 # The pending version bumps, one file per change, consumed by
 # `changeset version`. Empty between releases, and that is not a mistake.
 .changeset
+# The mark, and whatever the README needs to show itself with.
+assets
 .env.example
 .githooks
 .github
