@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { plugin as notifyHermes } from "@amy/plugin-notify-hermes";
 import { ScriptedRunner, whenArgsInclude } from "@amy/test-fixtures";
 import { Check, DoctorDeps, diagnose } from "../src/doctor.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
@@ -43,6 +44,10 @@ describe("diagnose", () => {
       env: { LINEAR_API_KEY: "lin_api_test" },
       now: WORKDAY,
       readRoster: () => ROSTER,
+      // What the plugins this install loaded said their settings look like.
+      // Taken from the plugin itself, so a schema nobody declares cannot be
+      // asserted against here either.
+      schemas: { [notifyHermes.name]: notifyHermes.configSchema! },
       ...overrides,
     };
   }
@@ -232,7 +237,7 @@ describe("diagnose", () => {
     expect(check?.detail).toContain("`target` is required");
   });
 
-  it("fails a slice for a plugin this build does not have", async () => {
+  it("fails a slice for a plugin nothing mounted", async () => {
     // A setting written for a plugin nobody installed is a setting that will
     // never do anything, which is worth saying out loud.
     const config = { ...DEFAULT_CONFIG, plugins: { "@amy/plugin-imaginary": { a: 1 } } };
@@ -241,7 +246,7 @@ describe("diagnose", () => {
 
     expect(labelled(checks, "settings for @amy/plugin-imaginary")).toMatchObject({
       ok: false,
-      detail: "this build has no such plugin",
+      detail: "nothing mounted declares these settings",
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Notes } from "@amy/workflow-note-to-plan";
+import type { Notes } from "@amy/workflow-note-to-plan";
 import { Channel } from "@amy/plugin-notify-fanout";
 
 /**

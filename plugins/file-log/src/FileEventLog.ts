@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Event, EventLog, buildStamp, isEventKind, stampId } from "@amy/core";
+import { Event, EventLog, isEventKind, stampFrom, stampId } from "@amy/core";
 
 /**
  * The event log as one JSON Lines file per day.
@@ -14,7 +14,7 @@ export class FileEventLog implements EventLog {
   constructor(
     private readonly directory: string,
     private readonly now: () => Date = () => new Date(),
-    private readonly build: string = stampId(buildStamp()),
+    private readonly build: string = stampId(stampFrom({})),
   ) {
     fs.mkdirSync(this.directory, { recursive: true });
   }

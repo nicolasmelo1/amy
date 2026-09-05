@@ -1,103 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Plugin } from "@amy/core";
-import { Profile } from "./profiles.js";
-
-/**
- * The plugins a fresh install runs with.
- *
- * Listed here rather than hidden in the wiring, so `amy plugin list` can show
- * them and a config can drop one. Order matters only in that a plugin reads
- * contributions when it is used, not when it is mounted, so it mostly does
- * not.
- */
-/**
- * The plugins compiled into the binary, by name.
- *
- * A table of literal `import()` calls, and it has to be literal: the bundler
- * follows a specifier it can read and cannot follow a variable. `import(spec)`
- * alone works perfectly from a checkout and produces a binary with no plugin
- * in it at all, which is the kind of break that passes every test.
- *
- * Third-party plugins are still resolved from disk at run time, below. This
- * table is what ships in the box, not a list of what is allowed.
- *
- * `@amy/plugin-file-log` is deliberately absent despite the name: it is a
- * host service the CLI constructs itself, exports no `plugin`, and is already
- * bundled through a static import. Listing it here would only produce a
- * mounting problem naming a package that was never meant to mount.
- */
-const BUILT_INS = {
-  // The workflow is a plugin like anything else: it registers the order its
-  // states happen in, and contributes how each of its actions runs. An
-  // install that drops it has an engine with nothing to drive, and says so.
-  "@amy/workflow-ticket-to-qa": () => import("@amy/workflow-ticket-to-qa"),
-  // The second workflow, and the two plugins only it needs. Compiled in for
-  // the same reason every other built-in is: a binary the bundler could not
-  // follow a specifier into is a binary with no plugin in it.
-  "@amy/workflow-note-to-plan": () => import("@amy/workflow-note-to-plan"),
-  "@amy/plugin-plan-check": () => import("@amy/plugin-plan-check"),
-  "@amy/plugin-file-notes": () => import("@amy/plugin-file-notes"),
-  "@amy/plugin-file-queue": () => import("@amy/plugin-file-queue"),
-  "@amy/plugin-file-store": () => import("@amy/plugin-file-store"),
-  "@amy/plugin-linear": () => import("@amy/plugin-linear"),
-  "@amy/plugin-github": () => import("@amy/plugin-github"),
-  "@amy/plugin-claude": () => import("@amy/plugin-claude"),
-  "@amy/plugin-codex": () => import("@amy/plugin-codex"),
-  "@amy/plugin-hermes-agent": () => import("@amy/plugin-hermes-agent"),
-  "@amy/plugin-agent-relay": () => import("@amy/plugin-agent-relay"),
-  "@amy/plugin-command-gate": () => import("@amy/plugin-command-gate"),
-  "@amy/plugin-notify-fanout": () => import("@amy/plugin-notify-fanout"),
-  "@amy/plugin-notify-hermes": () => import("@amy/plugin-notify-hermes"),
-  "@amy/plugin-notify-inbox": () => import("@amy/plugin-notify-inbox"),
-  "@amy/plugin-serial-engine": () => import("@amy/plugin-serial-engine"),
-} satisfies Record<string, () => Promise<unknown>>;
-
-/** Which plugins the binary carries, for `amy plugin list` to be honest. */
-export const COMPILED_IN: readonly string[] = Object.keys(BUILT_INS);
-
-/**
- * What both profiles mount, whichever workflow is driving.
- *
- * This list is the point of the whole plugin model: the queue, the store, the
- * notes, the forge, the harnesses, the relay that composes them, the ceiling
- * it carries, every notification channel, and the engine. Not one of them is
- * duplicated for the second workflow, and not one of them changed to take it.
- */
-const SHARED: readonly (keyof typeof BUILT_INS)[] = [
-  "@amy/plugin-file-queue",
-  "@amy/plugin-file-store",
-  "@amy/plugin-file-notes",
-  "@amy/plugin-github",
-  "@amy/plugin-claude",
-  "@amy/plugin-codex",
-  "@amy/plugin-hermes-agent",
-  // The only thing that mounts the `agent` port. The harnesses above merely
-  // contribute themselves to it, so dropping this from a config leaves every
-  // agent action without a port and the mount is refused at boot.
-  "@amy/plugin-agent-relay",
-  "@amy/plugin-notify-fanout",
-  "@amy/plugin-notify-hermes",
-  "@amy/plugin-notify-inbox",
-  "@amy/plugin-serial-engine",
-];
-
-export const DEFAULT_PLUGINS: readonly (keyof typeof BUILT_INS)[] = [
-  "@amy/workflow-ticket-to-qa",
-  ...SHARED,
-  "@amy/plugin-linear",
-  "@amy/plugin-command-gate",
-];
-
-/** What the second profile mounts: the same set, and two things only it needs. */
-const PLAN_PLUGINS: readonly (keyof typeof BUILT_INS)[] = [
-  "@amy/workflow-note-to-plan",
-  ...SHARED,
-  "@amy/plugin-plan-check",
-];
-
-/** The built-in set for a profile. */
-export function defaultPlugins(profile: Profile): readonly string[] {
-  return profile === "note-to-plan" ? PLAN_PLUGINS : DEFAULT_PLUGINS;
-}
 
 export interface LoadResult {
   plugins: Plugin[];
@@ -105,13 +9,12 @@ export interface LoadResult {
 }
 
 /**
- * Imports each plugin and takes its `plugin` export.
+ * Imports each plugin by name and takes its `plugin` export.
  *
- * A built-in comes from the table above, so it works in a binary with no
- * `node_modules` anywhere near it. Anything else is imported by name at run
- * time: a package the package manager put on disk, or a path. Resolution of
- * those is not this function's job, which is why installing is a separate
- * step.
+ * Nothing is compiled in. A plugin is a package the package manager put on
+ * disk, or a path, and it resolves at run time like any other import — which
+ * is what lets an install carry a plugin this repository has never heard of,
+ * and lets a machine skip the ones it has no use for.
  */
 export async function load(specs: readonly string[]): Promise<LoadResult> {
   const plugins: Plugin[] = [];
@@ -119,19 +22,87 @@ export async function load(specs: readonly string[]): Promise<LoadResult> {
 
   for (const spec of specs) {
     try {
-      const importer = BUILT_INS[spec as keyof typeof BUILT_INS] ?? (() => import(spec));
-      const module = (await importer()) as { plugin?: Plugin };
+      const module = (await import(spec)) as { plugin?: Plugin };
       if (!module.plugin) {
         problems.push(`${spec}: imported, but exports no \`plugin\``);
         continue;
       }
       plugins.push(module.plugin);
     } catch (error) {
-      problems.push(
-        `${spec}: could not be imported — ${error instanceof Error ? error.message : String(error)}`,
-      );
+      problems.push(missing(spec, error));
     }
   }
 
   return { plugins, problems };
+}
+
+/**
+ * What a refusal says when the package is simply not there.
+ *
+ * The failure the compiled-in table used to make impossible, and the one it
+ * leaves behind: a config naming something nobody installed. Said in the same
+ * words every time so a caller can tell it from a plugin that threw, and
+ * answer it once with what *is* installed.
+ */
+export const NOT_INSTALLED = "not installed";
+
+function missing(spec: string, error: unknown): string {
+  const why = error instanceof Error ? error.message : String(error);
+  if (!isUnresolved(error)) return `${spec}: could not be imported — ${why}`;
+
+  return `${spec}: ${NOT_INSTALLED} — install it, or drop it from the config`;
+}
+
+/** Node's own word for "no such package", told apart from a plugin that threw. */
+function isUnresolved(error: unknown): boolean {
+  return (error as { code?: string })?.code === "ERR_MODULE_NOT_FOUND";
+}
+
+/**
+ * What this install could mount, read off disk rather than off a list.
+ *
+ * Walks up from this module the way Node's own resolution does, so it sees
+ * the same `node_modules` an import would. Only names that look like a plugin
+ * or a workflow are reported: the rest is the dependency tree, and nobody
+ * mounting a plugin wants to read it.
+ */
+export function installedPlugins(from: URL = new URL("./", import.meta.url)): string[] {
+  const found = new Set<string>();
+
+  let directory = fileURLToPath(from);
+  for (let depth = 0; depth < 12; depth += 1) {
+    for (const name of packagesIn(path.join(directory, "node_modules"))) {
+      if (/(^|\/)(plugin|workflow)-/.test(name)) found.add(name);
+    }
+
+    const parent = path.dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+
+  return [...found].sort();
+}
+
+/** Every package name in one `node_modules`, scopes walked one level in. */
+function packagesIn(directory: string): string[] {
+  const names: string[] = [];
+
+  for (const entry of read(directory)) {
+    if (entry.startsWith("@")) {
+      names.push(...read(path.join(directory, entry)).map((inner) => `${entry}/${inner}`));
+      continue;
+    }
+    if (!entry.startsWith(".")) names.push(entry);
+  }
+
+  return names;
+}
+
+/** Returns nothing rather than throwing: a directory that is not there is an answer. */
+function read(directory: string): string[] {
+  try {
+    return fs.readdirSync(directory);
+  } catch {
+    return [];
+  }
 }

@@ -1,16 +1,14 @@
 import fs from "node:fs";
-import { BuildStamp, buildStamp, stampFrom } from "@amy/core";
+import { BuildStamp, stampFrom } from "@amy/core";
 
 /**
  * Where `npm pack` leaves this build's identity, beside the code it built.
  *
- * A compiled binary carries its identity in `--define` literals, which
- * `buildStamp()` reads. A package installed from a registry cannot: there is
- * no compile step to substitute anything. So the identity is written into the
- * tarball at pack time, and **its absence is what a checkout looks like** —
- * which is the whole point. Reading the version out of `package.json` instead
- * would make a working tree claim to be a release, and the stamp exists to
- * tell those two apart.
+ * There is no compile step to substitute anything into, so the identity is
+ * written into the tarball at pack time, and **its absence is what a checkout
+ * looks like** — which is the whole point. Reading the version out of
+ * `package.json` instead would make a working tree claim to be a release, and
+ * the stamp exists to tell those two apart.
  */
 const STAMP_FILE = "stamp.json";
 
@@ -29,11 +27,6 @@ interface WrittenStamp {
  * first of those ever has a stamp in it.
  */
 export function installedStamp(from: URL = new URL("./", import.meta.url)): BuildStamp {
-  // A binary wins: it was told what it is at compile time, and that is more
-  // reliable than a file that could have been left behind by anything.
-  const compiled = buildStamp();
-  if (compiled.released) return compiled;
-
   const written = read(new URL(STAMP_FILE, from));
   return stampFrom({
     version: written?.version,
