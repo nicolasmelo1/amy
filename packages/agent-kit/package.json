@@ -1,6 +1,6 @@
 {
   "name": "@amykit/agent-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
   "type": "module",
   "license": "MIT",
@@ -28,8 +28,8 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.1.0",
-    "@amykit/workflow-ticket-to-qa": "^0.1.0"
+    "@amykit/core": "^0.2.0",
+    "@amykit/workflow-ticket-to-qa": "^0.2.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-notify-fanout",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
   "type": "module",
   "license": "MIT",
@@ -28,6 +28,6 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.1.0"
+    "@amykit/core": "^0.2.0"
   }
 }
