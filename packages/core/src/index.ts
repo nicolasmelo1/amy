@@ -25,6 +25,7 @@ export type { Store } from "./ports/Store.js";
 export type { Announcement, AnnouncementKind, Notifier } from "./ports/Notifier.js";
 export type { CommandResult, CommandRunner, RunOptions } from "./ports/CommandRunner.js";
 export type { GraphQLClient } from "./ports/GraphQL.js";
+export type { CommandOutcome, Commands } from "./ports/Commands.js";
 export type { AskContext, Harness, HarnessReply } from "./ports/Harness.js";
 export type {
   CodeHost,

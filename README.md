@@ -746,6 +746,7 @@ plugins/
 ├── agent-relay/             the agent port, and the ladder behind it
 ├── command-gate/            gate
 ├── plan-check/              plan-check
+├── command/                 any CLI, by a name the config allows
 ├── notify-fanout/           notifier, and the channels it fans out to
 ├── notify-hermes/           channel: Hermes
 └── notify-inbox/            channel: a file plus a desktop notification

@@ -14,6 +14,7 @@
     "plugins/claude/package.json": "649b75b1dc8cbd5830a19e4c8dabf973f7da0e6bbb917e8321ce8981799451ee",
     "plugins/codex/package.json": "35edb78b84cef24d17c07d01b9c24311d2f46d24eafd433da47a4b59b620453c",
     "plugins/command-gate/package.json": "ee0179d9f91ca4320b0b99fd1b52f88873d6f2a1becf10e38bc2f695270577fc",
+    "plugins/command/package.json": "8008afadeff46049d36d98ff0333d3c03cdfbe39da28b9476c964910d82125fd",
     "plugins/file-log/package.json": "15e15e35683a058fa5ff08df1e6cfe1a8ca8ecaf3f1dc291c66da6da91e32c93",
     "plugins/file-notes/package.json": "f3e010de83f7942d40e75d43feb034b678fe0bac93478970394cb492464d2f7e",
     "plugins/file-queue/package.json": "915dcff89bb3199ffad69517f7404d461c1565117bcc5f3b8d4da65925077b96",

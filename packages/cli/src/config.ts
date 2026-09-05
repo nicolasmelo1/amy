@@ -360,6 +360,19 @@ plans:
     # argument with a different number.
     maxOpenPlansPerRepo: 2
 
+# Any command line tool, reached by a name. One adapter for all of them: the
+# machine learns that a name maps to a line somebody wrote down, and nothing
+# about what pup or ntn mean.
+#
+# The line comes only from here, and only the arguments may come from a
+# workflow. A line assembled from a ticket body would be a machine that runs
+# whatever a stranger can type into an issue.
+#
+#   "@amy/plugin-command":
+#     allow:
+#       datadog: pup monitors list --json
+#       notion: ntn page get
+
 # One slice per plugin, keyed by package name. Nothing here is read by the
 # host: each plugin declares what its own slice looks like, and "amy doctor"
 # refuses a field that is not one the plugin has. A plugin with no slice runs
