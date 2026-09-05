@@ -33,7 +33,10 @@ amy="$work/bin/amy"
 test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 # Nothing of this repository is reachable from here. No node_modules to
-# resolve a plugin from, no package.json, no checkout.
+# resolve a plugin from, no package.json, no checkout. HOME moves with it,
+# because amy keeps its state in one place per machine rather than beside
+# whoever ran it — and this run must not touch the real one.
+export HOME="$work/home"
 cd "$work/home"
 
 assertions=""
@@ -53,12 +56,22 @@ check() {
 # 1. It runs at all, and writes its state where it is run rather than where it
 # was built.
 version=$("$amy" --version 2>/dev/null || echo "")
-check installed.runs_without_a_checkout "$amy" stop "proving the installed command runs"
+check installed.runs_without_a_checkout "$amy" pause "proving the installed command runs"
 
-if [ -f "$work/home/.amy/STOP" ]; then
-  record installed.keeps_state_beside_the_caller 0
+if [ -f "$work/home/.amy/PAUSED" ]; then
+  record installed.keeps_state_in_its_own_home 0
 else
-  record installed.keeps_state_beside_the_caller 1
+  record installed.keeps_state_in_its_own_home 1
+fi
+
+# And nowhere else. One install per machine means a command typed in another
+# directory has to answer from the same state, not start a second one.
+mkdir -p "$work/home/elsewhere"
+(cd "$work/home/elsewhere" && "$amy" status >/dev/null 2>&1 || true)
+if [ -e "$work/home/elsewhere/.amy" ]; then
+  record installed.keeps_nothing_where_you_stand 1
+else
+  record installed.keeps_nothing_where_you_stand 0
 fi
 if [ -e "$repo/.amy/STOP" ]; then
   # Writing into the source tree would defeat the whole point: the machine's
@@ -110,7 +123,7 @@ cat > "$report" <<JSON
 {
   "scenario": "installed-binary",
   "status": "$status",
-  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed command runs from a directory with no checkout in it, keeps state beside the caller rather than in the source tree, stamps every log line with the build that wrote it, and calls itself a release only when it was built from a tree somebody committed.",
+  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed command runs from a directory with no checkout in it, keeps its state in one place per machine rather than beside whoever ran it, stamps every log line with the build that wrote it, and calls itself a release only when it was built from a tree somebody committed.",
   "artifact": { "package": "@amy/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
   "observed": {
     "assertions_run": $total,

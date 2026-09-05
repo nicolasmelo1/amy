@@ -13,7 +13,7 @@ platforms: [macos, linux]
 metadata:
   hermes:
     tags: [amy, linear, github, tickets, pull-requests, review, automation, queue, plans]
-    related_skills: [amy-develop, amy-workflow]
+    related_skills: [amy-develop, amy-workflow, amy-init, amy-show-me, amy-status]
 ---
 
 # Driving amy
@@ -29,7 +29,8 @@ a step that takes an hour both chain the moment they finish.
 
 ## Before anything
 
-amy must be run from a directory that has a `.amy/` and a `.env`:
+amy is one install per machine. Everything it knows is in `~/.amy`, so it
+answers the same from any directory and from any harness:
 
 ```sh
 amy doctor
@@ -46,13 +47,24 @@ exits non-zero when something is wrong, so it is safe to gate on.
 | :-- | :-- |
 | `amy discover` | Puts every ticket in the working status onto the queue. Reads the tracker, writes nothing to it. |
 | `amy tick` | Advances one ticket by one move, then exits. |
-| `amy run` | Keeps ticking until nothing is due. Takes `--max N`. |
-| `amy status` | Where every ticket stands, what the queue holds, and what is waiting on the operator. |
+| `amy run` | Keeps ticking until nothing is due, then exits. Takes `--max N`. |
+| `amy start` | Starts the loop in the background and keeps it there. Takes `--every <seconds>`. |
+| `amy stop` | Stops that loop. |
+| `amy pause` / `amy resume` | The handbrake. `pause` ends work in flight and starts nothing new; the loop stays up. |
+| `amy status` | Where every ticket stands, the queue, and whether the loop is running. `--json` for something else to render. |
+| `amy workflow list` | Every workflow this install can drive, and what each holds. |
+| `amy workflow rm <name>` | Forgets a workflow: its records, its queue, its config entry. Needs `--yes`. |
+| `amy skills` | Installs these skills into the harnesses on this machine. |
 | `amy roster confirm` | Stamps the roster with today's date. |
 | `amy roster show` | The roster, and whether it is current. |
 | `amy queue prune` | Drops finished queue items past their retention. |
 | `amy queue recover` | Returns items a dead worker left claimed. |
 | `amy note "<text>"` | Writes a piece of friction down and puts it on the plan queue. Takes `--repo` and `--source`. |
+
+**`stop` and `pause` are different things.** `pause` is the handbrake: it ends
+what is in flight, starts nothing new, and the loop stays up waiting to be
+released by `resume`. `stop` ends the loop itself. Pausing survives a restart,
+because it is a file; stopping does not, because it is a process.
 
 Every command above drives whichever workflow the config makes the default,
 which out of the box is `ticket-to-qa`. `--workflow <name>` drives another —
@@ -64,10 +76,11 @@ amy --workflow note-to-plan tick       # advances one note by one move
 amy --workflow note-to-plan status     # where each note stands
 ```
 
-A workflow is a name in `.amy/config.yaml` under `workflows:`, not something
+A workflow is a name in `~/.amy/config.yaml` under `workflows:`, not something
 this install was built with. An entry naming a package that is installed is
 drivable, and each one keeps its own records and queue under
-`.amy/<name>/`, so switching between them never costs the other one's state.
+`~/.amy/<name>/`, so switching between them never costs the other one's state.
+Writing one is `/amy-workflow`; seeing one is `/amy-show-me`.
 `amy plugin list` says what is installed and what this profile mounts.
 
 ## Friction becomes a plan
@@ -80,7 +93,7 @@ amy note "the relay retries a harness that already said it was out of quota"
 ```
 
 It goes on the queue with no ticket, no tracker and nothing to fill in. A
-longer one can be dropped straight into `.amy/notes/` as a markdown file, by
+longer one can be dropped straight into `~/.amy/notes/` as a markdown file, by
 an editor or by a hook; `amy --workflow note-to-plan discover` picks it up
 like any other.
 
@@ -109,7 +122,7 @@ amy **refuses to assign a reviewer or hand over to QA** while the roster was
 not confirmed today. That is deliberate: people go on leave without editing a
 config file, and a review assigned to somebody who is away stalls for days
 with nothing looking broken. If somebody is out, set `available: false` for
-them in `.amy/roster.yaml` before confirming.
+them in `~/.amy/roster.yaml` before confirming.
 
 ## Reading a tick
 
@@ -138,7 +151,7 @@ Three things it cannot decide, and it will not guess:
 3. **A stale roster, or nobody available.** Confirm the roster.
 
 It announces all three on every configured channel, and writes a file into
-`.amy/needs-input/`. That file is the durable half: a missed notification is
+`~/.amy/needs-input/`. That file is the durable half: a missed notification is
 gone, the file stays until it is dealt with. `amy status` counts them.
 
 ## Rules for driving it
@@ -146,9 +159,9 @@ gone, the file stays until it is dealt with. `amy status` counts them.
 - **Watch it before trusting it.** On a ticket amy has not handled before,
   use `amy tick` and read each move. Only reach for `amy run` once a whole
   ticket has been through end to end.
-- **Never hand-edit `.amy/<workflow>/records/*.json` while a tick could be
+- **Never hand-edit `~/.amy/<workflow>/records/*.json` while a tick could be
   running.** Those files are amy's memory of the work. Stop the
-  worker first. `.amy/notes/*.md` is different: a note is an input, and
+  worker first. `~/.amy/notes/*.md` is different: a note is an input, and
   writing one by hand is how the second workflow is meant to be fed.
 - **A failed tick is not a lost ticket.** amy re-queues it behind a backoff
   and gives up only after several attempts, at which point it announces.

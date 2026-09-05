@@ -33,8 +33,8 @@ export interface SpecTable {
 
 let table: SpecTable | null = null;
 
-/** Where a refreshed table is kept, relative to the workspace it belongs to. */
-export const OVERRIDE_PATH = ".amy/model-specs.json";
+/** What a refreshed table is called, inside the state directory it belongs to. */
+export const OVERRIDE_FILE = "model-specs.json";
 
 /**
  * The table in force: a local override if there is one, otherwise the
@@ -45,11 +45,14 @@ export const OVERRIDE_PATH = ".amy/model-specs.json";
  * a refresh, it is a surprise. Read from disk rather than imported, so a
  * refresh takes effect without a rebuild.
  */
-export function specTable(cwd: string = process.cwd()): SpecTable {
+export function specTable(stateDir?: string): SpecTable {
   if (table) return table;
 
-  const override = path.join(cwd, OVERRIDE_PATH);
-  const file = fs.existsSync(override) ? override : new URL("../specs.json", import.meta.url);
+  // No state directory means nowhere an override could be, which is what a
+  // library call looks like: the vendored table, and no file system guess.
+  const override = stateDir ? path.join(stateDir, OVERRIDE_FILE) : "";
+  const file =
+    override && fs.existsSync(override) ? override : new URL("../specs.json", import.meta.url);
 
   table = JSON.parse(fs.readFileSync(file as string, "utf-8")) as SpecTable;
   return table;

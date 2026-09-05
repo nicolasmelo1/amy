@@ -4,7 +4,7 @@
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
     "package.json": "7e6a8becc0305061876c0c922e4d3bd15b1b169c6f82b9d8bc33fc7660e7aaef",
     "packages/agent-kit/package.json": "598e615704b6a1b73874074509f8acdddd778132777a7f8ab42f53300bd80f55",
-    "packages/cli/package.json": "523ebdb2fcdad7cd9089f205e2b885798a6310e186fc51d79495efdc2215ffc0",
+    "packages/cli/package.json": "d1994e2bc7fdcc8ceb7006f1a78ad681c64d64a3359dccb86bad3843476e1491",
     "packages/core/package.json": "33cb4c2a8face47cf18c7b7b7fe04d41d29b6d89161689428dd9ec1eacb98bc3",
     "packages/model-specs/package.json": "e81972b7e66201d162e587950f21bbae347b636755f8d6d003d2083fda145919",
     "packages/test-fixtures/package.json": "9dfa06af57663dd2c008ad8c3b1f6884e808f9e84664b03e9fc14891aadecf8c",

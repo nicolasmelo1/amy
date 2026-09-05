@@ -1,14 +1,14 @@
 {
   "scenario": "installed-binary",
   "status": "passed",
-  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed command runs from a directory with no checkout in it, keeps state beside the caller rather than in the source tree, stamps every log line with the build that wrote it, and calls itself a release only when it was built from a tree somebody committed.",
+  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed command runs from a directory with no checkout in it, keeps its state in one place per machine rather than beside whoever ran it, stamps every log line with the build that wrote it, and calls itself a release only when it was built from a tree somebody committed.",
   "artifact": { "package": "@amy/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
   "observed": {
-    "assertions_run": 6,
+    "assertions_run": 7,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "tree_was_dirty": "yes",
     "build_on_log_line": "dev"
   },
-  "assertions": [{"type":"installed.runs_without_a_checkout","status":"passed"},{"type":"installed.keeps_state_beside_the_caller","status":"passed"},{"type":"installed.does_not_write_into_the_source_tree","status":"passed"},{"type":"installed.log_line_names_the_build","status":"passed"},{"type":"installed.says_dev_only_when_it_is_one","status":"passed"},{"type":"installed.log_build_matches_the_binary","status":"passed"}]
+  "assertions": [{"type":"installed.runs_without_a_checkout","status":"passed"},{"type":"installed.keeps_state_in_its_own_home","status":"passed"},{"type":"installed.keeps_nothing_where_you_stand","status":"passed"},{"type":"installed.does_not_write_into_the_source_tree","status":"passed"},{"type":"installed.log_line_names_the_build","status":"passed"},{"type":"installed.says_dev_only_when_it_is_one","status":"passed"},{"type":"installed.log_build_matches_the_binary","status":"passed"}]
 }

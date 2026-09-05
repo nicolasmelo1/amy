@@ -402,6 +402,26 @@ export function writeProfilePlugins(
 }
 
 /**
+ * Drops a profile from the config, leaving every other line as it was.
+ *
+ * The entry only, never the state: what a profile did is in the log, which is
+ * append-only because the budget is read off it.
+ */
+export function removeProfile(root: string, profile: string, config: AmyConfig): void {
+  const file = paths(root).config;
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
+
+  const declared = { ...config.workflows };
+  delete declared[profile];
+
+  const without = withoutBlock(existing, "workflows:").replace(/\n{3,}$/, "\n\n");
+  const block = Object.keys(declared).length > 0 ? yaml.stringify({ workflows: declared }) : "";
+
+  fs.mkdirSync(paths(root).base, { recursive: true });
+  fs.writeFileSync(file, `${without.replace(/\n*$/, "\n")}${block ? `\n${block}` : ""}`, "utf-8");
+}
+
+/**
  * The file without one top-level block, its indented lines included.
  *
  * A line walk rather than one multi-line pattern: a quantifier over indented

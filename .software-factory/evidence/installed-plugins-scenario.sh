@@ -42,6 +42,8 @@ cp -R "$here/installed-plugins/workflow-oncall" "$work/third-party"
 (cd "$work/lib" && npm install --install-links --no-audit --no-fund --loglevel=error \
   "$work/third-party" >/dev/null)
 
+# amy keeps its state in one place per machine, so this run gets its own.
+export HOME="$work/home"
 cd "$work/home"
 mkdir -p .amy/pages
 echo "the disk filled up on node 3" > .amy/pages/PAGE-1.txt

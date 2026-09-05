@@ -80,7 +80,21 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     derived["@amy/plugin-notify-inbox"] = { directory: "needs-input" };
   }
 
-  return { ...derived, ...config.plugins };
+  // Merged per plugin, not replaced. A slice written by hand names the one
+  // or two settings somebody meant to change; replacing the whole slice would
+  // drop the derived ones beside them — which is how two profiles ended up
+  // sharing a queue, because the operator had set `retentionDays` and lost
+  // `directory` without being told.
+  const merged: Record<string, unknown> = { ...derived };
+  for (const [name, given] of Object.entries(config.plugins)) {
+    merged[name] = isRecord(derived[name]) && isRecord(given) ? { ...derived[name], ...given } : given;
+  }
+
+  return merged;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

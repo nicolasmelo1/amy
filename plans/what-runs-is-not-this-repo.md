@@ -64,8 +64,10 @@ was built from a tree nobody committed.
 - [x] The installed executable runs from a directory containing no checkout,
       no `node_modules` and no `package.json`
       (proof: assertion:installed.runs_without_a_checkout)
-- [x] State is kept beside whoever ran the command
-      (proof: assertion:installed.keeps_state_beside_the_caller)
+- [x] State is kept in one place per machine, not beside whoever ran the
+      command (proof: assertion:installed.keeps_state_in_its_own_home)
+- [x] A command typed in another directory starts no second state there
+      (proof: assertion:installed.keeps_nothing_where_you_stand)
 - [x] Every log line carries a build, on the path nobody sets by hand
       (proof: assertion:installed.log_line_names_the_build)
 - [x] An install built from a tree with uncommitted work in it says `dev`,

@@ -81,7 +81,22 @@ describe("pluginSlices", () => {
     expect("@amy/plugin-notify-inbox" in slices).toBe(false);
   });
 
-  it("lets an explicit slice win over what was derived", () => {
+  it("keeps the derived settings a hand-written slice did not mention", () => {
+    // The bug this is here for: a config that set `retentionDays` on the
+    // queue lost the `directory` beside it, so two profiles quietly shared
+    // one queue and each claimed the other's work.
+    const slices = pluginSlices(
+      { ...CONFIG, plugins: { "@amy/plugin-file-queue": { retentionDays: 30 } } },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amy/plugin-file-queue"]).toMatchObject({
+      retentionDays: 30,
+      directory: "ticket-to-qa/queue",
+    });
+  });
+
+  it("lets an explicit setting win over the one that was derived", () => {
     // This is the direction of travel: the derivation is a shim for a config
     // written before plugins declared their own settings.
     const slices = pluginSlices({
@@ -89,7 +104,7 @@ describe("pluginSlices", () => {
       plugins: { "@amy/plugin-claude": { model: "opus", defaultBranch: "trunk" } },
     }, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-claude"]).toEqual({ model: "opus", defaultBranch: "trunk" });
+    expect(slices["@amy/plugin-claude"]).toMatchObject({ model: "opus", defaultBranch: "trunk" });
   });
 });
 

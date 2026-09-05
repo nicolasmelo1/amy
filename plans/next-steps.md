@@ -21,6 +21,8 @@ O roadmap inteiro, com as treze fases e o estado de cada uma, está em
 | 8 | [What runs is a released version](what-runs-is-a-released-version.md) | A machine with no checkout installs `@amy/cli` from GitHub Packages, `amy --version` names a version changesets published, and a dirty tree only ever says `dev` |
 | 9 | [Plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md) | A second machine runs work with only the plugins it needs installed, a workflow it wrote itself drives on the same engine, and one it never installed is refused by name at boot |
 
+| 10 | [amy is a machine you leave running](amy-is-a-machine-you-leave-running.md) | `amy start` leaves a loop running that outlives the terminal, state is one directory per machine, and the skills reach every harness installed |
+
 ## Parked
 
 | Work | Waiting on |

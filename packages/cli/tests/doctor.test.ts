@@ -23,20 +23,24 @@ function labelled(checks: Check[], fragment: string): Check | undefined {
 }
 
 describe("diagnose", () => {
-  let root: string;
+  let home: string;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-doctor-"));
-    fs.mkdirSync(paths(root).base, { recursive: true });
+    home = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-doctor-")), ".amy");
+    fs.mkdirSync(paths(home).base, { recursive: true });
   });
 
   afterEach(() => {
-    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(path.dirname(home), { recursive: true, force: true });
   });
+
+  /** Where the repositories would be, which is not where amy keeps state. */
+  const checkouts = () => path.dirname(home);
 
   function deps(overrides: Partial<DoctorDeps> = {}): DoctorDeps {
     return {
-      root,
+      home,
+      cwd: path.dirname(home),
       config: { ...DEFAULT_CONFIG, repos: ["acme/widgets"], gate: { default: ["npm test"] } },
       runner: new ScriptedRunner([
         { match: whenArgsInclude("--list"), result: { stdout: HERMES_LISTING } },
@@ -59,7 +63,7 @@ describe("diagnose", () => {
   });
 
   it("passes once the config file exists", async () => {
-    fs.writeFileSync(paths(root).config, "repos: [acme/widgets]\n");
+    fs.writeFileSync(paths(home).config, "repos: [acme/widgets]\n");
 
     const checks = await diagnose(deps());
 
@@ -190,7 +194,7 @@ describe("diagnose", () => {
   });
 
   it("fails a repository that is not checked out", async () => {
-    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: root };
+    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: checkouts() };
 
     const checks = await diagnose(deps({ config }));
 
@@ -198,8 +202,8 @@ describe("diagnose", () => {
   });
 
   it("passes a repository that is", async () => {
-    fs.mkdirSync(path.join(root, "widgets", ".git"), { recursive: true });
-    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: root };
+    fs.mkdirSync(path.join(checkouts(), "widgets", ".git"), { recursive: true });
+    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: checkouts() };
 
     const checks = await diagnose(deps({ config }));
 

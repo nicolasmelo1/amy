@@ -33,6 +33,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "capabilities.yaml"
   ],
   "dependencies": {

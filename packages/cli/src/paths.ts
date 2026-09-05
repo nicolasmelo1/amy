@@ -1,37 +1,34 @@
 import path from "node:path";
 import { directoriesFor } from "./profiles.js";
 
-const AMY_DIR = ".amy";
-
 /**
- * What every profile shares, under one `.amy`.
+ * What every profile shares, under one state directory.
  *
  * The config, the roster, the log, the handbrake, the notes and the inbox are
  * shared on purpose. One log means one budget, and one handbrake means
- * `amy stop` stops the machine rather than the workflow you happened to name.
+ * `amy pause` stops the machine rather than the workflow you happened to name.
  */
-export function paths(root: string) {
-  const base = path.join(root, AMY_DIR);
-
+export function paths(home: string) {
   return {
-    base,
-    config: path.join(base, "config.yaml"),
-    roster: path.join(base, "roster.yaml"),
-    notes: path.join(base, "notes"),
-    needsInput: path.join(base, "needs-input"),
-    log: path.join(base, "log"),
-    stop: path.join(base, "STOP"),
+    base: home,
+    config: path.join(home, "config.yaml"),
+    roster: path.join(home, "roster.yaml"),
+    notes: path.join(home, "notes"),
+    needsInput: path.join(home, "needs-input"),
+    log: path.join(home, "log"),
+    stop: path.join(home, "PAUSED"),
+    /** Written by the daemon, so a second one refuses rather than doubles up. */
+    pid: path.join(home, "daemon.pid"),
   };
 }
 
 /** The two directories that belong to one profile and to nothing else. */
-export function profilePaths(root: string, profile: string) {
-  const base = path.join(root, AMY_DIR);
+export function profilePaths(home: string, profile: string) {
   const dirs = directoriesFor(profile);
 
   return {
-    ...paths(root),
-    records: path.join(base, dirs.records),
-    queue: path.join(base, dirs.queue),
+    ...paths(home),
+    records: path.join(home, dirs.records),
+    queue: path.join(home, dirs.queue),
   };
 }
