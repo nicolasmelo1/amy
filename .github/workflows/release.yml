@@ -68,10 +68,28 @@ jobs:
           # into an .npmrc for this registry only.
           registry-url: https://registry.npmjs.org
       - run: npm ci
+      # `sf`, for one command only: the version bump rewrites twenty-five
+      # package.json files, so the dependency lock has to move with them or
+      # the version pull request can never be green.
+      #
+      # A prebuilt binary rather than `cargo install`, because a Rust
+      # toolchain in the one job nobody can take back is a cost with no
+      # return. The digest is checked because a downloaded binary that
+      # nothing verifies is a supply chain nobody is watching.
+      - name: Install sf
+        env:
+          SF_VERSION: v0.3.0
+        run: |
+          base="https://github.com/nicolasmelo1/software-factory/releases/download/$SF_VERSION"
+          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu" -o sf
+          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu.sha256" -o sf.sha256
+          printf '%s  sf\n' "$(cut -d' ' -f1 sf.sha256)" | sha256sum -c -
+          chmod +x sf && sudo mv sf /usr/local/bin/sf
+          sf --version
       # The suite before the publish, because a release is the one build
       # nobody can take back. `npm run gate` is not used here on purpose: it
-      # runs `sf`, which this job has no reason to install, and the pull
-      # request that produced this commit already ran it.
+      # runs every rule, and the pull request that produced this commit
+      # already did.
       - run: npm run build
       - run: npm test
       - uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
