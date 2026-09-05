@@ -139,6 +139,10 @@ export function errandRuntime(
         branch: branchFor(slugFor(task)),
         title: pullRequestTitle(task),
         body: pullRequestBody(task, ctx.record.lastAttempt?.output ?? ""),
+        // A draft, because nobody asked for this at the moment it landed.
+        // Work somebody is waiting on is not a draft; an errand is something
+        // to look at when you want to.
+        draft: true,
       });
     },
 

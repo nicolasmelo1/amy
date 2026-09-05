@@ -74,6 +74,7 @@ jobs:
       # The release configuration, before the tests: a package that fell out
       # of the version group is cheaper to hear about here than from a machine
       # installing a set that does not fit together.
+      - run: npm run typecheck
       - run: npm run check:release
       # A change to a published package without a changeset is a release that
       # would leave the version standing still. `--since` scopes it to what

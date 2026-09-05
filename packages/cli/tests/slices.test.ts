@@ -172,7 +172,13 @@ describe("pluginList", () => {
   it("recommends a different set for a workflow it has never heard of", () => {
     // The shared half, and nothing invented: a third workflow lists whatever
     // else it needs in its own `plugins:`.
-    const oncall = { name: "oncall", workflow: "@acme/workflow-oncall", plugins: [], takesNotes: false };
+    const oncall = {
+      name: "oncall",
+      workflow: "@acme/workflow-oncall",
+      plugins: [],
+      takesNotes: false,
+      takesTasks: false,
+    };
 
     expect(pluginList(CONFIG, oncall)[0]).toBe("@acme/workflow-oncall");
     expect(pluginList(CONFIG, oncall)).toContain("@amy/plugin-serial-engine");

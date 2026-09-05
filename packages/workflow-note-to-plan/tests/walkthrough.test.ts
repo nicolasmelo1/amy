@@ -19,6 +19,7 @@ const NOTE: Note = {
 
 const PULL_REQUEST: PullRequestView = {
   number: 12,
+  url: "https://github.example.test/acme/widgets/pull/12",
   headSha: "abc",
   isDraft: false,
   reviewDecision: null,

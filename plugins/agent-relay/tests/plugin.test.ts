@@ -25,8 +25,15 @@ function harnessPlugin(harness: string, models: string[]): Plugin {
           harness,
           model,
           agent: fakeAgent({
-            triage: async () => agentResult({ kind: "clear" }, { outcome: "completed", harness, model }),
+            triage: async () =>
+              agentResult(
+                { clear: true, questions: [], at: "2026-09-05T10:00:00.000Z" },
+                { outcome: "completed", harness, model },
+              ),
           }),
+          // The same harness and model with a skill doing the step. A double
+          // that left it out was a `NamedAgent` the relay could not ask.
+          using: () => named.agent,
         };
 
         registry.contribute(AGENT_COLLECTION, named.name, named);

@@ -2,9 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Worker, WorkerDeps } from "../src/Worker.js";
+import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
-import { WORKDAY } from "@amy/test-fixtures";
+import { WORKDAY,
+  TicketWorkerOverrides,
+} from "@amy/test-fixtures";
 import {
   ticketWorkerDeps,
   FakeStopSwitch,
@@ -34,7 +36,7 @@ describe("the handbrake", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: Partial<WorkerDeps> = {}): Worker {
+  function build(overrides: TicketWorkerOverrides = {}): Worker {
     return new Worker({
       queue,
       records,
@@ -133,7 +135,7 @@ describe("what the engine writes down", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: Partial<WorkerDeps> = {}): Worker {
+  function build(overrides: TicketWorkerOverrides = {}): Worker {
     return new Worker({
       queue,
       records: new InMemoryStore(),
@@ -215,7 +217,7 @@ describe("what the engine writes down", () => {
       ),
     });
 
-    await build({ agent, records }).tick();
+    await build({ agent }).tick();
 
     expect(log.of("action.failed")[0]?.detail?.error).toContain("rate-limited");
     // The cause survives into the failure, which is what tells the operator

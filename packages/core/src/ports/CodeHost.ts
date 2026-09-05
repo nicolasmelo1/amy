@@ -20,6 +20,15 @@ export interface ReviewThread {
 
 export interface PullRequestView {
   number: number;
+  /**
+   * Where a person opens it.
+   *
+   * Carried rather than derived, because deriving it means a workflow
+   * knowing which forge this is, and the forge is the one thing here that is
+   * meant to be swappable. It is what makes an announcement something you can
+   * act on from a phone instead of a number you have to go and look up.
+   */
+  url: string;
   headSha: string;
   isDraft: boolean;
   reviewDecision: ReviewDecision;
@@ -32,6 +41,13 @@ export interface OpenPullRequestRequest {
   repo: string;
   branch: string;
   title: string;
+  /**
+   * Opened as a draft, which says "look at this when you want to".
+   *
+   * For work nobody asked for at the moment it lands — an errand — that is
+   * the honest state to open in. Work somebody is waiting on is not a draft.
+   */
+  draft?: boolean;
   /**
    * What the pull request says for itself.
    *

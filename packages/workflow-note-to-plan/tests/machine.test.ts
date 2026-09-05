@@ -218,6 +218,7 @@ describe("PR_OPEN", () => {
     const seen = observation({
       pullRequest: {
         number: 12,
+        url: "https://github.example.test/acme/widgets/pull/12",
         headSha: "abc",
         isDraft: false,
         reviewDecision: null,

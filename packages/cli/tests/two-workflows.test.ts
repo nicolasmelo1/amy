@@ -2,7 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { CommandResult, HostServices, Mounted, RunOptions, mount, unmetNeeds } from "@amy/core";
+import {
+  CommandResult,
+  HostServices,
+  Mounted,
+  RunOptions,
+  WorkRecord,
+  mount,
+  unmetNeeds,
+} from "@amy/core";
 import { FileEventLog } from "@amy/plugin-file-log";
 import { FileNotes } from "@amy/plugin-file-notes";
 import { FileTasks } from "@amy/plugin-file-tasks";
@@ -634,7 +642,7 @@ describe("a task said in passing", () => {
   }
 
   const stateOf = (id: string): string | undefined =>
-    new FileStore<{ id: string; state: string }>(place().records).load(id)?.state;
+    new FileStore<WorkRecord>(place().records).load(id)?.state;
 
   it("assembles on the same engine, with nothing unmet", async () => {
     const mounted = await engine();

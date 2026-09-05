@@ -96,9 +96,11 @@ function planWorking(record: ErrandRecord, obs: Observation, policy: Policy): Pl
 
 function planPullRequestOpen(obs: Observation): Plan {
   if (obs.pullRequest) {
+    // The link, not the number. This is read on a phone more often than
+    // anywhere else, and a number is something you have to go and look up.
     return advance("DONE", `pull request #${obs.pullRequest.number} carries the errand`, {
       type: "announce",
-      text: `Done, on pull request #${obs.pullRequest.number}:\n\n${obs.task.text}`,
+      text: `Done, and it is a draft for you to look at:\n\n${obs.task.text}\n\n${obs.pullRequest.url}`,
     });
   }
   return act("the branch has no pull request yet", { type: "open-pull-request" });

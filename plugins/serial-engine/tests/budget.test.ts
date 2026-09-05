@@ -4,14 +4,16 @@ import os from "node:os";
 import path from "node:path";
 import { Budget, BudgetDecision, LogBudget } from "@amy/core";
 import { FileQueue } from "@amy/plugin-file-queue";
-import { WORKDAY, record as recordIn } from "@amy/test-fixtures";
+import { WORKDAY, record as recordIn,
+  TicketWorkerOverrides,
+} from "@amy/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
   RecordingEventLog,
   fakeAgent,
 } from "@amy/test-fixtures";
-import { Worker, WorkerDeps } from "../src/Worker.js";
+import { Worker } from "../src/Worker.js";
 
 const SPENT: BudgetDecision = {
   ok: false,
@@ -45,7 +47,7 @@ describe("Worker, against a budget", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: Partial<WorkerDeps> = {}): Worker {
+  function build(overrides: TicketWorkerOverrides = {}): Worker {
     return new Worker({
       queue,
       records,

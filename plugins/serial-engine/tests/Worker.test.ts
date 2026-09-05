@@ -3,11 +3,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { WorkflowRuntime } from "@amy/core";
-import { Worker, WorkerDeps } from "../src/Worker.js";
+import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
 import { DEFAULT_POLICY } from "@amy/workflow-ticket-to-qa";
 import { USES_ACTIONS, newRecord } from "@amy/workflow-ticket-to-qa";
-import { HEAD, WORKDAY, botReview, pullRequest, thread, ticket } from "@amy/test-fixtures";
+import { HEAD, WORKDAY, botReview, pullRequest, thread, ticket,
+  TicketWorkerOverrides,
+} from "@amy/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
@@ -37,7 +39,7 @@ describe("Worker", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: Partial<WorkerDeps> = {}): Worker {
+  function build(overrides: TicketWorkerOverrides = {}): Worker {
     return new Worker({
       queue,
       records,
@@ -350,7 +352,7 @@ describe("Worker.missingActions", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: Partial<WorkerDeps> = {}): Worker {
+  function build(overrides: TicketWorkerOverrides = {}): Worker {
     return new Worker({
       queue: new FileQueue(path.join(root, "queue")),
       records: new InMemoryStore(),

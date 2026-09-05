@@ -2,9 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Worker, WorkerDeps } from "../src/Worker.js";
+import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
-import { WORKDAY } from "@amy/test-fixtures";
+import { WORKDAY,
+  TicketWorkerOverrides,
+} from "@amy/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
@@ -41,7 +43,7 @@ describe("a broken notifier and a broken log", () => {
     vi.restoreAllMocks();
   });
 
-  function build(overrides: Partial<WorkerDeps> = {}): Worker {
+  function build(overrides: TicketWorkerOverrides = {}): Worker {
     return new Worker({
       queue,
       records,

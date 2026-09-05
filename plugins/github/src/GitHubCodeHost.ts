@@ -15,6 +15,7 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
     pullRequests(headRefName: $branch, states: [OPEN], first: 1) {
       nodes {
         number
+        url
         isDraft
         reviewDecision
         headRefOid
@@ -51,6 +52,7 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
 
 interface RawPullRequest {
   number: number;
+  url: string;
   isDraft: boolean;
   reviewDecision: string | null;
   headRefOid: string;
@@ -106,6 +108,10 @@ export class GitHubCodeHost implements CodeHost {
       // Sent explicitly so the empty body is a decision rather than an omission.
       "-f",
       `body=${request.body}`,
+      // `-F` rather than `-f`: this one has to arrive as a boolean, and a
+      // string "false" is true to the API.
+      "-F",
+      `draft=${request.draft === true}`,
     ]);
 
     const parsed = JSON.parse(created) as { number?: number };
@@ -213,6 +219,7 @@ const REVIEW_STATES: readonly ReviewState[] = [
 function toView(node: RawPullRequest): PullRequestView {
   return {
     number: node.number,
+    url: node.url,
     headSha: node.headRefOid,
     isDraft: node.isDraft,
     reviewDecision: toDecision(node.reviewDecision),

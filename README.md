@@ -780,6 +780,12 @@ the types that workflow declares — which is why `plugins/github` depends on
 neither: `CodeHost` is the core's, and one mounted adapter serves both
 workflows. Nothing depends on the CLI.
 
+## Contributing
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) — the five minutes before your first
+change, what has to be green, and the one architectural rule everything else
+follows from.
+
 ## License
 
 MIT

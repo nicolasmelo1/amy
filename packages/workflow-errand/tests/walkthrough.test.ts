@@ -19,6 +19,7 @@ const TASK: Task = {
 
 const PULL_REQUEST: PullRequestView = {
   number: 41,
+  url: "https://github.example.test/acme/widgets/pull/41",
   headSha: "abc",
   isDraft: false,
   reviewDecision: null,
@@ -251,5 +252,45 @@ describe("the ceiling on how many are in flight", () => {
 
     world.inFlight = 0;
     expect(walk(world).record.state).toBe("DONE");
+  });
+});
+
+describe("what the errand says, and where it says it", () => {
+  it("opens its pull request as a draft, because nobody asked for it", () => {
+    // Work somebody is waiting on is not a draft. An errand is something to
+    // look at when you want to, and the state it opens in should say so.
+    const world = new World();
+    const opened: boolean[] = [];
+
+    let record = newRecord(TASK.id, NOW);
+    for (let look = 0; look < 6; look += 1) {
+      const decision = plan(record, world.observe(), DEFAULT_POLICY);
+      if (decision.kind === "settled") break;
+      for (const action of actionsOf(decision)) {
+        if (action.type === "open-pull-request") opened.push(true);
+      }
+      record = applyErrandPlan(record, decision, world.perform(decision), world.observe(), NOW);
+    }
+
+    expect(opened).toEqual([true]);
+  });
+
+  it("announces the link rather than the number", () => {
+    // Read on a phone more often than anywhere else, and a number is a thing
+    // you have to go and look up.
+    const world = new World();
+    let record = newRecord(TASK.id, NOW);
+    const said: string[] = [];
+
+    for (let look = 0; look < 8; look += 1) {
+      const decision = plan(record, world.observe(), DEFAULT_POLICY);
+      if (decision.kind === "settled") break;
+      for (const action of actionsOf(decision)) {
+        if (action.type === "announce") said.push(String(action.text));
+      }
+      record = applyErrandPlan(record, decision, world.perform(decision), world.observe(), NOW);
+    }
+
+    expect(said.join("\n")).toContain(PULL_REQUEST.url);
   });
 });
