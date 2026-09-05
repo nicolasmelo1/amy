@@ -1,3 +1,10 @@
+---
+title: Failing out loud
+description: The design behind one warning down, silence, one warning back — and the rule about which port calls may be swallowed.
+group: Design notes
+order: 1
+---
+
 # Fase 9: falhar em voz alta — o desenho
 
 Entregue. O plano de registro é
