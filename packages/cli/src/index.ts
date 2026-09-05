@@ -167,7 +167,7 @@ const program = new Command();
 program
   .name("amy")
   .description(
-    "Drives a work ticket from in-progress to QA handoff, one deterministic move at a time.",
+    "A state machine you leave running. Everything in it is a plugin, and the workflow is yours.",
   )
   .option("--workflow <name>", "which workflow to drive, by the name the config gives it")
   .version(describeBuild(stamp));

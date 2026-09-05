@@ -2,23 +2,76 @@
 
 **A**utomate **MY** work.
 
-**Drives a work ticket from in-progress to QA handoff, one deterministic move at a time.**
+**Leave it running, and it does the long part of your work while you are somewhere else — built the way *you* work, not the way somebody else does.**
 
 ---
 
-## Why this exists
+## What it is, in a minute
 
-Implementing a ticket is the part an agent is already good at. The work around
-it is not hard, it is just long: read the ticket, ask if something is
-ambiguous, implement, check, open a pull request, deal with the bot reviewer,
-pick a human reviewer, deal with them, ask when you disagree, hand it to QA.
+You pick up a ticket. Writing the code is not the hard part any more — an
+agent is already good at that. The long part is everything *around* it:
 
-That loop is *cyclic* and it *waits on other people for days*. Neither fits a
-task DAG, so it does not belong inside a task runner. It belongs in a state
-machine that persists, resumes, and only ever makes one move at a time.
+> read the ticket → ask when something is unclear → do the work → run the
+> checks → open the pull request → answer the review bot → pick a reviewer →
+> deal with their comments → hand it to QA
 
-`amy` is that machine. The agent is called in four places. Everything else
-is a predicate over the tracker and the code host.
+That takes days, and most of it is waiting on other people. amy is a small
+machine that sits there and walks it one step at a time, so you stop having to
+hold it in your head.
+
+```sh
+amy start                            # off it goes, in the background
+amy status                           # where everything stands
+amy btw "bump the deps in the api"   # something you thought of in passing
+```
+
+## The part that makes it different
+
+**That process above is not baked in.** It is one *workflow*, and a workflow
+is just a small package you can read in one sitting. It says two things: what
+happens next, and how each step is done.
+
+Your team does not work like mine. A tool that ships somebody else's process
+is a tool that is *nearly* right for you, and nearly-right is where automation
+goes to be abandoned. So amy ships the machine, and **you assemble the process
+before you use it.**
+
+Three come in the box, and you can write a fourth in an afternoon:
+
+| | |
+| :-- | :-- |
+| **ticket-to-qa** | a tracker ticket, all the way to a QA handoff |
+| **note-to-plan** | friction amy hit becomes a written plan in the right repo |
+| **errand** | something you said in passing becomes a pull request |
+
+The bits underneath are swappable too, not just the process. The thing that
+talks to your tracker, the thing that opens pull requests, the agent it asks,
+where it writes things down, how it reaches you — every one of those is a
+plugin, and changing one is a line of config. Nothing here is welded shut.
+
+## It lives *under* your tools, not inside one
+
+amy is installed once on your machine and keeps running on its own. Claude
+Code, Codex, Hermes, a terminal, your phone at 2am — those are all just doors
+into the same machine.
+
+```text
+   Claude Code      Codex       Hermes       your terminal
+        └──────────────┴───────────┴──────────────┘
+                            amy
+              one install, one memory, always up
+```
+
+Close the laptop lid and it keeps its place. Ask from a different app tomorrow
+and you get the same answer, because the state belongs to amy and not to the
+conversation you happened to be having.
+
+And it is open source, because a machine that runs *your* process is a machine
+you have to be able to read.
+
+**New here?** [Quickstart](#quickstart-5-minutes) is five minutes.
+Want it to work your way? [Write your own workflow](#write-your-own-workflow).
+Want to change amy itself? [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
