@@ -167,9 +167,11 @@ machine by `amy skills`. Invoke them by name.
 | `/amy-show-me` | Seeing a workflow: its shape, and why one thing is stuck. |
 | `/amy-status` | What should I do today, from the project's side rather than the machine's. |
 
-`/amy-develop`, for changing amy's own codebase, is not among them: it lives
-in `.claude/skills/` and belongs to this repository, because nobody installing
-amy has a reason to carry it.
+Changing amy's own codebase is not one of them, and deliberately: it is what
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is for. A skill in front of somebody who
+installed amy to drive their tickets, describing a repository they do not
+have, is noise in the one place noise is expensive — the list an agent reads
+when deciding what to reach for.
 
 Their job is judgement — interrogating a design, reading a config, choosing
 what to show. Everything a command can do, a command does: a skill that
@@ -761,12 +763,10 @@ plugins/
 packages/cli/skills/         shipped inside @amy/cli, installed by `amy skills`
 ├── amy/                     driving it
 ├── amy-init/                setting it up
+├── amy-btw/                 capturing something said in passing
 ├── amy-workflow/            designing one, a question at a time
 ├── amy-show-me/             seeing one
 └── amy-status/              what should I do today
-
-.claude/skills/
-└── amy-develop/             changing amy itself — this repository only
 ```
 
 A plugin's directory drops the prefix its package name keeps: `plugins/github`
