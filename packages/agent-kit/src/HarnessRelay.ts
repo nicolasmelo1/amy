@@ -2,6 +2,7 @@ import { AskContext, Harness, HarnessReply } from "@amykit/core";
 import { NamedHarness } from "./collection.js";
 import { HandoffLog, handoffNote, recordHandoff, recordSkillHandoff } from "./handoff.js";
 import { nextRung } from "./ladder.js";
+import { Ladders, everyRung, rungsFor } from "./ladders.js";
 
 /** Which skills answer for a step, in the order they are tried. */
 export type SkillLadders = Readonly<Record<string, readonly string[]>>;
@@ -27,10 +28,10 @@ export class HarnessRelay implements Harness {
   readonly name = "relay";
 
   constructor(
-    private readonly ladder: readonly NamedHarness[],
+    private readonly ladders: Ladders<NamedHarness>,
     private readonly deps: HarnessRelayDeps = {},
   ) {
-    if (ladder.length === 0) {
+    if (everyRung(ladders).length === 0) {
       throw new Error("the relay has no harness to relay to: no harness plugin contributed one");
     }
   }
@@ -78,18 +79,22 @@ export class HarnessRelay implements Harness {
     context: AskContext,
     skill: string | undefined,
   ): Promise<HarnessReply> {
+    // Chosen once per climb rather than per rung: a step that swapped ladders
+    // half way up would make "the next rung" mean nothing.
+    const ladder = rungsFor(this.ladders, context.step);
+
     let index = 0;
     let handoff: string | undefined;
     let last: HarnessReply | null = null;
 
-    while (index < this.ladder.length) {
-      const rung = this.ladder[index]!;
+    while (index < ladder.length) {
+      const rung = ladder[index]!;
       last = await rung.cli.ask(asked(prompt, skill, handoff), cwd, context);
 
-      const next = nextRung(this.ladder, index, last.run.outcome);
+      const next = nextRung(ladder, index, last.run.outcome);
       if (next === null) return last;
 
-      const to = this.ladder[next]!;
+      const to = ladder[next]!;
       recordHandoff(this.deps, context.workId, step(context), rung, to, last.run);
       handoff = handoffNote(rung, last.run);
       index = next;

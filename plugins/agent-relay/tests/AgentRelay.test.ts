@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { AgentOutcome, AgentResult } from "@amykit/core";
 import { agentResult, RecordingEventLog, ticket } from "@amykit/test-fixtures";
-import { NamedAgent } from "@amykit/agent-kit";
+import { NamedAgent, oneLadder } from "@amykit/agent-kit";
 import { Agent, AttemptOutcome, TriageOutcome } from "@amykit/workflow-ticket-to-qa";
 import { AgentRelay } from "../src/AgentRelay.js";
 
@@ -66,7 +66,7 @@ function relayOf(
 
   return {
     log,
-    relay: new AgentRelay(ladder, {
+    relay: new AgentRelay(oneLadder(ladder), {
       log,
       skills,
       now: () => new Date("2026-09-03T12:00:00Z"),
@@ -231,7 +231,7 @@ describe("the other two methods relay the same way", () => {
 it("refuses to exist with no agent to relay to", () => {
   // Mounting the port while owning nothing would turn a config mistake into a
   // mystery at the first ticket instead of an error at boot.
-  expect(() => new AgentRelay([])).toThrow(/no harness plugin contributed/);
+  expect(() => new AgentRelay(oneLadder([]))).toThrow(/no harness plugin contributed/);
 });
 
 describe("a skill per step", () => {

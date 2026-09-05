@@ -9,5 +9,7 @@ export { handoffNote, recordHandoff, recordSkillHandoff } from "./handoff.js";
 export type { HandoffLog } from "./handoff.js";
 export { nextRung } from "./ladder.js";
 export type { Rung } from "./ladder.js";
+export { everyRung, oneLadder, rungsFor } from "./ladders.js";
+export type { Ladders } from "./ladders.js";
 export { contributeTiers, tierName } from "./tiers.js";
 export type { TierOptions } from "./tiers.js";

@@ -222,3 +222,40 @@ describe("pluginList", () => {
     expect(pluginList(CONFIG, TICKETS)).toContain("@amykit/plugin-agent-relay");
   });
 });
+
+describe("a ladder per step", () => {
+  it("mounts a harness named only inside a step's ladder", () => {
+    // Reading only the default ladder would refuse the mount at boot —
+    // correctly, but for a reason nobody could see from the config.
+    const config = {
+      ...DEFAULT_CONFIG,
+      agent: { ladder: ["claude:sonnet"], ladderByStep: { triage: ["codex:gpt-5"] } },
+    };
+
+    expect(pluginList(config, TICKETS)).toContain("@amykit/plugin-codex");
+  });
+
+  it("contributes a model tier named only inside a step's ladder", () => {
+    const config = {
+      ...DEFAULT_CONFIG,
+      agent: { ladder: ["claude:sonnet"], ladderByStep: { triage: ["claude:haiku"] } },
+    };
+
+    const slice = pluginSlices(config, TICKETS)["@amykit/plugin-claude"] as {
+      models: string[];
+    };
+
+    expect(slice.models).toEqual(["sonnet", "haiku"]);
+  });
+
+  it("hands the per-step ladder to the relay", () => {
+    const byStep = { triage: ["claude:haiku"] };
+    const config = { ...DEFAULT_CONFIG, agent: { ladder: ["claude:sonnet"], ladderByStep: byStep } };
+
+    const slice = pluginSlices(config, TICKETS)["@amykit/plugin-agent-relay"] as {
+      ladderByStep: Record<string, string[]>;
+    };
+
+    expect(slice.ladderByStep).toEqual(byStep);
+  });
+});

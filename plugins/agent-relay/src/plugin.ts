@@ -15,6 +15,7 @@ import {
   HarnessRelay,
   NamedAgent,
   NamedHarness,
+  Ladders,
   Rung,
   SkillLadders,
 } from "@amykit/agent-kit";
@@ -136,7 +137,7 @@ function mountBudget(registry: Registry, ctx: PluginContext): void {
 function build(ctx: PluginContext): AgentRelay {
   const contributed = [...ctx.contributions(AGENT_COLLECTION).values()] as NamedAgent[];
 
-  return new AgentRelay(rungs(ctx, contributed), {
+  return new AgentRelay(ladders(ctx, contributed), {
     log: ctx.log,
     now: ctx.now,
     skills: skillLadders(ctx),
@@ -153,17 +154,39 @@ function build(ctx: PluginContext): AgentRelay {
 function buildHarness(ctx: PluginContext): HarnessRelay {
   const contributed = [...ctx.contributions(HARNESS_COLLECTION).values()] as NamedHarness[];
 
-  return new HarnessRelay(rungs(ctx, contributed), {
+  return new HarnessRelay(ladders(ctx, contributed), {
     log: ctx.log,
     now: ctx.now,
     skills: skillLadders(ctx),
   });
 }
 
-/** What the config asked for, in that order, or everything contributed. */
-function rungs<T extends Rung>(ctx: PluginContext, contributed: readonly T[]): T[] {
+/**
+ * The ladders the config asked for: one fallback, and one per named step.
+ *
+ * Every name is resolved against what was contributed, including the ones
+ * inside a step's ladder, so a typo in `ladderByStep` is refused at boot with
+ * the same message a typo in `ladder` gets. A step ladder that quietly meant
+ * less than it said would show up as one action mysteriously using the wrong
+ * model, which is the hardest kind of thing to notice.
+ */
+function ladders<T extends Rung>(ctx: PluginContext, contributed: readonly T[]): Ladders<T> {
   const wanted = ctx.config.ladder as string[];
-  return wanted.length === 0 ? [...contributed] : order(contributed, wanted);
+  const fallback = wanted.length === 0 ? [...contributed] : order(contributed, wanted);
+
+  const perStep = ctx.config.ladderByStep as Record<string, unknown>;
+  const byStep: Record<string, readonly T[]> = {};
+
+  for (const [step, names] of Object.entries(perStep)) {
+    if (!Array.isArray(names) || names.some((name) => typeof name !== "string")) {
+      throw new Error(`\`ladderByStep.${step}\` must be a list of contributed agent names`);
+    }
+    if (names.length === 0) continue;
+
+    byStep[step] = order(contributed, names as string[]);
+  }
+
+  return { fallback, byStep };
 }
 
 /**

@@ -639,6 +639,11 @@
         },
         {
           "depth": 3,
+          "title": "A ladder per step, so the cheap step can reach a cheap model.",
+          "slug": "a-ladder-per-step-so-the-cheap-step-can-reach-a-cheap-model"
+        },
+        {
+          "depth": 3,
           "title": "amy is one install per machine, and it stays running.",
           "slug": "amy-is-one-install-per-machine-and-it-stays-running"
         },
@@ -4049,6 +4054,13 @@
             "description": "the contributed agents to try, in order, such as [claude:sonnet, claude:opus, codex:gpt-5]. Empty means every contributed agent, in the order the plugins were mounted"
           },
           {
+            "name": "ladderByStep",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "a ladder for one step, overriding the one above, keyed by the workflow's action name: {\"triage\": [\"claude:haiku\"], \"implement\": [\"claude:opus\"]}. Reading a ticket and writing the change are not the same job, and one list for both means paying the expensive model to do the cheap step"
+          },
+          {
             "name": "skillRoots",
             "type": "string[]",
             "required": false,
@@ -5400,6 +5412,18 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-ladder-per-step",
+        "title": "A ladder per step, so the cheap step can reach a cheap model.",
+        "body": "One ladder for the whole install was the right default and the wrong ceiling.\nReading a ticket to decide whether it is clear enough to start is not the same\njob as writing the change, and putting both behind one list means paying the\nexpensive model to do the cheap step, or asking the cheap one to do the work.\n\n```yaml\nagent:\n  ladder: [claude:sonnet, claude:opus]\n  ladderByStep:\n    triage: [claude:haiku]\n    implement: [claude:opus]\n```\n\nKeyed by the workflow's action name, which the relay already had in hand for\nchoosing a skill — so this is a lookup where there was an array, not new\nplumbing. A step that names no ladder uses the one above it, and so does an\ninstall that sets none, which is every install today.\n\n**Which is what makes routing by difficulty possible without anything here\nlearning the word.** A workflow that triages into easy and hard emits\ndifferent actions for each, and the config points them at different rungs. The\nrelay never finds out what \"hard\" means.\n\nThe two ladders stay separate concerns: a step picks one, and the failure\nladder is then climbed *inside* it. Falling back to the default when a rung\nfails would mean an operator who asked for a cheap model got the expensive one\nevery time the cheap one wobbled.\n\nA name inside `ladderByStep` mounts its harness and contributes its model tier\nexactly as a name in `ladder` does. Reading only the default would have refused\nthat mount at boot — correctly, but for a reason nobody could see from the\nconfig they wrote.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
       {
         "id": "a-machine-you-leave-running",
         "title": "amy is one install per machine, and it stays running.",

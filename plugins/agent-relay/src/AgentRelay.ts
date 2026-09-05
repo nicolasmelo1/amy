@@ -1,11 +1,14 @@
 import { AgentResult, EventLog, ReviewThread } from "@amykit/core";
 import {
+  Ladders,
   NamedAgent,
   SkillLadders,
+  everyRung,
   handoffNote,
   nextRung,
   recordHandoff,
   recordSkillHandoff,
+  rungsFor,
 } from "@amykit/agent-kit";
 import {
   Agent,
@@ -36,10 +39,10 @@ export interface RelayDeps {
  */
 export class AgentRelay implements Agent {
   constructor(
-    private readonly ladder: readonly NamedAgent[],
+    private readonly ladders: Ladders<NamedAgent>,
     private readonly deps: RelayDeps = {},
   ) {
-    if (ladder.length === 0) {
+    if (everyRung(ladders).length === 0) {
       throw new Error("the relay has no agent to relay to: no harness plugin contributed one");
     }
   }
@@ -120,18 +123,22 @@ export class AgentRelay implements Agent {
     skill: string | undefined,
     call: (agent: Agent, handoff?: string) => Promise<AgentResult<T>>,
   ): Promise<AgentResult<T>> {
+    // Chosen once per climb rather than per rung: a step that swapped ladders
+    // half way up would make "the next rung" mean nothing.
+    const ladder = rungsFor(this.ladders, action);
+
     let index = 0;
     let handoff: string | undefined;
     let last: AgentResult<T> | null = null;
 
-    while (index < this.ladder.length) {
-      const rung = this.ladder[index]!;
+    while (index < ladder.length) {
+      const rung = ladder[index]!;
       last = await call(skill ? rung.using(skill) : rung.agent, handoff);
 
-      const next = nextRung(this.ladder, index, last.run.outcome);
+      const next = nextRung(ladder, index, last.run.outcome);
       if (next === null) return last;
 
-      const to = this.ladder[next]!;
+      const to = ladder[next]!;
       recordHandoff(this.deps, ticket.id, action, rung, to, last.run);
       handoff = handoffNote(rung, last.run);
       index = next;
