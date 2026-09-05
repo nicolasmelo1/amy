@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
   "files": {
-    "package.json": "9940606a66fe0416f3dbb85706d00f5cffeb9982c582cff27e468fc0fe34da50",
+    ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
+    "package.json": "7e6a8becc0305061876c0c922e4d3bd15b1b169c6f82b9d8bc33fc7660e7aaef",
     "packages/agent-kit/package.json": "598e615704b6a1b73874074509f8acdddd778132777a7f8ab42f53300bd80f55",
-    "packages/cli/package.json": "eb8e6e077df8451fb24185897def5199196994c3fa9d930bfebcc7c0f50c3cc4",
+    "packages/cli/package.json": "523ebdb2fcdad7cd9089f205e2b885798a6310e186fc51d79495efdc2215ffc0",
     "packages/core/package.json": "33cb4c2a8face47cf18c7b7b7fe04d41d29b6d89161689428dd9ec1eacb98bc3",
     "packages/model-specs/package.json": "e81972b7e66201d162e587950f21bbae347b636755f8d6d003d2083fda145919",
     "packages/test-fixtures/package.json": "9dfa06af57663dd2c008ad8c3b1f6884e808f9e84664b03e9fc14891aadecf8c",
@@ -14,7 +15,7 @@
     "plugins/codex/package.json": "35edb78b84cef24d17c07d01b9c24311d2f46d24eafd433da47a4b59b620453c",
     "plugins/command-gate/package.json": "ee0179d9f91ca4320b0b99fd1b52f88873d6f2a1becf10e38bc2f695270577fc",
     "plugins/file-log/package.json": "15e15e35683a058fa5ff08df1e6cfe1a8ca8ecaf3f1dc291c66da6da91e32c93",
-    "plugins/file-notes/package.json": "01eb79d40b0b9e69afe5d2cc9b722241840feeb8c5c39a6fac6499c3633b86ba",
+    "plugins/file-notes/package.json": "f3e010de83f7942d40e75d43feb034b678fe0bac93478970394cb492464d2f7e",
     "plugins/file-queue/package.json": "915dcff89bb3199ffad69517f7404d461c1565117bcc5f3b8d4da65925077b96",
     "plugins/file-store/package.json": "a1aeef9247298428cccdd5ffdb3e7a8d8cbf1aa6e806dc10fb4a7f2ae7009eb6",
     "plugins/github/package.json": "fcb21e774d8d4a8d91b6be2121761f1e20f4d75545ea066af816652f9b97b3e2",

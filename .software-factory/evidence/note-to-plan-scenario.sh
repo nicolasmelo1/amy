@@ -41,7 +41,7 @@ bin=$(mktemp -d)
 cleanup() { rm -rf "$bin"; }
 trap cleanup EXIT INT TERM
 
-AMY_BUILD_OUT="${bin}/amy.built" "$repo/scripts/install.sh" "$bin" >/dev/null
-test -x "$bin/amy" || { echo "the installer produced no executable" >&2; exit 1; }
+"$repo/scripts/install.sh" "$bin" >/dev/null
+test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 node "$here/note-to-plan/drive.mjs" "$here/note-to-plan" "$bin/amy" "$report" $keep

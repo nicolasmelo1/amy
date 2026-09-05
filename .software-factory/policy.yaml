@@ -65,22 +65,61 @@ gates:
       - "relay.names_the_skills_there_were_to_choose_from"
 
   # The one claim no unit test can make. They all import source from inside
-  # the workspace, so a binary carrying no plugins passes every one of them.
-  # Activation covers the loader table, the stamp and the build scripts,
-  # because those three are what the claim rests on.
+  # the workspace, so an install missing half of what it needs passes every
+  # one of them. Activation covers the stamp and the install scripts, because
+  # those are what the claim rests on.
+  #
+  # The name is older than the design: there is no compiled binary any more.
+  # What survived is the claim underneath — what runs is an installed program,
+  # somewhere that is not this repository — so the gate keeps its name and
+  # changed what it asserts.
   installed-binary:
     activation:
-      - "packages/cli/src/loader.ts"
+      - "packages/cli/src/stamp.ts"
       - "packages/core/src/build.ts"
       - "scripts/**"
     evidence: ".software-factory/evidence/installed-binary.json"
     plan: "plans/what-runs-is-not-this-repo.md"
     required_assertions:
       - "installed.runs_without_a_checkout"
-      - "installed.plugins_are_inside_the_binary"
-      - "installed.every_plugin_resolves"
+      - "installed.keeps_state_beside_the_caller"
       - "installed.does_not_write_into_the_source_tree"
+      - "installed.log_line_names_the_build"
       - "installed.log_build_matches_the_binary"
+      - "installed.says_dev_only_when_it_is_one"
+
+  # A plugin is installed, not compiled in, and a workflow is a name in a
+  # config rather than a case in a switch. Both are the same claim from two
+  # sides, and neither is true until a machine that never saw this checkout
+  # can install four packages, point them at a workflow nobody here shipped,
+  # and be refused by name for anything it left out.
+  #
+  # The activation is the loader, the routing that turns a name into a
+  # profile, and the installer — a change to any of them means the last run
+  # proved a machine that no longer exists.
+  installed-plugins:
+    activation:
+      - "packages/cli/src/loader.ts"
+      - "packages/cli/src/profiles.ts"
+      - "packages/cli/src/paths.ts"
+      - "packages/cli/src/slices.ts"
+      - "scripts/install.sh"
+      - "scripts/write-install-manifest.mjs"
+    evidence: ".software-factory/evidence/installed-plugins.json"
+    plan: "plans/plugins-are-installed-not-compiled-in.md"
+    required_assertions:
+      - "plugins.a_machine_installs_only_what_it_uses"
+      - "plugins.resolve_at_run_time_with_no_table"
+      - "plugins.a_workflow_from_outside_this_repository_mounts"
+      - "plugins.the_engine_drives_it_without_knowing_it"
+      - "plugins.work_it_found_reached_the_queue"
+      - "plugins.each_workflow_keeps_its_own_state"
+      - "plugins.an_unknown_workflow_name_lists_the_ones_there_are"
+      - "plugins.a_shipped_workflow_nobody_installed_is_refused_by_name"
+      - "plugins.a_missing_plugin_is_refused_at_boot"
+      - "plugins.the_refusal_names_what_was_installed_instead"
+      - "plugins.nothing_is_touched_before_the_refusal"
+      - "plugins.the_listing_tells_installed_from_mounted"
 
   # The last large package without a gate, and the one that decides whether a
   # ticket gets lost. What it exists to handle is a bad day, and what carries

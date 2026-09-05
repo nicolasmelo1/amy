@@ -62,7 +62,7 @@ function amy(root, args) {
 /** The second profile, which is the one this run is about. */
 const plans = (root, args) => amy(root, ["--workflow", "note-to-plan", ...args]);
 
-const recordsDir = (root) => path.join(root, "home", ".amy", "plans");
+const recordsDir = (root) => path.join(root, "home", ".amy", "note-to-plan", "records");
 const notesDir = (root) => path.join(root, "home", ".amy", "notes");
 const worldDir = (root) => path.join(root, "world");
 
@@ -75,6 +75,20 @@ function records(root) {
 }
 
 const recordFor = (root, id) => records(root).find((record) => record.id === id) ?? null;
+
+/**
+ * The plugins `amy plugin list` says it mounted, not the ones it found.
+ *
+ * The listing reports both, and they are different questions: a tracker
+ * installed on the machine and left unmounted is exactly what this workflow
+ * running without one looks like.
+ */
+function mountedNames(out) {
+  return out
+    .split("\n")
+    .filter((line) => /^ {2}(ok|FAIL)/.test(line))
+    .join(" ");
+}
 
 /** Which queue directory each profile keeps its work in. */
 function queued(root, directory) {
@@ -118,7 +132,7 @@ function walkthrough() {
   // One: the command. Nothing is resolved against anything; the note is
   // written down and put on the queue in the same step.
   const noted = plans(root, ["note", FRICTION, "--repo", REPO, "--source", "ada"]);
-  const queuedAfterNote = queued(root, "plan-queue");
+  const queuedAfterNote = queued(root, "note-to-plan/queue");
   const noteId = fs
     .readdirSync(notesDir(root))
     .filter((name) => name.endsWith(".md"))
@@ -170,8 +184,8 @@ function walkthrough() {
     ticketStatus,
     budget,
     mounted,
-    ticketQueue: queued(root, "queue"),
-    planQueue: queued(root, "plan-queue"),
+    ticketQueue: queued(root, "ticket-to-qa/queue"),
+    planQueue: queued(root, "note-to-plan/queue"),
     records: records(root),
     first: recordFor(root, noteId),
     byHand: recordFor(root, "by-hand"),
@@ -246,7 +260,7 @@ function assertionsFor(state) {
       "plan.nothing_is_resolved_against_a_tracker",
       state.first?.state === "DONE" &&
         state.mounted.code === 0 &&
-        !state.mounted.out.includes("@amy/plugin-linear") &&
+        !mountedNames(state.mounted.out).includes("@amy/plugin-linear") &&
         state.mounted.out.includes("workflow: note-to-plan"),
     ],
 
@@ -314,7 +328,7 @@ function assertionsFor(state) {
       state.version.code === 0 &&
         state.status.code === 0 &&
         state.ticketStatus.code === 0 &&
-        state.ticketStatus.out.includes("no tickets tracked yet"),
+        state.ticketStatus.out.includes("nothing tracked yet"),
     ],
     [
       // Two profiles, one `.amy`. The records and the queue are the only two
@@ -324,7 +338,7 @@ function assertionsFor(state) {
       state.ticketQueue.length === 0 &&
         state.planQueue.length === 0 &&
         state.records.length === 4 &&
-        state.ticketStatus.out.includes("no tickets tracked yet"),
+        state.ticketStatus.out.includes("nothing tracked yet"),
     ],
     [
       "plan.what_the_agent_spent_lands_in_the_shared_log",

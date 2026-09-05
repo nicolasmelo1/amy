@@ -49,7 +49,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-AMY_BUILD_OUT="${bin}/amy.built" "$repo/scripts/install.sh" "$bin" >/dev/null
-test -x "$bin/amy" || { echo "the installer produced no executable" >&2; exit 1; }
+"$repo/scripts/install.sh" "$bin" >/dev/null
+test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 AMY_E2E_PIDFILE="$pids" node "$here/ticket-to-qa/drive.mjs" "$here/ticket-to-qa" "$bin/amy" "$report" $keep

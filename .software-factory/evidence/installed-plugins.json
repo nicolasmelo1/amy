@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "gate": "installed-plugins",
+  "implementation_sha256": "ee5b0401ffafec8ff9b241880f14d71f52d7a82a631671e355e050426288a21e",
+  "runs": [
+    {
+      "scenario": "installed-plugins",
+      "status": "passed",
+      "actor": "Claude (agent), installing four packages and a workflow written outside this repository onto a scratch machine on macOS, for Nicolas Melo",
+      "report": ".software-factory/evidence/installed-plugins-run.json",
+      "report_sha256": "1ca35ecd26bbbe3ddf7cc4cfdc3114472f360af05e0bce83ff6230bccd786730",
+      "required_assertions": []
+    }
+  ]
+}
