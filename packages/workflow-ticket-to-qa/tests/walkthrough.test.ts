@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Effect } from "../src/effects.js";
 import { plan } from "../src/machine.js";
 import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
 import { PullRequestView, ReviewSubmission, ReviewThread, actionsOf } from "@amy/core";
@@ -103,7 +104,7 @@ class FakeWorld {
     return { author, state, commitSha, submittedAt: this.now().toISOString() };
   }
 
-  execute(record: TicketRecord, effects: readonly ReturnType<typeof effectsOf>[number][]): EffectOutcomes {
+  execute(record: TicketRecord, effects: readonly Effect[]): EffectOutcomes {
     const outcomes: EffectOutcomes = {};
 
     for (const effect of effects) {
@@ -123,6 +124,7 @@ class FakeWorld {
         case "open-pull-request":
           this.pullRequest = {
             number: 4940,
+            url: "https://github.example.test/acme/widgets/pull/4940",
             headSha: this.nextHead(),
             isDraft: false,
             reviewDecision: "REVIEW_REQUIRED",
@@ -201,7 +203,7 @@ function drive(world: FakeWorld, limit = 80): { record: TicketRecord; states: Ti
       return { record, states };
     }
 
-    const outcomes = world.execute(record, actionsOf(decision));
+    const outcomes = world.execute(record, actionsOf(decision) as Effect[]);
     const before = record.state;
     record = applyTicketPlan(record, decision, outcomes, new Date(Date.now() + step));
 

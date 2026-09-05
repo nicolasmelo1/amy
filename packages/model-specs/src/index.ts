@@ -1,5 +1,5 @@
 export {
-  OVERRIDE_PATH,
+  OVERRIDE_FILE,
   costOf,
   forgetSpecTable,
   normalizeModelId,

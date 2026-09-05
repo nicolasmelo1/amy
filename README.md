@@ -22,6 +22,181 @@ is a predicate over the tracker and the code host.
 
 ---
 
+## Quickstart (5 minutes)
+
+### 1. Install — 1 min
+
+```sh
+npm run install:local     # packs every package, installs to ~/.local/bin/amy
+amy --version             # 0.1.0 (83ef192, built 2026-09-03T20:28:44Z)
+```
+
+One install per machine, not one per repository: amy drives work in
+checkouts all over the disk and is reached from whichever agent harness you
+happen to be in, so everything it knows lives in `~/.amy`. `AMY_HOME`
+overrides that; nothing else does.
+
+That command installs every plugin. A machine with no `codex` on it has no
+reason to carry the plugin that shells out to one, so `AMY_PACKAGES` takes a
+subset, and `amy init` prints the `npm install` line for whatever a configured
+workflow needs and this machine does not have.
+
+### 2. Set it up — 2 min
+
+```sh
+amy init                  # writes ~/.amy/config.yaml and ~/.amy/roster.yaml
+# edit both
+amy roster confirm        # stamp today's date
+amy doctor                # every dependency, checked before it touches a ticket
+```
+
+The Linear personal API key comes from Settings, Security and access, and goes
+in `~/.amy/.env`. Anything already exported in the shell wins over the file.
+
+`amy doctor` checks the config, each plugin's settings against the schema that
+plugin declared, the roster's freshness, the API key, `gh`, `claude` and
+`git`, the notification target, and that every configured repository is
+actually checked out. It exits non-zero, so it is safe to gate on.
+
+If you would rather be walked through it, `/amy-init` does the same interview
+and reads the result back in numbers.
+
+### 3. Watch it make one move — 1 min
+
+```sh
+amy discover              # put in-progress tickets on the queue
+amy tick                  # exactly one move, then exit
+amy status                # where everything stands, and what waits on you
+```
+
+`tick` is the whole product in one command. Run it until you trust it.
+
+### 4. Leave it running — 1 min
+
+```sh
+amy start --every 60      # the loop, in the background, looking every minute
+amy status                # says whether the loop is up, and since when
+amy stop                  # ends it
+```
+
+`pause` and `stop` are different things. `amy pause "deploying"` is the
+handbrake: it ends work in flight, starts nothing new, and the loop stays up
+until `amy resume`. `amy stop` ends the loop itself. Pausing survives a
+reboot, because it is a file; the loop does not, because it is a process.
+
+### 5. Put the skills in your harnesses — 30 sec
+
+```sh
+amy skills                # finds the harnesses on this machine and asks
+```
+
+amy is driven from Claude Code, from Hermes, from a terminal — so its skills
+install into each harness it finds rather than into one project. They ship
+inside `@amy/cli`, so they cannot drift out of step with the amy that ships
+them.
+
+## Write your own workflow
+
+The two workflows above are packages, and nothing in amy's own code names
+them. A third is yours:
+
+```yaml
+# ~/.amy/config.yaml
+workflows:
+  oncall:
+    workflow: "@acme/workflow-oncall"
+```
+
+```sh
+npm install -g @acme/workflow-oncall
+amy --workflow oncall start
+```
+
+That package exports a `plan()` — pure, `(record, observation, policy) => Plan`
+— and a runtime that says how each of its actions runs. About forty lines for
+a simple one; there is a complete example at
+[`.software-factory/evidence/installed-plugins/workflow-oncall/index.js`](.software-factory/evidence/installed-plugins/workflow-oncall/index.js).
+
+The point is the ones that cannot be shared. A process that names your
+employer's tooling, a private feedback step, an on-call rota: those live in a
+package of yours, versioned wherever you like, and amy mounts them exactly the
+way it mounts its own. `/amy-workflow` designs one by interrogating you a
+question at a time.
+
+Each profile keeps its records and queue under `~/.amy/<name>/`, so swapping
+which workflow you drive never costs you the other one's state.
+
+## Commands
+
+| Command | What it does |
+| :-- | :-- |
+| `amy init` | Write the config and roster templates. |
+| `amy doctor` | Check everything it depends on. Exits non-zero when something is wrong. |
+| `amy discover` | Put every piece of work the workflow can find onto the queue. |
+| `amy tick` | Advance one piece of work by one move. |
+| `amy run` | Keep advancing until nothing is due, then exit. `--max N`. |
+| `amy start` | Run the loop in the background. `--every <seconds>`. |
+| `amy stop` | End that loop. |
+| `amy pause` / `amy resume` | The handbrake. Ends work in flight, starts nothing new. |
+| `amy status` | Where everything stands, the queue, the loop. `--json`. |
+| `amy note "<text>"` | Write a piece of friction down and queue it. |
+| `amy btw "<text>"` | Something to do, said in passing. Queued as an errand, never a ticket. |
+| `amy workflow list` | Every workflow this install can drive, and what each holds. |
+| `amy workflow rm <name>` | Forget one: records, queue, config entry. Needs `--yes`. |
+| `amy plugin list` | What is installed, and what this profile mounts. |
+| `amy plugin add` / `remove` | Change what a profile mounts. |
+| `amy skills` | Install the skills into the harnesses on this machine. |
+| `amy budget` | What the agents have spent, against the ceiling. |
+| `amy roster confirm` / `show` | Who is reviewing today. |
+| `amy queue prune` / `recover` | Tidy the queue; return what a dead worker left. |
+| `amy models show` / `refresh` | What each model is believed to cost. |
+
+`--workflow <name>` before any of them chooses which profile it drives.
+
+## The skills
+
+Six skills, shipped inside `@amy/cli` and installed into every harness on the
+machine by `amy skills`. Invoke them by name.
+
+| Skill | When |
+| :-- | :-- |
+| `/amy` | Driving it: pick up a ticket, move work on, read the status. |
+| `/amy-init` | Setting it up, or when `amy doctor` is red and it is not obvious why. |
+| `/amy-btw` | Capturing something said in passing as work amy will do. |
+| `/amy-workflow` | Designing a workflow, or changing one. One question at a time. |
+| `/amy-show-me` | Seeing a workflow: its shape, and why one thing is stuck. |
+| `/amy-status` | What should I do today, from the project's side rather than the machine's. |
+
+`/amy-develop`, for changing amy's own codebase, is not among them: it lives
+in `.claude/skills/` and belongs to this repository, because nobody installing
+amy has a reason to carry it.
+
+Their job is judgement — interrogating a design, reading a config, choosing
+what to show. Everything a command can do, a command does: a skill that
+wrapped one would be a second thing to keep in step, and one that quietly did
+not load looks exactly like one that did and had nothing to say.
+
+## Why an install, not a checkout
+
+**The code under test should be the code that ships.** Every unit test here
+imports a source file from inside the workspace, so an install missing half of
+what it needs passes all of them. That is why plugins resolve by name at run
+time, why naming one nobody installed is refused at boot with the list of what
+is installed, and why there is a gate that runs the installed command from a
+directory with no checkout in it.
+
+**Your working directory should not be a repository.** amy works on tickets
+that name real colleagues and real customers. If the program doing that work
+ran inside a git repository, every accident that drops a file in the working
+directory would be one `git add -A` away from being published. It keeps
+nothing where you are standing.
+
+Every line amy writes to the log names the build that wrote it. An install
+built from a tree with uncommitted work in it stamps `dev`, because that is
+the truth: it is not a release anybody can go back to.
+
+---
+
 ## The machine
 
 ```text
@@ -85,8 +260,22 @@ one a human contributor meets.
 
 The two workflows run on the same engine, the same queue and store, the same
 relay and forge, and one event log — so one budget. Only the records and the
-queue are per workflow. `--workflow` chooses which one an invocation drives,
-because `mount()` still claims a single workflow.
+queue are per workflow, under `.amy/<name>/`, so swapping which one you drive
+never costs you the other one's state. `--workflow` chooses which, because
+`mount()` still claims a single workflow.
+
+And there can be a third, which is the point of the two being plugins.
+A profile is an entry in the config:
+
+```yaml
+workflows:
+  oncall:
+    workflow: "@acme/workflow-oncall"    # a package this repository never shipped
+```
+
+Install that package and `amy --workflow oncall tick` drives it, on the same
+engine, against the same budget. Nothing in the command line enumerates what
+is allowed.
 
 And it closes: a tick this machine gives up on leaves a note behind, so the
 thing that broke becomes the thing that gets fixed.
@@ -295,65 +484,6 @@ Nothing reaches the outside world except through `CommandRunner` or
 `GraphQLClient`, which is why every adapter is tested against a scripted
 answer instead of the real `gh`, `claude`, `git` or API.
 
-## Installing it
-
-This repository is the source. What runs is a single executable installed
-somewhere on your `PATH`:
-
-```sh
-npm run install:local     # builds with bun, installs to ~/.local/bin/amy
-amy --version             # 0.1.0 (83ef192, built 2026-09-03T20:28:44Z)
-```
-
-Two reasons it works this way, and neither is convenience.
-
-**The code under test should be the code that ships.** Every unit test here
-imports a source file from inside the workspace, so a build that carries no
-plugins at all passes all of them. That is not hypothetical: it is what a
-bundler produces from a dynamic `import(spec)`, and it is why the loader keeps
-a table of literal imports and why there is a gate that runs the installed
-binary from a directory with no checkout in it.
-
-**Your working directory should not be a repository.** amy works on tickets
-that name real colleagues and real customers. If the program doing that work
-runs inside a git repository, every accident that drops a file in the working
-directory is one `git add -A` away from being published.
-
-Every line amy writes to the log names the build that wrote it. Running from
-source stamps `dev`, because that is the truth: it was not a build.
-
-## Setting it up
-
-```sh
-amy init                  # write the config and roster templates
-# edit .amy/config.yaml and .amy/roster.yaml
-cp .env.example .env          # then put your Linear key in it
-amy roster confirm        # stamp today's date
-amy doctor                # check every dependency before it touches a ticket
-```
-
-The Linear personal API key comes from Settings, Security and access. It is
-read from `.env` in the working directory, which is gitignored. Anything
-already exported in the shell wins over the file, so overriding it for one
-command stays reliable.
-
-`amy doctor` is worth running first. It checks the config, the roster's
-freshness, the API key, `gh`, `claude` and `git`, the Hermes target, and that
-every configured repository is actually checked out.
-
-## Running it
-
-```sh
-amy discover         # put in-progress tickets on the queue
-amy run              # keep advancing until nothing is due
-amy status           # where every ticket stands, and what is waiting on you
-amy tick             # exactly one move, for watching or debugging
-amy queue prune      # drop finished items past their retention
-amy queue recover    # return items a dead worker left claimed
-amy roster confirm   # every workday, before it will assign anybody
-amy budget           # what the agents have spent, against the ceiling
-```
-
 ## Who does each step
 
 The agent is called in four places, and by default each call is amy asking in
@@ -536,18 +666,20 @@ $ sf check --allow-commands
     the implementation changed since gate `plugin-file-queue` was proven
 ```
 
-Five gates exist. `@amy/plugin-file-queue`, because the engine cannot survive
+Seven gates exist. `@amy/plugin-file-queue`, because the engine cannot survive
 it handing one item out twice. `@amy/plugin-agent-relay`, because it decides
 how money gets spent when something goes wrong. `@amy/plugin-serial-engine`,
-because it decides whether a ticket gets lost. The installed binary, because
-every test in the suite imports from inside the workspace. And the whole
-machine, below, because none of the four answers the question somebody
+because it decides whether a ticket gets lost. The installed command, because
+every test in the suite imports from inside the workspace. A machine that
+installed four packages and a workflow written elsewhere, because a plugin
+model nobody outside this repository can use is not one. And the two whole
+workflows, below, because none of the others answers the question somebody
 actually has.
 
 ### The test environment
 
-Five scenarios run under `npm run e2e`, and the last one is the whole machine.
-It installs the executable, drops it in a directory with no checkout in it,
+Seven scenarios run under `npm run e2e`, and the last two are the whole machine.
+The one below installs amy, drops it in a directory with no checkout in it,
 and drives it through one ticket with the commands the sections above tell an
 operator to type: `amy init`, `amy roster confirm`, `amy doctor`,
 `amy discover`, then `amy tick` until there is nothing due.
@@ -556,7 +688,7 @@ What it is driven against is a world:
 
 | Real | A stand-in |
 | --- | --- |
-| the installed binary, and every adapter in it | the tracker, as GraphQL on a loopback socket |
+| the installed command, and every adapter in it | the tracker, as GraphQL on a loopback socket |
 | two git repositories, the clones, the commits, the push | `gh`, as an executable on the `PATH` |
 | the gate, as two shell commands against a real file | `claude`, as an executable that edits real files |
 
@@ -600,6 +732,7 @@ packages/
 ├── core/                    contracts, the action catalogue, the registry
 ├── workflow-ticket-to-qa/   sixteen states, from in progress to QA
 ├── workflow-note-to-plan/   five states and a refusal, from friction to a plan
+├── workflow-errand/         five states, from a sentence to a pull request
 ├── model-specs/             what a model costs, vendored and locked
 ├── agent-kit/               what every harness plugin shares, and the ladder
 ├── cli/                     the amy command
@@ -610,6 +743,7 @@ plugins/
 ├── file-store/              store
 ├── file-log/                the event log
 ├── file-notes/              notes, and the channel that writes one on a failure
+├── file-tasks/              tasks, written by `amy btw` or by hand
 ├── serial-engine/           engine
 ├── linear/                  tracker
 ├── github/                  code host
@@ -619,9 +753,20 @@ plugins/
 ├── agent-relay/             the agent port, and the ladder behind it
 ├── command-gate/            gate
 ├── plan-check/              plan-check
+├── command/                 any CLI, by a name the config allows
 ├── notify-fanout/           notifier, and the channels it fans out to
 ├── notify-hermes/           channel: Hermes
 └── notify-inbox/            channel: a file plus a desktop notification
+
+packages/cli/skills/         shipped inside @amy/cli, installed by `amy skills`
+├── amy/                     driving it
+├── amy-init/                setting it up
+├── amy-workflow/            designing one, a question at a time
+├── amy-show-me/             seeing one
+└── amy-status/              what should I do today
+
+.claude/skills/
+└── amy-develop/             changing amy itself — this repository only
 ```
 
 A plugin's directory drops the prefix its package name keeps: `plugins/github`
@@ -634,6 +779,12 @@ An adapter depends on `core` for infrastructure, and on a workflow only for
 the types that workflow declares — which is why `plugins/github` depends on
 neither: `CodeHost` is the core's, and one mounted adapter serves both
 workflows. Nothing depends on the CLI.
+
+## Contributing
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) — the five minutes before your first
+change, what has to be green, and the one architectural rule everything else
+follows from.
 
 ## License
 

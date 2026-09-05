@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { plugin as notifyHermes } from "@amy/plugin-notify-hermes";
 import { ScriptedRunner, whenArgsInclude } from "@amy/test-fixtures";
 import { Check, DoctorDeps, diagnose } from "../src/doctor.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
@@ -22,20 +23,24 @@ function labelled(checks: Check[], fragment: string): Check | undefined {
 }
 
 describe("diagnose", () => {
-  let root: string;
+  let home: string;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-doctor-"));
-    fs.mkdirSync(paths(root).base, { recursive: true });
+    home = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-doctor-")), ".amy");
+    fs.mkdirSync(paths(home).base, { recursive: true });
   });
 
   afterEach(() => {
-    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(path.dirname(home), { recursive: true, force: true });
   });
+
+  /** Where the repositories would be, which is not where amy keeps state. */
+  const checkouts = () => path.dirname(home);
 
   function deps(overrides: Partial<DoctorDeps> = {}): DoctorDeps {
     return {
-      root,
+      home,
+      cwd: path.dirname(home),
       config: { ...DEFAULT_CONFIG, repos: ["acme/widgets"], gate: { default: ["npm test"] } },
       runner: new ScriptedRunner([
         { match: whenArgsInclude("--list"), result: { stdout: HERMES_LISTING } },
@@ -43,6 +48,10 @@ describe("diagnose", () => {
       env: { LINEAR_API_KEY: "lin_api_test" },
       now: WORKDAY,
       readRoster: () => ROSTER,
+      // What the plugins this install loaded said their settings look like.
+      // Taken from the plugin itself, so a schema nobody declares cannot be
+      // asserted against here either.
+      schemas: { [notifyHermes.name]: notifyHermes.configSchema! },
       ...overrides,
     };
   }
@@ -54,7 +63,7 @@ describe("diagnose", () => {
   });
 
   it("passes once the config file exists", async () => {
-    fs.writeFileSync(paths(root).config, "repos: [acme/widgets]\n");
+    fs.writeFileSync(paths(home).config, "repos: [acme/widgets]\n");
 
     const checks = await diagnose(deps());
 
@@ -185,7 +194,7 @@ describe("diagnose", () => {
   });
 
   it("fails a repository that is not checked out", async () => {
-    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: root };
+    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: checkouts() };
 
     const checks = await diagnose(deps({ config }));
 
@@ -193,8 +202,8 @@ describe("diagnose", () => {
   });
 
   it("passes a repository that is", async () => {
-    fs.mkdirSync(path.join(root, "widgets", ".git"), { recursive: true });
-    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: root };
+    fs.mkdirSync(path.join(checkouts(), "widgets", ".git"), { recursive: true });
+    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: checkouts() };
 
     const checks = await diagnose(deps({ config }));
 
@@ -232,7 +241,7 @@ describe("diagnose", () => {
     expect(check?.detail).toContain("`target` is required");
   });
 
-  it("fails a slice for a plugin this build does not have", async () => {
+  it("fails a slice for a plugin nothing mounted", async () => {
     // A setting written for a plugin nobody installed is a setting that will
     // never do anything, which is worth saying out loud.
     const config = { ...DEFAULT_CONFIG, plugins: { "@amy/plugin-imaginary": { a: 1 } } };
@@ -241,7 +250,7 @@ describe("diagnose", () => {
 
     expect(labelled(checks, "settings for @amy/plugin-imaginary")).toMatchObject({
       ok: false,
-      detail: "this build has no such plugin",
+      detail: "nothing mounted declares these settings",
     });
   });
 });

@@ -58,6 +58,7 @@ export function thread(overrides: Partial<ReviewThread> = {}): ReviewThread {
 export function pullRequest(overrides: Partial<PullRequestView> = {}): PullRequestView {
   return {
     number: 4940,
+    url: "https://github.example.test/acme/widgets/pull/4940",
     headSha: HEAD,
     isDraft: false,
     reviewDecision: "REVIEW_REQUIRED",

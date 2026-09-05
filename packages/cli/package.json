@@ -33,33 +33,25 @@
   },
   "files": [
     "dist",
-    "capabilities.yaml"
+    "skills"
   ],
   "dependencies": {
     "@amy/core": "^0.1.0",
     "@amy/model-specs": "^0.1.0",
-    "@amy/plugin-agent-relay": "^0.1.0",
-    "@amy/plugin-claude": "^0.1.0",
-    "@amy/plugin-codex": "^0.1.0",
-    "@amy/plugin-command-gate": "^0.1.0",
     "@amy/plugin-file-log": "^0.1.0",
     "@amy/plugin-file-notes": "^0.1.0",
     "@amy/plugin-file-queue": "^0.1.0",
     "@amy/plugin-file-store": "^0.1.0",
-    "@amy/plugin-github": "^0.1.0",
-    "@amy/plugin-hermes-agent": "^0.1.0",
-    "@amy/plugin-linear": "^0.1.0",
-    "@amy/plugin-notify-fanout": "^0.1.0",
+    "@amy/plugin-file-tasks": "^0.1.0",
     "@amy/plugin-notify-hermes": "^0.1.0",
-    "@amy/plugin-notify-inbox": "^0.1.0",
-    "@amy/plugin-plan-check": "^0.1.0",
-    "@amy/plugin-serial-engine": "^0.1.0",
-    "@amy/workflow-note-to-plan": "^0.1.0",
     "@amy/workflow-ticket-to-qa": "^0.1.0",
     "commander": "^14.0.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amy/plugin-serial-engine": "^0.1.0",
+    "@amy/test-fixtures": "^0.1.0",
+    "@amy/workflow-errand": "^0.1.0",
+    "@amy/workflow-note-to-plan": "^0.1.0"
   }
 }

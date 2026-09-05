@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { DEFAULT_CONFIG } from "../src/config.js";
+import { profiles } from "../src/profiles.js";
 import { ladderNames, pluginList, pluginSlices, tiersFor } from "../src/slices.js";
+
+const TICKETS = profiles(DEFAULT_CONFIG)["ticket-to-qa"]!;
+const PLANS = profiles(DEFAULT_CONFIG)["note-to-plan"]!;
 
 const CONFIG = {
   ...DEFAULT_CONFIG,
@@ -14,7 +18,7 @@ const CONFIG = {
 
 describe("pluginSlices", () => {
   it("gives the tracker the status name it matches on", () => {
-    const slices = pluginSlices(CONFIG) as Record<string, Record<string, unknown>>;
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
     expect(slices["@amy/plugin-linear"]).toMatchObject({
       workingStatusName: "In Progress",
@@ -23,7 +27,7 @@ describe("pluginSlices", () => {
   });
 
   it("gives the agent and the gate the branch new work is cut from", () => {
-    const slices = pluginSlices(CONFIG) as Record<string, Record<string, unknown>>;
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
     // Not always `main`, and branching off the wrong base is silent.
     expect(slices["@amy/plugin-claude"]?.defaultBranch).toBe("dev");
@@ -31,7 +35,7 @@ describe("pluginSlices", () => {
   });
 
   it("gives the gate the commands, per repository", () => {
-    const slices = pluginSlices(CONFIG) as Record<string, Record<string, unknown>>;
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
     expect(slices["@amy/plugin-command-gate"]?.commands).toEqual({ "acme/widgets": ["npm test"] });
   });
@@ -40,7 +44,7 @@ describe("pluginSlices", () => {
     const slices = pluginSlices({
       ...CONFIG,
       policy: { ...CONFIG.policy, maxOpenReviewsPerReviewer: 0 },
-    }) as Record<string, Record<string, unknown>>;
+    }, TICKETS) as Record<string, Record<string, unknown>>;
 
     // The policy is written in the workflow's vocabulary — attempt ceilings,
     // backoffs, how many open reviews one person may be handed — so it goes
@@ -55,34 +59,52 @@ describe("pluginSlices", () => {
     const slices = pluginSlices({
       ...CONFIG,
       agent: { ...CONFIG.agent, budget },
-    }) as Record<string, Record<string, unknown>>;
+    }, TICKETS) as Record<string, Record<string, unknown>>;
 
     expect(slices["@amy/plugin-agent-relay"]?.budget).toEqual(budget);
   });
 
   it("gives the relay the skills, because it is what decides who answers", () => {
     const skills = { triage: ["/logion"] };
-    const slices = pluginSlices({ ...CONFIG, skills }) as Record<string, Record<string, unknown>>;
+    const slices = pluginSlices({ ...CONFIG, skills }, TICKETS) as Record<string, Record<string, unknown>>;
 
     expect(slices["@amy/plugin-agent-relay"]?.skills).toEqual(skills);
   });
 
   it("says nothing about a channel that is not configured", () => {
-    const slices = pluginSlices({ ...CONFIG, notify: { tracker: true, hermes: null, inbox: false } });
+    const slices = pluginSlices(
+      { ...CONFIG, notify: { tracker: true, hermes: null, inbox: false } },
+      TICKETS,
+    );
 
     expect("@amy/plugin-notify-hermes" in slices).toBe(false);
     expect("@amy/plugin-notify-inbox" in slices).toBe(false);
   });
 
-  it("lets an explicit slice win over what was derived", () => {
+  it("keeps the derived settings a hand-written slice did not mention", () => {
+    // The bug this is here for: a config that set `retentionDays` on the
+    // queue lost the `directory` beside it, so two profiles quietly shared
+    // one queue and each claimed the other's work.
+    const slices = pluginSlices(
+      { ...CONFIG, plugins: { "@amy/plugin-file-queue": { retentionDays: 30 } } },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amy/plugin-file-queue"]).toMatchObject({
+      retentionDays: 30,
+      directory: "ticket-to-qa/queue",
+    });
+  });
+
+  it("lets an explicit setting win over the one that was derived", () => {
     // This is the direction of travel: the derivation is a shim for a config
     // written before plugins declared their own settings.
     const slices = pluginSlices({
       ...CONFIG,
       plugins: { "@amy/plugin-claude": { model: "opus", defaultBranch: "trunk" } },
-    }) as Record<string, Record<string, unknown>>;
+    }, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-claude"]).toEqual({ model: "opus", defaultBranch: "trunk" });
+    expect(slices["@amy/plugin-claude"]).toMatchObject({ model: "opus", defaultBranch: "trunk" });
   });
 });
 
@@ -114,7 +136,7 @@ describe("the ladder, which is the one place harnesses are named", () => {
     const slices = pluginSlices({
       ...CONFIG,
       agent: { ladder: ["claude:sonnet", "claude:opus", "codex:gpt-5"] },
-    }) as Record<string, Record<string, unknown>>;
+    }, TICKETS) as Record<string, Record<string, unknown>>;
 
     // One list to edit: the ladder names the tiers, and the harness plugins
     // contribute exactly those names back for the relay to find.
@@ -128,7 +150,7 @@ describe("the ladder, which is the one place harnesses are named", () => {
   });
 
   it("leaves the tiers empty when no ladder was written, which is one agent", () => {
-    const slices = pluginSlices(CONFIG) as Record<string, Record<string, unknown>>;
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
     expect(slices["@amy/plugin-claude"]?.models).toEqual([]);
     expect(slices["@amy/plugin-agent-relay"]?.ladder).toEqual([]);
@@ -136,16 +158,31 @@ describe("the ladder, which is the one place harnesses are named", () => {
 });
 
 describe("pluginList", () => {
-  const BUILT_IN = ["@amy/plugin-a", "@amy/plugin-notify-hermes", "@amy/plugin-notify-inbox"];
+  it("uses what the profile asked for, in that order", () => {
+    const oncall = { ...TICKETS, plugins: ["@amy/plugin-z", "@amy/plugin-a"] };
 
-  it("uses what the config asked for, in that order", () => {
-    const config = { ...CONFIG, pluginList: ["@amy/plugin-z", "@amy/plugin-a"] };
-
-    expect(pluginList(config, BUILT_IN)).toEqual(["@amy/plugin-z", "@amy/plugin-a"]);
+    expect(pluginList(CONFIG, oncall)).toEqual(["@amy/plugin-z", "@amy/plugin-a"]);
   });
 
-  it("falls back to the built-in set", () => {
-    expect(pluginList(CONFIG, BUILT_IN)).toContain("@amy/plugin-a");
+  it("falls back to what the workflow needs, starting with the workflow", () => {
+    expect(pluginList(CONFIG, TICKETS)[0]).toBe("@amy/workflow-ticket-to-qa");
+    expect(pluginList(CONFIG, PLANS)[0]).toBe("@amy/workflow-note-to-plan");
+  });
+
+  it("recommends a different set for a workflow it has never heard of", () => {
+    // The shared half, and nothing invented: a third workflow lists whatever
+    // else it needs in its own `plugins:`.
+    const oncall = {
+      name: "oncall",
+      workflow: "@acme/workflow-oncall",
+      plugins: [],
+      takesNotes: false,
+      takesTasks: false,
+    };
+
+    expect(pluginList(CONFIG, oncall)[0]).toBe("@acme/workflow-oncall");
+    expect(pluginList(CONFIG, oncall)).toContain("@amy/plugin-serial-engine");
+    expect(pluginList(CONFIG, oncall)).not.toContain("@amy/plugin-linear");
   });
 
   it("leaves out a channel nobody configured", () => {
@@ -153,36 +190,35 @@ describe("pluginList", () => {
     // there, which fails at the worst moment rather than at boot.
     const config = { ...CONFIG, notify: { tracker: true, hermes: null, inbox: false } };
 
-    expect(pluginList(config, BUILT_IN)).toEqual(["@amy/plugin-a"]);
+    expect(pluginList(config, TICKETS)).not.toContain("@amy/plugin-notify-hermes");
+    expect(pluginList(config, TICKETS)).not.toContain("@amy/plugin-notify-inbox");
   });
 
   it("keeps a channel that is configured", () => {
     const config = { ...CONFIG, notify: { tracker: true, hermes: "slack:ops", inbox: true } };
 
-    expect(pluginList(config, BUILT_IN)).toEqual(BUILT_IN);
+    expect(pluginList(config, TICKETS)).toContain("@amy/plugin-notify-hermes");
+    expect(pluginList(config, TICKETS)).toContain("@amy/plugin-notify-inbox");
   });
 
   it("leaves out a harness the ladder never named", () => {
     // Mounting codex on a machine that never installed it only produces a
     // doctor failure for a tool the operator did not ask for.
-    const harnesses = ["@amy/plugin-claude", "@amy/plugin-codex", "@amy/plugin-hermes-agent"];
-
-    expect(pluginList(CONFIG, harnesses)).toEqual(["@amy/plugin-claude"]);
+    expect(pluginList(CONFIG, TICKETS)).toContain("@amy/plugin-claude");
+    expect(pluginList(CONFIG, TICKETS)).not.toContain("@amy/plugin-codex");
+    expect(pluginList(CONFIG, TICKETS)).not.toContain("@amy/plugin-hermes-agent");
   });
 
   it("mounts the harnesses the ladder does name", () => {
-    const harnesses = ["@amy/plugin-claude", "@amy/plugin-codex", "@amy/plugin-hermes-agent"];
     const config = { ...CONFIG, agent: { ladder: ["claude:sonnet", "hermes"] } };
 
-    expect(pluginList(config, harnesses)).toEqual([
-      "@amy/plugin-claude",
-      "@amy/plugin-hermes-agent",
-    ]);
+    expect(pluginList(config, TICKETS)).toContain("@amy/plugin-hermes-agent");
+    expect(pluginList(config, TICKETS)).not.toContain("@amy/plugin-codex");
   });
 
   it("always keeps the relay, because nothing else mounts the agent port", () => {
     // Dropping it leaves every agent action without a port, and mount()
     // refuses at boot rather than failing at the first ticket.
-    expect(pluginList(CONFIG, ["@amy/plugin-agent-relay"])).toEqual(["@amy/plugin-agent-relay"]);
+    expect(pluginList(CONFIG, TICKETS)).toContain("@amy/plugin-agent-relay");
   });
 });

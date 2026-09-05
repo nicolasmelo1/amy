@@ -2,40 +2,67 @@
   "files": [],
   "references": [
     {
+      "path": "./packages/workflow-errand"
+    },
+    {
+      "path": "./plugins/command"
+    },
+    {
+      "path": "./plugins/file-tasks"
+    },
+    {
+      "path": "packages/agent-kit"
+    },
+    {
+      "path": "packages/cli"
+    },
+    {
       "path": "packages/core"
     },
     {
       "path": "packages/model-specs"
     },
     {
-      "path": "packages/workflow-ticket-to-qa"
+      "path": "packages/test-fixtures"
     },
     {
       "path": "packages/workflow-note-to-plan"
     },
     {
-      "path": "plugins/file-queue"
+      "path": "packages/workflow-ticket-to-qa"
     },
     {
-      "path": "plugins/file-log"
-    },
-    {
-      "path": "plugins/file-store"
-    },
-    {
-      "path": "plugins/serial-engine"
-    },
-    {
-      "path": "plugins/linear"
-    },
-    {
-      "path": "plugins/github"
+      "path": "plugins/agent-relay"
     },
     {
       "path": "plugins/claude"
     },
     {
+      "path": "plugins/codex"
+    },
+    {
       "path": "plugins/command-gate"
+    },
+    {
+      "path": "plugins/file-log"
+    },
+    {
+      "path": "plugins/file-notes"
+    },
+    {
+      "path": "plugins/file-queue"
+    },
+    {
+      "path": "plugins/file-store"
+    },
+    {
+      "path": "plugins/github"
+    },
+    {
+      "path": "plugins/hermes-agent"
+    },
+    {
+      "path": "plugins/linear"
     },
     {
       "path": "plugins/notify-fanout"
@@ -47,28 +74,10 @@
       "path": "plugins/notify-inbox"
     },
     {
-      "path": "packages/agent-kit"
-    },
-    {
-      "path": "plugins/codex"
-    },
-    {
-      "path": "plugins/hermes-agent"
-    },
-    {
-      "path": "plugins/agent-relay"
-    },
-    {
-      "path": "packages/cli"
-    },
-    {
-      "path": "packages/test-fixtures"
-    },
-    {
-      "path": "plugins/file-notes"
-    },
-    {
       "path": "plugins/plan-check"
+    },
+    {
+      "path": "plugins/serial-engine"
     }
   ]
 }

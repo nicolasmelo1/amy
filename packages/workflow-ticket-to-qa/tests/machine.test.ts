@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { Plan } from "@amy/core";
 import { plan } from "../src/machine.js";
-import { Plan } from "../src/effects.js";
 import {
   HEAD,
   OLD_HEAD,

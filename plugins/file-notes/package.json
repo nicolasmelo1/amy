@@ -25,12 +25,13 @@
     }
   },
   "files": [
-    "dist",
-    "capabilities.yaml"
+    "dist"
   ],
   "dependencies": {
     "@amy/core": "^0.1.0",
-    "@amy/plugin-notify-fanout": "^0.1.0",
+    "@amy/plugin-notify-fanout": "^0.1.0"
+  },
+  "devDependencies": {
     "@amy/workflow-note-to-plan": "^0.1.0"
   }
 }

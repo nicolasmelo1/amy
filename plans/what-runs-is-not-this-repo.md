@@ -44,17 +44,35 @@ them undefined and the stamp reads `dev`, which is the truth: it was not a
 build. A tree with uncommitted changes gets `-dirty`, because a stamp naming a
 commit that does not describe the code is worse than no stamp.
 
+## What replaced the binary, and what did not
+
+The compiled executable is gone — see
+[plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md).
+Both problems above outlived it. What ships is built JavaScript installed by
+npm and run by node, which is a program on `PATH` in a directory that is not
+this repository, exactly as the binary was, and the identity now arrives as a
+stamp `npm pack` writes into the package rather than as a literal a compiler
+substituted.
+
+The criteria below moved with it. The two that asserted the *mechanism* —
+that a plugin was inside the binary — are replaced by the ones that assert
+the *claim*: that the install says which build it is, and says `dev` when it
+was built from a tree nobody committed.
+
 ## Acceptance criteria
 
 - [x] The installed executable runs from a directory containing no checkout,
       no `node_modules` and no `package.json`
       (proof: assertion:installed.runs_without_a_checkout)
-- [x] Every built-in plugin is inside the binary, which a dynamic import
-      would leave unresolvable
-      (proof: assertion:installed.plugins_are_inside_the_binary)
-- [x] Every plugin in the default set resolves, so a half-filled table is
-      caught as well as an empty one
-      (proof: assertion:installed.every_plugin_resolves)
+- [x] State is kept in one place per machine, not beside whoever ran the
+      command (proof: assertion:installed.keeps_state_in_its_own_home)
+- [x] A command typed in another directory starts no second state there
+      (proof: assertion:installed.keeps_nothing_where_you_stand)
+- [x] Every log line carries a build, on the path nobody sets by hand
+      (proof: assertion:installed.log_line_names_the_build)
+- [x] An install built from a tree with uncommitted work in it says `dev`,
+      and one built from a committed tree says which commit
+      (proof: assertion:installed.says_dev_only_when_it_is_one)
 - [x] State is written beside the caller and never into the source tree
       (proof: assertion:installed.does_not_write_into_the_source_tree)
 - [x] Every log line names the build that wrote it, and that build is the one
@@ -66,5 +84,6 @@ commit that does not describe the code is worse than no stamp.
 
 **Exit condition:** `amy` resolves on `PATH`, runs a ticket from a directory
 that is not this repository, and every line it writes to the log names the
-version and commit that produced it. Reverting the loader to a dynamic import
-turns the gate red.
+build that produced it — a version and a commit when there was one to name,
+and `dev` when there was not. An install that lied about which it was turns
+the gate red.

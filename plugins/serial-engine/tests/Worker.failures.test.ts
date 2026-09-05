@@ -2,10 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Worker, WorkerDeps } from "../src/Worker.js";
+import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amy/plugin-file-queue";
 import { LogBudget } from "@amy/core";
-import { WORKDAY } from "@amy/test-fixtures";
+import { WORKDAY,
+  TicketWorkerOverrides,
+} from "@amy/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
@@ -42,7 +44,7 @@ describe("a dependency that goes down and comes back", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: Partial<WorkerDeps> = {}): Worker {
+  function build(overrides: TicketWorkerOverrides = {}): Worker {
     return new Worker({
       queue,
       records,
@@ -132,7 +134,7 @@ describe("a dependency that goes down and comes back", () => {
     // A ticket already failing, whose next move would spend an agent, against
     // a budget with no room. The park carries the attempt count, so the tick
     // after it must not announce a recovery that never happened.
-    records.save({ ...newRecordAt("PROJ-1239", clock), state: "IMPLEMENTING" });
+    records.save({ ...newRecordAt("PROJ-1239", clock), state: "IMPLEMENTING", history: [] });
     queue.enqueue({ workId: "PROJ-1239", reason: "retrying", attempt: 2 }, clock);
 
     const spent = new RecordingEventLog();

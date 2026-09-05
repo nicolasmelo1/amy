@@ -9,8 +9,9 @@ import {
   WORKDAY,
   fakeTracker,
   ticketWorkerDeps,
+  TicketWorkerOverrides,
 } from "@amy/test-fixtures";
-import { Worker, WorkerDeps } from "../src/Worker.js";
+import { Worker } from "../src/Worker.js";
 
 /**
  * Which of the three the engine says it is saying.
@@ -35,7 +36,7 @@ describe("what kind of announcement the engine makes", () => {
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  function build(overrides: Partial<WorkerDeps> = {}, maxItemAttempts = 5): Worker {
+  function build(overrides: TicketWorkerOverrides = {}, maxItemAttempts = 5): Worker {
     return new Worker({
       queue,
       records: new InMemoryStore(),

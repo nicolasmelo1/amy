@@ -392,6 +392,7 @@ describe("the pull request the machine can see", () => {
   it("is what it was told, so DONE means a pull request genuinely exists", async () => {
     const view: PullRequestView = {
       number: 7,
+      url: "https://github.example.test/acme/widgets/pull/7",
       headSha: "abc",
       isDraft: false,
       reviewDecision: null,

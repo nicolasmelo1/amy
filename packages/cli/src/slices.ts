@@ -1,6 +1,6 @@
 import path from "node:path";
 import { AmyConfig } from "./config.js";
-import { DEFAULT_PROFILE, Profile, directoriesFor } from "./profiles.js";
+import { Profile, directoriesFor, recommendedFor } from "./profiles.js";
 
 /**
  * The settings each plugin gets, derived from the top-level config.
@@ -10,11 +10,8 @@ import { DEFAULT_PROFILE, Profile, directoriesFor } from "./profiles.js";
  * it. An explicit `plugins:` slice always wins, which is the direction this
  * is moving in.
  */
-export function pluginSlices(
-  config: AmyConfig,
-  profile: Profile = DEFAULT_PROFILE,
-): Record<string, unknown> {
-  const dirs = directoriesFor(profile);
+export function pluginSlices(config: AmyConfig, profile: Profile): Record<string, unknown> {
+  const dirs = directoriesFor(profile.name);
 
   const derived: Record<string, unknown> = {
     "@amy/plugin-linear": {
@@ -55,6 +52,17 @@ export function pluginSlices(
       defaultBranch: config.defaultBranch,
       policy: config.plans.policy,
     },
+    // The third workflow's vocabulary: where an errand may be done, and the
+    // ceilings its decision function reads.
+    "@amy/workflow-errand": {
+      repos: config.repos,
+      defaultBranch: config.defaultBranch,
+      policy: config.errands.policy,
+    },
+    "@amy/plugin-file-tasks": {
+      directory: "tasks",
+      repo: config.repos[0] ?? "",
+    },
     "@amy/plugin-plan-check": {
       defaultBranch: config.defaultBranch,
       commands: config.plans.check,
@@ -83,7 +91,21 @@ export function pluginSlices(
     derived["@amy/plugin-notify-inbox"] = { directory: "needs-input" };
   }
 
-  return { ...derived, ...config.plugins };
+  // Merged per plugin, not replaced. A slice written by hand names the one
+  // or two settings somebody meant to change; replacing the whole slice would
+  // drop the derived ones beside them — which is how two profiles ended up
+  // sharing a queue, because the operator had set `retentionDays` and lost
+  // `directory` without being told.
+  const merged: Record<string, unknown> = { ...derived };
+  for (const [name, given] of Object.entries(config.plugins)) {
+    merged[name] = isRecord(derived[name]) && isRecord(given) ? { ...derived[name], ...given } : given;
+  }
+
+  return merged;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -124,14 +146,9 @@ export function ladderNames(ladder: readonly string[], harness: string): boolean
   return ladder.some((entry) => entry === harness || entry.startsWith(`${harness}:`));
 }
 
-/** Which plugins to mount: what the config asked for, or the built-in set. */
-export function pluginList(
-  config: AmyConfig,
-  builtIn: readonly string[],
-  profile: Profile = DEFAULT_PROFILE,
-): string[] {
-  const asked = profile === "note-to-plan" ? config.plans.pluginList : config.pluginList;
-  if (asked.length > 0) return [...asked];
+/** Which plugins to mount: what the profile asked for, or what is recommended. */
+export function pluginList(config: AmyConfig, profile: Profile): string[] {
+  if (profile.plugins.length > 0) return [...profile.plugins];
 
   const ladder = config.agent.ladder ?? [];
 
@@ -139,7 +156,7 @@ export function pluginList(
   // announce into a target that is not there. Same reasoning for a harness:
   // mounting one whose binary is not installed only produces a doctor failure
   // for a tool the operator never asked for.
-  return builtIn.filter((name) => {
+  return recommendedFor(profile).filter((name) => {
     // A note needs somewhere to go. An install that named no repository to
     // write plans into would be watching a directory nothing could ever come
     // out of, so it does not watch one.

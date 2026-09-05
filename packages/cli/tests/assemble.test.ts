@@ -3,9 +3,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { HostServices, mount, unmetNeeds } from "@amy/core";
-import { DEFAULT_PLUGINS, load } from "../src/loader.js";
+import { load } from "../src/loader.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
+import { profiles, recommendedFor } from "../src/profiles.js";
 import { pluginSlices } from "../src/slices.js";
+
+const TICKETS = profiles(DEFAULT_CONFIG)["ticket-to-qa"]!;
 
 const ROSTER = {
   confirmedOn: "2026-09-03",
@@ -53,7 +56,7 @@ describe("assembling the built-in set", () => {
   });
 
   async function assemble(config = CONFIG) {
-    const loaded = await load(DEFAULT_PLUGINS);
+    const loaded = await load(recommendedFor(TICKETS));
     expect(loaded.problems).toEqual([]);
 
     const roster = {
@@ -63,7 +66,7 @@ describe("assembling the built-in set", () => {
         r.contribute("workflow-data", "roster", { read: () => ROSTER }),
     };
 
-    return mount([...loaded.plugins, roster], pluginSlices(config), host);
+    return mount([...loaded.plugins, roster], pluginSlices(config, TICKETS), host);
   }
 
   it("assembles without a single problem", async () => {

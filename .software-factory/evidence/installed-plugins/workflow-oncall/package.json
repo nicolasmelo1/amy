@@ -1,0 +1,9 @@
+{
+  "name": "@acme/workflow-oncall",
+  "version": "1.0.0",
+  "description": "A workflow amy has never heard of, for proving it does not need to.",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": { ".": "./index.js" }
+}

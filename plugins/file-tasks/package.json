@@ -1,0 +1,37 @@
+{
+  "name": "@amy/plugin-file-tasks",
+  "version": "0.1.0",
+  "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/file-tasks"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@amy/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@amy/test-fixtures": "^0.1.0",
+    "@amy/workflow-errand": "^0.1.0"
+  }
+}

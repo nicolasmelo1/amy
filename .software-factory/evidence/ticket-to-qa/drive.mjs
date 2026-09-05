@@ -115,7 +115,7 @@ function amy(root, args) {
   };
 }
 
-const recordFile = (root) => path.join(root, "home", ".amy", "tickets", `${TICKET}.json`);
+const recordFile = (root) => path.join(root, "home", ".amy", "ticket-to-qa", "records", `${TICKET}.json`);
 
 function recordOf(root) {
   const file = recordFile(root);
@@ -341,7 +341,7 @@ function lifecycle() {
     )
       .split("\n")
       .filter(Boolean);
-    world.queueReady = fs.readdirSync(path.join(root, "home", ".amy", "queue", "ready"));
+    world.queueReady = fs.readdirSync(path.join(root, "home", ".amy", "ticket-to-qa", "queue", "ready"));
 
     return world;
   } finally {

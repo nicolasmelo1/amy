@@ -26,7 +26,6 @@
   },
   "files": [
     "dist",
-    "capabilities.yaml",
     "events.json"
   ]
 }

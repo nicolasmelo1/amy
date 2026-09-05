@@ -1,13 +1,14 @@
 {
   "scenario": "installed-binary",
   "status": "passed",
-  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed executable runs from a directory with no checkout in it, carries its plugins inside itself, keeps state beside the caller rather than in the source tree, and stamps every log line with the build that wrote it.",
-  "artifact": { "package": "@amy/cli", "entry": "a single compiled executable", "built_by": "scripts/install.sh" },
+  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed command runs from a directory with no checkout in it, keeps its state in one place per machine rather than beside whoever ran it, stamps every log line with the build that wrote it, and calls itself a release only when it was built from a tree somebody committed.",
+  "artifact": { "package": "@amy/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
   "observed": {
-    "assertions_run": 12,
+    "assertions_run": 7,
     "assertions_failed": 0,
-    "version": "0.1.0 (76692e1-dirty, built 2026-09-04T23:37:24Z)",
-    "build_on_log_line": "0.1.0+76692e1-dirty"
+    "version": "dev (running from source, not an installed build)",
+    "tree_was_dirty": "yes",
+    "build_on_log_line": "dev"
   },
-  "assertions": [{"type":"installed.reports_a_real_build","status":"passed"},{"type":"installed.stamp_names_version_and_commit","status":"passed"},{"type":"installed.plugins_are_inside_the_binary","status":"passed"},{"type":"installed.every_plugin_resolves","status":"passed"},{"type":"installed.carries_the_whole_default_set","status":"passed"},{"type":"installed.runs_without_a_checkout","status":"passed"},{"type":"installed.keeps_state_beside_the_caller","status":"passed"},{"type":"installed.does_not_write_into_the_source_tree","status":"passed"},{"type":"installed.log_line_names_the_build","status":"passed"},{"type":"installed.log_build_matches_the_binary","status":"passed"},{"type":"installed.stamp_carries_a_commit","status":"passed"},{"type":"installed.is_one_file","status":"passed"}]
+  "assertions": [{"type":"installed.runs_without_a_checkout","status":"passed"},{"type":"installed.keeps_state_in_its_own_home","status":"passed"},{"type":"installed.keeps_nothing_where_you_stand","status":"passed"},{"type":"installed.does_not_write_into_the_source_tree","status":"passed"},{"type":"installed.log_line_names_the_build","status":"passed"},{"type":"installed.says_dev_only_when_it_is_one","status":"passed"},{"type":"installed.log_build_matches_the_binary","status":"passed"}]
 }

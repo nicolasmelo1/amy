@@ -3,12 +3,17 @@
 # The pending version bumps, one file per change, consumed by
 # `changeset version`. Empty between releases, and that is not a mistake.
 .changeset
+# The skills that belong to this repository rather than to anybody who
+# installs amy. `/amy-develop` is here and not in `packages/cli/skills`
+# because nothing about changing amy's own codebase travels with the command.
+.claude
 .env.example
 .githooks
 .github
 .gitignore
 .npmrc
 .software-factory
+CONTRIBUTING.md
 LICENSE
 README.md
 docs
@@ -17,8 +22,11 @@ package-lock.json
 package.json
 plans
 tsconfig.json
+# The tests, type-checked. `tsconfig.json` builds `src` only, and vitest
+# strips types without checking them, so without this a test can name a field
+# that does not exist and stay green.
+tsconfig.tests.json
 vitest.config.ts
-skills
 packages
 plugins
 # Builds and installs the executable. At the root because it is about the

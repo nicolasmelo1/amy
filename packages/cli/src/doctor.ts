@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, validateConfig } from "@amy/core";
+import { CommandRunner, ConfigSchema, validateConfig } from "@amy/core";
 import { hermesTargetIsKnown } from "@amy/plugin-notify-hermes";
 import { Roster, isConfirmedFor } from "@amy/workflow-ticket-to-qa";
 import { AmyConfig } from "./config.js";
-import { PLUGIN_SCHEMAS } from "./schemas.js";
+import { strayState } from "./home.js";
+import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
 
 export interface Check {
@@ -14,12 +15,23 @@ export interface Check {
 }
 
 export interface DoctorDeps {
-  root: string;
+  /** Where amy keeps its state, machine-wide. */
+  home: string;
   config: AmyConfig;
   runner: CommandRunner;
   env: NodeJS.ProcessEnv;
   now: Date;
-  readRoster: (root: string) => Roster;
+  readRoster: (home: string) => Roster;
+  /** Where the command was typed, which is not where amy keeps anything. */
+  cwd: string;
+  /**
+   * What each plugin said its settings look like, by package name.
+   *
+   * Handed in rather than looked up, because the only honest source is the
+   * plugins this install actually loaded. A table compiled in here would
+   * describe a machine other than the one being diagnosed.
+   */
+  schemas: Readonly<Record<string, ConfigSchema>>;
 }
 
 /**
@@ -36,6 +48,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     ...configContents(deps),
     ...pluginSettings(deps),
     roster(deps),
+    ...leftBehind(deps),
     apiKey(deps),
     ...(await tools(deps)),
     ...(await hermes(deps)),
@@ -43,8 +56,8 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
   ];
 }
 
-function configFile({ root }: DoctorDeps): Check {
-  const file = paths(root).config;
+function configFile({ home }: DoctorDeps): Check {
+  const file = paths(home).config;
   return { label: "config file", ok: fs.existsSync(file), detail: file };
 }
 
@@ -70,16 +83,16 @@ function configContents({ config }: DoctorDeps): Check[] {
  * a plugin this build does not have is not fine, because it is a setting
  * somebody wrote expecting it to do something.
  */
-function pluginSettings({ config }: DoctorDeps): Check[] {
+function pluginSettings({ config, schemas }: DoctorDeps): Check[] {
   const checks: Check[] = [];
 
   for (const [plugin, given] of Object.entries(config.plugins)) {
-    const schema = PLUGIN_SCHEMAS[plugin];
+    const schema = schemas[plugin];
     if (!schema) {
       checks.push({
         label: `settings for ${plugin}`,
         ok: false,
-        detail: "this build has no such plugin",
+        detail: "nothing mounted declares these settings",
       });
       continue;
     }
@@ -95,9 +108,41 @@ function pluginSettings({ config }: DoctorDeps): Check[] {
   return checks;
 }
 
-function roster({ root, now, readRoster }: DoctorDeps): Check {
+/**
+ * State written by a version that kept one pair of directories per install.
+ *
+ * Reported rather than moved: it is somebody's work in flight, and the one
+ * command that puts it where the new layout looks is cheaper to read than a
+ * migration that ran without being asked.
+ */
+function leftBehind({ home, cwd }: DoctorDeps): Check[] {
+  const base = paths(home).base;
+  const stray = strayState(cwd, base);
+
+  const here: Check[] = stray
+    ? [
+        {
+          label: "state in the working directory",
+          ok: false,
+          detail: `${stray} is not read any more; amy keeps everything in ${base}`,
+        },
+      ]
+    : [];
+
+  return here.concat(
+    Object.entries(LEGACY_DIRECTORIES)
+      .filter(([old]) => fs.existsSync(path.join(base, old)))
+      .map(([old, now]) => ({
+        label: `state left in ${old}`,
+        ok: false,
+        detail: `run \`amy init\`, then: mv ${path.join(base, old)} ${path.join(base, now)}`,
+      })),
+  );
+}
+
+function roster({ home, now, readRoster }: DoctorDeps): Check {
   try {
-    const current = readRoster(root);
+    const current = readRoster(home);
     const confirmed = isConfirmedFor(current, now);
     return {
       label: "roster confirmed for today",

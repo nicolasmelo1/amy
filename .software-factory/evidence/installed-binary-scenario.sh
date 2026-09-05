@@ -3,15 +3,14 @@
 #
 # Usage: installed-binary-scenario.sh [report-path]
 #
-# Builds the single executable, installs it into a scratch directory, and
-# drives it from a working directory that contains no checkout, no
-# `node_modules` and no `package.json`. That is the claim: what runs is an
-# installed program, not this repository.
+# Installs amy into a scratch directory and drives it from a working directory
+# that contains no checkout, no `node_modules` and no `package.json`. That is
+# the claim: what runs is an installed program, not this repository.
 #
-# The unit tests cannot make this claim. They import source files from inside
-# the workspace, so every one of them passes on a build that carries no
-# plugins at all, which is exactly what a bundler produces from a dynamic
-# `import(spec)`.
+# The name is older than the design. There is no compiled binary any more —
+# what gets installed is packages resolved by node — and the claim underneath
+# is the one that survived, so the gate keeps its name and changed its
+# assertions.
 #
 # A harness, not the actor. Who invokes it is what the manifest's `actor`
 # records, and L3.GATE_HAS_FRESH_EVIDENCE refuses a manifest that credits the
@@ -29,12 +28,15 @@ trap 'rm -rf "$work"' EXIT
 
 mkdir -p "$work/bin" "$work/home"
 
-AMY_BUILD_OUT="${work}/amy.built" "$repo/scripts/install.sh" "$work/bin" >/dev/null
+AMY_INSTALL_LIB="$work/lib" "$repo/scripts/install.sh" "$work/bin" >/dev/null
 amy="$work/bin/amy"
-test -x "$amy" || { echo "the installer produced no executable" >&2; exit 1; }
+test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 # Nothing of this repository is reachable from here. No node_modules to
-# resolve a plugin from, no package.json, no checkout.
+# resolve a plugin from, no package.json, no checkout. HOME moves with it,
+# because amy keeps its state in one place per machine rather than beside
+# whoever ran it — and this run must not touch the real one.
+export HOME="$work/home"
 cd "$work/home"
 
 assertions=""
@@ -51,51 +53,25 @@ check() {
   if "$@" >/dev/null 2>&1; then record "$name" 0; else record "$name" 1; fi
 }
 
-# 1. It runs at all, from a directory that knows nothing about the source.
+# 1. It runs at all, and writes its state where it is run rather than where it
+# was built.
 version=$("$amy" --version 2>/dev/null || echo "")
-case "$version" in
-  *"running from source"*) record installed.reports_a_real_build 1 ;;
-  ?*) record installed.reports_a_real_build 0 ;;
-  *) record installed.reports_a_real_build 1 ;;
-esac
+check installed.runs_without_a_checkout "$amy" pause "proving the installed command runs"
 
-# 2. The stamp names a version and a commit, which is what makes a log line
-# joinable to the code that wrote it.
-case "$version" in
-  *"("*")"*) record installed.stamp_names_version_and_commit 0 ;;
-  *) record installed.stamp_names_version_and_commit 1 ;;
-esac
-
-# 3. The plugins are inside the binary. This is the assertion the whole phase
-# is about: a dynamic import would leave every one of them unresolvable here.
-listing=$("$amy" plugin list 2>/dev/null || echo "")
-case "$listing" in
-  *"could not be imported"*) record installed.plugins_are_inside_the_binary 1 ;;
-  *"@amy/plugin-serial-engine"*) record installed.plugins_are_inside_the_binary 0 ;;
-  *) record installed.plugins_are_inside_the_binary 1 ;;
-esac
-
-# Every entry reports `ok`. The assertion above catches a listing full of
-# import errors; this one catches the subtler case of one plugin missing while
-# the rest resolve, which is what a half-filled table would produce.
-case "$listing" in
-  *FAIL*) record installed.every_plugin_resolves 1 ;;
-  *) record installed.every_plugin_resolves 0 ;;
-esac
-
-count=$(printf '%s' "$listing" | grep -c "  ok   @amy/plugin-" || true)
-if [ "$count" -ge 10 ]; then
-  record installed.carries_the_whole_default_set 0
+if [ -f "$work/home/.amy/PAUSED" ]; then
+  record installed.keeps_state_in_its_own_home 0
 else
-  record installed.carries_the_whole_default_set 1
+  record installed.keeps_state_in_its_own_home 1
 fi
 
-# 4. It writes its state where it is run, not where it was built.
-check installed.runs_without_a_checkout "$amy" stop "proving the installed binary runs"
-if [ -f "$work/home/.amy/STOP" ]; then
-  record installed.keeps_state_beside_the_caller 0
+# And nowhere else. One install per machine means a command typed in another
+# directory has to answer from the same state, not start a second one.
+mkdir -p "$work/home/elsewhere"
+(cd "$work/home/elsewhere" && "$amy" status >/dev/null 2>&1 || true)
+if [ -e "$work/home/elsewhere/.amy" ]; then
+  record installed.keeps_nothing_where_you_stand 1
 else
-  record installed.keeps_state_beside_the_caller 1
+  record installed.keeps_nothing_where_you_stand 0
 fi
 if [ -e "$repo/.amy/STOP" ]; then
   # Writing into the source tree would defeat the whole point: the machine's
@@ -105,36 +81,38 @@ else
   record installed.does_not_write_into_the_source_tree 0
 fi
 
-# 5. Every log line says which build wrote it.
+# 2. Every log line says which build wrote it.
 line=$(cat "$work/home"/.amy/log/*.jsonl 2>/dev/null | head -1 || echo "")
-case "$line" in
-  *'"build":"dev"'*) record installed.log_line_names_the_build 1 ;;
-  *'"build":"'*) record installed.log_line_names_the_build 0 ;;
-  *) record installed.log_line_names_the_build 1 ;;
+built=$(printf '%s' "$line" | sed -n 's/.*"build":"\([^"]*\)".*/\1/p')
+if [ -n "$built" ]; then
+  record installed.log_line_names_the_build 0
+else
+  record installed.log_line_names_the_build 1
+fi
+
+# 3. The stamp is honest about which tree it came from. A clean tree names a
+# version and a commit; a tree with uncommitted work in it says `dev` and
+# nothing else, because a release built from work nobody committed would be a
+# number that cannot be gone back to.
+dirty=no
+if ! git -C "$repo" diff --quiet HEAD 2>/dev/null; then dirty=yes; fi
+
+expected="$built"
+case "$dirty:$version:$built" in
+  yes:*"running from source"*:dev) record installed.says_dev_only_when_it_is_one 0 ;;
+  no:*"("*")"*:?*[+]?*) record installed.says_dev_only_when_it_is_one 0 ;;
+  *) record installed.says_dev_only_when_it_is_one 1 ;;
 esac
 
 # The two spellings differ on purpose: a log line wants one short token
 # (`0.1.0+83ef192`) and a person reading `--version` wants prose. So the
-# comparison is on the commit they must agree about.
-built=$(printf '%s' "$line" | sed -n 's/.*"build":"\([^"]*\)".*/\1/p')
-commit=$(printf '%s' "$built" | sed -n 's/.*+//p')
-case "$version" in
-  *"$commit"*) record installed.log_build_matches_the_binary 0 ;;
-  *) record installed.log_build_matches_the_binary 1 ;;
+# comparison is on the part they must agree about.
+agreed=1
+case "$built" in
+  dev) case "$version" in *"running from source"*) agreed=0 ;; esac ;;
+  *) case "$version" in *"${built#*+}"*) agreed=0 ;; esac ;;
 esac
-if [ -n "$commit" ]; then
-  record installed.stamp_carries_a_commit 0
-else
-  record installed.stamp_carries_a_commit 1
-fi
-
-# 6. It needs no runtime beside it. A bundled runtime is the reason a single
-# file is installable at all.
-if [ -z "$(ls -A "$work/bin" | grep -v '^amy$' || true)" ]; then
-  record installed.is_one_file 0
-else
-  record installed.is_one_file 1
-fi
+record installed.log_build_matches_the_binary "$agreed"
 
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
 total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)
@@ -145,13 +123,14 @@ cat > "$report" <<JSON
 {
   "scenario": "installed-binary",
   "status": "$status",
-  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed executable runs from a directory with no checkout in it, carries its plugins inside itself, keeps state beside the caller rather than in the source tree, and stamps every log line with the build that wrote it.",
-  "artifact": { "package": "@amy/cli", "entry": "a single compiled executable", "built_by": "scripts/install.sh" },
+  "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed command runs from a directory with no checkout in it, keeps its state in one place per machine rather than beside whoever ran it, stamps every log line with the build that wrote it, and calls itself a release only when it was built from a tree somebody committed.",
+  "artifact": { "package": "@amy/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
   "observed": {
     "assertions_run": $total,
     "assertions_failed": $failed,
     "version": "$version",
-    "build_on_log_line": "$built"
+    "tree_was_dirty": "$dirty",
+    "build_on_log_line": "$expected"
   },
   "assertions": [$(printf '%s' "$assertions" | sed 's/,$//')]
 }

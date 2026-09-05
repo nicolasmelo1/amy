@@ -10,7 +10,7 @@
   "observed": {
     "assertions_run": 20,
     "assertions_failed": 0,
-    "version": "0.1.0 (7085612-dirty, built 2026-09-04T23:38:50Z)",
+    "version": "dev (running from source, not an installed build)",
     "looks": 47,
     "transitions": [
       "NOTED>DRAFTED",
@@ -42,8 +42,8 @@
     "notes_left": [
       "by-hand.md",
       "not-mine.md",
-      "note-2026-09-04T233852124.md",
-      "note-2026-09-04T233854766.md",
+      "note-2026-09-05T140642555.md",
+      "note-2026-09-05T140646270.md",
       "will-break.md"
     ],
     "budget": "new work: allowed"

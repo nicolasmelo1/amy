@@ -1,0 +1,100 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@amy/agent-kit": [
+        "packages/agent-kit/src/index.ts"
+      ],
+      "@amy/cli": [
+        "packages/cli/src/index.ts"
+      ],
+      "@amy/core": [
+        "packages/core/src/index.ts"
+      ],
+      "@amy/model-specs": [
+        "packages/model-specs/src/index.ts"
+      ],
+      "@amy/plugin-agent-relay": [
+        "plugins/agent-relay/src/index.ts"
+      ],
+      "@amy/plugin-claude": [
+        "plugins/claude/src/index.ts"
+      ],
+      "@amy/plugin-codex": [
+        "plugins/codex/src/index.ts"
+      ],
+      "@amy/plugin-command": [
+        "plugins/command/src/index.ts"
+      ],
+      "@amy/plugin-command-gate": [
+        "plugins/command-gate/src/index.ts"
+      ],
+      "@amy/plugin-file-log": [
+        "plugins/file-log/src/index.ts"
+      ],
+      "@amy/plugin-file-notes": [
+        "plugins/file-notes/src/index.ts"
+      ],
+      "@amy/plugin-file-queue": [
+        "plugins/file-queue/src/index.ts"
+      ],
+      "@amy/plugin-file-store": [
+        "plugins/file-store/src/index.ts"
+      ],
+      "@amy/plugin-file-tasks": [
+        "plugins/file-tasks/src/index.ts"
+      ],
+      "@amy/plugin-github": [
+        "plugins/github/src/index.ts"
+      ],
+      "@amy/plugin-hermes-agent": [
+        "plugins/hermes-agent/src/index.ts"
+      ],
+      "@amy/plugin-linear": [
+        "plugins/linear/src/index.ts"
+      ],
+      "@amy/plugin-notify-fanout": [
+        "plugins/notify-fanout/src/index.ts"
+      ],
+      "@amy/plugin-notify-hermes": [
+        "plugins/notify-hermes/src/index.ts"
+      ],
+      "@amy/plugin-notify-inbox": [
+        "plugins/notify-inbox/src/index.ts"
+      ],
+      "@amy/plugin-plan-check": [
+        "plugins/plan-check/src/index.ts"
+      ],
+      "@amy/plugin-serial-engine": [
+        "plugins/serial-engine/src/index.ts"
+      ],
+      "@amy/test-fixtures": [
+        "packages/test-fixtures/src/index.ts"
+      ],
+      "@amy/workflow-errand": [
+        "packages/workflow-errand/src/index.ts"
+      ],
+      "@amy/workflow-note-to-plan": [
+        "packages/workflow-note-to-plan/src/index.ts"
+      ],
+      "@amy/workflow-ticket-to-qa": [
+        "packages/workflow-ticket-to-qa/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "packages/*/tests/**/*.ts",
+    "plugins/*/tests/**/*.ts",
+    "packages/*/src/**/*.ts",
+    "plugins/*/src/**/*.ts"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@amy/workflow-errand",
+  "version": "0.1.0",
+  "description": "Something said in passing becomes work: capture it, do it, say what happened.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "packages/workflow-errand"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@amy/core": "^0.1.0"
+  }
+}

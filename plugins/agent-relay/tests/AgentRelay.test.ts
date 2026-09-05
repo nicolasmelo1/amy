@@ -5,6 +5,9 @@ import { NamedAgent } from "@amy/agent-kit";
 import { Agent, AttemptOutcome, TriageOutcome } from "@amy/workflow-ticket-to-qa";
 import { AgentRelay } from "../src/AgentRelay.js";
 
+/** One instant for every double, so nothing here depends on a clock. */
+const AT = "2026-09-05T10:00:00.000Z";
+
 const TICKET = ticket({ id: "PROJ-1239" });
 
 interface Call {
@@ -27,12 +30,12 @@ function rung(name: string, harness: string, model: string, outcomes: AgentOutco
   const agentWith = (skill?: string): Agent => ({
     triage: async (): Promise<AgentResult<TriageOutcome>> => {
       calls.push({ name, skill });
-      return agentResult<TriageOutcome>({ kind: "clear" }, { outcome: next(), harness, model });
+      return agentResult<TriageOutcome>({ clear: true, questions: [], at: AT }, { outcome: next(), harness, model });
     },
     implement: async (_t, retryContext?: string): Promise<AgentResult<AttemptOutcome>> => {
       calls.push({ name, retryContext, skill });
       return agentResult<AttemptOutcome>(
-        { kind: "pushed", head: "a".repeat(40) },
+        { ok: true, output: "pushed", at: AT },
         { outcome: next(), harness, model, output: `${name} said its piece` },
       );
     },
@@ -205,7 +208,7 @@ describe("the other two methods relay the same way", () => {
     const result = await relay.triage(TICKET);
 
     expect(calls).toHaveLength(2);
-    expect(result.value).toEqual({ kind: "clear" });
+    expect(result.value).toEqual({ clear: true, questions: [], at: AT });
     expect(log.of("agent.handoff")[0]?.detail).toMatchObject({ action: "triage" });
   });
 
