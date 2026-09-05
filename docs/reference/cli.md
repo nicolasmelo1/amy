@@ -49,6 +49,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy plugin add`](#amy-plugin-add) | Mount a plugin, by package name or path |
 | [`amy plugin list`](#amy-plugin-list) | The plugins this install mounts, and what they assembled into |
 | [`amy plugin remove`](#amy-plugin-remove) | Stop mounting a plugin |
+| [`amy poke`](#amy-poke) | Look at one piece of work now, rather than when it was next due |
 | [`amy queue`](#amy-queue) | Inspect and tidy the queue |
 | [`amy queue prune`](#amy-queue-prune) | Delete finished queue items past their retention |
 | [`amy queue recover`](#amy-queue-recover) | Return items abandoned by a dead worker |
@@ -234,6 +235,18 @@ amy plugin remove <spec>
 | Argument | Required | What it is |
 | :-- | :-- | :-- |
 | `<spec>` | yes | the package name or path to drop |
+
+### `amy poke`
+
+Look at one piece of work now, rather than when it was next due
+
+```sh
+amy poke <workId>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<workId>` | yes | the work to bring forward, such as a ticket key |
 
 ### `amy queue`
 

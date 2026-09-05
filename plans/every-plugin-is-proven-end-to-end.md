@@ -36,6 +36,12 @@ The load-bearing assertion is the second one. A queue that hands work out is
 easy; a queue that hands each item out **exactly once** is the property the
 engine cannot do without, and it is the one that rename-to-claim exists for.
 
+Bringing a look forward is the second road into that same property, from the
+other side. Moving a held item by *adding* one would leave a piece of work with
+two looks, each chaining its own successor and each spending an agent — no
+item claimed twice, and the same ticket run twice anyway. So the promotion
+assertions belong to this gate rather than to a gate of their own.
+
 ## Acceptance criteria
 
 - [x] The built artifact, imported from another process, gives back the item
@@ -47,6 +53,16 @@ engine cannot do without, and it is the one that rename-to-claim exists for.
 - [x] An item held back is invisible until its time, which is what lets a
       waiting state back off instead of spinning
       (proof: assertion:queue.holds_an_item_until_it_is_due)
+- [x] A look held back can be brought forward, so something that hears an event
+      early collapses the wait instead of sitting out the backoff
+      (proof: assertion:queue.brings_a_held_look_forward)
+- [x] Bringing one forward moves the look that exists rather than adding a
+      second, so one piece of work never grows two chains that both spend an
+      agent
+      (proof: assertion:queue.promoting_leaves_one_look)
+- [x] A look brought forward is ordered by when it is due now and not by when
+      it used to be, so the thing hurried along is not handed out last
+      (proof: assertion:queue.promoted_look_is_ordered_by_its_new_time)
 - [x] A claim abandoned by a dead worker comes back and can be claimed again,
       so a crash costs time and not the ticket
       (proof: assertion:queue.recovers_what_a_dead_worker_left)

@@ -70,6 +70,26 @@ export class FileQueue implements Queue {
     this.move(RUNNING, READY, item);
   }
 
+  promote(workId: string, now: Date): number {
+    let moved = 0;
+
+    for (const item of this.read(READY)) {
+      if (item.workId !== workId) continue;
+      if (isReady(item, now)) continue;
+
+      // Written again rather than edited in place: an item's id begins with
+      // the instant it becomes due, and `claim` picks the first name in
+      // sorted order. Moving `notBefore` alone would leave a due item sorted
+      // behind everything queued after it, so the thing brought forward would
+      // be the last one looked at.
+      fs.rmSync(this.file(READY, item));
+      this.enqueue({ workId, reason: item.reason, attempt: item.attempt }, now);
+      moved += 1;
+    }
+
+    return moved;
+  }
+
   recover(olderThanMs: number, now: Date): QueueItem[] {
     const stale: QueueItem[] = [];
 

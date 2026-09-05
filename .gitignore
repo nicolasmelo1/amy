@@ -9,3 +9,6 @@ dist
 # checkout with them committed skips emitting and every downstream package
 # fails to find its types.
 *.tsbuildinfo
+
+# macOS leaves one of these in every directory it is browsed from.
+.DS_Store

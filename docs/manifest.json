@@ -649,6 +649,11 @@
         },
         {
           "depth": 3,
+          "title": "A poke collapses the wait, so anything that hears an event can push.",
+          "slug": "a-poke-collapses-the-wait-so-anything-that-hears-an-event-can-push"
+        },
+        {
+          "depth": 3,
           "title": "A pull request carries its size, and a review too large for an agent is handed back before one is called.",
           "slug": "a-pull-request-carries-its-size-and-a-review-too-large-for-an-agent-is-handed-back-before-one-is-called"
         },
@@ -681,6 +686,11 @@
           "depth": 3,
           "title": "amy btw — something said in passing becomes work.",
           "slug": "amy-btw-something-said-in-passing-becomes-work"
+        },
+        {
+          "depth": 3,
+          "title": "The config amy init writes is one this build can read, and it names every setting there is.",
+          "slug": "the-config-amy-init-writes-is-one-this-build-can-read-and-it-names-every-setting-there-is"
         },
         {
           "depth": 3,
@@ -1678,6 +1688,11 @@
           "depth": 3,
           "title": "amy plugin remove",
           "slug": "amy-plugin-remove"
+        },
+        {
+          "depth": 3,
+          "title": "amy poke",
+          "slug": "amy-poke"
         },
         {
           "depth": 3,
@@ -2874,6 +2889,11 @@
             "doc": "Puts a claimed item back, for a worker that could not finish it."
           },
           {
+            "name": "promote",
+            "signature": "promote(workId: string, now: Date): number",
+            "doc": "Brings every look at one piece of work that is still held back forward to now, and says how many moved."
+          },
+          {
             "name": "recover",
             "signature": "recover(olderThanMs: number, now: Date): QueueItem[]",
             "doc": "Returns items abandoned by a dead worker so they get picked up again."
@@ -3548,6 +3568,21 @@
               "name": "<spec>",
               "required": true,
               "description": "the package name or path to drop"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "poke"
+          ],
+          "description": "Look at one piece of work now, rather than when it was next due",
+          "arguments": [
+            {
+              "name": "<workId>",
+              "required": true,
+              "description": "the work to bring forward, such as a ticket key"
             }
           ],
           "options": [],
@@ -5050,6 +5085,9 @@
           "queue.claims_what_was_enqueued",
           "queue.refuses_a_second_claim",
           "queue.holds_an_item_until_it_is_due",
+          "queue.brings_a_held_look_forward",
+          "queue.promoting_leaves_one_look",
+          "queue.promoted_look_is_ordered_by_its_new_time",
           "queue.recovers_what_a_dead_worker_left",
           "queue.never_prunes_unfinished_work",
           "queue.survives_a_restart"
@@ -5450,6 +5488,18 @@
         "level": "minor"
       },
       {
+        "id": "a-poke-collapses-the-wait",
+        "title": "A poke collapses the wait, so anything that hears an event can push.",
+        "body": "The queue was already the schedule: a step that takes half an hour is one look\nthat takes half an hour, and the look after it is queued the moment it\nfinishes. Nothing polls while work is happening. What did wait on a clock was\nthe other half — a state holding for somebody else to move, looking again\nevery five minutes.\n\n```sh\namy poke PROJ-1239\n```\n\nThe look that already exists moves to now. Not a second look beside it, which\nis the whole design of `Queue.promote`: two items for one piece of work would\neach chain their own successor, and the queue would fork into two chains that\nboth spend an agent.\n\nThree answers, and each is a different reason to do nothing more. Work being\nworked on is left alone — the running step queues its own successor. Work held\nback moves. Work nothing knows about is queued, which is what turns any webhook\ninto a push without this growing an endpoint: whatever already hears the event\nruns the command.\n\nPoking work that has settled costs one look and no agent. The decision function\nanswers `settled` and the engine completes it without chaining anything, so\nnothing has to load a record to find out first.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
         "id": "a-pull-request-carries-its-size",
         "title": "A pull request carries its size, and a review too large for an agent is handed back before one is called.",
         "body": "`PullRequestView` gained `changedFiles`, `additions` and `deletions`. The\nforge already knew all three and was throwing them away, and fetching the diff\nto work them out later costs the exact thing the number exists to avoid.\n\n`@amykit/workflow-ticket-to-qa` uses them for two new ceilings,\n`maxPullRequestFiles` (60) and `maxPullRequestLines` (2000). Past either, a\nreview is escalated to the ticket owner instead of handed to an agent —\nnaming which ceiling was passed and by how much, because \"I am not doing this\none\" without a number is a refusal nobody can act on. Zero on either switches\nit off.\n\nThe point is *when* it refuses. The decision is a pure predicate over a\nnumber the observation already carried, so it costs nothing at the one moment\nwhere making the call would have cost the most. A five-hundred-file review is\nwhere an agent is least likely to help and most likely to be expensive about\nit, and three attempts before giving up is the worst of both.\n\nIt reuses `ESCALATED` rather than adding a state: that state already means\n\"this needs the person whose ticket it is\", which is exactly what a change\nnobody should automate needs. It escalates once and then holds, rather than\nfiling the same thing on every look.",
@@ -5548,6 +5598,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-config-init-writes-can-be-read",
+        "title": "The config `amy init` writes is one this build can read, and it names every setting there is.",
+        "body": "Two failures, both shipped, both caught by the same check.\n\nThe loud one: the template carried `agent:` twice. YAML refuses a duplicate key\nrather than merging it, so `amy init` wrote a file `loadConfig` threw on and\nthe next command anybody ran died. No test had ever parsed the template — only\nthe roster beside it.\n\nThe quiet one: `pollBackoffMs` was configurable for its whole life and appeared\nnowhere, so the only way to find it was to read the source. `staleClaimMs`,\n`maxItemAttempts`, `maxDraftAttempts` and the whole `errands` block were the\nsame. A setting nobody can discover is a setting that does not exist, and the\ncost lands on whoever concludes the machine cannot do what it does.\n\n`checkConfigTemplate` now parses the template, refuses a key nothing reads, and\nrefuses a setting the template never names. Named is enough — a setting\ncommented out with the reason is documented. It runs in the gate and in CI, and\n`L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE` points at it: the template is derived\nfrom the settings the loader merges over, by hand, which is why it drifted\ntwice without anybody noticing.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "the-engine-drives-any-workflow",

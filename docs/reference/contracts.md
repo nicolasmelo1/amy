@@ -173,6 +173,7 @@ Declared in `packages/core/src/ports/Queue.ts`.
 | `claim(now: Date): QueueItem \| null` | Takes the earliest item that is due, and marks it as being worked on so a second worker cannot take it too. Returns null when nothing is due, which is different from the queue being empty. |
 | `complete(item: QueueItem): void` |  |
 | `release(item: QueueItem): void` | Puts a claimed item back, for a worker that could not finish it. |
+| `promote(workId: string, now: Date): number` | Brings every look at one piece of work that is still held back forward to now, and says how many moved. |
 | `recover(olderThanMs: number, now: Date): QueueItem[]` | Returns items abandoned by a dead worker so they get picked up again. |
 | `prune(retentionDays: number, now: Date): number` | Deletes finished items past their retention, so the directory stays small. |
 | `ready(now: Date): QueueItem[]` |  |

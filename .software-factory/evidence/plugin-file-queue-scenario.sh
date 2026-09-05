@@ -78,6 +78,32 @@ queue.enqueue({ workId: "W-4", reason: "persisted" }, T0);
 const reopened = new FileQueue(dir);
 record("queue.survives_a_restart", reopened.claim(T0)?.workId === "W-4");
 
+// 9. Bringing a look forward, which is how an event arriving early collapses
+// a wait. The hazard is not that it fails to move.
+//
+// It is that it moves by adding a second look, and then one piece of work has
+// two chains, each enqueueing its own successor and each spending an agent.
+// That is the exactly-once property above, lost from the other side.
+const poked = new FileQueue(path.join(work, "queue-poked"));
+poked.enqueue({ workId: "P-1", reason: "waiting on review", delayMs: 5 * 60 * 1000 }, T0);
+record("queue.holds_a_look_until_it_is_poked", poked.claim(T0) === null);
+record("queue.brings_a_held_look_forward", poked.promote("P-1", T0) === 1);
+record("queue.promoting_leaves_one_look", poked.pending().length === 1);
+record("queue.promoted_look_is_claimable_now", poked.claim(T0)?.workId === "P-1");
+
+// Ordering is what a promotion written in place gets wrong: an id begins with
+// the instant an item became due, and `claim` takes the first name in sorted
+// order, so the item brought forward would be handed out last.
+const ordered = new FileQueue(path.join(work, "queue-order"));
+const aMinuteOn = new Date(T0.getTime() + 60 * 1000);
+ordered.enqueue({ workId: "P-2", reason: "waiting on review", delayMs: 10 * 60 * 1000 }, T0);
+ordered.promote("P-2", aMinuteOn);
+ordered.enqueue({ workId: "P-3", reason: "discovered" }, new Date(T0.getTime() + 2 * 60 * 1000));
+record(
+  "queue.promoted_look_is_ordered_by_its_new_time",
+  ordered.claim(new Date(T0.getTime() + 3 * 60 * 1000))?.workId === "P-2",
+);
+
 const failed = assertions.filter((a) => a.status !== "passed");
 
 fs.writeFileSync(
@@ -87,7 +113,7 @@ fs.writeFileSync(
       scenario: "plugin-file-queue",
       status: failed.length === 0 ? "passed" : "failed",
       goal:
-        "I am about to trust this queue with work that takes hours. Prove the built artifact claims exactly once, holds an item until it is due, gives back what a dead worker left, sweeps only finished items, and survives the process that made it.",
+        "I am about to trust this queue with work that takes hours. Prove the built artifact claims exactly once, holds an item until it is due, gives back what a dead worker left, sweeps only finished items, survives the process that made it, and brings a held look forward without leaving a second one behind.",
       artifact: { package: "@amykit/plugin-file-queue", entry: "dist/index.js" },
       observed: {
         assertions_run: assertions.length,
