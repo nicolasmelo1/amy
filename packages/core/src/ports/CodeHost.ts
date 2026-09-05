@@ -31,6 +31,18 @@ export interface PullRequestView {
   url: string;
   headSha: string;
   isDraft: boolean;
+  /**
+   * How big the change is, so a workflow can decide before it spends an agent.
+   *
+   * Carried here rather than counted from a diff, because the forge already
+   * knows and fetching the diff to find out costs the thing the number exists
+   * to avoid. A workflow that refuses to hand a five-hundred-file pull request
+   * to an agent needs this *before* the call, and every other way of getting
+   * it is more expensive than the call it is trying to prevent.
+   */
+  changedFiles: number;
+  additions: number;
+  deletions: number;
   reviewDecision: ReviewDecision;
   reviews: readonly ReviewSubmission[];
   threads: readonly ReviewThread[];

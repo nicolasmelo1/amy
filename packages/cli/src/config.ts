@@ -300,8 +300,15 @@ retentionDays: 7
 # keeps its default. maxOpenReviewsPerReviewer is the one that spends a
 # currency nobody can top up: past it, the pull request stays open with
 # nobody assigned rather than landing on somebody already buried.
+#
+# The two ceilings on size are the cheap ones: the forge already told us how
+# big the change is, so a pull request nobody should automate is handed back
+# before an agent is called rather than after three attempts at it. Zero on
+# either switches it off.
 policy:
   maxOpenReviewsPerReviewer: 2
+  maxPullRequestFiles: 60
+  maxPullRequestLines: 2000
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it. ladderByStep overrides the list for one step, keyed by the workflow's

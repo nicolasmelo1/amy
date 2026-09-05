@@ -18,7 +18,7 @@
     "gate": "npm run build && npm run typecheck && npm run check:release && npm run docs:check && npm run test:coverage && npm run lint && npm run knip && npm run audit && sf check --allow-commands && sf verify",
     "e2e": "./.software-factory/evidence/plugin-file-queue-scenario.sh && ./.software-factory/evidence/plugin-agent-relay-scenario.sh && ./.software-factory/evidence/plugin-serial-engine-scenario.sh && ./.software-factory/evidence/installed-binary-scenario.sh && ./.software-factory/evidence/installed-plugins-scenario.sh && ./.software-factory/evidence/ticket-to-qa-scenario.sh && ./.software-factory/evidence/note-to-plan-scenario.sh",
     "changeset": "changeset",
-    "release:version": "changeset version && npm install --package-lock-only && npm run docs:generate",
+    "release:version": "changeset version && npm install --package-lock-only && npm run docs:generate && sf lock && node scripts/check-lock-scope.mjs",
     "release:publish": "npm run build && changeset publish",
     "install:local": "./scripts/install.sh",
     "knip": "knip",
