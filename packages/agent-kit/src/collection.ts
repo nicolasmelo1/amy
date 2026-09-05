@@ -1,5 +1,5 @@
-import { Harness } from "@amy/core";
-import { Agent } from "@amy/workflow-ticket-to-qa";
+import { Harness } from "@amykit/core";
+import { Agent } from "@amykit/workflow-ticket-to-qa";
 import { Rung } from "./ladder.js";
 
 /** The collection every harness plugin adds its ticket-shaped agents to. */

@@ -155,7 +155,7 @@ function coreActions(core, packages) {
     `\`${action.name}\``,
     `\`${action.port}\``,
     `\`${action.method}()\``,
-    "`@amy/core`",
+    "`@amykit/core`",
     action.doc,
   ]);
 

@@ -1,5 +1,5 @@
-import { AgentRun, CommandRunner, Harness, HarnessReply } from "@amy/core";
-import { costOf, specFor } from "@amy/model-specs";
+import { AgentRun, CommandRunner, Harness, HarnessReply } from "@amykit/core";
+import { costOf, specFor } from "@amykit/model-specs";
 import { ParsedRun, parseRun } from "./envelope.js";
 
 export interface ClaudeHarnessConfig {

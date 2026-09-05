@@ -4,10 +4,10 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
-import type { TickResult } from "@amy/plugin-serial-engine";
-import { isConfirmedFor } from "@amy/workflow-ticket-to-qa";
-import { FileNotes } from "@amy/plugin-file-notes";
-import { FileTasks } from "@amy/plugin-file-tasks";
+import type { TickResult } from "@amykit/plugin-serial-engine";
+import { isConfirmedFor } from "@amykit/workflow-ticket-to-qa";
+import { FileNotes } from "@amykit/plugin-file-notes";
+import { FileTasks } from "@amykit/plugin-file-tasks";
 import {
   BUDGET_WINDOWS,
   Engine,
@@ -23,19 +23,19 @@ import {
   spendSince,
   stampId,
   unmetNeeds,
-} from "@amy/core";
+} from "@amykit/core";
 import {
   MODELS_DEV_URL,
   ModelsDevCatalog,
   OVERRIDE_FILE,
   refreshFrom,
   specTable,
-} from "@amy/model-specs";
-import { FileEventLog } from "@amy/plugin-file-log";
+} from "@amykit/model-specs";
+import { FileEventLog } from "@amykit/plugin-file-log";
 // Inspection builds these directly: `amy status` has to work even when a
 // plugin will not mount, which is exactly when you want to look.
-import { FileQueue } from "@amy/plugin-file-queue";
-import { FileStore } from "@amy/plugin-file-store";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { FileStore } from "@amykit/plugin-file-store";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -684,7 +684,7 @@ function reportRecords(records: readonly AnyRecord[], waiting: readonly string[]
 /** The `budget` setting, from the plugin slice the relay is given. */
 function configuredBudget(): unknown {
   const config = loadConfig(home);
-  const slice = pluginSlices(config, selected(config))["@amy/plugin-agent-relay"];
+  const slice = pluginSlices(config, selected(config))["@amykit/plugin-agent-relay"];
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
 }
 

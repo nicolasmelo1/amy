@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { TokenUsage, inputSideTokens } from "@amy/core";
+import { TokenUsage, inputSideTokens } from "@amykit/core";
 
 export interface Rates {
   inputPerToken: number;

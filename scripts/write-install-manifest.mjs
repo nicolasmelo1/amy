@@ -6,7 +6,7 @@
 // that was packed. That is the phase's whole point: a machine carries the
 // plugins it uses and nothing else.
 //
-// Every `@amy/*` is also an override, because the tarballs depend on each
+// Every `@amykit/*` is also an override, because the tarballs depend on each
 // other by version range and this repository's versions are not on a registry
 // yet. An override is the one thing npm applies to a transitive resolution.
 import fs from "node:fs";
@@ -23,8 +23,9 @@ if (!tarballs || !into) {
 const packed = new Map();
 for (const file of fs.readdirSync(tarballs)) {
   if (!file.endsWith(".tgz")) continue;
-  // `amy-plugin-github-0.1.0.tgz` is what npm names `@amy/plugin-github`.
-  const name = file.replace(/-\d+\.\d+\.\d+.*\.tgz$/, "").replace(/^amy-/, "@amy/");
+  // `amykit-plugin-github-0.1.0.tgz` is what npm names `@amykit/plugin-github`:
+  // it drops the `@` and turns the `/` into a `-`.
+  const name = file.replace(/-\d+\.\d+\.\d+.*\.tgz$/, "").replace(/^amykit-/, "@amykit/");
   packed.set(name, path.resolve(tarballs, file));
 }
 

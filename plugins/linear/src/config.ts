@@ -1,4 +1,4 @@
-import { ConfigSchema } from "@amy/core";
+import { ConfigSchema } from "@amykit/core";
 import { LINEAR_ENDPOINT } from "./LinearTracker.js";
 
 /**

@@ -10,7 +10,7 @@ import {
   Store,
   WORKFLOW_RUNTIME,
   WorkflowRuntime,
-} from "@amy/core";
+} from "@amykit/core";
 import { noteToPlan } from "./machine.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
 import { PlanRecord } from "./record.js";
@@ -84,7 +84,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation
  * one run, which is the claim the seam was built to be able to make.
  */
 export const plugin: Plugin = {
-  name: "@amy/workflow-note-to-plan",
+  name: "@amykit/workflow-note-to-plan",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

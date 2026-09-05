@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Git } from "@amy/core";
-import { ScriptedRunner, whenArgsInclude } from "@amy/test-fixtures";
+import { Git } from "@amykit/core";
+import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 
 const layout = { workspaceRoot: "/home/dev/workspaces/northwind", defaultBranch: "main" };
 

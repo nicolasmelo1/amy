@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { AgentOutcome, AgentResult } from "@amy/core";
-import { agentResult, RecordingEventLog, ticket } from "@amy/test-fixtures";
-import { NamedAgent } from "@amy/agent-kit";
-import { Agent, AttemptOutcome, TriageOutcome } from "@amy/workflow-ticket-to-qa";
+import { AgentOutcome, AgentResult } from "@amykit/core";
+import { agentResult, RecordingEventLog, ticket } from "@amykit/test-fixtures";
+import { NamedAgent } from "@amykit/agent-kit";
+import { Agent, AttemptOutcome, TriageOutcome } from "@amykit/workflow-ticket-to-qa";
 import { AgentRelay } from "../src/AgentRelay.js";
 
 /** One instant for every double, so nothing here depends on a clock. */

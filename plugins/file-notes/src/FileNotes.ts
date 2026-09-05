@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { NewNote, Note, Notes } from "@amy/workflow-note-to-plan";
+import type { NewNote, Note, Notes } from "@amykit/workflow-note-to-plan";
 
 /** The keys the header understands. Anything else is left in the body. */
 const REPO = "repo";

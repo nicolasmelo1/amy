@@ -1,5 +1,5 @@
 import { Observation, Policy } from "./observation.js";
-import { Plan, PullRequestView, ReviewThread, Workflow } from "@amy/core";
+import { Plan, PullRequestView, ReviewThread, Workflow } from "@amykit/core";
 import { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
 import {
   TicketRecord,

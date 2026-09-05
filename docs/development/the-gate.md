@@ -94,7 +94,7 @@ expression that could be made to backtrack forever.
 ### The one worth naming
 
 `L0.CORE_STAYS_IGNORANT`: **nothing under `packages/core/src` may import an
-`@amy/workflow-*` or `@amy/plugin-*` package.** The whole plugin model rests on
+`@amykit/workflow-*` or `@amykit/plugin-*` package.** The whole plugin model rests on
 it, and until it was a check it rested on nobody making a single wrong import.
 Its mutation fixture is a core file importing a workflow's type, and `sf verify`
 confirms the rule still catches it.

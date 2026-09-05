@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-claude",
+  "name": "@amykit/plugin-claude",
   "version": "0.1.0",
   "description": "The claude CLI as the agent, with git on the side.",
   "type": "module",
@@ -28,11 +28,11 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/agent-kit": "^0.1.0",
-    "@amy/core": "^0.1.0",
-    "@amy/model-specs": "^0.1.0"
+    "@amykit/agent-kit": "^0.1.0",
+    "@amykit/core": "^0.1.0",
+    "@amykit/model-specs": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

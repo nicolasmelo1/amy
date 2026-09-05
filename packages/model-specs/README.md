@@ -1,4 +1,4 @@
-# @amy/model-specs
+# @amykit/model-specs
 
 What each model costs per token, vendored and versioned.
 

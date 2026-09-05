@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fakeTracker } from "@amy/test-fixtures";
+import { fakeTracker } from "@amykit/test-fixtures";
 import { trackerChannel } from "../src/ticketChannel.js";
 
 const announcement = {

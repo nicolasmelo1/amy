@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, mount, unmetNeeds } from "@amy/core";
+import { HostServices, Plugin, WORKFLOW_RUNTIME, mount, unmetNeeds } from "@amykit/core";
 import { plugin as errand } from "../src/plugin.js";
 
 const host: HostServices = {
@@ -21,7 +21,7 @@ const PORTS = [
   mounts("store", "store", { all: () => [], load: () => null, save: () => undefined }),
 ];
 
-const SETTINGS = { "@amy/workflow-errand": { repos: ["acme/widgets"] } };
+const SETTINGS = { "@amykit/workflow-errand": { repos: ["acme/widgets"] } };
 
 function assemble(plugins: Plugin[] = PORTS, settings: Record<string, unknown> = SETTINGS) {
   return mount([errand, ...plugins], settings, host);
@@ -65,7 +65,7 @@ describe("mounting the errand workflow", () => {
 
   it("refuses a setting that is not one it has", async () => {
     const outcome = await assemble(PORTS, {
-      "@amy/workflow-errand": { repos: ["acme/widgets"], polcy: {} },
+      "@amykit/workflow-errand": { repos: ["acme/widgets"], polcy: {} },
     });
 
     expect(outcome.ok).toBe(false);

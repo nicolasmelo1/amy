@@ -260,7 +260,7 @@ function assertionsFor(state) {
       "plan.nothing_is_resolved_against_a_tracker",
       state.first?.state === "DONE" &&
         state.mounted.code === 0 &&
-        !mountedNames(state.mounted.out).includes("@amy/plugin-linear") &&
+        !mountedNames(state.mounted.out).includes("@amykit/plugin-linear") &&
         state.mounted.out.includes("workflow: note-to-plan"),
     ],
 
@@ -385,7 +385,7 @@ fs.writeFileSync(
         "repository's own check accepts. I do not want a ticket for it, I do not want twelve of them a " +
         "day, and I want to be the one who decides whether the work happens.",
       artifact: {
-        package: "@amy/cli",
+        package: "@amykit/cli",
         entry: "the installed executable, driven by `amy note`, `amy discover` and `amy tick`",
         built_by: "scripts/install.sh",
       },

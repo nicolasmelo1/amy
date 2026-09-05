@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AgentOutcome } from "@amy/core";
+import { AgentOutcome } from "@amykit/core";
 import { nextRung, Rung } from "../src/ladder.js";
 
 /**

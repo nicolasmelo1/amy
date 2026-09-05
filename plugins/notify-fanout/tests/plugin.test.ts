@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { Event, HostServices, Notifier, mount } from "@amy/core";
+import { Event, HostServices, Notifier, mount } from "@amykit/core";
 import { CHANNEL_COLLECTION, plugin } from "../src/plugin.js";
 
 const ANNOUNCEMENT = {
@@ -11,7 +11,7 @@ const ANNOUNCEMENT = {
 /** A plugin contributing one channel, which is down if asked to be. */
 function channelPlugin(name: string, down = false) {
   return {
-    name: `@amy/plugin-${name}`,
+    name: `@amykit/plugin-${name}`,
     version: "0.1.0",
     register(registry: Parameters<typeof plugin.register>[0]) {
       registry.contribute(CHANNEL_COLLECTION, name, {

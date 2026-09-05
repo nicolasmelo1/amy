@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NO_TOKENS, TokenUsage } from "@amy/core";
+import { NO_TOKENS, TokenUsage } from "@amykit/core";
 import { ModelSpec, costOf, normalizeModelId, specFor, specTable } from "../src/specs.js";
 
 function tokens(overrides: Partial<TokenUsage> = {}): TokenUsage {

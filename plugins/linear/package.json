@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-linear",
+  "name": "@amykit/plugin-linear",
   "version": "0.1.0",
   "description": "Linear as the tracker, over its GraphQL API.",
   "type": "module",
@@ -28,11 +28,11 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/plugin-notify-fanout": "^0.1.0",
-    "@amy/workflow-ticket-to-qa": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/plugin-notify-fanout": "^0.1.0",
+    "@amykit/workflow-ticket-to-qa": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

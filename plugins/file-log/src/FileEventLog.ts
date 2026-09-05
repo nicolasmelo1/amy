@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Event, EventLog, isEventKind, stampFrom, stampId } from "@amy/core";
+import { Event, EventLog, isEventKind, stampFrom, stampId } from "@amykit/core";
 
 /**
  * The event log as one JSON Lines file per day.

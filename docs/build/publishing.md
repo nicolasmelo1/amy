@@ -29,7 +29,7 @@ import.
   "files": ["dist"],
   "repository": { "type": "git", "url": "git+https://github.com/acme/amy-plugins.git", "directory": "plugins/jira" },
   "publishConfig": { "access": "public" },
-  "dependencies": { "@amy/core": "^0.1.0" }
+  "dependencies": { "@amykit/core": "^0.1.0" }
 }
 ```
 
@@ -41,14 +41,14 @@ Four of those are not optional:
   ways that are hard to read.
 - **`files`** — publish `dist`, not `src`. A package shipping its sources is one
   where a consumer can accidentally import past your surface.
-- **`@amy/core` as a dependency, not a peer** — it is types and a handful of
+- **`@amykit/core` as a dependency, not a peer** — it is types and a handful of
   small utilities, and a version mismatch is a compile error at your end rather
   than a runtime surprise at somebody else's.
 
 ## Versioning
 
 Your plugin's version is yours. The one thing worth being careful about is
-`@amy/core`: a caret range (`^0.1.0`) is right while amy is pre-1.0, because the
+`@amykit/core`: a caret range (`^0.1.0`) is right while amy is pre-1.0, because the
 contracts still move. When they stop moving, so can that.
 
 Breaking changes worth a major, in order of how often they catch people:

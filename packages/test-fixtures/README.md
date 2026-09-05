@@ -1,4 +1,4 @@
-# @amy/test-fixtures
+# @amykit/test-fixtures
 
 Shared builders and scripted doubles. Not published.
 

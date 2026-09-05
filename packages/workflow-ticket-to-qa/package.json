@@ -1,5 +1,5 @@
 {
-  "name": "@amy/workflow-ticket-to-qa",
+  "name": "@amykit/workflow-ticket-to-qa",
   "version": "0.1.0",
   "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
   "type": "module",
@@ -28,9 +28,9 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0"
+    "@amykit/core": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

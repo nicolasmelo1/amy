@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-file-tasks",
+  "name": "@amykit/plugin-file-tasks",
   "version": "0.1.0",
   "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
   "type": "module",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0"
+    "@amykit/core": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0",
-    "@amy/workflow-errand": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0",
+    "@amykit/workflow-errand": "^0.1.0"
   }
 }

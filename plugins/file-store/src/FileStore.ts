@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Store } from "@amy/core";
-import { WorkRecord } from "@amy/core";
+import { Store } from "@amykit/core";
+import { WorkRecord } from "@amykit/core";
 
 /** One file per ticket, so a record can be read and edited by hand. */
 export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {

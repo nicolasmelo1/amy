@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-command",
+  "name": "@amykit/plugin-command",
   "version": "0.1.0",
   "description": "Any command line tool, reached by a name the config allows.",
   "type": "module",
@@ -28,9 +28,9 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0"
+    "@amykit/core": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

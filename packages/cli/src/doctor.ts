@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, ConfigSchema, validateConfig } from "@amy/core";
-import { hermesTargetIsKnown } from "@amy/plugin-notify-hermes";
-import { Roster, isConfirmedFor } from "@amy/workflow-ticket-to-qa";
+import { CommandRunner, ConfigSchema, validateConfig } from "@amykit/core";
+import { hermesTargetIsKnown } from "@amykit/plugin-notify-hermes";
+import { Roster, isConfirmedFor } from "@amykit/workflow-ticket-to-qa";
 import { AmyConfig } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";

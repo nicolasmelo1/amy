@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "files": {
-    "docs/rules.md": "f0b8a7f2d0f45a46ca492eae8d5f1e30b27c8de902900c83fccd92f08fd4296c",
+    "docs/rules.md": "1f35c462579e6b85fa35274125af5d593424eae3b6025b524e17bba55fc1c212",
     "packages/core/events.json": "6c11020cfe523f1fd123a216ed7a40d578cc9c1d088b1ef4e91f704c0b01e47f",
     "packages/model-specs/specs.json": "d2467e5355ef86c7b7f3026659845692ca8d42f69970334c4fc5dd3c45b687bd"
   }

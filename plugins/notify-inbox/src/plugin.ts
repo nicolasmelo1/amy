@@ -1,10 +1,10 @@
 import path from "node:path";
-import { Plugin } from "@amy/core";
-import { CHANNEL_COLLECTION } from "@amy/plugin-notify-fanout";
+import { Plugin } from "@amykit/core";
+import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 import { configSchema, inboxChannel } from "./inboxChannel.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-notify-inbox",
+  name: "@amykit/plugin-notify-inbox",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

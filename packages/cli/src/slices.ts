@@ -14,69 +14,69 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
   const dirs = directoriesFor(profile.name);
 
   const derived: Record<string, unknown> = {
-    "@amy/plugin-linear": {
+    "@amykit/plugin-linear": {
       workingStatusName: config.workingStatusName,
       repoByTeam: config.repoByTeam,
       defaultRepo: config.repos[0] ?? "",
     },
-    "@amy/plugin-claude": harnessSlice(config, "claude"),
-    "@amy/plugin-codex": harnessSlice(config, "codex"),
-    "@amy/plugin-hermes-agent": harnessSlice(config, "hermes"),
-    "@amy/plugin-agent-relay": {
+    "@amykit/plugin-claude": harnessSlice(config, "claude"),
+    "@amykit/plugin-codex": harnessSlice(config, "codex"),
+    "@amykit/plugin-hermes-agent": harnessSlice(config, "hermes"),
+    "@amykit/plugin-agent-relay": {
       ladder: config.agent.ladder ?? [],
       budget: config.agent.budget ?? {},
       skills: config.skills,
     },
-    "@amy/plugin-command-gate": {
+    "@amykit/plugin-command-gate": {
       defaultBranch: config.defaultBranch,
       commands: config.gate,
     },
-    "@amy/plugin-file-queue": {
+    "@amykit/plugin-file-queue": {
       directory: dirs.queue,
       retentionDays: config.retentionDays,
       staleClaimMs: config.staleClaimMs,
     },
-    "@amy/plugin-file-store": { directory: dirs.records },
+    "@amykit/plugin-file-store": { directory: dirs.records },
     // Mounted in both profiles: one writes the notes, the other reads them,
     // and an install running only the first would still be filing the
     // friction the second will pick up.
-    "@amy/plugin-file-notes": {
+    "@amykit/plugin-file-notes": {
       directory: "notes",
       repo: config.plans.repos[0] ?? "",
       writeFailureNotes: config.plans.repos.length > 0,
     },
     // The second workflow's own vocabulary: which repositories it may write a
     // plan into, and the ceilings its decision function reads.
-    "@amy/workflow-note-to-plan": {
+    "@amykit/workflow-note-to-plan": {
       repos: config.plans.repos,
       defaultBranch: config.defaultBranch,
       policy: config.plans.policy,
     },
     // The third workflow's vocabulary: where an errand may be done, and the
     // ceilings its decision function reads.
-    "@amy/workflow-errand": {
+    "@amykit/workflow-errand": {
       repos: config.repos,
       defaultBranch: config.defaultBranch,
       policy: config.errands.policy,
     },
-    "@amy/plugin-file-tasks": {
+    "@amykit/plugin-file-tasks": {
       directory: "tasks",
       repo: config.repos[0] ?? "",
     },
-    "@amy/plugin-plan-check": {
+    "@amykit/plugin-plan-check": {
       defaultBranch: config.defaultBranch,
       commands: config.plans.check,
     },
     // The workflow's own vocabulary: which repositories it counts review
     // load across, where it hands work over, and the ceilings its decision
     // function reads.
-    "@amy/workflow-ticket-to-qa": {
+    "@amykit/workflow-ticket-to-qa": {
       repos: config.repos,
       qaStatusName: config.qaStatusName,
       policy: config.policy,
     },
     // The engine's, and none of it names a domain.
-    "@amy/plugin-serial-engine": {
+    "@amykit/plugin-serial-engine": {
       staleClaimMs: config.staleClaimMs,
       retentionDays: config.retentionDays,
       maxItemAttempts: config.maxItemAttempts,
@@ -85,10 +85,10 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
   };
 
   if (config.notify.hermes) {
-    derived["@amy/plugin-notify-hermes"] = { target: config.notify.hermes };
+    derived["@amykit/plugin-notify-hermes"] = { target: config.notify.hermes };
   }
   if (config.notify.inbox) {
-    derived["@amy/plugin-notify-inbox"] = { directory: "needs-input" };
+    derived["@amykit/plugin-notify-inbox"] = { directory: "needs-input" };
   }
 
   // Merged per plugin, not replaced. A slice written by hand names the one
@@ -160,11 +160,11 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
     // A note needs somewhere to go. An install that named no repository to
     // write plans into would be watching a directory nothing could ever come
     // out of, so it does not watch one.
-    if (name === "@amy/plugin-file-notes") return config.plans.repos.length > 0;
-    if (name === "@amy/plugin-notify-hermes") return Boolean(config.notify.hermes);
-    if (name === "@amy/plugin-notify-inbox") return config.notify.inbox;
-    if (name === "@amy/plugin-codex") return ladderNames(ladder, "codex");
-    if (name === "@amy/plugin-hermes-agent") return ladderNames(ladder, "hermes");
+    if (name === "@amykit/plugin-file-notes") return config.plans.repos.length > 0;
+    if (name === "@amykit/plugin-notify-hermes") return Boolean(config.notify.hermes);
+    if (name === "@amykit/plugin-notify-inbox") return config.notify.inbox;
+    if (name === "@amykit/plugin-codex") return ladderNames(ladder, "codex");
+    if (name === "@amykit/plugin-hermes-agent") return ladderNames(ladder, "hermes");
     return true;
   });
 }

@@ -1,4 +1,4 @@
-import { AgentOutcome, CostSource, TokenUsage } from "@amy/core";
+import { AgentOutcome, CostSource, TokenUsage } from "@amykit/core";
 
 /** The shape `claude -p --output-format json` prints. */
 export interface ClaudeEnvelope {

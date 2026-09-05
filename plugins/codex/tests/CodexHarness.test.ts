@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ScriptedRunner } from "@amy/test-fixtures";
+import { ScriptedRunner } from "@amykit/test-fixtures";
 import { CodexHarness, classify, messageOf, parseEvents, tokensOf } from "../src/index.js";
 
 /**

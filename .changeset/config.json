@@ -5,7 +5,7 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "fixed": [["@amy/*"]],
+  "fixed": [["@amykit/*"]],
   "linked": [],
-  "ignore": ["@amy/test-fixtures"]
+  "ignore": ["@amykit/test-fixtures"]
 }

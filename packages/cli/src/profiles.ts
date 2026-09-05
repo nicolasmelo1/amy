@@ -33,9 +33,9 @@ export interface Profile {
  * the CLI reads these names.
  */
 export const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {
-  "ticket-to-qa": { workflow: "@amy/workflow-ticket-to-qa" },
-  "note-to-plan": { workflow: "@amy/workflow-note-to-plan", notes: true },
-  errand: { workflow: "@amy/workflow-errand", tasks: true },
+  "ticket-to-qa": { workflow: "@amykit/workflow-ticket-to-qa" },
+  "note-to-plan": { workflow: "@amykit/workflow-note-to-plan", notes: true },
+  errand: { workflow: "@amykit/workflow-errand", tasks: true },
 };
 
 /**
@@ -47,21 +47,21 @@ export const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {
  * duplicated for a second workflow, and not one changed to take it.
  */
 const SHARED: readonly string[] = [
-  "@amy/plugin-file-queue",
-  "@amy/plugin-file-store",
-  "@amy/plugin-file-notes",
-  "@amy/plugin-github",
-  "@amy/plugin-claude",
-  "@amy/plugin-codex",
-  "@amy/plugin-hermes-agent",
+  "@amykit/plugin-file-queue",
+  "@amykit/plugin-file-store",
+  "@amykit/plugin-file-notes",
+  "@amykit/plugin-github",
+  "@amykit/plugin-claude",
+  "@amykit/plugin-codex",
+  "@amykit/plugin-hermes-agent",
   // The only thing that mounts the `agent` port. The harnesses above merely
   // contribute themselves to it, so dropping this from a config leaves every
   // agent action without a port and the mount is refused at boot.
-  "@amy/plugin-agent-relay",
-  "@amy/plugin-notify-fanout",
-  "@amy/plugin-notify-hermes",
-  "@amy/plugin-notify-inbox",
-  "@amy/plugin-serial-engine",
+  "@amykit/plugin-agent-relay",
+  "@amykit/plugin-notify-fanout",
+  "@amykit/plugin-notify-hermes",
+  "@amykit/plugin-notify-inbox",
+  "@amykit/plugin-serial-engine",
 ];
 
 /**
@@ -72,9 +72,9 @@ const SHARED: readonly string[] = [
  * config changes nothing about what mounts under it.
  */
 const NEEDS: Record<string, readonly string[]> = {
-  "@amy/workflow-ticket-to-qa": ["@amy/plugin-linear", "@amy/plugin-command-gate"],
-  "@amy/workflow-note-to-plan": ["@amy/plugin-plan-check"],
-  "@amy/workflow-errand": ["@amy/plugin-file-tasks"],
+  "@amykit/workflow-ticket-to-qa": ["@amykit/plugin-linear", "@amykit/plugin-command-gate"],
+  "@amykit/workflow-note-to-plan": ["@amykit/plugin-plan-check"],
+  "@amykit/workflow-errand": ["@amykit/plugin-file-tasks"],
 };
 
 /** What `amy init` suggests installing for a profile that lists nothing. */

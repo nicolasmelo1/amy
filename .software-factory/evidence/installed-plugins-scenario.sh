@@ -30,7 +30,7 @@ mkdir -p "$work/bin" "$work/home"
 # What this machine has any use for: a queue, a store, an engine and somewhere
 # to be told something. No tracker, no forge, no agent, no gate, and not the
 # second workflow this repository ships.
-AMY_PACKAGES="@amy/cli @amy/plugin-serial-engine @amy/plugin-notify-fanout @amy/plugin-notify-inbox" \
+AMY_PACKAGES="@amykit/cli @amykit/plugin-serial-engine @amykit/plugin-notify-fanout @amykit/plugin-notify-inbox" \
   AMY_INSTALL_LIB="$work/lib" "$repo/scripts/install.sh" "$work/bin" >/dev/null
 amy="$work/bin/amy"
 test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
@@ -54,11 +54,11 @@ workflows:
     workflow: "@acme/workflow-oncall"
     plugins:
       - "@acme/workflow-oncall"
-      - "@amy/plugin-file-queue"
-      - "@amy/plugin-file-store"
-      - "@amy/plugin-serial-engine"
-      - "@amy/plugin-notify-fanout"
-      - "@amy/plugin-notify-inbox"
+      - "@amykit/plugin-file-queue"
+      - "@amykit/plugin-file-store"
+      - "@amykit/plugin-serial-engine"
+      - "@amykit/plugin-notify-fanout"
+      - "@amykit/plugin-notify-inbox"
 defaultWorkflow: oncall
 notify:
   tracker: false
@@ -79,9 +79,9 @@ says() {
 }
 
 # 1. The machine carries what it uses, and nothing else.
-if [ -d "$work/lib/node_modules/@amy/plugin-linear" ] ||
-   [ -d "$work/lib/node_modules/@amy/workflow-note-to-plan" ] ||
-   [ -d "$work/lib/node_modules/@amy/plugin-codex" ]; then
+if [ -d "$work/lib/node_modules/@amykit/plugin-linear" ] ||
+   [ -d "$work/lib/node_modules/@amykit/workflow-note-to-plan" ] ||
+   [ -d "$work/lib/node_modules/@amykit/plugin-codex" ]; then
   record plugins.a_machine_installs_only_what_it_uses 1
 else
   record plugins.a_machine_installs_only_what_it_uses 0
@@ -91,7 +91,7 @@ fi
 listing=$("$amy" plugin list 2>&1 || echo "")
 case "$listing" in
   *FAIL*|*"not installed"*) record plugins.resolve_at_run_time_with_no_table 1 ;;
-  *"@amy/plugin-serial-engine"*) record plugins.resolve_at_run_time_with_no_table 0 ;;
+  *"@amykit/plugin-serial-engine"*) record plugins.resolve_at_run_time_with_no_table 0 ;;
   *) record plugins.resolve_at_run_time_with_no_table 1 ;;
 esac
 says plugins.a_workflow_from_outside_this_repository_mounts "$listing" "workflow: oncall"
@@ -119,7 +119,7 @@ says plugins.an_unknown_workflow_name_lists_the_ones_there_are "$unknown" "oncal
 # refused by name, at boot, before a piece of work is touched.
 shipped=$("$amy" --workflow note-to-plan tick 2>&1 || echo "")
 says plugins.a_shipped_workflow_nobody_installed_is_refused_by_name \
-  "$shipped" "@amy/workflow-note-to-plan: not installed"
+  "$shipped" "@amykit/workflow-note-to-plan: not installed"
 
 # 7. And so is a plugin, with what was installed instead.
 sed -i.bak 's|      - "@acme/workflow-oncall"|      - "@acme/workflow-oncall"\
@@ -148,7 +148,7 @@ cat > "$report" <<JSON
   "scenario": "installed-plugins",
   "status": "$status",
   "goal": "I want to install amy on my work machine with the plugins my work needs, and on an on-call week point it at a workflow I wrote myself that nobody else has. Prove a machine installs only what it uses, that a workflow package this repository never shipped mounts and gets driven by the same engine, that each workflow keeps its own state, and that anything named and not installed is refused by name before a piece of work is touched.",
-  "artifact": { "package": "@amy/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
+  "artifact": { "package": "@amykit/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
   "observed": {
     "assertions_run": $total,
     "assertions_failed": $failed,

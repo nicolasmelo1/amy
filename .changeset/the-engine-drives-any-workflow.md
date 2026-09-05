@@ -1,5 +1,5 @@
 ---
-"@amy/core": minor
+"@amykit/core": minor
 ---
 
 The engine drives a workflow it does not know.

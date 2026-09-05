@@ -1,6 +1,6 @@
-import { GraphQLClient } from "@amy/core";
-import { FollowUpRequest, Tracker } from "@amy/workflow-ticket-to-qa";
-import { Ticket } from "@amy/workflow-ticket-to-qa";
+import { GraphQLClient } from "@amykit/core";
+import { FollowUpRequest, Tracker } from "@amykit/workflow-ticket-to-qa";
+import { Ticket } from "@amykit/workflow-ticket-to-qa";
 
 export const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
 

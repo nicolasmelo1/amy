@@ -3,10 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Worker } from "../src/Worker.js";
-import { FileQueue } from "@amy/plugin-file-queue";
+import { FileQueue } from "@amykit/plugin-file-queue";
 import { WORKDAY,
   TicketWorkerOverrides,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
@@ -16,7 +16,7 @@ import {
   ThrowingNotifier,
   fakeAgent,
   workerConfig,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 
 /**
  * A plugin that dies does not bring the tick down, and the line is drawn at

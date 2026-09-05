@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { Effect } from "../src/effects.js";
 import { plan } from "../src/machine.js";
 import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
-import { PullRequestView, ReviewSubmission, ReviewThread, actionsOf } from "@amy/core";
+import { PullRequestView, ReviewSubmission, ReviewThread, actionsOf } from "@amykit/core";
 import { Observation } from "../src/observation.js";
 import { TicketRecord, newRecord } from "../src/record.js";
 import { TicketState } from "../src/state.js";
-import { WORKDAY, policy, roster, ticket } from "@amy/test-fixtures";
+import { WORKDAY, policy, roster, ticket } from "@amykit/test-fixtures";
 
 const BOT = "copilot-pull-request-reviewer[bot]";
 

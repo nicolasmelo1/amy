@@ -64,7 +64,7 @@ comment is the specification.
 
 ```ts
 // src/record.ts
-import type { WorkRecord } from "@amy/core";
+import type { WorkRecord } from "@amykit/core";
 
 export interface ReviewRecord extends WorkRecord {
   state: ReviewState;
@@ -98,7 +98,7 @@ your `apply` is what folds it.
 
 ```ts
 // src/effects.ts
-import type { Plan } from "@amy/core";
+import type { Plan } from "@amykit/core";
 
 export type Effect =
   | { type: "draft-plan"; prompt: string }
@@ -155,7 +155,7 @@ can change it.
 
 ```ts
 // src/machine.ts
-import type { Plan, Workflow } from "@amy/core";
+import type { Plan, Workflow } from "@amykit/core";
 
 export function plan(record: ReviewRecord, obs: Observation, policy: Policy): Plan {
   switch (record.state) {
@@ -215,7 +215,7 @@ Three habits worth copying from the shipped workflows:
 
 ```ts
 // src/runtime.ts
-import type { ActionHandler, Plan, WorkflowRuntime } from "@amy/core";
+import type { ActionHandler, Plan, WorkflowRuntime } from "@amykit/core";
 
 export function reviewRuntime(deps: Deps): WorkflowRuntime<ReviewRecord, Observation> {
   return {
@@ -278,7 +278,7 @@ could not see one would leave the record waiting on it forever.
 
 ```ts
 // src/plugin.ts
-import { WORKFLOW_RUNTIME, type Plugin, type PluginContext, type WorkflowRuntime } from "@amy/core";
+import { WORKFLOW_RUNTIME, type Plugin, type PluginContext, type WorkflowRuntime } from "@amykit/core";
 
 export const configSchema: ConfigSchema = {
   policy: {
@@ -376,13 +376,13 @@ workflows:
     workflow: "@acme/workflow-review"
     plugins:
       - "@acme/workflow-review"
-      - "@amy/plugin-file-queue"
-      - "@amy/plugin-file-store"
-      - "@amy/plugin-serial-engine"
-      - "@amy/plugin-agent-relay"
-      - "@amy/plugin-claude"
-      - "@amy/plugin-notify-fanout"
-      - "@amy/plugin-notify-inbox"
+      - "@amykit/plugin-file-queue"
+      - "@amykit/plugin-file-store"
+      - "@amykit/plugin-serial-engine"
+      - "@amykit/plugin-agent-relay"
+      - "@amykit/plugin-claude"
+      - "@amykit/plugin-notify-fanout"
+      - "@amykit/plugin-notify-inbox"
 ```
 
 ```sh

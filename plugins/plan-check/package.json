@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-plan-check",
+  "name": "@amykit/plugin-plan-check",
   "version": "0.1.0",
   "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
   "type": "module",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/workflow-note-to-plan": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/workflow-note-to-plan": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

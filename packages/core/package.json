@@ -1,5 +1,5 @@
 {
-  "name": "@amy/core",
+  "name": "@amykit/core",
   "version": "0.1.0",
   "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
   "type": "module",

@@ -1244,18 +1244,18 @@
         },
         {
           "depth": 3,
-          "title": "@amy/workflow-errand",
-          "slug": "amyworkflow-errand"
+          "title": "@amykit/workflow-errand",
+          "slug": "amykitworkflow-errand"
         },
         {
           "depth": 3,
-          "title": "@amy/workflow-note-to-plan",
-          "slug": "amyworkflow-note-to-plan"
+          "title": "@amykit/workflow-note-to-plan",
+          "slug": "amykitworkflow-note-to-plan"
         },
         {
           "depth": 3,
-          "title": "@amy/workflow-ticket-to-qa",
-          "slug": "amyworkflow-ticket-to-qa"
+          "title": "@amykit/workflow-ticket-to-qa",
+          "slug": "amykitworkflow-ticket-to-qa"
         },
         {
           "depth": 2,
@@ -1904,88 +1904,88 @@
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-agent-relay",
-          "slug": "amyplugin-agent-relay"
+          "title": "@amykit/plugin-agent-relay",
+          "slug": "amykitplugin-agent-relay"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-claude",
-          "slug": "amyplugin-claude"
+          "title": "@amykit/plugin-claude",
+          "slug": "amykitplugin-claude"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-codex",
-          "slug": "amyplugin-codex"
+          "title": "@amykit/plugin-codex",
+          "slug": "amykitplugin-codex"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-command",
-          "slug": "amyplugin-command"
+          "title": "@amykit/plugin-command",
+          "slug": "amykitplugin-command"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-command-gate",
-          "slug": "amyplugin-command-gate"
+          "title": "@amykit/plugin-command-gate",
+          "slug": "amykitplugin-command-gate"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-file-notes",
-          "slug": "amyplugin-file-notes"
+          "title": "@amykit/plugin-file-notes",
+          "slug": "amykitplugin-file-notes"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-file-queue",
-          "slug": "amyplugin-file-queue"
+          "title": "@amykit/plugin-file-queue",
+          "slug": "amykitplugin-file-queue"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-file-store",
-          "slug": "amyplugin-file-store"
+          "title": "@amykit/plugin-file-store",
+          "slug": "amykitplugin-file-store"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-file-tasks",
-          "slug": "amyplugin-file-tasks"
+          "title": "@amykit/plugin-file-tasks",
+          "slug": "amykitplugin-file-tasks"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-github",
-          "slug": "amyplugin-github"
+          "title": "@amykit/plugin-github",
+          "slug": "amykitplugin-github"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-hermes-agent",
-          "slug": "amyplugin-hermes-agent"
+          "title": "@amykit/plugin-hermes-agent",
+          "slug": "amykitplugin-hermes-agent"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-linear",
-          "slug": "amyplugin-linear"
+          "title": "@amykit/plugin-linear",
+          "slug": "amykitplugin-linear"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-notify-fanout",
-          "slug": "amyplugin-notify-fanout"
+          "title": "@amykit/plugin-notify-fanout",
+          "slug": "amykitplugin-notify-fanout"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-notify-hermes",
-          "slug": "amyplugin-notify-hermes"
+          "title": "@amykit/plugin-notify-hermes",
+          "slug": "amykitplugin-notify-hermes"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-notify-inbox",
-          "slug": "amyplugin-notify-inbox"
+          "title": "@amykit/plugin-notify-inbox",
+          "slug": "amykitplugin-notify-inbox"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-plan-check",
-          "slug": "amyplugin-plan-check"
+          "title": "@amykit/plugin-plan-check",
+          "slug": "amykitplugin-plan-check"
         },
         {
           "depth": 3,
-          "title": "@amy/plugin-serial-engine",
-          "slug": "amyplugin-serial-engine"
+          "title": "@amykit/plugin-serial-engine",
+          "slug": "amykitplugin-serial-engine"
         },
         {
           "depth": 2,
@@ -2016,18 +2016,18 @@
         },
         {
           "depth": 3,
-          "title": "@amy/workflow-errand",
-          "slug": "amyworkflow-errand"
+          "title": "@amykit/workflow-errand",
+          "slug": "amykitworkflow-errand"
         },
         {
           "depth": 3,
-          "title": "@amy/workflow-note-to-plan",
-          "slug": "amyworkflow-note-to-plan"
+          "title": "@amykit/workflow-note-to-plan",
+          "slug": "amykitworkflow-note-to-plan"
         },
         {
           "depth": 3,
-          "title": "@amy/workflow-ticket-to-qa",
-          "slug": "amyworkflow-ticket-to-qa"
+          "title": "@amykit/workflow-ticket-to-qa",
+          "slug": "amykitworkflow-ticket-to-qa"
         },
         {
           "depth": 2,
@@ -3751,7 +3751,7 @@
           "triage"
         ],
         "mountedBy": [
-          "@amy/plugin-agent-relay"
+          "@amykit/plugin-agent-relay"
         ]
       },
       {
@@ -3762,7 +3762,7 @@
           "request-rereview"
         ],
         "mountedBy": [
-          "@amy/plugin-github"
+          "@amykit/plugin-github"
         ]
       },
       {
@@ -3771,7 +3771,7 @@
           "run-command"
         ],
         "mountedBy": [
-          "@amy/plugin-command"
+          "@amykit/plugin-command"
         ]
       },
       {
@@ -3780,14 +3780,14 @@
           "run-gate"
         ],
         "mountedBy": [
-          "@amy/plugin-command-gate"
+          "@amykit/plugin-command-gate"
         ]
       },
       {
         "kind": "notes",
         "actions": [],
         "mountedBy": [
-          "@amy/plugin-file-notes"
+          "@amykit/plugin-file-notes"
         ]
       },
       {
@@ -3796,7 +3796,7 @@
           "announce"
         ],
         "mountedBy": [
-          "@amy/plugin-notify-fanout"
+          "@amykit/plugin-notify-fanout"
         ]
       },
       {
@@ -3805,28 +3805,28 @@
           "check-plan"
         ],
         "mountedBy": [
-          "@amy/plugin-plan-check"
+          "@amykit/plugin-plan-check"
         ]
       },
       {
         "kind": "queue",
         "actions": [],
         "mountedBy": [
-          "@amy/plugin-file-queue"
+          "@amykit/plugin-file-queue"
         ]
       },
       {
         "kind": "store",
         "actions": [],
         "mountedBy": [
-          "@amy/plugin-file-store"
+          "@amykit/plugin-file-store"
         ]
       },
       {
         "kind": "tasks",
         "actions": [],
         "mountedBy": [
-          "@amy/plugin-file-tasks"
+          "@amykit/plugin-file-tasks"
         ]
       },
       {
@@ -3837,7 +3837,7 @@
           "hand-off-to-qa"
         ],
         "mountedBy": [
-          "@amy/plugin-linear"
+          "@amykit/plugin-linear"
         ]
       }
     ],
@@ -3847,15 +3847,15 @@
         "contributors": [
           {
             "name": "claude",
-            "package": "@amy/plugin-claude"
+            "package": "@amykit/plugin-claude"
           },
           {
             "name": "codex",
-            "package": "@amy/plugin-codex"
+            "package": "@amykit/plugin-codex"
           },
           {
             "name": "hermes",
-            "package": "@amy/plugin-hermes-agent"
+            "package": "@amykit/plugin-hermes-agent"
           }
         ]
       },
@@ -3864,15 +3864,15 @@
         "contributors": [
           {
             "name": "claude",
-            "package": "@amy/plugin-claude"
+            "package": "@amykit/plugin-claude"
           },
           {
             "name": "codex",
-            "package": "@amy/plugin-codex"
+            "package": "@amykit/plugin-codex"
           },
           {
             "name": "hermes",
-            "package": "@amy/plugin-hermes-agent"
+            "package": "@amykit/plugin-hermes-agent"
           }
         ]
       },
@@ -3881,15 +3881,15 @@
         "contributors": [
           {
             "name": "hermes",
-            "package": "@amy/plugin-notify-hermes"
+            "package": "@amykit/plugin-notify-hermes"
           },
           {
             "name": "inbox",
-            "package": "@amy/plugin-notify-inbox"
+            "package": "@amykit/plugin-notify-inbox"
           },
           {
             "name": "tracker",
-            "package": "@amy/plugin-linear"
+            "package": "@amykit/plugin-linear"
           }
         ]
       },
@@ -3898,15 +3898,15 @@
         "contributors": [
           {
             "name": "errand",
-            "package": "@amy/workflow-errand"
+            "package": "@amykit/workflow-errand"
           },
           {
             "name": "note-to-plan",
-            "package": "@amy/workflow-note-to-plan"
+            "package": "@amykit/workflow-note-to-plan"
           },
           {
             "name": "ticket-to-qa",
-            "package": "@amy/workflow-ticket-to-qa"
+            "package": "@amykit/workflow-ticket-to-qa"
           }
         ]
       }
@@ -3914,7 +3914,7 @@
     "environment": [
       {
         "variable": "LINEAR_API_KEY",
-        "package": "@amy/plugin-linear"
+        "package": "@amykit/plugin-linear"
       }
     ]
   },
@@ -3926,12 +3926,12 @@
     },
     "shipped": [
       {
-        "name": "@amy/agent-kit",
+        "name": "@amykit/agent-kit",
         "version": "0.1.0",
         "kind": "library",
         "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
         "directory": "packages/agent-kit",
-        "npm": "https://www.npmjs.com/package/@amy/agent-kit",
+        "npm": "https://www.npmjs.com/package/@amykit/agent-kit",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/agent-kit",
         "readme": "packages/agent-kit/README.md",
         "mounts": [],
@@ -3940,12 +3940,12 @@
         "environment": []
       },
       {
-        "name": "@amy/cli",
+        "name": "@amykit/cli",
         "version": "0.1.0",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
-        "npm": "https://www.npmjs.com/package/@amy/cli",
+        "npm": "https://www.npmjs.com/package/@amykit/cli",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/cli",
         "readme": "packages/cli/README.md",
         "mounts": [],
@@ -3954,12 +3954,12 @@
         "environment": []
       },
       {
-        "name": "@amy/core",
+        "name": "@amykit/core",
         "version": "0.1.0",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
-        "npm": "https://www.npmjs.com/package/@amy/core",
+        "npm": "https://www.npmjs.com/package/@amykit/core",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/core",
         "readme": "packages/core/README.md",
         "mounts": [],
@@ -3968,12 +3968,12 @@
         "environment": []
       },
       {
-        "name": "@amy/model-specs",
+        "name": "@amykit/model-specs",
         "version": "0.1.0",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
-        "npm": "https://www.npmjs.com/package/@amy/model-specs",
+        "npm": "https://www.npmjs.com/package/@amykit/model-specs",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/model-specs",
         "readme": "packages/model-specs/README.md",
         "mounts": [],
@@ -3982,12 +3982,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-agent-relay",
+        "name": "@amykit/plugin-agent-relay",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-agent-relay",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-agent-relay",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/agent-relay",
         "readme": "plugins/agent-relay/README.md",
         "mounts": [
@@ -4027,12 +4027,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-claude",
+        "name": "@amykit/plugin-claude",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "The claude CLI as the agent, with git on the side.",
         "directory": "plugins/claude",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-claude",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-claude",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/claude",
         "readme": "plugins/claude/README.md",
         "mounts": [],
@@ -4086,12 +4086,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-codex",
+        "name": "@amykit/plugin-codex",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-codex",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-codex",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/codex",
         "readme": "plugins/codex/README.md",
         "mounts": [],
@@ -4145,12 +4145,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-command",
+        "name": "@amykit/plugin-command",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-command",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-command",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/command",
         "readme": "plugins/command/README.md",
         "mounts": [
@@ -4182,12 +4182,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-command-gate",
+        "name": "@amykit/plugin-command-gate",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-command-gate",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-command-gate",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/command-gate",
         "readme": "plugins/command-gate/README.md",
         "mounts": [
@@ -4219,12 +4219,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-file-log",
+        "name": "@amykit/plugin-file-log",
         "version": "0.1.0",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-file-log",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-file-log",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-log",
         "readme": "plugins/file-log/README.md",
         "mounts": [],
@@ -4233,12 +4233,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-file-notes",
+        "name": "@amykit/plugin-file-notes",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-file-notes",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-file-notes",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-notes",
         "readme": "plugins/file-notes/README.md",
         "mounts": [
@@ -4271,12 +4271,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-file-queue",
+        "name": "@amykit/plugin-file-queue",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-file-queue",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-file-queue",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-queue",
         "readme": "plugins/file-queue/README.md",
         "mounts": [
@@ -4309,12 +4309,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-file-store",
+        "name": "@amykit/plugin-file-store",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-file-store",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-file-store",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-store",
         "readme": "plugins/file-store/README.md",
         "mounts": [
@@ -4333,12 +4333,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-file-tasks",
+        "name": "@amykit/plugin-file-tasks",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-file-tasks",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-file-tasks",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-tasks",
         "readme": "plugins/file-tasks/README.md",
         "mounts": [
@@ -4364,12 +4364,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-github",
+        "name": "@amykit/plugin-github",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-github",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-github",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/github",
         "readme": "plugins/github/README.md",
         "mounts": [
@@ -4380,12 +4380,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-hermes-agent",
+        "name": "@amykit/plugin-hermes-agent",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-hermes-agent",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-hermes-agent",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/hermes-agent",
         "readme": "plugins/hermes-agent/README.md",
         "mounts": [],
@@ -4439,12 +4439,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-linear",
+        "name": "@amykit/plugin-linear",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-linear",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-linear",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/linear",
         "readme": "plugins/linear/README.md",
         "mounts": [
@@ -4490,12 +4490,12 @@
         ]
       },
       {
-        "name": "@amy/plugin-notify-fanout",
+        "name": "@amykit/plugin-notify-fanout",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
         "directory": "plugins/notify-fanout",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-notify-fanout",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-notify-fanout",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/notify-fanout",
         "readme": "plugins/notify-fanout/README.md",
         "mounts": [
@@ -4506,12 +4506,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-notify-hermes",
+        "name": "@amykit/plugin-notify-hermes",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-notify-hermes",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-notify-hermes",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/notify-hermes",
         "readme": "plugins/notify-hermes/README.md",
         "mounts": [],
@@ -4532,12 +4532,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-notify-inbox",
+        "name": "@amykit/plugin-notify-inbox",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-notify-inbox",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-notify-inbox",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/notify-inbox",
         "readme": "plugins/notify-inbox/README.md",
         "mounts": [],
@@ -4559,12 +4559,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-plan-check",
+        "name": "@amykit/plugin-plan-check",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-plan-check",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-plan-check",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/plan-check",
         "readme": "plugins/plan-check/README.md",
         "mounts": [
@@ -4601,12 +4601,12 @@
         "environment": []
       },
       {
-        "name": "@amy/plugin-serial-engine",
+        "name": "@amykit/plugin-serial-engine",
         "version": "0.1.0",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
-        "npm": "https://www.npmjs.com/package/@amy/plugin-serial-engine",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-serial-engine",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/serial-engine",
         "readme": "plugins/serial-engine/README.md",
         "mounts": [],
@@ -4644,12 +4644,12 @@
         "environment": []
       },
       {
-        "name": "@amy/workflow-errand",
+        "name": "@amykit/workflow-errand",
         "version": "0.1.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
-        "npm": "https://www.npmjs.com/package/@amy/workflow-errand",
+        "npm": "https://www.npmjs.com/package/@amykit/workflow-errand",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-errand",
         "readme": "packages/workflow-errand/README.md",
         "mounts": [],
@@ -4684,12 +4684,12 @@
         "environment": []
       },
       {
-        "name": "@amy/workflow-note-to-plan",
+        "name": "@amykit/workflow-note-to-plan",
         "version": "0.1.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
-        "npm": "https://www.npmjs.com/package/@amy/workflow-note-to-plan",
+        "npm": "https://www.npmjs.com/package/@amykit/workflow-note-to-plan",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-note-to-plan",
         "readme": "packages/workflow-note-to-plan/README.md",
         "mounts": [],
@@ -4724,12 +4724,12 @@
         "environment": []
       },
       {
-        "name": "@amy/workflow-ticket-to-qa",
+        "name": "@amykit/workflow-ticket-to-qa",
         "version": "0.1.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
-        "npm": "https://www.npmjs.com/package/@amy/workflow-ticket-to-qa",
+        "npm": "https://www.npmjs.com/package/@amykit/workflow-ticket-to-qa",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-ticket-to-qa",
         "readme": "packages/workflow-ticket-to-qa/README.md",
         "mounts": [],
@@ -4766,7 +4766,7 @@
   },
   "workflows": [
     {
-      "package": "@amy/workflow-errand",
+      "package": "@amykit/workflow-errand",
       "description": "Something said in passing becomes work: capture it, do it, say what happened.",
       "name": "errand",
       "states": [
@@ -4792,7 +4792,7 @@
       "usesObservers": []
     },
     {
-      "package": "@amy/workflow-note-to-plan",
+      "package": "@amykit/workflow-note-to-plan",
       "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
       "name": "note-to-plan",
       "states": [
@@ -4820,7 +4820,7 @@
       "usesObservers": []
     },
     {
-      "package": "@amy/workflow-ticket-to-qa",
+      "package": "@amykit/workflow-ticket-to-qa",
       "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
       "name": "ticket-to-qa",
       "states": [
@@ -5364,18 +5364,18 @@
       {
         "id": "a-machine-you-leave-running",
         "title": "amy is one install per machine, and it stays running.",
-        "body": "**State moved to `~/.amy`.** It used to live in `./.amy`, so `amy status`\nanswered differently depending on where you were standing — and the wrong\nanswer was \"nothing tracked yet\". amy drives work in checkouts all over the\ndisk and is reached from whichever harness you are in, so it cannot be\nper-directory. `AMY_HOME` overrides. **State left in a working directory is\nreported by `amy doctor` and never adopted**, because picking it up silently\nwould restore the behaviour being removed.\n\n**`amy start` and `amy stop` are the loop.** `start` runs it in the background\nwith `--every <seconds>`, outliving the terminal that started it; `stop` ends\nit. `amy status` says whether it is up and since when.\n\n**`amy pause` and `amy resume` are the handbrake**, which is what `stop` and\n`start` used to be. Pausing ends work in flight and starts nothing new while\nthe loop stays up. It survives a reboot because it is a file; the loop does\nnot, because it is a process.\n\n**`amy workflow list` and `amy workflow rm`.** `rm` deletes a profile's\nrecords, its queue and its config entry, and prints what it would do unless\ngiven `--yes`. It never touches the log, which is append-only because the\nbudget is measured off it.\n\n**`amy skills`** installs amy's skills into every harness it finds — Claude\nCode and Hermes today — rather than into one project. They ship inside\n`@amy/cli` so they cannot drift from the amy that ships them. Three new ones:\n`/amy-init`, `/amy-show-me`, `/amy-status`, and `/amy-workflow` is now an\ninterrogation that redraws the workflow after every answer.\n\nChanging amy's own codebase is not one of them: that is what `CONTRIBUTING.md`\nis for. A skill describing a repository the reader does not have is noise in\nthe list an agent reads when deciding what to reach for.\n\n**`amy status --json`** for something else to render.\n\nFixed: a hand-written plugin slice replaced the derived one instead of merging\nwith it, so a config that set `retentionDays` on the queue lost the\n`directory` beside it — and two profiles quietly shared one queue, each\nclaiming the other's work.\n\n`specTable()` now takes the state directory rather than a working directory,\nand `OVERRIDE_PATH` becomes `OVERRIDE_FILE`.",
+        "body": "**State moved to `~/.amy`.** It used to live in `./.amy`, so `amy status`\nanswered differently depending on where you were standing — and the wrong\nanswer was \"nothing tracked yet\". amy drives work in checkouts all over the\ndisk and is reached from whichever harness you are in, so it cannot be\nper-directory. `AMY_HOME` overrides. **State left in a working directory is\nreported by `amy doctor` and never adopted**, because picking it up silently\nwould restore the behaviour being removed.\n\n**`amy start` and `amy stop` are the loop.** `start` runs it in the background\nwith `--every <seconds>`, outliving the terminal that started it; `stop` ends\nit. `amy status` says whether it is up and since when.\n\n**`amy pause` and `amy resume` are the handbrake**, which is what `stop` and\n`start` used to be. Pausing ends work in flight and starts nothing new while\nthe loop stays up. It survives a reboot because it is a file; the loop does\nnot, because it is a process.\n\n**`amy workflow list` and `amy workflow rm`.** `rm` deletes a profile's\nrecords, its queue and its config entry, and prints what it would do unless\ngiven `--yes`. It never touches the log, which is append-only because the\nbudget is measured off it.\n\n**`amy skills`** installs amy's skills into every harness it finds — Claude\nCode and Hermes today — rather than into one project. They ship inside\n`@amykit/cli` so they cannot drift from the amy that ships them. Three new ones:\n`/amy-init`, `/amy-show-me`, `/amy-status`, and `/amy-workflow` is now an\ninterrogation that redraws the workflow after every answer.\n\nChanging amy's own codebase is not one of them: that is what `CONTRIBUTING.md`\nis for. A skill describing a repository the reader does not have is noise in\nthe list an agent reads when deciding what to reach for.\n\n**`amy status --json`** for something else to render.\n\nFixed: a hand-written plugin slice replaced the derived one instead of merging\nwith it, so a config that set `retentionDays` on the queue lost the\n`directory` beside it — and two profiles quietly shared one queue, each\nclaiming the other's work.\n\n`specTable()` now takes the state directory rather than a working directory,\nand `OVERRIDE_PATH` becomes `OVERRIDE_FILE`.",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "minor"
           },
           {
-            "package": "@amy/model-specs",
+            "package": "@amykit/model-specs",
             "level": "minor"
           },
           {
-            "package": "@amy/plugin-file-notes",
+            "package": "@amykit/plugin-file-notes",
             "level": "patch"
           }
         ],
@@ -5384,22 +5384,22 @@
       {
         "id": "a-workflow-is-a-name-in-a-config",
         "title": "A workflow is a name in a config, and a plugin is installed rather than compiled in.",
-        "body": "`--workflow` used to accept two literals, so an install could not drive a\nworkflow this repository had not shipped — while the engine underneath it\ncould drive anything. A profile is now an entry under `workflows:` in\n`.amy/config.yaml`: a name, the package that drives it, and optionally the\nplugins to mount under it. The two shipped ones are what a config with no\nsuch block gets.\n\nEach profile keeps its records and queue under `.amy/<name>/`, so a second\nworkflow no longer writes over the first's state. **State from an older\ninstall stays where it was**: `amy doctor` names each directory it found and\nthe one `mv` that moves it.\n\nThe loader's table of literal imports is gone with the compiled binary. What\ninstalls is packages, resolved by name at run time, so a machine carries the\nplugins it uses and nothing else — `AMY_PACKAGES` takes the subset. A plugin\nnamed and not installed is refused at boot with the list of what is, and\n`amy plugin list` reports installed and mounted as the different questions\nthey are.\n\n`@amy/cli` therefore stops depending on ten plugins it never imported, and\n`amy init` prints the `npm install` line for whatever a configured workflow\nneeds and this machine does not have.",
+        "body": "`--workflow` used to accept two literals, so an install could not drive a\nworkflow this repository had not shipped — while the engine underneath it\ncould drive anything. A profile is now an entry under `workflows:` in\n`.amy/config.yaml`: a name, the package that drives it, and optionally the\nplugins to mount under it. The two shipped ones are what a config with no\nsuch block gets.\n\nEach profile keeps its records and queue under `.amy/<name>/`, so a second\nworkflow no longer writes over the first's state. **State from an older\ninstall stays where it was**: `amy doctor` names each directory it found and\nthe one `mv` that moves it.\n\nThe loader's table of literal imports is gone with the compiled binary. What\ninstalls is packages, resolved by name at run time, so a machine carries the\nplugins it uses and nothing else — `AMY_PACKAGES` takes the subset. A plugin\nnamed and not installed is refused at boot with the list of what is, and\n`amy plugin list` reports installed and mounted as the different questions\nthey are.\n\n`@amykit/cli` therefore stops depending on ten plugins it never imported, and\n`amy init` prints the `npm install` line for whatever a configured workflow\nneeds and this machine does not have.",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "minor"
           },
           {
-            "package": "@amy/core",
+            "package": "@amykit/core",
             "level": "minor"
           },
           {
-            "package": "@amy/plugin-file-log",
+            "package": "@amykit/plugin-file-log",
             "level": "patch"
           },
           {
-            "package": "@amy/plugin-file-notes",
+            "package": "@amykit/plugin-file-notes",
             "level": "patch"
           }
         ],
@@ -5411,7 +5411,7 @@
         "body": "There was one 861-line README and twenty package READMEs, and nothing checked\nany of them against the code. A README is the cheapest thing in a repository to\nleave behind: nothing fails when it stops being true, and the day it matters is\nthe day somebody is trying to write a plugin against a setting that no longer\nexists.\n\n`docs/` is now the documentation, in thirty-eight pages under eight groups, and\n**half of it is read out of the code on every build**. The commands come from\nthe commander chain, the action catalogue and the port contracts from the\nsource, the event kinds from the contract the log is already validated against,\nthe `config.yaml` keys from the interface that defines them, the gates and\nrules from the policy — including the YAML comments, which is where the reason a\nrule is disabled actually lives.\n\nThe interesting one is the plugins. Nothing declares \"this plugin mounts the\n`tracker` port\" in a manifest somebody keeps in step: **each plugin is\nregistered against a registry that only takes notes, and asked.** A plugin that\nreads a credential at mount is handed a placeholder for exactly the variables\nits own source names, for the length of one call, never over a value already in\nthe environment. So the reference tables say what the code does rather than what\nsomebody last remembered to write.\n\n`npm run docs:check` is in `npm run gate`, and it names the file:\n\n```\ndocs: the code moved and the documentation did not. These are out of date:\n  docs/reference/plugins.md\n  plugins/file-queue/README.md\n```\n\nSame promise `L3.GATE_HAS_FRESH_EVIDENCE` already makes about a gate's evidence.\nA block a page names and nothing produces is an error, and so is a block nothing\nplaces — a fact the documentation has and does not show is the same failure as\none that is out of date.\n\nEvery `packages/*/README.md` and `plugins/*/README.md` is generated from the\npackage itself and says so in a banner. The root README is not, deliberately: it\nis the front door, it is argued rather than listed, and it went from 861 lines\nto 278 by linking rather than repeating.\n\n`docs/manifest.json` is one file a website reads instead of the repository — the\nnavigation, every page with its front matter and headings, the full reference\ndata, the catalogue and the news. It carries no timestamp, because a generated\nfile that changes every time it is generated cannot be checked for drift.\n\n`npm run docs:changelog` caches the releases GitHub holds, so the news page\nexists without the build ever needing a network. And `npm run docs:draft` — the\none part that is not deterministic and is deliberately outside the gate — has no\nHTTP client of its own: it mounts amy's own harness plugins through `mount()`\nand asks through the `agent` port, so a draft climbs the same ladder, under the\nsame ceiling, into the same log as everything else. A plugin model that only\nworks for the engine it was written for does not work.",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "patch"
           }
         ],
@@ -5420,10 +5420,10 @@
       {
         "id": "friction-becomes-a-plan",
         "title": "Friction becomes a plan, and the queue stops needing a ticket.",
-        "body": "Two contracts move into the core, because neither of them ever named a domain.\n`CodeHost` and the pull request view it returns — a repository, a branch, a\nlogin — leave `@amy/workflow-ticket-to-qa`, so one mounted `@amy/plugin-github`\nnow serves any workflow. `Harness` joins them: a prompt, a directory, and an\naccount of what the answer cost. The harness plugins contribute the bare CLI\nalongside their ticket-shaped agent, and `@amy/plugin-agent-relay` mounts both\nhalves behind the one `agent` port, so a second workflow's own prompts climb\nthe same ladder, under the same ceiling, in the same log.\n\n`@amy/workflow-note-to-plan` is that second workflow, and it is the proof the\nplugin model was waiting for: it runs on `@amy/plugin-serial-engine`\nunmodified. Going through the seam found one defect in it — every workflow\nruntime re-ran `applyPlan`, which the engine had already run, so every retry\nwas counted twice and every move wrote a transition from a state to itself. A\nceiling of three implement attempts was really one and a half. Fixed, and both\nend-to-end scenarios still pass unchanged.\n\nFor anyone driving this from a config: `@amy/plugin-file-queue` and\n`@amy/plugin-file-store` gained a `directory` setting, so two workflows can\nshare one `.amy` without reading each other's work. `Announcement` gained an\noptional `kind` — `failing`, `gave-up` or `recovered` — so a channel can tell\na step that failed once from a machine that has stopped.\n\nFor anyone typing at it: `amy note \"...\"` writes a piece of friction down and\nqueues it, `.amy/notes/` is watched for the longer ones, and\n`amy --workflow note-to-plan tick` drives them to a pull request adding a plan\nto the repository the friction is about. Nothing in that path touches a\ntracker.",
+        "body": "Two contracts move into the core, because neither of them ever named a domain.\n`CodeHost` and the pull request view it returns — a repository, a branch, a\nlogin — leave `@amykit/workflow-ticket-to-qa`, so one mounted `@amykit/plugin-github`\nnow serves any workflow. `Harness` joins them: a prompt, a directory, and an\naccount of what the answer cost. The harness plugins contribute the bare CLI\nalongside their ticket-shaped agent, and `@amykit/plugin-agent-relay` mounts both\nhalves behind the one `agent` port, so a second workflow's own prompts climb\nthe same ladder, under the same ceiling, in the same log.\n\n`@amykit/workflow-note-to-plan` is that second workflow, and it is the proof the\nplugin model was waiting for: it runs on `@amykit/plugin-serial-engine`\nunmodified. Going through the seam found one defect in it — every workflow\nruntime re-ran `applyPlan`, which the engine had already run, so every retry\nwas counted twice and every move wrote a transition from a state to itself. A\nceiling of three implement attempts was really one and a half. Fixed, and both\nend-to-end scenarios still pass unchanged.\n\nFor anyone driving this from a config: `@amykit/plugin-file-queue` and\n`@amykit/plugin-file-store` gained a `directory` setting, so two workflows can\nshare one `.amy` without reading each other's work. `Announcement` gained an\noptional `kind` — `failing`, `gave-up` or `recovered` — so a channel can tell\na step that failed once from a machine that has stopped.\n\nFor anyone typing at it: `amy note \"...\"` writes a piece of friction down and\nqueues it, `.amy/notes/` is watched for the longer ones, and\n`amy --workflow note-to-plan tick` drives them to a pull request adding a plan\nto the repository the friction is about. Nothing in that path touches a\ntracker.",
         "bumps": [
           {
-            "package": "@amy/core",
+            "package": "@amykit/core",
             "level": "minor"
           }
         ],
@@ -5432,10 +5432,10 @@
       {
         "id": "one-adapter-for-every-cli",
         "title": "One adapter for every command line tool, instead of one plugin each.",
-        "body": "`@amy/plugin-command` mounts a `commands` port and a `run-command` action. A\nworkflow asks for a command *by name*; the config is the only place that says\nwhat that name runs:\n\n```yaml\nplugins:\n  \"@amy/plugin-command\":\n    allow:\n      datadog: pup monitors list --json\n      notion: ntn page get\n```\n\nThat split is the security model. A command line assembled from a ticket body,\nan agent's answer or a file somebody dropped in a directory would be a machine\nthat runs whatever a stranger can type into an issue — and this one reads\nissues for a living. Arguments are passed as positional parameters\n(`sh -c 'pup \"$@\"' sh --since 1h`), so an argument carrying a semicolon is an\nargument.\n\nIt was made general by evidence rather than guess: `@amy/plugin-command-gate`\nand `@amy/plugin-plan-check` were already the same shape twice.",
+        "body": "`@amykit/plugin-command` mounts a `commands` port and a `run-command` action. A\nworkflow asks for a command *by name*; the config is the only place that says\nwhat that name runs:\n\n```yaml\nplugins:\n  \"@amykit/plugin-command\":\n    allow:\n      datadog: pup monitors list --json\n      notion: ntn page get\n```\n\nThat split is the security model. A command line assembled from a ticket body,\nan agent's answer or a file somebody dropped in a directory would be a machine\nthat runs whatever a stranger can type into an issue — and this one reads\nissues for a living. Arguments are passed as positional parameters\n(`sh -c 'pup \"$@\"' sh --since 1h`), so an argument carrying a semicolon is an\nargument.\n\nIt was made general by evidence rather than guess: `@amykit/plugin-command-gate`\nand `@amykit/plugin-plan-check` were already the same shape twice.",
         "bumps": [
           {
-            "package": "@amy/core",
+            "package": "@amykit/core",
             "level": "minor"
           }
         ],
@@ -5444,14 +5444,14 @@
       {
         "id": "something-said-in-passing",
         "title": "`amy btw` — something said in passing becomes work.",
-        "body": "```sh\namy btw \"bump the stale deps in the api package\"\n```\n\nThe cheapest thing to lose is what somebody says while doing something else,\nand a ticket is the wrong shape for it: a ticket has an owner, a date and a\nconversation attached, and a sentence said in passing has none of those. amy\nhad two ways in and neither fit — a ticket is work a tracker already knows\nabout, a note is friction amy itself hit — so there was nowhere for *work\nsomebody wants done that nobody will open a ticket for*.\n\nA third workflow, `@amy/workflow-errand`, picks the task up, works in a branch\nof the repository it names, and either opens a pull request or comes back with\nan answer. **An errand that changed nothing is finished, not failed** — half\nof what people say in passing is \"check whether X\", which ends in a sentence.\n\n**Past a few in flight it holds and says so once.** Capturing costs nothing,\nand the failure that follows from that is thirty open pull requests nobody\nasked to review.\n\n`@amy/plugin-file-tasks` keeps the tasks as a directory of markdown files, so\nan editor or a hook can add one too. `/amy-btw` is the skill: its job is\nturning what was said into a task that survives losing the conversation.\n\nIt cost the core one action name — `run-errand`, the generic \"ask the agent\",\nwhich is now wanted by two workflows under names of their own. Nothing else\nchanged: not the engine, not either other workflow.",
+        "body": "```sh\namy btw \"bump the stale deps in the api package\"\n```\n\nThe cheapest thing to lose is what somebody says while doing something else,\nand a ticket is the wrong shape for it: a ticket has an owner, a date and a\nconversation attached, and a sentence said in passing has none of those. amy\nhad two ways in and neither fit — a ticket is work a tracker already knows\nabout, a note is friction amy itself hit — so there was nowhere for *work\nsomebody wants done that nobody will open a ticket for*.\n\nA third workflow, `@amykit/workflow-errand`, picks the task up, works in a branch\nof the repository it names, and either opens a pull request or comes back with\nan answer. **An errand that changed nothing is finished, not failed** — half\nof what people say in passing is \"check whether X\", which ends in a sentence.\n\n**Past a few in flight it holds and says so once.** Capturing costs nothing,\nand the failure that follows from that is thirty open pull requests nobody\nasked to review.\n\n`@amykit/plugin-file-tasks` keeps the tasks as a directory of markdown files, so\nan editor or a hook can add one too. `/amy-btw` is the skill: its job is\nturning what was said into a task that survives losing the conversation.\n\nIt cost the core one action name — `run-errand`, the generic \"ask the agent\",\nwhich is now wanted by two workflows under names of their own. Nothing else\nchanged: not the engine, not either other workflow.",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "minor"
           },
           {
-            "package": "@amy/core",
+            "package": "@amykit/core",
             "level": "minor"
           }
         ],
@@ -5463,7 +5463,7 @@
         "body": "`WorkflowRuntime` is new in the core: what a workflow contributes so that\nsomething else can run it — how to find work, what the world looks like, one\nhandler per action, and the fold only the workflow can do. The serial engine\ntakes one and keeps the half that names nothing: the queue, the attempt\ncounts, the budget and the handbrake.\n\nFor anyone driving this from a config: `repos`, `qaStatusName` and `policy`\nmoved from the engine's settings slice to the workflow's, and the engine\ngained `retryDelayMs` of its own. `amy` maps both for you; a hand-written\n`plugins:` slice needs the two keys moved.",
         "bumps": [
           {
-            "package": "@amy/core",
+            "package": "@amykit/core",
             "level": "minor"
           }
         ],
@@ -5472,10 +5472,10 @@
       {
         "id": "the-release-path",
         "title": "The version moves because a change said it should, and an installed package can say which one it is.",
-        "body": "Changesets owns the number, every `@amy/*` package moves together through a\n`fixed` group, and the bump arrives as a pull request rather than as a commit\nsomebody pushed. An installed package reads its identity out of a stamp\nwritten at pack time, and a tree with uncommitted changes gets no stamp at\nall — so `amy --version` says `dev` rather than naming a release that only\nexisted on one laptop.",
+        "body": "Changesets owns the number, every `@amykit/*` package moves together through a\n`fixed` group, and the bump arrives as a pull request rather than as a commit\nsomebody pushed. An installed package reads its identity out of a stamp\nwritten at pack time, and a tree with uncommitted changes gets no stamp at\nall — so `amy --version` says `dev` rather than naming a release that only\nexisted on one laptop.",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "minor"
           }
         ],
@@ -5487,7 +5487,7 @@
         "body": "The first release is deliberately later, and an unarmed release job failed on\nevery push to main: GitHub refuses to let Actions open a pull request unless\nthat is switched on, and there is no npm token behind it yet either. Both are\nreal preconditions, and neither is a reason for main to be red in the\nmeantime.",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "patch"
           }
         ],
@@ -5499,7 +5499,7 @@
         "body": "",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "patch"
           }
         ],
@@ -5508,14 +5508,14 @@
       {
         "id": "the-tests-are-type-checked",
         "title": "A pull request carries its URL, an errand opens its own as a draft, and the tests are type-checked.",
-        "body": "`PullRequestView` gains `url`, and `OpenPullRequestRequest` gains `draft`.\nThe errand workflow opens as a draft — nobody asked for that work at the\nmoment it landed, and work somebody is waiting on is not a draft — and\nannounces the link rather than the number, because that announcement is read\non a phone more often than anywhere else and a number is a thing you have to\ngo and look up.\n\nAdding a required field is what turned up the rest: **nothing type-checked the\ntest files.** `tsc --build` compiles `src` only, and vitest strips types\nwithout checking them, so a test could name a field that does not exist and\nstay green. `npm run typecheck` now covers them, in the gate and in CI.\n\nIt found 45 errors on the first run. Most were harmless drift, three were not:\n\n- The ticket workflow's walkthrough — the most important test here — typed its\n  effects parameter off `effectsOf`, **a name that does not exist**. TypeScript\n  never saw it because the reference was in type position and esbuild strips\n  those, so the whole `switch` over the workflow's effects was unchecked.\n  Adding an effect would not have failed it.\n- `@amy/plugin-agent-relay`'s doubles returned `{ kind: \"clear\" }` for a\n  `TriageOutcome` that has been `{ clear, questions, at }` for a while, and a\n  `NamedAgent` with no `using`, which is the method the skill ladder calls.\n- Six engine test builders typed their overrides as the engine's own deps\n  rather than the ticket fixture's, so every option they accepted was one the\n  type said could not be passed.",
+        "body": "`PullRequestView` gains `url`, and `OpenPullRequestRequest` gains `draft`.\nThe errand workflow opens as a draft — nobody asked for that work at the\nmoment it landed, and work somebody is waiting on is not a draft — and\nannounces the link rather than the number, because that announcement is read\non a phone more often than anywhere else and a number is a thing you have to\ngo and look up.\n\nAdding a required field is what turned up the rest: **nothing type-checked the\ntest files.** `tsc --build` compiles `src` only, and vitest strips types\nwithout checking them, so a test could name a field that does not exist and\nstay green. `npm run typecheck` now covers them, in the gate and in CI.\n\nIt found 45 errors on the first run. Most were harmless drift, three were not:\n\n- The ticket workflow's walkthrough — the most important test here — typed its\n  effects parameter off `effectsOf`, **a name that does not exist**. TypeScript\n  never saw it because the reference was in type position and esbuild strips\n  those, so the whole `switch` over the workflow's effects was unchecked.\n  Adding an effect would not have failed it.\n- `@amykit/plugin-agent-relay`'s doubles returned `{ kind: \"clear\" }` for a\n  `TriageOutcome` that has been `{ clear, questions, at }` for a while, and a\n  `NamedAgent` with no `using`, which is the method the skill ladder calls.\n- Six engine test builders typed their overrides as the engine's own deps\n  rather than the ticket fixture's, so every option they accepted was one the\n  type said could not be passed.",
         "bumps": [
           {
-            "package": "@amy/core",
+            "package": "@amykit/core",
             "level": "minor"
           },
           {
-            "package": "@amy/plugin-github",
+            "package": "@amykit/plugin-github",
             "level": "minor"
           }
         ],
@@ -5527,7 +5527,7 @@
         "body": "The description was \"Drives a work ticket from in-progress to QA handoff\" —\nwhich is one of the three workflows in the box, not the product. What amy is\nis the machine underneath: a state machine you leave running, where the core\nowns the actions and everything else — the workflow, the engine, the tracker,\nthe forge, the agent, every notification channel — is a plugin you assemble\nfor the work you actually do.\n\nAnd it runs *under* the harnesses rather than inside one. Claude Code, Codex,\nHermes and a terminal are doors into the same install, which keeps its state\nwhen any of them closes.",
         "bumps": [
           {
-            "package": "@amy/cli",
+            "package": "@amykit/cli",
             "level": "patch"
           }
         ],

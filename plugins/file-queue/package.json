@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-file-queue",
+  "name": "@amykit/plugin-file-queue",
   "version": "0.1.0",
   "description": "A queue kept as one file per item, claimed by rename.",
   "type": "module",
@@ -28,6 +28,6 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0"
+    "@amykit/core": "^0.1.0"
   }
 }

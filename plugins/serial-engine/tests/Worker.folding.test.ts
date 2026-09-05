@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { FileQueue } from "@amy/plugin-file-queue";
-import { InMemoryStore, WORKDAY, fakeGate, ticketWorkerDeps } from "@amy/test-fixtures";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { InMemoryStore, WORKDAY, fakeGate, ticketWorkerDeps } from "@amykit/test-fixtures";
 import { Worker } from "../src/Worker.js";
 
 /**

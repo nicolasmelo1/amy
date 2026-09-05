@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { CommandResult } from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
+import { CommandResult } from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
 import { hermesChannel, hermesTargetIsKnown } from "../src/hermesChannel.js";
 
 const announcement = {

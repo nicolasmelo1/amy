@@ -10,8 +10,8 @@ import {
   Notifier,
   PullRequestView,
   Store,
-} from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
+} from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { PlanRecord, newRecord } from "../src/record.js";
 import { PlanState } from "../src/state.js";

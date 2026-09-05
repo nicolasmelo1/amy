@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-hermes-agent",
+  "name": "@amykit/plugin-hermes-agent",
   "version": "0.1.0",
   "description": "Hermes as the agent, over its one-shot mode and usage report.",
   "type": "module",
@@ -28,11 +28,11 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/agent-kit": "^0.1.0",
-    "@amy/model-specs": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/agent-kit": "^0.1.0",
+    "@amykit/model-specs": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

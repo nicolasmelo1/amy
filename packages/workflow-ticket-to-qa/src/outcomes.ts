@@ -1,4 +1,4 @@
-import { Plan, applyPlan } from "@amy/core";
+import { Plan, applyPlan } from "@amykit/core";
 import {
   AttemptOutcome,
   Escalation,

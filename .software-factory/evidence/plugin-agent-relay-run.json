@@ -3,12 +3,12 @@
   "status": "passed",
   "goal": "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, and hands a step to the skill I named rather than to its own prompt.",
   "artifact": {
-    "package": "@amy/plugin-agent-relay",
+    "package": "@amykit/plugin-agent-relay",
     "entry": "dist/index.js",
     "mounted_with": [
-      "@amy/plugin-claude",
-      "@amy/plugin-codex",
-      "@amy/core"
+      "@amykit/plugin-claude",
+      "@amykit/plugin-codex",
+      "@amykit/core"
     ]
   },
   "observed": {

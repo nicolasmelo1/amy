@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-serial-engine",
+  "name": "@amykit/plugin-serial-engine",
   "version": "0.1.0",
   "description": "Advances one work item by one move per tick.",
   "type": "module",
@@ -28,11 +28,11 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/workflow-ticket-to-qa": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/workflow-ticket-to-qa": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/plugin-file-queue": "^0.1.0",
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/plugin-file-queue": "^0.1.0",
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

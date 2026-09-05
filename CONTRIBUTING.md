@@ -70,8 +70,8 @@ product's behaviour, not the gate's.
 
 **The core knows no workflow and no plugin.** `packages/core` owns the
 catalogue of actions and the contracts; a workflow composes them. There is a
-local rule that fails the build on `from "@amy/workflow-*"` or
-`from "@amy/plugin-*"` anywhere under `packages/core/src`, because this is the
+local rule that fails the build on `from "@amykit/workflow-*"` or
+`from "@amykit/plugin-*"` anywhere under `packages/core/src`, because this is the
 invariant the whole plugin model rests on and it is one import away from being
 lost.
 

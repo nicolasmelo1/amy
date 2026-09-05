@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import yaml from "yaml";
-import { DEFAULT_POLICY, Policy } from "@amy/workflow-ticket-to-qa";
-import type { Policy as PlanPolicy } from "@amy/workflow-note-to-plan";
-import type { Policy as ErrandPolicy } from "@amy/workflow-errand";
-import { Roster } from "@amy/workflow-ticket-to-qa";
+import { DEFAULT_POLICY, Policy } from "@amykit/workflow-ticket-to-qa";
+import type { Policy as PlanPolicy } from "@amykit/workflow-note-to-plan";
+import type { Policy as ErrandPolicy } from "@amykit/workflow-errand";
+import { Roster } from "@amykit/workflow-ticket-to-qa";
 import os from "node:os";
 import path from "node:path";
 import { paths } from "./paths.js";
@@ -260,10 +260,10 @@ export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name 
 # on the same engine, the same log and the same budget as these.
 workflows:
   ticket-to-qa:
-    workflow: "@amy/workflow-ticket-to-qa"
+    workflow: "@amykit/workflow-ticket-to-qa"
     # plugins: []   # empty means the recommended set for this workflow
   note-to-plan:
-    workflow: "@amy/workflow-note-to-plan"
+    workflow: "@amykit/workflow-note-to-plan"
     notes: true     # \`amy note\` files friction onto this profile's queue
 
 # Which one runs when --workflow is not given. The first, if this is empty.
@@ -385,7 +385,7 @@ plans:
 # workflow. A line assembled from a ticket body would be a machine that runs
 # whatever a stranger can type into an issue.
 #
-#   "@amy/plugin-command":
+#   "@amykit/plugin-command":
 #     allow:
 #       datadog: pup monitors list --json
 #       notion: ntn page get
@@ -395,9 +395,9 @@ plans:
 # refuses a field that is not one the plugin has. A plugin with no slice runs
 # on its defaults.
 plugins:
-  "@amy/plugin-notify-hermes":
+  "@amykit/plugin-notify-hermes":
     target: slack:my-channel
-  "@amy/plugin-file-queue":
+  "@amykit/plugin-file-queue":
     retentionDays: 7
 `;
 

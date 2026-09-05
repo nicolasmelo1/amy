@@ -70,7 +70,7 @@ A budget that can never refuse is a port pretending to be one.
 And a ceiling set with no event log to measure it against is a refusal at boot:
 
 ```
-@amy/plugin-agent-relay: `budget` sets a ceiling, and the host mounted no
+@amykit/plugin-agent-relay: `budget` sets a ceiling, and the host mounted no
 event log to measure the spending against
 ```
 

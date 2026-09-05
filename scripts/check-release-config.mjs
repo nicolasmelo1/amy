@@ -90,7 +90,7 @@ for (const directory of workspaces()) {
   }
 
   for (const [dependency, range] of Object.entries(pkg.dependencies ?? {})) {
-    if (!dependency.startsWith("@amy/")) continue;
+    if (!dependency.startsWith("@amykit/")) continue;
     if (range === "*" || range.startsWith("workspace:")) {
       complain(pkg.name, `depends on ${dependency} at \`${range}\`, which is not a range a registry can resolve`);
     }

@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { CommandResult, Git } from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
-import { HarnessAgent } from "@amy/agent-kit";
+import { CommandResult, Git } from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
+import { HarnessAgent } from "@amykit/agent-kit";
 import { ClaudeHarness } from "../src/ClaudeHarness.js";
-import { ticket } from "@amy/test-fixtures";
+import { ticket } from "@amykit/test-fixtures";
 
 const layout = { workspaceRoot: "/w/northwind", defaultBranch: "dev" };
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Git } from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
+import { Git } from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
 import { PlanCommandCheck } from "../src/PlanCommandCheck.js";
 
 function check(runner: ScriptedRunner, commands: Record<string, string[]>) {

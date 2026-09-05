@@ -88,7 +88,7 @@ workflow would meet.
       (proof: assertion:plan.both_workflows_run_on_the_same_installed_binary)
 
 **Exit condition:** `plugins/serial-engine/src/**` contains no reference to
-any `@amy/workflow-*` package, the five end-to-end scenarios pass unchanged
+any `@amykit/workflow-*` package, the five end-to-end scenarios pass unchanged
 against the built artifacts, and a second workflow can be driven by handing
 the same engine a `Workflow` and a `WorkflowRuntime`.
 

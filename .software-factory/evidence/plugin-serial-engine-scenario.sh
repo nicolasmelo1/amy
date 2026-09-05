@@ -113,7 +113,7 @@ const brokenChannel = path.join(work, "channel-is-broken");
 const comments = [];
 function worldPlugin() {
   return {
-    name: "@amy/plugin-e2e-world",
+    name: "@amykit/plugin-e2e-world",
     version: "0.1.0",
     register(registry) {
       registry.port("tracker", {
@@ -162,7 +162,7 @@ function agentRun() {
 /** A channel that writes down what it was given, or throws when told to. */
 function channelPlugin(name, { throws = false } = {}) {
   return {
-    name: `@amy/plugin-e2e-${name}`,
+    name: `@amykit/plugin-e2e-${name}`,
     version: "0.1.0",
     register(registry) {
       registry.contribute(CHANNEL_COLLECTION, name, {
@@ -181,7 +181,7 @@ function channelPlugin(name, { throws = false } = {}) {
 /** A budget that always refuses, for the one assertion about a park. */
 function refusingBudgetPlugin() {
   return {
-    name: "@amy/plugin-e2e-budget",
+    name: "@amykit/plugin-e2e-budget",
     version: "0.1.0",
     register(registry) {
       registry.port("budget", {
@@ -211,8 +211,8 @@ async function host({ channels = [channelPlugin("recorder")], extra = [], log } 
   const outcome = await mount(
     [queue, store, github, fanout, ...channels, worldPlugin(), workflow, ...extra, engine],
     {
-      "@amy/plugin-serial-engine": { maxItemAttempts: 5 },
-      "@amy/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
+      "@amykit/plugin-serial-engine": { maxItemAttempts: 5 },
+      "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
     },
     {
       runner: new NodeCommandRunner(),
@@ -497,15 +497,15 @@ fs.writeFileSync(
       goal:
         "This thing runs unattended, so the day GitHub goes down I want one warning on the way down, silence while it is down, one warning when it comes back, and the ticket still standing where it was. And I want to know that a notification channel I misconfigured, or a log directory I cannot write to, never costs a ticket a move.",
       artifact: {
-        package: "@amy/plugin-serial-engine",
+        package: "@amykit/plugin-serial-engine",
         entry: "dist/index.js",
         mounted_with: [
-          "@amy/plugin-notify-fanout",
-          "@amy/plugin-file-queue",
-          "@amy/plugin-file-store",
-          "@amy/plugin-file-log",
-          "@amy/plugin-github",
-          "@amy/core",
+          "@amykit/plugin-notify-fanout",
+          "@amykit/plugin-file-queue",
+          "@amykit/plugin-file-store",
+          "@amykit/plugin-file-log",
+          "@amykit/plugin-github",
+          "@amykit/core",
         ],
       },
       observed: {

@@ -7,7 +7,7 @@ import {
   ReviewState,
   ReviewSubmission,
   ReviewThread,
-} from "@amy/core";
+} from "@amykit/core";
 
 const PULL_REQUEST_QUERY = `
 query PullRequest($owner: String!, $name: String!, $branch: String!) {

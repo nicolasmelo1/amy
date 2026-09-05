@@ -37,7 +37,7 @@ executable on your `PATH`. It is the supported path today; publishing to npm is
 ### Carrying a subset
 
 ```sh
-AMY_PACKAGES="@amy/cli @amy/workflow-errand @amy/plugin-file-queue" npm run install:local
+AMY_PACKAGES="@amykit/cli @amykit/workflow-errand @amykit/plugin-file-queue" npm run install:local
 ```
 
 `AMY_PACKAGES` takes the list to install instead of everything. A plugin that is
@@ -46,9 +46,9 @@ with a name:
 
 ```
 amy could not start:
-  @amy/plugin-codex: not installed — install it, or drop it from the config
+  @amykit/plugin-codex: not installed — install it, or drop it from the config
 
-Installed: @amy/plugin-claude, @amy/plugin-file-queue, …
+Installed: @amykit/plugin-claude, @amykit/plugin-file-queue, …
 ```
 
 `amy init` prints the `npm install` line for whatever a configured workflow needs
@@ -119,7 +119,7 @@ Which variables matter depends on which plugins you mount:
 
 | Variable | Read by |
 | :-- | :-- |
-| `LINEAR_API_KEY` | `@amy/plugin-linear` |
+| `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 
 <!-- amy:end environment -->
 

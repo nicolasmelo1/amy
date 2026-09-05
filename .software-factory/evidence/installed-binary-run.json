@@ -2,7 +2,7 @@
   "scenario": "installed-binary",
   "status": "passed",
   "goal": "I do not want my working directory to be this repository, and I do not want the code under test to be different from the code that ships. Prove the installed command runs from a directory with no checkout in it, keeps its state in one place per machine rather than beside whoever ran it, stamps every log line with the build that wrote it, and calls itself a release only when it was built from a tree somebody committed.",
-  "artifact": { "package": "@amy/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
+  "artifact": { "package": "@amykit/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
   "observed": {
     "assertions_run": 7,
     "assertions_failed": 0,

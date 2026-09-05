@@ -12,29 +12,29 @@ describe("load", () => {
   });
 
   it("takes the `plugin` export of a real package", async () => {
-    const result = await load(["@amy/plugin-file-queue"]);
+    const result = await load(["@amykit/plugin-file-queue"]);
 
     expect(result.problems).toEqual([]);
-    expect(result.plugins.map((p) => p.name)).toEqual(["@amy/plugin-file-queue"]);
+    expect(result.plugins.map((p) => p.name)).toEqual(["@amykit/plugin-file-queue"]);
   });
 
   it("says a spec is not installed, rather than throwing", async () => {
-    const result = await load(["@amy/plugin-does-not-exist"]);
+    const result = await load(["@amykit/plugin-does-not-exist"]);
 
     expect(result.plugins).toEqual([]);
-    expect(result.problems[0]).toContain("@amy/plugin-does-not-exist: not installed");
+    expect(result.problems[0]).toContain("@amykit/plugin-does-not-exist: not installed");
   });
 
   it("says so in the same words every time, so a caller can answer it", async () => {
     // The caller is what names the alternatives, once, rather than this
     // repeating the same list beside every missing plugin.
-    const result = await load(["@amy/plugin-file-quue", "@amy/plugin-nope"]);
+    const result = await load(["@amykit/plugin-file-quue", "@amykit/plugin-nope"]);
 
     expect(result.problems.every((problem) => problem.includes(NOT_INSTALLED))).toBe(true);
   });
 
   it("tells a plugin that is not there from one that threw", async () => {
-    const result = await load(["@amy/test-fixtures"]);
+    const result = await load(["@amykit/test-fixtures"]);
 
     expect(result.problems[0]).not.toContain(NOT_INSTALLED);
   });
@@ -42,13 +42,13 @@ describe("load", () => {
   it("names a package that imported but exports no plugin", async () => {
     // A library is not a plugin, and saying so beats a property access on
     // undefined three layers down.
-    const result = await load(["@amy/test-fixtures"]);
+    const result = await load(["@amykit/test-fixtures"]);
 
-    expect(result.problems[0]).toBe("@amy/test-fixtures: imported, but exports no `plugin`");
+    expect(result.problems[0]).toBe("@amykit/test-fixtures: imported, but exports no `plugin`");
   });
 
   it("keeps loading past one that failed", async () => {
-    const result = await load(["@amy/plugin-nope", "@amy/plugin-file-queue"]);
+    const result = await load(["@amykit/plugin-nope", "@amykit/plugin-file-queue"]);
 
     expect(result.plugins).toHaveLength(1);
     expect(result.problems).toHaveLength(1);
@@ -70,8 +70,8 @@ describe("what this machine has", () => {
   it("reads the plugins off disk rather than off a list", () => {
     const found = installedPlugins();
 
-    expect(found).toContain("@amy/plugin-serial-engine");
-    expect(found).toContain("@amy/workflow-ticket-to-qa");
+    expect(found).toContain("@amykit/plugin-serial-engine");
+    expect(found).toContain("@amykit/workflow-ticket-to-qa");
   });
 
   it("reports nothing about a directory that holds no node_modules", () => {

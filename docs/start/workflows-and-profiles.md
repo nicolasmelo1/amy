@@ -14,7 +14,7 @@ it.
 ```yaml
 workflows:
   ticket-to-qa:
-    workflow: "@amy/workflow-ticket-to-qa"
+    workflow: "@amykit/workflow-ticket-to-qa"
   oncall:
     workflow: "@acme/workflow-oncall"     # a package this repository never shipped
 defaultWorkflow: ticket-to-qa
@@ -34,9 +34,9 @@ rather than an inventory.
 
 | Workflow | Profile name | States | What it does |
 | :-- | :-- | :-- | :-- |
-| `@amy/workflow-errand` | `errand` | 5 | Something said in passing becomes work: capture it, do it, say what happened. |
-| `@amy/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
-| `@amy/workflow-ticket-to-qa` | `ticket-to-qa` | 16 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
+| `@amykit/workflow-errand` | `errand` | 5 | Something said in passing becomes work: capture it, do it, say what happened. |
+| `@amykit/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
+| `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 16 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
 
 <!-- amy:end workflow-index -->
 
@@ -82,7 +82,7 @@ amy workflow list                 # every workflow this install can drive, and w
 amy workflow rm oncall --yes      # forget one: records, queue, config entry
 amy plugin list                   # what is installed, and what this profile mounts
 amy plugin add @acme/plugin-jira
-amy plugin remove @amy/plugin-codex
+amy plugin remove @amykit/plugin-codex
 ```
 
 `amy workflow rm` needs `--yes` because it deletes records. Without it, it says
@@ -100,9 +100,9 @@ workflows:
   minimal:
     workflow: "@acme/workflow-oncall"
     plugins:
-      - "@amy/plugin-file-queue"
-      - "@amy/plugin-file-store"
-      - "@amy/plugin-serial-engine"
+      - "@amykit/plugin-file-queue"
+      - "@amykit/plugin-file-store"
+      - "@amykit/plugin-serial-engine"
       - "@acme/plugin-pagerduty"
 ```
 

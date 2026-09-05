@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Announcement } from "@amy/core";
-import { NewNote, Note, Notes } from "@amy/workflow-note-to-plan";
+import { Announcement } from "@amykit/core";
+import { NewNote, Note, Notes } from "@amykit/workflow-note-to-plan";
 import { frictionChannel } from "../src/frictionChannel.js";
 
 const NOW = new Date("2026-09-04T20:00:00.000Z");

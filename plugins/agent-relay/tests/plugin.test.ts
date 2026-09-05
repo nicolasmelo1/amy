@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { HostServices, mount, Plugin } from "@amy/core";
-import { AGENT_COLLECTION, NamedAgent } from "@amy/agent-kit";
-import { agentResult, fakeAgent } from "@amy/test-fixtures";
+import { HostServices, mount, Plugin } from "@amykit/core";
+import { AGENT_COLLECTION, NamedAgent } from "@amykit/agent-kit";
+import { agentResult, fakeAgent } from "@amykit/test-fixtures";
 import { plugin as relay } from "../src/plugin.js";
 
 const host: HostServices = {
@@ -16,7 +16,7 @@ const host: HostServices = {
 /** A stand-in harness plugin, contributing tiers without running anything. */
 function harnessPlugin(harness: string, models: string[]): Plugin {
   return {
-    name: `@amy/plugin-${harness}-fake`,
+    name: `@amykit/plugin-${harness}-fake`,
     version: "0.0.0",
     register(registry) {
       for (const model of models) {
@@ -42,7 +42,7 @@ function harnessPlugin(harness: string, models: string[]): Plugin {
   };
 }
 
-const ladder = (ladder: string[]) => ({ "@amy/plugin-agent-relay": { ladder } });
+const ladder = (ladder: string[]) => ({ "@amykit/plugin-agent-relay": { ladder } });
 
 describe("mounting the relay", () => {
   it("mounts the agent port, which is the only reason it exists", async () => {
@@ -112,7 +112,7 @@ describe("mounting the relay", () => {
     const bare = await mount([relay, harnessPlugin("claude", ["sonnet"])], ladder([]), withLog);
 
     const capped = await mount([relay, harnessPlugin("claude", ["sonnet"])], {
-      "@amy/plugin-agent-relay": { ladder: [], budget: { perFiveHours: { tokens: 10 } } },
+      "@amykit/plugin-agent-relay": { ladder: [], budget: { perFiveHours: { tokens: 10 } } },
     }, withLog);
 
     // A budget that can never refuse is a port pretending to be one.
@@ -122,7 +122,7 @@ describe("mounting the relay", () => {
 
   it("refuses a budget it cannot mean, while boot can still refuse", async () => {
     const outcome = await mount([relay, harnessPlugin("claude", ["sonnet"])], {
-      "@amy/plugin-agent-relay": { ladder: [], budget: { perDay: { tokens: 10 } } },
+      "@amykit/plugin-agent-relay": { ladder: [], budget: { perDay: { tokens: 10 } } },
     }, { ...host, log: { append: () => {}, read: () => [] } });
 
     expect(outcome.ok).toBe(false);
@@ -133,7 +133,7 @@ describe("mounting the relay", () => {
     // The host lends the log. Without one the ledger has nothing to read, and
     // a ceiling nobody can measure is a promise rather than a brake.
     const outcome = await mount([relay, harnessPlugin("claude", ["sonnet"])], {
-      "@amy/plugin-agent-relay": { ladder: [], budget: { perWeek: { costUsd: 10 } } },
+      "@amykit/plugin-agent-relay": { ladder: [], budget: { perWeek: { costUsd: 10 } } },
     }, host);
 
     expect(outcome.ok).toBe(false);
@@ -172,7 +172,7 @@ describe("mounting the skills", () => {
   });
 
   const withSkills = (skills: Record<string, string[]>) => ({
-    "@amy/plugin-agent-relay": { ladder: [], skills, skillRoots: [root] },
+    "@amykit/plugin-agent-relay": { ladder: [], skills, skillRoots: [root] },
   });
 
   it("mounts when every skill named is installed", async () => {

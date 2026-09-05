@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isConfirmedFor, isWorkday, leastLoadedReviewer } from "../src/roster.js";
-import { WEEKEND, WORKDAY, roster } from "@amy/test-fixtures";
+import { WEEKEND, WORKDAY, roster } from "@amykit/test-fixtures";
 
 describe("isWorkday", () => {
   it.each([

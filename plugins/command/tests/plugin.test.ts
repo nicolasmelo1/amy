@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Commands, HostServices, mount } from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
+import { Commands, HostServices, mount } from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
 import { plugin } from "../src/plugin.js";
 
 function hostWith(runner: ScriptedRunner): HostServices {
@@ -13,7 +13,7 @@ function hostWith(runner: ScriptedRunner): HostServices {
 
 async function mounted(settings: Record<string, unknown> = {}) {
   const runner = new ScriptedRunner([]);
-  const outcome = await mount([plugin], { "@amy/plugin-command": settings }, hostWith(runner));
+  const outcome = await mount([plugin], { "@amykit/plugin-command": settings }, hostWith(runner));
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
   return { runner, mounted: outcome.mounted };
@@ -44,7 +44,7 @@ describe("mounting the command adapter", () => {
   it("refuses a setting that is not one this plugin has", async () => {
     const outcome = await mount(
       [plugin],
-      { "@amy/plugin-command": { allw: {} } },
+      { "@amykit/plugin-command": { allw: {} } },
       hostWith(new ScriptedRunner([])),
     );
 

@@ -10,7 +10,7 @@ import {
   Store,
   WORKFLOW_RUNTIME,
   WorkflowRuntime,
-} from "@amy/core";
+} from "@amykit/core";
 import { errand } from "./machine.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
 import { ErrandRecord } from "./record.js";
@@ -77,7 +77,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observati
  * new action, no new engine, nothing changed in either of the other two.
  */
 export const plugin: Plugin = {
-  name: "@amy/workflow-errand",
+  name: "@amykit/workflow-errand",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

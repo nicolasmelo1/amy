@@ -1,4 +1,4 @@
-import { AgentResult, EventLog, ReviewThread } from "@amy/core";
+import { AgentResult, EventLog, ReviewThread } from "@amykit/core";
 import {
   NamedAgent,
   SkillLadders,
@@ -6,14 +6,14 @@ import {
   nextRung,
   recordHandoff,
   recordSkillHandoff,
-} from "@amy/agent-kit";
+} from "@amykit/agent-kit";
 import {
   Agent,
   AttemptOutcome,
   ThreadVerdict,
   Ticket,
   TriageOutcome,
-} from "@amy/workflow-ticket-to-qa";
+} from "@amykit/workflow-ticket-to-qa";
 
 export interface RelayDeps {
   log?: EventLog;

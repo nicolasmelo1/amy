@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-file-notes",
+  "name": "@amykit/plugin-file-notes",
   "version": "0.1.0",
   "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
   "type": "module",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/plugin-notify-fanout": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/plugin-notify-fanout": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/workflow-note-to-plan": "^0.1.0"
+    "@amykit/workflow-note-to-plan": "^0.1.0"
   }
 }

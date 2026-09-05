@@ -1,5 +1,5 @@
 {
-  "name": "@amy/agent-kit",
+  "name": "@amykit/agent-kit",
   "version": "0.1.0",
   "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
   "type": "module",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/workflow-ticket-to-qa": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/workflow-ticket-to-qa": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

@@ -5,7 +5,7 @@ import {
   isAutomatedReviewer,
   unresolvedThreads,
 } from "../src/review.js";
-import { HEAD, OLD_HEAD, botReview, pullRequest, review, thread } from "@amy/test-fixtures";
+import { HEAD, OLD_HEAD, botReview, pullRequest, review, thread } from "@amykit/test-fixtures";
 
 describe("isAutomatedReviewer", () => {
   // The same bot answers to three names depending on which API you ask, and

@@ -88,7 +88,7 @@ fs.writeFileSync(
       status: failed.length === 0 ? "passed" : "failed",
       goal:
         "I am about to trust this queue with work that takes hours. Prove the built artifact claims exactly once, holds an item until it is due, gives back what a dead worker left, sweeps only finished items, and survives the process that made it.",
-      artifact: { package: "@amy/plugin-file-queue", entry: "dist/index.js" },
+      artifact: { package: "@amykit/plugin-file-queue", entry: "dist/index.js" },
       observed: {
         assertions_run: assertions.length,
         assertions_failed: failed.length,

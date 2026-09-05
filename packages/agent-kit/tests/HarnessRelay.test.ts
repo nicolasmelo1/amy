@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { AgentOutcome, AgentRun, Harness } from "@amy/core";
-import { RecordingEventLog } from "@amy/test-fixtures";
+import { AgentOutcome, AgentRun, Harness } from "@amykit/core";
+import { RecordingEventLog } from "@amykit/test-fixtures";
 import { HarnessRelay } from "../src/HarnessRelay.js";
 import { NamedHarness } from "../src/collection.js";
 

@@ -1,5 +1,5 @@
 ---
-"@amy/cli": patch
+"@amykit/cli": patch
 ---
 
 Documentation that cannot go out of date, and a manifest a site can be built

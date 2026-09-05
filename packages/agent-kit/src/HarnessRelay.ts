@@ -1,4 +1,4 @@
-import { AskContext, Harness, HarnessReply } from "@amy/core";
+import { AskContext, Harness, HarnessReply } from "@amykit/core";
 import { NamedHarness } from "./collection.js";
 import { HandoffLog, handoffNote, recordHandoff, recordSkillHandoff } from "./handoff.js";
 import { nextRung } from "./ladder.js";

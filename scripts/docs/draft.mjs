@@ -35,7 +35,7 @@ async function main() {
   if (!ask) {
     console.error("");
     console.error("no harness is mounted, so nothing can draft. Configure `agent.ladder` in");
-    console.error("~/.amy/config.yaml, or install one of @amy/plugin-claude, -codex, -hermes-agent.");
+    console.error("~/.amy/config.yaml, or install one of @amykit/plugin-claude, -codex, -hermes-agent.");
     process.exit(1);
   }
 
@@ -140,7 +140,7 @@ async function harness() {
   let core;
   let config;
   try {
-    core = await import("@amy/core");
+    core = await import("@amykit/core");
     config = readConfig(home);
   } catch {
     return null;
@@ -189,9 +189,9 @@ function readConfig(home) {
   const harnesses = [...new Set(ladder.map((rung) => String(rung).split(":")[0]))];
 
   const known = {
-    claude: "@amy/plugin-claude",
-    codex: "@amy/plugin-codex",
-    hermes: "@amy/plugin-hermes-agent",
+    claude: "@amykit/plugin-claude",
+    codex: "@amykit/plugin-codex",
+    hermes: "@amykit/plugin-hermes-agent",
   };
 
   const chosen = harnesses.map((name) => known[name]).filter(Boolean);
@@ -199,7 +199,7 @@ function readConfig(home) {
   return {
     ladderPlugins: [
       ...(chosen.length > 0 ? chosen : Object.values(known)),
-      "@amy/plugin-agent-relay",
+      "@amykit/plugin-agent-relay",
     ],
     slices: parsed?.plugins ?? {},
   };

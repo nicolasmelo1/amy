@@ -26,7 +26,7 @@ the proof.
 
 ## The queue first, and why
 
-`@amy/plugin-file-queue` is the one the whole engine sits on: it decides what
+`@amykit/plugin-file-queue` is the one the whole engine sits on: it decides what
 work is claimed, and claiming the same item twice would run the same ticket
 twice. It also needs nothing external, so the scenario is repeatable by anyone
 without a credential, which makes it the right place to establish the pattern

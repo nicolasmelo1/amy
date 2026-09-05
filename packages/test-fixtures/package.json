@@ -1,5 +1,5 @@
 {
-  "name": "@amy/test-fixtures",
+  "name": "@amykit/test-fixtures",
   "version": "0.1.0",
   "description": "Shared test builders and scripted doubles. Not published.",
   "type": "module",
@@ -17,7 +17,7 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "*",
-    "@amy/workflow-ticket-to-qa": "*"
+    "@amykit/core": "*",
+    "@amykit/workflow-ticket-to-qa": "*"
   }
 }

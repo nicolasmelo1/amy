@@ -1,5 +1,5 @@
 ---
-"@amy/cli": patch
+"@amykit/cli": patch
 ---
 
 amy says what it is, rather than what its first workflow does.

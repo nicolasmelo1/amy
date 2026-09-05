@@ -129,9 +129,9 @@ async function hostWith(ladder, { budget, seed = [], skills } = {}) {
   const outcome = await mount(
     [claude, codex, relay],
     {
-      "@amy/plugin-claude": { defaultBranch: "main", models: ["sonnet", "opus"] },
-      "@amy/plugin-codex": { defaultBranch: "main", models: ["gpt-5"] },
-      "@amy/plugin-agent-relay": {
+      "@amykit/plugin-claude": { defaultBranch: "main", models: ["sonnet", "opus"] },
+      "@amykit/plugin-codex": { defaultBranch: "main", models: ["gpt-5"] },
+      "@amykit/plugin-agent-relay": {
         ladder,
         ...(budget === undefined ? {} : { budget }),
         ...(skills === undefined ? {} : { skills, skillRoots: [path.join(work, "skills")] }),
@@ -178,8 +178,8 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   record("relay.mounts_the_agent_port", outcome.ok === true && Boolean(agent));
 
   const withoutRelay = await mount([claude, codex], {
-    "@amy/plugin-claude": { defaultBranch: "main", models: ["sonnet"] },
-    "@amy/plugin-codex": { defaultBranch: "main", models: ["gpt-5"] },
+    "@amykit/plugin-claude": { defaultBranch: "main", models: ["sonnet"] },
+    "@amykit/plugin-codex": { defaultBranch: "main", models: ["gpt-5"] },
   }, {
     runner: new NodeCommandRunner(),
     now: () => new Date(),
@@ -353,9 +353,9 @@ fs.writeFileSync(
       goal:
         "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, and hands a step to the skill I named rather than to its own prompt.",
       artifact: {
-        package: "@amy/plugin-agent-relay",
+        package: "@amykit/plugin-agent-relay",
         entry: "dist/index.js",
-        mounted_with: ["@amy/plugin-claude", "@amy/plugin-codex", "@amy/core"],
+        mounted_with: ["@amykit/plugin-claude", "@amykit/plugin-codex", "@amykit/core"],
       },
       observed: {
         assertions_run: assertions.length,

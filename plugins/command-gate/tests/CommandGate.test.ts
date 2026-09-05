@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { CommandGate } from "../src/CommandGate.js";
-import { Git } from "@amy/core";
-import { CommandResult } from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
-import { ticket } from "@amy/test-fixtures";
+import { Git } from "@amykit/core";
+import { CommandResult } from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
+import { ticket } from "@amykit/test-fixtures";
 
 const layout = { workspaceRoot: "/w/northwind", defaultBranch: "main" };
 

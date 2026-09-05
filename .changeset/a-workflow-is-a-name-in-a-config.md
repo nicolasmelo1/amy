@@ -1,8 +1,8 @@
 ---
-"@amy/cli": minor
-"@amy/core": minor
-"@amy/plugin-file-log": patch
-"@amy/plugin-file-notes": patch
+"@amykit/cli": minor
+"@amykit/core": minor
+"@amykit/plugin-file-log": patch
+"@amykit/plugin-file-notes": patch
 ---
 
 A workflow is a name in a config, and a plugin is installed rather than
@@ -27,6 +27,6 @@ named and not installed is refused at boot with the list of what is, and
 `amy plugin list` reports installed and mounted as the different questions
 they are.
 
-`@amy/cli` therefore stops depending on ten plugins it never imported, and
+`@amykit/cli` therefore stops depending on ten plugins it never imported, and
 `amy init` prints the `npm install` line for whatever a configured workflow
 needs and this machine does not have.

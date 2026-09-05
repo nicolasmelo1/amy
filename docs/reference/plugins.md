@@ -18,23 +18,23 @@ maintains.
 
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
-| `@amy/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
-| `@amy/plugin-claude` | The claude CLI as the agent, with git on the side. |  | `agent:claude`<br>`harness:claude` |
-| `@amy/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `agent:codex`<br>`harness:codex` |
-| `@amy/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
-| `@amy/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
-| `@amy/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
-| `@amy/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
-| `@amy/plugin-file-store` | Work records kept as one file per item. | `store` |  |
-| `@amy/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
-| `@amy/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
-| `@amy/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
-| `@amy/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` | `notify-channel:tracker` |
-| `@amy/plugin-notify-fanout` | Sends one announcement down every configured channel, and keeps going when one is down. | `notifier` |  |
-| `@amy/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. |  | `notify-channel:hermes` |
-| `@amy/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
-| `@amy/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
-| `@amy/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
+| `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
+| `@amykit/plugin-claude` | The claude CLI as the agent, with git on the side. |  | `agent:claude`<br>`harness:claude` |
+| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `agent:codex`<br>`harness:codex` |
+| `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
+| `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
+| `@amykit/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
+| `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
+| `@amykit/plugin-file-store` | Work records kept as one file per item. | `store` |  |
+| `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
+| `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
+| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
+| `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` | `notify-channel:tracker` |
+| `@amykit/plugin-notify-fanout` | Sends one announcement down every configured channel, and keeps going when one is down. | `notifier` |  |
+| `@amykit/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. |  | `notify-channel:hermes` |
+| `@amykit/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
+| `@amykit/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
+| `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
 
 <!-- amy:end plugin-index -->
 
@@ -46,7 +46,7 @@ is a refusal naming the plugin and the key — see
 
 <!-- amy:generated plugin-settings -->
 
-### `@amy/plugin-agent-relay`
+### `@amykit/plugin-agent-relay`
 
 One agent made of several: swaps harness on a quota, escalates model on a failure.
 
@@ -56,11 +56,11 @@ One agent made of several: swaps harness on a quota, escalates model on a failur
 | Mounts | `agent` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/agent-kit`, `@amy/core`, `@amy/workflow-ticket-to-qa` |
+| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 
 ```yaml
 plugins:
-  "@amy/plugin-agent-relay":
+  "@amykit/plugin-agent-relay":
     budget: {}
     ladder: []
     skillRoots: []
@@ -74,7 +74,7 @@ plugins:
 | `skillRoots` | `string[]` | no | `[]` | where installed skills are looked for. Empty means ~/.claude/skills, which is where the harness looks |
 | `skills` | `record` | no | `{}` | which skills answer for a step, in the order they are tried, keyed by the workflow's action name: {"triage": ["/logion"]}. A skill named here must be installed, or the mount is refused |
 
-### `@amy/plugin-claude`
+### `@amykit/plugin-claude`
 
 The claude CLI as the agent, with git on the side.
 
@@ -84,11 +84,11 @@ The claude CLI as the agent, with git on the side.
 | Mounts | _nothing_ |
 | Contributes | `agent:claude`, `harness:claude` |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/agent-kit`, `@amy/core`, `@amy/model-specs` |
+| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
 plugins:
-  "@amy/plugin-claude":
+  "@amykit/plugin-claude":
     defaultBranch: main
     model: ""
     models: []
@@ -104,7 +104,7 @@ plugins:
 | `reviewerHints` | `record` | no | `{}` | guidance appended when answering a particular reviewer, by host login |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
-### `@amy/plugin-codex`
+### `@amykit/plugin-codex`
 
 The codex CLI as the agent, over its JSONL event stream.
 
@@ -114,11 +114,11 @@ The codex CLI as the agent, over its JSONL event stream.
 | Mounts | _nothing_ |
 | Contributes | `agent:codex`, `harness:codex` |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/agent-kit`, `@amy/core`, `@amy/model-specs` |
+| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
 plugins:
-  "@amy/plugin-codex":
+  "@amykit/plugin-codex":
     defaultBranch: main
     model: ""
     models: []
@@ -134,7 +134,7 @@ plugins:
 | `reviewerHints` | `record` | no | `{}` | guidance appended when answering a particular reviewer, by host login |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
-### `@amy/plugin-command`
+### `@amykit/plugin-command`
 
 Any command line tool, reached by a name the config allows.
 
@@ -144,11 +144,11 @@ Any command line tool, reached by a name the config allows.
 | Mounts | `commands` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core` |
+| Depends on | `@amykit/core` |
 
 ```yaml
 plugins:
-  "@amy/plugin-command":
+  "@amykit/plugin-command":
     allow: {}
     cwd: ""
     timeoutMs: 300000
@@ -160,7 +160,7 @@ plugins:
 | `cwd` | `string` | no | `""` | where a command runs when it does not say, defaulting to the state directory |
 | `timeoutMs` | `number` | no | `300000` | how long one command may run before it is given up on |
 
-### `@amy/plugin-command-gate`
+### `@amykit/plugin-command-gate`
 
 A gate that runs the target repository's own commands.
 
@@ -170,11 +170,11 @@ A gate that runs the target repository's own commands.
 | Mounts | `gate` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core`, `@amy/workflow-ticket-to-qa` |
+| Depends on | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 
 ```yaml
 plugins:
-  "@amy/plugin-command-gate":
+  "@amykit/plugin-command-gate":
     commands: {}
     defaultBranch: main
     timeoutMs: 1800000
@@ -186,7 +186,7 @@ plugins:
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |
 
-### `@amy/plugin-file-notes`
+### `@amykit/plugin-file-notes`
 
 Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.
 
@@ -196,11 +196,11 @@ Friction as a directory of notes: written by hand, by a hook, or by a tick that 
 | Mounts | `notes` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core`, `@amy/plugin-notify-fanout` |
+| Depends on | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 
 ```yaml
 plugins:
-  "@amy/plugin-file-notes":
+  "@amykit/plugin-file-notes":
     directory: notes
     repo: ""
     writeFailureNotes: true
@@ -212,7 +212,7 @@ plugins:
 | `repo` | `string` | no | `""` | the repository a note is about when it does not say, which is also the one this machine's own failures are filed against |
 | `writeFailureNotes` | `boolean` | no | `true` | whether a tick this machine gave up on leaves a note behind, so the thing that broke becomes the thing that gets fixed |
 
-### `@amy/plugin-file-queue`
+### `@amykit/plugin-file-queue`
 
 A queue kept as one file per item, claimed by rename.
 
@@ -222,11 +222,11 @@ A queue kept as one file per item, claimed by rename.
 | Mounts | `queue` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core` |
+| Depends on | `@amykit/core` |
 
 ```yaml
 plugins:
-  "@amy/plugin-file-queue":
+  "@amykit/plugin-file-queue":
     directory: queue
     retentionDays: 7
     staleClaimMs: 1800000
@@ -238,7 +238,7 @@ plugins:
 | `retentionDays` | `number` | no | `7` | how long a finished queue item is kept before it is pruned |
 | `staleClaimMs` | `number` | no | `1800000` | how long a claimed item may sit before it counts as abandoned |
 
-### `@amy/plugin-file-store`
+### `@amykit/plugin-file-store`
 
 Work records kept as one file per item.
 
@@ -248,11 +248,11 @@ Work records kept as one file per item.
 | Mounts | `store` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core` |
+| Depends on | `@amykit/core` |
 
 ```yaml
 plugins:
-  "@amy/plugin-file-store":
+  "@amykit/plugin-file-store":
     directory: tickets
 ```
 
@@ -260,7 +260,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `directory` | `string` | no | `tickets` | where the records are kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not read each other's work |
 
-### `@amy/plugin-file-tasks`
+### `@amykit/plugin-file-tasks`
 
 Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.
 
@@ -270,11 +270,11 @@ Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.
 | Mounts | `tasks` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core` |
+| Depends on | `@amykit/core` |
 
 ```yaml
 plugins:
-  "@amy/plugin-file-tasks":
+  "@amykit/plugin-file-tasks":
     directory: tasks
     repo: ""
 ```
@@ -284,7 +284,7 @@ plugins:
 | `directory` | `string` | no | `tasks` | where the tasks are kept, relative to the state directory |
 | `repo` | `string` | no | `""` | what a task is about when it does not say |
 
-### `@amy/plugin-github`
+### `@amykit/plugin-github`
 
 GitHub as the code host, through the gh CLI.
 
@@ -294,11 +294,11 @@ GitHub as the code host, through the gh CLI.
 | Mounts | `code-host` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core` |
+| Depends on | `@amykit/core` |
 
 This plugin declares no settings, so the config must not give it any.
 
-### `@amy/plugin-hermes-agent`
+### `@amykit/plugin-hermes-agent`
 
 Hermes as the agent, over its one-shot mode and usage report.
 
@@ -308,11 +308,11 @@ Hermes as the agent, over its one-shot mode and usage report.
 | Mounts | _nothing_ |
 | Contributes | `agent:hermes`, `harness:hermes` |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/agent-kit`, `@amy/core`, `@amy/model-specs` |
+| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
 plugins:
-  "@amy/plugin-hermes-agent":
+  "@amykit/plugin-hermes-agent":
     defaultBranch: main
     model: ""
     models: []
@@ -328,7 +328,7 @@ plugins:
 | `reviewerHints` | `record` | no | `{}` | guidance appended when answering a particular reviewer, by host login |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
-### `@amy/plugin-linear`
+### `@amykit/plugin-linear`
 
 Linear as the tracker, over its GraphQL API.
 
@@ -338,11 +338,11 @@ Linear as the tracker, over its GraphQL API.
 | Mounts | `tracker` |
 | Contributes | `notify-channel:tracker` |
 | Needs in the environment | `LINEAR_API_KEY` |
-| Depends on | `@amy/core`, `@amy/plugin-notify-fanout`, `@amy/workflow-ticket-to-qa` |
+| Depends on | `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/workflow-ticket-to-qa` |
 
 ```yaml
 plugins:
-  "@amy/plugin-linear":
+  "@amykit/plugin-linear":
     defaultRepo: ""
     endpoint: https://api.linear.app/graphql
     repoByTeam: {}
@@ -356,7 +356,7 @@ plugins:
 | `repoByTeam` | `record` | no | `{}` | which repository a team's tickets land in, by team key |
 | `workingStatusName` | `string` | **yes** |  | the exact status name a ticket must be in to be picked up |
 
-### `@amy/plugin-notify-fanout`
+### `@amykit/plugin-notify-fanout`
 
 Sends one announcement down every configured channel, and keeps going when one is down.
 
@@ -366,11 +366,11 @@ Sends one announcement down every configured channel, and keeps going when one i
 | Mounts | `notifier` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core` |
+| Depends on | `@amykit/core` |
 
 This plugin declares no settings, so the config must not give it any.
 
-### `@amy/plugin-notify-hermes`
+### `@amykit/plugin-notify-hermes`
 
 Announcements over Hermes, which already owns the messaging credentials.
 
@@ -380,11 +380,11 @@ Announcements over Hermes, which already owns the messaging credentials.
 | Mounts | _nothing_ |
 | Contributes | `notify-channel:hermes` |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core`, `@amy/plugin-notify-fanout` |
+| Depends on | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 
 ```yaml
 plugins:
-  "@amy/plugin-notify-hermes":
+  "@amykit/plugin-notify-hermes":
     target: …
 ```
 
@@ -392,7 +392,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `target` | `string` | **yes** |  | a Hermes delivery target, such as `slack:my-channel` or a bare platform name for its home channel |
 
-### `@amy/plugin-notify-inbox`
+### `@amykit/plugin-notify-inbox`
 
 Announcements as a file on disk plus a desktop notification.
 
@@ -402,11 +402,11 @@ Announcements as a file on disk plus a desktop notification.
 | Mounts | _nothing_ |
 | Contributes | `notify-channel:inbox` |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core`, `@amy/plugin-notify-fanout` |
+| Depends on | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 
 ```yaml
 plugins:
-  "@amy/plugin-notify-inbox":
+  "@amykit/plugin-notify-inbox":
     directory: needs-input
 ```
 
@@ -414,7 +414,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `directory` | `string` | no | `needs-input` | where the questions are left, relative to the workspace |
 
-### `@amy/plugin-plan-check`
+### `@amykit/plugin-plan-check`
 
 The quality bar for a drafted plan: the repository's own check, run in its checkout.
 
@@ -424,11 +424,11 @@ The quality bar for a drafted plan: the repository's own check, run in its check
 | Mounts | `plan-check` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core`, `@amy/workflow-note-to-plan` |
+| Depends on | `@amykit/core`, `@amykit/workflow-note-to-plan` |
 
 ```yaml
 plugins:
-  "@amy/plugin-plan-check":
+  "@amykit/plugin-plan-check":
     commands: 
       default:
         - sf check
@@ -442,7 +442,7 @@ plugins:
 | `defaultBranch` | `string` | no | `main` | the branch a plan branch is cut from, which is not always `main` |
 | `timeoutMs` | `number` | no | `600000` | how long one check may run before it is given up on |
 
-### `@amy/plugin-serial-engine`
+### `@amykit/plugin-serial-engine`
 
 Advances one work item by one move per tick.
 
@@ -452,11 +452,11 @@ Advances one work item by one move per tick.
 | Mounts | the engine |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amy/core`, `@amy/workflow-ticket-to-qa` |
+| Depends on | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 
 ```yaml
 plugins:
-  "@amy/plugin-serial-engine":
+  "@amykit/plugin-serial-engine":
     maxItemAttempts: 5
     retentionDays: 7
     retryDelayMs: 300000
@@ -478,9 +478,9 @@ plugins:
 
 | Collection | Contributed to by | Read by |
 | :-- | :-- | :-- |
-| `agent` | `claude` — `@amy/plugin-claude`<br>`codex` — `@amy/plugin-codex`<br>`hermes` — `@amy/plugin-hermes-agent` | `@amy/agent-kit` |
-| `harness` | `claude` — `@amy/plugin-claude`<br>`codex` — `@amy/plugin-codex`<br>`hermes` — `@amy/plugin-hermes-agent` | `@amy/agent-kit` |
-| `notify-channel` | `hermes` — `@amy/plugin-notify-hermes`<br>`inbox` — `@amy/plugin-notify-inbox`<br>`tracker` — `@amy/plugin-linear` | _whichever plugin reads it_ |
-| `workflow-runtime` | `errand` — `@amy/workflow-errand`<br>`note-to-plan` — `@amy/workflow-note-to-plan`<br>`ticket-to-qa` — `@amy/workflow-ticket-to-qa` | `@amy/agent-kit` |
+| `agent` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
+| `harness` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
+| `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox`<br>`tracker` — `@amykit/plugin-linear` | _whichever plugin reads it_ |
+| `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
 
 <!-- amy:end collections -->

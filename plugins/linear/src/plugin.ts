@@ -1,12 +1,12 @@
-import { Plugin } from "@amy/core";
-import { CHANNEL_COLLECTION } from "@amy/plugin-notify-fanout";
+import { Plugin } from "@amykit/core";
+import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 import { LinearTracker } from "./LinearTracker.js";
 import { HttpGraphQLClient } from "./HttpGraphQLClient.js";
 import { trackerChannel } from "./ticketChannel.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-linear",
+  name: "@amykit/plugin-linear",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

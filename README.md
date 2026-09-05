@@ -138,7 +138,7 @@ registry that mounts everything else. A state is a string to it and an action
 is a name.
 
 ```text
-@amy/core
+@amykit/core
   actions:  triage, implement, run-gate, draft-plan, open-pull-request,
             address-threads, assign-reviewer, request-rereview, escalate,
             hand-off-to-qa, announce    each declares the port it needs
@@ -153,7 +153,7 @@ is a name.
   a pure plan() and a runtime each         hermes, agent-relay, file-*, …
       │
       ▼
-@amy/plugin-serial-engine
+@amykit/plugin-serial-engine
   a queue, a budget, a retry count and a stop switch — and no idea what a
   ticket or a plan is
 ```

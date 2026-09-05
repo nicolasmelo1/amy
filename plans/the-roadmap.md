@@ -15,7 +15,7 @@ trabalho de hoje. O resto do repositório é em inglês.
 | 1 a 5 | entregues | os guardrails, o log, a config por plugin, a contabilidade do agente e o relay estão de pé e cobertos por teste |
 | 6 | entregue, com a resposta trocada duas vezes | [what runs is not this repo](what-runs-is-not-this-repo.md); o binário compilado saiu em [plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md), e o que roda agora são pacotes instalados |
 | 7 | entregue | o budget e o teto de reviewer, provados pelo gate `plugin-agent-relay` |
-| 8 | entregue pela metade | a escada de skills por passo existe no `@amy/plugin-agent-relay`; o scaffolder não |
+| 8 | entregue pela metade | a escada de skills por passo existe no `@amykit/plugin-agent-relay`; o scaffolder não |
 | 9 | entregue | [the engine fails out loud](the-engine-fails-out-loud.md), gate `plugin-serial-engine`, e o desenho em [docs/design](../docs/design/the-engine-fails-out-loud.md) |
 | 10 | entregue | [friction becomes a plan](friction-becomes-a-plan.md), gate `note-to-plan`: uma nota vira um pull request com um plano, sem tracker nenhum |
 | 11 | depois da 10 | ainda sem plano próprio |
@@ -34,7 +34,7 @@ gate ou o plano que responde por ela.
 
 ## Contexto
 
-O amy está em `nicolasmelo1/automate-my-work` (privado): **20 pacotes `@amy/*`
+O amy está em `nicolasmelo1/automate-my-work` (privado): **20 pacotes `@amykit/*`
 (24 no fim desta fase), 413 testes, e as regras do `sf` todas provadas por
 fixture de mutação**, `amy doctor` dando `ready`, e o `amy discover` lendo o
 Linear de verdade pelo engine montado. O core não conhece domínio: ele é dono do
@@ -46,7 +46,7 @@ processo em voo, verificado de outro processo), fase 3 (cada plugin declara
 sua config, o notifier quebrado em três, README em cada pacote, e o `mount()`
 carregando plugins do config em vez de o CLI construir adapter na mão).
 
-**Feito:** fase 4 (o envelope `AgentRun`, o `@amy/model-specs` vendorado com
+**Feito:** fase 4 (o envelope `AgentRun`, o `@amykit/model-specs` vendorado com
 preço de 10 modelos, e o custo com `costSource` honesto). Um bug real só
 apareceu contra envelope de verdade: o `ephemeral_1h_input_tokens` era
 ignorado e o custo calculado saía 60% curto.
@@ -135,7 +135,7 @@ id: L0.CORE_STAYS_IGNORANT
 layer: L0
 severity: high
 title: The core imports no workflow and no plugin
-statement: Nothing under packages/core/src imports an @amy/workflow-* or @amy/plugin-* package.
+statement: Nothing under packages/core/src imports an @amykit/workflow-* or @amykit/plugin-* package.
 why: >-
   The core owns the catalogue of actions and nothing else. The moment it
   imports a workflow it learns a domain, and every workflow after the first
@@ -148,7 +148,7 @@ check:
 defaults:
   scope: ["packages/core/src/**"]
   forbidden:
-    - regex: 'from "@amy/(workflow|plugin)-'
+    - regex: 'from "@amykit/(workflow|plugin)-'
       message: "The core must not know a workflow or a plugin."
 ```
 
@@ -184,7 +184,7 @@ critérios que nomeiem checks, e esses critérios são o trabalho das fases 2 a 
 
 ## Fase 2: o log de eventos, e o freio de mão
 
-`@amy/core` ganha `EventLog` (porta) e `@amy/plugin-file-log` a
+`@amykit/core` ganha `EventLog` (porta) e `@amykit/plugin-file-log` a
 implementação, `.amy/log/<data>.jsonl`. Toda transição, toda ação, todo
 resultado de agente, todo gasto vira uma linha.
 
@@ -202,12 +202,12 @@ ser por plugin, e **cada plugin declara o schema da sua**:
 
 ```yaml
 plugins:
-  "@amy/plugin-linear":
+  "@amykit/plugin-linear":
     workingStatusName: In Progress
     repoByTeam: { TBO: acme/backend }
-  "@amy/plugin-notify-hermes":
+  "@amykit/plugin-notify-hermes":
     target: slack:nico-and-his-bot
-  "@amy/plugin-agent-relay":
+  "@amykit/plugin-agent-relay":
     ladder: [claude, codex, hermes]
 ```
 
@@ -218,10 +218,10 @@ desconhecida ou inválida falha alto, no boot.
 sentidos: não é específico de Slack, e junta três canais que não são do Hermes.
 Quebra em:
 
-- `@amy/plugin-notify-fanout` — o fan-out genérico, sem canal nenhum
-- `@amy/plugin-notify-hermes` — o canal Hermes, alvo configurável
-- `@amy/plugin-notify-inbox` — arquivo em disco mais notificação de desktop
-- o canal que comenta no ticket vai pro `@amy/plugin-linear`, que é quem é o tracker
+- `@amykit/plugin-notify-fanout` — o fan-out genérico, sem canal nenhum
+- `@amykit/plugin-notify-hermes` — o canal Hermes, alvo configurável
+- `@amykit/plugin-notify-inbox` — arquivo em disco mais notificação de desktop
+- o canal que comenta no ticket vai pro `@amykit/plugin-linear`, que é quem é o tracker
 
 ## Fase 4: o agente sabe dizer o que aconteceu com ele
 
@@ -287,7 +287,7 @@ ele diz quando o número é estimativa. Sem esse campo, um custo calculado de
 tabela desatualizada e um custo reportado pelo harness ficam
 indistinguíveis no log e no report pro logion.
 
-### `@amy/model-specs`
+### `@amykit/model-specs`
 
 Pacote próprio, porque preço não é kernel e não é domínio, e porque a fase 6
 também lê. Modelado no `ModelsDevPricingInfo` do CodexBar, que tem uma
@@ -344,7 +344,7 @@ a peça que faltava para resolver isso sem chutar: o `AgentRun` agora diz
 **por que** uma tentativa não deu certo, e `rate-limited` e `failed` pedem
 reações opostas.
 
-Já escrito e compilando: o `@amy/agent-kit` (a interface `Harness`, o
+Já escrito e compilando: o `@amykit/agent-kit` (a interface `Harness`, o
 `HarnessAgent` com os prompts que saíram verbatim do `ClaudeAgent`, e o
 `NamedAgent`), os três harnesses (`ClaudeHarness`, `CodexHarness`,
 `HermesHarness`), e o `AgentRelay` com a política. Duas convenções opostas de
@@ -396,12 +396,12 @@ escalando sem motivo.
 ### O que falta, em ordem
 
 1. **Os 7 erros de build**, todos em `plugin-agent-relay/src/plugin.ts` e de
-   duas causas: importei `Agent` de `@amy/core`, onde ele não vive (é
-   `@amy/workflow-ticket-to-qa`), e deleguei com rest-spread, que o
+   duas causas: importei `Agent` de `@amykit/core`, onde ele não vive (é
+   `@amykit/workflow-ticket-to-qa`), e deleguei com rest-spread, que o
    TypeScript não estreita. Vira três métodos explícitos. O `registry.port`
    aceita `object`, então o proxy não precisa do tipo pra montar, só pra eu
    não errar a forma.
-2. **`@amy/agent-kit` na dependência do relay**, que está faltando no
+2. **`@amykit/agent-kit` na dependência do relay**, que está faltando no
    `package.json` dele.
 3. **`plugin.ts` e `config.ts` do codex e do hermes**, no formato do claude:
    um `NamedAgent` por tier, `contribute(AGENT_COLLECTION, ...)`.
@@ -451,7 +451,7 @@ versões diferentes no mesmo número.
 `.amy/budget.json`, agregado do log, com janelas configuráveis:
 
 ```yaml
-"@amy/plugin-agent-relay":
+"@amykit/plugin-agent-relay":
   budget:
     perFiveHours: { tokens: 2000000, costUsd: 20 }
     perWeek: { tokens: 30000000, costUsd: 150 }
@@ -493,7 +493,7 @@ O pedido é poder escolher quem faz cada passo: um `code-review` que pode ser
 reportar pra ele.
 
 Isso é **a mesma máquina da fase 5**. Contribuições nomeadas, uma escada, e
-recusa no boot. `@amy/plugin-skill-relay` monta uma porta `skill` e compõe o
+recusa no boot. `@amykit/plugin-skill-relay` monta uma porta `skill` e compõe o
 que os plugins contribuíram, exatamente como o `AgentRelay` compõe
 `NamedAgent`. O `nextRung` provavelmente sai de lá para um pacote comum.
 
@@ -591,7 +591,7 @@ Vai para o fim porque é o único que não desbloqueia nada, e porque **logion �
 opcional**. Quem instala o amy hoje não precisa saber que o logion existe. O
 tracking acontece porque eu tenho o logion instalado, não porque o amy quer.
 
-`@amy/plugin-logion-reporter`, **fora do conjunto default**, projetando o log
+`@amykit/plugin-logion-reporter`, **fora do conjunto default**, projetando o log
 no envelope `UsageObservation`. Modos do próprio logion e default `off`.
 `DO_NOT_TRACK=1` força `off` e não se contorna. Ligar mostra o diff e
 pergunta.
@@ -599,7 +599,7 @@ pergunta.
 Reportável não é reportando: o log é a costura, e o reporter é um consumidor
 entre outros. Isso vira duas regras locais do sf:
 
-- nenhum pacote `@amy/*` importa logion, exceto o próprio reporter, na forma
+- nenhum pacote `@amykit/*` importa logion, exceto o próprio reporter, na forma
   da `CORE_STAYS_IGNORANT`
 - nada em `packages/plugin-logion-reporter/src/**` cita nome de repo, padrão
   de ID de ticket, e-mail ou caminho de checkout
@@ -623,7 +623,7 @@ software-factory, porque não é específico do amy.
 
 ## Fase 13: CodeForge, e depois o ARC-AGI
 
-`@amy/plugin-codeforge`, pinado no meu fork enquanto os PRs #4 a #7 não
+`@amykit/plugin-codeforge`, pinado no meu fork enquanto os PRs #4 a #7 não
 mergeiam. A ação `implement` passa por spec, `plan generate` e `run`, que faz
 sentido justamente onde uma chamada só é fraca: ticket grande.
 
@@ -682,7 +682,7 @@ npm run build && npm test && npm run lint && sf check && sf verify
 Por fase:
 
 1. A regra `L0.CORE_STAYS_IGNORANT` tem que **falhar** quando eu adicionar um
-   `import ... from "@amy/workflow-ticket-to-qa"` no core, e passar depois de
+   `import ... from "@amykit/workflow-ticket-to-qa"` no core, e passar depois de
    tirar. `sf verify` provando o fixture de mutação de cada regra nova. Regra
    habilitada que não consegue produzir finding cai em `L5.NO_INERT_RULE`.
 2. `amy stop` com um `amy run` em voo: o processo filho morre e a fila não

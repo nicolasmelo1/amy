@@ -1,4 +1,4 @@
-# @amy/core
+# @amykit/core
 
 The kernel. It knows no domain.
 
@@ -34,7 +34,7 @@ Everything at mount, by name, before a ticket is touched:
 ## The one rule that holds this together
 
 `L0.CORE_STAYS_IGNORANT`, a local rule in `.software-factory/rules/`: nothing
-under `src/` may import an `@amy/workflow-*` or `@amy/plugin-*` package. One
+under `src/` may import an `@amykit/workflow-*` or `@amykit/plugin-*` package. One
 such import and the core learns a domain, and every workflow after the first
 becomes a fork. It has a mutation fixture, and `sf verify` proves it still
 fires.

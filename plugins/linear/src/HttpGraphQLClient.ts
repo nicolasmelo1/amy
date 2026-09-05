@@ -1,4 +1,4 @@
-import { GraphQLClient } from "@amy/core";
+import { GraphQLClient } from "@amykit/core";
 
 interface GraphQLResponse<T> {
   data?: T;

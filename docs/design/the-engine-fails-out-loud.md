@@ -239,7 +239,7 @@ mesma coisa que um check. Vai dito assim no plano.
 ### O que impede o arquivo de apodrecer
 
 Declarar o `detail` só ajuda se algo compara a declaração com o que é
-realmente escrito. Um validador puro em `@amy/core`:
+realmente escrito. Um validador puro em `@amykit/core`:
 
 ```ts
 export function checkEvent(event: Event, contract = EVENT_CONTRACT): string[]

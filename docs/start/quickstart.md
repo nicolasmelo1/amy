@@ -83,7 +83,7 @@ amy skills                # finds the harnesses on this machine and asks
 
 amy is driven from Claude Code, from Hermes, from a terminal — so its skills
 install into each harness it finds rather than into one project. They ship
-inside `@amy/cli`, so they cannot drift out of step with the amy that ships
+inside `@amykit/cli`, so they cannot drift out of step with the amy that ships
 them. See [Harnesses and skills](../concepts/harnesses.md).
 
 ## What to read next

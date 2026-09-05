@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, mount, unmetNeeds } from "@amy/core";
+import { HostServices, Plugin, WORKFLOW_RUNTIME, mount, unmetNeeds } from "@amykit/core";
 import { plugin as noteToPlan } from "../src/plugin.js";
 
 const host: HostServices = {
@@ -22,7 +22,7 @@ const PORTS = [
   mounts("store", "store", { all: () => [], load: () => null, save: () => undefined }),
 ];
 
-const SETTINGS = { "@amy/workflow-note-to-plan": { repos: ["acme/widgets"] } };
+const SETTINGS = { "@amykit/workflow-note-to-plan": { repos: ["acme/widgets"] } };
 
 function assemble(plugins: Plugin[] = PORTS, settings: Record<string, unknown> = SETTINGS) {
   return mount([noteToPlan, ...plugins], settings, host);

@@ -1,5 +1,5 @@
-import { CommandRunner, ConfigSchema } from "@amy/core";
-import { Channel } from "@amy/plugin-notify-fanout";
+import { CommandRunner, ConfigSchema } from "@amykit/core";
+import { Channel } from "@amykit/plugin-notify-fanout";
 
 /** What this plugin needs told to it, and nothing more. */
 export const configSchema: ConfigSchema = {

@@ -50,7 +50,7 @@ refuses at three in the morning is the worst way to find out.
 
 ## What a listing should not do
 
-**Do not claim compatibility you have not run.** `@amy/core` is pre-1.0 and its
+**Do not claim compatibility you have not run.** `@amykit/core` is pre-1.0 and its
 contracts still move. Say which version you built against.
 
 **Do not vendor a workflow's types you do not need.** An adapter depends on a

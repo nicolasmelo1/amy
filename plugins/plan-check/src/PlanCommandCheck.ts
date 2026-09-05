@@ -1,5 +1,5 @@
-import { CommandRunner, Git } from "@amy/core";
-import { AttemptOutcome, PlanCheck } from "@amy/workflow-note-to-plan";
+import { CommandRunner, Git } from "@amykit/core";
+import { AttemptOutcome, PlanCheck } from "@amykit/workflow-note-to-plan";
 
 export interface PlanCommandCheckConfig {
   /**

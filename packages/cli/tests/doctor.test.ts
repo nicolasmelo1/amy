@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { plugin as notifyHermes } from "@amy/plugin-notify-hermes";
-import { ScriptedRunner, whenArgsInclude } from "@amy/test-fixtures";
+import { plugin as notifyHermes } from "@amykit/plugin-notify-hermes";
+import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 import { Check, DoctorDeps, diagnose } from "../src/doctor.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { paths } from "../src/paths.js";
@@ -219,23 +219,23 @@ describe("diagnose", () => {
   it("passes a plugin slice that matches what the plugin declared", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      plugins: { "@amy/plugin-notify-hermes": { target: "slack:ops" } },
+      plugins: { "@amykit/plugin-notify-hermes": { target: "slack:ops" } },
     };
 
     const checks = await diagnose(deps({ config }));
 
-    expect(labelled(checks, "settings for @amy/plugin-notify-hermes")?.ok).toBe(true);
+    expect(labelled(checks, "settings for @amykit/plugin-notify-hermes")?.ok).toBe(true);
   });
 
   it("fails a plugin slice naming the plugin and the field", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      plugins: { "@amy/plugin-notify-hermes": { targt: "slack:ops" } },
+      plugins: { "@amykit/plugin-notify-hermes": { targt: "slack:ops" } },
     };
 
     const checks = await diagnose(deps({ config }));
 
-    const check = labelled(checks, "settings for @amy/plugin-notify-hermes");
+    const check = labelled(checks, "settings for @amykit/plugin-notify-hermes");
     expect(check?.ok).toBe(false);
     expect(check?.detail).toContain("`targt` is not a setting this plugin has");
     expect(check?.detail).toContain("`target` is required");
@@ -244,11 +244,11 @@ describe("diagnose", () => {
   it("fails a slice for a plugin nothing mounted", async () => {
     // A setting written for a plugin nobody installed is a setting that will
     // never do anything, which is worth saying out loud.
-    const config = { ...DEFAULT_CONFIG, plugins: { "@amy/plugin-imaginary": { a: 1 } } };
+    const config = { ...DEFAULT_CONFIG, plugins: { "@amykit/plugin-imaginary": { a: 1 } } };
 
     const checks = await diagnose(deps({ config }));
 
-    expect(labelled(checks, "settings for @amy/plugin-imaginary")).toMatchObject({
+    expect(labelled(checks, "settings for @amykit/plugin-imaginary")).toMatchObject({
       ok: false,
       detail: "nothing mounted declares these settings",
     });

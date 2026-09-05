@@ -60,7 +60,7 @@ For what the two halves mean and why, see
 
 | Variable | Read by |
 | :-- | :-- |
-| `LINEAR_API_KEY` | `@amy/plugin-linear` |
+| `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 
 <!-- amy:end environment -->
 
@@ -82,10 +82,10 @@ and beats the machine-wide one.
 # on the same engine, the same log and the same budget as these.
 workflows:
   ticket-to-qa:
-    workflow: "@amy/workflow-ticket-to-qa"
+    workflow: "@amykit/workflow-ticket-to-qa"
     # plugins: []   # empty means the recommended set for this workflow
   note-to-plan:
-    workflow: "@amy/workflow-note-to-plan"
+    workflow: "@amykit/workflow-note-to-plan"
     notes: true     # `amy note` files friction onto this profile's queue
 
 # Which one runs when --workflow is not given. The first, if this is empty.
@@ -207,7 +207,7 @@ plans:
 # workflow. A line assembled from a ticket body would be a machine that runs
 # whatever a stranger can type into an issue.
 #
-#   "@amy/plugin-command":
+#   "@amykit/plugin-command":
 #     allow:
 #       datadog: pup monitors list --json
 #       notion: ntn page get
@@ -217,9 +217,9 @@ plans:
 # refuses a field that is not one the plugin has. A plugin with no slice runs
 # on its defaults.
 plugins:
-  "@amy/plugin-notify-hermes":
+  "@amykit/plugin-notify-hermes":
     target: slack:my-channel
-  "@amy/plugin-file-queue":
+  "@amykit/plugin-file-queue":
     retentionDays: 7
 ```
 

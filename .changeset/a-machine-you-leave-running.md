@@ -1,7 +1,7 @@
 ---
-"@amy/cli": minor
-"@amy/model-specs": minor
-"@amy/plugin-file-notes": patch
+"@amykit/cli": minor
+"@amykit/model-specs": minor
+"@amykit/plugin-file-notes": patch
 ---
 
 amy is one install per machine, and it stays running.
@@ -30,7 +30,7 @@ budget is measured off it.
 
 **`amy skills`** installs amy's skills into every harness it finds — Claude
 Code and Hermes today — rather than into one project. They ship inside
-`@amy/cli` so they cannot drift from the amy that ships them. Three new ones:
+`@amykit/cli` so they cannot drift from the amy that ships them. Three new ones:
 `/amy-init`, `/amy-show-me`, `/amy-status`, and `/amy-workflow` is now an
 interrogation that redraws the workflow after every answer.
 

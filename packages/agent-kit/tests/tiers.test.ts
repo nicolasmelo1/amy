@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Git, Harness, Registry } from "@amy/core";
-import { ScriptedRunner, fakeRun, ticket } from "@amy/test-fixtures";
+import { Git, Harness, Registry } from "@amykit/core";
+import { ScriptedRunner, fakeRun, ticket } from "@amykit/test-fixtures";
 import {
   AGENT_COLLECTION,
   HARNESS_COLLECTION,

@@ -2,7 +2,7 @@
 //
 // Usage: node scripts/write-stamp.mjs [outfile]
 //
-// Run from `@amy/cli`'s `prepack`, so it happens on `npm publish` and on
+// Run from `@amykit/cli`'s `prepack`, so it happens on `npm publish` and on
 // `npm pack` and nowhere else. `npm install` does not run it, which is why a
 // checkout has no stamp and reports `dev`.
 //

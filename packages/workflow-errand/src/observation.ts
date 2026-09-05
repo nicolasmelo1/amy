@@ -1,4 +1,4 @@
-import { PullRequestView } from "@amy/core";
+import { PullRequestView } from "@amykit/core";
 import { Task } from "./ports/Tasks.js";
 
 /**
