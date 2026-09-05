@@ -13,7 +13,7 @@ platforms: [macos, linux]
 metadata:
   hermes:
     tags: [amy, workflow, plugin, design, state-machine]
-    related_skills: [amy, amy-develop, amy-show-me]
+    related_skills: [amy, amy-show-me, amy-status]
 ---
 
 # Designing a workflow

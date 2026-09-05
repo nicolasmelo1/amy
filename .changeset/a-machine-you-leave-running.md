@@ -34,6 +34,10 @@ Code and Hermes today — rather than into one project. They ship inside
 `/amy-init`, `/amy-show-me`, `/amy-status`, and `/amy-workflow` is now an
 interrogation that redraws the workflow after every answer.
 
+`/amy-develop` is not among them. It is about changing amy's own codebase, so
+it belongs to this repository rather than to anybody who installs amy, and it
+lives in `.claude/skills/`.
+
 **`amy status --json`** for something else to render.
 
 Fixed: a hand-written plugin slice replaced the derived one instead of merging

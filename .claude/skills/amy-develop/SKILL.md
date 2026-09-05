@@ -12,17 +12,23 @@ metadata:
   hermes:
     tags: [amy, development, architecture, ports-and-adapters, testing]
     related_skills: [amy, amy-workflow]
+  scope: this repository only — it is not shipped with `@amy/cli`
 ---
 
 # Changing amy
 
 ## The gate
 
-Nothing is done until all five are green:
+Nothing is done until this is green:
 
 ```sh
-npm run build && npm test && npm run lint && sf check && sf verify
+npm run gate
 ```
+
+That is the build, the release config, coverage, lint, knip, the audit,
+`sf check` and `sf verify`. `npm run e2e` is the other half: seven scenarios
+driving the installed command, and a gate whose activation paths you touched
+goes stale until its scenario runs again and `sf seal <gate>` records it.
 
 `sf verify` proves every enabled rule fires against a deliberately broken
 fixture. Do not lint `.software-factory/mutations`: those repositories are

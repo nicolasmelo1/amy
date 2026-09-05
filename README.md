@@ -154,7 +154,7 @@ which workflow you drive never costs you the other one's state.
 
 ## The skills
 
-Six skills, shipped inside `@amy/cli` and installed into every harness on the
+Five skills, shipped inside `@amy/cli` and installed into every harness on the
 machine by `amy skills`. Invoke them by name.
 
 | Skill | When |
@@ -164,7 +164,10 @@ machine by `amy skills`. Invoke them by name.
 | `/amy-workflow` | Designing a workflow, or changing one. One question at a time. |
 | `/amy-show-me` | Seeing a workflow: its shape, and why one thing is stuck. |
 | `/amy-status` | What should I do today, from the project's side rather than the machine's. |
-| `/amy-develop` | Changing amy's own codebase. |
+
+`/amy-develop`, for changing amy's own codebase, is not among them: it lives
+in `.claude/skills/` and belongs to this repository, because nobody installing
+amy has a reason to carry it.
 
 Their job is judgement — interrogating a design, reading a config, choosing
 what to show. Everything a command can do, a command does: a skill that
@@ -756,8 +759,10 @@ packages/cli/skills/         shipped inside @amy/cli, installed by `amy skills`
 ├── amy-init/                setting it up
 ├── amy-workflow/            designing one, a question at a time
 ├── amy-show-me/             seeing one
-├── amy-status/              what should I do today
-└── amy-develop/             changing amy itself
+└── amy-status/              what should I do today
+
+.claude/skills/
+└── amy-develop/             changing amy itself — this repository only
 ```
 
 A plugin's directory drops the prefix its package name keeps: `plugins/github`

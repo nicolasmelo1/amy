@@ -13,7 +13,7 @@ platforms: [macos, linux]
 metadata:
   hermes:
     tags: [amy, linear, github, tickets, pull-requests, review, automation, queue, plans]
-    related_skills: [amy-develop, amy-workflow, amy-init, amy-show-me, amy-status]
+    related_skills: [amy-workflow, amy-init, amy-show-me, amy-status]
 ---
 
 # Driving amy
