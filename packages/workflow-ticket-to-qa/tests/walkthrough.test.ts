@@ -40,6 +40,10 @@ class FakeWorld {
     }[] = [{ decision: "APPROVED" }],
     /** Threads the agent refuses to change, by id. */
     private readonly disagreeWith: string[] = [],
+    /** What the forge's checks say when the pull request is opened. */
+    private readonly checksStart: "passing" | "failing" | "running" = "passing",
+    /** What the forge says stands between the branch and its base. */
+    private readonly mergeState: "mergeable" | "conflicting" | "behind" = "mergeable",
   ) {}
 
   private now(): Date {
@@ -121,22 +125,26 @@ class FakeWorld {
         case "run-gate":
           outcomes.gate = { ok: true, output: "", at: this.now().toISOString() };
           break;
-        case "open-pull-request":
+        case "open-pull-request": {
+          const head = this.nextHead();
           this.pullRequest = {
             number: 4940,
             url: "https://github.example.test/acme/widgets/pull/4940",
-            headSha: this.nextHead(),
+            headSha: head,
             isDraft: false,
             changedFiles: 3,
             additions: 40,
             deletions: 12,
             reviewDecision: "REVIEW_REQUIRED",
+            checks: { state: this.checksStart, commitSha: head },
+            mergeState: this.mergeState,
             reviews: [],
             threads: [],
             requestedReviewers: [],
           };
           outcomes.pullRequestNumber = 4940;
           break;
+        }
         case "assign-reviewer":
           outcomes.reviewer = effect.host;
           this.request(effect.host);
@@ -156,6 +164,16 @@ class FakeWorld {
           outcomes.escalation = { reason: effect.reason, askedAt: this.now().toISOString() };
           // The owner sides with the reviewer, so the next pass fixes it.
           this.escalationAnswered = true;
+          // An owner handed a broken branch deals with it. Without this the
+          // walk would escalate, be answered, come back to the same red
+          // rollup and escalate again — which is a spin, not a lifecycle.
+          if (this.pullRequest) {
+            this.pullRequest = {
+              ...this.pullRequest,
+              checks: { state: "passing", commitSha: this.pullRequest.headSha },
+              mergeState: "mergeable",
+            };
+          }
           this.disagreeWith.length = 0;
           outcomes.escalationResolvedAt = this.now().toISOString();
           break;
@@ -324,5 +342,35 @@ describe("driving a ticket end to end", () => {
     expect(record.escalation?.resolvedAt).toBeDefined();
     // The owner's answer put the comment back in play instead of leaving it parked.
     expect(record.judged).toEqual([{ threadId: "T1", verdict: "fixed", note: "n" }]);
+  });
+
+  // The forge's complaint has to be a detour and not a dead end. Sending a
+  // branch back to its owner lands in ESCALATED, and ESCALATED was built for
+  // a disagreement about review comments — a state this arrives in carrying
+  // none. What proves the two fit is reaching DONE anyway.
+  it("takes the long way round when the checks are red, and still reaches QA", () => {
+    const world = new FakeWorld([], [{ decision: "APPROVED" }], [], "failing");
+
+    const { record, states } = drive(world);
+
+    expect(record.state).toBe("DONE");
+    expect(states).toContain("ESCALATED");
+  });
+
+  it("takes the long way round when the branch conflicts, and still reaches QA", () => {
+    const world = new FakeWorld([], [{ decision: "APPROVED" }], [], "passing", "conflicting");
+
+    const { record } = drive(world);
+
+    expect(record.state).toBe("DONE");
+  });
+
+  // Nobody is asked to read something the forge has not finished judging.
+  it("never asks a reviewer before the checks have a verdict", () => {
+    const world = new FakeWorld([], [{ decision: "APPROVED" }], [], "running");
+
+    const { record } = drive(world);
+
+    expect(record.state).toBe("DONE");
   });
 });

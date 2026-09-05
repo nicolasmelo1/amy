@@ -276,11 +276,74 @@ function handBack(
   });
 }
 
+/**
+ * What the forge already knows is wrong with the branch, and nothing else.
+ *
+ * Read before a person is asked, because review time is the one currency
+ * here nobody can top up — the same reason the per-reviewer ceiling exists.
+ * A reading of red checks, of a branch that will not merge, or of one sitting
+ * on a base it has moved off, is a reading that has to be done again.
+ *
+ * No checks at all is not a complaint. A repository that runs none reports
+ * exactly that, and a machine that read it as "not passing" would hold every
+ * pull request for a verdict nobody is coming to give.
+ */
+function whatTheForgeSays(pr: PullRequestView): string | null {
+  if (pr.checks?.state === "failing") return `the checks on ${pr.headSha.slice(0, 7)} are red`;
+  if (pr.mergeState === "conflicting") return "the branch conflicts with its base";
+  if (pr.mergeState === "behind") return "the branch is behind its base";
+  return null;
+}
+
+/** The forge's complaint, handed to the owner once, the way size already is. */
+function handBackBroken(
+  record: TicketRecord,
+  pr: PullRequestView,
+  policy: Policy,
+  why: string,
+): Plan {
+  if (record.escalation && !record.escalation.resolvedAt) {
+    return wait(policy.pollBackoffMs, `waiting on the owner: ${why}`);
+  }
+
+  return advance("ESCALATED", why, {
+    type: "escalate",
+    reason: `I am not asking anybody to review this yet — ${why}. It is yours: ${pr.url}`,
+    threadIds: [],
+  });
+}
+
 function planReviewerAssignment(
   record: TicketRecord,
   obs: Observation,
   policy: Policy,
 ): Plan {
+  const pr = requirePullRequest(obs, "REVIEWER_ASSIGNED");
+  if (isPlan(pr)) return pr;
+
+  // A verdict that has not arrived is not a bad one. Waiting costs a poll;
+  // asking somebody to read what CI is about to fail costs their afternoon.
+  //
+  // Bounded, because a check that is configured and never reports leaves a
+  // rollup that says `running` for ever, and an unbounded wait here is a
+  // ticket that stops without anybody being told. The remote checks are a
+  // gate, so they answer to the same ceiling the local one does.
+  if (pr.checks?.state === "running") {
+    const looks = attemptsIn(record, "REVIEWER_ASSIGNED");
+    if (looks < policy.maxGateAttempts) {
+      return wait(policy.pollBackoffMs, `the checks on ${pr.headSha.slice(0, 7)} have not finished`);
+    }
+    return handBackBroken(
+      record,
+      pr,
+      policy,
+      `the checks on ${pr.headSha.slice(0, 7)} never finished`,
+    );
+  }
+
+  const broken = whatTheForgeSays(pr);
+  if (broken) return handBackBroken(record, pr, policy, broken);
+
   const firstLook = attemptsIn(record, "REVIEWER_ASSIGNED") === 0;
 
   if (!isConfirmedFor(obs.roster, obs.now)) {

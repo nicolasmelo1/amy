@@ -119,6 +119,13 @@ class World {
                       isDraft: false,
                       reviewDecision: null,
                       headRefOid: "abc",
+                      mergeable: "MERGEABLE",
+                      mergeStateStatus: "CLEAN",
+                      commits: {
+                        nodes: [
+                          { commit: { oid: "abc", statusCheckRollup: { state: "SUCCESS" } } },
+                        ],
+                      },
                       reviewRequests: { nodes: [] },
                       reviews: { nodes: [] },
                       reviewThreads: { nodes: [] },

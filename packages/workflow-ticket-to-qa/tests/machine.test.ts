@@ -415,7 +415,7 @@ describe("REVIEWER_ASSIGNED", () => {
   });
 
   it("counts a reviewer with no open reviews as empty rather than unknown", () => {
-    const obs = observation({ reviewLoad: { "ada": 2, edsger: 1 } });
+    const obs = observation({ pullRequest: pullRequest(), reviewLoad: { "ada": 2, edsger: 1 } });
 
     const p = expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy));
 
@@ -424,6 +424,7 @@ describe("REVIEWER_ASSIGNED", () => {
 
   it("breaks a tie the same way every time", () => {
     const obs = observation({
+      pullRequest: pullRequest(),
       reviewLoad: { "ada": 1, alan: 1, edsger: 1 },
     });
 
@@ -436,6 +437,7 @@ describe("REVIEWER_ASSIGNED", () => {
 
   it("skips anybody marked unavailable", () => {
     const obs = observation({
+      pullRequest: pullRequest(),
       roster: roster({
         confirmedOn: "2026-09-03",
         reviewers: [
@@ -482,7 +484,7 @@ describe("REVIEWER_ASSIGNED", () => {
   });
 
   it("says nothing the second time it finds the ceiling reached", () => {
-    const obs = observation({ reviewLoad: { "ada": 5, alan: 5, edsger: 5 } });
+    const obs = observation({ pullRequest: pullRequest(), reviewLoad: { "ada": 5, alan: 5, edsger: 5 } });
 
     const p = expectWait(
       plan(record("REVIEWER_ASSIGNED", { attempts: { REVIEWER_ASSIGNED: 1 } }), obs, policy),
@@ -493,6 +495,7 @@ describe("REVIEWER_ASSIGNED", () => {
 
   it("assigns the emptiest reviewer while one is still under the ceiling", () => {
     const obs = observation({
+      pullRequest: pullRequest(),
       reviewLoad: { "ada": 4, alan: 1, edsger: 4 },
     });
 
@@ -502,7 +505,7 @@ describe("REVIEWER_ASSIGNED", () => {
   });
 
   it("refuses to assign on a workday when the roster is stale", () => {
-    const obs = observation({ roster: roster({ confirmedOn: "2026-09-01" }), now: WORKDAY });
+    const obs = observation({ pullRequest: pullRequest(), roster: roster({ confirmedOn: "2026-09-01" }), now: WORKDAY });
 
     const p = expectWait(plan(record("REVIEWER_ASSIGNED"), obs, policy));
 
@@ -511,14 +514,14 @@ describe("REVIEWER_ASSIGNED", () => {
   });
 
   it("asks only on the first look, so a stale roster does not spam", () => {
-    const obs = observation({ roster: roster({ confirmedOn: "2026-09-01" }) });
+    const obs = observation({ pullRequest: pullRequest(), roster: roster({ confirmedOn: "2026-09-01" }) });
     const later = record("REVIEWER_ASSIGNED", { attempts: { REVIEWER_ASSIGNED: 1 } });
 
     expect(expectWait(plan(later, obs, policy)).effects).toEqual([]);
   });
 
   it("does not need confirmation at the weekend", () => {
-    const obs = observation({ roster: roster({ confirmedOn: "2026-09-01" }), now: WEEKEND });
+    const obs = observation({ pullRequest: pullRequest(), roster: roster({ confirmedOn: "2026-09-01" }), now: WEEKEND });
 
     expect(expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy)).to).toBe(
       "HUMAN_REVIEW",
@@ -527,6 +530,7 @@ describe("REVIEWER_ASSIGNED", () => {
 
   it("holds when the whole roster is away", () => {
     const obs = observation({
+      pullRequest: pullRequest(),
       roster: roster({ reviewers: [{ tracker: "a@x", host: "edsger", available: false }] }),
     });
 
@@ -712,5 +716,95 @@ describe("QA_HANDOFF", () => {
 describe("DONE", () => {
   it("is terminal", () => {
     expect(plan(record("DONE"), observation(), policy).kind).toBe("settled");
+  });
+});
+
+describe("what the forge says, before a person is asked", () => {
+  const at = (state: "passing" | "failing" | "running"): ReturnType<typeof pullRequest> =>
+    pullRequest({ checks: { state, commitSha: HEAD } });
+
+  it("waits while the checks are still running, rather than spending a reviewer", () => {
+    const obs = observation({ pullRequest: at("running"), reviewLoad: {} });
+
+    expect(expectWait(plan(record("REVIEWER_ASSIGNED"), obs, policy)).why).toContain(
+      "have not finished",
+    );
+  });
+
+  it("hands red checks to the owner instead of assigning anybody", () => {
+    const obs = observation({ pullRequest: at("failing"), reviewLoad: {} });
+
+    const p = expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy));
+
+    expect(p.to).toBe("ESCALATED");
+    expect(p.why).toContain("are red");
+  });
+
+  it("hands a conflicting branch to the owner", () => {
+    const obs = observation({
+      pullRequest: pullRequest({ mergeState: "conflicting" }),
+      reviewLoad: {},
+    });
+
+    const p = expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy));
+
+    expect(p.to).toBe("ESCALATED");
+    expect(p.why).toContain("conflicts");
+  });
+
+  // A review read against a base the branch has moved off is a review that
+  // has to be done again.
+  it("hands a branch behind its base to the owner", () => {
+    const obs = observation({
+      pullRequest: pullRequest({ mergeState: "behind" }),
+      reviewLoad: {},
+    });
+
+    expect(expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy)).why).toContain("behind");
+  });
+
+  // The one that stops this becoming a machine that never assigns anybody in
+  // a repository without CI. No checks is an answer, not a red verdict.
+  it("assigns a reviewer where the forge runs no checks at all", () => {
+    const obs = observation({ pullRequest: pullRequest({ checks: null }), reviewLoad: {} });
+
+    const p = expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy));
+
+    // Which reviewer is the tie-break's business, and it has its own test.
+    expect(p.to).toBe("HUMAN_REVIEW");
+    expect(p.effects.map((effect) => effect.type)).toEqual(["assign-reviewer"]);
+  });
+
+  // The hazard the end-to-end walk found: a check that is configured and
+  // never reports leaves a rollup saying `running` for ever, and an
+  // unbounded wait here is a ticket that stops with nobody told.
+  it("stops waiting on a verdict that never comes, and says so", () => {
+    const r = record("REVIEWER_ASSIGNED", {
+      attempts: { REVIEWER_ASSIGNED: policy.maxGateAttempts },
+    });
+
+    const p = expectAdvance(plan(r, observation({ pullRequest: at("running") }), policy));
+
+    expect(p.to).toBe("ESCALATED");
+    expect(p.why).toContain("never finished");
+  });
+
+  it("says nothing to the owner a second time while the first is unanswered", () => {
+    const r = record("REVIEWER_ASSIGNED", {
+      escalation: { reason: "the checks are red", askedAt: WORKDAY.toISOString() },
+    });
+
+    expect(expectWait(plan(r, observation({ pullRequest: at("failing") }), policy)).why).toContain(
+      "waiting on the owner",
+    );
+  });
+
+  it("does not read a verdict as a merge state, or the other way round", () => {
+    const obs = observation({
+      pullRequest: pullRequest({ checks: { state: "passing", commitSha: HEAD } }),
+      reviewLoad: {},
+    });
+
+    expect(expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy)).to).toBe("HUMAN_REVIEW");
   });
 });

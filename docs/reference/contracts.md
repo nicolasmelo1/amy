@@ -98,6 +98,7 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | `openPullRequest(request: OpenPullRequestRequest): Promise<number>` |  |
 | `requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>` |  |
 | `reviewLoad(repos: readonly string[]): Promise<Record<string, number>>` | Open reviews per login, counted across every given repository. |
+| `reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests waiting on one login's review, in these repositories and no others. |
 
 ### `CommandRunner`
 

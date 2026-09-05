@@ -67,6 +67,10 @@ export function pullRequest(overrides: Partial<PullRequestView> = {}): PullReque
     additions: 40,
     deletions: 12,
     reviewDecision: "REVIEW_REQUIRED",
+    // Green and mergeable by default, so a test about review is about review
+    // and a test about a broken branch has to say so.
+    checks: { state: "passing", commitSha: HEAD },
+    mergeState: "mergeable",
     reviews: [],
     threads: [],
     requestedReviewers: [],
