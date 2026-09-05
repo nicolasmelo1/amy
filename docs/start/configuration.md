@@ -43,7 +43,7 @@ amy doctor        # checks it, and exits non-zero when something is wrong
 | `defaultBranch` | `string` | `"main"` | Branch new work is cut from. |
 | `repoByTeam` | `Record<string, string>` | `{}` | Which repository a team's tickets land in, by team key. |
 | `gate` | `Record<string, string[]>` | `{}` | Gate commands per repository, with a `default` fallback. |
-| `agent` | `{ model?: string; /** Model tiers offered to the relay, cheapest first. */ models?: string[]; /** * Which contributed agents to try, in order, such as * `[claude:sonnet, claude:opus, codex:gpt-5]`. Empty means every agent * that was contributed, in mounting order. * * Naming a harness here is also what mounts it, so a ladder is the one * place an operator says which harnesses they have. */ ladder?: string[]; reviewerHints?: Record<string, string>; timeoutMs?: number; /** * What the agents may spend, per window. Read by the relay, which is the * only thing here that spends one. Shape checked at boot, not here. */ budget?: Record<string, unknown>; }` | `{}` |  |
+| `agent` | `{ model?: string; /** Model tiers offered to the relay, cheapest first. */ models?: string[]; /** * Which contributed agents to try, in order, such as * `[claude:sonnet, claude:opus, codex:gpt-5]`. Empty means every agent * that was contributed, in mounting order. * * Naming a harness here is also what mounts it, so a ladder is the one * place an operator says which harnesses they have. */ ladder?: string[]; /** * A ladder for one step, keyed by the workflow's action name, overriding * the one above. * * Reading a ticket to decide whether it is clear enough to start is not * the same job as writing the change, and one list for both means paying * the expensive model to do the cheap step. A name here mounts its * harness exactly as a name in `ladder` does. */ ladderByStep?: Record<string, string[]>; reviewerHints?: Record<string, string>; timeoutMs?: number; /** * What the agents may spend, per window. Read by the relay, which is the * only thing here that spends one. Shape checked at boot, not here. */ budget?: Record<string, unknown>; }` | `{}` |  |
 | `skills` | `Record<string, string[]>` | `{}` | Which skills answer for a step, in the order they are tried, keyed by the workflow's action name. A skill named here has to be installed. |
 | `notify` | `NotifyConfig` | `{ tracker: true, hermes: null, inbox: true }` |  |
 | `plans` | `PlansConfig` | `{ repos: [], check: { default: ["sf check"] }, policy: {} }` |  |
@@ -151,6 +151,16 @@ policy:
   maxOpenReviewsPerReviewer: 2
   maxPullRequestFiles: 60
   maxPullRequestLines: 2000
+
+# Which agents to try, cheapest first. Naming a harness here is what mounts
+# it. ladderByStep overrides the list for one step, keyed by the workflow's
+# action name — reading a ticket and writing the change are not the same job,
+# and one list for both pays the expensive model to do the cheap step.
+agent:
+  ladder: [claude:sonnet, claude:opus]
+  ladderByStep:
+    triage: [claude:haiku]
+    implement: [claude:opus]
 
 # Where the checkouts live. One directory per repository, named after the
 # repository without its owner.

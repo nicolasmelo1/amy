@@ -8,6 +8,12 @@ export const configSchema: ConfigSchema = {
       "the contributed agents to try, in order, such as [claude:sonnet, claude:opus, codex:gpt-5]. Empty means every contributed agent, in the order the plugins were mounted",
     default: [],
   },
+  ladderByStep: {
+    type: "record",
+    description:
+      "a ladder for one step, overriding the one above, keyed by the workflow's action name: {\"triage\": [\"claude:haiku\"], \"implement\": [\"claude:opus\"]}. Reading a ticket and writing the change are not the same job, and one list for both means paying the expensive model to do the cheap step",
+    default: {},
+  },
   skills: {
     type: "record",
     description:

@@ -24,6 +24,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     "@amykit/plugin-hermes-agent": harnessSlice(config, "hermes"),
     "@amykit/plugin-agent-relay": {
       ladder: config.agent.ladder ?? [],
+      ladderByStep: config.agent.ladderByStep ?? {},
       budget: config.agent.budget ?? {},
       skills: config.skills,
     },
@@ -117,7 +118,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * names it was told to try.
  */
 function harnessSlice(config: AmyConfig, harness: string): Record<string, unknown> {
-  const fromLadder = tiersFor(config.agent.ladder ?? [], harness);
+  const fromLadder = tiersFor(everyLadderEntry(config), harness);
 
   return {
     defaultBranch: config.defaultBranch,
@@ -141,6 +142,21 @@ export function tiersFor(ladder: readonly string[], harness: string): string[] {
     .map((entry) => entry.slice(harness.length + 1));
 }
 
+/**
+ * Every rung any step could reach, the default ladder and the per-step ones.
+ *
+ * Both, because a model named only inside `ladderByStep` is still a model the
+ * harness plugin has to contribute and a harness the profile has to mount.
+ * Reading only the default would refuse that mount at boot, correctly but
+ * for a reason nobody could see from the config they wrote.
+ */
+function everyLadderEntry(config: AmyConfig): string[] {
+  return [
+    ...(config.agent.ladder ?? []),
+    ...Object.values(config.agent.ladderByStep ?? {}).flat(),
+  ];
+}
+
 /** Whether a ladder mentions a harness at all, which is what mounts it. */
 export function ladderNames(ladder: readonly string[], harness: string): boolean {
   return ladder.some((entry) => entry === harness || entry.startsWith(`${harness}:`));
@@ -150,7 +166,7 @@ export function ladderNames(ladder: readonly string[], harness: string): boolean
 export function pluginList(config: AmyConfig, profile: Profile): string[] {
   if (profile.plugins.length > 0) return [...profile.plugins];
 
-  const ladder = config.agent.ladder ?? [];
+  const ladder = everyLadderEntry(config);
 
   // A channel nobody configured should not be mounted, or the fan-out would
   // announce into a target that is not there. Same reasoning for a harness:

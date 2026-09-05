@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { AgentOutcome, AgentRun, Harness } from "@amykit/core";
 import { RecordingEventLog } from "@amykit/test-fixtures";
 import { HarnessRelay } from "../src/HarnessRelay.js";
+import { oneLadder } from "../src/ladders.js";
 import { NamedHarness } from "../src/collection.js";
 
 const NOW = new Date("2026-09-04T20:00:00.000Z");
@@ -32,16 +33,76 @@ function rung(
   return { name: `${harness}:${model}`, harness, model, cli, asked };
 }
 
+describe("a ladder per step", () => {
+  it("sends a step to the ladder named for it", async () => {
+    const cheap = rung("claude", "haiku", ["completed"]);
+    const dear = rung("claude", "opus", ["completed"]);
+
+    await new HarnessRelay({ fallback: [dear], byStep: { "draft-plan": [cheap] } }).ask(
+      "write a plan",
+      "/checkouts/widgets",
+      { step: "draft-plan" },
+    );
+
+    expect(cheap.asked).toHaveLength(1);
+    expect(dear.asked).toHaveLength(0);
+  });
+
+  it("sends every other step to the fallback", async () => {
+    const cheap = rung("claude", "haiku", ["completed"]);
+    const dear = rung("claude", "opus", ["completed"]);
+
+    await new HarnessRelay({ fallback: [dear], byStep: { "draft-plan": [cheap] } }).ask(
+      "do the errand",
+      "/checkouts/widgets",
+      { step: "run-errand" },
+    );
+
+    expect(dear.asked).toHaveLength(1);
+    expect(cheap.asked).toHaveLength(0);
+  });
+
+  it("climbs the step's own ladder when its first rung fails", async () => {
+    // The two ladders are not alternatives: a step picks one, and then the
+    // failure ladder is climbed inside it. Falling back to the default on a
+    // failure would mean an operator who asked for a cheap model got the
+    // expensive one every time the cheap one wobbled.
+    const cheap = rung("claude", "haiku", ["failed"]);
+    const middling = rung("claude", "sonnet", ["completed"]);
+    const dear = rung("claude", "opus", ["completed"]);
+
+    await new HarnessRelay({
+      fallback: [dear],
+      byStep: { triage: [cheap, middling] },
+    }).ask("read the ticket", "/x", { step: "triage" });
+
+    expect(cheap.asked).toHaveLength(1);
+    expect(middling.asked).toHaveLength(1);
+    expect(dear.asked).toHaveLength(0);
+  });
+
+  it("still relays when only a step has any rungs at all", async () => {
+    const cheap = rung("claude", "haiku", ["completed"]);
+
+    const reply = await new HarnessRelay({
+      fallback: [],
+      byStep: { triage: [cheap] },
+    }).ask("read the ticket", "/x", { step: "triage" });
+
+    expect(reply.run.outcome).toBe("completed");
+  });
+});
+
 describe("one harness made of several", () => {
   it("refuses to exist with nothing to relay to", () => {
-    expect(() => new HarnessRelay([])).toThrow("no harness plugin contributed one");
+    expect(() => new HarnessRelay(oneLadder([]))).toThrow("no harness plugin contributed one");
   });
 
   it("asks the first rung and stops when it answers", async () => {
     const first = rung("claude", "sonnet", ["completed"]);
     const second = rung("codex", "gpt-5", ["completed"]);
 
-    const reply = await new HarnessRelay([first, second]).ask("write a plan", "/checkouts/widgets");
+    const reply = await new HarnessRelay(oneLadder([first, second])).ask("write a plan", "/checkouts/widgets");
 
     expect(reply.text).toBe("claude:sonnet answered");
     expect(second.asked).toEqual([]);
@@ -51,7 +112,7 @@ describe("one harness made of several", () => {
     const cheap = rung("claude", "sonnet", ["failed"]);
     const dear = rung("claude", "opus", ["completed"]);
 
-    await new HarnessRelay([cheap, dear]).ask("write a plan", "/checkouts/widgets");
+    await new HarnessRelay(oneLadder([cheap, dear])).ask("write a plan", "/checkouts/widgets");
 
     expect(dear.asked).toHaveLength(1);
   });
@@ -63,7 +124,7 @@ describe("one harness made of several", () => {
     const dear = rung("claude", "opus", ["completed"]);
     const other = rung("codex", "gpt-5", ["completed"]);
 
-    await new HarnessRelay([cheap, dear, other]).ask("write a plan", "/checkouts/widgets");
+    await new HarnessRelay(oneLadder([cheap, dear, other])).ask("write a plan", "/checkouts/widgets");
 
     expect(dear.asked).toEqual([]);
     expect(other.asked).toHaveLength(1);
@@ -75,7 +136,7 @@ describe("one harness made of several", () => {
     const first = rung("claude", "sonnet", ["abandoned"]);
     const second = rung("codex", "gpt-5", ["completed"]);
 
-    await new HarnessRelay([first, second]).ask("write a plan", "/checkouts/widgets");
+    await new HarnessRelay(oneLadder([first, second])).ask("write a plan", "/checkouts/widgets");
 
     expect(second.asked).toEqual([]);
   });
@@ -84,7 +145,7 @@ describe("one harness made of several", () => {
     const first = rung("claude", "sonnet", ["rate-limited"]);
     const second = rung("codex", "gpt-5", ["completed"]);
 
-    await new HarnessRelay([first, second]).ask("write a plan", "/checkouts/widgets");
+    await new HarnessRelay(oneLadder([first, second])).ask("write a plan", "/checkouts/widgets");
 
     expect(second.asked[0]).toContain("ran out of quota partway through");
     expect(second.asked[0]).toContain("Continue it; do not begin again.");
@@ -94,7 +155,7 @@ describe("one harness made of several", () => {
     const first = rung("claude", "sonnet", ["failed"]);
     const second = rung("codex", "gpt-5", ["failed"]);
 
-    const reply = await new HarnessRelay([first, second]).ask("write a plan", "/x");
+    const reply = await new HarnessRelay(oneLadder([first, second])).ask("write a plan", "/x");
 
     expect(reply.run.outcome).toBe("failed");
     expect(reply.run.harness).toBe("codex");
@@ -105,7 +166,7 @@ describe("one harness made of several", () => {
     const first = rung("claude", "sonnet", ["failed"]);
     const second = rung("claude", "opus", ["completed"]);
 
-    await new HarnessRelay([first, second], { log, now: () => NOW }).ask("p", "/x", {
+    await new HarnessRelay(oneLadder([first, second]), { log, now: () => NOW }).ask("p", "/x", {
       workId: "note-1",
       step: "draft-plan",
     });
@@ -124,7 +185,7 @@ describe("handing the step to a skill", () => {
   it("addresses the prompt to the skill named for the step", async () => {
     const only = rung("claude", "sonnet", ["completed"]);
 
-    await new HarnessRelay([only], { skills: { "draft-plan": ["factory-author"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["factory-author"] } }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -136,7 +197,7 @@ describe("handing the step to a skill", () => {
   it("asks in the caller's own words when no skill was named for the step", async () => {
     const only = rung("claude", "sonnet", ["completed"]);
 
-    await new HarnessRelay([only], { skills: { triage: ["logion"] } }).ask("write a plan", "/x", {
+    await new HarnessRelay(oneLadder([only]), { skills: { triage: ["logion"] } }).ask("write a plan", "/x", {
       step: "draft-plan",
     });
 
@@ -146,7 +207,7 @@ describe("handing the step to a skill", () => {
   it("asks no other skill once one has answered", async () => {
     const only = rung("claude", "sonnet", ["completed"]);
 
-    await new HarnessRelay([only], { skills: { "draft-plan": ["first", "second"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] } }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -158,7 +219,7 @@ describe("handing the step to a skill", () => {
   it("moves to the next skill when the first did not answer", async () => {
     const only = rung("claude", "sonnet", ["failed", "completed"]);
 
-    await new HarnessRelay([only], { skills: { "draft-plan": ["first", "second"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] } }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -170,7 +231,7 @@ describe("handing the step to a skill", () => {
   it("stops asking skills once a run was abandoned", async () => {
     const only = rung("claude", "sonnet", ["abandoned"]);
 
-    await new HarnessRelay([only], { skills: { "draft-plan": ["first", "second"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] } }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -183,7 +244,7 @@ describe("handing the step to a skill", () => {
     const log = new RecordingEventLog();
     const only = rung("claude", "sonnet", ["failed", "completed"]);
 
-    await new HarnessRelay([only], {
+    await new HarnessRelay(oneLadder([only]), {
       log,
       now: () => NOW,
       skills: { "draft-plan": ["first", "second"] },

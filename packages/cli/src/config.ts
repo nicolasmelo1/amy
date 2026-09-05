@@ -106,6 +106,16 @@ export interface AmyConfig {
      * place an operator says which harnesses they have.
      */
     ladder?: string[];
+    /**
+     * A ladder for one step, keyed by the workflow's action name, overriding
+     * the one above.
+     *
+     * Reading a ticket to decide whether it is clear enough to start is not
+     * the same job as writing the change, and one list for both means paying
+     * the expensive model to do the cheap step. A name here mounts its
+     * harness exactly as a name in `ladder` does.
+     */
+    ladderByStep?: Record<string, string[]>;
     reviewerHints?: Record<string, string>;
     timeoutMs?: number;
     /**
@@ -299,6 +309,16 @@ policy:
   maxOpenReviewsPerReviewer: 2
   maxPullRequestFiles: 60
   maxPullRequestLines: 2000
+
+# Which agents to try, cheapest first. Naming a harness here is what mounts
+# it. ladderByStep overrides the list for one step, keyed by the workflow's
+# action name — reading a ticket and writing the change are not the same job,
+# and one list for both pays the expensive model to do the cheap step.
+agent:
+  ladder: [claude:sonnet, claude:opus]
+  ladderByStep:
+    triage: [claude:haiku]
+    implement: [claude:opus]
 
 # Where the checkouts live. One directory per repository, named after the
 # repository without its owner.

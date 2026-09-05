@@ -28,6 +28,7 @@ plugins:
   "@amykit/plugin-agent-relay":
     budget: {}
     ladder: []
+    ladderByStep: {}
     skillRoots: []
     skills: {}
 ```
@@ -36,6 +37,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `budget` | `record` | no | `{}` | what the agents may spend, per window: perFiveHours and perWeek, each with tokens and/or costUsd, plus stopAt, the fraction of a ceiling at which new work stops being started |
 | `ladder` | `string[]` | no | `[]` | the contributed agents to try, in order, such as [claude:sonnet, claude:opus, codex:gpt-5]. Empty means every contributed agent, in the order the plugins were mounted |
+| `ladderByStep` | `record` | no | `{}` | a ladder for one step, overriding the one above, keyed by the workflow's action name: {"triage": ["claude:haiku"], "implement": ["claude:opus"]}. Reading a ticket and writing the change are not the same job, and one list for both means paying the expensive model to do the cheap step |
 | `skillRoots` | `string[]` | no | `[]` | where installed skills are looked for. Empty means ~/.claude/skills, which is where the harness looks |
 | `skills` | `record` | no | `{}` | which skills answer for a step, in the order they are tried, keyed by the workflow's action name: {"triage": ["/logion"]}. A skill named here must be installed, or the mount is refused |
 
