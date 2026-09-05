@@ -11,7 +11,7 @@ platforms: [macos, linux]
 metadata:
   hermes:
     tags: [amy, development, architecture, ports-and-adapters, testing]
-    related_skills: [amy]
+    related_skills: [amy, amy-workflow]
 ---
 
 # Changing amy

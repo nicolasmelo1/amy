@@ -13,7 +13,7 @@ platforms: [macos, linux]
 metadata:
   hermes:
     tags: [amy, linear, github, tickets, pull-requests, review, automation, queue, plans]
-    related_skills: [amy-develop]
+    related_skills: [amy-develop, amy-workflow]
 ---
 
 # Driving amy
@@ -54,14 +54,21 @@ exits non-zero when something is wrong, so it is safe to gate on.
 | `amy queue recover` | Returns items a dead worker left claimed. |
 | `amy note "<text>"` | Writes a piece of friction down and puts it on the plan queue. Takes `--repo` and `--source`. |
 
-Every command above drives the ticket workflow. `--workflow note-to-plan`
-drives the other one, over work that never was a ticket:
+Every command above drives whichever workflow the config makes the default,
+which out of the box is `ticket-to-qa`. `--workflow <name>` drives another —
+`note-to-plan` ships beside it, over work that never was a ticket:
 
 ```sh
 amy --workflow note-to-plan discover   # picks up every note written down
 amy --workflow note-to-plan tick       # advances one note by one move
 amy --workflow note-to-plan status     # where each note stands
 ```
+
+A workflow is a name in `.amy/config.yaml` under `workflows:`, not something
+this install was built with. An entry naming a package that is installed is
+drivable, and each one keeps its own records and queue under
+`.amy/<name>/`, so switching between them never costs the other one's state.
+`amy plugin list` says what is installed and what this profile mounts.
 
 ## Friction becomes a plan
 
@@ -139,8 +146,8 @@ gone, the file stays until it is dealt with. `amy status` counts them.
 - **Watch it before trusting it.** On a ticket amy has not handled before,
   use `amy tick` and read each move. Only reach for `amy run` once a whole
   ticket has been through end to end.
-- **Never hand-edit `.amy/tickets/*.json` or `.amy/plans/*.json` while a tick
-  could be running.** Those files are amy's memory of the work. Stop the
+- **Never hand-edit `.amy/<workflow>/records/*.json` while a tick could be
+  running.** Those files are amy's memory of the work. Stop the
   worker first. `.amy/notes/*.md` is different: a note is an input, and
   writing one by hand is how the second workflow is meant to be fed.
 - **A failed tick is not a lost ticket.** amy re-queues it behind a backoff

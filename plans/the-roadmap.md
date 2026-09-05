@@ -13,14 +13,14 @@ trabalho de hoje. O resto do repositório é em inglês.
 | Fase | Estado | O que responde por ela |
 | :-- | :-- | :-- |
 | 1 a 5 | entregues | os guardrails, o log, a config por plugin, a contabilidade do agente e o relay estão de pé e cobertos por teste |
-| 6 | entregue, com a resposta trocada | [what runs is not this repo](what-runs-is-not-this-repo.md), e o binário compilado sai em [plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md) |
+| 6 | entregue, com a resposta trocada duas vezes | [what runs is not this repo](what-runs-is-not-this-repo.md); o binário compilado saiu em [plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md), e o que roda agora são pacotes instalados |
 | 7 | entregue | o budget e o teto de reviewer, provados pelo gate `plugin-agent-relay` |
 | 8 | entregue pela metade | a escada de skills por passo existe no `@amy/plugin-agent-relay`; o scaffolder não |
 | 9 | entregue | [the engine fails out loud](the-engine-fails-out-loud.md), gate `plugin-serial-engine`, e o desenho em [docs/design](../docs/design/the-engine-fails-out-loud.md) |
 | 10 | entregue | [friction becomes a plan](friction-becomes-a-plan.md), gate `note-to-plan`: uma nota vira um pull request com um plano, sem tracker nenhum |
 | 11 | depois da 10 | ainda sem plano próprio |
 | 12 | depois da 11 | ainda sem plano próprio; sobe para o software-factory |
-| 13 | parada | esperando as duas anteriores. A prova mais forte que ela pedia — um segundo workflow no mesmo engine — já existe: o `note-to-plan` |
+| 13 | parada | esperando as duas anteriores. As duas provas mais fortes que ela pedia já existem: um segundo workflow no mesmo engine (`note-to-plan`), e um workflow escrito fora deste repositório rodando nele, pelo gate `installed-plugins` |
 
 O que cada fase entregue provou de verdade está no gate dela, não aqui: uma
 linha nesta tabela envelhece, um digest expira.

@@ -85,8 +85,22 @@ one a human contributor meets.
 
 The two workflows run on the same engine, the same queue and store, the same
 relay and forge, and one event log — so one budget. Only the records and the
-queue are per workflow. `--workflow` chooses which one an invocation drives,
-because `mount()` still claims a single workflow.
+queue are per workflow, under `.amy/<name>/`, so swapping which one you drive
+never costs you the other one's state. `--workflow` chooses which, because
+`mount()` still claims a single workflow.
+
+And there can be a third, which is the point of the two being plugins.
+A profile is an entry in the config:
+
+```yaml
+workflows:
+  oncall:
+    workflow: "@acme/workflow-oncall"    # a package this repository never shipped
+```
+
+Install that package and `amy --workflow oncall tick` drives it, on the same
+engine, against the same budget. Nothing in the command line enumerates what
+is allowed.
 
 And it closes: a tick this machine gives up on leaves a note behind, so the
 thing that broke becomes the thing that gets fixed.
@@ -297,30 +311,36 @@ answer instead of the real `gh`, `claude`, `git` or API.
 
 ## Installing it
 
-This repository is the source. What runs is a single executable installed
-somewhere on your `PATH`:
+This repository is the source. What runs is packages installed somewhere on
+your `PATH`:
 
 ```sh
-npm run install:local     # builds with bun, installs to ~/.local/bin/amy
+npm run install:local     # packs every package, installs to ~/.local/bin/amy
 amy --version             # 0.1.0 (83ef192, built 2026-09-03T20:28:44Z)
 ```
+
+That installs everything. A machine that has no use for a plugin has no reason
+to carry one, so `AMY_PACKAGES` takes the subset you want, and `amy init`
+prints the `npm install` line for whatever a configured workflow needs and
+this machine does not have.
 
 Two reasons it works this way, and neither is convenience.
 
 **The code under test should be the code that ships.** Every unit test here
-imports a source file from inside the workspace, so a build that carries no
-plugins at all passes all of them. That is not hypothetical: it is what a
-bundler produces from a dynamic `import(spec)`, and it is why the loader keeps
-a table of literal imports and why there is a gate that runs the installed
-binary from a directory with no checkout in it.
+imports a source file from inside the workspace, so an install missing half of
+what it needs passes all of them. That is why plugins resolve by name at run
+time, why naming one nobody installed is refused at boot with the list of what
+is installed, and why there is a gate that runs the installed command from a
+directory with no checkout in it.
 
 **Your working directory should not be a repository.** amy works on tickets
 that name real colleagues and real customers. If the program doing that work
 runs inside a git repository, every accident that drops a file in the working
 directory is one `git add -A` away from being published.
 
-Every line amy writes to the log names the build that wrote it. Running from
-source stamps `dev`, because that is the truth: it was not a build.
+Every line amy writes to the log names the build that wrote it. An install
+built from a tree with uncommitted work in it stamps `dev`, because that is
+the truth: it is not a release anybody can go back to.
 
 ## Setting it up
 
@@ -536,18 +556,20 @@ $ sf check --allow-commands
     the implementation changed since gate `plugin-file-queue` was proven
 ```
 
-Five gates exist. `@amy/plugin-file-queue`, because the engine cannot survive
+Seven gates exist. `@amy/plugin-file-queue`, because the engine cannot survive
 it handing one item out twice. `@amy/plugin-agent-relay`, because it decides
 how money gets spent when something goes wrong. `@amy/plugin-serial-engine`,
-because it decides whether a ticket gets lost. The installed binary, because
-every test in the suite imports from inside the workspace. And the whole
-machine, below, because none of the four answers the question somebody
+because it decides whether a ticket gets lost. The installed command, because
+every test in the suite imports from inside the workspace. A machine that
+installed four packages and a workflow written elsewhere, because a plugin
+model nobody outside this repository can use is not one. And the two whole
+workflows, below, because none of the others answers the question somebody
 actually has.
 
 ### The test environment
 
-Five scenarios run under `npm run e2e`, and the last one is the whole machine.
-It installs the executable, drops it in a directory with no checkout in it,
+Seven scenarios run under `npm run e2e`, and the last two are the whole machine.
+The one below installs amy, drops it in a directory with no checkout in it,
 and drives it through one ticket with the commands the sections above tell an
 operator to type: `amy init`, `amy roster confirm`, `amy doctor`,
 `amy discover`, then `amy tick` until there is nothing due.
@@ -556,7 +578,7 @@ What it is driven against is a world:
 
 | Real | A stand-in |
 | --- | --- |
-| the installed binary, and every adapter in it | the tracker, as GraphQL on a loopback socket |
+| the installed command, and every adapter in it | the tracker, as GraphQL on a loopback socket |
 | two git repositories, the clones, the commits, the push | `gh`, as an executable on the `PATH` |
 | the gate, as two shell commands against a real file | `claude`, as an executable that edits real files |
 
@@ -622,6 +644,11 @@ plugins/
 ├── notify-fanout/           notifier, and the channels it fans out to
 ├── notify-hermes/           channel: Hermes
 └── notify-inbox/            channel: a file plus a desktop notification
+
+skills/
+├── amy/                     driving it
+├── amy-develop/             changing it
+└── amy-workflow/            writing a workflow of your own, as a package
 ```
 
 A plugin's directory drops the prefix its package name keeps: `plugins/github`
