@@ -1,6 +1,6 @@
 import path from "node:path";
 import { AmyConfig } from "./config.js";
-import { DEFAULT_PROFILE, Profile, directoriesFor } from "./profiles.js";
+import { Profile, directoriesFor, recommendedFor } from "./profiles.js";
 
 /**
  * The settings each plugin gets, derived from the top-level config.
@@ -10,11 +10,8 @@ import { DEFAULT_PROFILE, Profile, directoriesFor } from "./profiles.js";
  * it. An explicit `plugins:` slice always wins, which is the direction this
  * is moving in.
  */
-export function pluginSlices(
-  config: AmyConfig,
-  profile: Profile = DEFAULT_PROFILE,
-): Record<string, unknown> {
-  const dirs = directoriesFor(profile);
+export function pluginSlices(config: AmyConfig, profile: Profile): Record<string, unknown> {
+  const dirs = directoriesFor(profile.name);
 
   const derived: Record<string, unknown> = {
     "@amy/plugin-linear": {
@@ -124,14 +121,9 @@ export function ladderNames(ladder: readonly string[], harness: string): boolean
   return ladder.some((entry) => entry === harness || entry.startsWith(`${harness}:`));
 }
 
-/** Which plugins to mount: what the config asked for, or the built-in set. */
-export function pluginList(
-  config: AmyConfig,
-  builtIn: readonly string[],
-  profile: Profile = DEFAULT_PROFILE,
-): string[] {
-  const asked = profile === "note-to-plan" ? config.plans.pluginList : config.pluginList;
-  if (asked.length > 0) return [...asked];
+/** Which plugins to mount: what the profile asked for, or what is recommended. */
+export function pluginList(config: AmyConfig, profile: Profile): string[] {
+  if (profile.plugins.length > 0) return [...profile.plugins];
 
   const ladder = config.agent.ladder ?? [];
 
@@ -139,7 +131,7 @@ export function pluginList(
   // announce into a target that is not there. Same reasoning for a harness:
   // mounting one whose binary is not installed only produces a doctor failure
   // for a tool the operator never asked for.
-  return builtIn.filter((name) => {
+  return recommendedFor(profile).filter((name) => {
     // A note needs somewhere to go. An install that named no repository to
     // write plans into would be watching a directory nothing could ever come
     // out of, so it does not watch one.

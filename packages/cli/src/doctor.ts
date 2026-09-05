@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, validateConfig } from "@amy/core";
+import { CommandRunner, ConfigSchema, validateConfig } from "@amy/core";
 import { hermesTargetIsKnown } from "@amy/plugin-notify-hermes";
 import { Roster, isConfirmedFor } from "@amy/workflow-ticket-to-qa";
 import { AmyConfig } from "./config.js";
-import { PLUGIN_SCHEMAS } from "./schemas.js";
+import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
 
 export interface Check {
@@ -20,6 +20,14 @@ export interface DoctorDeps {
   env: NodeJS.ProcessEnv;
   now: Date;
   readRoster: (root: string) => Roster;
+  /**
+   * What each plugin said its settings look like, by package name.
+   *
+   * Handed in rather than looked up, because the only honest source is the
+   * plugins this install actually loaded. A table compiled in here would
+   * describe a machine other than the one being diagnosed.
+   */
+  schemas: Readonly<Record<string, ConfigSchema>>;
 }
 
 /**
@@ -36,6 +44,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     ...configContents(deps),
     ...pluginSettings(deps),
     roster(deps),
+    ...leftBehind(deps),
     apiKey(deps),
     ...(await tools(deps)),
     ...(await hermes(deps)),
@@ -70,16 +79,16 @@ function configContents({ config }: DoctorDeps): Check[] {
  * a plugin this build does not have is not fine, because it is a setting
  * somebody wrote expecting it to do something.
  */
-function pluginSettings({ config }: DoctorDeps): Check[] {
+function pluginSettings({ config, schemas }: DoctorDeps): Check[] {
   const checks: Check[] = [];
 
   for (const [plugin, given] of Object.entries(config.plugins)) {
-    const schema = PLUGIN_SCHEMAS[plugin];
+    const schema = schemas[plugin];
     if (!schema) {
       checks.push({
         label: `settings for ${plugin}`,
         ok: false,
-        detail: "this build has no such plugin",
+        detail: "nothing mounted declares these settings",
       });
       continue;
     }
@@ -93,6 +102,25 @@ function pluginSettings({ config }: DoctorDeps): Check[] {
   }
 
   return checks;
+}
+
+/**
+ * State written by a version that kept one pair of directories per install.
+ *
+ * Reported rather than moved: it is somebody's work in flight, and the one
+ * command that puts it where the new layout looks is cheaper to read than a
+ * migration that ran without being asked.
+ */
+function leftBehind({ root }: DoctorDeps): Check[] {
+  const base = paths(root).base;
+
+  return Object.entries(LEGACY_DIRECTORIES)
+    .filter(([old]) => fs.existsSync(path.join(base, old)))
+    .map(([old, now]) => ({
+      label: `state left in .amy/${old}`,
+      ok: false,
+      detail: `run \`amy init\`, then: mv ${path.join(base, old)} ${path.join(base, now)}`,
+    }));
 }
 
 function roster({ root, now, readRoster }: DoctorDeps): Check {

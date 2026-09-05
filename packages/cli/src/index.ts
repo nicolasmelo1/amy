@@ -2,10 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Command } from "commander";
-import { TickResult } from "@amy/plugin-serial-engine";
-import { TicketRecord, isConfirmedFor } from "@amy/workflow-ticket-to-qa";
-import { isWaiting } from "@amy/workflow-ticket-to-qa";
-import { PlanRecord, isWaiting as planIsWaiting } from "@amy/workflow-note-to-plan";
+// Type-only: the CLI reports what a tick returned and mounts no engine itself.
+import type { TickResult } from "@amy/plugin-serial-engine";
+import { isConfirmedFor } from "@amy/workflow-ticket-to-qa";
 import { FileNotes } from "@amy/plugin-file-notes";
 import {
   BUDGET_WINDOWS,
@@ -14,6 +13,7 @@ import {
   LogBudget,
   Mounted,
   NodeCommandRunner,
+  WorkRecord,
   ceilingFor,
   describeBuild,
   mount,
@@ -35,21 +35,22 @@ import { FileEventLog } from "@amy/plugin-file-log";
 import { FileQueue } from "@amy/plugin-file-queue";
 import { FileStore } from "@amy/plugin-file-store";
 import {
+  AmyConfig,
   EXAMPLE_CONFIG,
   EXAMPLE_ROSTER,
   confirmRoster,
   loadConfig,
   loadRoster,
-  writePluginList,
+  writeProfilePlugins,
 } from "./config.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
-import { defaultPlugins, load } from "./loader.js";
-import { DEFAULT_PROFILE, PROFILES, Profile, isProfile } from "./profiles.js";
+import { NOT_INSTALLED, installedPlugins, load } from "./loader.js";
+import { Profile, profiles, recommendedFor, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
-import { paths } from "./paths.js";
+import { paths, profilePaths } from "./paths.js";
 
 const root = process.cwd();
 const runner = new NodeCommandRunner();
@@ -71,13 +72,13 @@ loadEnv(root);
  * claiming the same port, an action the workflow emits that nothing can run.
  */
 async function assemble(
-  profile: Profile = DEFAULT_PROFILE,
+  profile: Profile,
 ): Promise<
   { ok: true; engine: Engine; mounted: Mounted } | { ok: false; problems: string[] }
 > {
   const config = loadConfig(root);
-  const place = paths(root, profile);
-  const specs = pluginList(config, defaultPlugins(profile), profile);
+  const place = profilePaths(root, profile.name);
+  const specs = pluginList(config, profile);
 
   const loaded = await load(specs);
   if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
@@ -112,15 +113,15 @@ async function assemble(
 /**
  * Which workflow this invocation drives.
  *
- * A global option rather than a second executable, because everything either
- * profile needs is already in this one binary. `mount()` still claims a
+ * A global option rather than a second executable, because everything a
+ * profile needs is already in this one install. `mount()` still claims a
  * single workflow, so the profile is what chooses which.
  */
-function selected(): Profile {
-  const asked = (program.opts<{ workflow?: string }>().workflow ?? DEFAULT_PROFILE).trim();
-  if (isProfile(asked)) return asked;
+function selected(config: AmyConfig = loadConfig(root)): Profile {
+  const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow);
+  if (resolution.ok) return resolution.profile;
 
-  console.error(`there is no \`${asked}\` workflow. Try: ${PROFILES.join(", ")}`);
+  console.error(resolution.problem);
   process.exit(1);
 }
 
@@ -131,8 +132,22 @@ async function engineOrExit(): Promise<Engine> {
 
   console.error("amy could not start:");
   for (const problem of outcome.problems) console.error(`  ${problem}`);
+
+  // Once, rather than beside every missing plugin: the list is the same one
+  // each time, and what makes a typo visible is seeing the near miss next to
+  // the name that was asked for.
+  if (outcome.problems.some((problem) => problem.includes(NOT_INSTALLED))) {
+    console.error(`\nInstalled: ${installed()}`);
+  }
+
   process.exitCode = 1;
   process.exit(1);
+}
+
+/** What this machine has, for a refusal to be answerable rather than final. */
+function installed(): string {
+  const found = installedPlugins();
+  return found.length > 0 ? found.join(", ") : "nothing that looks like a plugin";
 }
 
 const program = new Command();
@@ -142,11 +157,7 @@ program
   .description(
     "Drives a work ticket from in-progress to QA handoff, one deterministic move at a time.",
   )
-  .option(
-    "--workflow <name>",
-    `which workflow to drive: ${PROFILES.join(" or ")}`,
-    DEFAULT_PROFILE,
-  )
+  .option("--workflow <name>", "which workflow to drive, by the name the config gives it")
   .version(describeBuild(stamp));
 
 program
@@ -154,11 +165,15 @@ program
   .description("Write the config and roster templates")
   .action(() => {
     const place = paths(root);
-    fs.mkdirSync(place.tickets, { recursive: true });
-    fs.mkdirSync(place.queue, { recursive: true });
     // The watched directory, made now rather than on the first note, so it is
     // somewhere to drop a file into before anything has ever run.
     fs.mkdirSync(place.notes, { recursive: true });
+
+    for (const profile of Object.values(profiles(loadConfig(root)))) {
+      const own = profilePaths(root, profile.name);
+      fs.mkdirSync(own.records, { recursive: true });
+      fs.mkdirSync(own.queue, { recursive: true });
+    }
 
     for (const [file, content] of [
       [place.config, EXAMPLE_CONFIG],
@@ -174,19 +189,35 @@ program
 
     console.log("\nEdit both, then run `amy roster confirm` and `amy doctor`.");
     console.log(`Friction goes in ${place.notes}, or through \`amy note\`.`);
+
+    // Nothing but the command itself is installed with it. What a workflow
+    // needs is a recommendation, and a machine that has no use for a plugin
+    // has no reason to carry one.
+    const suggested = Object.values(profiles(loadConfig(root))).flatMap(recommendedFor);
+    const absent = [...new Set(suggested)].filter((name) => !installedPlugins().includes(name));
+    if (absent.length > 0) {
+      console.log(`\nThese are not installed yet:\n  npm install -g ${absent.join(" ")}`);
+    }
   });
 
 program
   .command("doctor")
   .description("Check everything the machine depends on before it touches a ticket")
   .action(async () => {
+    const config = loadConfig(root);
+    const profile = selected(config);
+    const loaded = await load(pluginList(config, profile));
+
     const checks = await diagnose({
       root,
-      config: loadConfig(root),
+      config,
       runner,
       env: process.env,
       now: new Date(),
       readRoster: loadRoster,
+      schemas: Object.fromEntries(
+        loaded.plugins.flatMap((plugin) => (plugin.configSchema ? [[plugin.name, plugin.configSchema]] : [])),
+      ),
     });
 
     for (const check of checks) {
@@ -196,7 +227,7 @@ program
 
     // Asked last, because a mount problem is usually a consequence of one of
     // the checks above rather than a separate fault.
-    const assembled = await assemble(selected());
+    const assembled = await assemble(profile);
     if (!assembled.ok) {
       for (const problem of assembled.problems) console.log(`FAIL ${problem}`);
     } else {
@@ -300,7 +331,13 @@ program
       return;
     }
 
-    const place = paths(root, "note-to-plan");
+    const profile = notesProfile(config);
+    if (!profile) {
+      process.exitCode = 1;
+      return;
+    }
+
+    const place = profilePaths(root, profile.name);
     const now = new Date();
 
     // Written and queued in one step, with nothing resolved against anything.
@@ -314,23 +351,47 @@ program
     new FileQueue(place.queue).enqueue({ workId: note.id, reason: "written down by hand" }, now);
 
     console.log(`noted ${note.id} about ${repo}`);
-    console.log("`amy --workflow note-to-plan tick` moves it along.");
+    console.log(`\`amy --workflow ${profile.name} tick\` moves it along.`);
   });
+
+/**
+ * Which profile a written-down piece of friction goes to.
+ *
+ * The config says so, with `notes: true`, rather than this command knowing a
+ * workflow's name. Two profiles claiming it is not a failure to guess at:
+ * `--workflow` settles it, and the message says so.
+ */
+function notesProfile(config: AmyConfig): Profile | undefined {
+  const asked = program.opts<{ workflow?: string }>().workflow;
+  if (asked) return selected(config);
+
+  const takers = Object.values(profiles(config)).filter((profile) => profile.takesNotes);
+  if (takers.length === 1) return takers[0];
+
+  console.error(
+    takers.length === 0
+      ? "no workflow takes notes: mark one with `notes: true` under `workflows:`."
+      : `more than one workflow takes notes, so name one: ${takers.map((t) => t.name).join(", ")}`,
+  );
+  return undefined;
+}
 
 program
   .command("status")
   .description("Show where every piece of work stands and what the queue holds")
-  .action(() => {
+  .action(async () => {
     const profile = selected();
-    const place = paths(root, profile);
+    const place = profilePaths(root, profile.name);
     const queue = new FileQueue(place.queue);
     const now = new Date();
 
-    if (profile === "note-to-plan") {
-      reportPlans(place.records);
-    } else {
-      reportTickets(place.records);
-    }
+    // Assembled only to ask the workflow which of its states are waiting
+    // ones. A mount that will not come up is exactly when somebody wants to
+    // look, so the records are still printed, without that column.
+    const assembled = await assemble(profile);
+    const waiting = assembled.ok ? assembled.mounted.workflow?.waitingStates : undefined;
+
+    reportRecords(place.records, waiting);
 
     console.log(
       `\nqueue: ${queue.ready(now).length} due, ${queue.pending().length} pending, ` +
@@ -384,34 +445,33 @@ program
     );
   });
 
-function reportTickets(directory: string): void {
-  const records = new FileStore<TicketRecord>(directory).all();
-  if (records.length === 0) console.log("no tickets tracked yet");
+/**
+ * Every record the profile holds, in whatever shape its workflow gave them.
+ *
+ * The core's `WorkRecord` is all this reads, plus two fields a workflow may
+ * or may not carry. That is the difference between a status command and a
+ * status command per workflow.
+ */
+type AnyRecord = WorkRecord & { pullRequestNumber?: number; repo?: string };
+
+function reportRecords(directory: string, waiting: readonly string[] | undefined): void {
+  const records = new FileStore<AnyRecord>(directory).all();
+  if (records.length === 0) console.log("nothing tracked yet");
 
   for (const record of records.sort((a, b) => a.id.localeCompare(b.id))) {
-    const held = isWaiting(record.state) ? "waiting" : "active";
-    const pr = record.pullRequestNumber ? `#${record.pullRequestNumber}` : "";
-    console.log(`${record.id.padEnd(12)} ${record.state.padEnd(18)} ${held.padEnd(8)} ${pr}`);
-  }
-}
-
-function reportPlans(directory: string): void {
-  const records = new FileStore<PlanRecord>(directory).all();
-  if (records.length === 0) console.log("no notes picked up yet");
-
-  for (const record of records.sort((a, b) => a.id.localeCompare(b.id))) {
-    const held = planIsWaiting(record.state) ? "waiting" : "active";
+    const held = waiting ? (waiting.includes(record.state) ? "waiting" : "active") : "?";
     const pr = record.pullRequestNumber ? `#${record.pullRequestNumber}` : "";
     console.log(
-      `${record.id.padEnd(28)} ${record.state.padEnd(10)} ${held.padEnd(8)} ` +
-        `${(record.repo ?? "").padEnd(30)} ${pr}`,
+      `${record.id.padEnd(28)} ${record.state.padEnd(18)} ${held.padEnd(8)} ` +
+        `${(record.repo ?? "").padEnd(30)} ${pr}`.trimEnd(),
     );
   }
 }
 
 /** The `budget` setting, from the plugin slice the relay is given. */
 function configuredBudget(): unknown {
-  const slice = pluginSlices(loadConfig(root))["@amy/plugin-agent-relay"];
+  const config = loadConfig(root);
+  const slice = pluginSlices(config, selected(config))["@amy/plugin-agent-relay"];
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
 }
 
@@ -506,12 +566,12 @@ pluginCommand
   .command("list")
   .description("The plugins this install mounts, and what they assembled into")
   .action(async () => {
-    const profile = selected();
     const config = loadConfig(root);
-    const specs = pluginList(config, defaultPlugins(profile), profile);
-    const source = config.pluginList.length > 0 ? ".amy/config.yaml" : "the built-in set";
+    const profile = selected(config);
+    const specs = pluginList(config, profile);
+    const source = profile.plugins.length > 0 ? ".amy/config.yaml" : "what this workflow needs";
 
-    console.log(`${specs.length} plugin(s), from ${source}:\n`);
+    console.log(`${specs.length} plugin(s) to mount, from ${source}:\n`);
 
     const loaded = await load(specs);
     for (const spec of specs) {
@@ -519,6 +579,15 @@ pluginCommand
       console.log(`  ${found ? "ok  " : "FAIL"} ${spec}${found ? `  ${found.version}` : ""}`);
     }
     for (const problem of loaded.problems) console.log(`  ${problem}`);
+
+    // Installed and mounted are different questions, and the answer to the
+    // second is useless without the first: a plugin on disk that no config
+    // names does nothing, and a config naming one that is not there is a
+    // boot refusal waiting to happen.
+    const present = installedPlugins();
+    const idle = present.filter((name) => !specs.includes(name));
+    console.log(`\n${present.length} installed, ${specs.length} mounted`);
+    if (idle.length > 0) console.log(`installed but not mounted: ${idle.join(", ")}`);
 
     const outcome = await assemble(profile);
     if (!outcome.ok) {
@@ -543,16 +612,16 @@ pluginCommand
   .argument("<spec>", "anything Node can import: a package name, or a path")
   .action((spec: string) => {
     const config = loadConfig(root);
-    const specs =
-      config.pluginList.length > 0 ? config.pluginList : [...defaultPlugins(DEFAULT_PROFILE)];
+    const profile = selected(config);
+    const specs = pluginList(config, profile);
 
     if (specs.includes(spec)) {
-      console.log(`${spec} is already mounted`);
+      console.log(`${spec} is already mounted by ${profile.name}`);
       return;
     }
 
-    writePluginList(root, [...specs, spec]);
-    console.log(`added ${spec}`);
+    writeProfilePlugins(root, profile.name, [...specs, spec], config);
+    console.log(`added ${spec} to ${profile.name}`);
     console.log("Install it if it is not resolvable yet, then run `amy plugin list`.");
   });
 
@@ -562,16 +631,16 @@ pluginCommand
   .argument("<spec>", "the package name or path to drop")
   .action((spec: string) => {
     const config = loadConfig(root);
-    const specs =
-      config.pluginList.length > 0 ? config.pluginList : [...defaultPlugins(DEFAULT_PROFILE)];
+    const profile = selected(config);
+    const specs = pluginList(config, profile);
 
     if (!specs.includes(spec)) {
-      console.log(`${spec} is not mounted`);
+      console.log(`${spec} is not mounted by ${profile.name}`);
       return;
     }
 
-    writePluginList(root, specs.filter((name) => name !== spec));
-    console.log(`removed ${spec}`);
+    writeProfilePlugins(root, profile.name, specs.filter((name) => name !== spec), config);
+    console.log(`removed ${spec} from ${profile.name}`);
     console.log("Run `amy doctor`: the workflow may now name an action nothing can run.");
   });
 
@@ -584,7 +653,7 @@ queueCommand
   .action((options: { days?: string }) => {
     const config = loadConfig(root);
     const days = options.days ? Number(options.days) : config.retentionDays;
-    const removed = new FileQueue(paths(root, selected()).queue).prune(days, new Date());
+    const removed = new FileQueue(profilePaths(root, selected().name).queue).prune(days, new Date());
     console.log(`removed ${removed} finished item(s) older than ${days} day(s)`);
   });
 
@@ -593,7 +662,7 @@ queueCommand
   .description("Return items abandoned by a dead worker")
   .action(() => {
     const config = loadConfig(root);
-    const recovered = new FileQueue(paths(root, selected()).queue).recover(
+    const recovered = new FileQueue(profilePaths(root, selected().name).queue).recover(
       config.staleClaimMs,
       new Date(),
     );

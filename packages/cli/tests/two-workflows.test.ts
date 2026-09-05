@@ -10,8 +10,8 @@ import { FileStore } from "@amy/plugin-file-store";
 import { PlanRecord } from "@amy/workflow-note-to-plan";
 import { TickResult } from "@amy/plugin-serial-engine";
 import { DEFAULT_CONFIG } from "../src/config.js";
-import { defaultPlugins, load } from "../src/loader.js";
-import { Profile, directoriesFor } from "../src/profiles.js";
+import { load } from "../src/loader.js";
+import { Profile, directoriesFor, profiles } from "../src/profiles.js";
 import { pluginList, pluginSlices } from "../src/slices.js";
 
 const ROSTER = {
@@ -43,6 +43,9 @@ const CONFIG = {
     },
   },
 };
+
+const TICKETS = profiles(CONFIG)["ticket-to-qa"]!;
+const PLANS = profiles(CONFIG)["note-to-plan"]!;
 
 const OK: CommandResult = { ok: true, exitCode: 0, stdout: "", stderr: "" };
 
@@ -168,7 +171,7 @@ describe("two workflows, one machine", () => {
   });
 
   async function assemble(profile: Profile): Promise<Mounted> {
-    const specs = pluginList(CONFIG, defaultPlugins(profile), profile);
+    const specs = pluginList(CONFIG, profile);
     const loaded = await load(specs);
     expect(loaded.problems).toEqual([]);
 
@@ -186,12 +189,12 @@ describe("two workflows, one machine", () => {
   }
 
   it("assembles each workflow without a single problem", async () => {
-    expect((await assemble("ticket-to-qa")).workflow?.name).toBe("ticket-to-qa");
-    expect((await assemble("note-to-plan")).workflow?.name).toBe("note-to-plan");
+    expect((await assemble(TICKETS)).workflow?.name).toBe("ticket-to-qa");
+    expect((await assemble(PLANS)).workflow?.name).toBe("note-to-plan");
   });
 
   it("leaves nothing either workflow named unmet", async () => {
-    for (const profile of ["ticket-to-qa", "note-to-plan"] as const) {
+    for (const profile of [TICKETS, PLANS]) {
       const mounted = await assemble(profile);
       expect(unmetNeeds(mounted, mounted.workflow!)).toEqual([]);
     }
@@ -201,8 +204,8 @@ describe("two workflows, one machine", () => {
     // The claim the seam was built to be able to make. Nothing in
     // plugins/serial-engine knows either workflow's vocabulary, so the same
     // engine object shape drives both.
-    const ticket = await assemble("ticket-to-qa");
-    const note = await assemble("note-to-plan");
+    const ticket = await assemble(TICKETS);
+    const note = await assemble(PLANS);
 
     expect(ticket.plugins.map((p) => p.name)).toContain("@amy/plugin-serial-engine");
     expect(note.plugins.map((p) => p.name)).toContain("@amy/plugin-serial-engine");
@@ -211,8 +214,8 @@ describe("two workflows, one machine", () => {
   });
 
   it("mounts the forge once, from one plugin, for both", async () => {
-    const ticket = await assemble("ticket-to-qa");
-    const note = await assemble("note-to-plan");
+    const ticket = await assemble(TICKETS);
+    const note = await assemble(PLANS);
 
     for (const mounted of [ticket, note]) {
       expect(mounted.ports.get("code-host")?.constructor.name).toBe("GitHubCodeHost");
@@ -221,8 +224,8 @@ describe("two workflows, one machine", () => {
   });
 
   it("mounts the same relay behind the agent port for both", async () => {
-    const ticket = await assemble("ticket-to-qa");
-    const note = await assemble("note-to-plan");
+    const ticket = await assemble(TICKETS);
+    const note = await assemble(PLANS);
 
     // One port, two levels of it. The ticket workflow reaches for `implement`,
     // the plan workflow for `ask`, and both are the same ladder underneath.
@@ -234,12 +237,12 @@ describe("two workflows, one machine", () => {
   });
 
   it("gives each workflow its own records and its own queue under one .amy", async () => {
-    await assemble("ticket-to-qa");
-    await assemble("note-to-plan");
+    await assemble(TICKETS);
+    await assemble(PLANS);
 
-    expect(directoriesFor("ticket-to-qa")).not.toEqual(directoriesFor("note-to-plan"));
-    for (const profile of ["ticket-to-qa", "note-to-plan"] as const) {
-      const dirs = directoriesFor(profile);
+    expect(directoriesFor(TICKETS.name)).not.toEqual(directoriesFor(PLANS.name));
+    for (const profile of [TICKETS, PLANS]) {
+      const dirs = directoriesFor(profile.name);
       expect(fs.existsSync(path.join(root, ".amy", dirs.records))).toBe(true);
       expect(fs.existsSync(path.join(root, ".amy", dirs.queue))).toBe(true);
     }
@@ -265,9 +268,9 @@ describe("a note reaching a pull request", () => {
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
   async function engine() {
-    const specs = pluginList(CONFIG, defaultPlugins("note-to-plan"), "note-to-plan");
+    const specs = pluginList(CONFIG, PLANS);
     const loaded = await load(specs);
-    const outcome = await mount(loaded.plugins, pluginSlices(CONFIG, "note-to-plan"), host);
+    const outcome = await mount(loaded.plugins, pluginSlices(CONFIG, PLANS), host);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     return outcome.mounted.engine!;
@@ -275,8 +278,8 @@ describe("a note reaching a pull request", () => {
 
   const place = () => ({
     notes: path.join(root, ".amy", "notes"),
-    queue: path.join(root, ".amy", directoriesFor("note-to-plan").queue),
-    records: path.join(root, ".amy", directoriesFor("note-to-plan").records),
+    queue: path.join(root, ".amy", directoriesFor(PLANS.name).queue),
+    records: path.join(root, ".amy", directoriesFor(PLANS.name).records),
   });
 
   /** What `amy note` does: write it down, and put it on the queue. */
@@ -496,7 +499,7 @@ describe("a tick that gives up", () => {
   });
 
   async function mounts(profile: Profile): Promise<Mounted> {
-    const specs = pluginList(CONFIG, defaultPlugins(profile), profile);
+    const specs = pluginList(CONFIG, profile);
     const loaded = await load(specs);
     const roster = {
       name: "@amy/cli",
@@ -512,8 +515,8 @@ describe("a tick that gives up", () => {
 
   /** Fails the ticket profile's tick until it is past the ceiling. */
   async function breakIt(): Promise<void> {
-    const mounted = await mounts("ticket-to-qa");
-    const queue = new FileQueue(path.join(root, ".amy", directoriesFor("ticket-to-qa").queue));
+    const mounted = await mounts(TICKETS);
+    const queue = new FileQueue(path.join(root, ".amy", directoriesFor(TICKETS.name).queue));
 
     for (let attempt = 0; attempt < CONFIG.maxItemAttempts; attempt += 1) {
       queue.enqueue(
@@ -543,8 +546,8 @@ describe("a tick that gives up", () => {
   });
 
   it("writes nothing while it is only retrying", async () => {
-    const mounted = await mounts("ticket-to-qa");
-    const queue = new FileQueue(path.join(root, ".amy", directoriesFor("ticket-to-qa").queue));
+    const mounted = await mounts(TICKETS);
+    const queue = new FileQueue(path.join(root, ".amy", directoriesFor(TICKETS.name).queue));
 
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, new Date());
     await mounted.engine!.tick();
@@ -555,7 +558,7 @@ describe("a tick that gives up", () => {
   it("is picked up by the other workflow as work, with no tracker in between", async () => {
     await breakIt();
 
-    const plans = await mounts("note-to-plan");
+    const plans = await mounts(PLANS);
 
     expect(await plans.engine!.discover()).toHaveLength(1);
   });

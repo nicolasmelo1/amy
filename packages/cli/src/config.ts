@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import yaml from "yaml";
 import { DEFAULT_POLICY, Policy } from "@amy/workflow-ticket-to-qa";
-import { DEFAULT_POLICY as DEFAULT_PLAN_POLICY, Policy as PlanPolicy } from "@amy/workflow-note-to-plan";
+import type { Policy as PlanPolicy } from "@amy/workflow-note-to-plan";
 import { Roster } from "@amy/workflow-ticket-to-qa";
 import os from "node:os";
 import path from "node:path";
 import { paths } from "./paths.js";
+import { SHIPPED_PROFILES } from "./profiles.js";
 
 /**
  * The second workflow's vocabulary: friction written down becomes a plan.
@@ -24,8 +25,22 @@ interface PlansConfig {
   /** The check per repository, with a `default` fallback. */
   check: Record<string, string[]>;
   policy: Partial<PlanPolicy>;
-  /** Empty means the built-in set for this profile. */
-  pluginList: string[];
+}
+
+/**
+ * One profile: which workflow drives, and what mounts under it.
+ *
+ * This is what makes `--workflow oncall` a thing an operator can add rather
+ * than a thing this package has to ship. The name is the key, and it is also
+ * the directory the profile's records and queue live in.
+ */
+export interface WorkflowProfile {
+  /** The package contributing `plan()` and the runtime that answers it. */
+  workflow: string;
+  /** What to mount, in order. Empty means the recommended set. */
+  plugins?: string[];
+  /** Whether `amy note` files friction onto this profile's queue. */
+  notes?: boolean;
 }
 
 interface NotifyConfig {
@@ -38,6 +53,15 @@ interface NotifyConfig {
 }
 
 export interface AmyConfig {
+  /**
+   * The workflows this install can drive, by the name typed after
+   * `--workflow`. Merged over the shipped two, so naming one replaces it and
+   * naming a third adds it.
+   */
+  workflows: Record<string, WorkflowProfile>;
+  /** Which profile runs when nothing is named. Empty means the first. */
+  defaultWorkflow: string;
+
   repos: string[];
   qaStatusName: string;
   /** The tracker status a ticket must be in to be picked up. */
@@ -84,10 +108,6 @@ export interface AmyConfig {
   notify: NotifyConfig;
   plans: PlansConfig;
   /**
-   * The plugins to mount, in order. Empty means the built-in set.
-   */
-  pluginList: string[];
-  /**
    * One slice per plugin, keyed by package name.
    *
    * The host never reads inside a slice. Each plugin declares what its own
@@ -97,6 +117,8 @@ export interface AmyConfig {
 }
 
 export const DEFAULT_CONFIG: AmyConfig = {
+  workflows: {},
+  defaultWorkflow: "",
   repos: [],
   qaStatusName: "In QA",
   workingStatusName: "In Progress",
@@ -111,8 +133,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   agent: {},
   skills: {},
   notify: { tracker: true, hermes: null, inbox: true },
-  plans: { repos: [], check: { default: ["sf check"] }, policy: {}, pluginList: [] },
-  pluginList: [],
+  plans: { repos: [], check: { default: ["sf check"] }, policy: {} },
   plugins: {},
 };
 
@@ -134,19 +155,27 @@ export function loadConfig(root: string): AmyConfig {
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
+    workflows: parsed.workflows ?? {},
+    defaultWorkflow: parsed.defaultWorkflow ?? "",
     policy: { ...DEFAULT_POLICY, ...(parsed.policy ?? {}) },
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
     skills: parsed.skills ?? {},
-    pluginList: parsed.pluginList ?? [],
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
-    plans: {
-      ...DEFAULT_CONFIG.plans,
-      ...(parsed.plans ?? {}),
-      policy: { ...DEFAULT_PLAN_POLICY, ...(parsed.plans?.policy ?? {}) },
-    },
+    plans: plansFrom(parsed.plans),
     workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
   };
+}
+
+/**
+ * The second workflow's block, over its defaults.
+ *
+ * The policy is not merged with the workflow's own defaults here: the plugin
+ * does that over its slice, and doing it in two places means two places to
+ * change when a default moves.
+ */
+function plansFrom(given: Partial<PlansConfig> | undefined): PlansConfig {
+  return { ...DEFAULT_CONFIG.plans, ...(given ?? {}), policy: given?.policy ?? {} };
 }
 
 export function loadRoster(root: string): Roster {
@@ -205,7 +234,25 @@ qa:
   available: true
 `;
 
-export const EXAMPLE_CONFIG = `# Repositories the team reviews in. Review load is counted across all of
+export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name is what goes after
+# --workflow, and it is also the directory the profile's records and queue
+# live in, so switching between two of them never loses the state of either.
+#
+# Leave this out and you get the two below. Name a third — a work one, an
+# on-call one, one that is yours and not versioned anywhere — and it drives
+# on the same engine, the same log and the same budget as these.
+workflows:
+  ticket-to-qa:
+    workflow: "@amy/workflow-ticket-to-qa"
+    # plugins: []   # empty means the recommended set for this workflow
+  note-to-plan:
+    workflow: "@amy/workflow-note-to-plan"
+    notes: true     # \`amy note\` files friction onto this profile's queue
+
+# Which one runs when --workflow is not given. The first, if this is empty.
+defaultWorkflow: ticket-to-qa
+
+# Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be
 # quiet in that one.
 repos:
@@ -325,37 +372,49 @@ plugins:
 `;
 
 /**
- * Rewrites just the plugin list, leaving every other line as it was.
+ * Rewrites one profile's plugin list, leaving every other line as it was.
  *
  * Rewriting the whole file from the parsed object would drop the comments
  * that explain what each setting is for, which is most of the file's value.
+ * The `workflows:` block is the exception, because that is the block being
+ * edited and there is no way to edit it without re-emitting it.
  */
-export function writePluginList(root: string, specs: readonly string[]): void {
+export function writeProfilePlugins(
+  root: string,
+  profile: string,
+  specs: readonly string[],
+  config: AmyConfig,
+): void {
   const file = paths(root).config;
   const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
-  const block = `pluginList:\n${specs.map((spec) => `  - "${spec}"`).join("\n")}\n`;
 
-  const without = withoutPluginList(existing);
-  const trimmed = without.replace(/\n{3,}$/, "\n\n");
+  const declared = { ...config.workflows };
+  const entry = declared[profile] ?? SHIPPED_PROFILES[profile];
+  if (!entry) throw new Error(`there is no \`${profile}\` workflow to add a plugin to`);
+
+  declared[profile] = { ...entry, plugins: [...specs] };
+
+  const without = withoutBlock(existing, "workflows:").replace(/\n{3,}$/, "\n\n");
+  const block = yaml.stringify({ workflows: declared });
 
   fs.mkdirSync(paths(root).base, { recursive: true });
-  fs.writeFileSync(file, `${trimmed.replace(/\n*$/, "\n")}\n${block}`, "utf-8");
+  fs.writeFileSync(file, `${without.replace(/\n*$/, "\n")}\n${block}`, "utf-8");
 }
 
 /**
- * The file without its `pluginList:` block, list items included.
+ * The file without one top-level block, its indented lines included.
  *
  * A line walk rather than one multi-line pattern: a quantifier over indented
  * lines nested inside another is the shape that backtracks forever, and a
  * config file is not worth a regular expression nobody can reason about.
  */
-function withoutPluginList(text: string): string {
+function withoutBlock(text: string, header: string): string {
   const kept: string[] = [];
   let inside = false;
 
   for (const line of text.split("\n")) {
-    if (inside && /^[ \t]+- /.test(line)) continue;
-    inside = line.startsWith("pluginList:");
+    if (inside && (/^[ \t]+\S/.test(line) || line.trim() === "")) continue;
+    inside = line.startsWith(header);
     if (!inside) kept.push(line);
   }
 
