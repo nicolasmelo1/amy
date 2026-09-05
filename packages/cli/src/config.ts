@@ -320,19 +320,24 @@ errands:
 # currency nobody can top up: past it, the pull request stays open with
 # nobody assigned rather than landing on somebody already buried.
 #
+# The two ceilings on size are the cheap ones: the forge already told us how
+# big the change is, so a pull request nobody should automate is handed back
+# before an agent is called rather than after three attempts at it. Zero on
+# either switches it off.
+#
 # The two backoffs are how long a waiting state holds before it looks again.
 # Neither one runs while work is happening: a step that takes half an hour is
 # one look that takes half an hour, and the look after it is queued the moment
-# it finishes. They only govern how quickly the machine notices that somebody
-# else moved. \`amy poke <workId>\` collapses either of them on demand, which
-# is how anything that already hears an event — a forge webhook, a chat
-# command — turns this into a push without an endpoint.
+# it finishes. They only govern how quickly the machine notices somebody else
+# moved, and \`amy poke <workId>\` collapses either on demand.
 policy:
   maxImplementAttempts: 3
   maxGateAttempts: 3
   pollBackoffMs: 300000       # 5 minutes: waiting on an answer, or on a review
   rosterBackoffMs: 1800000    # 30 minutes: waiting for the roster to be confirmed
   maxOpenReviewsPerReviewer: 2
+  maxPullRequestFiles: 60
+  maxPullRequestLines: 2000
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it, so leaving codex and hermes out means they are never required to be

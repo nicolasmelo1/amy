@@ -269,19 +269,14 @@ rules:
   L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE:
     enabled: true
     options:
-      # Two derivations behind one name, because `run` takes one command.
-      #
-      # docs/rules.md is derived from the rule catalogue: regenerating it must
+      # docs/rules.md is derived from the rule catalogue. Regenerating it must
       # change nothing, or the prose and the enforcement have drifted apart.
       #
-      # The config template is derived from the settings the loader merges
-      # over — by hand, which is why it drifted twice unnoticed.
-      #
-      # It carried `agent:` twice, and YAML refuses a duplicate key rather
-      # than merging it, so `amy init` wrote a file the next command threw
-      # on. And `pollBackoffMs` was configurable for its whole life while
-      # appearing nowhere, which is a setting nobody can find.
-      run: npm run check:derived
+      # `npm run check:config` is the config template's version of this claim
+      # and deliberately not here: this rule runs in the factory job, which
+      # carries no npm toolchain and no build on purpose, and the check needs
+      # both. It runs in the build job and in `npm run gate` instead.
+      run: sf docs
   # L2 — The guardrail's own configuration is hash-locked
   L2.FACTORY_CONFIG_IS_LOCKED:
     enabled: true

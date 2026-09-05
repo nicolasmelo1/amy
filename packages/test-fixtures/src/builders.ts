@@ -61,6 +61,11 @@ export function pullRequest(overrides: Partial<PullRequestView> = {}): PullReque
     url: "https://github.example.test/acme/widgets/pull/4940",
     headSha: HEAD,
     isDraft: false,
+    // A small change by default, so a test about review has to say when it
+    // means to be about a big one.
+    changedFiles: 3,
+    additions: 40,
+    deletions: 12,
     reviewDecision: "REVIEW_REQUIRED",
     reviews: [],
     threads: [],

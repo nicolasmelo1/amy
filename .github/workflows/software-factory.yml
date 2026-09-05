@@ -84,8 +84,14 @@ jobs:
       # A change to a published package without a changeset is a release that
       # would leave the version standing still. `--since` scopes it to what
       # this pull request adds, so a branch is judged on its own diff.
+      #
+      # Except on the release branch, where it asks for the opposite of what
+      # is there: the version pull request is what *consumes* every changeset,
+      # and it touches all of them, so this could never be satisfied on it.
       - name: Every published change carries a changeset
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request'
+          && github.head_ref != 'changeset-release/main'
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |

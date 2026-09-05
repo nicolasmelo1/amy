@@ -46,7 +46,7 @@ export const configSchema: ConfigSchema = {
   policy: {
     type: "record",
     description:
-      "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs and maxOpenReviewsPerReviewer. Anything left out keeps its default",
+      "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default",
     default: {},
   },
 };
