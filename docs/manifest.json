@@ -649,6 +649,11 @@
         },
         {
           "depth": 3,
+          "title": "A poke collapses the wait, so anything that hears an event can push.",
+          "slug": "a-poke-collapses-the-wait-so-anything-that-hears-an-event-can-push"
+        },
+        {
+          "depth": 3,
           "title": "A workflow is a name in a config, and a plugin is installed rather than compiled in.",
           "slug": "a-workflow-is-a-name-in-a-config-and-a-plugin-is-installed-rather-than-compiled-in"
         },
@@ -676,6 +681,11 @@
           "depth": 3,
           "title": "amy btw — something said in passing becomes work.",
           "slug": "amy-btw-something-said-in-passing-becomes-work"
+        },
+        {
+          "depth": 3,
+          "title": "The config amy init writes is one this build can read, and it names every setting there is.",
+          "slug": "the-config-amy-init-writes-is-one-this-build-can-read-and-it-names-every-setting-there-is"
         },
         {
           "depth": 3,
@@ -1673,6 +1683,11 @@
           "depth": 3,
           "title": "amy plugin remove",
           "slug": "amy-plugin-remove"
+        },
+        {
+          "depth": 3,
+          "title": "amy poke",
+          "slug": "amy-poke"
         },
         {
           "depth": 3,
@@ -2869,6 +2884,11 @@
             "doc": "Puts a claimed item back, for a worker that could not finish it."
           },
           {
+            "name": "promote",
+            "signature": "promote(workId: string, now: Date): number",
+            "doc": "Brings every look at one piece of work that is still held back forward to now, and says how many moved."
+          },
+          {
             "name": "recover",
             "signature": "recover(olderThanMs: number, now: Date): QueueItem[]",
             "doc": "Returns items abandoned by a dead worker so they get picked up again."
@@ -3543,6 +3563,21 @@
               "name": "<spec>",
               "required": true,
               "description": "the package name or path to drop"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "poke"
+          ],
+          "description": "Look at one piece of work now, rather than when it was next due",
+          "arguments": [
+            {
+              "name": "<workId>",
+              "required": true,
+              "description": "the work to bring forward, such as a ticket key"
             }
           ],
           "options": [],
@@ -5045,6 +5080,9 @@
           "queue.claims_what_was_enqueued",
           "queue.refuses_a_second_claim",
           "queue.holds_an_item_until_it_is_due",
+          "queue.brings_a_held_look_forward",
+          "queue.promoting_leaves_one_look",
+          "queue.promoted_look_is_ordered_by_its_new_time",
           "queue.recovers_what_a_dead_worker_left",
           "queue.never_prunes_unfinished_work",
           "queue.survives_a_restart"
@@ -5195,7 +5233,7 @@
         "enabled": true,
         "settings": {
           "options": {
-            "run": "sf docs"
+            "run": "npm run check:derived"
           }
         },
         "title": "Regenerating the derived artifacts changes nothing",
@@ -5445,6 +5483,18 @@
         "level": "minor"
       },
       {
+        "id": "a-poke-collapses-the-wait",
+        "title": "A poke collapses the wait, so anything that hears an event can push.",
+        "body": "The queue was already the schedule: a step that takes half an hour is one look\nthat takes half an hour, and the look after it is queued the moment it\nfinishes. Nothing polls while work is happening. What did wait on a clock was\nthe other half — a state holding for somebody else to move, looking again\nevery five minutes.\n\n```sh\namy poke PROJ-1239\n```\n\nThe look that already exists moves to now. Not a second look beside it, which\nis the whole design of `Queue.promote`: two items for one piece of work would\neach chain their own successor, and the queue would fork into two chains that\nboth spend an agent.\n\nThree answers, and each is a different reason to do nothing more. Work being\nworked on is left alone — the running step queues its own successor. Work held\nback moves. Work nothing knows about is queued, which is what turns any webhook\ninto a push without this growing an endpoint: whatever already hears the event\nruns the command.\n\nPoking work that has settled costs one look and no agent. The decision function\nanswers `settled` and the engine completes it without chaining anything, so\nnothing has to load a record to find out first.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
         "id": "a-workflow-is-a-name-in-a-config",
         "title": "A workflow is a name in a config, and a plugin is installed rather than compiled in.",
         "body": "`--workflow` used to accept two literals, so an install could not drive a\nworkflow this repository had not shipped — while the engine underneath it\ncould drive anything. A profile is now an entry under `workflows:` in\n`.amy/config.yaml`: a name, the package that drives it, and optionally the\nplugins to mount under it. The two shipped ones are what a config with no\nsuch block gets.\n\nEach profile keeps its records and queue under `.amy/<name>/`, so a second\nworkflow no longer writes over the first's state. **State from an older\ninstall stays where it was**: `amy doctor` names each directory it found and\nthe one `mv` that moves it.\n\nThe loader's table of literal imports is gone with the compiled binary. What\ninstalls is packages, resolved by name at run time, so a machine carries the\nplugins it uses and nothing else — `AMY_PACKAGES` takes the subset. A plugin\nnamed and not installed is refused at boot with the list of what is, and\n`amy plugin list` reports installed and mounted as the different questions\nthey are.\n\n`@amykit/cli` therefore stops depending on ten plugins it never imported, and\n`amy init` prints the `npm install` line for whatever a configured workflow\nneeds and this machine does not have.",
@@ -5531,6 +5581,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-config-init-writes-can-be-read",
+        "title": "The config `amy init` writes is one this build can read, and it names every setting there is.",
+        "body": "Two failures, both shipped, both caught by the same check.\n\nThe loud one: the template carried `agent:` twice. YAML refuses a duplicate key\nrather than merging it, so `amy init` wrote a file `loadConfig` threw on and\nthe next command anybody ran died. No test had ever parsed the template — only\nthe roster beside it.\n\nThe quiet one: `pollBackoffMs` was configurable for its whole life and appeared\nnowhere, so the only way to find it was to read the source. `staleClaimMs`,\n`maxItemAttempts`, `maxDraftAttempts` and the whole `errands` block were the\nsame. A setting nobody can discover is a setting that does not exist, and the\ncost lands on whoever concludes the machine cannot do what it does.\n\n`checkConfigTemplate` now parses the template, refuses a key nothing reads, and\nrefuses a setting the template never names. Named is enough — a setting\ncommented out with the reason is documented. It runs in the gate and in CI, and\n`L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE` points at it: the template is derived\nfrom the settings the loader merges over, by hand, which is why it drifted\ntwice without anybody noticing.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "the-engine-drives-any-workflow",

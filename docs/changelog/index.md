@@ -105,6 +105,35 @@ claiming the other's work.
 `specTable()` now takes the state directory rather than a working directory,
 and `OVERRIDE_PATH` becomes `OVERRIDE_FILE`.
 
+### A poke collapses the wait, so anything that hears an event can push.
+
+`minor` · `@amykit/core`
+
+The queue was already the schedule: a step that takes half an hour is one look
+that takes half an hour, and the look after it is queued the moment it
+finishes. Nothing polls while work is happening. What did wait on a clock was
+the other half — a state holding for somebody else to move, looking again
+every five minutes.
+
+```sh
+amy poke PROJ-1239
+```
+
+The look that already exists moves to now. Not a second look beside it, which
+is the whole design of `Queue.promote`: two items for one piece of work would
+each chain their own successor, and the queue would fork into two chains that
+both spend an agent.
+
+Three answers, and each is a different reason to do nothing more. Work being
+worked on is left alone — the running step queues its own successor. Work held
+back moves. Work nothing knows about is queued, which is what turns any webhook
+into a push without this growing an endpoint: whatever already hears the event
+runs the command.
+
+Poking work that has settled costs one look and no agent. The decision function
+answers `settled` and the engine completes it without chaining anything, so
+nothing has to load a record to find out first.
+
 ### A workflow is a name in a config, and a plugin is installed rather than compiled in.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`
@@ -322,6 +351,30 @@ turning what was said into a task that survives losing the conversation.
 It cost the core one action name — `run-errand`, the generic "ask the agent",
 which is now wanted by two workflows under names of their own. Nothing else
 changed: not the engine, not either other workflow.
+
+### The config `amy init` writes is one this build can read, and it names every setting there is.
+
+`patch` · `@amykit/cli`
+
+Two failures, both shipped, both caught by the same check.
+
+The loud one: the template carried `agent:` twice. YAML refuses a duplicate key
+rather than merging it, so `amy init` wrote a file `loadConfig` threw on and
+the next command anybody ran died. No test had ever parsed the template — only
+the roster beside it.
+
+The quiet one: `pollBackoffMs` was configurable for its whole life and appeared
+nowhere, so the only way to find it was to read the source. `staleClaimMs`,
+`maxItemAttempts`, `maxDraftAttempts` and the whole `errands` block were the
+same. A setting nobody can discover is a setting that does not exist, and the
+cost lands on whoever concludes the machine cannot do what it does.
+
+`checkConfigTemplate` now parses the template, refuses a key nothing reads, and
+refuses a setting the template never names. Named is enough — a setting
+commented out with the reason is documented. It runs in the gate and in CI, and
+`L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE` points at it: the template is derived
+from the settings the loader merges over, by hand, which is why it drifted
+twice without anybody noticing.
 
 ### The engine drives a workflow it does not know.
 

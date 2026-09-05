@@ -2,7 +2,7 @@
   "schema_version": 1,
   "files": {
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
-    "package.json": "2dbb1cf99290b2f37f071208f9281f7a7a1a1e7275c0612313780f0a67dcd88e",
+    "package.json": "d3d78be6b8f481423e7985d50cbe728d39ce84298fee1e69b2bd1c6faf7de295",
     "packages/agent-kit/package.json": "60afb3e01ae1d142541bec5a189eb1e2895ac9057ff3b1de86965961ecceea1f",
     "packages/cli/package.json": "8f094f4309795aa280dbb000e9f76092a93fd9e420f655a77c5b8f3b99bc22f8",
     "packages/core/package.json": "0e1b42059419052ad22b8caee3a32031b95d842241d65af9ac6b75271e92622b",

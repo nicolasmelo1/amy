@@ -138,22 +138,76 @@ qaStatusName: In QA
 # Finished queue items are only useful for reading the log afterwards.
 retentionDays: 7
 
+# What the engine does with an item that went wrong rather than with the work
+# itself. A claim older than staleClaimMs belonged to a worker that is no
+# longer running, so the item is handed back; past maxItemAttempts the item is
+# dropped and you are told, rather than retried forever in silence.
+staleClaimMs: 1800000
+maxItemAttempts: 5
+
+# The third workflow: something you said in passing becomes a pull request.
+# `amy btw "bump the deps in the api"` puts one on the queue. It works in the
+# repositories named above, so it needs no list of its own — only its ceilings.
+errands:
+  policy:
+    maxAttempts: 2
+    # Capturing an errand costs nothing, which is the whole point and also the
+    # failure: past this many in flight it holds rather than opening a
+    # thirtieth pull request nobody asked to review.
+    maxInFlight: 3
+    ceilingBackoffMs: 1800000
+
 # How the machine behaves when something is in its way. Anything left out
 # keeps its default. maxOpenReviewsPerReviewer is the one that spends a
 # currency nobody can top up: past it, the pull request stays open with
 # nobody assigned rather than landing on somebody already buried.
+#
+# The two backoffs are how long a waiting state holds before it looks again.
+# Neither one runs while work is happening: a step that takes half an hour is
+# one look that takes half an hour, and the look after it is queued the moment
+# it finishes. They only govern how quickly the machine notices that somebody
+# else moved. `amy poke <workId>` collapses either of them on demand, which
+# is how anything that already hears an event — a forge webhook, a chat
+# command — turns this into a push without an endpoint.
 policy:
+  maxImplementAttempts: 3
+  maxGateAttempts: 3
+  pollBackoffMs: 300000       # 5 minutes: waiting on an answer, or on a review
+  rosterBackoffMs: 1800000    # 30 minutes: waiting for the roster to be confirmed
   maxOpenReviewsPerReviewer: 2
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
-# it. ladderByStep overrides the list for one step, keyed by the workflow's
-# action name — reading a ticket and writing the change are not the same job,
-# and one list for both pays the expensive model to do the cheap step.
+# it, so leaving codex and hermes out means they are never required to be
+# installed. A failure moves to the next model of the same harness and then to
+# the next harness; a rate limit skips the rest of that harness, because a
+# bigger model behind the same quota is still blocked.
+#
+# ladderByStep overrides the list for one step, keyed by the workflow's action
+# name — reading a ticket and writing the change are not the same job, and one
+# list for both pays the expensive model to do the cheap step.
 agent:
   ladder: [claude:sonnet, claude:opus]
   ladderByStep:
     triage: [claude:haiku]
     implement: [claude:opus]
+  # Long flag: the claude CLI does not accept -m.
+  model: sonnet
+  # What the agents may spend. Two ceilings per window and the first one to
+  # blow parks the work: tokens are what a subscription meters, dollars are
+  # what an API key costs. A run whose cost nobody reported moves the token
+  # ceiling and not the dollar one. Leave the whole block out for no ceiling.
+  budget:
+    perFiveHours: { tokens: 2000000, costUsd: 20 }
+    perWeek: { tokens: 30000000, costUsd: 150 }
+    # The fraction of a ceiling at which new work stops being started.
+    stopAt: 0.9
+  # Guidance appended when answering a particular reviewer, by host login.
+  # A reviewer with known habits is cheaper to satisfy on the first pass.
+  reviewerHints:
+    edsger: >-
+      Delete anything that is not needed. No variable that aliases an existing
+      value, no check the types already guarantee, no comment stating the
+      obvious, no non-null assertions.
 
 # Where the checkouts live. One directory per repository, named after the
 # repository without its owner.
@@ -173,32 +227,6 @@ gate:
   Northwind/northwind-backend:
     - npm run --workspace @northwind/api lint
     - npm run --workspace @northwind/api typecheck
-
-agent:
-  # Long flag: the claude CLI does not accept -m.
-  model: sonnet
-  # What the agents may spend. Two ceilings per window and the first one to
-  # blow parks the work: tokens are what a subscription meters, dollars are
-  # what an API key costs. A run whose cost nobody reported moves the token
-  # ceiling and not the dollar one. Leave the whole block out for no ceiling.
-  budget:
-    perFiveHours: { tokens: 2000000, costUsd: 20 }
-    perWeek: { tokens: 30000000, costUsd: 150 }
-    # The fraction of a ceiling at which new work stops being started.
-    stopAt: 0.9
-  # The order the relay tries. A failure moves to the next model of the same
-  # harness and then to the next harness; a rate limit skips the rest of that
-  # harness, because a bigger model behind the same quota is still blocked.
-  # Naming a harness here is what mounts it, so leaving codex and hermes out
-  # means they are never required to be installed.
-  # ladder: [claude:sonnet, claude:opus, codex:gpt-5]
-  # Guidance appended when answering a particular reviewer, by host login.
-  # A reviewer with known habits is cheaper to satisfy on the first pass.
-  reviewerHints:
-    edsger: >-
-      Delete anything that is not needed. No variable that aliases an existing
-      value, no check the types already guarantee, no comment stating the
-      obvious, no non-null assertions.
 
 # Who does each step. A step with no entry is done by the agent in amy's own
 # words, which is every step until you say otherwise. A skill named here must
@@ -234,10 +262,12 @@ plans:
     default:
       - sf check
   policy:
+    maxDraftAttempts: 2
     # Past this many plans in flight for one repository, it holds rather than
     # opening another pull request nobody has read. The reviewer ceiling's
     # argument with a different number.
     maxOpenPlansPerRepo: 2
+    ceilingBackoffMs: 1800000
 
 # Any command line tool, reached by a name. One adapter for all of them: the
 # machine learns that a name maps to a line somebody wrote down, and nothing

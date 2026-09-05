@@ -153,4 +153,75 @@ describe("FileQueue", () => {
 
     expect(reopened.claim(NOW)?.workId).toBe("PROJ-1239");
   });
+
+  it("brings a held-back look forward so it is due now", () => {
+    queue.enqueue({ workId: "PROJ-1239", reason: "waiting on review", delayMs: 5 * MINUTE }, NOW);
+
+    expect(queue.promote("PROJ-1239", NOW)).toBe(1);
+
+    expect(queue.claim(NOW)?.workId).toBe("PROJ-1239");
+  });
+
+  it("leaves one look where there was one, so the chain cannot fork", () => {
+    queue.enqueue({ workId: "PROJ-1239", reason: "waiting on review", delayMs: 5 * MINUTE }, NOW);
+
+    queue.promote("PROJ-1239", NOW);
+
+    expect(queue.pending()).toHaveLength(1);
+  });
+
+  it("keeps why the look was queued, and which attempt it is", () => {
+    queue.enqueue(
+      { workId: "PROJ-1239", reason: "waiting on review", delayMs: 5 * MINUTE, attempt: 2 },
+      NOW,
+    );
+
+    queue.promote("PROJ-1239", NOW);
+
+    const claimed = queue.claim(NOW);
+    expect(claimed?.reason).toBe("waiting on review");
+    expect(claimed?.attempt).toBe(2);
+  });
+
+  // The one that catches a promotion written in place. An item's id begins
+  // with the instant it becomes due and `claim` sorts by it, so moving
+  // `notBefore` alone would leave this one ordered by the ten minutes it no
+  // longer waits, and the queue would hand out `FRESH` first.
+  it("orders a promoted look by when it is due now, not when it used to be", () => {
+    queue.enqueue({ workId: "HELD", reason: "waiting on review", delayMs: 10 * MINUTE }, NOW);
+
+    queue.promote("HELD", new Date(NOW.getTime() + MINUTE));
+    queue.enqueue({ workId: "FRESH", reason: "discovered" }, new Date(NOW.getTime() + 2 * MINUTE));
+
+    expect(queue.claim(new Date(NOW.getTime() + 3 * MINUTE))?.workId).toBe("HELD");
+  });
+
+  it("reports nothing moved when the look is already due", () => {
+    queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, NOW);
+
+    expect(queue.promote("PROJ-1239", NOW)).toBe(0);
+    expect(queue.pending()).toHaveLength(1);
+  });
+
+  it("reports nothing moved for work that is not on the queue", () => {
+    expect(queue.promote("PROJ-9999", NOW)).toBe(0);
+  });
+
+  it("leaves every other piece of work where it was", () => {
+    queue.enqueue({ workId: "PROJ-1239", reason: "waiting on review", delayMs: 5 * MINUTE }, NOW);
+    queue.enqueue({ workId: "PROJ-2000", reason: "waiting on review", delayMs: 5 * MINUTE }, NOW);
+
+    queue.promote("PROJ-1239", NOW);
+
+    expect(queue.claim(NOW)?.workId).toBe("PROJ-1239");
+    expect(queue.claim(NOW)).toBeNull();
+  });
+
+  it("does not touch a look that has been claimed", () => {
+    queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, NOW);
+    queue.claim(NOW);
+
+    expect(queue.promote("PROJ-1239", NOW)).toBe(0);
+    expect(queue.running()).toHaveLength(1);
+  });
 });

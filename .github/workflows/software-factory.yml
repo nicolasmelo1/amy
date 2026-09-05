@@ -76,6 +76,11 @@ jobs:
       # installing a set that does not fit together.
       - run: npm run typecheck
       - run: npm run check:release
+      # The config `amy init` writes, parsed and compared against the settings
+      # this build reads. It shipped carrying `agent:` twice — which YAML
+      # refuses rather than merges — so init wrote a file the next command
+      # threw on, and no test had ever parsed it.
+      - run: npm run check:config
       # A change to a published package without a changeset is a release that
       # would leave the version standing still. `--since` scopes it to what
       # this pull request adds, so a branch is judged on its own diff.

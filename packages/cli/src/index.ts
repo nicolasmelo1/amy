@@ -49,6 +49,7 @@ import {
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { NOT_INSTALLED, installedPlugins, load } from "./loader.js";
+import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { installedStamp } from "./stamp.js";
@@ -439,6 +440,15 @@ program
   });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+program
+  .command("poke")
+  .description("Look at one piece of work now, rather than when it was next due")
+  .argument("<workId>", "the work to bring forward, such as a ticket key")
+  .action((workId: string) => {
+    const queue = new FileQueue(profilePaths(home, selected().name).queue);
+    console.log(describePoke(workId, poke(queue, workId, new Date())));
+  });
 
 program
   .command("discover")

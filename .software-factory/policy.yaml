@@ -28,6 +28,9 @@ gates:
       - "queue.claims_what_was_enqueued"
       - "queue.refuses_a_second_claim"
       - "queue.holds_an_item_until_it_is_due"
+      - "queue.brings_a_held_look_forward"
+      - "queue.promoting_leaves_one_look"
+      - "queue.promoted_look_is_ordered_by_its_new_time"
       - "queue.recovers_what_a_dead_worker_left"
       - "queue.never_prunes_unfinished_work"
       - "queue.survives_a_restart"
@@ -266,9 +269,19 @@ rules:
   L2.DERIVED_ARTIFACTS_MATCH_THEIR_SOURCE:
     enabled: true
     options:
-      # docs/rules.md is derived from the rule catalogue. Regenerating it must
+      # Two derivations behind one name, because `run` takes one command.
+      #
+      # docs/rules.md is derived from the rule catalogue: regenerating it must
       # change nothing, or the prose and the enforcement have drifted apart.
-      run: sf docs
+      #
+      # The config template is derived from the settings the loader merges
+      # over — by hand, which is why it drifted twice unnoticed.
+      #
+      # It carried `agent:` twice, and YAML refuses a duplicate key rather
+      # than merging it, so `amy init` wrote a file the next command threw
+      # on. And `pollBackoffMs` was configurable for its whole life while
+      # appearing nowhere, which is a setting nobody can find.
+      run: npm run check:derived
   # L2 — The guardrail's own configuration is hash-locked
   L2.FACTORY_CONFIG_IS_LOCKED:
     enabled: true
