@@ -7,11 +7,7 @@
 <p><strong>Leave it running.</strong><br>
 <em><strong>A</strong>utomate <strong>MY</strong> work</em></p>
 
-</div>
-
----
-
-<p align="center">
+<p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/nicolasmelo1/amy?style=flat-square&color=E424CC&labelColor=1B0A19"></a>
   <a href="https://github.com/nicolasmelo1/amy/actions/workflows/software-factory.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/nicolasmelo1/amy/software-factory.yml?branch=main&style=flat-square&label=ci&color=E424CC&labelColor=1B0A19"></a>
   <img alt="Node 24+" src="https://img.shields.io/badge/node-24+-E424CC?style=flat-square&labelColor=1B0A19">
@@ -19,6 +15,10 @@
   <img alt="Harnesses: Claude Code, Codex, Hermes" src="https://img.shields.io/badge/harnesses-claude%20%C2%B7%20codex%20%C2%B7%20hermes-9DA0AE?style=flat-square&labelColor=1B0A19">
   <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-9DA0AE?style=flat-square&labelColor=1B0A19">
 </p>
+
+</div>
+
+---
 
 **Leave it running, and it does the long part of your work while you are
 somewhere else — built the way *you* work, not the way somebody else does.**
