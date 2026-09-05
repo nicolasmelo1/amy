@@ -19,6 +19,9 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
         isDraft
         reviewDecision
         headRefOid
+        changedFiles
+        additions
+        deletions
         reviewRequests(first: 20) {
           nodes {
             requestedReviewer {
@@ -56,6 +59,9 @@ interface RawPullRequest {
   isDraft: boolean;
   reviewDecision: string | null;
   headRefOid: string;
+  changedFiles: number;
+  additions: number;
+  deletions: number;
   reviewRequests: {
     nodes: { requestedReviewer: { login?: string; slug?: string } | null }[];
   };
@@ -222,6 +228,9 @@ function toView(node: RawPullRequest): PullRequestView {
     url: node.url,
     headSha: node.headRefOid,
     isDraft: node.isDraft,
+    changedFiles: node.changedFiles,
+    additions: node.additions,
+    deletions: node.deletions,
     reviewDecision: toDecision(node.reviewDecision),
     requestedReviewers: node.reviewRequests.nodes
       .map((request) => request.requestedReviewer?.login ?? request.requestedReviewer?.slug)

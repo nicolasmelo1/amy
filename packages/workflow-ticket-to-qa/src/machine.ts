@@ -39,13 +39,13 @@ export function plan(record: TicketRecord, obs: Observation, policy: Policy): Pl
     case "COPILOT_WAIT":
       return planAutomatedReviewWait(record, obs, policy);
     case "COPILOT_FIX":
-      return planAutomatedReviewFix(record, obs);
+      return planAutomatedReviewFix(record, obs, policy);
     case "REVIEWER_ASSIGNED":
       return planReviewerAssignment(record, obs, policy);
     case "HUMAN_REVIEW":
       return planHumanReview(record, obs, policy);
     case "HUMAN_FIX":
-      return planHumanFix(record, obs);
+      return planHumanFix(record, obs, policy);
     case "ESCALATED":
       return planEscalated(obs, policy);
     case "RE_REVIEW":
@@ -211,7 +211,28 @@ function planAutomatedReviewWait(
   return advance("REVIEWER_ASSIGNED", "the automated reviewer has nothing outstanding");
 }
 
-function planAutomatedReviewFix(record: TicketRecord, obs: Observation): Plan {
+/**
+ * Whether the change is too large to hand to an agent, and why.
+ *
+ * Pure and free: the size came back with the pull request, so refusing costs
+ * nothing where making the call would have cost the most. Returns the
+ * sentence rather than a boolean, because what a person needs to read in the
+ * escalation is which ceiling was passed and by how much.
+ */
+function tooLargeForAnAgent(pr: PullRequestView, policy: Policy): string | null {
+  const lines = pr.additions + pr.deletions;
+
+  if (policy.maxPullRequestFiles > 0 && pr.changedFiles > policy.maxPullRequestFiles) {
+    return `${pr.changedFiles} files changed, over the ${policy.maxPullRequestFiles} I will hand to an agent`;
+  }
+  if (policy.maxPullRequestLines > 0 && lines > policy.maxPullRequestLines) {
+    return `${lines} lines changed, over the ${policy.maxPullRequestLines} I will hand to an agent`;
+  }
+
+  return null;
+}
+
+function planAutomatedReviewFix(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   const pr = requirePullRequest(obs, "COPILOT_FIX");
   if (isPlan(pr)) return pr;
 
@@ -220,10 +241,38 @@ function planAutomatedReviewFix(record: TicketRecord, obs: Observation): Plan {
     return advance("COPILOT_WAIT", "every automated thread has been judged");
   }
 
+  const tooLarge = tooLargeForAnAgent(pr, policy);
+  if (tooLarge) return handBack(record, pr, policy, tooLarge, open.map((t) => t.id));
+
   return act(`addressing ${open.length} automated thread(s)`, {
     type: "address-threads",
     threadIds: open.map((t) => t.id),
     from: "automated",
+  });
+}
+
+/**
+ * Gives the review back to the ticket owner, once.
+ *
+ * `ESCALATED` already means "this needs the person whose ticket it is", so a
+ * change nobody should automate lands in the state that already exists for
+ * it rather than in one invented for size.
+ */
+function handBack(
+  record: TicketRecord,
+  pr: PullRequestView,
+  policy: Policy,
+  why: string,
+  threadIds: string[],
+): Plan {
+  if (record.escalation && !record.escalation.resolvedAt) {
+    return wait(policy.pollBackoffMs, `waiting on the owner: ${why}`);
+  }
+
+  return advance("ESCALATED", why, {
+    type: "escalate",
+    reason: `This pull request is bigger than I will work on unattended — ${why}. The review is yours: ${pr.url}`,
+    threadIds,
   });
 }
 
@@ -321,12 +370,15 @@ function planHumanReview(record: TicketRecord, obs: Observation, policy: Policy)
   return wait(policy.pollBackoffMs, `${reviewer} commented without deciding`);
 }
 
-function planHumanFix(record: TicketRecord, obs: Observation): Plan {
+function planHumanFix(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   const pr = requirePullRequest(obs, "HUMAN_FIX");
   if (isPlan(pr)) return pr;
 
   const open = outstanding(pr, "human", record);
   if (open.length > 0) {
+    const tooLarge = tooLargeForAnAgent(pr, policy);
+    if (tooLarge) return handBack(record, pr, policy, tooLarge, open.map((t) => t.id));
+
     return act(`judging ${open.length} human thread(s)`, {
       type: "address-threads",
       threadIds: open.map((t) => t.id),
