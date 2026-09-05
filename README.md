@@ -1,24 +1,94 @@
-# amy
+<div align="center">
 
-**A**utomate **MY** work.
+<img alt="amy" src="assets/amy-mark.png" width="128">
 
-**Drives a work ticket from in-progress to QA handoff, one deterministic move at a time.**
+<h1>amy</h1>
+
+<p><strong>Leave it running.</strong><br>
+<em><strong>A</strong>utomate <strong>MY</strong> work</em></p>
+
+<p>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/nicolasmelo1/amy?style=flat-square&color=E424CC&labelColor=1B0A19"></a>
+  <a href="https://github.com/nicolasmelo1/amy/actions/workflows/software-factory.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/nicolasmelo1/amy/software-factory.yml?branch=main&style=flat-square&label=ci&color=E424CC&labelColor=1B0A19"></a>
+  <img alt="Node 24+" src="https://img.shields.io/badge/node-24+-E424CC?style=flat-square&labelColor=1B0A19">
+  <img alt="Everything is a plugin" src="https://img.shields.io/badge/everything-a%20plugin-E424CC?style=flat-square&labelColor=1B0A19">
+  <img alt="Harnesses: Claude Code, Codex, Hermes" src="https://img.shields.io/badge/harnesses-claude%20%C2%B7%20codex%20%C2%B7%20hermes-9DA0AE?style=flat-square&labelColor=1B0A19">
+  <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-9DA0AE?style=flat-square&labelColor=1B0A19">
+</p>
+
+</div>
 
 ---
 
-## Why this exists
+**Leave it running, and it does the long part of your work while you are
+somewhere else — built the way *you* work, not the way somebody else does.**
 
-Implementing a ticket is the part an agent is already good at. The work around
-it is not hard, it is just long: read the ticket, ask if something is
-ambiguous, implement, check, open a pull request, deal with the bot reviewer,
-pick a human reviewer, deal with them, ask when you disagree, hand it to QA.
+## What it is, in a minute
 
-That loop is *cyclic* and it *waits on other people for days*. Neither fits a
-task DAG, so it does not belong inside a task runner. It belongs in a state
-machine that persists, resumes, and only ever makes one move at a time.
+You pick up a ticket. Writing the code is not the hard part any more — an
+agent is already good at that. The long part is everything *around* it:
 
-`amy` is that machine. The agent is called in four places. Everything else
-is a predicate over the tracker and the code host.
+> read the ticket → ask when something is unclear → do the work → run the
+> checks → open the pull request → answer the review bot → pick a reviewer →
+> deal with their comments → hand it to QA
+
+That takes days, and most of it is waiting on other people. amy is a small
+machine that sits there and walks it one step at a time, so you stop having to
+hold it in your head.
+
+```sh
+amy start                            # off it goes, in the background
+amy status                           # where everything stands
+amy btw "bump the deps in the api"   # something you thought of in passing
+```
+
+## The part that makes it different
+
+**That process above is not baked in.** It is one *workflow*, and a workflow
+is just a small package you can read in one sitting. It says two things: what
+happens next, and how each step is done.
+
+Your team does not work like mine. A tool that ships somebody else's process
+is a tool that is *nearly* right for you, and nearly-right is where automation
+goes to be abandoned. So amy ships the machine, and **you assemble the process
+before you use it.**
+
+Three come in the box, and you can write a fourth in an afternoon:
+
+| | |
+| :-- | :-- |
+| **ticket-to-qa** | a tracker ticket, all the way to a QA handoff |
+| **note-to-plan** | friction amy hit becomes a written plan in the right repo |
+| **errand** | something you said in passing becomes a pull request |
+
+The bits underneath are swappable too, not just the process. The thing that
+talks to your tracker, the thing that opens pull requests, the agent it asks,
+where it writes things down, how it reaches you — every one of those is a
+plugin, and changing one is a line of config. Nothing here is welded shut.
+
+## It lives *under* your tools, not inside one
+
+amy is installed once on your machine and keeps running on its own. Claude
+Code, Codex, Hermes, a terminal, your phone at 2am — those are all just doors
+into the same machine.
+
+```text
+   Claude Code      Codex       Hermes       your terminal
+        └──────────────┴───────────┴──────────────┘
+                            amy
+              one install, one memory, always up
+```
+
+Close the laptop lid and it keeps its place. Ask from a different app tomorrow
+and you get the same answer, because the state belongs to amy and not to the
+conversation you happened to be having.
+
+And it is open source, because a machine that runs *your* process is a machine
+you have to be able to read.
+
+**New here?** [Quickstart](#quickstart-5-minutes) is five minutes.
+Want it to work your way? [Write your own workflow](#write-your-own-workflow).
+Want to change amy itself? [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
@@ -167,9 +237,11 @@ machine by `amy skills`. Invoke them by name.
 | `/amy-show-me` | Seeing a workflow: its shape, and why one thing is stuck. |
 | `/amy-status` | What should I do today, from the project's side rather than the machine's. |
 
-`/amy-develop`, for changing amy's own codebase, is not among them: it lives
-in `.claude/skills/` and belongs to this repository, because nobody installing
-amy has a reason to carry it.
+Changing amy's own codebase is not one of them, and deliberately: it is what
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is for. A skill in front of somebody who
+installed amy to drive their tickets, describing a repository they do not
+have, is noise in the one place noise is expensive — the list an agent reads
+when deciding what to reach for.
 
 Their job is judgement — interrogating a design, reading a config, choosing
 what to show. Everything a command can do, a command does: a skill that
@@ -761,12 +833,10 @@ plugins/
 packages/cli/skills/         shipped inside @amy/cli, installed by `amy skills`
 ├── amy/                     driving it
 ├── amy-init/                setting it up
+├── amy-btw/                 capturing something said in passing
 ├── amy-workflow/            designing one, a question at a time
 ├── amy-show-me/             seeing one
 └── amy-status/              what should I do today
-
-.claude/skills/
-└── amy-develop/             changing amy itself — this repository only
 ```
 
 A plugin's directory drops the prefix its package name keeps: `plugins/github`

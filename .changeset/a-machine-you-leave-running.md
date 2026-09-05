@@ -34,9 +34,9 @@ Code and Hermes today — rather than into one project. They ship inside
 `/amy-init`, `/amy-show-me`, `/amy-status`, and `/amy-workflow` is now an
 interrogation that redraws the workflow after every answer.
 
-`/amy-develop` is not among them. It is about changing amy's own codebase, so
-it belongs to this repository rather than to anybody who installs amy, and it
-lives in `.claude/skills/`.
+Changing amy's own codebase is not one of them: that is what `CONTRIBUTING.md`
+is for. A skill describing a repository the reader does not have is noise in
+the list an agent reads when deciding what to reach for.
 
 **`amy status --json`** for something else to render.
 

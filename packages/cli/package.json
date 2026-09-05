@@ -1,7 +1,7 @@
 {
   "name": "@amy/cli",
   "version": "0.1.0",
-  "description": "The amy command line.",
+  "description": "The amy command line: one install per machine, reached from any harness.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",

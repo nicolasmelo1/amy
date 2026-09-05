@@ -1,7 +1,7 @@
 {
   "name": "amy-workspace",
   "version": "0.1.0",
-  "description": "Drives a work ticket from in-progress to QA handoff, one deterministic transition at a time.",
+  "description": "A state machine that runs under your agent harnesses, where every part of it is a plugin you assemble for the work you actually do.",
   "type": "module",
   "private": true,
   "scripts": {
