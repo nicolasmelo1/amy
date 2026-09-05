@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { BuildStamp, stampFrom } from "@amy/core";
+import { BuildStamp, stampFrom } from "@amykit/core";
 
 /**
  * Where `npm pack` leaves this build's identity, beside the code it built.

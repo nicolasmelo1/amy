@@ -1,10 +1,10 @@
-import { Git, Plugin } from "@amy/core";
-import { contributeTiers } from "@amy/agent-kit";
+import { Git, Plugin } from "@amykit/core";
+import { contributeTiers } from "@amykit/agent-kit";
 import { HermesHarness } from "./HermesHarness.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-hermes-agent",
+  name: "@amykit/plugin-hermes-agent",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

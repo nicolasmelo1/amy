@@ -7,7 +7,7 @@ import {
   WorkRecord,
   WorkflowRuntime,
   mount,
-} from "@amy/core";
+} from "@amykit/core";
 import { plugin } from "../src/plugin.js";
 
 const HOST: HostServices = {
@@ -20,12 +20,12 @@ const HOST: HostServices = {
 // more: `repos` and `qaStatusName` are the workflow's vocabulary and live in
 // the workflow's slice.
 const SETTINGS = {
-  "@amy/plugin-serial-engine": { maxItemAttempts: 3 },
+  "@amykit/plugin-serial-engine": { maxItemAttempts: 3 },
 };
 
 /** A workflow, and no way to run it. Half of the pair an engine needs. */
 const halfAWorkflow: Plugin = {
-  name: "@amy/workflow-half",
+  name: "@amykit/workflow-half",
   version: "0.1.0",
   register: (registry) =>
     registry.workflow({
@@ -47,7 +47,7 @@ const halfAWorkflow: Plugin = {
  * a runtime, and it neither knows nor cares that this one reaches nothing.
  */
 const stubWorkflow: Plugin = {
-  name: "@amy/workflow-stub",
+  name: "@amykit/workflow-stub",
   version: "0.1.0",
   register: (registry) => {
     halfAWorkflow.register(registry, undefined as never);
@@ -117,7 +117,7 @@ describe("the serial engine plugin", () => {
     const withQueue = await mountAlone([
       stubWorkflow,
       {
-        name: "@amy/plugin-q",
+        name: "@amykit/plugin-q",
         version: "0.1.0",
         register: (r) => r.queue({} as never),
       },

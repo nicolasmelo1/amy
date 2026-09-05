@@ -1,12 +1,12 @@
 import path from "node:path";
-import { Plugin } from "@amy/core";
-import { CHANNEL_COLLECTION } from "@amy/plugin-notify-fanout";
+import { Plugin } from "@amykit/core";
+import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 import { FileNotes } from "./FileNotes.js";
 import { configSchema } from "./config.js";
 import { frictionChannel } from "./frictionChannel.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-file-notes",
+  name: "@amykit/plugin-file-notes",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

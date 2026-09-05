@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { HostServices, mount } from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
-import type { Tasks } from "@amy/workflow-errand";
+import { HostServices, mount } from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
+import type { Tasks } from "@amykit/workflow-errand";
 import { plugin } from "../src/plugin.js";
 
 describe("mounting the tasks directory", () => {
@@ -32,7 +32,7 @@ describe("mounting the tasks directory", () => {
   it("keeps them beside the rest of the state, under the configured name", async () => {
     const outcome = await mount(
       [plugin],
-      { "@amy/plugin-file-tasks": { directory: "errands", repo: "acme/widgets" } },
+      { "@amykit/plugin-file-tasks": { directory: "errands", repo: "acme/widgets" } },
       host(),
     );
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
@@ -46,7 +46,7 @@ describe("mounting the tasks directory", () => {
   });
 
   it("refuses a setting that is not one this plugin has", async () => {
-    const outcome = await mount([plugin], { "@amy/plugin-file-tasks": { dir: "x" } }, host());
+    const outcome = await mount([plugin], { "@amykit/plugin-file-tasks": { dir: "x" } }, host());
 
     expect(outcome.ok).toBe(false);
     expect(outcome.ok === false && outcome.problems.join(" ")).toContain("dir");

@@ -21,7 +21,7 @@ it is a check that fails the build:
 
 ```
 ✗ critical L0.CORE_STAYS_IGNORANT
-    nothing under packages/core/src imports an @amy/workflow-* or @amy/plugin-*
+    nothing under packages/core/src imports an @amykit/workflow-* or @amykit/plugin-*
 ```
 
 Its mutation fixture is a core file that imports a workflow's type, and
@@ -31,7 +31,7 @@ on nobody making a single wrong import.
 ## The layers
 
 ```text
-@amy/core
+@amykit/core
   actions:  triage, implement, run-gate, draft-plan, open-pull-request,
             address-threads, assign-reviewer, request-rereview, escalate,
             hand-off-to-qa, announce    each declares the port it needs
@@ -41,18 +41,18 @@ on nobody making a single wrong import.
       ▲                                          ▲
       │ composes actions                         │ implements ports
       │                                          │
-@amy/workflow-ticket-to-qa              @amy/plugin-linear       tracker
-  the sixteen states, a pure plan(),    @amy/plugin-github       code-host
-  its typed port contracts, and the     @amy/plugin-claude       harness
-  runtime that runs its actions         @amy/plugin-agent-relay  agent
-      │                                 @amy/plugin-command-gate gate
-@amy/workflow-note-to-plan              @amy/plugin-plan-check   plan-check
-  five states and one refusal, over     @amy/plugin-file-notes   notes
-  work that never was a ticket          @amy/plugin-notify-*     notifier
-      │                                 @amy/plugin-file-queue   queue
-      │ each contributes a runtime      @amy/plugin-file-store   store
+@amykit/workflow-ticket-to-qa              @amykit/plugin-linear       tracker
+  the sixteen states, a pure plan(),    @amykit/plugin-github       code-host
+  its typed port contracts, and the     @amykit/plugin-claude       harness
+  runtime that runs its actions         @amykit/plugin-agent-relay  agent
+      │                                 @amykit/plugin-command-gate gate
+@amykit/workflow-note-to-plan              @amykit/plugin-plan-check   plan-check
+  five states and one refusal, over     @amykit/plugin-file-notes   notes
+  work that never was a ticket          @amykit/plugin-notify-*     notifier
+      │                                 @amykit/plugin-file-queue   queue
+      │ each contributes a runtime      @amykit/plugin-file-store   store
       ▼
-@amy/plugin-serial-engine
+@amykit/plugin-serial-engine
   a queue, a budget, a retry count and a stop switch — and no idea what a
   ticket or a plan is
 ```
@@ -106,7 +106,7 @@ plugins/
 <!-- amy:end workspace-layout -->
 
 A plugin's directory drops the prefix its package name keeps: `plugins/github`
-publishes as `@amy/plugin-github`. The folder says where it lives, the package
+publishes as `@amykit/plugin-github`. The folder says where it lives, the package
 name says what it is, and only the second one is a promise to anybody outside
 this repository.
 
@@ -114,32 +114,32 @@ this repository.
 
 | Package | Kind | Depends on, in this workspace |
 | :-- | :-- | :-- |
-| `@amy/agent-kit` | library | `@amy/core`, `@amy/workflow-ticket-to-qa` |
-| `@amy/cli` | cli | `@amy/core`, `@amy/model-specs`, `@amy/plugin-file-log`, `@amy/plugin-file-notes`, `@amy/plugin-file-queue`, `@amy/plugin-file-store`, `@amy/plugin-file-tasks`, `@amy/plugin-notify-hermes`, `@amy/workflow-ticket-to-qa` |
-| `@amy/core` | library | _nothing_ |
-| `@amy/model-specs` | library | `@amy/core` |
-| `@amy/test-fixtures` | library | `@amy/core`, `@amy/workflow-ticket-to-qa` |
-| `@amy/workflow-errand` | workflow | `@amy/core` |
-| `@amy/workflow-note-to-plan` | workflow | `@amy/core` |
-| `@amy/workflow-ticket-to-qa` | workflow | `@amy/core` |
-| `@amy/plugin-agent-relay` | plugin | `@amy/agent-kit`, `@amy/core`, `@amy/workflow-ticket-to-qa` |
-| `@amy/plugin-claude` | plugin | `@amy/agent-kit`, `@amy/core`, `@amy/model-specs` |
-| `@amy/plugin-codex` | plugin | `@amy/agent-kit`, `@amy/core`, `@amy/model-specs` |
-| `@amy/plugin-command` | plugin | `@amy/core` |
-| `@amy/plugin-command-gate` | plugin | `@amy/core`, `@amy/workflow-ticket-to-qa` |
-| `@amy/plugin-file-log` | library | `@amy/core` |
-| `@amy/plugin-file-notes` | plugin | `@amy/core`, `@amy/plugin-notify-fanout` |
-| `@amy/plugin-file-queue` | plugin | `@amy/core` |
-| `@amy/plugin-file-store` | plugin | `@amy/core` |
-| `@amy/plugin-file-tasks` | plugin | `@amy/core` |
-| `@amy/plugin-github` | plugin | `@amy/core` |
-| `@amy/plugin-hermes-agent` | plugin | `@amy/agent-kit`, `@amy/core`, `@amy/model-specs` |
-| `@amy/plugin-linear` | plugin | `@amy/core`, `@amy/plugin-notify-fanout`, `@amy/workflow-ticket-to-qa` |
-| `@amy/plugin-notify-fanout` | plugin | `@amy/core` |
-| `@amy/plugin-notify-hermes` | plugin | `@amy/core`, `@amy/plugin-notify-fanout` |
-| `@amy/plugin-notify-inbox` | plugin | `@amy/core`, `@amy/plugin-notify-fanout` |
-| `@amy/plugin-plan-check` | plugin | `@amy/core`, `@amy/workflow-note-to-plan` |
-| `@amy/plugin-serial-engine` | plugin | `@amy/core`, `@amy/workflow-ticket-to-qa` |
+| `@amykit/agent-kit` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/cli` | cli | `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-notify-hermes`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/core` | library | _nothing_ |
+| `@amykit/model-specs` | library | `@amykit/core` |
+| `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/workflow-errand` | workflow | `@amykit/core` |
+| `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
+| `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/core` |
+| `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-claude` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
+| `@amykit/plugin-codex` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
+| `@amykit/plugin-command` | plugin | `@amykit/core` |
+| `@amykit/plugin-command-gate` | plugin | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-file-log` | library | `@amykit/core` |
+| `@amykit/plugin-file-notes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
+| `@amykit/plugin-file-queue` | plugin | `@amykit/core` |
+| `@amykit/plugin-file-store` | plugin | `@amykit/core` |
+| `@amykit/plugin-file-tasks` | plugin | `@amykit/core` |
+| `@amykit/plugin-github` | plugin | `@amykit/core` |
+| `@amykit/plugin-hermes-agent` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
+| `@amykit/plugin-linear` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-notify-fanout` | plugin | `@amykit/core` |
+| `@amykit/plugin-notify-hermes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
+| `@amykit/plugin-notify-inbox` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
+| `@amykit/plugin-plan-check` | plugin | `@amykit/core`, `@amykit/workflow-note-to-plan` |
+| `@amykit/plugin-serial-engine` | plugin | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 
 <!-- amy:end workspace-dependencies -->
 

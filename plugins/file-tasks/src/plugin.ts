@@ -1,10 +1,10 @@
 import path from "node:path";
-import { Plugin } from "@amy/core";
+import { Plugin } from "@amykit/core";
 import { FileTasks } from "./FileTasks.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-file-tasks",
+  name: "@amykit/plugin-file-tasks",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

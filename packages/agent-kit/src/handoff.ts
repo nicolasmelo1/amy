@@ -1,4 +1,4 @@
-import { AgentRun, EventLog } from "@amy/core";
+import { AgentRun, EventLog } from "@amykit/core";
 import { Rung } from "./ladder.js";
 
 export interface HandoffLog {

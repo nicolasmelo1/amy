@@ -7,7 +7,7 @@ import {
   StopSwitch,
   Workflow,
   WorkflowRuntime,
-} from "@amy/core";
+} from "@amykit/core";
 import {
   Agent,
   DEFAULT_POLICY,
@@ -17,7 +17,7 @@ import {
   ticketRuntime,
   ticketToQa,
   Tracker,
-} from "@amy/workflow-ticket-to-qa";
+} from "@amykit/workflow-ticket-to-qa";
 import { fakeAgent, fakeGate, fakeHost, fakeTracker, runtimeConfig, workerConfig } from "./fakes.js";
 import { roster } from "./builders.js";
 

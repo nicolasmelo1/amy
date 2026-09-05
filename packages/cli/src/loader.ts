@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Plugin } from "@amy/core";
+import { Plugin } from "@amykit/core";
 
 export interface LoadResult {
   plugins: Plugin[];

@@ -105,10 +105,10 @@ describe("writing a profile's plugin list", () => {
   });
 
   it("writes the workflow the profile drives beside its plugins", () => {
-    writeProfilePlugins(root, "note-to-plan", ["@amy/workflow-note-to-plan"], loadConfig(root));
+    writeProfilePlugins(root, "note-to-plan", ["@amykit/workflow-note-to-plan"], loadConfig(root));
 
     expect(loadConfig(root).workflows["note-to-plan"]).toMatchObject({
-      workflow: "@amy/workflow-note-to-plan",
+      workflow: "@amykit/workflow-note-to-plan",
       notes: true,
     });
   });

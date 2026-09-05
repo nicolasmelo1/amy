@@ -1,9 +1,9 @@
-import { Git, Plugin } from "@amy/core";
+import { Git, Plugin } from "@amykit/core";
 import { PlanCommandCheck } from "./PlanCommandCheck.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-plan-check",
+  name: "@amykit/plugin-plan-check",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

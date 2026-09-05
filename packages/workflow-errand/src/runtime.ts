@@ -11,7 +11,7 @@ import {
   Notifier,
   Store,
   WorkflowRuntime,
-} from "@amy/core";
+} from "@amykit/core";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes } from "./outcomes.js";

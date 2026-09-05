@@ -40,7 +40,7 @@ export async function packageFacts() {
         directory: `${group}/${entry}`,
         dependencies: Object.keys(manifest.dependencies ?? {}).sort(),
         amyDependencies: Object.keys(manifest.dependencies ?? {})
-          .filter((name) => name.startsWith("@amy/"))
+          .filter((name) => name.startsWith("@amykit/"))
           .sort(),
         environment,
         ...(await introspect(dir, manifest, environment)),
@@ -101,7 +101,7 @@ async function introspect(dir, manifest, environment) {
 
   // The CLI's entry point *is* the command: importing it parses argv and
   // exits. Nothing in it is introspected, so it is never loaded.
-  if (manifest.name === "@amy/cli") return { kind: "cli" };
+  if (manifest.name === "@amykit/cli") return { kind: "cli" };
 
   let module;
   try {

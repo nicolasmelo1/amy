@@ -1,11 +1,11 @@
-import { AgentResult, Git, Harness, HarnessReply, ReviewThread } from "@amy/core";
+import { AgentResult, Git, Harness, HarnessReply, ReviewThread } from "@amykit/core";
 import {
   Agent,
   AttemptOutcome,
   ThreadVerdict,
   Ticket,
   TriageOutcome,
-} from "@amy/workflow-ticket-to-qa";
+} from "@amykit/workflow-ticket-to-qa";
 import { extractJson } from "./json.js";
 
 export interface HarnessAgentConfig {

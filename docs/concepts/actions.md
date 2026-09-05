@@ -38,21 +38,21 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 
 | Action | Port | Method | Shipped by | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `address-threads` | `agent` | `addressThreads()` | `@amy/core` |  |
-| `announce` | `notifier` | `announce()` | `@amy/core` |  |
-| `ask-question` | `tracker` | `comment()` | `@amy/core` |  |
-| `assign-reviewer` | `code-host` | `requestReview()` | `@amy/core` |  |
-| `draft-plan` | `agent` | `ask()` | `@amy/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
-| `escalate` | `tracker` | `createFollowUp()` | `@amy/core` |  |
-| `hand-off-to-qa` | `tracker` | `setStatus()` | `@amy/core` |  |
-| `implement` | `agent` | `implement()` | `@amy/core` |  |
-| `open-pull-request` | `code-host` | `openPullRequest()` | `@amy/core` |  |
-| `request-rereview` | `code-host` | `requestReview()` | `@amy/core` |  |
-| `run-errand` | `agent` | `ask()` | `@amy/core` | Do the thing somebody asked for, in their own words. |
-| `run-gate` | `gate` | `run()` | `@amy/core` |  |
-| `triage` | `agent` | `triage()` | `@amy/core` |  |
-| `check-plan` | `plan-check` | `check()` | `@amy/plugin-plan-check` | Registered by the plugin that brings the port behind it. |
-| `run-command` | `commands` | `run()` | `@amy/plugin-command` | Registered by the plugin that brings the port behind it. |
+| `address-threads` | `agent` | `addressThreads()` | `@amykit/core` |  |
+| `announce` | `notifier` | `announce()` | `@amykit/core` |  |
+| `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |
+| `assign-reviewer` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
+| `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
+| `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |
+| `implement` | `agent` | `implement()` | `@amykit/core` |  |
+| `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
+| `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `run-errand` | `agent` | `ask()` | `@amykit/core` | Do the thing somebody asked for, in their own words. |
+| `run-gate` | `gate` | `run()` | `@amykit/core` |  |
+| `triage` | `agent` | `triage()` | `@amykit/core` |  |
+| `check-plan` | `plan-check` | `check()` | `@amykit/plugin-plan-check` | Registered by the plugin that brings the port behind it. |
+| `run-command` | `commands` | `run()` | `@amykit/plugin-command` | Registered by the plugin that brings the port behind it. |
 
 <!-- amy:end core-actions -->
 

@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { AgentOutcome, AgentRun, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amy/core";
-import { costOf, specFor } from "@amy/model-specs";
+import { AgentOutcome, AgentRun, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amykit/core";
+import { costOf, specFor } from "@amykit/model-specs";
 
 export interface HermesHarnessConfig {
   model?: string;

@@ -9,12 +9,12 @@ import {
   WORKFLOW_RUNTIME,
   Workflow,
   WorkflowRuntime,
-} from "@amy/core";
+} from "@amykit/core";
 import { Worker } from "./Worker.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-serial-engine",
+  name: "@amykit/plugin-serial-engine",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

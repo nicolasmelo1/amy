@@ -21,12 +21,12 @@ A prompt, a directory, and an account of what the answer cost. Nothing in it
 names a ticket, a plan or a review — which is why it lives in the core, and why
 a second workflow can ask its own questions through the same thing.
 
-Three ship: `@amy/plugin-claude`, `@amy/plugin-codex`, `@amy/plugin-hermes-agent`.
+Three ship: `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-hermes-agent`.
 
 ## Harnesses contribute; the relay mounts
 
 None of the three mounts the `agent` port. Each **contributes itself** to two
-collections, and `@amy/plugin-agent-relay` is the only thing that mounts `agent`.
+collections, and `@amykit/plugin-agent-relay` is the only thing that mounts `agent`.
 
 ```text
 plugin-claude ─┐
@@ -109,7 +109,7 @@ load.
 ## amy's own skills
 
 amy is driven *from* harnesses as well as driving them. Its skills ship inside
-`@amy/cli` — so they cannot drift out of step with the amy that ships them — and
+`@amykit/cli` — so they cannot drift out of step with the amy that ships them — and
 `amy skills` installs them into each harness it finds on the machine.
 
 <!-- amy:generated skills-index -->

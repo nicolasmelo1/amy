@@ -11,82 +11,82 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@amy/agent-kit": [
+      "@amykit/agent-kit": [
         "packages/agent-kit/src/index.ts"
       ],
-      "@amy/cli": [
+      "@amykit/cli": [
         "packages/cli/src/index.ts"
       ],
-      "@amy/core": [
+      "@amykit/core": [
         "packages/core/src/index.ts"
       ],
-      "@amy/model-specs": [
+      "@amykit/model-specs": [
         "packages/model-specs/src/index.ts"
       ],
-      "@amy/plugin-agent-relay": [
+      "@amykit/plugin-agent-relay": [
         "plugins/agent-relay/src/index.ts"
       ],
-      "@amy/plugin-claude": [
+      "@amykit/plugin-claude": [
         "plugins/claude/src/index.ts"
       ],
-      "@amy/plugin-codex": [
+      "@amykit/plugin-codex": [
         "plugins/codex/src/index.ts"
       ],
-      "@amy/plugin-command": [
+      "@amykit/plugin-command": [
         "plugins/command/src/index.ts"
       ],
-      "@amy/plugin-command-gate": [
+      "@amykit/plugin-command-gate": [
         "plugins/command-gate/src/index.ts"
       ],
-      "@amy/plugin-file-log": [
+      "@amykit/plugin-file-log": [
         "plugins/file-log/src/index.ts"
       ],
-      "@amy/plugin-file-notes": [
+      "@amykit/plugin-file-notes": [
         "plugins/file-notes/src/index.ts"
       ],
-      "@amy/plugin-file-queue": [
+      "@amykit/plugin-file-queue": [
         "plugins/file-queue/src/index.ts"
       ],
-      "@amy/plugin-file-store": [
+      "@amykit/plugin-file-store": [
         "plugins/file-store/src/index.ts"
       ],
-      "@amy/plugin-file-tasks": [
+      "@amykit/plugin-file-tasks": [
         "plugins/file-tasks/src/index.ts"
       ],
-      "@amy/plugin-github": [
+      "@amykit/plugin-github": [
         "plugins/github/src/index.ts"
       ],
-      "@amy/plugin-hermes-agent": [
+      "@amykit/plugin-hermes-agent": [
         "plugins/hermes-agent/src/index.ts"
       ],
-      "@amy/plugin-linear": [
+      "@amykit/plugin-linear": [
         "plugins/linear/src/index.ts"
       ],
-      "@amy/plugin-notify-fanout": [
+      "@amykit/plugin-notify-fanout": [
         "plugins/notify-fanout/src/index.ts"
       ],
-      "@amy/plugin-notify-hermes": [
+      "@amykit/plugin-notify-hermes": [
         "plugins/notify-hermes/src/index.ts"
       ],
-      "@amy/plugin-notify-inbox": [
+      "@amykit/plugin-notify-inbox": [
         "plugins/notify-inbox/src/index.ts"
       ],
-      "@amy/plugin-plan-check": [
+      "@amykit/plugin-plan-check": [
         "plugins/plan-check/src/index.ts"
       ],
-      "@amy/plugin-serial-engine": [
+      "@amykit/plugin-serial-engine": [
         "plugins/serial-engine/src/index.ts"
       ],
-      "@amy/test-fixtures": [
+      "@amykit/test-fixtures": [
         "packages/test-fixtures/src/index.ts"
       ],
-      "@amy/workflow-errand": [
+      "@amykit/workflow-errand": [
         "packages/workflow-errand/src/index.ts"
       ],
-      "@amy/workflow-note-to-plan": [
+      "@amykit/workflow-note-to-plan": [
         "packages/workflow-note-to-plan/src/index.ts"
       ],
-      "@amy/workflow-ticket-to-qa": [
+      "@amykit/workflow-ticket-to-qa": [
         "packages/workflow-ticket-to-qa/src/index.ts"
       ]
     }

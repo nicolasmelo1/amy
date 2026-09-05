@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "dev": "npm run --workspace @amy/cli dev",
+    "dev": "npm run --workspace @amykit/cli dev",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",

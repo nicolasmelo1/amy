@@ -1,5 +1,5 @@
-import { Tracker } from "@amy/workflow-ticket-to-qa";
-import { Channel } from "@amy/plugin-notify-fanout";
+import { Tracker } from "@amykit/workflow-ticket-to-qa";
+import { Channel } from "@amykit/plugin-notify-fanout";
 
 /** Puts the announcement on the ticket, where it stays auditable. */
 export function trackerChannel(tracker: Tracker): Channel {

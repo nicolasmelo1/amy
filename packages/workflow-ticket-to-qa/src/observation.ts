@@ -1,4 +1,4 @@
-import { PullRequestView } from "@amy/core";
+import { PullRequestView } from "@amykit/core";
 import { Roster } from "./roster.js";
 import { Ticket } from "./ticket.js";
 

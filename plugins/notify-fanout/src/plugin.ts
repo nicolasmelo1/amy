@@ -1,4 +1,4 @@
-import { Announcement, Plugin, PluginContext } from "@amy/core";
+import { Announcement, Plugin, PluginContext } from "@amykit/core";
 import { Channel, FanOutNotifier } from "./FanOutNotifier.js";
 
 /** The collection other plugins add their channels to. */
@@ -25,7 +25,7 @@ function sinkFor(ctx: PluginContext, announcement: Announcement) {
 }
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-notify-fanout",
+  name: "@amykit/plugin-notify-fanout",
   version: "0.1.0",
   register(registry, ctx) {
     // Read when an announcement is made, not when this is mounted: the

@@ -73,23 +73,23 @@ A page is markdown with markers in it:
 
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
-| `@amy/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
-| `@amy/plugin-claude` | The claude CLI as the agent, with git on the side. |  | `agent:claude`<br>`harness:claude` |
-| `@amy/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `agent:codex`<br>`harness:codex` |
-| `@amy/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
-| `@amy/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
-| `@amy/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
-| `@amy/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
-| `@amy/plugin-file-store` | Work records kept as one file per item. | `store` |  |
-| `@amy/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
-| `@amy/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
-| `@amy/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
-| `@amy/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` | `notify-channel:tracker` |
-| `@amy/plugin-notify-fanout` | Sends one announcement down every configured channel, and keeps going when one is down. | `notifier` |  |
-| `@amy/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. |  | `notify-channel:hermes` |
-| `@amy/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
-| `@amy/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
-| `@amy/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
+| `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
+| `@amykit/plugin-claude` | The claude CLI as the agent, with git on the side. |  | `agent:claude`<br>`harness:claude` |
+| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `agent:codex`<br>`harness:codex` |
+| `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
+| `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
+| `@amykit/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
+| `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
+| `@amykit/plugin-file-store` | Work records kept as one file per item. | `store` |  |
+| `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
+| `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
+| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
+| `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` | `notify-channel:tracker` |
+| `@amykit/plugin-notify-fanout` | Sends one announcement down every configured channel, and keeps going when one is down. | `notifier` |  |
+| `@amykit/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. |  | `notify-channel:hermes` |
+| `@amykit/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
+| `@amykit/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
+| `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
 
 <!-- amy:end plugin-index -->
 

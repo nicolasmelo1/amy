@@ -2,14 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { WorkflowRuntime } from "@amy/core";
+import { WorkflowRuntime } from "@amykit/core";
 import { Worker } from "../src/Worker.js";
-import { FileQueue } from "@amy/plugin-file-queue";
-import { DEFAULT_POLICY } from "@amy/workflow-ticket-to-qa";
-import { USES_ACTIONS, newRecord } from "@amy/workflow-ticket-to-qa";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { DEFAULT_POLICY } from "@amykit/workflow-ticket-to-qa";
+import { USES_ACTIONS, newRecord } from "@amykit/workflow-ticket-to-qa";
 import { HEAD, WORKDAY, botReview, pullRequest, thread, ticket,
   TicketWorkerOverrides,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
@@ -18,7 +18,7 @@ import {
   fakeHost,
   fakeTracker,
   workerConfig,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 
 describe("Worker", () => {
   let root: string;

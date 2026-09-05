@@ -1,9 +1,9 @@
-import { Plugin } from "@amy/core";
-import { CHANNEL_COLLECTION } from "@amy/plugin-notify-fanout";
+import { Plugin } from "@amykit/core";
+import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 import { configSchema, hermesChannel } from "./hermesChannel.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-notify-hermes",
+  name: "@amykit/plugin-notify-hermes",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

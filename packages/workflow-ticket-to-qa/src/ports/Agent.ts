@@ -1,4 +1,4 @@
-import { AgentResult, ReviewThread } from "@amy/core";
+import { AgentResult, ReviewThread } from "@amykit/core";
 import { AttemptOutcome, ThreadVerdict, TriageOutcome } from "../record.js";
 import { Ticket } from "../ticket.js";
 

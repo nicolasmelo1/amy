@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Plan } from "@amy/core";
+import { Plan } from "@amykit/core";
 import { plan } from "../src/machine.js";
 import {
   HEAD,
@@ -15,7 +15,7 @@ import {
   review,
   roster,
   thread,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 
 function attempt(ok: boolean, at: string, output = ""): { ok: boolean; at: string; output: string } {
   return { ok, at, output };

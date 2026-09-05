@@ -140,7 +140,7 @@ folding the plan into the record twice, so every retry counted as two, and the
 
 <!-- amy:generated workflow-states -->
 
-### `@amy/workflow-errand`
+### `@amykit/workflow-errand`
 
 Something said in passing becomes work: capture it, do it, say what happened.
 
@@ -162,7 +162,7 @@ Something said in passing becomes work: capture it, do it, say what happened.
 | 4 | `DONE` | terminal |
 | 5 | `DECLINED` | terminal |
 
-### `@amy/workflow-note-to-plan`
+### `@amykit/workflow-note-to-plan`
 
 The note-to-plan workflow: friction becomes a plan in the repository it is about.
 
@@ -185,7 +185,7 @@ The note-to-plan workflow: friction becomes a plan in the repository it is about
 | 5 | `DONE` | terminal |
 | 6 | `DECLINED` | terminal |
 
-### `@amy/workflow-ticket-to-qa`
+### `@amykit/workflow-ticket-to-qa`
 
 The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
 

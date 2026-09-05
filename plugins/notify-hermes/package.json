@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-notify-hermes",
+  "name": "@amykit/plugin-notify-hermes",
   "version": "0.1.0",
   "description": "Announcements over Hermes, which already owns the messaging credentials.",
   "type": "module",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/plugin-notify-fanout": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/plugin-notify-fanout": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

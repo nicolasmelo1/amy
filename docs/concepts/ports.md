@@ -24,24 +24,24 @@ dispatches to is still a port — a workflow's runtime may reach one directly.
 
 | Port | Mounted by | Actions dispatched to it |
 | :-- | :-- | :-- |
-| `agent` | `@amy/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `triage` |
-| `code-host` | `@amy/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview` |
-| `commands` | `@amy/plugin-command` | `run-command` |
-| `gate` | `@amy/plugin-command-gate` | `run-gate` |
-| `notes` | `@amy/plugin-file-notes` | _reached directly_ |
-| `notifier` | `@amy/plugin-notify-fanout` | `announce` |
-| `plan-check` | `@amy/plugin-plan-check` | `check-plan` |
-| `queue` | `@amy/plugin-file-queue` | _reached directly_ |
-| `store` | `@amy/plugin-file-store` | _reached directly_ |
-| `tasks` | `@amy/plugin-file-tasks` | _reached directly_ |
-| `tracker` | `@amy/plugin-linear` | `ask-question`, `escalate`, `hand-off-to-qa` |
+| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `triage` |
+| `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview` |
+| `commands` | `@amykit/plugin-command` | `run-command` |
+| `gate` | `@amykit/plugin-command-gate` | `run-gate` |
+| `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
+| `notifier` | `@amykit/plugin-notify-fanout` | `announce` |
+| `plan-check` | `@amykit/plugin-plan-check` | `check-plan` |
+| `queue` | `@amykit/plugin-file-queue` | _reached directly_ |
+| `store` | `@amykit/plugin-file-store` | _reached directly_ |
+| `tasks` | `@amykit/plugin-file-tasks` | _reached directly_ |
+| `tracker` | `@amykit/plugin-linear` | `ask-question`, `escalate`, `hand-off-to-qa` |
 
 <!-- amy:end port-kinds -->
 
 Two things to read out of that table:
 
 **`agent` is filled by the relay, not by a harness.** The Claude, Codex and
-Hermes plugins *contribute themselves* to a collection; `@amy/plugin-agent-relay`
+Hermes plugins *contribute themselves* to a collection; `@amykit/plugin-agent-relay`
 is the only thing that mounts the `agent` port. Dropping the relay from a config
 leaves every agent action without a port, and the mount is refused at boot.
 
@@ -218,7 +218,7 @@ export interface Agent {
 }
 
 // The errand workflow's view of the same mounted object
-import type { Harness } from "@amy/core";   // just `ask`
+import type { Harness } from "@amykit/core";   // just `ask`
 ```
 
 Both are the same mounted object. Neither package imports the other. This is
@@ -238,7 +238,7 @@ export const plugin: Plugin = {
 };
 ```
 
-Nothing else changes. `@amy/plugin-linear` comes out of the profile's plugin
+Nothing else changes. `@amykit/plugin-linear` comes out of the profile's plugin
 list, yours goes in, and every action that dispatches to `tracker` now reaches
 you.
 

@@ -24,7 +24,7 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 ### amy is one install per machine, and it stays running.
 
-`minor` · `@amy/cli`, `@amy/model-specs`, `@amy/plugin-file-notes`
+`minor` · `@amykit/cli`, `@amykit/model-specs`, `@amykit/plugin-file-notes`
 
 **State moved to `~/.amy`.** It used to live in `./.amy`, so `amy status`
 answered differently depending on where you were standing — and the wrong
@@ -50,7 +50,7 @@ budget is measured off it.
 
 **`amy skills`** installs amy's skills into every harness it finds — Claude
 Code and Hermes today — rather than into one project. They ship inside
-`@amy/cli` so they cannot drift from the amy that ships them. Three new ones:
+`@amykit/cli` so they cannot drift from the amy that ships them. Three new ones:
 `/amy-init`, `/amy-show-me`, `/amy-status`, and `/amy-workflow` is now an
 interrogation that redraws the workflow after every answer.
 
@@ -70,7 +70,7 @@ and `OVERRIDE_PATH` becomes `OVERRIDE_FILE`.
 
 ### A workflow is a name in a config, and a plugin is installed rather than compiled in.
 
-`minor` · `@amy/cli`, `@amy/core`, `@amy/plugin-file-log`, `@amy/plugin-file-notes`
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`
 
 `--workflow` used to accept two literals, so an install could not drive a
 workflow this repository had not shipped — while the engine underneath it
@@ -91,13 +91,13 @@ named and not installed is refused at boot with the list of what is, and
 `amy plugin list` reports installed and mounted as the different questions
 they are.
 
-`@amy/cli` therefore stops depending on ten plugins it never imported, and
+`@amykit/cli` therefore stops depending on ten plugins it never imported, and
 `amy init` prints the `npm install` line for whatever a configured workflow
 needs and this machine does not have.
 
 ### Documentation that cannot go out of date, and a manifest a site can be built from.
 
-`patch` · `@amy/cli`
+`patch` · `@amykit/cli`
 
 There was one 861-line README and twenty package READMEs, and nothing checked
 any of them against the code. A README is the cheapest thing in a repository to
@@ -154,27 +154,27 @@ works for the engine it was written for does not work.
 
 ### Friction becomes a plan, and the queue stops needing a ticket.
 
-`minor` · `@amy/core`
+`minor` · `@amykit/core`
 
 Two contracts move into the core, because neither of them ever named a domain.
 `CodeHost` and the pull request view it returns — a repository, a branch, a
-login — leave `@amy/workflow-ticket-to-qa`, so one mounted `@amy/plugin-github`
+login — leave `@amykit/workflow-ticket-to-qa`, so one mounted `@amykit/plugin-github`
 now serves any workflow. `Harness` joins them: a prompt, a directory, and an
 account of what the answer cost. The harness plugins contribute the bare CLI
-alongside their ticket-shaped agent, and `@amy/plugin-agent-relay` mounts both
+alongside their ticket-shaped agent, and `@amykit/plugin-agent-relay` mounts both
 halves behind the one `agent` port, so a second workflow's own prompts climb
 the same ladder, under the same ceiling, in the same log.
 
-`@amy/workflow-note-to-plan` is that second workflow, and it is the proof the
-plugin model was waiting for: it runs on `@amy/plugin-serial-engine`
+`@amykit/workflow-note-to-plan` is that second workflow, and it is the proof the
+plugin model was waiting for: it runs on `@amykit/plugin-serial-engine`
 unmodified. Going through the seam found one defect in it — every workflow
 runtime re-ran `applyPlan`, which the engine had already run, so every retry
 was counted twice and every move wrote a transition from a state to itself. A
 ceiling of three implement attempts was really one and a half. Fixed, and both
 end-to-end scenarios still pass unchanged.
 
-For anyone driving this from a config: `@amy/plugin-file-queue` and
-`@amy/plugin-file-store` gained a `directory` setting, so two workflows can
+For anyone driving this from a config: `@amykit/plugin-file-queue` and
+`@amykit/plugin-file-store` gained a `directory` setting, so two workflows can
 share one `.amy` without reading each other's work. `Announcement` gained an
 optional `kind` — `failing`, `gave-up` or `recovered` — so a channel can tell
 a step that failed once from a machine that has stopped.
@@ -185,17 +185,60 @@ queues it, `.amy/notes/` is watched for the longer ones, and
 to the repository the friction is about. Nothing in that path touches a
 tracker.
 
+### Installing is `npm install -g @amykit/cli`, and `amy init` supplies the rest.
+
+`minor` · `@amykit/cli`
+
+Installing meant cloning the repository and running a shell script. That asks
+somebody to fetch a whole checkout to use a released product, and the script
+is POSIX, so Windows was not supported at all — for a tool whose entire job is
+to run unattended on whichever machine you leave it on.
+
+Now it is npm, which is the same three words on macOS, Linux and Windows, and
+npm's own shim puts `amy` on the PATH.
+
+The command still carries nothing but itself. A plugin resolves by name at run
+time, and a machine with no `codex` on it has no reason to hold the plugin
+that shells out to one — so what gets installed is what your config actually
+names, and `amy init` is what works that out:
+
+```
+These are not installed yet:
+  @amykit/plugin-linear
+  @amykit/plugin-github
+
+Install them now? [Y/n]
+```
+
+It asks rather than assuming, because installing into a global prefix is a
+change to the machine and not to amy. With nothing to ask on — a script, a
+pipe, CI — it prints the command instead of running it, and `--install` is how
+a pipeline says yes. `--no-install` keeps the old printing behaviour.
+
+What it offers is what the profile **will mount**, not what is recommended for
+it. That distinction is the bug this fixes as much as the ergonomics: a config
+naming `@acme/plugin-jira` is exactly the case worth installing, and a
+recommendation cannot know about a package this repository never shipped.
+
+Two failures it reports rather than leaves you to meet later: npm exiting
+non-zero, and npm exiting zero while the packages still do not resolve —
+usually a global prefix that is not the one amy is installed under, which
+would otherwise surface as a mount refusing by name on the first tick.
+
+`npm run install:local` stays, and is now what it always really was: how the
+gates prove an install works with no registry in the picture at all.
+
 ### One adapter for every command line tool, instead of one plugin each.
 
-`minor` · `@amy/core`
+`minor` · `@amykit/core`
 
-`@amy/plugin-command` mounts a `commands` port and a `run-command` action. A
+`@amykit/plugin-command` mounts a `commands` port and a `run-command` action. A
 workflow asks for a command *by name*; the config is the only place that says
 what that name runs:
 
 ```yaml
 plugins:
-  "@amy/plugin-command":
+  "@amykit/plugin-command":
     allow:
       datadog: pup monitors list --json
       notion: ntn page get
@@ -208,12 +251,12 @@ issues for a living. Arguments are passed as positional parameters
 (`sh -c 'pup "$@"' sh --since 1h`), so an argument carrying a semicolon is an
 argument.
 
-It was made general by evidence rather than guess: `@amy/plugin-command-gate`
-and `@amy/plugin-plan-check` were already the same shape twice.
+It was made general by evidence rather than guess: `@amykit/plugin-command-gate`
+and `@amykit/plugin-plan-check` were already the same shape twice.
 
 ### `amy btw` — something said in passing becomes work.
 
-`minor` · `@amy/cli`, `@amy/core`
+`minor` · `@amykit/cli`, `@amykit/core`
 
 ```sh
 amy btw "bump the stale deps in the api package"
@@ -226,7 +269,7 @@ had two ways in and neither fit — a ticket is work a tracker already knows
 about, a note is friction amy itself hit — so there was nowhere for *work
 somebody wants done that nobody will open a ticket for*.
 
-A third workflow, `@amy/workflow-errand`, picks the task up, works in a branch
+A third workflow, `@amykit/workflow-errand`, picks the task up, works in a branch
 of the repository it names, and either opens a pull request or comes back with
 an answer. **An errand that changed nothing is finished, not failed** — half
 of what people say in passing is "check whether X", which ends in a sentence.
@@ -235,7 +278,7 @@ of what people say in passing is "check whether X", which ends in a sentence.
 and the failure that follows from that is thirty open pull requests nobody
 asked to review.
 
-`@amy/plugin-file-tasks` keeps the tasks as a directory of markdown files, so
+`@amykit/plugin-file-tasks` keeps the tasks as a directory of markdown files, so
 an editor or a hook can add one too. `/amy-btw` is the skill: its job is
 turning what was said into a task that survives losing the conversation.
 
@@ -245,7 +288,7 @@ changed: not the engine, not either other workflow.
 
 ### The engine drives a workflow it does not know.
 
-`minor` · `@amy/core`
+`minor` · `@amykit/core`
 
 `WorkflowRuntime` is new in the core: what a workflow contributes so that
 something else can run it — how to find work, what the world looks like, one
@@ -260,9 +303,9 @@ gained `retryDelayMs` of its own. `amy` maps both for you; a hand-written
 
 ### The version moves because a change said it should, and an installed package can say which one it is.
 
-`minor` · `@amy/cli`
+`minor` · `@amykit/cli`
 
-Changesets owns the number, every `@amy/*` package moves together through a
+Changesets owns the number, every `@amykit/*` package moves together through a
 `fixed` group, and the bump arrives as a pull request rather than as a commit
 somebody pushed. An installed package reads its identity out of a stamp
 written at pack time, and a tree with uncommitted changes gets no stamp at
@@ -271,7 +314,7 @@ existed on one laptop.
 
 ### The release workflow stays dormant until `AMY_RELEASE` is set.
 
-`patch` · `@amy/cli`
+`patch` · `@amykit/cli`
 
 The first release is deliberately later, and an unarmed release job failed on
 every push to main: GitHub refuses to let Actions open a pull request unless
@@ -281,13 +324,13 @@ meantime.
 
 ### The release workflow calls the changesets action by the names it actually has. Its inputs were renamed in v2 and the old ones are a hard error, so the first run on main stopped before doing anything — which is the failure mode to want.
 
-`patch` · `@amy/cli`
+`patch` · `@amykit/cli`
 
 
 
 ### A pull request carries its URL, an errand opens its own as a draft, and the tests are type-checked.
 
-`minor` · `@amy/core`, `@amy/plugin-github`
+`minor` · `@amykit/core`, `@amykit/plugin-github`
 
 `PullRequestView` gains `url`, and `OpenPullRequestRequest` gains `draft`.
 The errand workflow opens as a draft — nobody asked for that work at the
@@ -308,7 +351,7 @@ It found 45 errors on the first run. Most were harmless drift, three were not:
   never saw it because the reference was in type position and esbuild strips
   those, so the whole `switch` over the workflow's effects was unchecked.
   Adding an effect would not have failed it.
-- `@amy/plugin-agent-relay`'s doubles returned `{ kind: "clear" }` for a
+- `@amykit/plugin-agent-relay`'s doubles returned `{ kind: "clear" }` for a
   `TriageOutcome` that has been `{ clear, questions, at }` for a while, and a
   `NamedAgent` with no `using`, which is the method the skill ladder calls.
 - Six engine test builders typed their overrides as the engine's own deps
@@ -317,7 +360,7 @@ It found 45 errors on the first run. Most were harmless drift, three were not:
 
 ### amy says what it is, rather than what its first workflow does.
 
-`patch` · `@amy/cli`
+`patch` · `@amykit/cli`
 
 The description was "Drives a work ticket from in-progress to QA handoff" —
 which is one of the three workflows in the box, not the product. What amy is

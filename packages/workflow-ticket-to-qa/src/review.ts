@@ -1,4 +1,4 @@
-import { PullRequestView, ReviewThread } from "@amy/core";
+import { PullRequestView, ReviewThread } from "@amykit/core";
 
 /**
  * The automated reviewer answers to three different names depending on which

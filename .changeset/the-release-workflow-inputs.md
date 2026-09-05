@@ -1,5 +1,5 @@
 ---
-"@amy/cli": patch
+"@amykit/cli": patch
 ---
 
 The release workflow calls the changesets action by the names it actually

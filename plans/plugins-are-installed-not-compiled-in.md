@@ -1,7 +1,7 @@
 # Plugins are installed, not compiled in
 
 A plugin that wraps a CLI which is not on the machine has no reason to be on
-the machine. `@amy/plugin-claude` shells out to `claude`; on a box without it
+the machine. `@amykit/plugin-claude` shells out to `claude`; on a box without it
 the plugin is dead weight that still has to be mounted, configured around and
 reasoned about.
 
@@ -83,9 +83,9 @@ nobody compiled.
 
 ## What this does not finish
 
-Two names remain in the host. `@amy/workflow-ticket-to-qa` is still a
-dependency of `@amy/cli`, because the roster — who is reviewing today — is
-that workflow's vocabulary living in the host, and `@amy/plugin-notify-hermes`
+Two names remain in the host. `@amykit/workflow-ticket-to-qa` is still a
+dependency of `@amykit/cli`, because the roster — who is reviewing today — is
+that workflow's vocabulary living in the host, and `@amykit/plugin-notify-hermes`
 is still one because `amy doctor` checks a delivery target by importing the
 function that reads the listing. Both are the same shape of problem and
 neither is this phase: they are a host holding a plugin's knowledge, not a
@@ -93,7 +93,7 @@ host that cannot resolve a plugin.
 
 ## Acceptance criteria
 
-- [x] A machine installs `@amy/cli` and a subset of plugins and runs work
+- [x] A machine installs `@amykit/cli` and a subset of plugins and runs work
       with the rest never present
       (proof: assertion:plugins.a_machine_installs_only_what_it_uses)
 - [x] Plugins resolve by name from disk at run time, with no literal-import
@@ -124,7 +124,7 @@ host that cannot resolve a plugin.
       plugin is visible before it is needed
       (proof: assertion:plugins.the_listing_tells_installed_from_mounted)
 
-**Exit condition:** a second machine with node, `@amy/cli` and only the
+**Exit condition:** a second machine with node, `@amykit/cli` and only the
 plugins it needs runs work end to end, a workflow it wrote itself drives on
 the same engine, a plugin it never installed is refused by name at boot rather
 than at first use, and no machine carries code for a tool it does not have.

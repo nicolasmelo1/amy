@@ -1,5 +1,5 @@
 ---
-"@amy/cli": patch
+"@amykit/cli": patch
 ---
 
 The release workflow stays dormant until `AMY_RELEASE` is set.

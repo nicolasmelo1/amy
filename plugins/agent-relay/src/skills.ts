@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { CORE_ACTIONS, dispatchesTo } from "@amy/core";
-import { SkillLadders } from "@amy/agent-kit";
+import { CORE_ACTIONS, dispatchesTo } from "@amykit/core";
+import { SkillLadders } from "@amykit/agent-kit";
 
 export type SkillsResult =
   | { ok: true; ladders: SkillLadders }

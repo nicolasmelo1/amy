@@ -3,10 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Worker } from "../src/Worker.js";
-import { FileQueue } from "@amy/plugin-file-queue";
+import { FileQueue } from "@amykit/plugin-file-queue";
 import { WORKDAY,
   TicketWorkerOverrides,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 import {
   ticketWorkerDeps,
   FakeStopSwitch,
@@ -15,7 +15,7 @@ import {
   RecordingEventLog,
   fakeAgent,
   fakeTracker,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 
 describe("the handbrake", () => {
   let root: string;

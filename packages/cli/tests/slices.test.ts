@@ -20,7 +20,7 @@ describe("pluginSlices", () => {
   it("gives the tracker the status name it matches on", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-linear"]).toMatchObject({
+    expect(slices["@amykit/plugin-linear"]).toMatchObject({
       workingStatusName: "In Progress",
       repoByTeam: { ACME: "acme/widgets" },
     });
@@ -30,14 +30,14 @@ describe("pluginSlices", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
     // Not always `main`, and branching off the wrong base is silent.
-    expect(slices["@amy/plugin-claude"]?.defaultBranch).toBe("dev");
-    expect(slices["@amy/plugin-command-gate"]?.defaultBranch).toBe("dev");
+    expect(slices["@amykit/plugin-claude"]?.defaultBranch).toBe("dev");
+    expect(slices["@amykit/plugin-command-gate"]?.defaultBranch).toBe("dev");
   });
 
   it("gives the gate the commands, per repository", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-command-gate"]?.commands).toEqual({ "acme/widgets": ["npm test"] });
+    expect(slices["@amykit/plugin-command-gate"]?.commands).toEqual({ "acme/widgets": ["npm test"] });
   });
 
   it("gives the workflow the policy, so a configured ceiling reaches the machine", () => {
@@ -49,7 +49,7 @@ describe("pluginSlices", () => {
     // The policy is written in the workflow's vocabulary — attempt ceilings,
     // backoffs, how many open reviews one person may be handed — so it goes
     // to the workflow rather than to whatever is driving it.
-    expect(slices["@amy/workflow-ticket-to-qa"]?.policy).toMatchObject({
+    expect(slices["@amykit/workflow-ticket-to-qa"]?.policy).toMatchObject({
       maxOpenReviewsPerReviewer: 0,
     });
   });
@@ -61,14 +61,14 @@ describe("pluginSlices", () => {
       agent: { ...CONFIG.agent, budget },
     }, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-agent-relay"]?.budget).toEqual(budget);
+    expect(slices["@amykit/plugin-agent-relay"]?.budget).toEqual(budget);
   });
 
   it("gives the relay the skills, because it is what decides who answers", () => {
     const skills = { triage: ["/logion"] };
     const slices = pluginSlices({ ...CONFIG, skills }, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-agent-relay"]?.skills).toEqual(skills);
+    expect(slices["@amykit/plugin-agent-relay"]?.skills).toEqual(skills);
   });
 
   it("says nothing about a channel that is not configured", () => {
@@ -77,8 +77,8 @@ describe("pluginSlices", () => {
       TICKETS,
     );
 
-    expect("@amy/plugin-notify-hermes" in slices).toBe(false);
-    expect("@amy/plugin-notify-inbox" in slices).toBe(false);
+    expect("@amykit/plugin-notify-hermes" in slices).toBe(false);
+    expect("@amykit/plugin-notify-inbox" in slices).toBe(false);
   });
 
   it("keeps the derived settings a hand-written slice did not mention", () => {
@@ -86,11 +86,11 @@ describe("pluginSlices", () => {
     // queue lost the `directory` beside it, so two profiles quietly shared
     // one queue and each claimed the other's work.
     const slices = pluginSlices(
-      { ...CONFIG, plugins: { "@amy/plugin-file-queue": { retentionDays: 30 } } },
+      { ...CONFIG, plugins: { "@amykit/plugin-file-queue": { retentionDays: 30 } } },
       TICKETS,
     ) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-file-queue"]).toMatchObject({
+    expect(slices["@amykit/plugin-file-queue"]).toMatchObject({
       retentionDays: 30,
       directory: "ticket-to-qa/queue",
     });
@@ -101,10 +101,10 @@ describe("pluginSlices", () => {
     // written before plugins declared their own settings.
     const slices = pluginSlices({
       ...CONFIG,
-      plugins: { "@amy/plugin-claude": { model: "opus", defaultBranch: "trunk" } },
+      plugins: { "@amykit/plugin-claude": { model: "opus", defaultBranch: "trunk" } },
     }, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-claude"]).toMatchObject({ model: "opus", defaultBranch: "trunk" });
+    expect(slices["@amykit/plugin-claude"]).toMatchObject({ model: "opus", defaultBranch: "trunk" });
   });
 });
 
@@ -140,9 +140,9 @@ describe("the ladder, which is the one place harnesses are named", () => {
 
     // One list to edit: the ladder names the tiers, and the harness plugins
     // contribute exactly those names back for the relay to find.
-    expect(slices["@amy/plugin-claude"]?.models).toEqual(["sonnet", "opus"]);
-    expect(slices["@amy/plugin-codex"]?.models).toEqual(["gpt-5"]);
-    expect(slices["@amy/plugin-agent-relay"]?.ladder).toEqual([
+    expect(slices["@amykit/plugin-claude"]?.models).toEqual(["sonnet", "opus"]);
+    expect(slices["@amykit/plugin-codex"]?.models).toEqual(["gpt-5"]);
+    expect(slices["@amykit/plugin-agent-relay"]?.ladder).toEqual([
       "claude:sonnet",
       "claude:opus",
       "codex:gpt-5",
@@ -152,21 +152,21 @@ describe("the ladder, which is the one place harnesses are named", () => {
   it("leaves the tiers empty when no ladder was written, which is one agent", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amy/plugin-claude"]?.models).toEqual([]);
-    expect(slices["@amy/plugin-agent-relay"]?.ladder).toEqual([]);
+    expect(slices["@amykit/plugin-claude"]?.models).toEqual([]);
+    expect(slices["@amykit/plugin-agent-relay"]?.ladder).toEqual([]);
   });
 });
 
 describe("pluginList", () => {
   it("uses what the profile asked for, in that order", () => {
-    const oncall = { ...TICKETS, plugins: ["@amy/plugin-z", "@amy/plugin-a"] };
+    const oncall = { ...TICKETS, plugins: ["@amykit/plugin-z", "@amykit/plugin-a"] };
 
-    expect(pluginList(CONFIG, oncall)).toEqual(["@amy/plugin-z", "@amy/plugin-a"]);
+    expect(pluginList(CONFIG, oncall)).toEqual(["@amykit/plugin-z", "@amykit/plugin-a"]);
   });
 
   it("falls back to what the workflow needs, starting with the workflow", () => {
-    expect(pluginList(CONFIG, TICKETS)[0]).toBe("@amy/workflow-ticket-to-qa");
-    expect(pluginList(CONFIG, PLANS)[0]).toBe("@amy/workflow-note-to-plan");
+    expect(pluginList(CONFIG, TICKETS)[0]).toBe("@amykit/workflow-ticket-to-qa");
+    expect(pluginList(CONFIG, PLANS)[0]).toBe("@amykit/workflow-note-to-plan");
   });
 
   it("recommends a different set for a workflow it has never heard of", () => {
@@ -181,8 +181,8 @@ describe("pluginList", () => {
     };
 
     expect(pluginList(CONFIG, oncall)[0]).toBe("@acme/workflow-oncall");
-    expect(pluginList(CONFIG, oncall)).toContain("@amy/plugin-serial-engine");
-    expect(pluginList(CONFIG, oncall)).not.toContain("@amy/plugin-linear");
+    expect(pluginList(CONFIG, oncall)).toContain("@amykit/plugin-serial-engine");
+    expect(pluginList(CONFIG, oncall)).not.toContain("@amykit/plugin-linear");
   });
 
   it("leaves out a channel nobody configured", () => {
@@ -190,35 +190,35 @@ describe("pluginList", () => {
     // there, which fails at the worst moment rather than at boot.
     const config = { ...CONFIG, notify: { tracker: true, hermes: null, inbox: false } };
 
-    expect(pluginList(config, TICKETS)).not.toContain("@amy/plugin-notify-hermes");
-    expect(pluginList(config, TICKETS)).not.toContain("@amy/plugin-notify-inbox");
+    expect(pluginList(config, TICKETS)).not.toContain("@amykit/plugin-notify-hermes");
+    expect(pluginList(config, TICKETS)).not.toContain("@amykit/plugin-notify-inbox");
   });
 
   it("keeps a channel that is configured", () => {
     const config = { ...CONFIG, notify: { tracker: true, hermes: "slack:ops", inbox: true } };
 
-    expect(pluginList(config, TICKETS)).toContain("@amy/plugin-notify-hermes");
-    expect(pluginList(config, TICKETS)).toContain("@amy/plugin-notify-inbox");
+    expect(pluginList(config, TICKETS)).toContain("@amykit/plugin-notify-hermes");
+    expect(pluginList(config, TICKETS)).toContain("@amykit/plugin-notify-inbox");
   });
 
   it("leaves out a harness the ladder never named", () => {
     // Mounting codex on a machine that never installed it only produces a
     // doctor failure for a tool the operator did not ask for.
-    expect(pluginList(CONFIG, TICKETS)).toContain("@amy/plugin-claude");
-    expect(pluginList(CONFIG, TICKETS)).not.toContain("@amy/plugin-codex");
-    expect(pluginList(CONFIG, TICKETS)).not.toContain("@amy/plugin-hermes-agent");
+    expect(pluginList(CONFIG, TICKETS)).toContain("@amykit/plugin-claude");
+    expect(pluginList(CONFIG, TICKETS)).not.toContain("@amykit/plugin-codex");
+    expect(pluginList(CONFIG, TICKETS)).not.toContain("@amykit/plugin-hermes-agent");
   });
 
   it("mounts the harnesses the ladder does name", () => {
     const config = { ...CONFIG, agent: { ladder: ["claude:sonnet", "hermes"] } };
 
-    expect(pluginList(config, TICKETS)).toContain("@amy/plugin-hermes-agent");
-    expect(pluginList(config, TICKETS)).not.toContain("@amy/plugin-codex");
+    expect(pluginList(config, TICKETS)).toContain("@amykit/plugin-hermes-agent");
+    expect(pluginList(config, TICKETS)).not.toContain("@amykit/plugin-codex");
   });
 
   it("always keeps the relay, because nothing else mounts the agent port", () => {
     // Dropping it leaves every agent action without a port, and mount()
     // refuses at boot rather than failing at the first ticket.
-    expect(pluginList(CONFIG, TICKETS)).toContain("@amy/plugin-agent-relay");
+    expect(pluginList(CONFIG, TICKETS)).toContain("@amykit/plugin-agent-relay");
   });
 });

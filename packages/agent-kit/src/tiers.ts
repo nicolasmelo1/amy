@@ -1,4 +1,4 @@
-import { Git, Harness, Registry } from "@amy/core";
+import { Git, Harness, Registry } from "@amykit/core";
 import { AGENT_COLLECTION, HARNESS_COLLECTION, NamedAgent, NamedHarness } from "./collection.js";
 import { HarnessAgent, HarnessAgentConfig } from "./HarnessAgent.js";
 
@@ -22,7 +22,7 @@ export interface TierOptions {
  * Both, because they are used at different levels. The agent already knows
  * what a ticket is; the harness knows nothing, and is what a second workflow
  * asks its own questions through. Contributing only the first is what made
- * `@amy/plugin-claude` a plugin exactly one workflow could use.
+ * `@amykit/plugin-claude` a plugin exactly one workflow could use.
  *
  * The naming lives here rather than in each harness plugin because it is a
  * contract: the ladder in a config file refers to these names, so three

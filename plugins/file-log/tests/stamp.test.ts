@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { Event } from "@amy/core";
+import { Event } from "@amykit/core";
 import { FileEventLog } from "../src/FileEventLog.js";
 
 let root: string;

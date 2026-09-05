@@ -12,7 +12,7 @@ but do not delete a rule's section while the rule is enabled:
 
 **The core imports no workflow and no plugin**
 
-Nothing under packages/core/src imports an @amy/workflow-* or @amy/plugin-* package.
+Nothing under packages/core/src imports an @amykit/workflow-* or @amykit/plugin-* package.
 
 **Why.** The core owns the catalogue of actions and the contracts, and nothing else. The moment it imports a workflow it learns a domain, and every workflow after the first becomes a fork instead of a package. This is the one invariant the whole plugin model rests on, and it is a single import away from being lost, by anybody, at any time.
 

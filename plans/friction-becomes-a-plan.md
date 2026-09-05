@@ -59,7 +59,7 @@ domain-free: `findPullRequest`, `openPullRequest`, `requestReview` and
 `reviewLoad` mention a repository, a branch and a login, and not one of them
 mentions a ticket. It only *lives* in the ticket workflow's package. It moves
 to the core, where `Queue`, `Store`, `Notifier` and `EventLog` already are,
-and both workflows mount the same `@amy/plugin-github` behind it. `Gate` does
+and both workflows mount the same `@amykit/plugin-github` behind it. `Gate` does
 not move: `run(ticket)` is ticket-shaped, and a plan workflow's check is
 `sf check` in a directory rather than a gate over a ticket.
 
@@ -69,7 +69,7 @@ builds a `HarnessAgent` — the ticket prompts, the branch handling, the commit
 `Harness.ask(prompt, cwd)`, which is what a second workflow wants: its own
 prompts over the same ladder, the same budget and the same accounting. So the
 harness plugins contribute the harness as well, the relay's ladder moves to
-where both can use it, and `@amy/plugin-claude` stops being a plugin only one
+where both can use it, and `@amykit/plugin-claude` stops being a plugin only one
 workflow can use.
 
 **Work has to be injectable.** Two ways in, and both write the same queue:

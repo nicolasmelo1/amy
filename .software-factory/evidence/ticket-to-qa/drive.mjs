@@ -608,7 +608,7 @@ fs.writeFileSync(
         "settle brought to me instead of guessed at. I want to be told once when it needs me, and I do not " +
         "want to watch it.",
       artifact: {
-        package: "@amy/cli",
+        package: "@amykit/cli",
         entry: "the installed executable, driven by `amy discover` and `amy tick`",
         built_by: "scripts/install.sh",
       },

@@ -9,7 +9,7 @@ import {
   Notifier,
   Plan,
   WorkflowRuntime,
-} from "@amy/core";
+} from "@amykit/core";
 import { Agent } from "./ports/Agent.js";
 import { Gate } from "./ports/Gate.js";
 import { Tracker } from "./ports/Tracker.js";

@@ -1,6 +1,6 @@
 ---
-"@amy/core": minor
-"@amy/plugin-github": minor
+"@amykit/core": minor
+"@amykit/plugin-github": minor
 ---
 
 A pull request carries its URL, an errand opens its own as a draft, and the
@@ -25,7 +25,7 @@ It found 45 errors on the first run. Most were harmless drift, three were not:
   never saw it because the reference was in type position and esbuild strips
   those, so the whole `switch` over the workflow's effects was unchecked.
   Adding an effect would not have failed it.
-- `@amy/plugin-agent-relay`'s doubles returned `{ kind: "clear" }` for a
+- `@amykit/plugin-agent-relay`'s doubles returned `{ kind: "clear" }` for a
   `TriageOutcome` that has been `{ clear, questions, at }` for a while, and a
   `NamedAgent` with no `using`, which is the method the skill ladder calls.
 - Six engine test builders typed their overrides as the engine's own deps

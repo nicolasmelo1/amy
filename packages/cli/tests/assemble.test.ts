@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { HostServices, mount, unmetNeeds } from "@amy/core";
+import { HostServices, mount, unmetNeeds } from "@amykit/core";
 import { load } from "../src/loader.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { profiles, recommendedFor } from "../src/profiles.js";
@@ -60,7 +60,7 @@ describe("assembling the built-in set", () => {
     expect(loaded.problems).toEqual([]);
 
     const roster = {
-      name: "@amy/cli",
+      name: "@amykit/cli",
       version: "0.1.0",
       register: (r: Parameters<(typeof loaded.plugins)[0]["register"]>[0]) =>
         r.contribute("workflow-data", "roster", { read: () => ROSTER }),
@@ -130,7 +130,7 @@ describe("assembling the built-in set", () => {
 
     expect(outcome.ok).toBe(false);
     expect(outcome.ok === false && outcome.problems[0]).toContain(
-      "@amy/plugin-linear: failed to mount — LINEAR_API_KEY is not set",
+      "@amykit/plugin-linear: failed to mount — LINEAR_API_KEY is not set",
     );
   });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ScriptedRunner } from "@amy/test-fixtures";
+import { ScriptedRunner } from "@amykit/test-fixtures";
 import { inboxChannel } from "../src/inboxChannel.js";
 
 const announcement = {

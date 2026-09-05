@@ -53,7 +53,7 @@ Three of those are worth understanding rather than obeying:
 ## The one architectural rule
 
 **The core knows no workflow and no plugin.** There is a local rule that fails
-the build on `from "@amy/workflow-*"` or `from "@amy/plugin-*"` anywhere under
+the build on `from "@amykit/workflow-*"` or `from "@amykit/plugin-*"` anywhere under
 `packages/core/src`, because this is the invariant the whole plugin model rests
 on and it is one import away from being lost.
 

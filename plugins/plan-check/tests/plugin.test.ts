@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, mount } from "@amy/core";
-import { ScriptedRunner } from "@amy/test-fixtures";
-import { PlanCheck } from "@amy/workflow-note-to-plan";
+import { HostServices, mount } from "@amykit/core";
+import { ScriptedRunner } from "@amykit/test-fixtures";
+import { PlanCheck } from "@amykit/workflow-note-to-plan";
 import { plugin } from "../src/plugin.js";
 
 function hostWith(runner: ScriptedRunner): HostServices {
@@ -48,7 +48,7 @@ describe("mounting the check", () => {
 
   it("takes the commands the config gives it", async () => {
     const { runner, mounted: host } = await mounted({
-      "@amy/plugin-plan-check": { commands: { default: ["sf check --allow-commands"] } },
+      "@amykit/plugin-plan-check": { commands: { default: ["sf check --allow-commands"] } },
     });
 
     await (host.ports.get("plan-check") as PlanCheck).check("acme/widgets");
@@ -59,7 +59,7 @@ describe("mounting the check", () => {
   it("refuses a setting it does not have, so a typo costs a boot", async () => {
     const outcome = await mount(
       [plugin],
-      { "@amy/plugin-plan-check": { command: "sf" } },
+      { "@amykit/plugin-plan-check": { command: "sf" } },
       hostWith(new ScriptedRunner([])),
     );
 

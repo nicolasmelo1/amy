@@ -1,4 +1,4 @@
-import { CommandResult, CommandRunner, GraphQLClient, RunOptions } from "@amy/core";
+import { CommandResult, CommandRunner, GraphQLClient, RunOptions } from "@amykit/core";
 export interface RunCall {
   command: string;
   args: string[];

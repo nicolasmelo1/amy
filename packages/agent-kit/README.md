@@ -1,4 +1,4 @@
-# @amy/agent-kit
+# @amykit/agent-kit
 
 The part of "being an agent" that is the same whichever harness answers.
 
@@ -32,7 +32,7 @@ A port has exactly one owner. Three harnesses that each mounted `agent` would
 refuse to mount together, which is the correct behaviour for a port and the
 wrong outcome here.
 
-So a harness contributes a `NamedAgent` and `@amy/plugin-agent-relay` is the
+So a harness contributes a `NamedAgent` and `@amykit/plugin-agent-relay` is the
 only thing that mounts the port. A single-harness install goes through the
 relay too, with a ladder one rung long and nothing special about that case.
 

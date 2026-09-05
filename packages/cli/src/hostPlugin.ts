@@ -1,5 +1,5 @@
-import { Plugin } from "@amy/core";
-import { Roster, WORKFLOW_DATA } from "@amy/workflow-ticket-to-qa";
+import { Plugin } from "@amykit/core";
+import { Roster, WORKFLOW_DATA } from "@amykit/workflow-ticket-to-qa";
 
 /**
  * The host's own glue, mounted like anything else.
@@ -11,7 +11,7 @@ import { Roster, WORKFLOW_DATA } from "@amy/workflow-ticket-to-qa";
  */
 export function hostPlugin(readRoster: () => Roster): Plugin {
   return {
-    name: "@amy/cli",
+    name: "@amykit/cli",
     version: "0.1.0",
     register(registry) {
       registry.contribute(WORKFLOW_DATA, "roster", { read: readRoster });

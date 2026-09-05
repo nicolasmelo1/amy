@@ -5,7 +5,7 @@ bump it is and why. `npm run changeset` writes one.
 
 Three things about this repository's setup are decisions rather than defaults:
 
-**`fixed` holds every `@amy/*` package.** They are one system with one
+**`fixed` holds every `@amykit/*` package.** They are one system with one
 changelog, and a machine reading `amy --version` beside a plugin version
 should not have to work out whether the two are compatible. One number moves,
 all of them move.

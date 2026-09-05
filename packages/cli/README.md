@@ -1,4 +1,4 @@
-# @amy/cli
+# @amykit/cli
 
 The `amy` command.
 
@@ -37,7 +37,7 @@ setting that is not one it declared, two plugins claiming the same port, and
 an action the workflow emits that nothing can run.
 
 ```
-$ amy plugin remove @amy/plugin-claude
+$ amy plugin remove @amykit/plugin-claude
 $ amy discover
 amy could not start:
   action `triage`: needs the `agent` port, which nothing mounted

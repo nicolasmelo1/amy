@@ -25,7 +25,7 @@ So the `commands` port takes a **name from an allowlist**, never a command line:
 
 ```yaml
 plugins:
-  "@amy/plugin-command":
+  "@amykit/plugin-command":
     allow:
       typecheck: "npm run typecheck"
       test: "npm test"

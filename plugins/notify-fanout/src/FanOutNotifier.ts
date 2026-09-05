@@ -1,4 +1,4 @@
-import { Announcement, Notifier } from "@amy/core";
+import { Announcement, Notifier } from "@amykit/core";
 
 export interface Channel {
   name: string;

@@ -18,7 +18,7 @@ import {
   actionsOf,
   applyPlan,
   dispatchesTo,
-} from "@amy/core";
+} from "@amykit/core";
 
 export interface WorkerConfig {
   /** How long a claimed item may sit before it is treated as abandoned. */

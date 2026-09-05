@@ -3,11 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Worker } from "../src/Worker.js";
-import { FileQueue } from "@amy/plugin-file-queue";
-import { LogBudget } from "@amy/core";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { LogBudget } from "@amykit/core";
 import { WORKDAY,
   TicketWorkerOverrides,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
@@ -16,7 +16,7 @@ import {
   fakeAgent,
   fakeTracker,
   workerConfig,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 
 /**
  * One warning on the way down, silence while it is down, one when it comes

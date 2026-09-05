@@ -1,10 +1,10 @@
-import { Git, Plugin } from "@amy/core";
-import { contributeTiers } from "@amy/agent-kit";
+import { Git, Plugin } from "@amykit/core";
+import { contributeTiers } from "@amykit/agent-kit";
 import { CodexHarness } from "./CodexHarness.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-codex",
+  name: "@amykit/plugin-codex",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

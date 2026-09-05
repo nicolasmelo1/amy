@@ -16,9 +16,9 @@ them wait, which are terminal, and the actions it says it can emit.
 
 | Workflow | Profile name | States | What it does |
 | :-- | :-- | :-- | :-- |
-| `@amy/workflow-errand` | `errand` | 5 | Something said in passing becomes work: capture it, do it, say what happened. |
-| `@amy/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
-| `@amy/workflow-ticket-to-qa` | `ticket-to-qa` | 16 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
+| `@amykit/workflow-errand` | `errand` | 5 | Something said in passing becomes work: capture it, do it, say what happened. |
+| `@amykit/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
+| `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 16 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
 
 <!-- amy:end workflow-index -->
 
@@ -26,7 +26,7 @@ them wait, which are terminal, and the actions it says it can emit.
 
 <!-- amy:generated workflow-states -->
 
-### `@amy/workflow-errand`
+### `@amykit/workflow-errand`
 
 Something said in passing becomes work: capture it, do it, say what happened.
 
@@ -48,7 +48,7 @@ Something said in passing becomes work: capture it, do it, say what happened.
 | 4 | `DONE` | terminal |
 | 5 | `DECLINED` | terminal |
 
-### `@amy/workflow-note-to-plan`
+### `@amykit/workflow-note-to-plan`
 
 The note-to-plan workflow: friction becomes a plan in the repository it is about.
 
@@ -71,7 +71,7 @@ The note-to-plan workflow: friction becomes a plan in the repository it is about
 | 5 | `DONE` | terminal |
 | 6 | `DECLINED` | terminal |
 
-### `@amy/workflow-ticket-to-qa`
+### `@amykit/workflow-ticket-to-qa`
 
 The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
 

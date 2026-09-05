@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-command-gate",
+  "name": "@amykit/plugin-command-gate",
   "version": "0.1.0",
   "description": "A gate that runs the target repository's own commands.",
   "type": "module",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/workflow-ticket-to-qa": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/workflow-ticket-to-qa": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

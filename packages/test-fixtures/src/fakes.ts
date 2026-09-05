@@ -12,8 +12,8 @@ import {
   StopSwitch,
   Store,
   checkEvent,
-} from "@amy/core";
-import { WorkerConfig } from "@amy/plugin-serial-engine";
+} from "@amykit/core";
+import { WorkerConfig } from "@amykit/plugin-serial-engine";
 import {
   Agent,
   DEFAULT_POLICY,
@@ -22,7 +22,7 @@ import {
   TicketRecord,
   TicketRuntimeConfig,
   Tracker,
-} from "@amy/workflow-ticket-to-qa";
+} from "@amykit/workflow-ticket-to-qa";
 export class InMemoryStore implements Store {
   public readonly records = new Map<string, TicketRecord>();
 

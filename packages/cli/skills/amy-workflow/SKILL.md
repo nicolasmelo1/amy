@@ -174,9 +174,9 @@ workflows:
     workflow: "@acme/workflow-oncall"
     plugins:                       # empty means the recommended set
       - "@acme/workflow-oncall"
-      - "@amy/plugin-file-queue"
-      - "@amy/plugin-file-store"
-      - "@amy/plugin-serial-engine"
+      - "@amykit/plugin-file-queue"
+      - "@amykit/plugin-file-store"
+      - "@amykit/plugin-serial-engine"
 ```
 
 ```sh

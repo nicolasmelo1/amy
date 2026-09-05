@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { WORKDAY, record } from "@amy/test-fixtures";
+import { WORKDAY, record } from "@amykit/test-fixtures";
 import { applyOutcomes, applyTicketPlan } from "../src/outcomes.js";
 
 const LATER = new Date("2026-09-03T13:00:00.000Z");

@@ -1,4 +1,4 @@
-import { Plan, applyPlan } from "@amy/core";
+import { Plan, applyPlan } from "@amykit/core";
 import { Observation } from "./observation.js";
 import { AttemptOutcome, ErrandRecord } from "./record.js";
 

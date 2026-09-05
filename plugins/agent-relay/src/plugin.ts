@@ -8,7 +8,7 @@ import {
   ReviewThread,
   hasACeiling,
   parseBudget,
-} from "@amy/core";
+} from "@amykit/core";
 import {
   AGENT_COLLECTION,
   HARNESS_COLLECTION,
@@ -17,15 +17,15 @@ import {
   NamedHarness,
   Rung,
   SkillLadders,
-} from "@amy/agent-kit";
+} from "@amykit/agent-kit";
 import {
   Agent,
   AttemptOutcome,
   ThreadVerdict,
   Ticket,
   TriageOutcome,
-} from "@amy/workflow-ticket-to-qa";
-import { AgentResult } from "@amy/core";
+} from "@amykit/workflow-ticket-to-qa";
+import { AgentResult } from "@amykit/core";
 import { AgentRelay } from "./AgentRelay.js";
 import { configSchema } from "./config.js";
 import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
@@ -60,7 +60,7 @@ function harnessFor(ctx: PluginContext): HarnessRelay {
 }
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-agent-relay",
+  name: "@amykit/plugin-agent-relay",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

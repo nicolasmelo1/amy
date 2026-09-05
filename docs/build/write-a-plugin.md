@@ -18,7 +18,7 @@ of. Substitute your own tool; the shape does not change.
 ```sh
 mkdir acme-plugin-jira && cd acme-plugin-jira
 npm init -y
-npm install @amy/core
+npm install @amykit/core
 ```
 
 ```json
@@ -31,13 +31,13 @@ npm install @amy/core
   "types": "./dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
   "files": ["dist"],
-  "dependencies": { "@amy/core": "^0.1.0" }
+  "dependencies": { "@amykit/core": "^0.1.0" }
 }
 ```
 
 ```ts
 // src/index.ts
-import type { Plugin } from "@amy/core";
+import type { Plugin } from "@amykit/core";
 
 export const plugin: Plugin = {
   name: "@acme/plugin-jira",
@@ -50,7 +50,7 @@ export const plugin: Plugin = {
 # ~/.amy/config.yaml
 workflows:
   ticket-to-qa:
-    workflow: "@amy/workflow-ticket-to-qa"
+    workflow: "@amykit/workflow-ticket-to-qa"
     plugins: ["@acme/plugin-jira", "…"]
 ```
 
@@ -73,7 +73,7 @@ deep.
 
 ```ts
 // src/config.ts
-import type { ConfigSchema } from "@amy/core";
+import type { ConfigSchema } from "@amykit/core";
 
 export const configSchema: ConfigSchema = {
   site: {
@@ -114,7 +114,7 @@ believes is working.
 
 ```ts
 // src/plugin.ts
-import type { Plugin } from "@amy/core";
+import type { Plugin } from "@amykit/core";
 import { JiraTracker } from "./JiraTracker.js";
 import { configSchema } from "./config.js";
 
@@ -147,7 +147,7 @@ ones the core declares — a workflow narrows the port it uses. Import the
 workflow's interface and let the compiler tell you:
 
 ```ts
-import type { Tracker } from "@amy/workflow-ticket-to-qa";
+import type { Tracker } from "@amykit/workflow-ticket-to-qa";
 
 export class JiraTracker implements Tracker { … }
 ```
@@ -180,7 +180,7 @@ notification channels reach the fan-out without the core learning the word
 "channel":
 
 ```ts
-import { CHANNEL_COLLECTION } from "@amy/plugin-notify-fanout";
+import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 
 registry.contribute(CHANNEL_COLLECTION, "jira", jiraCommentChannel(tracker));
 ```

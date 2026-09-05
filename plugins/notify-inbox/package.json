@@ -1,5 +1,5 @@
 {
-  "name": "@amy/plugin-notify-inbox",
+  "name": "@amykit/plugin-notify-inbox",
   "version": "0.1.0",
   "description": "Announcements as a file on disk plus a desktop notification.",
   "type": "module",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0",
-    "@amy/plugin-notify-fanout": "^0.1.0"
+    "@amykit/core": "^0.1.0",
+    "@amykit/plugin-notify-fanout": "^0.1.0"
   },
   "devDependencies": {
-    "@amy/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }

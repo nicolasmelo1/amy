@@ -1,4 +1,4 @@
-import { WorkRecord } from "@amy/core";
+import { WorkRecord } from "@amykit/core";
 import { PlanState } from "./state.js";
 
 export interface AttemptOutcome {

@@ -11,7 +11,7 @@ const SCHEMA: ConfigSchema = {
 
 describe("validateConfig", () => {
   it("accepts a configuration that matches", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, {
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, {
       target: "slack:ops",
       retries: 5,
       loud: true,
@@ -32,28 +32,28 @@ describe("validateConfig", () => {
   });
 
   it("names the plugin and the field when something required is missing", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, {});
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, {});
 
     expect(result.ok).toBe(false);
     expect(result.ok === false && result.problems[0]).toBe(
-      "@amy/plugin-x: `target` is required — where announcements go",
+      "@amykit/plugin-x: `target` is required — where announcements go",
     );
   });
 
   it("fills in a default rather than leaving a hole", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { target: "slack:ops" });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { target: "slack:ops" });
 
     expect(result.ok === true && result.config.retries).toBe(3);
   });
 
   it("leaves an optional field with no default alone", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { target: "slack:ops" });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { target: "slack:ops" });
 
     expect(result.ok === true && "loud" in result.config).toBe(false);
   });
 
   it("says what the type should have been, and what it got", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { target: 42 });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { target: 42 });
 
     expect(result.ok === false && result.problems[0]).toContain("`target` must be string, got number");
   });
@@ -61,46 +61,46 @@ describe("validateConfig", () => {
   it("refuses a setting the plugin does not have, because that is a typo", () => {
     // Ignoring it means the setting silently never applied, which is worse
     // than refusing it.
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { target: "x", targt: "y" });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { target: "x", targt: "y" });
 
     expect(result.ok === false && result.problems[0]).toBe(
-      "@amy/plugin-x: `targt` is not a setting this plugin has",
+      "@amykit/plugin-x: `targt` is not a setting this plugin has",
     );
   });
 
   it("reports every problem, so one boot fixes one round of edits", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { retries: "many", nope: 1 });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { retries: "many", nope: 1 });
 
     expect(result.ok === false && result.problems).toHaveLength(3);
   });
 
   it("refuses a configuration that is not a mapping at all", () => {
-    expect(validateConfig("@amy/plugin-x", SCHEMA, ["a list"])).toEqual({
+    expect(validateConfig("@amykit/plugin-x", SCHEMA, ["a list"])).toEqual({
       ok: false,
-      problems: ["@amy/plugin-x: configuration must be a mapping"],
+      problems: ["@amykit/plugin-x: configuration must be a mapping"],
     });
   });
 
   it("treats an absent configuration as an empty one", () => {
-    const result = validateConfig("@amy/plugin-x", { loud: { type: "boolean", description: "d" } }, undefined);
+    const result = validateConfig("@amykit/plugin-x", { loud: { type: "boolean", description: "d" } }, undefined);
 
     expect(result).toEqual({ ok: true, config: {} });
   });
 
   it("rejects a list of things that are not all strings", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { target: "x", repos: ["a", 2] });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { target: "x", repos: ["a", 2] });
 
     expect(result.ok === false && result.problems[0]).toContain("`repos` must be string[]");
   });
 
   it("does not accept a list where a mapping was declared", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { target: "x", byTeam: ["a"] });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { target: "x", byTeam: ["a"] });
 
     expect(result.ok === false && result.problems[0]).toContain("got an array");
   });
 
   it("does not accept a number that is not finite", () => {
-    const result = validateConfig("@amy/plugin-x", SCHEMA, { target: "x", retries: Number.NaN });
+    const result = validateConfig("@amykit/plugin-x", SCHEMA, { target: "x", retries: Number.NaN });
 
     expect(result.ok).toBe(false);
   });

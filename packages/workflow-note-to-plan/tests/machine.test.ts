@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Plan } from "@amy/core";
+import { Plan } from "@amykit/core";
 import { plan } from "../src/machine.js";
 import { DEFAULT_POLICY, Observation, Policy } from "../src/observation.js";
 import { PlanRecord, newRecord } from "../src/record.js";

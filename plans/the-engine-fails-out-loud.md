@@ -3,7 +3,7 @@
 The system will fail. The GitHub API will go down, Claude will go away. There
 is no graceful shutdown here: it fails, it says so, and it carries on.
 
-`@amy/plugin-serial-engine` is the last large package without a gate, and it
+`@amykit/plugin-serial-engine` is the last large package without a gate, and it
 is the one that decides whether a ticket gets lost. The argument is the same
 one [the relay's plan](the-relay-is-proven-end-to-end.md) makes for itself:
 the paths this exists to cover are paths a good day never reaches. No unit

@@ -3,7 +3,7 @@
   "status": "passed",
   "goal": "Something in my machine got in its own way, and I want that to turn into a plan in the repository it is about rather than into a shrug. I want to be able to write the friction down in one line, or drop a file in a directory, and find a pull request adding a plan that the repository's own check accepts. I do not want a ticket for it, I do not want twelve of them a day, and I want to be the one who decides whether the work happens.",
   "artifact": {
-    "package": "@amy/cli",
+    "package": "@amykit/cli",
     "entry": "the installed executable, driven by `amy note`, `amy discover` and `amy tick`",
     "built_by": "scripts/install.sh"
   },
@@ -42,8 +42,8 @@
     "notes_left": [
       "by-hand.md",
       "not-mine.md",
-      "note-2026-09-05T141540118.md",
-      "note-2026-09-05T141543969.md",
+      "note-2026-09-05T190605652.md",
+      "note-2026-09-05T190609259.md",
       "will-break.md"
     ],
     "budget": "new work: allowed"

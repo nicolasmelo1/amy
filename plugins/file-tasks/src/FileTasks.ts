@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { NewTask, Task, Tasks } from "@amy/workflow-errand";
+import type { NewTask, Task, Tasks } from "@amykit/workflow-errand";
 
 /** The keys the header understands. Anything else is left in the body. */
 const REPO = "repo";

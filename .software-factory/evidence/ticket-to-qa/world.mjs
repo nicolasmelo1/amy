@@ -238,7 +238,7 @@ notify:
 # The tracker's own slice, which is the only way the endpoint moves. Naming a
 # slice replaces the derived one, so every setting the plugin declared is here.
 plugins:
-  "@amy/plugin-linear":
+  "@amykit/plugin-linear":
     workingStatusName: In Progress
     repoByTeam:
       BILL: ${REPO}

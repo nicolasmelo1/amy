@@ -7,7 +7,7 @@ import {
   PluginContext,
   WORKFLOW_RUNTIME,
   WorkflowRuntime,
-} from "@amy/core";
+} from "@amykit/core";
 import { Observation, DEFAULT_POLICY, Policy } from "./observation.js";
 import { Agent } from "./ports/Agent.js";
 import { Gate } from "./ports/Gate.js";
@@ -94,7 +94,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
  * said.
  */
 export const plugin: Plugin = {
-  name: "@amy/workflow-ticket-to-qa",
+  name: "@amykit/workflow-ticket-to-qa",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

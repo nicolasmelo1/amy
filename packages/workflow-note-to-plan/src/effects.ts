@@ -1,4 +1,4 @@
-import { Plan } from "@amy/core";
+import { Plan } from "@amykit/core";
 import { PlanState } from "./state.js";
 
 /**

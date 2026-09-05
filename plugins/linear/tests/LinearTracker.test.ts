@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LinearTracker } from "../src/LinearTracker.js";
-import { ScriptedGraphQL } from "@amy/test-fixtures";
+import { ScriptedGraphQL } from "@amykit/test-fixtures";
 
 const config = {
   workingStatusName: "In Progress",

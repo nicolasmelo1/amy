@@ -1,5 +1,5 @@
 {
-  "name": "@amy/workflow-errand",
+  "name": "@amykit/workflow-errand",
   "version": "0.1.0",
   "description": "Something said in passing becomes work: capture it, do it, say what happened.",
   "type": "module",
@@ -28,6 +28,6 @@
     "dist"
   ],
   "dependencies": {
-    "@amy/core": "^0.1.0"
+    "@amykit/core": "^0.1.0"
   }
 }

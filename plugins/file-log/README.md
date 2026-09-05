@@ -1,4 +1,4 @@
-# @amy/plugin-file-log
+# @amykit/plugin-file-log
 
 The event log, as one JSON Lines file per day.
 

@@ -1,10 +1,10 @@
 import path from "node:path";
-import { Plugin } from "@amy/core";
+import { Plugin } from "@amykit/core";
 import { FileStore } from "./FileStore.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-file-store",
+  name: "@amykit/plugin-file-store",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

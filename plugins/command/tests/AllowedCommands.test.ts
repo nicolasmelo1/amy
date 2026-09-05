@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CommandResult, RunOptions } from "@amy/core";
+import { CommandResult, RunOptions } from "@amykit/core";
 import { AllowedCommands } from "../src/AllowedCommands.js";
 
 const OK: CommandResult = { ok: true, exitCode: 0, stdout: "", stderr: "" };

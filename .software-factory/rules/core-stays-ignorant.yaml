@@ -3,7 +3,7 @@ layer: L0
 title: The core imports no workflow and no plugin
 severity: high
 statement: >-
-  Nothing under packages/core/src imports an @amy/workflow-* or @amy/plugin-*
+  Nothing under packages/core/src imports an @amykit/workflow-* or @amykit/plugin-*
   package.
 why: >-
   The core owns the catalogue of actions and the contracts, and nothing else.
@@ -20,5 +20,5 @@ check:
 defaults:
   scope: ["packages/core/src/**"]
   forbidden:
-    - regex: 'from "@amy/(workflow|plugin)-'
+    - regex: 'from "@amykit/(workflow|plugin)-'
       message: "The core must not know a workflow or a plugin. Make it generic instead."

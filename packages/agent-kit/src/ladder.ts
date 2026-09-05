@@ -1,4 +1,4 @@
-import { AgentOutcome } from "@amy/core";
+import { AgentOutcome } from "@amykit/core";
 
 export interface Rung {
   readonly name: string;

@@ -10,14 +10,14 @@ import {
   WorkRecord,
   mount,
   unmetNeeds,
-} from "@amy/core";
-import { FileEventLog } from "@amy/plugin-file-log";
-import { FileNotes } from "@amy/plugin-file-notes";
-import { FileTasks } from "@amy/plugin-file-tasks";
-import { FileQueue } from "@amy/plugin-file-queue";
-import { FileStore } from "@amy/plugin-file-store";
-import { PlanRecord } from "@amy/workflow-note-to-plan";
-import { TickResult } from "@amy/plugin-serial-engine";
+} from "@amykit/core";
+import { FileEventLog } from "@amykit/plugin-file-log";
+import { FileNotes } from "@amykit/plugin-file-notes";
+import { FileTasks } from "@amykit/plugin-file-tasks";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { FileStore } from "@amykit/plugin-file-store";
+import { PlanRecord } from "@amykit/workflow-note-to-plan";
+import { TickResult } from "@amykit/plugin-serial-engine";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { load } from "../src/loader.js";
 import { Profile, directoriesFor, profiles } from "../src/profiles.js";
@@ -44,7 +44,7 @@ const CONFIG = {
   // only in the sense that trying takes no time. No test here should touch
   // the network, and the one that needs a broken tick needs it to break fast.
   plugins: {
-    "@amy/plugin-linear": {
+    "@amykit/plugin-linear": {
       workingStatusName: "In Progress",
       repoByTeam: {},
       defaultRepo: "acme/widgets",
@@ -185,7 +185,7 @@ describe("two workflows, one machine", () => {
     expect(loaded.problems).toEqual([]);
 
     const roster = {
-      name: "@amy/cli",
+      name: "@amykit/cli",
       version: "0.1.0",
       register: (r: Parameters<(typeof loaded.plugins)[0]["register"]>[0]) =>
         r.contribute("workflow-data", "roster", { read: () => ROSTER }),
@@ -216,8 +216,8 @@ describe("two workflows, one machine", () => {
     const ticket = await assemble(TICKETS);
     const note = await assemble(PLANS);
 
-    expect(ticket.plugins.map((p) => p.name)).toContain("@amy/plugin-serial-engine");
-    expect(note.plugins.map((p) => p.name)).toContain("@amy/plugin-serial-engine");
+    expect(ticket.plugins.map((p) => p.name)).toContain("@amykit/plugin-serial-engine");
+    expect(note.plugins.map((p) => p.name)).toContain("@amykit/plugin-serial-engine");
     expect(typeof ticket.engine?.tick).toBe("function");
     expect(typeof note.engine?.tick).toBe("function");
   });
@@ -228,7 +228,7 @@ describe("two workflows, one machine", () => {
 
     for (const mounted of [ticket, note]) {
       expect(mounted.ports.get("code-host")?.constructor.name).toBe("GitHubCodeHost");
-      expect(mounted.plugins.map((p) => p.name)).toContain("@amy/plugin-github");
+      expect(mounted.plugins.map((p) => p.name)).toContain("@amykit/plugin-github");
     }
   });
 
@@ -511,7 +511,7 @@ describe("a tick that gives up", () => {
     const specs = pluginList(CONFIG, profile);
     const loaded = await load(specs);
     const roster = {
-      name: "@amy/cli",
+      name: "@amykit/cli",
       version: "0.1.0",
       register: (r: Parameters<(typeof loaded.plugins)[0]["register"]>[0]) =>
         r.contribute("workflow-data", "roster", { read: () => ROSTER }),
@@ -648,7 +648,7 @@ describe("a task said in passing", () => {
     const mounted = await engine();
 
     expect(mounted.workflow?.name).toBe("errand");
-    expect(mounted.plugins.map((p) => p.name)).toContain("@amy/plugin-serial-engine");
+    expect(mounted.plugins.map((p) => p.name)).toContain("@amykit/plugin-serial-engine");
     expect(unmetNeeds(mounted, mounted.workflow!)).toEqual([]);
   });
 

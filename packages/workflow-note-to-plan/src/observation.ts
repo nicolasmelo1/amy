@@ -1,4 +1,4 @@
-import { PullRequestView } from "@amy/core";
+import { PullRequestView } from "@amykit/core";
 import { Note } from "./ports/Notes.js";
 
 /**

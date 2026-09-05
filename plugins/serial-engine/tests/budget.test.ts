@@ -2,17 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Budget, BudgetDecision, LogBudget } from "@amy/core";
-import { FileQueue } from "@amy/plugin-file-queue";
+import { Budget, BudgetDecision, LogBudget } from "@amykit/core";
+import { FileQueue } from "@amykit/plugin-file-queue";
 import { WORKDAY, record as recordIn,
   TicketWorkerOverrides,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 import {
   ticketWorkerDeps,
   InMemoryStore,
   RecordingEventLog,
   fakeAgent,
-} from "@amy/test-fixtures";
+} from "@amykit/test-fixtures";
 import { Worker } from "../src/Worker.js";
 
 const SPENT: BudgetDecision = {

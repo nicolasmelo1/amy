@@ -53,7 +53,7 @@ The version still lives in `package.json`. What changes is that it moves, on
 purpose, with a written reason attached — which is the property the build
 stamp needed and never had.
 
-**The packages are published, not made private.** Every `@amy/*` package
+**The packages are published, not made private.** Every `@amykit/*` package
 except `test-fixtures` is something a second machine installs, so publishing
 is the point rather than the accident to be prevented. They go to npmjs under
 the `@amy` scope, and `publishConfig.registry` on each one is what stops an
@@ -75,7 +75,7 @@ for why, and for what happens to the loader.
 
 ### The scope, decided
 
-`@amy/*` stays, and that decision is what chose the registry rather than the
+`@amykit/*` stays, and that decision is what chose the registry rather than the
 other way round.
 
 GitHub Packages was the obvious answer and it cannot have this scope: its npm
@@ -112,7 +112,7 @@ somewhere a human reads, a notification — is our workflow's job.
 ### Installing on the second machine
 
 An `.npmrc` pointing the scope at `https://npm.pkg.github.com` and a token
-with `read:packages`. Then `@amy/cli` plus only the plugins that machine
+with `read:packages`. Then `@amykit/cli` plus only the plugins that machine
 needs. Going back to an earlier release is installing an earlier version,
 which is the rollback the old arrangement never had.
 
@@ -147,7 +147,7 @@ built".
       (proof: test:packages/cli/tests/stamp.test.ts)
 - [x] A build from a tree with uncommitted changes reports `dev` rather than
       a version (proof: test:packages/cli/tests/stamp.test.ts)
-- [ ] A machine with no checkout installs `@amy/cli` from the registry and
+- [ ] A machine with no checkout installs `@amykit/cli` from the registry and
       runs (proof: deferred:the npm organization and its token are the
       operator's to create, and nothing is published yet)
 - [ ] Installing an earlier version replaces a later one, so a bad release
@@ -170,7 +170,7 @@ stamp that names the commit before the edit until something packs again. That
 is a nuisance in a checkout and cannot happen in a release, because a publish
 always packs.
 
-**Exit condition:** a second machine installs `@amy/cli` from npmjs with no
+**Exit condition:** a second machine installs `@amykit/cli` from npmjs with no
 checkout anywhere on it, `amy --version` names a version changesets published
 and tagged, the changelog says what that release changed, and a build from a
 dirty tree refuses to call itself anything but `dev`.

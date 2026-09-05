@@ -4,10 +4,10 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
-import type { TickResult } from "@amy/plugin-serial-engine";
-import { isConfirmedFor } from "@amy/workflow-ticket-to-qa";
-import { FileNotes } from "@amy/plugin-file-notes";
-import { FileTasks } from "@amy/plugin-file-tasks";
+import type { TickResult } from "@amykit/plugin-serial-engine";
+import { isConfirmedFor } from "@amykit/workflow-ticket-to-qa";
+import { FileNotes } from "@amykit/plugin-file-notes";
+import { FileTasks } from "@amykit/plugin-file-tasks";
 import {
   BUDGET_WINDOWS,
   Engine,
@@ -23,19 +23,19 @@ import {
   spendSince,
   stampId,
   unmetNeeds,
-} from "@amy/core";
+} from "@amykit/core";
 import {
   MODELS_DEV_URL,
   ModelsDevCatalog,
   OVERRIDE_FILE,
   refreshFrom,
   specTable,
-} from "@amy/model-specs";
-import { FileEventLog } from "@amy/plugin-file-log";
+} from "@amykit/model-specs";
+import { FileEventLog } from "@amykit/plugin-file-log";
 // Inspection builds these directly: `amy status` has to work even when a
 // plugin will not mount, which is exactly when you want to look.
-import { FileQueue } from "@amy/plugin-file-queue";
-import { FileStore } from "@amy/plugin-file-store";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { FileStore } from "@amykit/plugin-file-store";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -49,10 +49,11 @@ import {
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { NOT_INSTALLED, installedPlugins, load } from "./loader.js";
-import { Profile, profiles, recommendedFor, resolveProfile } from "./profiles.js";
+import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
+import { installGlobally } from "./install.js";
 import { clearDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
@@ -174,8 +175,10 @@ program
 
 program
   .command("init")
-  .description("Write the config and roster templates")
-  .action(() => {
+  .description("Write the config and roster templates, and install what they need")
+  .option("--install", "install the missing packages without asking")
+  .option("--no-install", "only print what is missing")
+  .action(async (options: { install?: boolean }) => {
     const place = paths(home);
     // The watched directory, made now rather than on the first note, so it is
     // somewhere to drop a file into before anything has ever run.
@@ -202,15 +205,72 @@ program
     console.log("\nEdit both, then run `amy roster confirm` and `amy doctor`.");
     console.log(`Friction goes in ${place.notes}, or through \`amy note\`.`);
 
-    // Nothing but the command itself is installed with it. What a workflow
-    // needs is a recommendation, and a machine that has no use for a plugin
-    // has no reason to carry one.
-    const suggested = Object.values(profiles(loadConfig(home))).flatMap(recommendedFor);
-    const absent = [...new Set(suggested)].filter((name) => !installedPlugins().includes(name));
-    if (absent.length > 0) {
-      console.log(`\nThese are not installed yet:\n  npm install -g ${absent.join(" ")}`);
-    }
+    // Nothing but the command itself is installed with it, so what a
+    // configured workflow needs is worked out here rather than carried by
+    // the CLI: a machine with no use for a plugin has no reason to hold one.
+    //
+    // What each profile *will mount*, not what is recommended for it: a
+    // config naming a plugin nobody here shipped is exactly the case worth
+    // installing, and the recommendation cannot know about it.
+    const config = loadConfig(home);
+    const wanted = Object.values(profiles(config)).flatMap((profile) =>
+      pluginList(config, profile),
+    );
+    const absent = [...new Set(wanted)].filter((name) => !installedPlugins().includes(name));
+    if (absent.length === 0) return;
+
+    await supply(absent, options.install);
   });
+
+/**
+ * Installs what the config asks for and this machine has not got.
+ *
+ * Asked rather than assumed, because installing into a global prefix is a
+ * change to the machine and not to amy. With nothing to ask on — a script, a
+ * pipe, CI — it prints the command instead of running it: a setup step that
+ * silently installed twenty packages in somebody's pipeline would be a
+ * surprise nobody consented to, and `--install` is how a pipeline consents.
+ */
+async function supply(absent: readonly string[], chosen?: boolean): Promise<void> {
+  console.log(`\nThese are not installed yet:`);
+  for (const name of absent) console.log(`  ${name}`);
+
+  const wanted = chosen ?? (process.stdin.isTTY ? confirm() : false);
+
+  if (!wanted) {
+    console.log(`\nInstall them with:\n  npm install -g ${absent.join(" ")}`);
+    return;
+  }
+
+  console.log(`\nInstalling ${absent.length} package(s)…`);
+  const outcome = await installGlobally(runner, absent);
+
+  if (!outcome.ok) {
+    console.error(`\n${outcome.command} failed:`);
+    console.error(outcome.output || "it said nothing");
+    console.error("\nInstall them by hand, then run `amy doctor`.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const still = absent.filter((name) => !installedPlugins().includes(name));
+  if (still.length > 0) {
+    // npm exited zero and the packages are not resolvable, which usually
+    // means the global prefix is not one this command can see. Saying so
+    // beats a green install followed by a mount that refuses by name.
+    console.error(`\nnpm succeeded, but these still do not resolve: ${still.join(", ")}`);
+    console.error("Check `npm prefix -g` against where amy is installed.");
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(`installed ${absent.length} package(s). Now run \`amy doctor\`.`);
+}
+
+function confirm(): boolean {
+  const answer = readAnswer("\nInstall them now? [Y/n] ").toLowerCase();
+  return answer === "" || answer === "y" || answer === "yes";
+}
 
 program
   .command("doctor")
@@ -684,7 +744,7 @@ function reportRecords(records: readonly AnyRecord[], waiting: readonly string[]
 /** The `budget` setting, from the plugin slice the relay is given. */
 function configuredBudget(): unknown {
   const config = loadConfig(home);
-  const slice = pluginSlices(config, selected(config))["@amy/plugin-agent-relay"];
+  const slice = pluginSlices(config, selected(config))["@amykit/plugin-agent-relay"];
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
 }
 

@@ -21,17 +21,17 @@ explains why for each.
 
 | Port | Mounted by | Actions dispatched to it |
 | :-- | :-- | :-- |
-| `agent` | `@amy/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `triage` |
-| `code-host` | `@amy/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview` |
-| `commands` | `@amy/plugin-command` | `run-command` |
-| `gate` | `@amy/plugin-command-gate` | `run-gate` |
-| `notes` | `@amy/plugin-file-notes` | _reached directly_ |
-| `notifier` | `@amy/plugin-notify-fanout` | `announce` |
-| `plan-check` | `@amy/plugin-plan-check` | `check-plan` |
-| `queue` | `@amy/plugin-file-queue` | _reached directly_ |
-| `store` | `@amy/plugin-file-store` | _reached directly_ |
-| `tasks` | `@amy/plugin-file-tasks` | _reached directly_ |
-| `tracker` | `@amy/plugin-linear` | `ask-question`, `escalate`, `hand-off-to-qa` |
+| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `triage` |
+| `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview` |
+| `commands` | `@amykit/plugin-command` | `run-command` |
+| `gate` | `@amykit/plugin-command-gate` | `run-gate` |
+| `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
+| `notifier` | `@amykit/plugin-notify-fanout` | `announce` |
+| `plan-check` | `@amykit/plugin-plan-check` | `check-plan` |
+| `queue` | `@amykit/plugin-file-queue` | _reached directly_ |
+| `store` | `@amykit/plugin-file-store` | _reached directly_ |
+| `tasks` | `@amykit/plugin-file-tasks` | _reached directly_ |
+| `tracker` | `@amykit/plugin-linear` | `ask-question`, `escalate`, `hand-off-to-qa` |
 
 <!-- amy:end port-kinds -->
 
@@ -41,21 +41,21 @@ explains why for each.
 
 | Action | Port | Method | Shipped by | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `address-threads` | `agent` | `addressThreads()` | `@amy/core` |  |
-| `announce` | `notifier` | `announce()` | `@amy/core` |  |
-| `ask-question` | `tracker` | `comment()` | `@amy/core` |  |
-| `assign-reviewer` | `code-host` | `requestReview()` | `@amy/core` |  |
-| `draft-plan` | `agent` | `ask()` | `@amy/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
-| `escalate` | `tracker` | `createFollowUp()` | `@amy/core` |  |
-| `hand-off-to-qa` | `tracker` | `setStatus()` | `@amy/core` |  |
-| `implement` | `agent` | `implement()` | `@amy/core` |  |
-| `open-pull-request` | `code-host` | `openPullRequest()` | `@amy/core` |  |
-| `request-rereview` | `code-host` | `requestReview()` | `@amy/core` |  |
-| `run-errand` | `agent` | `ask()` | `@amy/core` | Do the thing somebody asked for, in their own words. |
-| `run-gate` | `gate` | `run()` | `@amy/core` |  |
-| `triage` | `agent` | `triage()` | `@amy/core` |  |
-| `check-plan` | `plan-check` | `check()` | `@amy/plugin-plan-check` | Registered by the plugin that brings the port behind it. |
-| `run-command` | `commands` | `run()` | `@amy/plugin-command` | Registered by the plugin that brings the port behind it. |
+| `address-threads` | `agent` | `addressThreads()` | `@amykit/core` |  |
+| `announce` | `notifier` | `announce()` | `@amykit/core` |  |
+| `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |
+| `assign-reviewer` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
+| `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
+| `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |
+| `implement` | `agent` | `implement()` | `@amykit/core` |  |
+| `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
+| `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `run-errand` | `agent` | `ask()` | `@amykit/core` | Do the thing somebody asked for, in their own words. |
+| `run-gate` | `gate` | `run()` | `@amykit/core` |  |
+| `triage` | `agent` | `triage()` | `@amykit/core` |  |
+| `check-plan` | `plan-check` | `check()` | `@amykit/plugin-plan-check` | Registered by the plugin that brings the port behind it. |
+| `run-command` | `commands` | `run()` | `@amykit/plugin-command` | Registered by the plugin that brings the port behind it. |
 
 <!-- amy:end core-actions -->
 

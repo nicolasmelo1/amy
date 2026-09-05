@@ -103,7 +103,7 @@ done while it lists a problem; name each one and what fixes it.
 - **State left in a working directory is reported, not adopted.** amy used to
   keep state in `./.amy`; if doctor mentions one, move it or delete it, but do
   not expect amy to read it.
-- **Nothing here is installed with the command.** `@amy/cli` carries the
+- **Nothing here is installed with the command.** `@amykit/cli` carries the
   command and the host services; the plugins are separate, on purpose, so a
   machine with no `codex` carries no code for one. `amy init` prints the
   `npm install` line for whatever is missing.

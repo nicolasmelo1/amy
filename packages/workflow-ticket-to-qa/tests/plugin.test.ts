@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, mount } from "@amy/core";
-import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amy/test-fixtures";
+import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, mount } from "@amykit/core";
+import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amykit/test-fixtures";
 import { WORKFLOW_DATA, plugin } from "../src/plugin.js";
 
 const HOST: HostServices = {
@@ -10,12 +10,12 @@ const HOST: HostServices = {
 };
 
 const SETTINGS = {
-  "@amy/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
+  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
 };
 
 /** Everything this workflow reaches for, mounted by somebody else. */
 const world: Plugin = {
-  name: "@amy/plugin-world",
+  name: "@amykit/plugin-world",
   version: "0.1.0",
   register: (registry) => {
     registry.port("tracker", fakeTracker());

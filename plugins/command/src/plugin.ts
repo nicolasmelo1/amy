@@ -1,9 +1,9 @@
-import { Plugin } from "@amy/core";
+import { Plugin } from "@amykit/core";
 import { AllowedCommands } from "./AllowedCommands.js";
 import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
-  name: "@amy/plugin-command",
+  name: "@amykit/plugin-command",
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {

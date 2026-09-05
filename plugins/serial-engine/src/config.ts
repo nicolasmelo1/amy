@@ -1,4 +1,4 @@
-import { ConfigSchema } from "@amy/core";
+import { ConfigSchema } from "@amykit/core";
 
 /**
  * What this plugin needs told to it, and nothing more.

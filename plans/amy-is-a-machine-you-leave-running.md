@@ -38,7 +38,7 @@ because the budget is measured off it, so deleting what a workflow spent would
 move a ceiling rather than tidy a directory.
 
 `amy skills` installs amy's skills into every harness on the machine. They
-ship inside `@amy/cli` for the reason `sf` compiles its own in: a skill that
+ship inside `@amykit/cli` for the reason `sf` compiles its own in: a skill that
 tells you to run a subcommand your install predates is worse than no skill.
 
 ## Why the skills are the shape they are

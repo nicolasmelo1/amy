@@ -2,7 +2,7 @@
 
 Every path it exists for is a path a good day never reaches.
 
-`@amy/plugin-agent-relay` decides how money gets spent when something goes
+`@amykit/plugin-agent-relay` decides how money gets spent when something goes
 wrong. It only ever does anything on a quota refusal, a child killed mid-run,
 or a ladder with a typo in it. None of those happen while anyone is watching,
 and none of them can be produced on demand with a real credential.

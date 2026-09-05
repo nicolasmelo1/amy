@@ -13,28 +13,44 @@ real ticket until step 3, and step 3 is one move at a time on purpose.
 ## 1. Install — 1 min
 
 ```sh
-npm run install:local     # packs every package, installs to ~/.local/bin/amy
-amy --version             # 0.1.0 (83ef192, built 2026-09-03T20:28:44Z)
+npm install -g @amykit/cli
+amy --version             # 0.2.0 (83ef192, built 2026-09-05T18:44:12Z)
 ```
+
+Nothing to clone, no install script, and the same command on macOS, Linux and
+Windows. It installs the command and nothing else — what your workflows need
+comes in the next step, once there is a config saying which ones you have.
 
 One install per machine, not one per repository: amy drives work in checkouts
 all over the disk and is reached from whichever agent harness you happen to be
 in, so everything it knows lives in `~/.amy`. `AMY_HOME` overrides that; nothing
 else does. See [Installation](installation.md).
 
-That command installs every plugin. A machine with no `codex` on it has no
-reason to carry the plugin that shells out to one, so `AMY_PACKAGES` takes a
-subset, and `amy init` prints the `npm install` line for whatever a configured
-workflow needs and this machine does not have.
-
 ## 2. Set it up — 2 min
 
 ```sh
-amy init                  # writes ~/.amy/config.yaml and ~/.amy/roster.yaml
-# edit both
+amy init                  # templates, and the packages your config needs
+# edit ~/.amy/config.yaml and ~/.amy/roster.yaml
 amy roster confirm        # stamp today's date
 amy doctor                # every dependency, checked before it touches a ticket
 ```
+
+`init` writes the two templates, then works out which packages the workflows in
+your config need and offers to install the ones this machine has not got:
+
+```text
+These are not installed yet:
+  @amykit/plugin-linear
+  @amykit/plugin-github
+  @amykit/plugin-claude
+
+Install them now? [Y/n]
+```
+
+It asks rather than assuming — installing into a global prefix is a change to
+the machine, not to amy. `--install` says yes without asking, which is what a
+pipeline uses; with nothing to ask on it prints the command instead of running
+it.
 
 The Linear personal API key comes from Settings → Security and access, and goes
 in `~/.amy/.env`. Anything already exported in the shell wins over the file.
@@ -83,7 +99,7 @@ amy skills                # finds the harnesses on this machine and asks
 
 amy is driven from Claude Code, from Hermes, from a terminal — so its skills
 install into each harness it finds rather than into one project. They ship
-inside `@amy/cli`, so they cannot drift out of step with the amy that ships
+inside `@amykit/cli`, so they cannot drift out of step with the amy that ships
 them. See [Harnesses and skills](../concepts/harnesses.md).
 
 ## What to read next

@@ -3,7 +3,7 @@
   "status": "passed",
   "goal": "One of my tickets is in progress with a question hanging over it. I want to find it in QA, owned by whoever is on QA today, with a pull request that a person who was not already buried reviewed and approved, the automated reviewer's comments answered, and the one comment I had to settle brought to me instead of guessed at. I want to be told once when it needs me, and I do not want to watch it.",
   "artifact": {
-    "package": "@amy/cli",
+    "package": "@amykit/cli",
     "entry": "the installed executable, driven by `amy discover` and `amy tick`",
     "built_by": "scripts/install.sh"
   },
@@ -56,12 +56,12 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question on the ticket",
-      "the automated reviewer looked at ceac8f7 and left one comment",
-      "the automated reviewer looked at 2d5207a and had nothing to say",
+      "the automated reviewer looked at fe9112b and left one comment",
+      "the automated reviewer looked at bc093a7 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 2d5207a",
+      "ada asked for changes on bc093a7",
       "the owner settled the disagreement on the ticket",
-      "ada approved b243da1"
+      "ada approved 7ce1686"
     ],
     "agent_calls": [
       "triage",

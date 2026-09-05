@@ -1,5 +1,5 @@
-import type { Notes } from "@amy/workflow-note-to-plan";
-import { Channel } from "@amy/plugin-notify-fanout";
+import type { Notes } from "@amykit/workflow-note-to-plan";
+import { Channel } from "@amykit/plugin-notify-fanout";
 
 /**
  * Turns the machine giving up into a note about the machine.

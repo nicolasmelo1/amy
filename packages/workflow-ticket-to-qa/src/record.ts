@@ -1,4 +1,4 @@
-import { WorkRecord } from "@amy/core";
+import { WorkRecord } from "@amykit/core";
 import { TicketState } from "./state.js";
 
 export interface TriageOutcome {

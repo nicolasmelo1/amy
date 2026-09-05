@@ -65,7 +65,7 @@ describe("which workflows an install can drive", () => {
     if (!oncall.ok) throw new Error(oncall.problem);
 
     expect(recommendedFor(oncall.profile)).toContain("@acme/workflow-oncall");
-    expect(recommendedFor(oncall.profile)).toContain("@amy/plugin-serial-engine");
+    expect(recommendedFor(oncall.profile)).toContain("@amykit/plugin-serial-engine");
   });
 });
 

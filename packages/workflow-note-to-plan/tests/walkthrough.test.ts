@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Plan, PullRequestView, actionsOf } from "@amy/core";
+import { Plan, PullRequestView, actionsOf } from "@amykit/core";
 import { plan } from "../src/machine.js";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { EffectOutcomes, applyNotePlan } from "../src/outcomes.js";

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { EnqueueRequest, Queue } from "@amy/core";
-import { QueueItem, isReady } from "@amy/core";
+import { EnqueueRequest, Queue } from "@amykit/core";
+import { QueueItem, isReady } from "@amykit/core";
 
 const READY = "ready";
 const RUNNING = "running";

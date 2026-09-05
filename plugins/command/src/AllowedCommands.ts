@@ -1,4 +1,4 @@
-import { CommandOutcome, CommandRunner, Commands } from "@amy/core";
+import { CommandOutcome, CommandRunner, Commands } from "@amykit/core";
 
 export interface AllowedCommandsConfig {
   /** Name to command line. The only place a command line is ever written. */
