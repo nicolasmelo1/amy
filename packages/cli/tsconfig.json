@@ -9,25 +9,7 @@
   ],
   "references": [
     {
-      "path": "../core"
-    },
-    {
-      "path": "../workflow-ticket-to-qa"
-    },
-    {
-      "path": "../../plugins/file-queue"
-    },
-    {
-      "path": "../../plugins/file-store"
-    },
-    {
-      "path": "../../plugins/serial-engine"
-    },
-    {
-      "path": "../../plugins/linear"
-    },
-    {
-      "path": "../../plugins/github"
+      "path": "../../packages/workflow-note-to-plan"
     },
     {
       "path": "../../plugins/claude"
@@ -39,6 +21,24 @@
       "path": "../../plugins/file-log"
     },
     {
+      "path": "../../plugins/file-notes"
+    },
+    {
+      "path": "../../plugins/file-queue"
+    },
+    {
+      "path": "../../plugins/file-store"
+    },
+    {
+      "path": "../../plugins/file-tasks"
+    },
+    {
+      "path": "../../plugins/github"
+    },
+    {
+      "path": "../../plugins/linear"
+    },
+    {
       "path": "../../plugins/notify-fanout"
     },
     {
@@ -48,16 +48,22 @@
       "path": "../../plugins/notify-inbox"
     },
     {
+      "path": "../../plugins/plan-check"
+    },
+    {
+      "path": "../../plugins/serial-engine"
+    },
+    {
+      "path": "../core"
+    },
+    {
       "path": "../model-specs"
     },
     {
-      "path": "../../packages/workflow-note-to-plan"
+      "path": "../workflow-errand"
     },
     {
-      "path": "../../plugins/file-notes"
-    },
-    {
-      "path": "../../plugins/plan-check"
+      "path": "../workflow-ticket-to-qa"
     }
   ]
 }

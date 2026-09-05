@@ -11,8 +11,12 @@ const WITH_ONCALL = {
 };
 
 describe("which workflows an install can drive", () => {
-  it("drives the two it ships with, before anybody writes a config", () => {
-    expect(Object.keys(profiles(DEFAULT_CONFIG))).toEqual(["ticket-to-qa", "note-to-plan"]);
+  it("drives the three it ships with, before anybody writes a config", () => {
+    expect(Object.keys(profiles(DEFAULT_CONFIG))).toEqual([
+      "ticket-to-qa",
+      "note-to-plan",
+      "errand",
+    ]);
   });
 
   it("drives one the config declares and this package never heard of", () => {

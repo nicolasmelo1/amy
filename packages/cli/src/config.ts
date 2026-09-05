@@ -2,6 +2,7 @@ import fs from "node:fs";
 import yaml from "yaml";
 import { DEFAULT_POLICY, Policy } from "@amy/workflow-ticket-to-qa";
 import type { Policy as PlanPolicy } from "@amy/workflow-note-to-plan";
+import type { Policy as ErrandPolicy } from "@amy/workflow-errand";
 import { Roster } from "@amy/workflow-ticket-to-qa";
 import os from "node:os";
 import path from "node:path";
@@ -41,6 +42,19 @@ export interface WorkflowProfile {
   plugins?: string[];
   /** Whether `amy note` files friction onto this profile's queue. */
   notes?: boolean;
+  /** Whether `amy btw` puts a task onto this profile's queue. */
+  tasks?: boolean;
+}
+
+/**
+ * The third workflow's vocabulary: something said in passing becomes work.
+ *
+ * Its own block for the same reason the plans have one. The repositories are
+ * `repos` — an errand happens where the team already works — but what it may
+ * spend and how many it may carry are its own numbers.
+ */
+interface ErrandsConfig {
+  policy: Partial<ErrandPolicy>;
 }
 
 interface NotifyConfig {
@@ -107,6 +121,7 @@ export interface AmyConfig {
   skills: Record<string, string[]>;
   notify: NotifyConfig;
   plans: PlansConfig;
+  errands: ErrandsConfig;
   /**
    * One slice per plugin, keyed by package name.
    *
@@ -134,6 +149,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   skills: {},
   notify: { tracker: true, hermes: null, inbox: true },
   plans: { repos: [], check: { default: ["sf check"] }, policy: {} },
+  errands: { policy: {} },
   plugins: {},
 };
 
@@ -163,6 +179,7 @@ export function loadConfig(root: string): AmyConfig {
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
     plans: plansFrom(parsed.plans),
+    errands: { policy: parsed.errands?.policy ?? {} },
     workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
   };
 }

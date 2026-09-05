@@ -23,6 +23,8 @@ O roadmap inteiro, com as treze fases e o estado de cada uma, está em
 
 | 10 | [amy is a machine you leave running](amy-is-a-machine-you-leave-running.md) | `amy start` leaves a loop running that outlives the terminal, state is one directory per machine, and the skills reach every harness installed |
 
+| 11 | [Something said in passing becomes work](something-said-in-passing.md) | `amy btw "<sentence>"` puts work on a queue that amy drives to a pull request or to an answer, and the ceiling keeps cheap capture from becoming an expensive pile |
+
 ## Parked
 
 | Work | Waiting on |

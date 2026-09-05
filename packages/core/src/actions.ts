@@ -33,6 +33,17 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
    * first one's without either knowing about the other.
    */
   "draft-plan": { port: "agent", method: "ask" },
+  /**
+   * Do the thing somebody asked for, in their own words.
+   *
+   * The second consumer of the generic `ask`, which is what moved it from a
+   * guess to a fact: two workflows now want an agent working in a checkout
+   * under a name of their own, and neither of them wants the other's. An
+   * action on a port another plugin mounts has to live here rather than in
+   * the workflow, because a workflow registering it would claim the `agent`
+   * port out from under the relay.
+   */
+  "run-errand": { port: "agent", method: "ask" },
   "open-pull-request": { port: "code-host", method: "openPullRequest" },
   "address-threads": { port: "agent", method: "addressThreads" },
   "assign-reviewer": { port: "code-host", method: "requestReview" },

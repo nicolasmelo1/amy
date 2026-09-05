@@ -6,7 +6,7 @@
   "observed": {
     "assertions_run": 12,
     "assertions_failed": 0,
-    "amy_packages_installed": 12,
+    "amy_packages_installed": 13,
     "workflow_driven": "@acme/workflow-oncall"
   },
   "assertions": [{"type":"plugins.a_machine_installs_only_what_it_uses","status":"passed"},{"type":"plugins.resolve_at_run_time_with_no_table","status":"passed"},{"type":"plugins.a_workflow_from_outside_this_repository_mounts","status":"passed"},{"type":"plugins.the_listing_tells_installed_from_mounted","status":"passed"},{"type":"plugins.the_engine_drives_it_without_knowing_it","status":"passed"},{"type":"plugins.work_it_found_reached_the_queue","status":"passed"},{"type":"plugins.each_workflow_keeps_its_own_state","status":"passed"},{"type":"plugins.an_unknown_workflow_name_lists_the_ones_there_are","status":"passed"},{"type":"plugins.a_shipped_workflow_nobody_installed_is_refused_by_name","status":"passed"},{"type":"plugins.a_missing_plugin_is_refused_at_boot","status":"passed"},{"type":"plugins.the_refusal_names_what_was_installed_instead","status":"passed"},{"type":"plugins.nothing_is_touched_before_the_refusal","status":"passed"}]

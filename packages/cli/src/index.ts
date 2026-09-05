@@ -7,6 +7,7 @@ import { Command } from "commander";
 import type { TickResult } from "@amy/plugin-serial-engine";
 import { isConfirmedFor } from "@amy/workflow-ticket-to-qa";
 import { FileNotes } from "@amy/plugin-file-notes";
+import { FileTasks } from "@amy/plugin-file-tasks";
 import {
   BUDGET_WINDOWS,
   Engine,
@@ -439,7 +440,7 @@ program
       return;
     }
 
-    const profile = notesProfile(config);
+    const profile = profileThat("takesNotes", config, "notes");
     if (!profile) {
       process.exitCode = 1;
       return;
@@ -463,26 +464,70 @@ program
   });
 
 /**
- * Which profile a written-down piece of friction goes to.
+ * Which profile a thing written down goes to.
  *
- * The config says so, with `notes: true`, rather than this command knowing a
- * workflow's name. Two profiles claiming it is not a failure to guess at:
- * `--workflow` settles it, and the message says so.
+ * The config says so — `notes: true`, `tasks: true` — rather than these
+ * commands knowing a workflow's name. Two profiles claiming it is not a
+ * failure to guess at: `--workflow` settles it, and the message says so.
  */
-function notesProfile(config: AmyConfig): Profile | undefined {
+function profileThat(
+  takes: "takesNotes" | "takesTasks",
+  config: AmyConfig,
+  what: string,
+): Profile | undefined {
   const asked = program.opts<{ workflow?: string }>().workflow;
   if (asked) return selected(config);
 
-  const takers = Object.values(profiles(config)).filter((profile) => profile.takesNotes);
+  const takers = Object.values(profiles(config)).filter((profile) => profile[takes]);
   if (takers.length === 1) return takers[0];
 
   console.error(
     takers.length === 0
-      ? "no workflow takes notes: mark one with `notes: true` under `workflows:`."
-      : `more than one workflow takes notes, so name one: ${takers.map((t) => t.name).join(", ")}`,
+      ? `no workflow takes ${what}: mark one with \`${what}: true\` under \`workflows:\`.`
+      : `more than one workflow takes ${what}, so name one: ${takers.map((t) => t.name).join(", ")}`,
   );
   return undefined;
 }
+
+program
+  .command("btw")
+  .description("Something to do, said in passing. Goes on the queue, never becomes a ticket")
+  .argument("<text>", "what to do, in your own words")
+  .option("--repo <owner/name>", "the repository it is in")
+  .option("--source <who>", "who asked", "somebody at a keyboard")
+  .action((text: string, options: { repo?: string; source: string }) => {
+    const config = loadConfig(home);
+    const repo = options.repo ?? config.repos[0];
+
+    if (!repo) {
+      console.error("no repository: pass --repo, or list one under `repos`.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const profile = profileThat("takesTasks", config, "tasks");
+    if (!profile) {
+      process.exitCode = 1;
+      return;
+    }
+
+    const place = profilePaths(home, profile.name);
+    const now = new Date();
+
+    // Written and queued in one step, and nothing is resolved against
+    // anything. That is the whole point of the command: the cost of capturing
+    // a thing you said in passing has to be close to zero, or it does not get
+    // captured.
+    const task = new FileTasks(path.join(place.base, "tasks"), { defaultRepo: repo }).add(
+      { repo, text, source: options.source },
+      now,
+    );
+
+    new FileQueue(place.queue).enqueue({ workId: task.id, reason: "said in passing" }, now);
+
+    console.log(`noted ${task.id} in ${repo}`);
+    console.log(`\`amy --workflow ${profile.name} tick\` picks it up.`);
+  });
 
 program
   .command("status")

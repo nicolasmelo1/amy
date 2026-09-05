@@ -140,6 +140,7 @@ which workflow you drive never costs you the other one's state.
 | `amy pause` / `amy resume` | The handbrake. Ends work in flight, starts nothing new. |
 | `amy status` | Where everything stands, the queue, the loop. `--json`. |
 | `amy note "<text>"` | Write a piece of friction down and queue it. |
+| `amy btw "<text>"` | Something to do, said in passing. Queued as an errand, never a ticket. |
 | `amy workflow list` | Every workflow this install can drive, and what each holds. |
 | `amy workflow rm <name>` | Forget one: records, queue, config entry. Needs `--yes`. |
 | `amy plugin list` | What is installed, and what this profile mounts. |
@@ -154,13 +155,14 @@ which workflow you drive never costs you the other one's state.
 
 ## The skills
 
-Five skills, shipped inside `@amy/cli` and installed into every harness on the
+Six skills, shipped inside `@amy/cli` and installed into every harness on the
 machine by `amy skills`. Invoke them by name.
 
 | Skill | When |
 | :-- | :-- |
 | `/amy` | Driving it: pick up a ticket, move work on, read the status. |
 | `/amy-init` | Setting it up, or when `amy doctor` is red and it is not obvious why. |
+| `/amy-btw` | Capturing something said in passing as work amy will do. |
 | `/amy-workflow` | Designing a workflow, or changing one. One question at a time. |
 | `/amy-show-me` | Seeing a workflow: its shape, and why one thing is stuck. |
 | `/amy-status` | What should I do today, from the project's side rather than the machine's. |
@@ -730,6 +732,7 @@ packages/
 ├── core/                    contracts, the action catalogue, the registry
 ├── workflow-ticket-to-qa/   sixteen states, from in progress to QA
 ├── workflow-note-to-plan/   five states and a refusal, from friction to a plan
+├── workflow-errand/         five states, from a sentence to a pull request
 ├── model-specs/             what a model costs, vendored and locked
 ├── agent-kit/               what every harness plugin shares, and the ladder
 ├── cli/                     the amy command
@@ -740,6 +743,7 @@ plugins/
 ├── file-store/              store
 ├── file-log/                the event log
 ├── file-notes/              notes, and the channel that writes one on a failure
+├── file-tasks/              tasks, written by `amy btw` or by hand
 ├── serial-engine/           engine
 ├── linear/                  tracker
 ├── github/                  code host

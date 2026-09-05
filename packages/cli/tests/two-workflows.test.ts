@@ -5,6 +5,7 @@ import path from "node:path";
 import { CommandResult, HostServices, Mounted, RunOptions, mount, unmetNeeds } from "@amy/core";
 import { FileEventLog } from "@amy/plugin-file-log";
 import { FileNotes } from "@amy/plugin-file-notes";
+import { FileTasks } from "@amy/plugin-file-tasks";
 import { FileQueue } from "@amy/plugin-file-queue";
 import { FileStore } from "@amy/plugin-file-store";
 import { PlanRecord } from "@amy/workflow-note-to-plan";
@@ -561,5 +562,134 @@ describe("a tick that gives up", () => {
     const plans = await mounts(PLANS);
 
     expect(await plans.engine!.discover()).toHaveLength(1);
+  });
+});
+
+/**
+ * The third workflow, driven by the same engine through the same mount.
+ *
+ * Mounted rather than walked: the relay, the forge and the git adapter are
+ * the real ones here, and only the processes they shell out to are scripted.
+ * What it proves is the claim the seam exists for — a third workflow cost a
+ * package, and nothing the other two use changed to take it.
+ */
+describe("a task said in passing", () => {
+  let root: string;
+  let world: World;
+  let host: HostServices;
+
+  const ERRAND = profiles(CONFIG)["errand"]!;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-btw-"));
+    world = new World();
+    host = {
+      runner: { run: world.run },
+      now: () => new Date("2026-09-05T10:00:00.000Z"),
+      log: new FileEventLog(path.join(root, ".amy", "log")),
+      paths: { workspace: "/checkouts", state: path.join(root, ".amy") },
+    };
+  });
+
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const place = () => ({
+    tasks: path.join(root, ".amy", "tasks"),
+    queue: path.join(root, ".amy", directoriesFor(ERRAND.name).queue),
+    records: path.join(root, ".amy", directoriesFor(ERRAND.name).records),
+  });
+
+  async function engine() {
+    const loaded = await load(pluginList(CONFIG, ERRAND));
+    expect(loaded.problems).toEqual([]);
+
+    const outcome = await mount(loaded.plugins, pluginSlices(CONFIG, ERRAND), host);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    return outcome.mounted;
+  }
+
+  /** What `amy btw` does: write it down, and put it on the queue. */
+  function inject(text: string, repo = "acme/widgets"): string {
+    const now = new Date("2026-09-05T10:00:00.000Z");
+    const task = new FileTasks(place().tasks, { defaultRepo: repo }).add(
+      { repo, text, source: "ada, mid-conversation" },
+      now,
+    );
+    new FileQueue(place().queue).enqueue({ workId: task.id, reason: "said in passing" }, now);
+    return task.id;
+  }
+
+  async function drive(limit = 10): Promise<TickResult[]> {
+    const driver = (await engine()).engine!;
+    const results: TickResult[] = [];
+
+    for (let move = 0; move < limit; move += 1) {
+      const result = (await driver.tick()) as TickResult;
+      results.push(result);
+      if (result.kind === "idle" || result.kind === "failed") break;
+    }
+
+    return results;
+  }
+
+  const stateOf = (id: string): string | undefined =>
+    new FileStore<{ id: string; state: string }>(place().records).load(id)?.state;
+
+  it("assembles on the same engine, with nothing unmet", async () => {
+    const mounted = await engine();
+
+    expect(mounted.workflow?.name).toBe("errand");
+    expect(mounted.plugins.map((p) => p.name)).toContain("@amy/plugin-serial-engine");
+    expect(unmetNeeds(mounted, mounted.workflow!)).toEqual([]);
+  });
+
+  it("takes a sentence to a pull request, with no tracker anywhere in it", async () => {
+    const id = inject("bump the stale deps in the api package");
+
+    await drive();
+
+    expect(stateOf(id)).toBe("DONE");
+    expect(world.argvTo("gh").flat().join(" ")).not.toContain("linear");
+  });
+
+  it("finds a task dropped straight into the watched directory", async () => {
+    fs.mkdirSync(place().tasks, { recursive: true });
+    fs.writeFileSync(
+      path.join(place().tasks, "by-hand.md"),
+      "---\nrepo: acme/widgets\n---\n\nthe flaky test in checkout.spec.ts\n",
+      "utf-8",
+    );
+
+    const found = await (await engine()).engine!.discover();
+
+    expect(found).toContain("by-hand");
+  });
+
+  it("keeps its work out of the other workflows' directories", async () => {
+    inject("bump the stale deps in the api package");
+    await drive();
+
+    for (const other of ["ticket-to-qa", "note-to-plan"]) {
+      const records = path.join(root, ".amy", directoriesFor(other).records);
+      expect(fs.existsSync(records) ? fs.readdirSync(records) : []).toEqual([]);
+    }
+  });
+
+  it("spends the agent through the same relay, so it lands in the shared log", async () => {
+    inject("bump the stale deps in the api package");
+    await drive();
+
+    const lines = fs
+      .readdirSync(path.join(root, ".amy", "log"))
+      .flatMap((name) =>
+        fs
+          .readFileSync(path.join(root, ".amy", "log", name), "utf-8")
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line) as { kind: string }),
+      );
+
+    expect(lines.filter((line) => line.kind === "agent.run").length).toBeGreaterThan(0);
   });
 });

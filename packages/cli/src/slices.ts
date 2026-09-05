@@ -52,6 +52,17 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       defaultBranch: config.defaultBranch,
       policy: config.plans.policy,
     },
+    // The third workflow's vocabulary: where an errand may be done, and the
+    // ceilings its decision function reads.
+    "@amy/workflow-errand": {
+      repos: config.repos,
+      defaultBranch: config.defaultBranch,
+      policy: config.errands.policy,
+    },
+    "@amy/plugin-file-tasks": {
+      directory: "tasks",
+      repo: config.repos[0] ?? "",
+    },
     "@amy/plugin-plan-check": {
       defaultBranch: config.defaultBranch,
       commands: config.plans.check,

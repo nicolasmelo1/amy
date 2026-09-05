@@ -2,7 +2,13 @@
   "files": [],
   "references": [
     {
+      "path": "./packages/workflow-errand"
+    },
+    {
       "path": "./plugins/command"
+    },
+    {
+      "path": "./plugins/file-tasks"
     },
     {
       "path": "packages/agent-kit"

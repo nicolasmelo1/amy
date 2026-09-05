@@ -43,6 +43,7 @@
     "@amy/plugin-file-notes": "^0.1.0",
     "@amy/plugin-file-queue": "^0.1.0",
     "@amy/plugin-file-store": "^0.1.0",
+    "@amy/plugin-file-tasks": "^0.1.0",
     "@amy/plugin-notify-hermes": "^0.1.0",
     "@amy/workflow-ticket-to-qa": "^0.1.0",
     "commander": "^14.0.0",
@@ -51,6 +52,7 @@
   "devDependencies": {
     "@amy/plugin-serial-engine": "^0.1.0",
     "@amy/test-fixtures": "^0.1.0",
+    "@amy/workflow-errand": "^0.1.0",
     "@amy/workflow-note-to-plan": "^0.1.0"
   }
 }

@@ -21,6 +21,8 @@ export interface Profile {
   readonly plugins: readonly string[];
   /** Whether `amy note` files friction onto this profile's queue. */
   readonly takesNotes: boolean;
+  /** Whether `amy btw` puts a task onto this profile's queue. */
+  readonly takesTasks: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export interface Profile {
 export const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {
   "ticket-to-qa": { workflow: "@amy/workflow-ticket-to-qa" },
   "note-to-plan": { workflow: "@amy/workflow-note-to-plan", notes: true },
+  errand: { workflow: "@amy/workflow-errand", tasks: true },
 };
 
 /**
@@ -71,6 +74,7 @@ const SHARED: readonly string[] = [
 const NEEDS: Record<string, readonly string[]> = {
   "@amy/workflow-ticket-to-qa": ["@amy/plugin-linear", "@amy/plugin-command-gate"],
   "@amy/workflow-note-to-plan": ["@amy/plugin-plan-check"],
+  "@amy/workflow-errand": ["@amy/plugin-file-tasks"],
 };
 
 /** What `amy init` suggests installing for a profile that lists nothing. */
@@ -89,6 +93,7 @@ export function profiles(config: AmyConfig): Record<string, Profile> {
       workflow: entry.workflow,
       plugins: entry.plugins ?? [],
       takesNotes: entry.notes ?? false,
+      takesTasks: entry.tasks ?? false,
     };
   }
 

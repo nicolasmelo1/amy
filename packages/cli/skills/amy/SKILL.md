@@ -13,7 +13,7 @@ platforms: [macos, linux]
 metadata:
   hermes:
     tags: [amy, linear, github, tickets, pull-requests, review, automation, queue, plans]
-    related_skills: [amy-workflow, amy-init, amy-show-me, amy-status]
+    related_skills: [amy-workflow, amy-init, amy-show-me, amy-status, amy-btw]
 ---
 
 # Driving amy
@@ -60,6 +60,7 @@ exits non-zero when something is wrong, so it is safe to gate on.
 | `amy queue prune` | Drops finished queue items past their retention. |
 | `amy queue recover` | Returns items a dead worker left claimed. |
 | `amy note "<text>"` | Writes a piece of friction down and puts it on the plan queue. Takes `--repo` and `--source`. |
+| `amy btw "<text>"` | Something to do, said in passing. Goes on the errand queue, never becomes a ticket. |
 
 **`stop` and `pause` are different things.** `pause` is the handbrake: it ends
 what is in flight, starts nothing new, and the loop stays up waiting to be
