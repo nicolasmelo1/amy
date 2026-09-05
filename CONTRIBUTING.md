@@ -22,19 +22,23 @@ cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.
 ## What has to be green
 
 ```sh
-npm run gate      # build, typecheck, release config, coverage, lint, knip, audit, sf check, sf verify
+npm run gate      # build, typecheck, release config, docs, coverage, lint, knip, audit, sf check, sf verify
 npm run e2e       # seven scenarios driving the installed command, a few minutes
 ```
 
 `npm run gate` is what CI runs, minus the scenarios. Run it before you open a
 pull request; it is faster to be told by your own machine.
 
-Two of those are worth understanding rather than just obeying:
+Three of those are worth understanding rather than just obeying:
 
 - **`npm run typecheck`** covers the *tests*, which `npm run build` does not:
   the build compiles `src` only, and vitest strips types without checking
   them. Without this step a test can reference a field that does not exist and
   stay green.
+- **`npm run docs:check`** fails when the code moved and the generated half of
+  the documentation did not. Run `npm run docs:generate` and commit the result.
+  Nobody writes a reference table here by hand — see
+  [`docs/development/documentation.md`](docs/development/documentation.md).
 - **`sf verify`** proves every enabled rule *fires*, by running it against a
   deliberately broken fixture. A rule that cannot fail is a rule that is
   lying, and this is what stops one existing.
