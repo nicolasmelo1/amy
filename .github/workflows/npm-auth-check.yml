@@ -1,0 +1,47 @@
+name: temporary npm authentication check
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/npm-auth-check.yml]
+
+permissions: {}
+
+jobs:
+  authenticate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      # No checkout or dependencies: only the runner talks to npm's identity endpoint.
+      - name: Check existing npm credential without publishing
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const token = process.env.NPM_TOKEN;
+          if (!token?.trim()) {
+            console.error('NPM_TOKEN is missing or empty in this workflow context.');
+            process.exit(1);
+          }
+          console.log('NPM_TOKEN is present; checking npm authentication.');
+          try {
+            const response = await fetch('https://registry.npmjs.org/-/whoami', {
+              headers: { authorization: `Bearer ${token}` },
+              signal: AbortSignal.timeout(20000),
+              redirect: 'error',
+            });
+            console.log(`npm identity endpoint HTTP status: ${response.status}`);
+            if (!response.ok) process.exit(1);
+            const identity = await response.json();
+            if (typeof identity.username !== 'string' || !identity.username) {
+              console.error('npm did not return a valid account identity.');
+              process.exit(1);
+            }
+            console.log('npm accepted the credential. No package was published; publish authorization is not tested.');
+          } catch {
+            console.error('npm authentication probe could not complete. No credential or response body is logged.');
+            process.exit(1);
+          }
+          NODE
