@@ -79,12 +79,18 @@ jobs:
       - name: Install sf
         env:
           SF_VERSION: v0.3.0
+        # Downloaded outside the checkout, because the next step in this job
+        # commits the working tree. `sf.sha256` was left behind here and rode
+        # into main on a version bump, where L4.ROOT_FILES_ARE_DECLARED caught
+        # it — correctly, and one release too late.
         run: |
           base="https://github.com/nicolasmelo1/software-factory/releases/download/$SF_VERSION"
-          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu" -o sf
-          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu.sha256" -o sf.sha256
-          printf '%s  sf\n' "$(cut -d' ' -f1 sf.sha256)" | sha256sum -c -
-          chmod +x sf && sudo mv sf /usr/local/bin/sf
+          work=$(mktemp -d)
+          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu" -o "$work/sf"
+          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu.sha256" -o "$work/sf.sha256"
+          (cd "$work" && printf '%s  sf\n' "$(cut -d' ' -f1 sf.sha256)" | sha256sum -c -)
+          chmod +x "$work/sf" && sudo mv "$work/sf" /usr/local/bin/sf
+          rm -rf "$work"
           sf --version
       # The suite before the publish, because a release is the one build
       # nobody can take back. `npm run gate` is not used here on purpose: it
