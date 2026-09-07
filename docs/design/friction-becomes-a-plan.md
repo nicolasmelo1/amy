@@ -25,9 +25,10 @@ particular one is a workflow over it.
 **A second workflow, not more states in the first.** `ticket-to-qa` is
 sixteen states about a ticket reaching QA; a note becoming a plan shares none
 of them and would only ever be a branch inside every predicate. The engine
-stopped knowing what a ticket is in
-[the engine drives a workflow it does not know](plugins-are-installed-not-compiled-in.md),
-so a second workflow now costs a `plan()` and a runtime rather than a fork.
+stopped knowing what a ticket is, as the durable design note
+[plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md)
+explains, so a second workflow now costs a `plan()` and a runtime rather than
+a fork.
 
 This is also what settled that plan's one open criterion. It stayed open
 there until a second workflow really went through the seam, and this is that

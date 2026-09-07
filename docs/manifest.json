@@ -1447,8 +1447,13 @@
         },
         {
           "depth": 2,
-          "title": "O que não fica provado, e vai dito",
-          "slug": "o-que-no-fica-provado-e-vai-dito"
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        },
+        {
+          "depth": 2,
+          "title": "What is not proven, and is not pretended",
+          "slug": "what-is-not-proven-and-is-not-pretended"
         }
       ]
     },

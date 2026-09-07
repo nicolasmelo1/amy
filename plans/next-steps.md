@@ -4,7 +4,7 @@ The execution order. One table, short on purpose: this is the file to reread
 weekly, and the file an agent reads to know what is next.
 
 A plan not listed here is written, valid, and off the critical path until its
-precondition exists. Park it in the second table rather than deleting it.
+precondition exists; unfinished work remains listed here until it is done.
 
 Every row below is one pull request. If a row cannot be reviewed in one
 sitting it is two rows, and each of them names the gate that proves it — a
