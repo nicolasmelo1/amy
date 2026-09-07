@@ -1585,6 +1585,11 @@
         },
         {
           "depth": 2,
+          "title": "The hooks",
+          "slug": "the-hooks"
+        },
+        {
+          "depth": 2,
           "title": "What has to be green",
           "slug": "what-has-to-be-green"
         },
