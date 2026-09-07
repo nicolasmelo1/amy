@@ -30,7 +30,7 @@ jobs:
       # `sf lock`: L2.CATALOG_ONLY_TIGHTENS reports every enabled rule the
       # upgrade made weaker.
       - name: Install sf
-        run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.3.0 --locked
+        run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.0 --locked
       # verify first: a check that stopped firing makes the run below
       # meaningless, and it is the cheaper failure to discover.
       #
