@@ -1,0 +1,40 @@
+#!/bin/sh
+# The whole gate, which is what CI runs. Enable with ./scripts/setup-dev.sh.
+#
+# `pre-commit` runs the cheap half on every commit; this runs everything,
+# once, at the moment the work stops being local. That is the right split
+# because the slow steps — coverage, the dead-code detector, the dependency
+# audit — are the ones nobody wants between them and a commit, and they are
+# also the ones there is no point discovering from a red pull request.
+#
+# The scenarios are deliberately not here. They take minutes and need bun,
+# and the gate already fails when a change touched a gate's activation paths
+# without the evidence being re-run — so the omission is reported rather than
+# assumed.
+#
+# `git push --no-verify` skips it.
+set -eu
+
+if ! command -v sf >/dev/null 2>&1; then
+  echo "pre-push: sf is not installed, and it is half the gate." >&2
+  echo "          ./scripts/setup-dev.sh installs the version this repository locked." >&2
+  exit 1
+fi
+
+echo "pre-push: npm run gate — what CI runs, minus the scenarios"
+
+if ! npm run gate; then
+  cat >&2 <<'MSG'
+
+pre-push: the gate is red, and CI would say the same.
+
+If the finding is stale evidence, the proof was about code that no longer
+exists. Re-run that gate's scenario and re-seal it:
+
+  ./.software-factory/evidence/<gate>-scenario.sh
+  sf seal <gate>
+
+Never hand-edit a digest.
+MSG
+  exit 1
+fi

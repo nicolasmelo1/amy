@@ -4,20 +4,56 @@
 
 ```sh
 git clone https://github.com/nicolasmelo1/amy && cd amy
-npm ci
-npm run build
-npm test          # 870 tests, about two seconds
+./scripts/setup-dev.sh
 ```
 
-If that is green, everything below is optional reading until you need it.
+That is the whole setup, on a machine that has never seen this repository. It
+installs the dependencies, installs `sf` at the version this repository
+locked, enables the git hooks, and builds — and it is safe to run again, which
+is the fastest way to find out what a machine is missing. It needs
+[rust](https://rustup.rs) for `sf`, and it will say so rather than guess.
 
 The one thing worth knowing before you touch anything: **`sf` is not
 optional.** It is the tool that turns this repository's rules into checks that
-fail, and `npm run gate` runs it. Install it once:
+fail, and `npm run gate` runs it. The setup script installs it; by hand it is:
 
 ```sh
 cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.0 --locked
 ```
+
+That version is not a suggestion. The catalog ships inside the binary, so a
+different `sf` enforces a different set of rules, and the mismatch is
+invisible on the machine that has the newer one and red in CI. It is written
+in `.software-factory/catalog.lock.json`, everything that installs `sf` is
+checked against it by `npm run check:toolchain`, and the setup script reads it
+rather than keeping a copy.
+
+Then:
+
+```sh
+npm test          # 1015 tests, about a second
+```
+
+If that is green, everything below is optional reading until you need it.
+
+## The hooks
+
+`./scripts/setup-dev.sh` points `core.hooksPath` at [`.githooks`](.githooks),
+and `npm ci` does too, so a clone that installs is a clone with them on. Git
+will not enable a hook out of a checkout on its own — that is a security
+property rather than an oversight, and the reason this needs saying at all.
+
+| Hook | What it runs | Cost |
+| :-- | :-- | :-- |
+| `pre-commit` | build, typecheck, the toolchain and docs checks, the tests, lint, `sf verify`, `sf check` | ten to fifteen seconds |
+| `pre-push` | `npm run gate`, which is what CI runs | a minute or two |
+
+Both take `--no-verify` when you know why. Neither is a substitute for
+reading the finding: the point of catching it here is that your own machine
+tells you before a pull request does.
+
+`pre-commit` reads the working tree rather than the staged content, so a
+deliberately partial commit is checked loosely. `pre-push` has the last word.
 
 ## What has to be green
 

@@ -1,8 +1,60 @@
 #!/bin/sh
-# Enable with: git config core.hooksPath .githooks
+# The fast half of the gate, ten to fifteen seconds. Enable with
+# ./scripts/setup-dev.sh, which sets core.hooksPath to this directory.
+#
+# What is here and what is in pre-push is decided by one question: would CI
+# fail on this, and is it cheap? Coverage, knip and the dependency audit are
+# the slow ones and they wait for the push. Everything below is a second or
+# two and catches the mistakes this repository actually makes — a lock left
+# unmoved after editing a locked file, evidence that expired because the code
+# it certified changed, generated docs that did not follow the code.
+#
+# It reads the working tree, not the staged content. Committing a subset of
+# your changes is therefore checked loosely here; `pre-push` runs the whole
+# gate and is the one that has the last word.
+#
+# `git commit --no-verify` skips it, for when you know why.
 set -eu
 
-# verify first: a check that no longer fires would make the run below
+if ! command -v sf >/dev/null 2>&1; then
+  echo "pre-commit: sf is not installed, and it is half the gate." >&2
+  echo "            ./scripts/setup-dev.sh installs the version this repository locked." >&2
+  exit 1
+fi
+
+run() {
+  label=$1
+  shift
+  printf '  … %s' "$label"
+
+  if output=$("$@" 2>&1); then
+    printf '\r  \033[32m✓\033[0m %s\033[K\n' "$label"
+  else
+    printf '\r  \033[31m✗\033[0m %s\033[K\n\n%s\n' "$label" "$output"
+    exit 1
+  fi
+}
+
+echo "pre-commit"
+
+# First, because a stale build makes the checks below judge code that is no
+# longer there, and it is incremental so it costs nothing when nothing moved.
+run "build"       npm run build --silent
+run "typecheck"   npm run typecheck --silent
+run "toolchain"   npm run check:toolchain --silent
+run "docs"        npm run docs:check --silent
+run "plans"       npm run check:plans --silent
+run "config"      npm run check:config --silent
+run "release"     npm run check:release --silent
+run "tests"       npm test --silent
+run "lint"        npm run lint --silent
+
+# verify first: a check that no longer fires would make the check below
 # meaningless, and it is the cheaper failure to discover.
-sf verify
-sf check
+#
+# --allow-commands on both, because that is what CI passes: one rule
+# regenerates docs/rules.md and compares, and without the flag it reports
+# itself as unrunnable rather than passing — so a hook without it is quietly
+# weaker than the thing it is meant to predict.
+run "sf verify"   sf verify --allow-commands
+run "sf check"    sf check --allow-commands

@@ -15,10 +15,15 @@ you do not need to be in this repository at all — see
 
 ```sh
 git clone https://github.com/nicolasmelo1/amy && cd amy
-npm ci
-npm run build
-npm test          # about two seconds
+./scripts/setup-dev.sh
+npm test          # about a second
 ```
+
+`setup-dev.sh` is the whole setup on a machine that has never seen this
+repository: the dependencies, `sf` at the version this repository locked, the
+git hooks, and a build. It is safe to run again, which is the fastest way to
+find out what a machine is missing, and it needs [rust](https://rustup.rs) for
+`sf` — it says so rather than guessing.
 
 If that is green, everything below is optional reading until you need it.
 
@@ -28,6 +33,28 @@ turns this repository's rules into checks that fail, and `npm run gate` runs it.
 ```sh
 cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.0 --locked
 ```
+
+That version is not a suggestion: the catalog ships inside the binary, so a
+different `sf` enforces a different set of rules. The mismatch is invisible on
+the machine holding the newer one and red in CI, which is why
+`.software-factory/catalog.lock.json` is the source of truth and
+`npm run check:toolchain` fails when anything installing `sf` disagrees with
+it.
+
+## The hooks
+
+The setup script points `core.hooksPath` at `.githooks`, and `npm ci` does too,
+so a clone that installs is a clone with them on. Git will not enable a hook
+out of a checkout on its own — a security property rather than an oversight.
+
+| Hook | What it runs | Cost |
+| :-- | :-- | :-- |
+| `pre-commit` | build, typecheck, the toolchain and docs checks, the tests, lint, `sf verify`, `sf check` | ten to fifteen seconds |
+| `pre-push` | `npm run gate`, which is what CI runs | a minute or two |
+
+Both take `--no-verify`. `pre-commit` reads the working tree rather than the
+staged content, so a deliberately partial commit is checked loosely and
+`pre-push` has the last word.
 
 ## What has to be green
 
