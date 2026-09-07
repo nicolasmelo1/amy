@@ -1,6 +1,6 @@
 {
   "name": "@amykit/workflow-ticket-to-qa",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
   "type": "module",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.2.0"
+    "@amykit/core": "^0.2.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-agent-relay",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
   "type": "module",
   "license": "MIT",
@@ -28,9 +28,9 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/agent-kit": "^0.2.0",
-    "@amykit/core": "^0.2.0",
-    "@amykit/workflow-ticket-to-qa": "^0.2.0"
+    "@amykit/agent-kit": "^0.2.1",
+    "@amykit/core": "^0.2.1",
+    "@amykit/workflow-ticket-to-qa": "^0.2.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

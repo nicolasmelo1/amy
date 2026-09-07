@@ -1,6 +1,6 @@
 {
   "name": "@amykit/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
   "type": "module",
   "license": "MIT",

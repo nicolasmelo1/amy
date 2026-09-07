@@ -1,5 +1,13 @@
 # @amykit/plugin-claude
 
+## 0.2.1
+
+### Patch Changes
+
+- @amykit/agent-kit@0.2.1
+  - @amykit/core@0.2.1
+  - @amykit/model-specs@0.2.1
+
 ## 0.2.0
 
 ### Patch Changes
