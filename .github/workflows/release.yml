@@ -78,7 +78,13 @@ jobs:
       # nothing verifies is a supply chain nobody is watching.
       - name: Install sf
         env:
-          SF_VERSION: v0.3.0
+          # The same version the submission gate installs: the catalog ships
+          # inside the binary, so two versions in one repository re-lock from
+          # two catalogs. The v0.3.0 binary here was the quiet red: `sf lock`
+          # regenerated the locks against its older catalog, the version bump
+          # moved `catalog.lock.json` with it, and the scope check refused a
+          # release that may not carry that change — on every push, forever.
+          SF_VERSION: v0.4.0
         # Downloaded outside the checkout, because the next step in this job
         # commits the working tree. `sf.sha256` was left behind here and rode
         # into main on a version bump, where L4.ROOT_FILES_ARE_DECLARED caught
