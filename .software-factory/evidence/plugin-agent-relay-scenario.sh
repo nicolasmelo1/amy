@@ -124,12 +124,12 @@ const TICKET = {
 };
 
 /** Mounts the three built plugins with a ladder, and returns the agent port. */
-async function hostWith(ladder, { budget, seed = [], skills } = {}) {
+async function hostWith(ladder, { budget, seed = [], skills, models = ["sonnet", "opus"] } = {}) {
   const events = [...seed];
   const outcome = await mount(
     [claude, codex, relay],
     {
-      "@amykit/plugin-claude": { defaultBranch: "main", models: ["sonnet", "opus"] },
+      "@amykit/plugin-claude": { defaultBranch: "main", models },
       "@amykit/plugin-codex": { defaultBranch: "main", models: ["gpt-5"] },
       "@amykit/plugin-agent-relay": {
         ladder,
@@ -301,6 +301,34 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 
   const typo = await hostWith(LADDER, { budget: { perDay: { costUsd: 20 } } });
   record("relay.refuses_a_budget_it_cannot_mean_at_boot", typo.outcome.ok === false);
+
+  // A ceiling in dollars over a model nobody can price is not a loose
+  // ceiling, it is an inert one: runs on it are recorded with no cost, the
+  // dollar figure never moves, and the token ceiling beside it is the only
+  // thing that ever stops the work. `claude:opus-9` is a model the shipped
+  // price table has no row for, which is what a table lagging behind a
+  // release looks like from here.
+  const priceless = await hostWith(["claude:opus-9"], {
+    models: ["opus-9"],
+    budget: { perWeek: { costUsd: 150 } },
+  });
+  const refused = priceless.outcome.ok === false ? priceless.outcome.problems.join("\n") : "";
+
+  record("relay.refuses_a_dollar_ceiling_it_cannot_price", priceless.outcome.ok === false);
+  record(
+    "relay.names_the_model_that_has_no_price",
+    refused.includes("`opus-9`") && refused.includes("`claude:opus-9`"),
+  );
+
+  // The same ladder, the same missing row, a ceiling in tokens. Tokens are
+  // what a subscription meters and every harness reports them, so this one
+  // never needed the price table and refusing it would be theatre.
+  const inTokens = await hostWith(["claude:opus-9"], {
+    models: ["opus-9"],
+    budget: { perWeek: { tokens: 30000000 } },
+  });
+
+  record("relay.a_token_ceiling_needs_no_price_table", inTokens.outcome.ok === true);
 }
 
 // 8. A skill per step: the same ladder, asking who should do the work rather
@@ -351,7 +379,7 @@ fs.writeFileSync(
       scenario: "plugin-agent-relay",
       status: failed.length === 0 ? "passed" : "failed",
       goal:
-        "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, and hands a step to the skill I named rather than to its own prompt.",
+        "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, refuses to start at all when the dollar ceiling I wrote could never stop anything, and hands a step to the skill I named rather than to its own prompt.",
       artifact: {
         package: "@amykit/plugin-agent-relay",
         entry: "dist/index.js",

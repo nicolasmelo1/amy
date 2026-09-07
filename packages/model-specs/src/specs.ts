@@ -28,6 +28,21 @@ export interface ModelSpec extends Rates {
 export interface SpecTable {
   source: string;
   note: string;
+  /**
+   * The short names a harness CLI accepts, and the id each one stands for.
+   *
+   * `claude --model sonnet` is documented as "an alias for the latest model",
+   * and a ladder is written in those names because that is what the config
+   * passes through. Without this, every rung in the shipped template looks
+   * unpriceable.
+   *
+   * Only ever consulted to answer *whether a ladder can be priced at all*.
+   * What a run cost is worked out from the id the harness reported, which is
+   * the full dated one, so an alias that drifts a version costs nobody a
+   * cent — it would only make a boot check look at the wrong row of a table
+   * where both rows are priced.
+   */
+  aliases?: Record<string, string>;
   models: ModelSpec[];
 }
 
@@ -70,20 +85,44 @@ export function forgetSpecTable(): void {
  * `anthropic/claude-sonnet-4-5` carries the provider, and
  * `claude-haiku-4-5-20251001` carries the release date. Without this every
  * lookup misses and every cost is `unknown`.
+ *
+ * People decorate too. A version is written `4.5` everywhere it is spoken
+ * about and `4-5` in every id, and a ladder is written by hand.
  */
 export function normalizeModelId(model: string): string[] {
   const lower = model.trim().toLowerCase();
   const withoutProvider = lower.includes("/") ? lower.slice(lower.lastIndexOf("/") + 1) : lower;
   const withoutWindow = withoutProvider.replace(/\[[^\]]*\]$/, "");
+  const dashed = withoutWindow.replace(/(\d)\.(\d)/g, "$1-$2");
 
-  const candidates = [withoutWindow];
+  const candidates = [dashed];
 
   // A dated release prices the same as the family it belongs to, so the
   // undated id is the fallback rather than a miss.
-  const undated = withoutWindow.replace(/-\d{8}$/, "");
-  if (undated !== withoutWindow) candidates.push(undated);
+  const undated = dashed.replace(/-\d{8}$/, "");
+  if (undated !== dashed) candidates.push(undated);
 
   return candidates;
+}
+
+/**
+ * The id a short name stands for, or the name unchanged.
+ *
+ * Kept out of `specFor` on purpose. Costing a run from an alias would put a
+ * guess about which version ran behind a number that is then spent against a
+ * ceiling, and the harness always reports the real id. This exists for the
+ * one question an alias can answer honestly: whether a ladder written in
+ * short names is a ladder this table could price.
+ */
+export function aliasFor(model: string, from: SpecTable = specTable()): string {
+  const aliases = from.aliases ?? {};
+
+  for (const candidate of normalizeModelId(model)) {
+    const named = aliases[candidate];
+    if (named) return named;
+  }
+
+  return model;
 }
 
 /** The spec for a model, or nothing, which is a real answer. */

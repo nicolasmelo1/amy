@@ -1,14 +1,30 @@
 {
-  "source": "https://github.com/steipete/CodexBar \u2014 Sources/CodexBarCore/Vendored/CostUsage/CostUsagePricing.swift",
-  "note": "A model with no verifiable price is left out on purpose. Absent means costSource `unknown`, which is the honest answer; a guessed rate would be spent against a budget ceiling.",
+  "source": "https://platform.claude.com/docs/en/about-claude/pricing and https://models.dev/api.json for the base rates, taken by `amy models refresh` and committed; long-context tiering from https://github.com/steipete/CodexBar — Sources/CodexBarCore/Vendored/CostUsage/CostUsagePricing.swift, which is the only one of the three that publishes it",
+  "note": "A model with no verifiable price is left out on purpose. Absent means costSource `unknown`, which is the honest answer; a guessed rate would be spent against a budget ceiling. A `costUsd` ceiling over a ladder this table cannot price is refused at boot rather than left inert, so a model missing here is a boot failure with a name in it and not a ceiling that never fires.",
+  "aliases": {
+    "fable": "claude-fable-5-1",
+    "opus": "claude-opus-5",
+    "sonnet": "claude-sonnet-5",
+    "haiku": "claude-haiku-4-5"
+  },
   "models": [
+    {
+      "provider": "anthropic",
+      "model": "claude-fable-5-1",
+      "inputPerToken": 1e-05,
+      "outputPerToken": 5e-05,
+      "cacheWritePerToken": 1.25e-05,
+      "cacheReadPerToken": 2.5e-07,
+      "contextWindow": 1000000
+    },
     {
       "provider": "anthropic",
       "model": "claude-fable-5",
       "inputPerToken": 1e-05,
       "outputPerToken": 5e-05,
       "cacheWritePerToken": 1.25e-05,
-      "cacheReadPerToken": 1e-06
+      "cacheReadPerToken": 1e-06,
+      "contextWindow": 1000000
     },
     {
       "provider": "anthropic",
@@ -16,7 +32,26 @@
       "inputPerToken": 1e-06,
       "outputPerToken": 5e-06,
       "cacheWritePerToken": 1.25e-06,
-      "cacheReadPerToken": 1e-07
+      "cacheReadPerToken": 1e-07,
+      "contextWindow": 200000
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "inputPerToken": 2e-06,
+      "outputPerToken": 1e-05,
+      "cacheWritePerToken": 2.5e-06,
+      "cacheReadPerToken": 2e-07,
+      "contextWindow": 1000000
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "inputPerToken": 3e-06,
+      "outputPerToken": 1.5e-05,
+      "cacheWritePerToken": 3.75e-06,
+      "cacheReadPerToken": 3e-07,
+      "contextWindow": 1000000
     },
     {
       "provider": "anthropic",
@@ -35,7 +70,25 @@
     },
     {
       "provider": "anthropic",
-      "model": "claude-opus-4-5",
+      "model": "claude-opus-5",
+      "inputPerToken": 5e-06,
+      "outputPerToken": 2.5e-05,
+      "cacheWritePerToken": 6.25e-06,
+      "cacheReadPerToken": 5e-07,
+      "contextWindow": 1000000
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-8",
+      "inputPerToken": 5e-06,
+      "outputPerToken": 2.5e-05,
+      "cacheWritePerToken": 6.25e-06,
+      "cacheReadPerToken": 5e-07,
+      "contextWindow": 1000000
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-7",
       "inputPerToken": 5e-06,
       "outputPerToken": 2.5e-05,
       "cacheWritePerToken": 6.25e-06,
@@ -51,7 +104,7 @@
     },
     {
       "provider": "anthropic",
-      "model": "claude-opus-4-7",
+      "model": "claude-opus-4-5",
       "inputPerToken": 5e-06,
       "outputPerToken": 2.5e-05,
       "cacheWritePerToken": 6.25e-06,

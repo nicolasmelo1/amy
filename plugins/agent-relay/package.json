@@ -30,6 +30,7 @@
   "dependencies": {
     "@amykit/agent-kit": "^0.2.0",
     "@amykit/core": "^0.2.0",
+    "@amykit/model-specs": "^0.2.0",
     "@amykit/workflow-ticket-to-qa": "^0.2.0"
   },
   "devDependencies": {

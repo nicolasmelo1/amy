@@ -29,6 +29,7 @@ import {
 import { AgentResult } from "@amykit/core";
 import { AgentRelay } from "./AgentRelay.js";
 import { configSchema } from "./config.js";
+import { inertCeilingProblems } from "./pricing.js";
 import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
 
 /**
@@ -136,12 +137,34 @@ function mountBudget(registry: Registry, ctx: PluginContext): void {
 
 function build(ctx: PluginContext): AgentRelay {
   const contributed = [...ctx.contributions(AGENT_COLLECTION).values()] as NamedAgent[];
+  const rungs = ladders(ctx, contributed);
 
-  return new AgentRelay(ladders(ctx, contributed), {
+  // Here rather than beside `mountBudget`, because this is the one question
+  // that needs both halves in hand: what the ceiling is measured in, and
+  // which models are underneath it. `register` has only the first.
+  refuseAnInertCeiling(ctx, rungs);
+
+  return new AgentRelay(rungs, {
     log: ctx.log,
     now: ctx.now,
     skills: skillLadders(ctx),
   });
+}
+
+/**
+ * Refuses a ceiling in money over a ladder whose cost nobody could work out.
+ *
+ * The other half of the sentence `mountBudget` already says. That one refuses
+ * a budget naming a window nobody meters; this one refuses a budget naming a
+ * measure nobody can supply, which is the same failure — a ceiling that reads
+ * like policy and is decoration — arrived at from the other side.
+ */
+function refuseAnInertCeiling(ctx: PluginContext, rungs: Ladders<NamedAgent>): void {
+  const parsed = parseBudget(ctx.config.budget);
+  if (!parsed.ok) throw new Error(parsed.problems.join("; "));
+
+  const problems = inertCeilingProblems(parsed.limits, rungs);
+  if (problems.length > 0) throw new Error(problems.join("; "));
 }
 
 /**

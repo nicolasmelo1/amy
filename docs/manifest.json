@@ -669,6 +669,11 @@
         },
         {
           "depth": 3,
+          "title": "Refuse a dollar ceiling the price table cannot price, and price the Claude 5 family.",
+          "slug": "refuse-a-dollar-ceiling-the-price-table-cannot-price-and-price-the-claude-5-family"
+        },
+        {
+          "depth": 3,
           "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
           "slug": "add-the-plan-board-consistency-check-to-the-gate-so-delivered-plans-can-move-into-durable-design-notes-without-losing-their-required-assertions"
         },
@@ -1513,6 +1518,11 @@
           "depth": 2,
           "title": "The ceiling on spending is part of the same claim",
           "slug": "the-ceiling-on-spending-is-part-of-the-same-claim"
+        },
+        {
+          "depth": 3,
+          "title": "A ceiling in dollars is only a ceiling if the runs arrive priced",
+          "slug": "a-ceiling-in-dollars-is-only-a-ceiling-if-the-runs-arrive-priced"
         },
         {
           "depth": 2,
@@ -5238,6 +5248,9 @@
           "relay.stops_new_work_at_the_ceiling",
           "relay.starts_work_while_the_window_has_room",
           "relay.refuses_a_budget_it_cannot_mean_at_boot",
+          "relay.refuses_a_dollar_ceiling_it_cannot_price",
+          "relay.names_the_model_that_has_no_price",
+          "relay.a_token_ceiling_needs_no_price_table",
           "relay.hands_the_step_to_the_skill_named_for_it",
           "relay.asks_no_other_skill_once_one_answered",
           "relay.moves_to_the_next_skill_when_the_first_did_not_answer",
@@ -5627,6 +5640,30 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-ceiling-that-cannot-be-inert",
+        "title": "Refuse a dollar ceiling the price table cannot price, and price the Claude 5 family.",
+        "body": "`specs.json` had no row for the Claude 5 family, so `specFor` returned nothing,\nevery run was recorded with no `costUsd`, and an install with\n`budget.perWeek.costUsd: 150` set had no dollar ceiling at all — not loose,\ninert. The token ceiling beside it still fired, which is what made it quiet.\n\nThe table now prices `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-8`,\n`claude-sonnet-4-6` and `claude-fable-5-1` at rates taken from models.dev, and\ndeclares the short names a harness CLI accepts (`opus`, `sonnet`, `haiku`,\n`fable`) so a ladder written in them can be recognised. A refresh keeps both,\nbecause models.dev carries neither long-context tiering nor aliases.\n\nA price table always lags, so the lasting half is that the ceiling knows: the\nrelay refuses at boot when a rung in any ladder — including a step's own —\nnames a model the table cannot price, naming the model and the rung, so the\nanswer is `amy models refresh` or a ceiling in tokens. A ceiling in tokens over\nthe same ladder boots untouched.\n\n`amy budget` now reports how many runs in a window carry no price, rather than\na dollar figure that is arithmetically true and practically a lie.\n\n**Breaking for one config shape:** `ladder: [claude]` — a single-model install\nnaming no model — is now refused under a `costUsd` ceiling, because there is no\nid to price it by. Name the model (`claude:sonnet`) or set the ceiling in\ntokens.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/model-specs",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
       {
         "id": "plan-board-outlives-plan",
         "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",

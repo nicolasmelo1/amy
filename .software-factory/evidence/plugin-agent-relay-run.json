@@ -1,7 +1,7 @@
 {
   "scenario": "plugin-agent-relay",
   "status": "passed",
-  "goal": "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, and hands a step to the skill I named rather than to its own prompt.",
+  "goal": "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, refuses to start at all when the dollar ceiling I wrote could never stop anything, and hands a step to the skill I named rather than to its own prompt.",
   "artifact": {
     "package": "@amykit/plugin-agent-relay",
     "entry": "dist/index.js",
@@ -12,9 +12,9 @@
     ]
   },
   "observed": {
-    "assertions_run": 29,
+    "assertions_run": 32,
     "assertions_failed": 0,
-    "node": "v22.22.2"
+    "node": "v22.22.1"
   },
   "assertions": [
     {
@@ -107,6 +107,18 @@
     },
     {
       "type": "relay.refuses_a_budget_it_cannot_mean_at_boot",
+      "status": "passed"
+    },
+    {
+      "type": "relay.refuses_a_dollar_ceiling_it_cannot_price",
+      "status": "passed"
+    },
+    {
+      "type": "relay.names_the_model_that_has_no_price",
+      "status": "passed"
+    },
+    {
+      "type": "relay.a_token_ceiling_needs_no_price_table",
       "status": "passed"
     },
     {

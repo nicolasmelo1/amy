@@ -13,6 +13,12 @@
     },
     {
       "path": "../../packages/workflow-ticket-to-qa"
+    },
+    {
+      "path": "../../packages/agent-kit"
+    },
+    {
+      "path": "../../packages/model-specs"
     }
   ]
 }

@@ -52,6 +52,26 @@ does anything on the day the money is nearly gone, which is the day nobody is
 watching. So it is proved here, against the built artifacts, with a log
 seeded to look like a window that is nearly spent.
 
+### A ceiling in dollars is only a ceiling if the runs arrive priced
+
+A ceiling in `costUsd` rests on something the relay does not own: a price
+table, which always lags a release. When the table has no row for the model a
+rung names, that rung's runs are recorded with no cost, `spend.costUsd` never
+moves, and the number in the config stops nothing at all. Not loose — inert.
+The token ceiling beside it still fires, which is what makes this quiet: the
+machine does stop sometimes, just never for the reason that was written down.
+
+So a dollar ceiling over a ladder this install cannot price is refused where a
+typo in a ladder is refused, while boot can still refuse, and the refusal
+names the model and the rung so the answer is one of two commands rather than
+a search. A ceiling in tokens over the same ladder boots: tokens are what a
+subscription meters, every harness that runs reports them, and that ceiling
+never needed a price table.
+
+The scenario proves all three against the built artifacts, with a tier the
+shipped table has no row for — which is exactly what a table lagging behind a
+release looks like from here.
+
 ## And who does the step, which is the same ladder again
 
 A skill named for a step is tried before amy's own prompt, and the harness
@@ -96,6 +116,15 @@ after one escalates for no reason.
 - [x] A budget naming a window nobody meters is refused while boot can still
       refuse it
       (proof: assertion:relay.refuses_a_budget_it_cannot_mean_at_boot)
+- [x] A ceiling in dollars over a model the price table cannot price is
+      refused, rather than mounted and inert
+      (proof: assertion:relay.refuses_a_dollar_ceiling_it_cannot_price)
+- [x] That refusal names the model and the rung that names it, so the answer
+      is `amy models refresh` or a ceiling in tokens
+      (proof: assertion:relay.names_the_model_that_has_no_price)
+- [x] The same ladder boots under a ceiling in tokens, which never needed a
+      price table
+      (proof: assertion:relay.a_token_ceiling_needs_no_price_table)
 - [x] A step with a skill named for it is handed to that skill rather than to
       amy's own prompt
       (proof: assertion:relay.hands_the_step_to_the_skill_named_for_it)
@@ -109,10 +138,18 @@ after one escalates for no reason.
       (proof: assertion:relay.names_the_skills_there_were_to_choose_from)
 
 **Exit condition:** the gate carries a sealed manifest whose report shows
-these sixteen assertions passing against the built artifacts, and touching the
-relay or the shared agent kit turns `sf check` red until the run is repeated
-and resealed.
+these nineteen assertions passing against the built artifacts, and touching
+the relay or the shared agent kit turns `sf check` red until the run is
+repeated and resealed.
 
 What is not proven here, and is not pretended: no harness reports a quota
 except claude, so codex and hermes read a throttle as a failure. The ladder
 still reaches another harness, one rung later than it could.
+
+Nor is the price table's accuracy a claim this gate makes. It is checked where
+it lives, against two real `claude -p --output-format json` runs whose
+envelopes carry the cost the harness itself billed — the table has to
+reproduce those to the last digit, or the same run costs two different amounts
+depending on which harness reached the model. What this gate promises is
+narrower and is the part that decides whether work starts: that a ceiling in
+dollars either can stop something, or the machine refused to boot.

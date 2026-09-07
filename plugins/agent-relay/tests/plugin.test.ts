@@ -129,6 +129,53 @@ describe("mounting the relay", () => {
     expect(outcome.ok === false && outcome.problems.join("\n")).toContain("perFiveHours, perWeek");
   });
 
+  it("refuses a dollar ceiling over a model the price table cannot price", async () => {
+    // The ceiling would not be loose, it would be inert: runs on an unpriced
+    // model are recorded with no cost, `spend.costUsd` never moves, and the
+    // only thing that ever stops the work is the token ceiling beside it.
+    const outcome = await mount([relay, harnessPlugin("claude", ["opus-9"])], {
+      "@amykit/plugin-agent-relay": { ladder: [], budget: { perWeek: { costUsd: 150 } } },
+    }, { ...host, log: { append: () => {}, read: () => [] } });
+
+    expect(outcome.ok).toBe(false);
+    const said = outcome.ok === false ? outcome.problems.join("\n") : "";
+    expect(said).toContain("`opus-9`");
+    expect(said).toContain("`claude:opus-9`");
+  });
+
+  it("boots the same ladder when the ceiling is in tokens", async () => {
+    // Tokens are what a subscription meters and every harness reports them,
+    // so this ceiling never needed the price table.
+    const outcome = await mount([relay, harnessPlugin("claude", ["opus-9"])], {
+      "@amykit/plugin-agent-relay": { ladder: [], budget: { perWeek: { tokens: 30_000_000 } } },
+    }, { ...host, log: { append: () => {}, read: () => [] } });
+
+    expect(outcome.ok).toBe(true);
+  });
+
+  it("boots a dollar ceiling over a model the table does price", async () => {
+    // `sonnet` is the short name the CLI takes and the ladder is written in
+    // it, so this is the shipped template's own shape.
+    const outcome = await mount([relay, harnessPlugin("claude", ["sonnet"])], {
+      "@amykit/plugin-agent-relay": { ladder: [], budget: { perWeek: { costUsd: 150 } } },
+    }, { ...host, log: { append: () => {}, read: () => [] } });
+
+    expect(outcome.ok).toBe(true);
+  });
+
+  it("refuses a dollar ceiling over a model named only under one step", async () => {
+    const outcome = await mount([relay, harnessPlugin("claude", ["sonnet", "opus-9"])], {
+      "@amykit/plugin-agent-relay": {
+        ladder: ["claude:sonnet"],
+        ladderByStep: { implement: ["claude:opus-9"] },
+        budget: { perFiveHours: { costUsd: 20 } },
+      },
+    }, { ...host, log: { append: () => {}, read: () => [] } });
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("\n")).toContain("`claude:opus-9`");
+  });
+
   it("refuses a ceiling with no log to measure the spending against", async () => {
     // The host lends the log. Without one the ledger has nothing to read, and
     // a ceiling nobody can measure is a promise rather than a brake.

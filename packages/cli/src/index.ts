@@ -12,15 +12,12 @@ import {
   BUDGET_WINDOWS,
   Engine,
   FileStopSwitch,
-  LogBudget,
   Mounted,
   NodeCommandRunner,
   WorkRecord,
-  ceilingFor,
   describeBuild,
   mount,
   parseBudget,
-  spendSince,
   stampId,
   unmetNeeds,
 } from "@amykit/core";
@@ -46,6 +43,7 @@ import {
   removeProfile,
   writeProfilePlugins,
 } from "./config.js";
+import { budgetLines } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { NOT_INSTALLED, installedPlugins, load } from "./loader.js";
@@ -709,24 +707,13 @@ program
     const log = new FileEventLog(paths(home).log, undefined, build);
     const now = new Date();
 
-    for (const window of BUDGET_WINDOWS) {
-      const since = new Date(now.getTime() - window.ms);
-      const spend = spendSince(log.read(since), since);
-      const ceiling = ceilingFor(parsed.limits, window.name);
+    // Read once, over the longest window any ceiling could be set on, rather
+    // than once per window: two reads of a growing file can disagree, and a
+    // report whose windows disagree is worse than a slower one.
+    const longest = Math.max(...BUDGET_WINDOWS.map((window) => window.ms));
+    const events = log.read(new Date(now.getTime() - longest));
 
-      console.log(
-        `${window.name.padEnd(14)} ${String(spend.runs).padStart(4)} run(s)  ` +
-          `${against(spend.tokens, ceiling?.tokens, "tokens")}  ` +
-          `${against(spend.costUsd, ceiling?.costUsd, "USD")}`,
-      );
-    }
-
-    const decision = new LogBudget(log, parsed.limits).mayStart(now);
-    console.log(
-      decision.ok
-        ? "\nnew work: allowed"
-        : `\nnew work: parked, ${decision.reason} (room again in ${Math.round(decision.retryAfterMs / 60000)} min)`,
-    );
+    for (const line of budgetLines(events, parsed.limits, now)) console.log(line);
   });
 
 /**
@@ -756,16 +743,6 @@ function configuredBudget(): unknown {
   const config = loadConfig(home);
   const slice = pluginSlices(config, selected(config))["@amykit/plugin-agent-relay"];
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
-}
-
-/** `1,234 / 2,000 tokens (62%)`, or the spend alone when nothing caps it. */
-function against(used: number, limit: number | undefined, unit: string): string {
-  const spent = unit === "USD" ? `$${used.toFixed(2)}` : used.toLocaleString();
-  if (limit === undefined) return `${spent} ${unit} (no ceiling)`;
-
-  const cap = unit === "USD" ? `$${limit.toFixed(2)}` : limit.toLocaleString();
-  const share = limit === 0 ? 100 : Math.round((used / limit) * 100);
-  return `${spent} of ${cap} ${unit} (${share}%)`;
 }
 
 const modelsCommand = program

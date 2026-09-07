@@ -5,6 +5,7 @@ import { SpecTable } from "../src/specs.js";
 const TABLE: SpecTable = {
   source: "vendored",
   note: "a note",
+  aliases: { sonnet: "claude-sonnet-4-5" },
   models: [
     {
       provider: "anthropic",
@@ -108,6 +109,16 @@ describe("refreshFrom", () => {
     );
 
     expect(table.models).toHaveLength(2);
+  });
+
+  it("keeps the aliases, which models.dev does not carry either", () => {
+    // The other thing a refresh must not drop. models.dev publishes ids and
+    // rates and says nothing about the short names a CLI accepts, so a
+    // replacement would leave every rung in the shipped template looking
+    // unpriceable and refuse the boot it was run to fix.
+    const { table } = refreshFrom(CATALOG, TABLE);
+
+    expect(table.aliases).toEqual({ sonnet: "claude-sonnet-4-5" });
   });
 
   it("records where the numbers came from, and what was kept", () => {
