@@ -91,5 +91,5 @@ question was asked.
 Adding an assertion means adding it in `drive.mjs`, and adding a *required*
 one means naming it in `gates.ticket-to-qa.required_assertions` in
 `.software-factory/policy.yaml` and citing it from a criterion in
-`plans/the-lifecycle-is-proven-end-to-end.md`. Then re-run and
+`docs/design/the-lifecycle-is-proven-end-to-end.md`. Then re-run and
 `sf seal ticket-to-qa`.

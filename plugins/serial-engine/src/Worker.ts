@@ -452,7 +452,7 @@ export class Worker {
    * saved record a lie, and this is the one that qualifies: nothing
    * downstream reads a notification. Every other port is reached through the
    * runtime and is deliberately not wrapped — see
-   * `plans/the-engine-fails-out-loud.md`.
+   * `docs/design/the-engine-fails-out-loud.md`.
    *
    * It lives here rather than only in the fan-out because `notifier` is a
    * port and an install may mount something else behind it. The promise is

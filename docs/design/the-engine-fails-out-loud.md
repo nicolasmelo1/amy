@@ -8,7 +8,7 @@ order: 1
 # Fase 9: falhar em voz alta — o desenho
 
 Entregue. O plano de registro é
-[the engine fails out loud](../../plans/the-engine-fails-out-loud.md) e o que
+[the engine fails out loud](the-engine-fails-out-loud.md)
 prova é o gate `plugin-serial-engine`. Este documento é o desenho que veio
 antes, guardado porque explica as decisões que o plano só cita.
 
@@ -324,7 +324,7 @@ conserta aqui, ou o contrato nasce mentindo.
 
 `plugin-serial-engine` é o único pacote grande sem gate, e é o que decide se um
 ticket se perde. E o argumento é o mesmo que
-`plans/the-relay-is-proven-end-to-end.md` faz por si: os caminhos que isto
+`docs/design/the-relay-is-proven-end-to-end.md` faz por si: os caminhos que isto
 existe pra cobrir são caminhos que um dia bom nunca alcança. Nenhum teste
 unitário alcança o `mount()` de verdade, o fan-out com um canal que lança de
 verdade, ou o `plugin-github` contra um `gh` fora do ar — e o que de fato
@@ -410,9 +410,9 @@ Depois: `sf seal plugin-serial-engine`, e o script entra no `npm run e2e`.
 
 ### O plano no repo
 
-`plans/the-engine-fails-out-loud.md`, com linha 4 no `plans/next-steps.md`:
+`docs/design/the-engine-fails-out-loud.md`, com linha 4 no `plans/next-steps.md`:
 
-> | 4 | [The engine fails out loud](../../plans/the-engine-fails-out-loud.md) | A dependency that goes down produces one warning on the way down, silence while it is down, and one warning when it comes back, and no broken notification channel ever costs a ticket a move |
+> | 4 | [The engine fails out loud](the-engine-fails-out-loud.md) | A dependency that goes down produces one warning on the way down, silence while it is down, and one warning when it comes back, and no broken notification channel ever costs a ticket a move |
 
 Cada critério carrega `(proof: assertion:engine.<nome>)` batendo com o
 `required_assertions` — `L3.GATE_COVERS_THE_PLAN` checa um sentido,
@@ -435,7 +435,7 @@ segundo pra que os dois commits seguintes ensaiem o lock de ponta a ponta.
 | 2 | o contrato do log | `events.json`, `EVENT_KINDS`, `isEventKind`, `checkEvent`, filtro no `eventsIn()`, `RecordingEventLog` lançando, teste de contrato, `files` do `package.json` do core, escopo no `policy.yaml`, `sf lock` no mesmo commit |
 | 3 | isolamento | try/catch no `announce()` e no `record()`, teto roteado por `this.announce`, sink do fan-out via `ctx.log`, kind `notify.failed`, `ThrowingNotifier`/`ThrowingEventLog` nas fixtures |
 | 4 | queda e volta | `failureNotice()`, `announceRecovery()`, kinds `work.degraded` e `work.recovered` |
-| 5 | o gate | scenario, `npm run e2e`, `sf seal`, bloco no `policy.yaml`, `plans/the-engine-fails-out-loud.md`, linha no `next-steps.md` — **não dá pra partir**, as quatro regras se referenciam |
+| 5 | o gate | scenario, `npm run e2e`, `sf seal`, bloco no `policy.yaml`, `docs/design/the-engine-fails-out-loud.md`, linha no `next-steps.md` — **não dá pra partir**, as quatro regras se referenciam |
 | 6 | README | qualquer promessa nova precisa de `<!-- claim: ... proven-by: plugin-serial-engine -->` (`L4.CLAIM_CITES_ITS_EVIDENCE`) |
 
 Testes existentes que mudam:

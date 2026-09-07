@@ -83,7 +83,7 @@ export function ticketRuntime(
    * Swallowed for the same reason the engine swallows it: nothing downstream
    * reads a notification, so its failure cannot make a saved record a lie.
    * The tracker, the code host, the agent and the gate are deliberately not
-   * wrapped — see `plans/the-engine-fails-out-loud.md`.
+   * wrapped — see `docs/design/the-engine-fails-out-loud.md`.
    */
   const announce = async (text: string, ctx: Context): Promise<void> => {
     try {

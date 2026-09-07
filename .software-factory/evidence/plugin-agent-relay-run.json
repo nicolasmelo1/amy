@@ -14,7 +14,7 @@
   "observed": {
     "assertions_run": 29,
     "assertions_failed": 0,
-    "node": "v22.22.1"
+    "node": "v22.22.2"
   },
   "assertions": [
     {

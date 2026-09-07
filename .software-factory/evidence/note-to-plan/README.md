@@ -77,4 +77,4 @@ meets it rather than sailing past.
 Adding an assertion means adding it in `drive.mjs`, and adding a *required*
 one means naming it in `gates.note-to-plan.required_assertions` in
 `.software-factory/policy.yaml` and citing it from a criterion in
-`plans/friction-becomes-a-plan.md`. Then re-run and `sf seal note-to-plan`.
+`docs/design/friction-becomes-a-plan.md`. Then re-run and `sf seal note-to-plan`.

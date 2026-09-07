@@ -23,7 +23,7 @@ gates:
     activation:
       - "plugins/file-queue/src/**"
     evidence: ".software-factory/evidence/plugin-file-queue.json"
-    plan: "plans/every-plugin-is-proven-end-to-end.md"
+    plan: "docs/design/every-plugin-is-proven-end-to-end.md"
     required_assertions:
       - "queue.claims_what_was_enqueued"
       - "queue.refuses_a_second_claim"
@@ -48,7 +48,7 @@ gates:
       - "plugins/agent-relay/src/**"
       - "packages/agent-kit/src/**"
     evidence: ".software-factory/evidence/plugin-agent-relay.json"
-    plan: "plans/the-relay-is-proven-end-to-end.md"
+    plan: "docs/design/the-relay-is-proven-end-to-end.md"
     required_assertions:
       - "relay.mounts_the_agent_port"
       - "relay.escalates_the_model_after_a_failure"
@@ -83,7 +83,7 @@ gates:
       - "packages/core/src/build.ts"
       - "scripts/**"
     evidence: ".software-factory/evidence/installed-binary.json"
-    plan: "plans/what-runs-is-not-this-repo.md"
+    plan: "docs/design/what-runs-is-not-this-repo.md"
     required_assertions:
       - "installed.runs_without_a_checkout"
       - "installed.keeps_state_in_its_own_home"
@@ -111,7 +111,7 @@ gates:
       - "scripts/install.sh"
       - "scripts/write-install-manifest.mjs"
     evidence: ".software-factory/evidence/installed-plugins.json"
-    plan: "plans/plugins-are-installed-not-compiled-in.md"
+    plan: "docs/design/plugins-are-installed-not-compiled-in.md"
     required_assertions:
       - "plugins.a_machine_installs_only_what_it_uses"
       - "plugins.resolve_at_run_time_with_no_table"
@@ -141,7 +141,7 @@ gates:
       - "plugins/serial-engine/src/**"
       - "plugins/notify-fanout/src/**"
     evidence: ".software-factory/evidence/plugin-serial-engine.json"
-    plan: "plans/the-engine-fails-out-loud.md"
+    plan: "docs/design/the-engine-fails-out-loud.md"
     required_assertions:
       - "engine.warns_once_on_the_first_failure"
       - "engine.stays_quiet_on_the_middle_attempts"
@@ -177,7 +177,7 @@ gates:
       - "plugins/notify-fanout/src/**"
       - "plugins/notify-inbox/src/**"
     evidence: ".software-factory/evidence/ticket-to-qa.json"
-    plan: "plans/the-lifecycle-is-proven-end-to-end.md"
+    plan: "docs/design/the-lifecycle-is-proven-end-to-end.md"
     required_assertions:
       - "lifecycle.only_the_working_status_is_picked_up"
       - "lifecycle.a_blocking_question_is_asked_on_the_ticket"
@@ -224,7 +224,7 @@ gates:
       - "plugins/serial-engine/src/**"
       - "plugins/github/src/**"
     evidence: ".software-factory/evidence/note-to-plan.json"
-    plan: "plans/friction-becomes-a-plan.md"
+    plan: "docs/design/friction-becomes-a-plan.md"
     required_assertions:
       - "plan.work_injected_by_command_reaches_the_queue"
       - "plan.a_note_in_the_watched_directory_is_discovered"
