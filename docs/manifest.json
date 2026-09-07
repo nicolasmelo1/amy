@@ -668,6 +668,11 @@
           "slug": "coming-next"
         },
         {
+          "depth": 3,
+          "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
+          "slug": "add-the-plan-board-consistency-check-to-the-gate-so-delivered-plans-can-move-into-durable-design-notes-without-losing-their-required-assertions"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -5616,7 +5621,20 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "plan-board-outlives-plan",
+        "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
