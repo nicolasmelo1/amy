@@ -3,7 +3,7 @@
 #
 # Usage: plugin-agent-relay-scenario.sh [report-path]
 #
-# Mounts the *built* claude, codex and relay plugins in a separate process,
+# Mounts the *built* claude, codex, hermes and relay plugins in a separate process,
 # with fake `claude` and `codex` executables on the PATH, and drives the
 # `agent` port that comes out. So the policy is proved through the real
 # artifacts: the real argv, the real envelope parsing, the real mount, and the
@@ -21,7 +21,7 @@ set -eu
 report=${1:-.software-factory/evidence/plugin-agent-relay-run.json}
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 
-for pkg in plugins/agent-relay plugins/claude plugins/codex packages/core; do
+for pkg in plugins/agent-relay plugins/claude plugins/codex plugins/hermes-agent packages/core; do
   test -f "$repo/$pkg/dist/index.js" ||
     { echo "build it first: npm run build ($pkg)" >&2; exit 1; }
 done
@@ -107,6 +107,7 @@ const dist = (...where) => path.join(repo, ...where, "dist", "index.js");
 const { mount, NodeCommandRunner } = await import(dist("packages", "core"));
 const { plugin: claude } = await import(dist("plugins", "claude"));
 const { plugin: codex } = await import(dist("plugins", "codex"));
+const { plugin: hermes } = await import(dist("plugins", "hermes-agent"));
 const { plugin: relay } = await import(dist("plugins", "agent-relay"));
 
 const assertions = [];
@@ -123,14 +124,25 @@ const TICKET = {
   branch: "proj-1239",
 };
 
-/** Mounts the three built plugins with a ladder, and returns the agent port. */
-async function hostWith(ladder, { budget, seed = [], skills, models = ["sonnet", "opus"] } = {}) {
+/** Mounts the four built plugins with a ladder, and returns the agent port. */
+async function hostWith(
+  ladder,
+  {
+    budget,
+    seed = [],
+    skills,
+    models = ["sonnet", "opus"],
+    codexModels = ["gpt-5"],
+    hermesModels = ["hermes-4-405b"],
+  } = {},
+) {
   const events = [...seed];
   const outcome = await mount(
-    [claude, codex, relay],
+    [claude, codex, hermes, relay],
     {
       "@amykit/plugin-claude": { defaultBranch: "main", models },
-      "@amykit/plugin-codex": { defaultBranch: "main", models: ["gpt-5"] },
+      "@amykit/plugin-codex": { defaultBranch: "main", models: codexModels },
+      "@amykit/plugin-hermes-agent": { defaultBranch: "main", models: hermesModels },
       "@amykit/plugin-agent-relay": {
         ladder,
         ...(budget === undefined ? {} : { budget }),
@@ -305,11 +317,15 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   // A ceiling in dollars over a model nobody can price is not a loose
   // ceiling, it is an inert one: runs on it are recorded with no cost, the
   // dollar figure never moves, and the token ceiling beside it is the only
-  // thing that ever stops the work. `claude:opus-9` is a model the shipped
-  // price table has no row for, which is what a table lagging behind a
-  // release looks like from here.
-  const priceless = await hostWith(["claude:opus-9"], {
-    models: ["opus-9"],
+  // thing that ever stops the work.
+  //
+  // It has to be a *codex* rung. Codex reports no cost of its own, so the
+  // vendored table is the only way one of its runs gets a price, which makes
+  // it the one harness a missing row leaves a dollar ceiling inert for.
+  // `gpt-9-codex` is a model the table has no row for, which is what a table
+  // lagging behind a release looks like from here.
+  const priceless = await hostWith(["codex:gpt-9-codex"], {
+    codexModels: ["gpt-9-codex"],
     budget: { perWeek: { costUsd: 150 } },
   });
   const refused = priceless.outcome.ok === false ? priceless.outcome.problems.join("\n") : "";
@@ -317,18 +333,37 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   record("relay.refuses_a_dollar_ceiling_it_cannot_price", priceless.outcome.ok === false);
   record(
     "relay.names_the_model_that_has_no_price",
-    refused.includes("`opus-9`") && refused.includes("`claude:opus-9`"),
+    refused.includes("`gpt-9-codex`") && refused.includes("`codex:gpt-9-codex`"),
   );
 
   // The same ladder, the same missing row, a ceiling in tokens. Tokens are
   // what a subscription meters and every harness reports them, so this one
   // never needed the price table and refusing it would be theatre.
-  const inTokens = await hostWith(["claude:opus-9"], {
-    models: ["opus-9"],
+  const inTokens = await hostWith(["codex:gpt-9-codex"], {
+    codexModels: ["gpt-9-codex"],
     budget: { perWeek: { tokens: 30000000 } },
   });
 
   record("relay.a_token_ceiling_needs_no_price_table", inTokens.outcome.ok === true);
+
+  // And the other half of the same sentence, which is the one that keeps this
+  // check honest. The question underneath it is not "is this model in the
+  // table", it is "could a run of this rung arrive with a cost on it".
+  //
+  // Claude puts `total_cost_usd` in its envelope and hermes writes
+  // `cost_status: "included"` for a run a subscription or a local model
+  // covered — where zero is the right answer and no price list will ever
+  // carry a row. Neither model here is in the table, both ceilings work, and
+  // refusing them would be the same failure as an inert ceiling reached from
+  // the other side: a machine that will not start over a number it already
+  // has.
+  const reported = await hostWith(["claude:opus-9", "hermes:llama-3.3"], {
+    models: ["opus-9"],
+    hermesModels: ["llama-3.3"],
+    budget: { perWeek: { costUsd: 150 } },
+  });
+
+  record("relay.a_harness_that_reports_its_cost_needs_no_price_table", reported.outcome.ok === true);
 }
 
 // 8. A skill per step: the same ladder, asking who should do the work rather

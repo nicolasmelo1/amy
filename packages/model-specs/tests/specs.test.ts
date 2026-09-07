@@ -28,6 +28,10 @@ describe("the vendored table", () => {
 
     expect(models).toContain("claude-sonnet-4-5");
     expect(models).toContain("gpt-5-codex");
+    // The model a codex CLI names today. Codex reports no cost of its own,
+    // so a row here is the only thing standing between a codex install and
+    // a dollar ceiling that cannot stop anything.
+    expect(models).toContain("gpt-5.3-codex");
   });
 
   it("prices the Claude 5 family, which is what a current install runs", () => {

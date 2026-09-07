@@ -20,6 +20,10 @@ export const plugin: Plugin = {
     // would refuse to mount together. The relay composes what is contributed.
     contributeTiers(registry, {
       harness: "claude",
+      // The envelope carries `total_cost_usd`, and a cost the harness
+      // reported beats anything a table could work out, so a missing row
+      // never leaves a ceiling in money with nothing to spend against it.
+      pricesItsOwnRuns: true,
       models: tiers.length > 0 ? tiers : [(ctx.config.model as string) || ""],
       git,
       agent: { reviewerHints: ctx.config.reviewerHints as Record<string, string> },

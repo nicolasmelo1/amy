@@ -62,8 +62,9 @@ function unpricedNote(spend: Spend, ceiling: number | undefined): string | null 
 
   return (
     `note: ${spend.unpriced} of those ${spend.runs} run(s) carry no price, so the USD ` +
-    "figure is lower than the truth by an unknown amount. `amy models refresh` is what " +
-    "fixes it, if the model is one the table has fallen behind on."
+    "figure is lower than the truth by an unknown amount. `amy models refresh` fixes a rate " +
+    "the table has fallen behind on; a model it has no row for at all needs one adding to " +
+    "`.amy/model-specs.json`, because a refresh re-rates what is there and never adds."
   );
 }
 

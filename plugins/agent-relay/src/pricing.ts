@@ -33,6 +33,13 @@ export function unpricedRungs<T extends Rung>(
     if (seen.has(rung.name)) continue;
     seen.add(rung.name);
 
+    // The harness accounts for itself, so the table is a backstop it may
+    // never reach and a missing row costs the ceiling nothing. Asked before
+    // the table, because for these two the table's answer is not the
+    // question: claude reports `total_cost_usd`, and a hermes run on a local
+    // model is `included` at zero, which no price list will ever carry.
+    if (rung.pricesItsOwnRuns) continue;
+
     if (specFor(aliasFor(rung.model, table), table)) continue;
     found.push({ rung: rung.name, model: rung.model });
   }
@@ -73,9 +80,10 @@ export function inertCeilingProblems<T extends Rung>(
   return unpriced.map(
     ({ rung, model }) =>
       `\`budget\` sets a costUsd ceiling, and ${named(model)} — which the rung \`${rung}\` ` +
-      "names — is not in the price table, so runs on it would be recorded with no cost and " +
-      "that ceiling could never stop anything. Run `amy models refresh`, or set the ceiling " +
-      "in tokens.",
+      "names — is not in the price table, and this harness reports no cost of its own, so " +
+      "runs on it would be recorded with no cost and that ceiling could never stop " +
+      "anything. `amy models refresh` re-rates the models the table already has and never " +
+      "adds one, so give it a row in `.amy/model-specs.json`, or set the ceiling in tokens.",
   );
 }
 

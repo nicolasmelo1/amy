@@ -669,8 +669,8 @@
         },
         {
           "depth": 3,
-          "title": "Refuse a dollar ceiling the price table cannot price, and price the Claude 5 family.",
-          "slug": "refuse-a-dollar-ceiling-the-price-table-cannot-price-and-price-the-claude-5-family"
+          "title": "Refuse a dollar ceiling that cannot stop anything, and ask the harness rather than the price table.",
+          "slug": "refuse-a-dollar-ceiling-that-cannot-stop-anything-and-ask-the-harness-rather-than-the-price-table"
         },
         {
           "depth": 3,
@@ -5251,6 +5251,7 @@
           "relay.refuses_a_dollar_ceiling_it_cannot_price",
           "relay.names_the_model_that_has_no_price",
           "relay.a_token_ceiling_needs_no_price_table",
+          "relay.a_harness_that_reports_its_cost_needs_no_price_table",
           "relay.hands_the_step_to_the_skill_named_for_it",
           "relay.asks_no_other_skill_once_one_answered",
           "relay.moves_to_the_next_skill_when_the_first_did_not_answer",
@@ -5642,9 +5643,13 @@
     "unreleased": [
       {
         "id": "a-ceiling-that-cannot-be-inert",
-        "title": "Refuse a dollar ceiling the price table cannot price, and price the Claude 5 family.",
-        "body": "`specs.json` had no row for the Claude 5 family, so `specFor` returned nothing,\nevery run was recorded with no `costUsd`, and an install with\n`budget.perWeek.costUsd: 150` set had no dollar ceiling at all — not loose,\ninert. The token ceiling beside it still fired, which is what made it quiet.\n\nThe table now prices `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-8`,\n`claude-sonnet-4-6` and `claude-fable-5-1` at rates taken from models.dev, and\ndeclares the short names a harness CLI accepts (`opus`, `sonnet`, `haiku`,\n`fable`) so a ladder written in them can be recognised. A refresh keeps both,\nbecause models.dev carries neither long-context tiering nor aliases.\n\nA price table always lags, so the lasting half is that the ceiling knows: the\nrelay refuses at boot when a rung in any ladder — including a step's own —\nnames a model the table cannot price, naming the model and the rung, so the\nanswer is `amy models refresh` or a ceiling in tokens. A ceiling in tokens over\nthe same ladder boots untouched.\n\n`amy budget` now reports how many runs in a window carry no price, rather than\na dollar figure that is arithmetically true and practically a lie.\n\n**Breaking for one config shape:** `ladder: [claude]` — a single-model install\nnaming no model — is now refused under a `costUsd` ceiling, because there is no\nid to price it by. Name the model (`claude:sonnet`) or set the ceiling in\ntokens.",
+        "title": "Refuse a dollar ceiling that cannot stop anything, and ask the harness rather than the price table.",
+        "body": "`specs.json` had no row for the Claude 5 family, so a run whose harness did not\nreport a cost of its own was recorded with none, `spend.costUsd` never moved\nfor it, and `amy budget` reported a figure that was arithmetically true and\npractically a lie. The table now prices `claude-opus-5`, `claude-sonnet-5`,\n`claude-opus-4-8`, `claude-sonnet-4-6` and `claude-fable-5-1`, declares the\nshort names a harness CLI accepts (`opus`, `sonnet`, `haiku`, `fable`) so a\nladder written in them can be recognised, and adds `gpt-5.3-codex` and\n`gpt-5.3-codex-spark`. A refresh keeps the aliases and the long-context\ntiering, because models.dev carries neither.\n\nA price table always lags, so the lasting half is that the ceiling knows: a\n`costUsd` ceiling is refused at boot when a rung in any ladder — including a\nstep's own — names a model whose cost nobody could work out, naming the model\nand the rung.\n\n**Whose cost nobody could work out is not the same question as whose model is\nin the table**, and conflating the two is the reason this is one change rather\nthan two. A rung now declares whether its harness accounts for itself\n(`Rung.pricesItsOwnRuns`), and only a rung that does not is measured against\nthe table:\n\n- **claude** puts `total_cost_usd` in its envelope, and a cost the harness\n  reported beats anything a table computes.\n- **hermes** writes `cost_status: \"included\"` for a run a subscription or a\n  local model covered — where zero is the right answer rather than a missing\n  one, and no price list will ever publish a rate for a model running on\n  somebody's own machine — and prices the rest of its providers itself.\n- **codex** reports no cost of its own, so the vendored table is the only way\n  one of its runs gets a price. It is the one harness a missing row leaves a\n  dollar ceiling inert for.\n\nReading the table's answer as the whole question would refuse an install whose\nceiling works perfectly well, which is the same failure as an inert ceiling\nreached from the other side: a machine that will not start over a number it\nalready has.\n\nThe refusal also no longer offers a command that could not fix it.\n`amy models refresh` re-rates the models the table already has and never adds\none, so a model with no row at all is told to get one in\n`.amy/model-specs.json`, or a ceiling in tokens. `amy budget` says the same.\n\n**Breaking for one config shape:** `ladder: [codex]` — a codex install naming\nno model — is now refused under a `costUsd` ceiling, because there is no id to\nprice it by and codex reports nothing to price it with. Name the model\n(`codex:gpt-5`) or set the ceiling in tokens.",
         "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          },
           {
             "package": "@amykit/cli",
             "level": "minor"
@@ -5659,6 +5664,18 @@
           },
           {
             "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
             "level": "minor"
           }
         ],

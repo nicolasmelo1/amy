@@ -1,5 +1,5 @@
 {
-  "source": "https://platform.claude.com/docs/en/about-claude/pricing and https://models.dev/api.json for the base rates, taken by `amy models refresh` and committed; long-context tiering from https://github.com/steipete/CodexBar — Sources/CodexBarCore/Vendored/CostUsage/CostUsagePricing.swift, which is the only one of the three that publishes it",
+  "source": "https://platform.claude.com/docs/en/about-claude/pricing and https://models.dev/api.json for the base rates, taken by `amy models refresh` and committed; long-context tiering from https://github.com/steipete/CodexBar \u2014 Sources/CodexBarCore/Vendored/CostUsage/CostUsagePricing.swift, which is the only one of the three that publishes it",
   "note": "A model with no verifiable price is left out on purpose. Absent means costSource `unknown`, which is the honest answer; a guessed rate would be spent against a budget ceiling. A `costUsd` ceiling over a ladder this table cannot price is refused at boot rather than left inert, so a model missing here is a boot failure with a name in it and not a ceiling that never fires.",
   "aliases": {
     "fable": "claude-fable-5-1",
@@ -137,6 +137,22 @@
       "inputPerToken": 5e-08,
       "outputPerToken": 4e-07,
       "cacheReadPerToken": 5e-09
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.3-codex",
+      "inputPerToken": 1.75e-06,
+      "outputPerToken": 1.4e-05,
+      "cacheReadPerToken": 1.75e-07,
+      "contextWindow": 400000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.3-codex-spark",
+      "inputPerToken": 1.75e-06,
+      "outputPerToken": 1.4e-05,
+      "cacheReadPerToken": 1.75e-07,
+      "contextWindow": 128000
     }
   ]
 }

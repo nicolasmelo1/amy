@@ -120,11 +120,15 @@ after one escalates for no reason.
       refused, rather than mounted and inert
       (proof: assertion:relay.refuses_a_dollar_ceiling_it_cannot_price)
 - [x] That refusal names the model and the rung that names it, so the answer
-      is `amy models refresh` or a ceiling in tokens
+      is a row in `.amy/model-specs.json` or a ceiling in tokens
       (proof: assertion:relay.names_the_model_that_has_no_price)
 - [x] The same ladder boots under a ceiling in tokens, which never needed a
       price table
       (proof: assertion:relay.a_token_ceiling_needs_no_price_table)
+- [x] A ladder on a harness that reports its own cost boots under a dollar
+      ceiling, whether or not the table has a row for its model, because the
+      question is whose runs arrive priced and not whose model is listed
+      (proof: assertion:relay.a_harness_that_reports_its_cost_needs_no_price_table)
 - [x] A step with a skill named for it is handed to that skill rather than to
       amy's own prompt
       (proof: assertion:relay.hands_the_step_to_the_skill_named_for_it)

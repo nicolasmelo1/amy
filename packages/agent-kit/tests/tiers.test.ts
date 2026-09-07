@@ -78,6 +78,45 @@ describe("contributing tiers", () => {
     expect(named(HARNESS_COLLECTION)).toEqual(named(AGENT_COLLECTION));
   });
 
+  it("carries the harness's own accounting onto every rung of it", () => {
+    // Whether a run of this harness arrives with a cost on it is the
+    // harness's fact, not the tier's, and whoever asks whether a ceiling in
+    // money could stop anything reads it off the rung.
+    const { registry, contributions } = recordingRegistry();
+
+    const made = contributeTiers(registry, {
+      harness: "hermes",
+      models: ["llama-3.3", "hermes-4-405b"],
+      git: git(),
+      make: fakeHarness,
+      pricesItsOwnRuns: true,
+    });
+
+    expect(made.map((tier) => tier.pricesItsOwnRuns)).toEqual([true, true]);
+    // Onto the bare harness too, because a second workflow reads that one.
+    const bare = contributions.find(
+      (c) => c.collection === HARNESS_COLLECTION && c.name === "hermes:llama-3.3",
+    );
+
+    expect(bare?.impl).toMatchObject({ pricesItsOwnRuns: true });
+  });
+
+  it("says a harness does not price itself rather than leaving it unsaid", () => {
+    // Absent would read as "nobody has decided", and the check that consults
+    // this would then treat a harness nobody thought about as one that
+    // accounts for itself — which is the permissive direction.
+    const { registry } = recordingRegistry();
+
+    const made = contributeTiers(registry, {
+      harness: "codex",
+      models: ["gpt-5"],
+      git: git(),
+      make: fakeHarness,
+    });
+
+    expect(made[0]?.pricesItsOwnRuns).toBe(false);
+  });
+
   it("declares the harness and the model on each one", () => {
     // The relay decides where to go next before running anything, so these
     // have to be known in advance rather than discovered from a result.

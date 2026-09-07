@@ -12,7 +12,7 @@
     ]
   },
   "observed": {
-    "assertions_run": 32,
+    "assertions_run": 33,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -119,6 +119,10 @@
     },
     {
       "type": "relay.a_token_ceiling_needs_no_price_table",
+      "status": "passed"
+    },
+    {
+      "type": "relay.a_harness_that_reports_its_cost_needs_no_price_table",
       "status": "passed"
     },
     {

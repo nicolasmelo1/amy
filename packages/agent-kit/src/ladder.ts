@@ -4,6 +4,23 @@ export interface Rung {
   readonly name: string;
   readonly harness: string;
   readonly model: string;
+  /**
+   * This rung's runs arrive with a cost on them without the price table
+   * being consulted.
+   *
+   * Declared by the harness plugin, because only it knows how its CLI
+   * accounts: claude puts `total_cost_usd` in its envelope, and hermes
+   * writes `cost_status: "included"` for a model that ran locally, where
+   * zero is the right answer and no row in any price table would ever
+   * exist. codex has the table and nothing else.
+   *
+   * Read by whoever asks whether a ceiling in money could stop anything.
+   * Without it that question collapses into "is this model in the table",
+   * which is a different question with the same answer only for codex —
+   * and refusing an install whose costs arrive reported is the same failure
+   * as an inert ceiling, arrived at from the other side.
+   */
+  readonly pricesItsOwnRuns?: boolean;
 }
 
 /**
