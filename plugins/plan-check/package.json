@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-plan-check",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
   "type": "module",
   "license": "MIT",
@@ -28,8 +28,8 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.2.0",
-    "@amykit/workflow-note-to-plan": "^0.2.0"
+    "@amykit/core": "^0.2.1",
+    "@amykit/workflow-note-to-plan": "^0.2.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

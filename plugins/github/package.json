@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-github",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "GitHub as the code host, through the gh CLI.",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.2.0"
+    "@amykit/core": "^0.2.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0",
-    "@amykit/workflow-ticket-to-qa": "^0.2.0"
+    "@amykit/workflow-ticket-to-qa": "^0.2.1"
   }
 }

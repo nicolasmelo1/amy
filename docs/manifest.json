@@ -668,11 +668,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
-          "slug": "add-the-plan-board-consistency-check-to-the-gate-so-delivered-plans-can-move-into-durable-design-notes-without-losing-their-required-assertions"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -4183,7 +4178,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "library",
         "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
         "directory": "packages/agent-kit",
@@ -4197,7 +4192,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -4211,7 +4206,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -4225,7 +4220,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -4239,7 +4234,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -4291,7 +4286,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "The claude CLI as the agent, with git on the side.",
         "directory": "plugins/claude",
@@ -4350,7 +4345,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -4409,7 +4404,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -4446,7 +4441,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -4483,7 +4478,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -4497,7 +4492,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -4535,7 +4530,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -4573,7 +4568,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -4597,7 +4592,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -4628,7 +4623,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -4644,7 +4639,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -4703,7 +4698,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -4754,7 +4749,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
         "directory": "plugins/notify-fanout",
@@ -4770,7 +4765,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -4796,7 +4791,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -4823,7 +4818,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -4865,7 +4860,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -4908,7 +4903,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
@@ -4948,7 +4943,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
@@ -4988,7 +4983,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
@@ -5626,20 +5621,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "plan-board-outlives-plan",
-        "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

@@ -1,5 +1,21 @@
 # @amykit/cli
 
+## 0.2.1
+
+### Patch Changes
+
+- e938103: Add the plan-board consistency check to the gate so delivered plans can move
+  into durable design notes without losing their required assertions.
+- @amykit/core@0.2.1
+  - @amykit/model-specs@0.2.1
+  - @amykit/workflow-ticket-to-qa@0.2.1
+  - @amykit/plugin-file-log@0.2.1
+  - @amykit/plugin-file-notes@0.2.1
+  - @amykit/plugin-file-queue@0.2.1
+  - @amykit/plugin-file-store@0.2.1
+  - @amykit/plugin-file-tasks@0.2.1
+  - @amykit/plugin-notify-hermes@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

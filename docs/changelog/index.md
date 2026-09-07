@@ -22,9 +22,7 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
-### Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.
-
-`patch` · `@amykit/cli`
+Nothing is pending. `.changeset/` is empty, which between releases is not a mistake.
 
 <!-- amy:end changelog-unreleased -->
 

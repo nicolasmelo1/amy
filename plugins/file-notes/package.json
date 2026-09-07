@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-notes",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.2.0",
-    "@amykit/plugin-notify-fanout": "^0.2.0"
+    "@amykit/core": "^0.2.1",
+    "@amykit/plugin-notify-fanout": "^0.2.1"
   },
   "devDependencies": {
-    "@amykit/workflow-note-to-plan": "^0.2.0"
+    "@amykit/workflow-note-to-plan": "^0.2.1"
   }
 }
