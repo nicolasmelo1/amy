@@ -81,6 +81,9 @@ jobs:
       # refuses rather than merges — so init wrote a file the next command
       # threw on, and no test had ever parsed it.
       - run: npm run check:config
+      # The execution board is part of the gate too: delivered work must move
+      # to durable design notes, and plans/ must remain unfinished work only.
+      - run: npm run check:plans
       # A change to a published package without a changeset is a release that
       # would leave the version standing still. `--since` scopes it to what
       # this pull request adds, so a branch is judged on its own diff.

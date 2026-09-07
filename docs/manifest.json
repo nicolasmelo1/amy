@@ -216,6 +216,36 @@
           "title": "Failing out loud",
           "path": "/design/the-engine-fails-out-loud",
           "description": "The design behind one warning down, silence, one warning back — and the rule about which port calls may be swallowed."
+        },
+        {
+          "title": "Every plugin is proven end to end",
+          "path": "/design/every-plugin-is-proven-end-to-end",
+          "description": ""
+        },
+        {
+          "title": "Friction becomes a plan, and the queue stops needing a ticket",
+          "path": "/design/friction-becomes-a-plan",
+          "description": ""
+        },
+        {
+          "title": "Plugins are installed, not compiled in",
+          "path": "/design/plugins-are-installed-not-compiled-in",
+          "description": ""
+        },
+        {
+          "title": "The lifecycle is proven end to end",
+          "path": "/design/the-lifecycle-is-proven-end-to-end",
+          "description": ""
+        },
+        {
+          "title": "The relay is proven end to end",
+          "path": "/design/the-relay-is-proven-end-to-end",
+          "description": ""
+        },
+        {
+          "title": "What runs is not this repo",
+          "path": "/design/what-runs-is-not-this-repo",
+          "description": ""
         }
       ]
     },
@@ -636,6 +666,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
+          "slug": "add-the-plan-board-consistency-check-to-the-gate-so-delivered-plans-can-move-into-durable-design-notes-without-losing-their-required-assertions"
         },
         {
           "depth": 2,
@@ -1205,6 +1240,122 @@
       ]
     },
     {
+      "path": "/design/every-plugin-is-proven-end-to-end",
+      "file": "docs/design/every-plugin-is-proven-end-to-end.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/every-plugin-is-proven-end-to-end.md",
+      "title": "Every plugin is proven end to end",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What a plugin's gate is about",
+          "slug": "what-a-plugins-gate-is-about"
+        },
+        {
+          "depth": 2,
+          "title": "The queue first, and why",
+          "slug": "the-queue-first-and-why"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/friction-becomes-a-plan",
+      "file": "docs/design/friction-becomes-a-plan.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/friction-becomes-a-plan.md",
+      "title": "Friction becomes a plan, and the queue stops needing a ticket",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The decision this rests on",
+          "slug": "the-decision-this-rests-on"
+        },
+        {
+          "depth": 2,
+          "title": "Three things have to move, and they are small",
+          "slug": "three-things-have-to-move-and-they-are-small"
+        },
+        {
+          "depth": 2,
+          "title": "What stops this becoming spam",
+          "slug": "what-stops-this-becoming-spam"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        },
+        {
+          "depth": 2,
+          "title": "Gate criteria carried forward",
+          "slug": "gate-criteria-carried-forward"
+        },
+        {
+          "depth": 2,
+          "title": "What going through the seam found",
+          "slug": "what-going-through-the-seam-found"
+        },
+        {
+          "depth": 2,
+          "title": "What this deliberately does not do",
+          "slug": "what-this-deliberately-does-not-do"
+        }
+      ]
+    },
+    {
+      "path": "/design/plugins-are-installed-not-compiled-in",
+      "file": "docs/design/plugins-are-installed-not-compiled-in.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/plugins-are-installed-not-compiled-in.md",
+      "title": "Plugins are installed, not compiled in",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What goes, and what comes back",
+          "slug": "what-goes-and-what-comes-back"
+        },
+        {
+          "depth": 2,
+          "title": "And a workflow is a name in a config",
+          "slug": "and-a-workflow-is-a-name-in-a-config"
+        },
+        {
+          "depth": 2,
+          "title": "The risk does not go away, it moves",
+          "slug": "the-risk-does-not-go-away-it-moves"
+        },
+        {
+          "depth": 2,
+          "title": "What phase 6 was actually about, and why it survives",
+          "slug": "what-phase-6-was-actually-about-and-why-it-survives"
+        },
+        {
+          "depth": 2,
+          "title": "What this does not finish",
+          "slug": "what-this-does-not-finish"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
       "path": "/design/the-engine-fails-out-loud",
       "file": "docs/design/the-engine-fails-out-loud.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-engine-fails-out-loud.md",
@@ -1296,8 +1447,114 @@
         },
         {
           "depth": 2,
-          "title": "O que não fica provado, e vai dito",
-          "slug": "o-que-no-fica-provado-e-vai-dito"
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        },
+        {
+          "depth": 2,
+          "title": "What is not proven, and is not pretended",
+          "slug": "what-is-not-proven-and-is-not-pretended"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-lifecycle-is-proven-end-to-end",
+      "file": "docs/design/the-lifecycle-is-proven-end-to-end.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-lifecycle-is-proven-end-to-end.md",
+      "title": "The lifecycle is proven end to end",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What has to be real, and what cannot be",
+          "slug": "what-has-to-be-real-and-what-cannot-be"
+        },
+        {
+          "depth": 2,
+          "title": "Reproducible, or it proves an afternoon",
+          "slug": "reproducible-or-it-proves-an-afternoon"
+        },
+        {
+          "depth": 2,
+          "title": "The world it is put to work in",
+          "slug": "the-world-it-is-put-to-work-in"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-relay-is-proven-end-to-end",
+      "file": "docs/design/the-relay-is-proven-end-to-end.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-relay-is-proven-end-to-end.md",
+      "title": "The relay is proven end to end",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What this gate is about",
+          "slug": "what-this-gate-is-about"
+        },
+        {
+          "depth": 2,
+          "title": "The load-bearing assertion",
+          "slug": "the-load-bearing-assertion"
+        },
+        {
+          "depth": 2,
+          "title": "The ceiling on spending is part of the same claim",
+          "slug": "the-ceiling-on-spending-is-part-of-the-same-claim"
+        },
+        {
+          "depth": 2,
+          "title": "And who does the step, which is the same ladder again",
+          "slug": "and-who-does-the-step-which-is-the-same-ladder-again"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/what-runs-is-not-this-repo",
+      "file": "docs/design/what-runs-is-not-this-repo.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/what-runs-is-not-this-repo.md",
+      "title": "What runs is not this repo",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "The build has to say what it is",
+          "slug": "the-build-has-to-say-what-it-is"
+        },
+        {
+          "depth": 2,
+          "title": "What replaced the binary, and what did not",
+          "slug": "what-replaced-the-binary-and-what-did-not"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
         }
       ]
     },
@@ -4884,7 +5141,7 @@
           "scripts/**"
         ],
         "evidence": ".software-factory/evidence/installed-binary.json",
-        "plan": "plans/what-runs-is-not-this-repo.md",
+        "plan": "docs/design/what-runs-is-not-this-repo.md",
         "assertions": [
           "installed.runs_without_a_checkout",
           "installed.keeps_state_in_its_own_home",
@@ -4907,7 +5164,7 @@
           "scripts/write-install-manifest.mjs"
         ],
         "evidence": ".software-factory/evidence/installed-plugins.json",
-        "plan": "plans/plugins-are-installed-not-compiled-in.md",
+        "plan": "docs/design/plugins-are-installed-not-compiled-in.md",
         "assertions": [
           "plugins.a_machine_installs_only_what_it_uses",
           "plugins.resolve_at_run_time_with_no_table",
@@ -4937,7 +5194,7 @@
           "plugins/github/src/**"
         ],
         "evidence": ".software-factory/evidence/note-to-plan.json",
-        "plan": "plans/friction-becomes-a-plan.md",
+        "plan": "docs/design/friction-becomes-a-plan.md",
         "assertions": [
           "plan.work_injected_by_command_reaches_the_queue",
           "plan.a_note_in_the_watched_directory_is_discovered",
@@ -4968,7 +5225,7 @@
           "packages/agent-kit/src/**"
         ],
         "evidence": ".software-factory/evidence/plugin-agent-relay.json",
-        "plan": "plans/the-relay-is-proven-end-to-end.md",
+        "plan": "docs/design/the-relay-is-proven-end-to-end.md",
         "assertions": [
           "relay.mounts_the_agent_port",
           "relay.escalates_the_model_after_a_failure",
@@ -4995,7 +5252,7 @@
           "plugins/file-queue/src/**"
         ],
         "evidence": ".software-factory/evidence/plugin-file-queue.json",
-        "plan": "plans/every-plugin-is-proven-end-to-end.md",
+        "plan": "docs/design/every-plugin-is-proven-end-to-end.md",
         "assertions": [
           "queue.claims_what_was_enqueued",
           "queue.refuses_a_second_claim",
@@ -5016,7 +5273,7 @@
           "plugins/notify-fanout/src/**"
         ],
         "evidence": ".software-factory/evidence/plugin-serial-engine.json",
-        "plan": "plans/the-engine-fails-out-loud.md",
+        "plan": "docs/design/the-engine-fails-out-loud.md",
         "assertions": [
           "engine.warns_once_on_the_first_failure",
           "engine.stays_quiet_on_the_middle_attempts",
@@ -5047,7 +5304,7 @@
           "plugins/notify-inbox/src/**"
         ],
         "evidence": ".software-factory/evidence/ticket-to-qa.json",
-        "plan": "plans/the-lifecycle-is-proven-end-to-end.md",
+        "plan": "docs/design/the-lifecycle-is-proven-end-to-end.md",
         "assertions": [
           "lifecycle.only_the_working_status_is_picked_up",
           "lifecycle.a_blocking_question_is_asked_on_the_ticket",
@@ -5369,7 +5626,20 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "plan-board-outlives-plan",
+        "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

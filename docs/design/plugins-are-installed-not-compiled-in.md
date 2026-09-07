@@ -59,7 +59,7 @@ plugin to be held to less.
 
 ## What phase 6 was actually about, and why it survives
 
-`plans/what-runs-is-not-this-repo.md` named two problems. The compiled binary
+`docs/design/what-runs-is-not-this-repo.md` named two problems. The compiled binary
 was the answer it chose, not the problem it solved, and both problems outlive
 the answer.
 

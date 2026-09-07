@@ -25,9 +25,10 @@ particular one is a workflow over it.
 **A second workflow, not more states in the first.** `ticket-to-qa` is
 sixteen states about a ticket reaching QA; a note becoming a plan shares none
 of them and would only ever be a branch inside every predicate. The engine
-stopped knowing what a ticket is in
-[the engine drives a workflow it does not know](the-engine-drives-a-workflow-it-does-not-know.md),
-so a second workflow now costs a `plan()` and a runtime rather than a fork.
+stopped knowing what a ticket is, as the durable design note
+[plugins are installed, not compiled in](plugins-are-installed-not-compiled-in.md)
+explains, so a second workflow now costs a `plan()` and a runtime rather than
+a fork.
 
 This is also what settled that plan's one open criterion. It stayed open
 there until a second workflow really went through the seam, and this is that
@@ -124,6 +125,25 @@ with an exit condition and a line in that repository's `next-steps.md`,
 because anything less is refused by that repository's own `sf check` — and
 the machine that did it never touched a tracker, never changed the engine,
 and stopped opening pull requests once the ceiling was reached.
+
+## Gate criteria carried forward
+
+The installed-workflow gate also retains these assertions from the end-to-end
+run; they remain part of this design note so moving the plan cannot discard
+what the gate requires:
+
+- `plan.nothing_is_resolved_against_a_tracker`
+- `plan.a_refused_draft_goes_back_to_the_agent`
+- `plan.nothing_reaches_a_pull_request_until_the_check_is_green`
+- `plan.the_plan_carries_an_exit_condition_and_a_place_in_the_order`
+- `plan.a_pull_request_is_opened_in_the_repository_the_note_is_about`
+- `plan.the_ceiling_is_said_once`
+- `plan.a_note_about_another_repository_is_handed_back`
+- `plan.a_tick_that_gives_up_leaves_a_note_behind`
+- `plan.each_workflow_keeps_its_own_queue_and_records`
+- `plan.the_lifecycle_walks_in_order`
+- `plan.one_look_makes_at_most_one_move`
+- `plan.the_machine_settles_instead_of_spinning`
 
 ## What going through the seam found
 

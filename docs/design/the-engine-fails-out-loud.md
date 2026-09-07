@@ -7,9 +7,8 @@ order: 1
 
 # Fase 9: falhar em voz alta — o desenho
 
-Entregue. O plano de registro é
-[the engine fails out loud](../../plans/the-engine-fails-out-loud.md) e o que
-prova é o gate `plugin-serial-engine`. Este documento é o desenho que veio
+Entregue. O registro desta decisão é este documento; o que o prova
+é o gate `plugin-serial-engine`. Ele guarda o desenho que veio
 antes, guardado porque explica as decisões que o plano só cita.
 
 ## Contexto
@@ -324,34 +323,18 @@ conserta aqui, ou o contrato nasce mentindo.
 
 `plugin-serial-engine` é o único pacote grande sem gate, e é o que decide se um
 ticket se perde. E o argumento é o mesmo que
-`plans/the-relay-is-proven-end-to-end.md` faz por si: os caminhos que isto
+`docs/design/the-relay-is-proven-end-to-end.md` faz por si: os caminhos que isto
 existe pra cobrir são caminhos que um dia bom nunca alcança. Nenhum teste
 unitário alcança o `mount()` de verdade, o fan-out com um canal que lança de
 verdade, ou o `plugin-github` contra um `gh` fora do ar — e o que de fato
 quebra é estado de arquivo **entre ticks**, quer dizer, entre processos.
 
-Em `.software-factory/policy.yaml`:
-
-```yaml
-  plugin-serial-engine:
-    activation:
-      - "plugins/serial-engine/src/**"
-      - "plugins/notify-fanout/src/**"
-    evidence: ".software-factory/evidence/plugin-serial-engine.json"
-    plan: "plans/the-engine-fails-out-loud.md"
-    required_assertions:
-      - "engine.warns_once_on_the_first_failure"
-      - "engine.stays_quiet_on_the_middle_attempts"
-      - "engine.warns_once_when_it_recovers"
-      - "engine.carries_on_from_where_it_was"
-      - "engine.keeps_the_attempt_count_across_a_park"
-      - "engine.announces_once_at_the_ceiling"
-      - "engine.finishes_the_tick_when_a_channel_throws"
-      - "engine.records_the_notification_it_could_not_send"
-      - "engine.finishes_the_tick_when_every_channel_throws"
-      - "engine.finishes_the_tick_when_the_log_cannot_be_written"
-      - "engine.every_line_matches_the_contract"
-```
+`sf` does not detect the absence of a plan: `L3.GATE_COVERS_THE_PLAN`
+compares criteria named by a document with assertions required by its gate, so
+an empty document can pass that direction vacuously. The repository-level
+`check:plans` is deliberately the missing half: it rejects a gate pointing into
+`plans/` and rejects an unlisted plan, while `sf` continues to validate the
+criteria themselves.
 
 `plugin-notify-fanout/src/**` entra na ativação pelo mesmo motivo que o gate do
 relay lista `agent-kit/src/**`: o fan-out é a outra metade da afirmação de
@@ -410,9 +393,9 @@ Depois: `sf seal plugin-serial-engine`, e o script entra no `npm run e2e`.
 
 ### O plano no repo
 
-`plans/the-engine-fails-out-loud.md`, com linha 4 no `plans/next-steps.md`:
+`docs/design/the-engine-fails-out-loud.md`, com linha 4 no `plans/next-steps.md`:
 
-> | 4 | [The engine fails out loud](../../plans/the-engine-fails-out-loud.md) | A dependency that goes down produces one warning on the way down, silence while it is down, and one warning when it comes back, and no broken notification channel ever costs a ticket a move |
+> | 4 | [The engine fails out loud](the-engine-fails-out-loud.md) | A dependency that goes down produces one warning on the way down, silence while it is down, and one warning when it comes back, and no broken notification channel ever costs a ticket a move |
 
 Cada critério carrega `(proof: assertion:engine.<nome>)` batendo com o
 `required_assertions` — `L3.GATE_COVERS_THE_PLAN` checa um sentido,
@@ -435,7 +418,7 @@ segundo pra que os dois commits seguintes ensaiem o lock de ponta a ponta.
 | 2 | o contrato do log | `events.json`, `EVENT_KINDS`, `isEventKind`, `checkEvent`, filtro no `eventsIn()`, `RecordingEventLog` lançando, teste de contrato, `files` do `package.json` do core, escopo no `policy.yaml`, `sf lock` no mesmo commit |
 | 3 | isolamento | try/catch no `announce()` e no `record()`, teto roteado por `this.announce`, sink do fan-out via `ctx.log`, kind `notify.failed`, `ThrowingNotifier`/`ThrowingEventLog` nas fixtures |
 | 4 | queda e volta | `failureNotice()`, `announceRecovery()`, kinds `work.degraded` e `work.recovered` |
-| 5 | o gate | scenario, `npm run e2e`, `sf seal`, bloco no `policy.yaml`, `plans/the-engine-fails-out-loud.md`, linha no `next-steps.md` — **não dá pra partir**, as quatro regras se referenciam |
+| 5 | o gate | scenario, `npm run e2e`, `sf seal`, bloco no `policy.yaml`, `docs/design/the-engine-fails-out-loud.md`, linha no `next-steps.md` — **não dá pra partir**, as quatro regras se referenciam |
 | 6 | README | qualquer promessa nova precisa de `<!-- claim: ... proven-by: plugin-serial-engine -->` (`L4.CLAIM_CITES_ITS_EVIDENCE`) |
 
 Testes existentes que mudam:
@@ -484,20 +467,65 @@ E, ponta a ponta:
    `L2.GENERATED_FILES_ARE_LOCKED`. Rodar `sf lock` fecha.
 5. Um park não zera o `attempt` e não é lido como recuperação.
 
-## O que não fica provado, e vai dito
+## Acceptance criteria
 
-- **"Um aviso na queda" é por ticket, não por queda.** `item.attempt` é por
-  item de fila, então uma queda do GitHub afetando cinco tickets dá cinco
-  avisos de queda e cinco de volta. Um scenario de um ticket só nunca percebe.
-  A versão por **porta** exige estado de saúde por dependência, é
-  materialmente maior, e fica anotada como follow-up pra quando alguém rodar
-  mais que um punhado de tickets.
-- **Não há recuperação depois do teto**, pelo motivo argumentado acima.
-- **Um crash não produz aviso de queda.** `FileQueue.recover()` devolve o item
-  por `rename`, preservando o `attempt`, então um worker morto no meio volta no
-  *mesmo* attempt. Defensável — crash não é queda de dependência — e vale
-  escrito.
-- **A convenção de `version` é do revisor, não da máquina**, pelo motivo da
-  seção (c).
-- **Binário velho lendo log novo descarta as linhas que não conhece**, que é o
-  preço de filtrar por `isEventKind` no `read()`.
+- [x] A dependency that goes down produces exactly one warning, naming the
+      ticket and the failure
+      (proof: assertion:engine.warns_once_on_the_first_failure)
+- [x] The attempts while it is still down say nothing, across separate
+      processes
+      (proof: assertion:engine.stays_quiet_on_the_middle_attempts)
+- [x] Coming back produces exactly one warning, saying how many attempts had
+      failed
+      (proof: assertion:engine.warns_once_when_it_recovers)
+- [x] The ticket resumes the move it was going to make, from the state it was
+      in
+      (proof: assertion:engine.carries_on_from_where_it_was)
+- [x] A budget park carries the retry budget the failures already spent, so
+      the next tick does not read it as a recovery
+      (proof: assertion:engine.keeps_the_attempt_count_across_a_park)
+- [x] The ceiling says so once and takes the ticket off the queue, even when
+      the announcement itself cannot be delivered
+      (proof: assertion:engine.announces_once_at_the_ceiling)
+- [x] A notification channel that throws does not stop the tick finishing or
+      the record moving
+      (proof: assertion:engine.finishes_the_tick_when_a_channel_throws)
+- [x] What could not be delivered is written down, with the ticket and the
+      text
+      (proof: assertion:engine.records_the_notification_it_could_not_send)
+- [x] Every channel throwing is still not a reason for a ticket to stop
+      moving
+      (proof: assertion:engine.finishes_the_tick_when_every_channel_throws)
+- [x] A log directory that cannot be written to costs no ticket a move, and
+      complains once rather than once per line
+      (proof: assertion:engine.finishes_the_tick_when_the_log_cannot_be_written)
+- [x] Every line the run actually wrote keeps the declared event contract
+      (proof: assertion:engine.every_line_matches_the_contract)
+
+**Exit condition:** the gate carries a sealed manifest whose report shows
+these assertions passing against the built artifacts, and touching the engine
+or the fan-out turns `sf check` red until the run is repeated and resealed.
+
+## What is not proven, and is not pretended
+
+- **"One warning on the way down" is per ticket, not per outage.**
+  `item.attempt` is per queue item, so a GitHub outage across five tickets
+  gives five warnings down and five back. A one-ticket scenario never notices.
+  The per-**port** version needs health state per dependency, is materially
+  bigger, and waits until somebody runs more than a handful of tickets at once.
+- **There is no recovery warning after the ceiling.** Past it the item leaves
+  the queue and the next one arrives from `amy discover` at attempt zero, so
+  nothing carries the history. The ceiling warning already said "I have
+  stopped, come and look", and announcing a recovery would credit the machine
+  with a person's repair.
+- **A crash produces no warning at all.** `FileQueue.recover()` returns the
+  item by `rename`, preserving `attempt`, so a worker killed mid-run comes
+  back on the *same* attempt. Defensible — a crash is not a dependency going
+  down — and worth saying.
+- **Reading the log with an older binary drops the lines it does not know.**
+  That is the price of filtering unknown kinds in `read()`, and it is filtered
+  there and never in `append()`.
+- **A contributing plugin still cannot fail alone at boot.** `mount()`
+  isolates a throwing `register` per plugin, but any problem refuses the whole
+  boot, so an install with three channels where one has bad config will not
+  start. That is the boot-time analogue of this work and not its criterion.
