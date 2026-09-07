@@ -11,7 +11,7 @@
     "packages/workflow-errand/package.json": "28d45485b63ee9c1e0bc98faab3bf7424bb26ef4696779acd473c8d8df3b6ea4",
     "packages/workflow-note-to-plan/package.json": "cff6dda4439d136404515a01426a75f16077a40deef22bc690cf4996a2c2c0b6",
     "packages/workflow-ticket-to-qa/package.json": "a09121b8c11523a59ceebbe01ccfc2f62e5f97feb698b7743b3d7b57f7dd4657",
-    "plugins/agent-relay/package.json": "dedc525dd7ee3658ef378953db1c7a7578bcffcf451cbf2aad2b8d8d7b07f100",
+    "plugins/agent-relay/package.json": "baf9651295c048c21f26b0b61dababefef4196dfe288051a2763c2416ae08099",
     "plugins/claude/package.json": "dfde4402fb1a46c93438d1f08a12538329dc2cdb2df6d39b502ac51285c59e3f",
     "plugins/codex/package.json": "b625400ea7ac3cf878c8c67ec230348e5eca295fecb1d5254f764dd2683a8d16",
     "plugins/command-gate/package.json": "071fd6f41b8d511519a3452dfacff701a2fd69c16cde7b6285be83ea6ded1f2e",

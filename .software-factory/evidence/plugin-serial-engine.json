@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/plugin-serial-engine-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-serial-engine-run.json",
-      "report_sha256": "e05c2e05388eced4b80be57366ffbd43ff90c562a4a69f44b8fa5d06cd8bf8f7",
+      "report_sha256": "2091dcfbde50cf37d2e195283ce47ec941d04d48fc11cf9edaf32818864adc23",
       "required_assertions": []
     }
   ]

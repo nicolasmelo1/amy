@@ -1,5 +1,6 @@
 export {
   OVERRIDE_FILE,
+  aliasFor,
   costOf,
   forgetSpecTable,
   normalizeModelId,

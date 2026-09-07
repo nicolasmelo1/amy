@@ -23,4 +23,3 @@ yet.
 | 8 | [A skill ladder for your own steps](a-skill-ladder-for-your-own-steps.md) | A workflow somebody wrote gives one of its own steps a cheaper model and a skill, from `config.yaml` |
 | 9 | [A checkout root per repository](a-checkout-root-per-repository.md) | An install drives work in two repositories under two unrelated parents, with no symlink anywhere |
 | 10 | [A base branch per repository](a-base-branch-per-repository.md) | Two repositories with two base branch names, and no workflow package carrying a branch mapping of its own |
-| 11 | [A ceiling that cannot be inert](a-ceiling-that-cannot-be-inert.md) | No install can hold a dollar ceiling that cannot stop anything |

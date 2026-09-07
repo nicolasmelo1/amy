@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "plugin-agent-relay",
-  "implementation_sha256": "e33fb9d49aa35720a5f43b11a2a708465d5b5c69d1adf9aa3d4c152af08ca981",
+  "implementation_sha256": "691e9dfe85b2026ea0b0e778ae475cc5e72999c019e9b44b91a15f9802d2ab22",
   "runs": [
     {
       "scenario": "plugin-agent-relay",
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/plugin-agent-relay-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-agent-relay-run.json",
-      "report_sha256": "41cd5b59e2f5f48108de3a9f8e123ee331e90597c2f8da7c956f79f058fb44ea",
+      "report_sha256": "158b0f0fc9b37ca4c26b75676c399c041c2aaba9553cf5f2f53b78baf6f1f87e",
       "required_assertions": []
     }
   ]

@@ -122,7 +122,7 @@ this repository.
 | `@amykit/workflow-errand` | workflow | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/core` |
-| `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/plugin-claude` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-codex` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-command` | plugin | `@amykit/core` |

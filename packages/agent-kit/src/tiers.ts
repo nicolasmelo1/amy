@@ -11,6 +11,8 @@ export interface TierOptions {
    */
   models: readonly string[];
   make: (model: string) => Harness;
+  /** See `Rung.pricesItsOwnRuns`. Declared once per harness, not per tier. */
+  pricesItsOwnRuns?: boolean;
   git: Git;
   agent?: HarnessAgentConfig;
 }
@@ -38,7 +40,12 @@ export function contributeTiers(registry: Registry, opts: TierOptions): NamedAge
     const agent = (skill?: string): HarnessAgent =>
       new HarnessAgent(cli, opts.git, { ...(opts.agent ?? {}), skill });
 
-    const rung = { name: tierName(opts.harness, model), harness: opts.harness, model };
+    const rung = {
+      name: tierName(opts.harness, model),
+      harness: opts.harness,
+      model,
+      pricesItsOwnRuns: opts.pricesItsOwnRuns ?? false,
+    };
     const named: NamedAgent = { ...rung, agent: agent(), using: (skill) => agent(skill) };
     const bare: NamedHarness = { ...rung, cli };
 

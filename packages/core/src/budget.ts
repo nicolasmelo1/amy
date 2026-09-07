@@ -33,6 +33,15 @@ export interface Spend {
   /** Only money somebody measured or worked out. See `moneyIn`. */
   costUsd: number;
   runs: number;
+  /**
+   * How many of those runs nobody could put a price on.
+   *
+   * `costUsd` above is arithmetically true and, with this above zero,
+   * practically a lie: it is the spend of the runs that were priced and not
+   * the spend of the window. A reader who is not told how many were left out
+   * reads a dollar figure that is lower than the truth by an unknown amount.
+   */
+  unpriced: number;
   /** The oldest run counted, which is when the window starts to clear. */
   oldestAt?: string;
 }
@@ -44,7 +53,7 @@ export interface Spend {
  * tally is a second thing to disagree with what actually happened.
  */
 export function spendSince(events: readonly Event[], since: Date): Spend {
-  const spend: Spend = { tokens: 0, costUsd: 0, runs: 0 };
+  const spend: Spend = { tokens: 0, costUsd: 0, runs: 0, unpriced: 0 };
   const cutoff = since.getTime();
 
   for (const event of events) {
@@ -52,9 +61,12 @@ export function spendSince(events: readonly Event[], since: Date): Spend {
     if (new Date(event.at).getTime() < cutoff) continue;
 
     const detail = event.detail ?? {};
+    const price = priceOf(detail);
+
     spend.runs += 1;
     spend.tokens += tokensIn(detail);
-    spend.costUsd += moneyIn(detail);
+    spend.costUsd += price ?? 0;
+    if (price === undefined) spend.unpriced += 1;
     if (!spend.oldestAt || event.at < spend.oldestAt) spend.oldestAt = event.at;
   }
 
@@ -165,18 +177,22 @@ function tokensIn(detail: Record<string, unknown>): number {
 }
 
 /**
- * What a run cost, counted only when somebody measured it or worked it out.
+ * What a run cost, or nothing at all, which is a different thing from zero.
  *
  * `unknown` moves the token ceiling and not this one. Adding up a figure
- * nobody measured would invent the number that decides when to stop, and
- * `included` is a real zero: the subscription already paid for it.
+ * nobody measured would invent the number that decides when to stop, so it
+ * returns undefined and the window counts it as unpriced instead.
+ *
+ * `included` is a real zero: the subscription already paid for it, and a
+ * window full of those is fully accounted for rather than unknown.
  */
-function moneyIn(detail: Record<string, unknown>): number {
+function priceOf(detail: Record<string, unknown>): number | undefined {
   const source = detail.costSource;
-  if (source !== "reported" && source !== "computed") return 0;
+  if (source === "included") return 0;
+  if (source !== "reported" && source !== "computed") return undefined;
 
   const cost = detail.costUsd;
-  return typeof cost === "number" && Number.isFinite(cost) ? cost : 0;
+  return typeof cost === "number" && Number.isFinite(cost) ? cost : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -56,7 +56,7 @@ One agent made of several: swaps harness on a quota, escalates model on a failur
 | Mounts | `agent` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs`, `@amykit/workflow-ticket-to-qa` |
 
 ```yaml
 plugins:

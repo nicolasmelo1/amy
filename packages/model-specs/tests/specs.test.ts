@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
+import yaml from "yaml";
 import { NO_TOKENS, TokenUsage } from "@amykit/core";
-import { ModelSpec, costOf, normalizeModelId, specFor, specTable } from "../src/specs.js";
+// The template the shipped `amy init` writes, read from the module that owns
+// it rather than copied here: a criterion about what the template names is
+// worth nothing if the copy can drift from the template.
+import { EXAMPLE_CONFIG } from "../../cli/src/config.js";
+import { ModelSpec, aliasFor, costOf, normalizeModelId, specFor, specTable } from "../src/specs.js";
 
 function tokens(overrides: Partial<TokenUsage> = {}): TokenUsage {
   return { ...NO_TOKENS, ...overrides };
@@ -12,17 +17,111 @@ describe("the vendored table", () => {
     expect(specTable().source).toContain("CodexBar");
   });
 
+  it("says models.dev is where the base rates came from", () => {
+    // The rates are `amy models refresh`'s output, committed. Naming that is
+    // what makes them re-derivable rather than a snapshot somebody typed.
+    expect(specTable().source).toContain("models.dev");
+  });
+
   it("carries the models it has a verifiable price for", () => {
     const models = specTable().models.map((spec) => spec.model);
 
     expect(models).toContain("claude-sonnet-4-5");
     expect(models).toContain("gpt-5-codex");
+    // The model a codex CLI names today. Codex reports no cost of its own,
+    // so a row here is the only thing standing between a codex install and
+    // a dollar ceiling that cannot stop anything.
+    expect(models).toContain("gpt-5.3-codex");
+  });
+
+  it("prices the Claude 5 family, which is what a current install runs", () => {
+    // It did not, and that was the failure this table exists to prevent: an
+    // install with `budget.perWeek.costUsd: 150` set had no dollar ceiling at
+    // all, because every run came back unpriced and `spend.costUsd` never
+    // moved. The token ceiling beside it still fired, which is what made it
+    // quiet.
+    expect(specFor("claude-opus-5")?.inputPerToken).toBe(5e-6);
+    expect(specFor("claude-sonnet-5")?.outputPerToken).toBe(1e-5);
+    expect(specFor("claude-opus-4-8")?.cacheWritePerToken).toBe(6.25e-6);
+    expect(specFor("claude-sonnet-4-6")?.inputPerToken).toBe(3e-6);
+    // 0.025x input, not the 0.1x every other model reads a cache hit at.
+    expect(specFor("claude-fable-5-1")?.cacheReadPerToken).toBe(2.5e-7);
+  });
+
+  it("gives the 1M-context models no long-context tier, because they have none", () => {
+    // "Claude 4.6 and later models include the full 1M token context window
+    // at standard pricing." Inventing a threshold here would overcount, and
+    // omitting a real one would undercount, which is the worse direction.
+    for (const model of ["claude-opus-5", "claude-sonnet-5", "claude-fable-5-1"]) {
+      expect(specFor(model)?.thresholdTokens, model).toBeUndefined();
+    }
   });
 
   it("leaves out a model nobody could price, rather than guessing", () => {
     // Absent is a real answer: it produces costSource `unknown`, and the
-    // token ceiling still stops the work.
-    expect(specFor("claude-opus-5")).toBeUndefined();
+    // token ceiling still stops the work. What is no longer allowed is a
+    // dollar ceiling over a ladder naming one — that is refused at boot.
+    expect(specFor("claude-opus-6")).toBeUndefined();
+  });
+});
+
+/**
+ * The models `amy init` writes into a ladder, taken from the template.
+ *
+ * Short names, because that is what the harness CLI takes and therefore what
+ * the config passes through: `claude:sonnet`, not `claude:claude-sonnet-5`.
+ */
+function modelsTheTemplateNames(): string[] {
+  const config = yaml.parse(EXAMPLE_CONFIG) as {
+    agent?: { ladder?: string[]; ladderByStep?: Record<string, string[]>; model?: string };
+  };
+
+  const entries = [
+    ...(config.agent?.ladder ?? []),
+    ...Object.values(config.agent?.ladderByStep ?? {}).flat(),
+  ];
+  const fromLadders = entries.flatMap((entry) => entry.split(":").slice(1));
+
+  return [...new Set([...fromLadders, config.agent?.model ?? ""])].filter(Boolean);
+}
+
+describe("the models the shipped template names", () => {
+  it("is a list, so nothing below passes by finding nothing", () => {
+    expect(modelsTheTemplateNames().length).toBeGreaterThan(0);
+  });
+
+  it("is priced, every one of them", () => {
+    // The same template sets `budget.perWeek.costUsd`, and a costUsd ceiling
+    // over a rung this table cannot price is refused at boot. So a name here
+    // the table has fallen behind on is the shipped default failing to start.
+    for (const model of modelsTheTemplateNames()) {
+      expect(specFor(aliasFor(model)), model).toBeDefined();
+    }
+  });
+});
+
+describe("aliasFor", () => {
+  it("resolves the short name a harness CLI takes", () => {
+    // `claude --model haiku` is documented as an alias for the latest model
+    // of that family, and a real run reports `claude-haiku-4-5-20251001`.
+    expect(aliasFor("haiku")).toBe("claude-haiku-4-5");
+  });
+
+  it("leaves a full id exactly as it is", () => {
+    expect(aliasFor("claude-opus-5")).toBe("claude-opus-5");
+  });
+
+  it("leaves a name it has never heard of alone, rather than guessing", () => {
+    expect(aliasFor("gpt-5-mini")).toBe("gpt-5-mini");
+  });
+
+  it("resolves every alias the table declares to a model the table prices", () => {
+    // An alias pointing at a row that is not there would make a ladder look
+    // priceable and leave the ceiling inert anyway, which is the exact
+    // failure with one more indirection in front of it.
+    for (const alias of Object.keys(specTable().aliases ?? {})) {
+      expect(specFor(aliasFor(alias)), alias).toBeDefined();
+    }
   });
 });
 
@@ -49,6 +148,12 @@ describe("normalizeModelId", () => {
   it("does not care about case or stray spaces", () => {
     expect(normalizeModelId("  Claude-Sonnet-4-5  ")[0]).toBe("claude-sonnet-4-5");
   });
+
+  it("reads a version written the way people say it", () => {
+    // Ids use dashes and every sentence about them uses dots, and a ladder is
+    // written by hand.
+    expect(normalizeModelId("claude-opus-4.5")[0]).toBe("claude-opus-4-5");
+  });
 });
 
 describe("specFor", () => {
@@ -63,6 +168,40 @@ describe("specFor", () => {
   it("finds a model a harness decorated with its window", () => {
     // This is the one that costs every line its cost when it is missing.
     expect(specFor("claude-opus-4-6[1m]")?.model).toBe("claude-opus-4-6");
+  });
+});
+
+/**
+ * Two real `claude -p --output-format json` runs, 2026-09-07.
+ *
+ * The envelope carries `total_cost_usd`, which the harness worked out itself
+ * from the plan it is on — so these are not a fixture of our own arithmetic.
+ * They are the number that was billed, and this table has to reproduce it to
+ * the last digit or the two ceilings in one config disagree about the same
+ * run: `costSource: "reported"` for a claude run, `"computed"` for the same
+ * model reached through a harness that says nothing about money.
+ *
+ * Both runs put every cache write in the one-hour bucket, which is where the
+ * money was: at 2x input it is 90% of the haiku bill. A table that billed
+ * those at the 1.25x write rate would be 40% light and look plausible.
+ */
+describe("costOf against what the harness itself billed", () => {
+  it("reproduces a haiku run to the last digit", () => {
+    const haiku = specFor("claude-haiku-4-5-20251001")!;
+
+    expect(
+      costOf(haiku, { input: 10, output: 48, cacheRead: 14_058, cacheWrite: 7907, cacheWrite1h: 7907 }),
+    ).toBeCloseTo(0.0174698, 10);
+  });
+
+  it("reproduces a sonnet run to the last digit", () => {
+    // A different rate tier, so the two together catch a table that happens
+    // to be right about one model.
+    const sonnet = specFor("claude-sonnet-5")!;
+
+    expect(
+      costOf(sonnet, { input: 2, output: 645, cacheRead: 19_123, cacheWrite: 11_239, cacheWrite1h: 11_239 }),
+    ).toBeCloseTo(0.0552346, 10);
   });
 });
 

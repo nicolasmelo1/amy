@@ -70,6 +70,37 @@ describe("spendSince", () => {
     expect(spendSince(events, new Date(NOW.getTime() - 5 * HOUR))).toMatchObject({
       tokens: 700,
       costUsd: 0,
+      // Not unpriced: the plan already paid for it, so the window is fully
+      // accounted for rather than partly unknown.
+      unpriced: 0,
+    });
+  });
+
+  it("counts how many runs nobody could put a price on", () => {
+    // `costUsd` alone reads as the spend of the window and is the spend of
+    // the runs that were priced. Without this a reader cannot tell the two
+    // apart, and the difference is unbounded.
+    const events = [
+      run(ago(1), { costSource: "reported", costUsd: 3, tokens: tokens(10) }),
+      run(ago(1), { costSource: "unknown", tokens: tokens(10) }),
+      run(ago(1), { costSource: "unknown", tokens: tokens(10) }),
+    ];
+
+    expect(spendSince(events, new Date(NOW.getTime() - 5 * HOUR))).toMatchObject({
+      runs: 3,
+      costUsd: 3,
+      unpriced: 2,
+    });
+  });
+
+  it("counts a run that claimed a price and carried none as unpriced", () => {
+    // The one shape that could otherwise pass for measured: a source saying
+    // somebody knew, and no number beside it.
+    const events = [run(ago(1), { costSource: "computed", tokens: tokens(10) })];
+
+    expect(spendSince(events, new Date(NOW.getTime() - 5 * HOUR))).toMatchObject({
+      costUsd: 0,
+      unpriced: 1,
     });
   });
 });
