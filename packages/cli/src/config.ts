@@ -170,6 +170,21 @@ function expandHome(value: string): string {
   return value;
 }
 
+/**
+ * Parses one config document through the loader's own merge.
+ *
+ * `loadConfig` reads the file an install has; this reads the one `amy init`
+ * *would write* — the same words, from a string. The boot check assembles the
+ * template through this rather than through any second parser, because a
+ * template check that parsed the file differently from the machine would
+ * prove the wrong file.
+ */
+export function loadConfigFrom(root: string, text: string): AmyConfig {
+  const parsed = (yaml.parse(text) ?? {}) as Partial<AmyConfig>;
+
+  return fromParsed(root, parsed, () => root);
+}
+
 export function loadConfig(root: string): AmyConfig {
   const file = paths(root).config;
   if (!fs.existsSync(file)) {
@@ -178,6 +193,15 @@ export function loadConfig(root: string): AmyConfig {
 
   const parsed = (yaml.parse(fs.readFileSync(file, "utf-8")) ?? {}) as Partial<AmyConfig>;
 
+  return fromParsed(root, parsed, expandHome);
+}
+
+/** The merge behind both readers, so there is exactly one. */
+function fromParsed(
+  root: string,
+  parsed: Partial<AmyConfig>,
+  home: (value: string) => string,
+): AmyConfig {
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
@@ -190,7 +214,7 @@ export function loadConfig(root: string): AmyConfig {
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
     plans: plansFrom(parsed.plans),
     errands: { policy: parsed.errands?.policy ?? {} },
-    workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
+    workspaceRoot: home(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
   };
 }
 

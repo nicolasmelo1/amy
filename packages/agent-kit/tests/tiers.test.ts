@@ -141,6 +141,38 @@ describe("contributing tiers", () => {
     expect(named(AGENT_COLLECTION)).toEqual(["hermes"]);
   });
 
+  it("mounts a rung named twice once, keeping the first mention", () => {
+    // The shape `amy init` ships: `ladder` and a step's own ladder both naming
+    // `claude:opus`. Unioned raw, the second contribution met the collection's
+    // one-name rule and the mount was refused — the template's own example was
+    // a config that could not boot.
+    const { registry, named } = recordingRegistry();
+
+    contributeTiers(registry, {
+      harness: "claude",
+      models: ["sonnet", "opus", "haiku", "opus"],
+      git: git(),
+      make: fakeHarness,
+    });
+
+    expect(named(AGENT_COLLECTION)).toEqual(["claude:sonnet", "claude:opus", "claude:haiku"]);
+  });
+
+  it("names each surviving rung once in the harness collection too", () => {
+    // Two collections are written from the same list, so a dedupe that only
+    // fixed the agents would leave the harnesses refusing the same mount.
+    const { registry, named } = recordingRegistry();
+
+    contributeTiers(registry, {
+      harness: "claude",
+      models: ["opus", "opus"],
+      git: git(),
+      make: fakeHarness,
+    });
+
+    expect(named(HARNESS_COLLECTION)).toEqual(["claude:opus"]);
+  });
+
   it("never mounts the agent port itself", () => {
     // The point of the whole inversion: a harness that mounted the port would
     // refuse to coexist with the next harness installed.

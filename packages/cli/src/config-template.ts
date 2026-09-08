@@ -77,3 +77,100 @@ export function checkConfigTemplate(
 function named(at: string, key: string): string {
   return at ? `${at}.${key}` : key;
 }
+
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { mount, MountOutcome, NodeCommandRunner } from "@amykit/core";
+import { FileEventLog } from "@amykit/plugin-file-log";
+import type { Roster } from "@amykit/workflow-ticket-to-qa";
+import { EXAMPLE_CONFIG, loadConfigFrom } from "./config.js";
+import { loadEnv } from "./env.js";
+import { hostPlugin } from "./hostPlugin.js";
+import { load } from "./loader.js";
+import { profiles } from "./profiles.js";
+import { hostPaths, pluginList, pluginSlices } from "./slices.js";
+
+export interface BootCheck {
+  ok: boolean;
+  problems: string[];
+}
+
+/**
+ * Whether the config `amy init` writes is one that boots.
+ *
+ * The check above proves the file parses and names every setting; this proves
+ * the one thing that matters most: assembling it against the plugins it names
+ * produces a working host. Both syntax half and boot half live in one module
+ * because they are one claim about one file — `npm run check:config` runs
+ * them in that order, and the unit tests hold them side by side.
+ *
+ * Assembled against the build rather than parsed as text, so a template bug
+ * is caught by the same `mount` that will refuse it on somebody's laptop —
+ * there is no second interpretation of the config to drift apart.
+ */
+export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
+  // `amy init` writes the example; the loader reads it back the way any
+  // command would. Failures here are the parse half of the check, which is
+  // `checkConfigTemplate`'s to report — this is the boot half.
+  const config = loadConfigFrom(configRoot, EXAMPLE_CONFIG);
+
+  // The default profile is what a fresh install runs first, so it is the one
+  // whose mount the template has to guarantee. A second workflow's block is
+  // operator-edited config, not template text, and is somebody else's to
+  // refuse on the day it is added.
+  const profile = profiles(config)[config.defaultWorkflow] ?? Object.values(profiles(config))[0]!;
+  if (!profile) return { ok: false, problems: ["the template declares no workflow to drive"] };
+
+  // The working directory a real machine boots from, read the way every
+  // command reads it. What a fresh install starts without is the operator's
+  // first errand — `amy doctor` says FAIL and names the key — not a fault in
+  // the text `amy init` wrote, so a credential this machine has not been
+  // given yet is stood in for rather than reported as a template bug. Only
+  // when absent: a value already exported stays the one the check means.
+  const credentials: Record<string, string> = { LINEAR_API_KEY: "lin_api_boot-check" };
+  for (const [key, value] of Object.entries(credentials)) {
+    if (process.env[key] === undefined) process.env[key] = value;
+  }
+  loadEnv(process.cwd());
+
+  const specs = pluginList(config, profile);
+  const loaded = await load(specs);
+  // Nothing below means anything if a named plugin is missing: that is an
+  // install problem, said in the loader's own words, and the caller decides
+  // whether it is this check's to enforce.
+  if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
+
+  // The roster `amy init` writes beside the config, handed to the host plugin
+  // unread: the check mounts the machine, it does not judge the roster.
+  const roster: Roster = {
+    confirmedOn: "1970-01-01",
+    reviewers: [],
+    qa: { tracker: "", host: "", available: false },
+  };
+
+  // A state directory of its own, outside the checkout: the mount writes the
+  // empty log a fresh install would have, and a check that littered the
+  // source tree would be a finding the next `sf check` would rightly report
+  // (L4.ROOT_FILES_ARE_DECLARED).
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), "amy-boot-check-"));
+
+  const outcome: MountOutcome = await mount(
+    [...loaded.plugins, hostPlugin(() => roster)],
+    pluginSlices(config, profile),
+    {
+      // A runner a boot never uses: registration wires the CLIs, the ladder
+      // is judged from the rungs' names, and the engine is built on the
+      // first tick. The real one shells out; this one is the real adapter
+      // and reaches nothing, because nothing here asks it to.
+      runner: new NodeCommandRunner(),
+      now: () => new Date(),
+      // The budget is read off a log at boot; an empty one is what a fresh
+      // install has.
+      log: new FileEventLog(path.join(state, "events"), () => new Date()),
+      paths: hostPaths(config, state),
+    },
+  );
+
+  return outcome.ok ? { ok: true, problems: [] } : { ok: false, problems: outcome.problems };
+}

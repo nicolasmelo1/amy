@@ -33,7 +33,19 @@ export interface TierOptions {
  * level reads it.
  */
 export function contributeTiers(registry: Registry, opts: TierOptions): NamedAgent[] {
-  const models = opts.models.length > 0 ? opts.models : [""];
+  // The union the config sent can name a model twice — `ladder` and a step's
+  // own both saying `claude:opus` is the shape `amy init` ships. A rung is a
+  // name in a collection here, and a second contribution under a name already
+  // present is refused at boot. Dedupe, keeping the first mention: a ladder
+  // is ordered, and the first mention is the one that means something.
+  const seen = new Set<string>();
+  const models = opts.models.filter((model) => {
+    const key = `${model}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (models.length === 0) models.push("");
 
   return models.map((model) => {
     const cli = opts.make(model);

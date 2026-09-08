@@ -12,11 +12,19 @@
     ]
   },
   "observed": {
-    "assertions_run": 33,
+    "assertions_run": 35,
     "assertions_failed": 0,
-    "node": "v22.22.1"
+    "node": "v22.22.2"
   },
   "assertions": [
+    {
+      "type": "relay.a_rung_named_twice_mounts_once",
+      "status": "passed"
+    },
+    {
+      "type": "relay.the_first_mention_sets_the_order",
+      "status": "passed"
+    },
     {
       "type": "relay.mounts_the_agent_port",
       "status": "passed"
