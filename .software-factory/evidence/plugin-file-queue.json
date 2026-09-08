@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/plugin-file-queue-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-file-queue-run.json",
-      "report_sha256": "5af9a1b7bb1c1cb353469754d34ac8ccdb6e662c3d8a9b424bb5c511020eabb3",
+      "report_sha256": "3440870f16fdfe54e6521af287fc54be6261afa8a5d9a1ccf19e3b078ad768e1",
       "required_assertions": []
     }
   ]
