@@ -29,7 +29,7 @@ maintains.
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
 | `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
-| `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` | `notify-channel:tracker` |
+| `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` |  |
 | `@amykit/plugin-notify-fanout` | Sends one announcement down every configured channel, and keeps going when one is down. | `notifier` |  |
 | `@amykit/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. | `notify` | `notify-channel:hermes` |
 | `@amykit/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
@@ -338,13 +338,14 @@ Linear as the tracker, over its GraphQL API.
 | :-- | :-- |
 | Source | `plugins/linear` |
 | Mounts | `tracker` |
-| Contributes | `notify-channel:tracker` |
+| Contributes | _nothing_ |
 | Needs in the environment | `LINEAR_API_KEY` |
 | Depends on | `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/workflow-ticket-to-qa` |
 
 ```yaml
 plugins:
   "@amykit/plugin-linear":
+    announceOnTicket: false
     defaultRepo: ""
     endpoint: https://api.linear.app/graphql
     repoByTeam: {}
@@ -353,6 +354,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `announceOnTicket` | `boolean` | no | `false` | also comment every notification on the ticket. Off: the tracker is for questions and answers, and a progress notice is neither |
 | `defaultRepo` | `string` | no | `""` | the repository used for a team that is not in repoByTeam |
 | `endpoint` | `string` | no | `https://api.linear.app/graphql` | the GraphQL endpoint to talk to. Linear's own by default, and the one thing that has to move for a stand-in tracker to take its place in an end-to-end run |
 | `repoByTeam` | `record` | no | `{}` | which repository a team's tickets land in, by team key |
@@ -482,7 +484,7 @@ plugins:
 | :-- | :-- | :-- |
 | `agent` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `harness` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
-| `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox`<br>`tracker` — `@amykit/plugin-linear` | _whichever plugin reads it_ |
+| `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox` | _whichever plugin reads it_ |
 | `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
 
 <!-- amy:end collections -->

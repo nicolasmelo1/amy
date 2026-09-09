@@ -92,3 +92,25 @@ export function totalTokens(tokens: TokenUsage): number {
 export function inputSideTokens(tokens: TokenUsage): number {
   return tokens.input + tokens.cacheRead + tokens.cacheWrite;
 }
+
+/**
+ * What a run actually spends, which is not what it reads.
+ *
+ * A cache read is the *saving*: it is the same context, already paid for,
+ * served at a fraction of the price. Counting it against a ceiling inverts
+ * the incentive — the better the cache works the bigger this number gets, and
+ * the sooner the machine locks itself out for having been efficient.
+ *
+ * That is not hypothetical. One implement run on this install reported
+ * `input: 44, output: 17394, cacheRead: 1839757, cacheWrite: 92769`, which
+ * `totalTokens` adds to 1,949,964 — 97.5% of a 2,000,000 per-five-hours
+ * ceiling, from a run that cost $0.91 against a $20 ceiling in the same
+ * window. One run, and the machine parked itself for five hours.
+ *
+ * `costUsd` is the ceiling that already knows what cache is worth, because
+ * the model specs price the four kinds separately. This one is the quota
+ * proxy, and quota is spent on what is generated and freshly sent.
+ */
+export function billableTokens(tokens: TokenUsage): number {
+  return tokens.input + tokens.output;
+}

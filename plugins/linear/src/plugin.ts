@@ -30,6 +30,14 @@ export const plugin: Plugin = {
     registry.port("tracker", tracker);
     // The channel that comments on a ticket belongs with whatever owns the
     // ticket, which is this.
-    registry.contribute(CHANNEL_COLLECTION, "tracker", trackerChannel(tracker));
+    //
+    // Contributed only when it is asked for. It used to be contributed
+    // unconditionally, which made `notify.tracker: false` dead configuration:
+    // the operator turned it off, the file said off, and every announcement
+    // still commented on the ticket. A setting that reads as honoured and is
+    // not is worse than one that does not exist.
+    if (ctx.config.announceOnTicket) {
+      registry.contribute(CHANNEL_COLLECTION, "tracker", trackerChannel(tracker));
+    }
   },
 };

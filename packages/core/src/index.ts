@@ -59,7 +59,7 @@ export type {
   WindowLimit,
 } from "./ports/Budget.js";
 export type { StopSwitch } from "./ports/StopSwitch.js";
-export { NO_TOKENS, inputSideTokens, totalTokens } from "./agent-run.js";
+export { NO_TOKENS, billableTokens, inputSideTokens, totalTokens } from "./agent-run.js";
 export { describeBuild, stampFrom, stampId } from "./build.js";
 export type { BuildStamp } from "./build.js";
 export type {

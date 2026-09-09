@@ -39,6 +39,23 @@ describe("pluginSlices", () => {
     });
   });
 
+  /**
+   * The plugin owns the ticket channel, so it is the only thing that can
+   * decline to contribute it — and it cannot see `notify.tracker` unless this
+   * line hands it over. Without it the setting was dead: an operator turned
+   * commenting off, and every progress notice was still posted on the ticket.
+   */
+  it("tells the tracker whether announcements may be commented on the ticket", () => {
+    const off = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
+    const on = pluginSlices(
+      { ...CONFIG, notify: { ...CONFIG.notify, tracker: true } },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(off["@amykit/plugin-linear"]?.announceOnTicket).toBe(false);
+    expect(on["@amykit/plugin-linear"]?.announceOnTicket).toBe(true);
+  });
+
   it("gives the agent and the gate the branch new work is cut from", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
