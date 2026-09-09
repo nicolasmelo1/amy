@@ -74,7 +74,7 @@ price it by and codex reports nothing to price it with. Name the model
 
 ### Nothing is installed by default: the command arrives alone, the first workflow is the one the person there names or writes.
 
-`minor` · `amy-workspace`
+`minor` · `@amykit/cli`, `@amykit/plugin-notify-hermes`, `@amykit/workflow-ticket-to-qa`
 
 `@amykit/cli` depends on no workflow and no notifier. The roster the ticket workflow reads is contributed by the host under the name the workflow looks up — spelled where the file is read, not imported — and whether a Hermes target is reachable is asked of the `notify` port the mounted channel contributes.
 

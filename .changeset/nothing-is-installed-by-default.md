@@ -1,5 +1,7 @@
 ---
-"amy-workspace": minor
+"@amykit/cli": minor
+"@amykit/workflow-ticket-to-qa": minor
+"@amykit/plugin-notify-hermes": minor
 ---
 
 Nothing is installed by default: the command arrives alone, the first workflow is the one the person there names or writes.
