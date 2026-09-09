@@ -1,3 +1,16 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { mount, MountOutcome, NodeCommandRunner } from "@amykit/core";
+import { FileEventLog } from "@amykit/plugin-file-log";
+import type { Roster } from "@amykit/workflow-ticket-to-qa";
+import { EXAMPLE_CONFIG, loadConfigFrom } from "./config.js";
+import { loadEnv } from "./env.js";
+import { hostPlugin } from "./hostPlugin.js";
+import { load } from "./loader.js";
+import { profiles } from "./profiles.js";
+import { hostPaths, pluginList, pluginSlices } from "./slices.js";
+
 /**
  * One settings surface: what a block of the config accepts, and where it is.
  *
@@ -78,19 +91,6 @@ function named(at: string, key: string): string {
   return at ? `${at}.${key}` : key;
 }
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { mount, MountOutcome, NodeCommandRunner } from "@amykit/core";
-import { FileEventLog } from "@amykit/plugin-file-log";
-import type { Roster } from "@amykit/workflow-ticket-to-qa";
-import { EXAMPLE_CONFIG, loadConfigFrom } from "./config.js";
-import { loadEnv } from "./env.js";
-import { hostPlugin } from "./hostPlugin.js";
-import { load } from "./loader.js";
-import { profiles } from "./profiles.js";
-import { hostPaths, pluginList, pluginSlices } from "./slices.js";
-
 export interface BootCheck {
   ok: boolean;
   problems: string[];
@@ -122,32 +122,21 @@ export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
   const profile = profiles(config)[config.defaultWorkflow] ?? Object.values(profiles(config))[0]!;
   if (!profile) return { ok: false, problems: ["the template declares no workflow to drive"] };
 
-  // The working directory a real machine boots from, read the way every
-  // command reads it. What a fresh install starts without is the operator's
-  // first errand — `amy doctor` says FAIL and names the key — not a fault in
-  // the text `amy init` wrote, so a credential this machine has not been
-  // given yet is stood in for rather than reported as a template bug. Only
-  // when absent: a value already exported stays the one the check means.
+  // The environment a real machine boots from, read the way every command
+  // reads it — from the config root it was handed, not from wherever the
+  // caller happened to be standing. A check whose answer moved with the
+  // working directory would pass on the machine that ran it and nowhere else.
+  //
+  // What a fresh install starts without is the operator's first errand —
+  // `amy doctor` says FAIL and names the key — not a fault in the text `amy
+  // init` wrote, so a credential this machine has not been given yet is stood
+  // in for rather than reported as a template bug. Only when absent: a value
+  // already exported stays the one the check means.
   const credentials: Record<string, string> = { LINEAR_API_KEY: "lin_api_boot-check" };
-  for (const [key, value] of Object.entries(credentials)) {
-    if (process.env[key] === undefined) process.env[key] = value;
-  }
-  loadEnv(process.cwd());
-
-  const specs = pluginList(config, profile);
-  const loaded = await load(specs);
-  // Nothing below means anything if a named plugin is missing: that is an
-  // install problem, said in the loader's own words, and the caller decides
-  // whether it is this check's to enforce.
-  if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
-
-  // The roster `amy init` writes beside the config, handed to the host plugin
-  // unread: the check mounts the machine, it does not judge the roster.
-  const roster: Roster = {
-    confirmedOn: "1970-01-01",
-    reviewers: [],
-    qa: { tracker: "", host: "", available: false },
-  };
+  const borrowed = borrowEnv(credentials);
+  // `loadEnv` only sets a name nothing had set, so the names it reports back
+  // are exactly the ones to unset again.
+  const fromFile = loadEnv(configRoot);
 
   // A state directory of its own, outside the checkout: the mount writes the
   // empty log a fresh install would have, and a check that littered the
@@ -155,22 +144,70 @@ export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
   // (L4.ROOT_FILES_ARE_DECLARED).
   const state = fs.mkdtempSync(path.join(os.tmpdir(), "amy-boot-check-"));
 
-  const outcome: MountOutcome = await mount(
-    [...loaded.plugins, hostPlugin(() => roster)],
-    pluginSlices(config, profile),
-    {
-      // A runner a boot never uses: registration wires the CLIs, the ladder
-      // is judged from the rungs' names, and the engine is built on the
-      // first tick. The real one shells out; this one is the real adapter
-      // and reaches nothing, because nothing here asks it to.
-      runner: new NodeCommandRunner(),
-      now: () => new Date(),
-      // The budget is read off a log at boot; an empty one is what a fresh
-      // install has.
-      log: new FileEventLog(path.join(state, "events"), () => new Date()),
-      paths: hostPaths(config, state),
-    },
-  );
+  // Everything borrowed above is given back below, on every path out. A check
+  // is an observation: run twice it answers the same, and the process it ran
+  // in is left as it was found — this one runs inside `amy doctor` and inside
+  // a test suite whose next case must not inherit its stand-in credential.
+  try {
+    const specs = pluginList(config, profile);
+    const loaded = await load(specs);
+    // Nothing below means anything if a named plugin is missing: that is an
+    // install problem, said in the loader's own words, and the caller decides
+    // whether it is this check's to enforce.
+    if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
-  return outcome.ok ? { ok: true, problems: [] } : { ok: false, problems: outcome.problems };
+    // The roster `amy init` writes beside the config, handed to the host
+    // plugin unread: the check mounts the machine, it does not judge the roster.
+    const roster: Roster = {
+      confirmedOn: "1970-01-01",
+      reviewers: [],
+      qa: { tracker: "", host: "", available: false },
+    };
+
+    const outcome: MountOutcome = await mount(
+      [...loaded.plugins, hostPlugin(() => roster)],
+      pluginSlices(config, profile),
+      {
+        // A runner a boot never uses: registration wires the CLIs, the ladder
+        // is judged from the rungs' names, and the engine is built on the
+        // first tick. The real one shells out; this one is the real adapter
+        // and reaches nothing, because nothing here asks it to.
+        runner: new NodeCommandRunner(),
+        now: () => new Date(),
+        // The budget is read off a log at boot; an empty one is what a fresh
+        // install has.
+        log: new FileEventLog(path.join(state, "events"), () => new Date()),
+        paths: hostPaths(config, state),
+      },
+    );
+
+    return outcome.ok ? { ok: true, problems: [] } : { ok: false, problems: outcome.problems };
+  } finally {
+    fs.rmSync(state, { recursive: true, force: true });
+    restoreEnv(borrowed);
+    for (const key of fromFile) delete process.env[key];
+  }
+}
+
+/**
+ * Sets the names the mount needs and remembers what was there, so a caller can
+ * put the environment back exactly as it found it — including unsetting a name
+ * that was never set.
+ */
+function borrowEnv(values: Record<string, string>): Map<string, string | undefined> {
+  const before = new Map<string, string | undefined>();
+
+  for (const [key, value] of Object.entries(values)) {
+    before.set(key, process.env[key]);
+    if (process.env[key] === undefined) process.env[key] = value;
+  }
+
+  return before;
+}
+
+function restoreEnv(before: Map<string, string | undefined>): void {
+  for (const [key, value] of before) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
 }

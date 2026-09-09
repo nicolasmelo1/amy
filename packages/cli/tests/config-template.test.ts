@@ -60,13 +60,15 @@ async function assembleTemplate(text: string): Promise<{ ok: boolean; problems: 
   const root = mkdtempSync(path.join(os.tmpdir(), "amy-template-"));
   const state = mkdtempSync(path.join(os.tmpdir(), "amy-template-state-"));
 
-  try {
-    // What a fresh install starts without is the operator's first errand —
-    // `amy doctor` says FAIL and names the key — not a fault in the text
-    // `amy init` wrote. A credential this machine has not been given yet is
-    // stood in for rather than reported as a template bug.
-    process.env.LINEAR_API_KEY ??= "lin_api_boot-check";
+  // What a fresh install starts without is the operator's first errand —
+  // `amy doctor` says FAIL and names the key — not a fault in the text
+  // `amy init` wrote. A credential this machine has not been given yet is
+  // stood in for rather than reported as a template bug, and given back below
+  // so the next case in this file inherits the machine it was run on.
+  const priorKey = process.env.LINEAR_API_KEY;
+  process.env.LINEAR_API_KEY ??= "lin_api_boot-check";
 
+  try {
     const config = loadConfigFrom(root, text);
     const profile = profiles(config)[config.defaultWorkflow] ?? Object.values(profiles(config))[0]!;
 
@@ -96,6 +98,8 @@ async function assembleTemplate(text: string): Promise<{ ok: boolean; problems: 
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(state, { recursive: true, force: true });
+    if (priorKey === undefined) delete process.env.LINEAR_API_KEY;
+    else process.env.LINEAR_API_KEY = priorKey;
   }
 }
 
@@ -104,10 +108,33 @@ describe("the machine the template describes", () => {
   // claim `checkConfigTemplate` could not make: that what `amy init` writes
   // runs — not that the file parses and names every setting.
   it("mounts with no problems", async () => {
-    const boot = await checkConfigBoots(mkdtempSync(path.join(os.tmpdir(), "amy-boot-")));
+    const root = mkdtempSync(path.join(os.tmpdir(), "amy-boot-"));
 
-    expect(boot.problems).toEqual([]);
-    expect(boot.ok).toBe(true);
+    try {
+      const boot = await checkConfigBoots(root);
+
+      expect(boot.problems).toEqual([]);
+      expect(boot.ok).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // The check runs inside `amy doctor` and inside this suite, so it has to be
+  // an observation rather than a mutation: the stand-in credential it needs to
+  // mount is given back, and a machine that never had the key does not end up
+  // holding one.
+  it("leaves the environment as it found it", async () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "amy-boot-env-"));
+    const before = process.env.LINEAR_API_KEY;
+
+    try {
+      await checkConfigBoots(root);
+
+      expect(process.env.LINEAR_API_KEY).toBe(before);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("turns red when the template's own budget window is one nothing meters", async () => {
