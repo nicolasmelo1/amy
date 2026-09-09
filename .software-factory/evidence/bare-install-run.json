@@ -1,0 +1,13 @@
+{
+  "scenario": "bare-install",
+  "status": "passed",
+  "goal": "I am installing amy onto a machine that has none of it, and I want the process I choose, not the processes it brought. Prove installing the command installs no workflow and no plugin, that a machine with nothing configured is told what to run next rather than failed at, that amy init writes its files and adds no package, and that doctor reaches a notification target by asking the mounted channel rather than by carrying a notifier's reader in the command.",
+  "artifact": { "package": "@amykit/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
+  "observed": {
+    "assertions_run": 12,
+    "assertions_failed": 0,
+    "amy_packages_installed": "9",
+    "amy_packages_after_init": "9"
+  },
+  "assertions": [{"type":"bare.the_command_arrives_alone","status":"passed"},{"type":"bare.nothing_drives_before_somebody_names_one","status":"passed"},{"type":"bare.it_says_what_to_do_instead_of_failing","status":"passed"},{"type":"bare.it_names_the_other_way_to_add_one","status":"passed"},{"type":"bare.a_note_without_a_workflow_is_refused_with_the_fix","status":"passed"},{"type":"bare.init_installs_nothing","status":"passed"},{"type":"bare.init_writes_its_files","status":"passed"},{"type":"bare.init_added_no_package","status":"passed"},{"type":"bare.init_writes_no_declared_workflow","status":"passed"},{"type":"bare.doctor_asks_the_port_not_the_package","status":"passed"},{"type":"bare.doctor_still_reports_what_it_found","status":"passed"},{"type":"bare.no_workflow_mounts_so_nothing_assembles","status":"passed"}]
+}

@@ -4,7 +4,7 @@
 
 Announcements over Hermes, which already owns the messaging credentials.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `hermes` in the `notify-channel` collection.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `notify` port and `hermes` in the `notify-channel` collection.
 
 ## Install
 

@@ -84,7 +84,9 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
       ?.get("ticket-to-qa") as WorkflowRuntime;
 
     // The roster is read when a tick needs it, not at mount, so confirming it
-    // takes effect without a restart. The refusal moves with it.
+    // takes effect without a restart. The refusal moves with it — and names
+    // the one command that writes the file, for an install that has run
+    // nothing yet.
     await expect(
       runtime.observe({
         id: "PROJ-1239",
@@ -93,7 +95,16 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
         attempts: {},
         history: [],
       }),
-    ).rejects.toThrow(/needs `roster` in the `workflow-data` collection/);
+    ).rejects.toThrow(/no roster was contributed/);
+    await expect(
+      runtime.observe({
+        id: "PROJ-1239",
+        state: "DISCOVERED",
+        updatedAt: HOST.now().toISOString(),
+        attempts: {},
+        history: [],
+      }),
+    ).rejects.toThrow(/amy init/);
   });
 
   it("hands the decision the policy it was configured with", async () => {

@@ -5,7 +5,6 @@ import { spawn } from "node:child_process";
 import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
 import type { TickResult } from "@amykit/plugin-serial-engine";
-import { isConfirmedFor } from "@amykit/workflow-ticket-to-qa";
 import { FileNotes } from "@amykit/plugin-file-notes";
 import { FileTasks } from "@amykit/plugin-file-tasks";
 import {
@@ -210,13 +209,22 @@ program
     //
     // What each profile *will mount*, not what is recommended for it: a
     // config naming a plugin nobody here shipped is exactly the case worth
-    // installing, and the recommendation cannot know about it.
+    // installing, and the recommendation cannot know about it. A config with
+    // no workflow declares nothing, installs nothing, and says which is
+    // which — a bare machine is the machine being set up, not one being
+    // rebuilt.
     const config = loadConfig(home);
     const wanted = Object.values(profiles(config)).flatMap((profile) =>
       pluginList(config, profile),
     );
     const absent = [...new Set(wanted)].filter((name) => !installedPlugins().includes(name));
-    if (absent.length === 0) return;
+    if (absent.length === 0) {
+      if (wanted.length === 0) {
+        console.log("\nkept the plugins it did not need: nothing is mounted yet.");
+        console.log("Name a workflow and `amy init` installs only what it asks for.");
+      }
+      return;
+    }
 
     await supply(absent, options.install);
   });
@@ -276,44 +284,86 @@ program
   .description("Check everything the machine depends on before it touches a ticket")
   .action(async () => {
     const config = loadConfig(home);
-    const profile = selected(config);
-    const loaded = await load(pluginList(config, profile));
 
-    const checks = await diagnose({
-      home,
-      config,
-      runner,
-      env: process.env,
-      now: new Date(),
-      readRoster: loadRoster,
-      cwd: process.cwd(),
-      schemas: Object.fromEntries(
-        loaded.plugins.flatMap((plugin) => (plugin.configSchema ? [[plugin.name, plugin.configSchema]] : [])),
-      ),
-    });
-
-    for (const check of checks) {
-      const detail = check.detail ? `  ${check.detail}` : "";
-      console.log(`${check.ok ? "ok  " : "FAIL"} ${check.label}${detail}`);
-    }
-
-    // Asked last, because a mount problem is usually a consequence of one of
-    // the checks above rather than a separate fault.
-    const assembled = await assemble(profile);
-    if (!assembled.ok) {
-      for (const problem of assembled.problems) console.log(`FAIL ${problem}`);
-    } else {
-      console.log(`ok   ${assembled.mounted.plugins.length} plugin(s) assembled`);
-    }
-
-    const broken = checks.filter((check) => !check.ok).length + (assembled.ok ? 0 : 1);
-    if (broken > 0) {
-      console.log(`\n${broken} problem(s) to fix before running.`);
+    // A machine that has not named a workflow yet is the machine doctor is
+    // for: it reports everything else it can see, then names the one thing
+    // that is missing in the words the operator can act on — rather than
+    // exiting at the selection step with nothing reported.
+    const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow);
+    if (!resolution.ok) {
+      await doctorReport(
+        config,
+        { name: "", workflow: "", plugins: [], takesNotes: false, takesTasks: false },
+        resolution.problem,
+      );
       process.exitCode = 1;
       return;
     }
-    console.log("\nready");
+
+    await doctorReport(config, resolution.profile);
   });
+
+/**
+ * Runs the checks for one profile, then the mount itself, and says what to
+ * fix.
+ *
+ * The empty-profile call is how a bare install is diagnosed: everything that
+ * does not depend on a workflow is still checked, and the missing workflow is
+ * reported in the selection's own words instead of ending the command before
+ * anything was said.
+ */
+async function doctorReport(config: AmyConfig, profile: Profile, problem?: string): Promise<void> {
+  const loaded = problem
+    ? { plugins: [], problems: [] }
+    : await load(pluginList(config, profile));
+
+  const checks = await diagnose({
+    home,
+    config,
+    runner,
+    env: process.env,
+    now: new Date(),
+    readRoster: loadRoster,
+    cwd: process.cwd(),
+    schemas: Object.fromEntries(
+      loaded.plugins.flatMap((plugin) => (plugin.configSchema ? [[plugin.name, plugin.configSchema]] : [])),
+    ),
+    // Mounted, then asked: whether a notification target is reachable is
+    // the channel's own knowledge, and a mount that did not happen is its
+    // own answer to report.
+    notifyPort: problem
+      ? undefined
+      : await assemble(profile).then((outcome) =>
+          outcome.ok ? outcome.mounted.ports.get("notify") : undefined,
+        ),
+  });
+
+  for (const check of checks) {
+    const detail = check.detail ? `  ${check.detail}` : "";
+    console.log(`${check.ok ? "ok  " : "FAIL"} ${check.label}${detail}`);
+  }
+
+  if (problem) {
+    console.log(`FAIL ${problem}`);
+  }
+
+  // Asked last, because a mount problem is usually a consequence of one of
+  // the checks above rather than a separate fault.
+  const assembled = problem ? { ok: false as const, problems: [problem] } : await assemble(profile);
+  if (!assembled.ok) {
+    for (const p of assembled.problems) console.log(`FAIL ${p}`);
+  } else {
+    console.log(`ok   ${assembled.mounted.plugins.length} plugin(s) assembled`);
+  }
+
+  const broken = checks.filter((check) => !check.ok).length + (assembled.ok ? 0 : 1);
+  if (broken > 0) {
+    console.log(`\n${broken} problem(s) to fix before running.`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log("\nready");
+}
 
 program
   .command("pause")
@@ -1105,7 +1155,12 @@ rosterCommand
   .description("Print the roster and whether it is current")
   .action(() => {
     const roster = loadRoster(home);
-    const current = isConfirmedFor(roster, new Date());
+    const now = new Date();
+    // Confirmed today is the claim, Monday through Friday: a weekend holds,
+    // because people do not confirm a roster they are not using.
+    const workday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5;
+    const current =
+      !workday || roster.confirmedOn === now.toISOString().slice(0, 10);
     console.log(`confirmed on ${roster.confirmedOn}${current ? " (current)" : " (stale)"}`);
     for (const reviewer of roster.reviewers) {
       console.log(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}  ${reviewer.tracker}`);

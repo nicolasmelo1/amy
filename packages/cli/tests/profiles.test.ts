@@ -11,12 +11,8 @@ const WITH_ONCALL = {
 };
 
 describe("which workflows an install can drive", () => {
-  it("drives the three it ships with, before anybody writes a config", () => {
-    expect(Object.keys(profiles(DEFAULT_CONFIG))).toEqual([
-      "ticket-to-qa",
-      "note-to-plan",
-      "errand",
-    ]);
+  it("drives nothing before anybody writes a config", () => {
+    expect(profiles(DEFAULT_CONFIG)).toEqual({});
   });
 
   it("drives one the config declares and this package never heard of", () => {
@@ -26,17 +22,13 @@ describe("which workflows an install can drive", () => {
     expect(resolution.ok && resolution.profile.workflow).toBe("@acme/workflow-oncall");
   });
 
-  it("keeps the shipped ones beside it", () => {
-    expect(Object.keys(profiles(WITH_ONCALL))).toContain("ticket-to-qa");
-  });
-
-  it("lets a config replace a shipped one without renaming it", () => {
+  it("lets a config replace a declared one without renaming it", () => {
     const config = {
-      ...DEFAULT_CONFIG,
-      workflows: { "ticket-to-qa": { workflow: "@acme/workflow-tickets" } },
+      ...WITH_ONCALL,
+      workflows: { oncall: { workflow: "@acme/workflow-tickets" } },
     };
 
-    expect(resolveProfile(config, "ticket-to-qa")).toMatchObject({
+    expect(resolveProfile(config, "oncall")).toMatchObject({
       profile: { workflow: "@acme/workflow-tickets" },
     });
   });
@@ -55,9 +47,17 @@ describe("which workflows an install can drive", () => {
   });
 
   it("takes the first declared when there is no default either", () => {
-    expect(resolveProfile(DEFAULT_CONFIG, undefined)).toMatchObject({
-      profile: { name: "ticket-to-qa" },
+    expect(resolveProfile(WITH_ONCALL, undefined)).toMatchObject({
+      profile: { name: "oncall" },
     });
+  });
+
+  it("says there is nothing to drive, and names what writes one", () => {
+    const resolution = resolveProfile(DEFAULT_CONFIG, undefined);
+
+    expect(resolution.ok).toBe(false);
+    expect(!resolution.ok && resolution.problem).toContain("amy workflow new");
+    expect(!resolution.ok && resolution.problem).toContain("amy add");
   });
 
   it("recommends the shared set for a workflow it does not know", () => {

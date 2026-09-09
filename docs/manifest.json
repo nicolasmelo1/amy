@@ -228,6 +228,11 @@
           "description": ""
         },
         {
+          "title": "Nothing is installed by default",
+          "path": "/design/nothing-is-installed-by-default",
+          "description": ""
+        },
+        {
           "title": "Plugins are installed, not compiled in",
           "path": "/design/plugins-are-installed-not-compiled-in",
           "description": ""
@@ -671,6 +676,11 @@
           "depth": 3,
           "title": "Refuse a dollar ceiling that cannot stop anything, and ask the harness rather than the price table.",
           "slug": "refuse-a-dollar-ceiling-that-cannot-stop-anything-and-ask-the-harness-rather-than-the-price-table"
+        },
+        {
+          "depth": 3,
+          "title": "Nothing is installed by default: the command arrives alone, the first workflow is the one the person there names or writes.",
+          "slug": "nothing-is-installed-by-default-the-command-arrives-alone-the-first-workflow-is-the-one-the-person-there-names-or-writes"
         },
         {
           "depth": 3,
@@ -1315,6 +1325,28 @@
           "depth": 2,
           "title": "What this deliberately does not do",
           "slug": "what-this-deliberately-does-not-do"
+        }
+      ]
+    },
+    {
+      "path": "/design/nothing-is-installed-by-default",
+      "file": "docs/design/nothing-is-installed-by-default.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/nothing-is-installed-by-default.md",
+      "title": "Nothing is installed by default",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What the machine does now",
+          "slug": "what-the-machine-does-now"
+        },
+        {
+          "depth": 2,
+          "title": "The proof",
+          "slug": "the-proof"
         }
       ]
     },
@@ -4071,6 +4103,13 @@
         ]
       },
       {
+        "kind": "notify",
+        "actions": [],
+        "mountedBy": [
+          "@amykit/plugin-notify-hermes"
+        ]
+      },
+      {
         "kind": "plan-check",
         "actions": [
           "check-plan"
@@ -4792,7 +4831,9 @@
         "npm": "https://www.npmjs.com/package/@amykit/plugin-notify-hermes",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/notify-hermes",
         "readme": "plugins/notify-hermes/README.md",
-        "mounts": [],
+        "mounts": [
+          "notify"
+        ],
         "contributes": [
           {
             "collection": "notify-channel",
@@ -5147,6 +5188,32 @@
   ],
   "factory": {
     "gates": [
+      {
+        "name": "bare-install",
+        "activation": [
+          "packages/cli/package.json",
+          "packages/cli/src/profiles.ts",
+          "packages/cli/src/config.ts",
+          "packages/cli/src/doctor.ts"
+        ],
+        "evidence": ".software-factory/evidence/bare-install.json",
+        "plan": "docs/design/nothing-is-installed-by-default.md",
+        "assertions": [
+          "bare.the_command_arrives_alone",
+          "bare.nothing_drives_before_somebody_names_one",
+          "bare.it_says_what_to_do_instead_of_failing",
+          "bare.it_names_the_other_way_to_add_one",
+          "bare.a_note_without_a_workflow_is_refused_with_the_fix",
+          "bare.init_installs_nothing",
+          "bare.init_writes_its_files",
+          "bare.init_added_no_package",
+          "bare.init_writes_no_declared_workflow",
+          "bare.doctor_asks_the_port_not_the_package",
+          "bare.doctor_still_reports_what_it_found",
+          "bare.no_workflow_mounts_so_nothing_assembles"
+        ],
+        "scenario": ".software-factory/evidence/bare-install-scenario.sh"
+      },
       {
         "name": "installed-binary",
         "activation": [
@@ -5681,6 +5748,26 @@
           },
           {
             "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "nothing-is-installed-by-default",
+        "title": "Nothing is installed by default: the command arrives alone, the first workflow is the one the person there names or writes.",
+        "body": "`@amykit/cli` depends on no workflow and no notifier. The roster the ticket workflow reads is contributed by the host under the name the workflow looks up — spelled where the file is read, not imported — and whether a Hermes target is reachable is asked of the `notify` port the mounted channel contributes.\n\n`SHIPPED_PROFILES` is empty: a config with no `workflows:` block drives nothing, and every command that needs one says so and names `amy workflow new` and `amy add`. `EXAMPLE_CONFIG` keeps the two published workflows as commented examples, its plugin slices commented with them, and `amy init` writes its files and installs nothing. A machine with nothing mounted is still diagnosed: `amy doctor` reports everything it can see and names the missing workflow in the selection's own words.\n\nNew gate `bare-install`: the scenario installs the command alone onto a machine with none of it and proves what it can and cannot do — twelve assertions, from \"the command arrives alone\" to \"doctor asks the port, not the package\".",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-hermes",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],

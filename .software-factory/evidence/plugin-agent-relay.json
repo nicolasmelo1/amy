@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/plugin-agent-relay-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-agent-relay-run.json",
-      "report_sha256": "158b0f0fc9b37ca4c26b75676c399c041c2aaba9553cf5f2f53b78baf6f1f87e",
+      "report_sha256": "a19b92e23f6a8b84a6b1d0277e32d126491e7aacc4d9b1c2a0905b3d1198a39f",
       "required_assertions": []
     }
   ]

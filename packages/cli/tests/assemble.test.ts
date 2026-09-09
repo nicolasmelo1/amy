@@ -5,10 +5,17 @@ import path from "node:path";
 import { HostServices, mount, unmetNeeds } from "@amykit/core";
 import { load } from "../src/loader.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
-import { profiles, recommendedFor } from "../src/profiles.js";
+import { Profile, recommendedFor } from "../src/profiles.js";
 import { pluginSlices } from "../src/slices.js";
 
-const TICKETS = profiles(DEFAULT_CONFIG)["ticket-to-qa"]!;
+/** The workflow these plugins are chosen for, named the way a config names it. */
+const TICKETS: Profile = {
+  name: "tickets",
+  workflow: "@amykit/workflow-ticket-to-qa",
+  plugins: [],
+  takesNotes: false,
+  takesTasks: false,
+};
 
 const ROSTER = {
   confirmedOn: "2026-09-03",
@@ -87,6 +94,9 @@ describe("assembling the built-in set", () => {
       // gives up, the other one reads them.
       "notes",
       "notifier",
+      // The channel's own knowledge, asked rather than re-derived: whether a
+      // delivery target is reachable.
+      "notify",
       "queue",
       "store",
       "tracker",

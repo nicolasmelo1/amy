@@ -205,7 +205,14 @@ qa:
 `;
 
 function config(root, endpoint) {
-  return `repos:
+  return `# The workflow is named, not shipped: a machine drives nothing until the
+# config declares one, so this run names the one it is driving.
+workflows:
+  tickets:
+    workflow: "@amykit/workflow-ticket-to-qa"
+defaultWorkflow: tickets
+
+repos:
   - ${REPO}
   - ${OTHER_REPO}
 

@@ -19,7 +19,7 @@
     "check:plans": "node scripts/check-plan-board.mjs",
     "check:toolchain": "node scripts/check-toolchain.mjs",
     "gate": "npm run build && npm run typecheck && npm run check:release && npm run check:config && npm run check:plans && npm run check:toolchain && npm run docs:check && npm run test:coverage && npm run lint && npm run knip && npm run audit && sf check --allow-commands && sf verify",
-    "e2e": "./.software-factory/evidence/plugin-file-queue-scenario.sh && ./.software-factory/evidence/plugin-agent-relay-scenario.sh && ./.software-factory/evidence/plugin-serial-engine-scenario.sh && ./.software-factory/evidence/installed-binary-scenario.sh && ./.software-factory/evidence/installed-plugins-scenario.sh && ./.software-factory/evidence/ticket-to-qa-scenario.sh && ./.software-factory/evidence/note-to-plan-scenario.sh",
+    "e2e": "./.software-factory/evidence/plugin-file-queue-scenario.sh && ./.software-factory/evidence/plugin-agent-relay-scenario.sh && ./.software-factory/evidence/plugin-serial-engine-scenario.sh && ./.software-factory/evidence/installed-binary-scenario.sh && ./.software-factory/evidence/installed-plugins-scenario.sh && ./.software-factory/evidence/ticket-to-qa-scenario.sh && ./.software-factory/evidence/note-to-plan-scenario.sh && ./.software-factory/evidence/bare-install-scenario.sh",
     "changeset": "changeset",
     "release:version": "changeset version && npm install --package-lock-only && npm run docs:generate && sf lock && node scripts/check-lock-scope.mjs",
     "release:publish": "npm run build && changeset publish",
@@ -59,6 +59,10 @@
     ],
     "ignoreBinaries": [
       "sf"
+    ],
+    "ignoreDependencies": [
+      "@amykit/workflow-ticket-to-qa",
+      "@amykit/plugin-notify-hermes"
     ]
   }
 }

@@ -115,7 +115,7 @@ this repository.
 | Package | Kind | Depends on, in this workspace |
 | :-- | :-- | :-- |
 | `@amykit/agent-kit` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
-| `@amykit/cli` | cli | `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-notify-hermes`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/cli` | cli | `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks` |
 | `@amykit/core` | library | _nothing_ |
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |

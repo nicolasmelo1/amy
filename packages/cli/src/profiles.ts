@@ -28,15 +28,12 @@ export interface Profile {
 /**
  * What a fresh install can drive, before anybody writes a `workflows:` block.
  *
- * Two entries rather than two special cases: a config that names either one
- * replaces it, and a config that names a third gets a third. Nothing else in
- * the CLI reads these names.
+ * Nothing: the machine that arrives carries no process, and the first one on
+ * it is the one the person there names or writes. `amy workflow new` and
+ * `amy add` both end in a config block, which is the only place a profile
+ * has ever come from.
  */
-export const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {
-  "ticket-to-qa": { workflow: "@amykit/workflow-ticket-to-qa" },
-  "note-to-plan": { workflow: "@amykit/workflow-note-to-plan", notes: true },
-  errand: { workflow: "@amykit/workflow-errand", tasks: true },
-};
+const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {};
 
 /**
  * What every profile mounts, whichever workflow is driving.
@@ -116,7 +113,11 @@ export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
   const wanted = (asked ?? config.defaultWorkflow ?? "").trim() || names[0];
 
   if (!wanted) {
-    return { ok: false, problem: "no workflow is configured, so there is nothing to drive" };
+    return {
+      ok: false,
+      problem:
+        "no workflow is configured, so there is nothing to drive — `amy workflow new` writes one, `amy add` names an existing package",
+    };
   }
 
   const profile = known[wanted];
@@ -139,7 +140,14 @@ export function directoriesFor(profile: string): { records: string; queue: strin
   return { records: `${profile}/records`, queue: `${profile}/queue` };
 }
 
-/** The layout a version before profiles-as-data wrote, and where it went. */
+/**
+ * The layout a version before profiles-as-data wrote, and where it went.
+ *
+ * The old names were the shipped profiles: `ticket-to-qa` under its own
+ * directory and the two beside it. A config may declare any of those names
+ * again, so the mapping only fires for a directory the config does not
+ * declare — a name somebody chose is theirs, not this table's.
+ */
 export const LEGACY_DIRECTORIES: Record<string, string> = {
   tickets: "ticket-to-qa/records",
   queue: "ticket-to-qa/queue",
