@@ -134,6 +134,7 @@ async function hostWith(
     models = ["sonnet", "opus"],
     codexModels = ["gpt-5"],
     hermesModels = ["hermes-4-405b"],
+    ladderByStep,
   } = {},
 ) {
   const events = [...seed];
@@ -145,6 +146,7 @@ async function hostWith(
       "@amykit/plugin-hermes-agent": { defaultBranch: "main", models: hermesModels },
       "@amykit/plugin-agent-relay": {
         ladder,
+        ...(ladderByStep === undefined ? {} : { ladderByStep }),
         ...(budget === undefined ? {} : { budget }),
         ...(skills === undefined ? {} : { skills, skillRoots: [path.join(work, "skills")] }),
       },
@@ -162,6 +164,7 @@ async function hostWith(
     events,
     agent: outcome.ok ? outcome.mounted.ports.get("agent") : null,
     budget: outcome.ok ? outcome.mounted.ports.get("budget") : null,
+    mounted: outcome.ok ? outcome.mounted : null,
   };
 }
 
@@ -176,12 +179,49 @@ function spent(at, costUsd) {
 
 const LADDER = ["claude:sonnet", "claude:opus", "codex:gpt-5"];
 
+// The shape `amy init` ships: the default ladder and a step's own both naming
+// the same rung. Before the union deduped, this was the config that could not
+// boot — the second `claude:opus` met the collection's one-name rule and the
+// template's own example was refused at mount.
+const TEMPLATE_LADDER = ["claude:sonnet", "claude:opus", "claude:haiku"];
+
 function reset(mode) {
   fs.writeFileSync(calls, "");
   process.env.AMY_E2E_CLAUDE = mode;
 }
 
 const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(Boolean);
+
+// 0. The config `amy init` writes mounts. A rung named in both the default
+// ladder and a step's own is one rung — the collection holds one `claude:opus`
+// where the raw union held two — and the step's own ladder decides who a step
+// meets first, which is how the order a first mention set stays observable.
+{
+  const { outcome, agent } = await hostWith(TEMPLATE_LADDER, {
+    models: ["sonnet", "opus", "haiku", "opus"],
+    ladderByStep: { triage: ["claude:haiku"], implement: ["claude:opus"] },
+  });
+
+  record(
+    "relay.a_rung_named_twice_mounts_once",
+    outcome.ok === true && Boolean(agent),
+  );
+
+  reset("fine");
+  const { agent: stepped } = await hostWith(TEMPLATE_LADDER, {
+    models: ["sonnet", "opus", "haiku", "opus"],
+    ladderByStep: { triage: ["claude:haiku"], implement: ["claude:opus"] },
+  });
+  await stepped.triage(TICKET);
+
+  // `triage` was handed to the rung its step's ladder names first, and the
+  // default ladder's opening rungs were not consulted on the way: the order
+  // the config meant is the order the relay walked.
+  record(
+    "relay.the_first_mention_sets_the_order",
+    called()[0] === "claude:haiku",
+  );
+}
 
 // 1. The relay is what mounts the port. The harnesses only contribute, so
 // without it the agent actions have no owner at all.

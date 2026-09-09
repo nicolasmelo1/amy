@@ -52,3 +52,23 @@ if (problems.length > 0) {
 }
 
 console.log("config template: parses, and names every setting");
+
+// The second half of the claim, and the one that matters most: assembling the
+// config `amy init` writes, against the plugins it names, boots. The syntax
+// half above can pass while the machine it describes is refused at mount —
+// which is how the shipped template's own ladder example was found, on a real
+// install, after the file had been provably well-formed for its whole life.
+const { checkConfigBoots } = await built("packages/cli/dist/config-template.js");
+const boot = await checkConfigBoots(repo);
+
+if (!boot.ok) {
+  console.error("\nThe config `amy init` writes does not boot:\n");
+  for (const problem of boot.problems) console.error(`  ${problem}`);
+  console.error(
+    "\nA fresh install would be refused at its first command. " +
+      "Fix the template in packages/cli/src/config.ts, or the mount that refuses it.",
+  );
+  process.exit(1);
+}
+
+console.log("config template: the machine it writes mounts");

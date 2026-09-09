@@ -83,6 +83,8 @@ gates:
     plan: "docs/design/the-relay-is-proven-end-to-end.md"
     required_assertions:
       - "relay.mounts_the_agent_port"
+      - "relay.a_rung_named_twice_mounts_once"
+      - "relay.the_first_mention_sets_the_order"
       - "relay.escalates_the_model_after_a_failure"
       - "relay.does_not_change_harness_on_a_failure"
       - "relay.changes_harness_after_a_rate_limit"
