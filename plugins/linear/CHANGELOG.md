@@ -1,5 +1,15 @@
 # @amykit/plugin-linear
 
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [e603b3b]
+- Updated dependencies [7ec6c02]
+  - @amykit/core@0.3.0
+  - @amykit/workflow-ticket-to-qa@0.3.0
+  - @amykit/plugin-notify-fanout@0.3.0
+
 ## 0.2.0
 
 ### Patch Changes

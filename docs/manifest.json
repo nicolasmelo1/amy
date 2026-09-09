@@ -673,26 +673,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "Refuse a dollar ceiling that cannot stop anything, and ask the harness rather than the price table.",
-          "slug": "refuse-a-dollar-ceiling-that-cannot-stop-anything-and-ask-the-harness-rather-than-the-price-table"
-        },
-        {
-          "depth": 3,
-          "title": "Nothing is installed by default: the command arrives alone, the first workflow is the one the person there names or writes.",
-          "slug": "nothing-is-installed-by-default-the-command-arrives-alone-the-first-workflow-is-the-one-the-person-there-names-or-writes"
-        },
-        {
-          "depth": 3,
-          "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
-          "slug": "add-the-plan-board-consistency-check-to-the-gate-so-delivered-plans-can-move-into-durable-design-notes-without-losing-their-required-assertions"
-        },
-        {
-          "depth": 3,
-          "title": "The settings amy init writes assemble into a machine that boots — and the check that says so runs from the gate, not from a memory of a real install.",
-          "slug": "the-settings-amy-init-writes-assemble-into-a-machine-that-boots-and-the-check-that-says-so-runs-from-the-gate-not-from-a-memory-of-a-real-install"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -4247,7 +4227,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "library",
         "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
         "directory": "packages/agent-kit",
@@ -4261,7 +4241,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -4275,7 +4255,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -4289,7 +4269,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -4303,7 +4283,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -4355,7 +4335,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "The claude CLI as the agent, with git on the side.",
         "directory": "plugins/claude",
@@ -4414,7 +4394,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -4473,7 +4453,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -4510,7 +4490,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -4547,7 +4527,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -4561,7 +4541,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -4599,7 +4579,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -4637,7 +4617,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -4661,7 +4641,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -4692,7 +4672,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -4708,7 +4688,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -4767,7 +4747,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -4818,7 +4798,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
         "directory": "plugins/notify-fanout",
@@ -4834,7 +4814,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -4862,7 +4842,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -4889,7 +4869,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -4931,7 +4911,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -4974,7 +4954,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
@@ -5014,7 +4994,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
@@ -5054,7 +5034,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
@@ -5724,100 +5704,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "a-ceiling-that-cannot-be-inert",
-        "title": "Refuse a dollar ceiling that cannot stop anything, and ask the harness rather than the price table.",
-        "body": "`specs.json` had no row for the Claude 5 family, so a run whose harness did not\nreport a cost of its own was recorded with none, `spend.costUsd` never moved\nfor it, and `amy budget` reported a figure that was arithmetically true and\npractically a lie. The table now prices `claude-opus-5`, `claude-sonnet-5`,\n`claude-opus-4-8`, `claude-sonnet-4-6` and `claude-fable-5-1`, declares the\nshort names a harness CLI accepts (`opus`, `sonnet`, `haiku`, `fable`) so a\nladder written in them can be recognised, and adds `gpt-5.3-codex` and\n`gpt-5.3-codex-spark`. A refresh keeps the aliases and the long-context\ntiering, because models.dev carries neither.\n\nA price table always lags, so the lasting half is that the ceiling knows: a\n`costUsd` ceiling is refused at boot when a rung in any ladder — including a\nstep's own — names a model whose cost nobody could work out, naming the model\nand the rung.\n\n**Whose cost nobody could work out is not the same question as whose model is\nin the table**, and conflating the two is the reason this is one change rather\nthan two. A rung now declares whether its harness accounts for itself\n(`Rung.pricesItsOwnRuns`), and only a rung that does not is measured against\nthe table:\n\n- **claude** puts `total_cost_usd` in its envelope, and a cost the harness\n  reported beats anything a table computes.\n- **hermes** writes `cost_status: \"included\"` for a run a subscription or a\n  local model covered — where zero is the right answer rather than a missing\n  one, and no price list will ever publish a rate for a model running on\n  somebody's own machine — and prices the rest of its providers itself.\n- **codex** reports no cost of its own, so the vendored table is the only way\n  one of its runs gets a price. It is the one harness a missing row leaves a\n  dollar ceiling inert for.\n\nReading the table's answer as the whole question would refuse an install whose\nceiling works perfectly well, which is the same failure as an inert ceiling\nreached from the other side: a machine that will not start over a number it\nalready has.\n\nThe refusal also no longer offers a command that could not fix it.\n`amy models refresh` re-rates the models the table already has and never adds\none, so a model with no row at all is told to get one in\n`.amy/model-specs.json`, or a ceiling in tokens. `amy budget` says the same.\n\n**Breaking for one config shape:** `ladder: [codex]` — a codex install naming\nno model — is now refused under a `costUsd` ceiling, because there is no id to\nprice it by and codex reports nothing to price it with. Name the model\n(`codex:gpt-5`) or set the ceiling in tokens.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/model-specs",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "nothing-is-installed-by-default",
-        "title": "Nothing is installed by default: the command arrives alone, the first workflow is the one the person there names or writes.",
-        "body": "`@amykit/cli` depends on no workflow and no notifier. The roster the ticket workflow reads is contributed by the host under the name the workflow looks up — spelled where the file is read, not imported — and whether a Hermes target is reachable is asked of the `notify` port the mounted channel contributes.\n\n`SHIPPED_PROFILES` is empty: a config with no `workflows:` block drives nothing, and every command that needs one says so and names `amy workflow new` and `amy add`. `EXAMPLE_CONFIG` keeps the two published workflows as commented examples, its plugin slices commented with them, and `amy init` writes its files and installs nothing. A machine with nothing mounted is still diagnosed: `amy doctor` reports everything it can see and names the missing workflow in the selection's own words.\n\nNew gate `bare-install`: the scenario installs the command alone onto a machine with none of it and proves what it can and cannot do — twelve assertions, from \"the command arrives alone\" to \"doctor asks the port, not the package\".",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-notify-hermes",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "plan-board-outlives-plan",
-        "title": "Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "the-config-amy-writes-must-boot",
-        "title": "The settings `amy init` writes assemble into a machine that boots — and the check that says so runs from the gate, not from a memory of a real install.",
-        "body": "`EXAMPLE_CONFIG` shipped `claude:opus` in the default ladder and again in a\nstep's own. `everyLadderEntry` unions the default ladder with every per-step\none and does not dedupe, so `tiersFor` produced `[\"sonnet\", \"opus\", \"haiku\",\n\"opus\"]`, `contributeTiers` contributed a second agent named `claude:opus`, and\nthe second one met the collection's one-name rule at mount. `amy init` wrote a\nconfig its own first `amy doctor` refused, and the workaround — deleting the\nper-step ladder the template exists to teach — configured the feature out of\nan install because of a missing `Set`.\n\nThe union dedupes in one place, `contributeTiers`, preserving first-seen\norder: a ladder is ordered and the first mention is the one that means\nsomething.\n\nAnd the template check grows the claim it was always about: `npm run\ncheck:config` now assembles the settings the template ships — the same `load`,\nthe same `pluginList`, the same `mount` a real boot runs — and refuses a\ntemplate whose machine does not start.\n\nNothing being installed by default, the template's `workflows:` block is a\ncommented example, so the check mounts the settings under the workflow that\nexample names: the machine the operator has one uncomment later. That is where\nthe ladder, the budget, the gate and the skills actually meet a `mount`, and\nwhere the duplicate rung hid. The transcription is the one thing that can go\nstale, so a template that stops offering the example it copied turns the check\nred rather than leaving it mounting something nobody is offered.\n\nThe unit tests prove every direction: the shipped example mounts, the check\nleaves the environment as it found it, and a template whose budget window\nnothing meters, whose ladder names a harness nothing contributes, or which\nrenames the example out from under the transcription, turns the check red.\n\nThe relay's gate carries the proof: `relay.a_rung_named_twice_mounts_once`\nmounts the template's own ladder shape against the built plugins, and\n`relay.the_first_mention_sets_the_order` walks a step onto the rung its\nstep's ladder names first.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
