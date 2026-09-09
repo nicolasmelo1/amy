@@ -4,7 +4,7 @@
 
 Linear as the tracker, over its GraphQL API.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `tracker` port and `tracker` in the `notify-channel` collection.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `tracker` port.
 
 ## Install
 
@@ -26,6 +26,7 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-linear":
+    announceOnTicket: false
     defaultRepo: ""
     endpoint: "https://api.linear.app/graphql"
     repoByTeam: {}
@@ -34,6 +35,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `announceOnTicket` | `boolean` | no | `false` | also comment every notification on the ticket. Off: the tracker is for questions and answers, and a progress notice is neither |
 | `defaultRepo` | `string` | no | `""` | the repository used for a team that is not in repoByTeam |
 | `endpoint` | `string` | no | `https://api.linear.app/graphql` | the GraphQL endpoint to talk to. Linear's own by default, and the one thing that has to move for a stand-in tracker to take its place in an end-to-end run |
 | `repoByTeam` | `record` | no | `{}` | which repository a team's tickets land in, by team key |

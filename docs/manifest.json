@@ -673,6 +673,11 @@
           "slug": "coming-next"
         },
         {
+          "depth": 3,
+          "title": "Stop commenting machine notices on the tracker, and stop counting cache reads against the token ceiling.",
+          "slug": "stop-commenting-machine-notices-on-the-tracker-and-stop-counting-cache-reads-against-the-token-ceiling"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -4186,10 +4191,6 @@
           {
             "name": "inbox",
             "package": "@amykit/plugin-notify-inbox"
-          },
-          {
-            "name": "tracker",
-            "package": "@amykit/plugin-linear"
           }
         ]
       },
@@ -4757,13 +4758,15 @@
         "mounts": [
           "tracker"
         ],
-        "contributes": [
-          {
-            "collection": "notify-channel",
-            "name": "tracker"
-          }
-        ],
+        "contributes": [],
         "settings": [
+          {
+            "name": "announceOnTicket",
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "description": "also comment every notification on the ticket. Off: the tracker is for questions and answers, and a progress notice is neither"
+          },
           {
             "name": "defaultRepo",
             "type": "string",
@@ -5704,7 +5707,28 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "quiet-trackers-and-honest-budgets",
+        "title": "Stop commenting machine notices on the tracker, and stop counting cache reads against the token ceiling.",
+        "body": "Two defects that both made the machine lie to its operator, found on the same\nday on the same install.\n\n**`notify.tracker: false` was dead configuration.** `plugin-linear` contributed\nits notification channel unconditionally and never read the setting, so every\nengine notice was commented on the Linear ticket — under the operator's own\nname, because amy authenticates with a key issued to a person, and with no\nprefix or marker because the channel posted the raw announcement text. `REVV-7716\nis moving again in DONE after 2 failed attempt(s)` reached a real ticket and a\ncolleague replied to it asking what it meant. The channel is now contributed\nonly when asked for, the default is off, and what it writes says a machine\nwrote it on the first line.\n\n**One agent run could park the machine for five hours.** The token ceiling\nsummed `input + output + cacheRead + cacheWrite`. A single implement run\nreported `input: 44, output: 17394, cacheRead: 1839757, cacheWrite: 92769` —\n1,949,964 against a 2,000,000 per-five-hours ceiling, from a run that cost\n$0.91 against a $20 ceiling in the same window. A cache read is the saving,\nnot the spend, so the better prompt caching worked the sooner the machine\nlocked itself out. The ceiling now counts billable tokens; `costUsd` remains\nthe ceiling that knows what cache is worth.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

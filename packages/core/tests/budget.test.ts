@@ -22,12 +22,40 @@ function limits(overrides: Partial<BudgetLimits> = {}): BudgetLimits {
 }
 
 describe("spendSince", () => {
-  it("adds up every part of a run's token usage", () => {
+  /**
+   * A cache read is the saving, not the spend: the same context, already paid
+   * for, served at a fraction of the price. Counting it here inverts the
+   * incentive — the better prompt caching works the bigger the number gets,
+   * and the sooner the machine locks itself out for having been efficient.
+   */
+  it("counts what a run generated and freshly sent, not what it re-read", () => {
     const events = [
       run(ago(1), { costSource: "reported", tokens: { input: 1, output: 2, cacheRead: 4, cacheWrite: 8 } }),
     ];
 
-    expect(spendSince(events, new Date(NOW.getTime() - 5 * HOUR)).tokens).toBe(15);
+    expect(spendSince(events, new Date(NOW.getTime() - 5 * HOUR)).tokens).toBe(3);
+  });
+
+  /**
+   * The run that made this a bug rather than an opinion, reported verbatim by
+   * the claude harness on 2026-09-09. Summed whole it is 1,949,964 — 97.5% of
+   * a 2,000,000 per-five-hours ceiling — from a run that cost $0.91 against a
+   * $20 ceiling in the same window. One ticket parked the machine for five
+   * hours.
+   */
+  it("does not park a machine for five hours over one cached run", () => {
+    const events = [
+      run(ago(1), {
+        costSource: "reported",
+        costUsd: 0.9130554,
+        tokens: { input: 44, output: 17394, cacheRead: 1839757, cacheWrite: 92769 },
+      }),
+    ];
+
+    const spent = spendSince(events, new Date(NOW.getTime() - 5 * HOUR));
+
+    expect(spent.tokens).toBe(17438);
+    expect(spent.tokens).toBeLessThan(2_000_000 * 0.9);
   });
 
   it("ignores anything that is not an agent run", () => {

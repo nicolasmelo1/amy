@@ -1,4 +1,4 @@
-import { totalTokens } from "./agent-run.js";
+import { billableTokens } from "./agent-run.js";
 import { ceilingFor } from "./budget-config.js";
 import {
   Budget,
@@ -168,7 +168,10 @@ function tokensIn(detail: Record<string, unknown>): number {
   const tokens = detail.tokens;
   if (!isRecord(tokens)) return 0;
 
-  return totalTokens({
+  // Billable, not total: a cache read is context already paid for, and
+  // counting it here parked this machine for five hours after a single run.
+  // See `billableTokens`.
+  return billableTokens({
     input: numberAt(tokens, "input"),
     output: numberAt(tokens, "output"),
     cacheRead: numberAt(tokens, "cacheRead"),

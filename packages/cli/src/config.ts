@@ -203,7 +203,11 @@ export const DEFAULT_CONFIG: AmyConfig = {
   gate: {},
   agent: {},
   skills: {},
-  notify: { tracker: true, hermes: null, inbox: true },
+  // `tracker: false`, and the default is the decision: an announcement
+  // carries no channel, so "on" comments every progress notice the engine
+  // emits on the ticket. A tracker carries questions and answers, and a
+  // workflow with a question comments directly whatever this says.
+  notify: { tracker: false, hermes: null, inbox: true },
   plans: { repos: [], check: { default: ["sf check"] }, policy: {} },
   errands: { policy: {} },
   plugins: {},
@@ -480,8 +484,15 @@ gate:
 #   triage: [/logion]
 
 # Where the machine reaches you. It needs at least one of these.
+#
+# The tracker is off by default and worth leaving off. Announcements go to
+# every channel that is on — there is no routing one of them — so turning it
+# on comments each progress notice on the ticket, and "ACME-1 is failing in
+# IMPLEMENTING and I am retrying: ..." is a machine talking about itself where
+# a team talks to each other. It does not silence a question: a workflow that
+# needs an answer about a ticket comments on it directly.
 notify:
-  tracker: true      # comment on the ticket
+  tracker: false     # also comment every notification on the ticket
   hermes: slack:my-channel   # a Hermes delivery target, or null
   inbox: true        # a file in .amy/needs-input plus a desktop notification
 
