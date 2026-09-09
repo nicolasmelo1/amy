@@ -1,5 +1,12 @@
 # @amykit/workflow-note-to-plan
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [4b54a6f]
+  - @amykit/core@0.3.1
+
 ## 0.3.0
 
 ### Patch Changes
