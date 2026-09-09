@@ -1,5 +1,13 @@
 # @amykit/plugin-plan-check
 
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [e603b3b]
+  - @amykit/core@0.3.0
+  - @amykit/workflow-note-to-plan@0.3.0
+
 ## 0.2.0
 
 ### Patch Changes
