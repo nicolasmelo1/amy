@@ -1,12 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CommandRunner, ConfigSchema, validateConfig } from "@amykit/core";
-import { hermesTargetIsKnown } from "@amykit/plugin-notify-hermes";
-import { Roster, isConfirmedFor } from "@amykit/workflow-ticket-to-qa";
-import { AmyConfig } from "./config.js";
+import { AmyConfig, Roster } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
+
+/** Monday through Friday. Saturday is 6 and Sunday is 0. */
+function isWorkday(date: Date): boolean {
+  const day = date.getUTCDay();
+  return day >= 1 && day <= 5;
+}
 
 export interface Check {
   label: string;
@@ -32,6 +36,15 @@ export interface DoctorDeps {
    * describe a machine other than the one being diagnosed.
    */
   schemas: Readonly<Record<string, ConfigSchema>>;
+  /**
+   * The notification port, if this install mounted one.
+   *
+   * Handed in for the same reason the schemas are: whether a target is
+   * reachable is the mounted channel's own knowledge, not something the host
+   * re-derives by importing one notifier's reader. Undefined means no channel
+   * was mounted, which is its own answer.
+   */
+  notifyPort?: object;
 }
 
 /**
@@ -113,9 +126,11 @@ function pluginSettings({ config, schemas }: DoctorDeps): Check[] {
  *
  * Reported rather than moved: it is somebody's work in flight, and the one
  * command that puts it where the new layout looks is cheaper to read than a
- * migration that ran without being asked.
+ * migration that ran without being asked. A name the current config declares
+ * is a profile, not a leftover — the operator chose it, and its directory is
+ * where this layout looks.
  */
-function leftBehind({ home, cwd }: DoctorDeps): Check[] {
+function leftBehind({ home, cwd, config }: DoctorDeps): Check[] {
   const base = paths(home).base;
   const stray = strayState(cwd, base);
 
@@ -132,6 +147,7 @@ function leftBehind({ home, cwd }: DoctorDeps): Check[] {
   return here.concat(
     Object.entries(LEGACY_DIRECTORIES)
       .filter(([old]) => fs.existsSync(path.join(base, old)))
+      .filter(([old]) => !(old in config.workflows))
       .map(([old, now]) => ({
         label: `state left in ${old}`,
         ok: false,
@@ -143,7 +159,12 @@ function leftBehind({ home, cwd }: DoctorDeps): Check[] {
 function roster({ home, now, readRoster }: DoctorDeps): Check {
   try {
     const current = readRoster(home);
-    const confirmed = isConfirmedFor(current, now);
+    // Confirmed today is the claim: Monday through Friday the date has to be
+    // today's, and a weekend holds — people do not confirm a roster they are
+    // not using, and stalling on one nobody asked for would be the machine
+    // inventing a ritual.
+    const confirmed =
+      !isWorkday(now) || current.confirmedOn === now.toISOString().slice(0, 10);
     return {
       label: "roster confirmed for today",
       ok: confirmed,
@@ -185,19 +206,34 @@ async function tools({ runner }: DoctorDeps): Promise<Check[]> {
   return checks;
 }
 
-async function hermes({ config, runner }: DoctorDeps): Promise<Check[]> {
+/**
+ * Whether the notification port this install mounted can reach the target.
+ *
+ * The question is asked of the port, not of one notifier's reader: the host
+ * carrying `@amykit/plugin-notify-hermes` in its dependencies was the host
+ * holding a plugin's knowledge, and the machine installing only the command
+ * paid for a package it had never chosen. A mount with no channel is an
+ * install that has not turned one on — the check above already says so —
+ * and nothing is asked of a port that was never mounted.
+ */
+type Reachable = { isReachable(target: string): Promise<boolean> | boolean };
+
+async function hermes({ config, notifyPort }: DoctorDeps): Promise<Check[]> {
   const target = config.notify.hermes;
   if (!target) return [];
-
-  const result = await runner.run("hermes", ["send", "--list", "--json"], { timeoutMs: 60_000 });
-
-  if (!result.ok) {
-    const detail = result.stderr.split("\n")[0] ?? "hermes send --list failed";
-    return [{ label: `hermes target ${target}`, ok: false, detail }];
+  if (!notifyPort) {
+    return [
+      {
+        label: `hermes target ${target}`,
+        ok: false,
+        detail: "no notification channel is mounted, so nothing could ask whether it is reachable",
+      },
+    ];
   }
 
+  const reachable = notifyPort as Reachable;
   try {
-    const known = hermesTargetIsKnown(JSON.parse(result.stdout), target);
+    const known = await reachable.isReachable(target);
     return [
       {
         label: `hermes target ${target}`,
@@ -205,12 +241,12 @@ async function hermes({ config, runner }: DoctorDeps): Promise<Check[]> {
         detail: known ? "" : "hermes does not have this target configured",
       },
     ];
-  } catch {
+  } catch (error) {
     return [
       {
         label: `hermes target ${target}`,
         ok: false,
-        detail: "could not read the target listing from hermes",
+        detail: error instanceof Error ? error.message : "the channel could not be asked",
       },
     ];
   }

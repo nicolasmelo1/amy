@@ -1,13 +1,10 @@
 import fs from "node:fs";
 import yaml from "yaml";
-import { DEFAULT_POLICY, Policy } from "@amykit/workflow-ticket-to-qa";
 import type { Policy as PlanPolicy } from "@amykit/workflow-note-to-plan";
 import type { Policy as ErrandPolicy } from "@amykit/workflow-errand";
-import { Roster } from "@amykit/workflow-ticket-to-qa";
 import os from "node:os";
 import path from "node:path";
 import { paths } from "./paths.js";
-import { SHIPPED_PROFILES } from "./profiles.js";
 
 /**
  * The second workflow's vocabulary: friction written down becomes a plan.
@@ -64,6 +61,55 @@ interface NotifyConfig {
   hermes: string | null;
   /** A file on disk plus a desktop notification. */
   inbox: boolean;
+}
+
+/**
+ * The lifecycle ceilings, named here rather than imported from a workflow.
+ *
+ * A config that declares no workflow yet still has to be a whole file: the
+ * ceilings are settings this machine reads and hands to whichever workflow
+ * drives, and importing the type would put a workflow package in the
+ * command's dependencies for a name. The numbers were the ticket workflow's
+ * defaults; the shape is the host's.
+ */
+interface Policy {
+  maxImplementAttempts: number;
+  maxGateAttempts: number;
+  pollBackoffMs: number;
+  rosterBackoffMs: number;
+  maxOpenReviewsPerReviewer: number;
+  maxPullRequestFiles: number;
+  maxPullRequestLines: number;
+}
+
+const DEFAULT_POLICY: Policy = {
+  maxImplementAttempts: 3,
+  maxGateAttempts: 3,
+  pollBackoffMs: 5 * 60 * 1000,
+  rosterBackoffMs: 30 * 60 * 1000,
+  maxOpenReviewsPerReviewer: 2,
+  maxPullRequestFiles: 60,
+  maxPullRequestLines: 2000,
+};
+
+/**
+ * Who reviews today, read off the file `amy init` writes and handed to
+ * whichever workflow asks for it.
+ */
+interface RosterMember {
+  /** How the tracker identifies them, normally an email. */
+  tracker: string;
+  /** How the code host identifies them, a login. */
+  host: string;
+  /** Cleared when someone is on leave. */
+  available: boolean;
+}
+
+export interface Roster {
+  /** The date the roster was last confirmed, as `YYYY-MM-DD`. */
+  confirmedOn: string;
+  reviewers: RosterMember[];
+  qa: RosterMember;
 }
 
 export interface AmyConfig {
@@ -292,19 +338,21 @@ export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name 
 # --workflow, and it is also the directory the profile's records and queue
 # live in, so switching between two of them never loses the state of either.
 #
-# Leave this out and you get the two below. Name a third — a work one, an
-# on-call one, one that is yours and not versioned anywhere — and it drives
-# on the same engine, the same log and the same budget as these.
-workflows:
-  ticket-to-qa:
-    workflow: "@amykit/workflow-ticket-to-qa"
-    # plugins: []   # empty means the recommended set for this workflow
-  note-to-plan:
-    workflow: "@amykit/workflow-note-to-plan"
-    notes: true     # \`amy note\` files friction onto this profile's queue
-
+# Declared here, not shipped: this machine drives nothing until a workflow is
+# named, and \`amy workflow new\` or \`amy add\` writes the block. The two
+# below are the ones this repository publishes, kept as examples rather than
+# defaults — uncomment one and install its package to drive it.
+#
+#   workflows:
+#     ticket-to-qa:
+#       workflow: "@amykit/workflow-ticket-to-qa"
+#       # plugins: []   # empty means the recommended set for this workflow
+#     note-to-plan:
+#       workflow: "@amykit/workflow-note-to-plan"
+#       notes: true     # \`amy note\` files friction onto this profile's queue
+#
 # Which one runs when --workflow is not given. The first, if this is empty.
-defaultWorkflow: ticket-to-qa
+# defaultWorkflow: ticket-to-qa
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be
@@ -475,12 +523,14 @@ plans:
 # One slice per plugin, keyed by package name. Nothing here is read by the
 # host: each plugin declares what its own slice looks like, and "amy doctor"
 # refuses a field that is not one the plugin has. A plugin with no slice runs
-# on its defaults.
-plugins:
-  "@amykit/plugin-notify-hermes":
-    target: slack:my-channel
-  "@amykit/plugin-file-queue":
-    retentionDays: 7
+# on its defaults. Nothing is mounted until a workflow names it, so these are
+# examples too — uncomment with the workflow that carries them.
+#
+# plugins:
+#   "@amykit/plugin-notify-hermes":
+#     target: slack:my-channel
+#   "@amykit/plugin-file-queue":
+#     retentionDays: 7
 `;
 
 /**
@@ -501,7 +551,7 @@ export function writeProfilePlugins(
   const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
 
   const declared = { ...config.workflows };
-  const entry = declared[profile] ?? SHIPPED_PROFILES[profile];
+  const entry = declared[profile];
   if (!entry) throw new Error(`there is no \`${profile}\` workflow to add a plugin to`);
 
   declared[profile] = { ...entry, plugins: [...specs] };

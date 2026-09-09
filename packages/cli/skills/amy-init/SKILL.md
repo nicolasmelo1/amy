@@ -42,10 +42,15 @@ which repositories are actually on this machine.
 
 ## The rounds
 
-**Round 1 — what is this install for.** Which workflows they want. The two
-shipped are `ticket-to-qa` (a tracker ticket to a QA handoff) and
-`note-to-plan` (friction becomes a plan). A third is a package of their own —
-hand that to `/amy-workflow` rather than inventing it here.
+**Round 1 — what is this install for.** The one question the machine cannot
+answer, because nothing ships with a process in it: what work should amy
+drive? `amy workflow list` prints nothing on a fresh install, and that is the
+truth rather than a gap. Ask what process they want amy to drive, and whether
+they want to write it — `/amy-workflow` is for one of their own — or would
+rather name an existing package, the two published ones being `ticket-to-qa`
+(a tracker ticket to a QA handoff) and `note-to-plan` (friction becomes a
+plan). Write the block into the config; only then does `amy init` install
+what that workflow asks for.
 
 **Round 2 — the world.** Repositories, where the checkouts are, which team's
 tickets land where, and the gate command per repository. Read `package.json`,
@@ -106,7 +111,8 @@ done while it lists a problem; name each one and what fixes it.
 - **Nothing here is installed with the command.** `@amykit/cli` carries the
   command and the host services; the plugins are separate, on purpose, so a
   machine with no `codex` carries no code for one. `amy init` prints the
-  `npm install` line for whatever is missing.
+  `npm install` line for whatever the config names and is missing — and on a
+  machine with no workflow named, it installs nothing and says so.
 
 ## Adding a workflow to an install that exists
 

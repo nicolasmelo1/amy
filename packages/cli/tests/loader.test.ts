@@ -1,10 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { DEFAULT_CONFIG } from "../src/config.js";
+import { AmyConfig, DEFAULT_CONFIG } from "../src/config.js";
 import { NOT_INSTALLED, installedPlugins, load } from "../src/loader.js";
-import { profiles, recommendedFor } from "../src/profiles.js";
+import { Profile, recommendedFor } from "../src/profiles.js";
 import { pluginList } from "../src/slices.js";
 
-const SHIPPED = Object.values(profiles(DEFAULT_CONFIG));
+/**
+ * A workflow declared the way a config declares one.
+ *
+ * Shipped profiles no longer exist — nothing is installed by default — so
+ * what is checked here is the set one declared profile recommends, which is
+ * the same claim at the only place it can still be made.
+ */
+const TICKETS: Profile = {
+  name: "tickets",
+  workflow: "@amykit/workflow-ticket-to-qa",
+  plugins: [],
+  takesNotes: false,
+  takesTasks: false,
+};
+
+/** A config that names the workflow above, as an operator's would. */
+const DEFAULT_CONFIG_DECLARING: AmyConfig = {
+  ...DEFAULT_CONFIG,
+  workflows: { tickets: { workflow: "@amykit/workflow-ticket-to-qa" } },
+};
 
 describe("load", () => {
   it("loads nothing from nothing", async () => {
@@ -54,15 +73,13 @@ describe("load", () => {
     expect(result.problems).toHaveLength(1);
   });
 
-  it("loads every plugin a shipped profile recommends", async () => {
-    // If this breaks, a fresh install is broken, which is worth one test.
-    for (const profile of SHIPPED) {
-      const specs = recommendedFor(profile);
-      const result = await load(specs);
+  it("loads every plugin a declared profile recommends", async () => {
+    // If this breaks, a declared install is broken, which is worth one test.
+    const specs = recommendedFor(TICKETS);
+    const result = await load(specs);
 
-      expect(result.problems).toEqual([]);
-      expect(result.plugins).toHaveLength(specs.length);
-    }
+    expect(result.problems).toEqual([]);
+    expect(result.plugins).toHaveLength(specs.length);
   });
 });
 
@@ -78,16 +95,14 @@ describe("what this machine has", () => {
     expect(installedPlugins(new URL("file:///"))).toEqual([]);
   });
 
-  it("has every plugin a shipped profile would mount", () => {
+  it("has every plugin a declared profile would mount", () => {
     // Opt-in means "not mounted", not "not installable": the gating happens
     // in `pluginList`, by whether the ladder names the harness.
     const found = installedPlugins();
 
-    for (const profile of SHIPPED) {
-      for (const spec of recommendedFor(profile)) expect(found).toContain(spec);
-    }
-    expect(pluginList(DEFAULT_CONFIG, SHIPPED[0]!).length).toBeLessThan(
-      recommendedFor(SHIPPED[0]!).length,
+    for (const spec of recommendedFor(TICKETS)) expect(found).toContain(spec);
+    expect(pluginList(DEFAULT_CONFIG_DECLARING, TICKETS).length).toBeLessThan(
+      recommendedFor(TICKETS).length,
     );
   });
 });

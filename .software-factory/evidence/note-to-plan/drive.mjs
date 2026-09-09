@@ -60,9 +60,9 @@ function amy(root, args) {
 }
 
 /** The second profile, which is the one this run is about. */
-const plans = (root, args) => amy(root, ["--workflow", "note-to-plan", ...args]);
+const plans = (root, args) => amy(root, ["--workflow", "plans", ...args]);
 
-const recordsDir = (root) => path.join(root, "home", ".amy", "note-to-plan", "records");
+const recordsDir = (root) => path.join(root, "home", ".amy", "plans", "records");
 const notesDir = (root) => path.join(root, "home", ".amy", "notes");
 const worldDir = (root) => path.join(root, "world");
 
@@ -132,7 +132,7 @@ function walkthrough() {
   // One: the command. Nothing is resolved against anything; the note is
   // written down and put on the queue in the same step.
   const noted = plans(root, ["note", FRICTION, "--repo", REPO, "--source", "ada"]);
-  const queuedAfterNote = queued(root, "note-to-plan/queue");
+  const queuedAfterNote = queued(root, "plans/queue");
   const noteId = fs
     .readdirSync(notesDir(root))
     .filter((name) => name.endsWith(".md"))
@@ -166,7 +166,11 @@ function walkthrough() {
   const trail = run(root);
 
   const status = plans(root, ["status"]);
-  const ticketStatus = amy(root, ["status"]);
+  // The plans profile is the default, so a bare `amy status` reads it. The
+  // same installed binary is what would drive any other workflow, and the
+  // two keep separate state under one .amy — nothing this run did landed in
+  // a second workflow's directories, and none is declared here.
+  const ticketStatus = amy(root, ["workflow", "list"]);
   const budget = amy(root, ["budget"]);
   const mounted = plans(root, ["plugin", "list"]);
 
@@ -184,8 +188,8 @@ function walkthrough() {
     ticketStatus,
     budget,
     mounted,
-    ticketQueue: queued(root, "ticket-to-qa/queue"),
-    planQueue: queued(root, "note-to-plan/queue"),
+    ticketQueue: queued(root, "tickets/queue"),
+    planQueue: queued(root, "plans/queue"),
     records: records(root),
     first: recordFor(root, noteId),
     byHand: recordFor(root, "by-hand"),
@@ -328,17 +332,17 @@ function assertionsFor(state) {
       state.version.code === 0 &&
         state.status.code === 0 &&
         state.ticketStatus.code === 0 &&
-        state.ticketStatus.out.includes("nothing tracked yet"),
+        state.ticketStatus.out.includes("@amykit/workflow-note-to-plan"),
     ],
     [
       // Two profiles, one `.amy`. The records and the queue are the only two
-      // things that move, so nothing the plan workflow did landed in the
-      // ticket workflow's queue or its records.
+      // things that move, so nothing the plan workflow did landed in a
+      // second workflow's directories, and none other is declared here.
       "plan.each_workflow_keeps_its_own_queue_and_records",
       state.ticketQueue.length === 0 &&
         state.planQueue.length === 0 &&
         state.records.length === 4 &&
-        state.ticketStatus.out.includes("nothing tracked yet"),
+        !state.ticketStatus.out.includes("ticket-to-qa"),
     ],
     [
       "plan.what_the_agent_spent_lands_in_the_shared_log",

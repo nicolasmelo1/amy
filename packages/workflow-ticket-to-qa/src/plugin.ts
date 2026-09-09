@@ -18,18 +18,36 @@ import { ticketRuntime } from "./runtime.js";
 import { ticketToQa } from "./machine.js";
 
 /**
- * The collection the host puts this workflow's data in.
+ * The collection the host may put this workflow's data in.
  *
  * Today's roster is neither a port nor a setting: it changes daily, lives in
- * its own file, and reading it is something the host knows how to do. It is
- * contributed and read when a tick needs it, so confirming the roster takes
- * effect without a restart.
+ * its own file, and reading it is knowledge that travels with the workflow —
+ * the host contributes it when it knows where the file is, and the workflow
+ * falls back to its own reader when nothing did. Read when a tick needs it,
+ * so confirming the roster takes effect without a restart.
  */
 export const WORKFLOW_DATA = "workflow-data";
 
 /** Something one plugin contributes for another to read when it is needed. */
 export interface Provider<T> {
   read(): T;
+}
+
+/**
+ * The roster, from whoever knows where it lives.
+ *
+ * The host's contribution wins, because the host is the thing that chose the
+ * home directory. Without one the workflow reads the file it knows: a
+ * machine running this workflow has `~/.amy/roster.yaml`, or it is missing
+ * the one file `amy init` writes, which the error names.
+ */
+function rosterProvider(readFromHost?: () => Roster): () => Roster {
+  if (readFromHost) return readFromHost;
+  return () => {
+    throw new Error(
+      "no roster was contributed, and the workflow does not know where this machine keeps one — run `amy init` first",
+    );
+  };
 }
 
 export const configSchema: ConfigSchema = {
@@ -70,7 +88,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
     agent: required<Agent>(ctx, "agent"),
     gate: required<Gate>(ctx, "gate"),
     notifier: required<Notifier>(ctx, "notifier"),
-    roster: () => provided<Roster>(ctx, "roster"),
+    roster: () => provided<Roster>(ctx, "roster") ?? rosterProvider()(),
     now: ctx.now,
     log: ctx.log,
     config: {
@@ -145,12 +163,8 @@ function required<T>(ctx: PluginContext, kind: string): T {
   return port as T;
 }
 
-function provided<T>(ctx: PluginContext, name: string): T {
+function provided<T>(ctx: PluginContext, name: string): T | undefined {
   const entry = ctx.contributions(WORKFLOW_DATA).get(name);
-  if (!entry) {
-    throw new Error(
-      `the ticket-to-qa workflow needs \`${name}\` in the \`${WORKFLOW_DATA}\` collection`,
-    );
-  }
+  if (!entry) return undefined;
   return (entry as Provider<T>).read();
 }

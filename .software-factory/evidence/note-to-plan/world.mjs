@@ -110,7 +110,15 @@ const AGENT_SCRIPT = { attempts: {} };
 
 function config(root) {
   return `# There is no tracker in this run, and no ticket workflow settings that
-# would need one. What is here is the second workflow's own vocabulary.
+# would need one. What is here is the second workflow's own vocabulary, and
+# the workflow itself is named rather than shipped: a machine drives nothing
+# until the config declares one.
+workflows:
+  plans:
+    workflow: "@amykit/workflow-note-to-plan"
+    notes: true
+defaultWorkflow: plans
+
 repos: []
 workspaceRoot: ${path.join(root, "checkouts")}
 defaultBranch: main

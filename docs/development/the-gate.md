@@ -130,6 +130,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 
 | Gate | What expires it | Assertions |
 | :-- | :-- | :-- |
+| `bare-install` | `packages/cli/package.json`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/src/doctor.ts` | 12 |
 | `installed-binary` | `packages/cli/src/stamp.ts`<br>`packages/cli/src/home.ts`<br>`packages/core/src/build.ts`<br>`scripts/**` | 7 |
 | `installed-plugins` | `packages/cli/src/loader.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/slices.ts`<br>`scripts/install.sh`<br>`scripts/write-install-manifest.mjs` | 12 |
 | `note-to-plan` | `packages/workflow-note-to-plan/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-notes/src/**`<br>`plugins/plan-check/src/**`<br>`plugins/agent-relay/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**` | 19 |

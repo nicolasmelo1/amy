@@ -4,8 +4,8 @@
 "@amykit/plugin-agent-relay": minor
 ---
 
-The config `amy init` writes boots — and the check that says so runs from the
-gate, not from a memory of a real install.
+The settings `amy init` writes assemble into a machine that boots — and the
+check that says so runs from the gate, not from a memory of a real install.
 
 `EXAMPLE_CONFIG` shipped `claude:opus` in the default ladder and again in a
 step's own. `everyLadderEntry` unions the default ladder with every per-step
@@ -21,11 +21,22 @@ order: a ladder is ordered and the first mention is the one that means
 something.
 
 And the template check grows the claim it was always about: `npm run
-check:config` now assembles the config `amy init` writes — the same `load`,
+check:config` now assembles the settings the template ships — the same `load`,
 the same `pluginList`, the same `mount` a real boot runs — and refuses a
-template whose machine does not start. The unit tests prove both directions:
-the shipped example mounts, and a template whose budget window nothing meters,
-or whose ladder names a harness nothing contributes, turns the check red.
+template whose machine does not start.
+
+Nothing being installed by default, the template's `workflows:` block is a
+commented example, so the check mounts the settings under the workflow that
+example names: the machine the operator has one uncomment later. That is where
+the ladder, the budget, the gate and the skills actually meet a `mount`, and
+where the duplicate rung hid. The transcription is the one thing that can go
+stale, so a template that stops offering the example it copied turns the check
+red rather than leaving it mounting something nobody is offered.
+
+The unit tests prove every direction: the shipped example mounts, the check
+leaves the environment as it found it, and a template whose budget window
+nothing meters, whose ladder names a harness nothing contributes, or which
+renames the example out from under the transcription, turns the check red.
 
 The relay's gate carries the proof: `relay.a_rung_named_twice_mounts_once`
 mounts the template's own ladder shape against the built plugins, and

@@ -9,7 +9,13 @@ import { DEFAULT_POLICY as ERRAND_POLICY } from "@amykit/workflow-errand";
 import { DEFAULT_POLICY as PLAN_POLICY } from "@amykit/workflow-note-to-plan";
 import { DEFAULT_POLICY as TICKET_POLICY, Roster } from "@amykit/workflow-ticket-to-qa";
 import { DEFAULT_CONFIG, EXAMPLE_CONFIG, loadConfigFrom } from "../src/config.js";
-import { checkConfigBoots, SettingsSurface, checkConfigTemplate } from "../src/config-template.js";
+import {
+  checkConfigBoots,
+  SettingsSurface,
+  checkConfigTemplate,
+  namesTheExample,
+  withExampleWorkflow,
+} from "../src/config-template.js";
 import { hostPlugin } from "../src/hostPlugin.js";
 import { load } from "../src/loader.js";
 import { profiles } from "../src/profiles.js";
@@ -69,8 +75,11 @@ async function assembleTemplate(text: string): Promise<{ ok: boolean; problems: 
   process.env.LINEAR_API_KEY ??= "lin_api_boot-check";
 
   try {
-    const config = loadConfigFrom(root, text);
-    const profile = profiles(config)[config.defaultWorkflow] ?? Object.values(profiles(config))[0]!;
+    // The same workflow the production check mounts, for the same reason: the
+    // template ships its workflows commented out, and the settings under test
+    // — the ladder, the budget — only reach a mount once one is named.
+    const config = withExampleWorkflow(loadConfigFrom(root, text));
+    const profile = profiles(config)[config.defaultWorkflow]!;
 
     const loaded = await load(pluginList(config, profile));
     if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
@@ -135,6 +144,21 @@ describe("the machine the template describes", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  // The transcription's one failure mode. The check mounts a workflow copied
+  // out of a comment, so a template that stops offering it has to say so
+  // rather than leave the check mounting something nobody is offered.
+  it("names the example it mounts, and says so when the template stops", () => {
+    expect(namesTheExample(EXAMPLE_CONFIG)).toEqual([]);
+
+    // The rename takes the package name with it, which is the honest count:
+    // both words the transcription copied are gone.
+    const renamed = namesTheExample(EXAMPLE_CONFIG.replaceAll("ticket-to-qa", "ticket-to-prod"));
+
+    expect(renamed).toHaveLength(2);
+    expect(renamed.join("\n")).toContain("@amykit/workflow-ticket-to-qa");
+    expect(renamed.join("\n")).toContain("retranscribe");
   });
 
   it("turns red when the template's own budget window is one nothing meters", async () => {

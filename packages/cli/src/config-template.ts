@@ -4,7 +4,7 @@ import path from "node:path";
 import { mount, MountOutcome, NodeCommandRunner } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
 import type { Roster } from "@amykit/workflow-ticket-to-qa";
-import { EXAMPLE_CONFIG, loadConfigFrom } from "./config.js";
+import { type AmyConfig, EXAMPLE_CONFIG, loadConfigFrom } from "./config.js";
 import { loadEnv } from "./env.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { load } from "./loader.js";
@@ -97,6 +97,61 @@ export interface BootCheck {
 }
 
 /**
+ * The workflow the boot check mounts, transcribed from the example the
+ * template ships commented out.
+ *
+ * `amy init` writes a config that drives nothing, and that is the point of it:
+ * the machine arrives carrying no process, and a machine with none mounted is
+ * diagnosed rather than refused. So the boot half cannot assemble the file
+ * exactly as written — there would be no workflow to mount, and the check
+ * would pass having proven nothing, while the ladder, the budget, the gate and
+ * the skills, every setting the template does ship live, went unassembled.
+ * That is the shape the duplicate `claude:opus` rung hid in.
+ *
+ * What it mounts instead is the machine the operator has one uncomment later:
+ * the example block, over the settings the template ships live. Transcribed
+ * rather than unpicked from the comment, because separating `#` that is
+ * commented config from `#` that is prose would be exactly the second
+ * interpretation of the config this module exists not to have — and
+ * `namesTheExample` keeps the transcription honest instead.
+ */
+const EXAMPLE_WORKFLOW = {
+  name: "ticket-to-qa",
+  workflow: "@amykit/workflow-ticket-to-qa",
+} as const;
+
+/**
+ * The template still says the words the transcription above copied.
+ *
+ * The one thing a transcription can do that parsing cannot is go stale. If the
+ * example block is renamed or repointed, this is what says so, rather than the
+ * check quietly mounting a workflow the template no longer offers.
+ */
+export function namesTheExample(template: string): string[] {
+  return [EXAMPLE_WORKFLOW.name, EXAMPLE_WORKFLOW.workflow]
+    .filter((word) => !template.includes(word))
+    .map(
+      (word) =>
+        `the boot check mounts the template's \`${EXAMPLE_WORKFLOW.name}\` example and the template no longer names \`${word}\` — retranscribe \`EXAMPLE_WORKFLOW\` in config-template.ts`,
+    );
+}
+
+/**
+ * The template's settings under the workflow its commented example names.
+ *
+ * Shared with the tests rather than transcribed twice: the negative cases
+ * assemble a mutated template and have to reach the same mount this does, or
+ * they would be proving something about a different machine.
+ */
+export function withExampleWorkflow(config: AmyConfig): AmyConfig {
+  return {
+    ...config,
+    workflows: { [EXAMPLE_WORKFLOW.name]: { workflow: EXAMPLE_WORKFLOW.workflow } },
+    defaultWorkflow: EXAMPLE_WORKFLOW.name,
+  };
+}
+
+/**
  * Whether the config `amy init` writes is one that boots.
  *
  * The check above proves the file parses and names every setting; this proves
@@ -110,16 +165,19 @@ export interface BootCheck {
  * there is no second interpretation of the config to drift apart.
  */
 export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
+  const drifted = namesTheExample(EXAMPLE_CONFIG);
+  if (drifted.length > 0) return { ok: false, problems: drifted };
+
   // `amy init` writes the example; the loader reads it back the way any
   // command would. Failures here are the parse half of the check, which is
   // `checkConfigTemplate`'s to report — this is the boot half.
-  const config = loadConfigFrom(configRoot, EXAMPLE_CONFIG);
+  const config = withExampleWorkflow(loadConfigFrom(configRoot, EXAMPLE_CONFIG));
 
-  // The default profile is what a fresh install runs first, so it is the one
-  // whose mount the template has to guarantee. A second workflow's block is
-  // operator-edited config, not template text, and is somebody else's to
-  // refuse on the day it is added.
-  const profile = profiles(config)[config.defaultWorkflow] ?? Object.values(profiles(config))[0]!;
+  // The example workflow is the one whose mount the template has to guarantee,
+  // because it is the one the template offers. A workflow somebody writes
+  // themselves is their config, not template text, and is theirs to refuse on
+  // the day they add it.
+  const profile = profiles(config)[config.defaultWorkflow];
   if (!profile) return { ok: false, problems: ["the template declares no workflow to drive"] };
 
   // The environment a real machine boots from, read the way every command

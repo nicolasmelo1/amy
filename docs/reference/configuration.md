@@ -77,19 +77,21 @@ and beats the machine-wide one.
 # --workflow, and it is also the directory the profile's records and queue
 # live in, so switching between two of them never loses the state of either.
 #
-# Leave this out and you get the two below. Name a third — a work one, an
-# on-call one, one that is yours and not versioned anywhere — and it drives
-# on the same engine, the same log and the same budget as these.
-workflows:
-  ticket-to-qa:
-    workflow: "@amykit/workflow-ticket-to-qa"
-    # plugins: []   # empty means the recommended set for this workflow
-  note-to-plan:
-    workflow: "@amykit/workflow-note-to-plan"
-    notes: true     # `amy note` files friction onto this profile's queue
-
+# Declared here, not shipped: this machine drives nothing until a workflow is
+# named, and `amy workflow new` or `amy add` writes the block. The two
+# below are the ones this repository publishes, kept as examples rather than
+# defaults — uncomment one and install its package to drive it.
+#
+#   workflows:
+#     ticket-to-qa:
+#       workflow: "@amykit/workflow-ticket-to-qa"
+#       # plugins: []   # empty means the recommended set for this workflow
+#     note-to-plan:
+#       workflow: "@amykit/workflow-note-to-plan"
+#       notes: true     # `amy note` files friction onto this profile's queue
+#
 # Which one runs when --workflow is not given. The first, if this is empty.
-defaultWorkflow: ticket-to-qa
+# defaultWorkflow: ticket-to-qa
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be
@@ -260,12 +262,14 @@ plans:
 # One slice per plugin, keyed by package name. Nothing here is read by the
 # host: each plugin declares what its own slice looks like, and "amy doctor"
 # refuses a field that is not one the plugin has. A plugin with no slice runs
-# on its defaults.
-plugins:
-  "@amykit/plugin-notify-hermes":
-    target: slack:my-channel
-  "@amykit/plugin-file-queue":
-    retentionDays: 7
+# on its defaults. Nothing is mounted until a workflow names it, so these are
+# examples too — uncomment with the workflow that carries them.
+#
+# plugins:
+#   "@amykit/plugin-notify-hermes":
+#     target: slack:my-channel
+#   "@amykit/plugin-file-queue":
+#     retentionDays: 7
 ```
 
 <!-- amy:end config-example -->
