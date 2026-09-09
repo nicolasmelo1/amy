@@ -56,12 +56,12 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question on the ticket",
-      "the automated reviewer looked at af5ac20 and left one comment",
-      "the automated reviewer looked at 46e5931 and had nothing to say",
+      "the automated reviewer looked at cb8bb0b and left one comment",
+      "the automated reviewer looked at acd49a2 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 46e5931",
+      "ada asked for changes on acd49a2",
       "the owner settled the disagreement on the ticket",
-      "ada approved 1f43f74"
+      "ada approved 5107e6c"
     ],
     "agent_calls": [
       "triage",

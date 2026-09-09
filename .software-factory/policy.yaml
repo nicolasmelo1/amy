@@ -15,6 +15,38 @@ docs:
 # A gate activates from the paths a change touches, never from a label
 # or a sentence in a pull request. See L3.GATE_HAS_FRESH_EVIDENCE.
 gates:
+  # The one claim this repository is named for: installing the command
+  # installs nothing else. A fresh machine gets a binary that drives no
+  # workflow, every command that needs one says so and names what writes one,
+  # `amy init` writes its files and adds no package, and doctor asks the
+  # mounted channel whether its target is reachable instead of importing a
+  # notifier's reader.
+  #
+  # The activation is the manifest, the profile table, the config template
+  # and the doctor — the four places the default lived — because a change to
+  # any of them means the last run proved a machine that no longer exists.
+  bare-install:
+    activation:
+      - "packages/cli/package.json"
+      - "packages/cli/src/profiles.ts"
+      - "packages/cli/src/config.ts"
+      - "packages/cli/src/doctor.ts"
+    evidence: ".software-factory/evidence/bare-install.json"
+    plan: "docs/design/nothing-is-installed-by-default.md"
+    required_assertions:
+      - "bare.the_command_arrives_alone"
+      - "bare.nothing_drives_before_somebody_names_one"
+      - "bare.it_says_what_to_do_instead_of_failing"
+      - "bare.it_names_the_other_way_to_add_one"
+      - "bare.a_note_without_a_workflow_is_refused_with_the_fix"
+      - "bare.init_installs_nothing"
+      - "bare.init_writes_its_files"
+      - "bare.init_added_no_package"
+      - "bare.init_writes_no_declared_workflow"
+      - "bare.doctor_asks_the_port_not_the_package"
+      - "bare.doctor_still_reports_what_it_found"
+      - "bare.no_workflow_mounts_so_nothing_assembles"
+
   # Not that the class behaves: that the built artifact, loaded from another
   # process, claims each item exactly once. The activation paths are the
   # plugin's own source, so changing it expires the proof, which is correct —

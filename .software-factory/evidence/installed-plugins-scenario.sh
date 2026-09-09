@@ -115,11 +115,13 @@ fi
 unknown=$("$amy" --workflow onkall tick 2>&1 || echo "")
 says plugins.an_unknown_workflow_name_lists_the_ones_there_are "$unknown" "oncall"
 
-# 6. A workflow this repository ships and this machine never installed is
-# refused by name, at boot, before a piece of work is touched.
-shipped=$("$amy" --workflow note-to-plan tick 2>&1 || echo "")
+# 6. A workflow the config names and this machine never installed is
+# refused by name, at boot, before a piece of work is touched. Nothing ships
+# with a workflow any more, so the name the machine refuses is one the config
+# declared — which is the same claim with no default to lean on.
+uninstalled=$("$amy" --workflow absent tick 2>&1 || echo "")
 says plugins.a_shipped_workflow_nobody_installed_is_refused_by_name \
-  "$shipped" "@amykit/workflow-note-to-plan: not installed"
+  "$uninstalled" "there is no \`absent\` workflow"
 
 # 7. And so is a plugin, with what was installed instead.
 sed -i.bak 's|      - "@acme/workflow-oncall"|      - "@acme/workflow-oncall"\

@@ -43,12 +43,14 @@ describe("forgetting a workflow", () => {
     );
   });
 
-  it("leaves the shipped workflows where they were", () => {
-    // Dropping a profile the config declared cannot remove one it never did:
-    // the two that ship are a default, and a default is not an entry.
+  it("leaves nothing behind that the config never declared", () => {
+    // Dropping a profile the config declared cannot conjure one it never did:
+    // nothing ships by default, so what the config does not name does not
+    // exist.
     removeProfile(home, "oncall", loadConfig(home));
 
-    expect(Object.keys(profiles(loadConfig(home)))).toContain("ticket-to-qa");
+    expect(Object.keys(profiles(loadConfig(home)))).not.toContain("oncall");
+    expect(Object.keys(profiles(loadConfig(home)))).toEqual(["weekly"]);
   });
 
   it("writes a config with no workflows block when the last one goes", () => {

@@ -88,38 +88,52 @@ describe("writing a profile's plugin list", () => {
 
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-config-"));
-    fs.mkdirSync(path.join(root, ".amy"), { recursive: true });
+    fs.mkdirSync(paths(root).base, { recursive: true });
   });
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  const file = () => path.join(root, ".amy", "config.yaml");
+  const file = () => paths(root).config;
+
+  const writeConfig = (text: string) => {
+    fs.writeFileSync(file(), text, "utf-8");
+  };
 
   it("keeps the comments that explain every other setting", () => {
-    fs.writeFileSync(file(), "# what the team reviews in\nrepos:\n  - acme/widgets\n", "utf-8");
+    writeConfig(
+      '# what the team reviews in\nrepos:\n  - acme/widgets\nworkflows:\n  tickets:\n    workflow: "@amykit/workflow-ticket-to-qa"\n',
+    );
 
-    writeProfilePlugins(root, "ticket-to-qa", ["@acme/plugin-mine"], loadConfig(root));
+    writeProfilePlugins(root, "tickets", ["@acme/plugin-mine"], loadConfig(root));
 
     expect(fs.readFileSync(file(), "utf-8")).toContain("# what the team reviews in");
-    expect(loadConfig(root).workflows["ticket-to-qa"]?.plugins).toEqual(["@acme/plugin-mine"]);
+    expect(loadConfig(root).workflows["tickets"]?.plugins).toEqual(["@acme/plugin-mine"]);
   });
 
   it("writes the workflow the profile drives beside its plugins", () => {
-    writeProfilePlugins(root, "note-to-plan", ["@amykit/workflow-note-to-plan"], loadConfig(root));
+    writeConfig(
+      'workflows:\n  plans:\n    workflow: "@amykit/workflow-note-to-plan"\n    notes: true\n',
+    );
 
-    expect(loadConfig(root).workflows["note-to-plan"]).toMatchObject({
+    writeProfilePlugins(root, "plans", ["@amykit/workflow-note-to-plan"], loadConfig(root));
+
+    expect(loadConfig(root).workflows["plans"]).toMatchObject({
       workflow: "@amykit/workflow-note-to-plan",
       notes: true,
     });
   });
 
   it("edits one profile without touching another", () => {
-    writeProfilePlugins(root, "ticket-to-qa", ["@acme/plugin-one"], loadConfig(root));
-    writeProfilePlugins(root, "note-to-plan", ["@acme/plugin-two"], loadConfig(root));
+    writeConfig(
+      'workflows:\n  tickets:\n    workflow: "@amykit/workflow-ticket-to-qa"\n  plans:\n    workflow: "@amykit/workflow-note-to-plan"\n',
+    );
+
+    writeProfilePlugins(root, "tickets", ["@acme/plugin-one"], loadConfig(root));
+    writeProfilePlugins(root, "plans", ["@acme/plugin-two"], loadConfig(root));
 
     const config = loadConfig(root);
-    expect(config.workflows["ticket-to-qa"]?.plugins).toEqual(["@acme/plugin-one"]);
-    expect(config.workflows["note-to-plan"]?.plugins).toEqual(["@acme/plugin-two"]);
+    expect(config.workflows["tickets"]?.plugins).toEqual(["@acme/plugin-one"]);
+    expect(config.workflows["plans"]?.plugins).toEqual(["@acme/plugin-two"]);
   });
 
   it("refuses a profile nobody declared, rather than inventing one", () => {

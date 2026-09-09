@@ -18,6 +18,21 @@ const ROSTER = {
 
 const HERMES_LISTING = JSON.stringify({ platforms: { slack: [{ id: "C1", name: "ops" }] } });
 
+/**
+ * The mounted notification port, standing in for the real one.
+ *
+ * Whether a target is reachable is the channel's own knowledge now, so the
+ * test hands in a port the way the CLI does — assembled from the plugins
+ * this install loaded — rather than a hermes listing to re-derive it from.
+ */
+const NOTIFY_PORT = (known: (target: string) => boolean) => ({
+  isReachable: async (target: string) => known(target),
+});
+
+/** A port whose channel knows the targets a real hermes listing would name. */
+const KNOWN_TARGETS = () =>
+  NOTIFY_PORT((asked) => asked === "slack:ops" || asked === "slack:#ops");
+
 function labelled(checks: Check[], fragment: string): Check | undefined {
   return checks.find((check) => check.label.includes(fragment));
 }
@@ -154,13 +169,24 @@ describe("diagnose", () => {
     expect(labelled(checks, "hermes target")).toBeUndefined();
   });
 
+  it("reports a configured target when no channel is mounted to ask", async () => {
+    const config = {
+      ...DEFAULT_CONFIG,
+      notify: { tracker: true, hermes: "slack:ops", inbox: true },
+    };
+
+    const checks = await diagnose(deps({ config }));
+
+    expect(labelled(checks, "hermes target")).toMatchObject({ ok: false });
+  });
+
   it("fails a hermes target hermes does not have", async () => {
     const config = {
       ...DEFAULT_CONFIG,
       notify: { tracker: true, hermes: "slack:#nope", inbox: true },
     };
 
-    const checks = await diagnose(deps({ config }));
+    const checks = await diagnose(deps({ config, notifyPort: KNOWN_TARGETS() }));
 
     expect(labelled(checks, "hermes target")).toMatchObject({
       ok: false,
@@ -174,23 +200,25 @@ describe("diagnose", () => {
       notify: { tracker: true, hermes: "slack:ops", inbox: true },
     };
 
-    const checks = await diagnose(deps({ config }));
+    const checks = await diagnose(deps({ config, notifyPort: KNOWN_TARGETS() }));
 
     expect(labelled(checks, "hermes target")?.ok).toBe(true);
   });
 
-  it("says so when hermes answers with something unreadable", async () => {
-    const runner = new ScriptedRunner([
-      { match: whenArgsInclude("--list"), result: { stdout: "not json at all" } },
-    ]);
+  it("says so when the channel cannot be asked", async () => {
     const config = {
       ...DEFAULT_CONFIG,
       notify: { tracker: true, hermes: "slack:ops", inbox: true },
     };
+    const broken = {
+      isReachable: async () => {
+        throw new Error("hermes send --list failed");
+      },
+    };
 
-    const checks = await diagnose(deps({ runner, config }));
+    const checks = await diagnose(deps({ config, notifyPort: broken }));
 
-    expect(labelled(checks, "hermes target")?.detail).toContain("could not read");
+    expect(labelled(checks, "hermes target")?.detail).toContain("hermes send --list failed");
   });
 
   it("fails a repository that is not checked out", async () => {

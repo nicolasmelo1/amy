@@ -20,7 +20,7 @@ import { PlanRecord } from "@amykit/workflow-note-to-plan";
 import { TickResult } from "@amykit/plugin-serial-engine";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { load } from "../src/loader.js";
-import { Profile, directoriesFor, profiles } from "../src/profiles.js";
+import { Profile, directoriesFor } from "../src/profiles.js";
 import { pluginList, pluginSlices } from "../src/slices.js";
 
 const ROSTER = {
@@ -53,8 +53,28 @@ const CONFIG = {
   },
 };
 
-const TICKETS = profiles(CONFIG)["ticket-to-qa"]!;
-const PLANS = profiles(CONFIG)["note-to-plan"]!;
+/** The three workflows these tests mount, named the way a config names them. */
+const TICKETS: Profile = {
+  name: "ticket-to-qa",
+  workflow: "@amykit/workflow-ticket-to-qa",
+  plugins: [],
+  takesNotes: false,
+  takesTasks: false,
+};
+const PLANS: Profile = {
+  name: "note-to-plan",
+  workflow: "@amykit/workflow-note-to-plan",
+  plugins: [],
+  takesNotes: true,
+  takesTasks: false,
+};
+const ERRAND_PROFILE: Profile = {
+  name: "errand",
+  workflow: "@amykit/workflow-errand",
+  plugins: [],
+  takesNotes: false,
+  takesTasks: true,
+};
 
 const OK: CommandResult = { ok: true, exitCode: 0, stdout: "", stderr: "" };
 
@@ -593,7 +613,7 @@ describe("a task said in passing", () => {
   let world: World;
   let host: HostServices;
 
-  const ERRAND = profiles(CONFIG)["errand"]!;
+  const ERRAND = ERRAND_PROFILE;
 
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-btw-"));

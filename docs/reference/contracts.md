@@ -27,6 +27,7 @@ explains why for each.
 | `gate` | `@amykit/plugin-command-gate` | `run-gate` |
 | `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
 | `notifier` | `@amykit/plugin-notify-fanout` | `announce` |
+| `notify` | `@amykit/plugin-notify-hermes` | _reached directly_ |
 | `plan-check` | `@amykit/plugin-plan-check` | `check-plan` |
 | `queue` | `@amykit/plugin-file-queue` | _reached directly_ |
 | `store` | `@amykit/plugin-file-store` | _reached directly_ |

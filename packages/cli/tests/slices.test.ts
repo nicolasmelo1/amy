@@ -1,10 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { DEFAULT_CONFIG } from "../src/config.js";
-import { profiles } from "../src/profiles.js";
+import { Profile } from "../src/profiles.js";
 import { ladderNames, pluginList, pluginSlices, tiersFor } from "../src/slices.js";
 
-const TICKETS = profiles(DEFAULT_CONFIG)["ticket-to-qa"]!;
-const PLANS = profiles(DEFAULT_CONFIG)["note-to-plan"]!;
+/** The two workflows these tests mount, named the way a config names them. */
+const TICKETS: Profile = {
+  name: "tickets",
+  workflow: "@amykit/workflow-ticket-to-qa",
+  plugins: [],
+  takesNotes: false,
+  takesTasks: false,
+};
+const PLANS: Profile = {
+  name: "plans",
+  workflow: "@amykit/workflow-note-to-plan",
+  plugins: [],
+  takesNotes: true,
+  takesTasks: false,
+};
 
 const CONFIG = {
   ...DEFAULT_CONFIG,
@@ -92,7 +105,7 @@ describe("pluginSlices", () => {
 
     expect(slices["@amykit/plugin-file-queue"]).toMatchObject({
       retentionDays: 30,
-      directory: "ticket-to-qa/queue",
+      directory: "tickets/queue",
     });
   });
 
