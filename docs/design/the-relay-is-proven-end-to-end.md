@@ -99,6 +99,29 @@ built plugins. `relay.the_first_mention_sets_the_order` walks a step onto the
 rung its step's ladder names first, which is how an order stays observable
 rather than a claim about internals.
 
+The template is also assembled outside this gate, by `npm run check:config`,
+which mounts it against the plugins it names and refuses one whose machine
+does not start. That is a separate surface from the two assertions above and
+it is the one that catches a template bug rather than a tier bug: a rung the
+config names that this build does not contribute, a budget window nothing
+meters, a skill nobody installed.
+
+Since nothing is installed by default, that template declares no workflow of
+its own — the `workflows:` block is a commented example, and a config with
+none drives nothing on purpose. So the check cannot assemble the file exactly
+as written: there would be no workflow to mount and it would pass having
+proven nothing, while the ladder, the budget, the gate and the skills — every
+setting the template does ship live — went unassembled. That is the shape the
+duplicate rung hid in. It mounts the machine the operator has one uncomment
+later instead: the workflow that commented example names, over the settings
+the template ships. The example is transcribed rather than unpicked from the
+comment, because telling commented config apart from prose that is also
+commented would be a second interpretation of the config, and having two is
+how the file the check proves stops being the file the machine reads. A
+transcription can go stale where a parser cannot, so a template that stops
+offering the example it copied turns the check red rather than leaving it
+mounting something nobody is offered.
+
 ## Acceptance criteria
 
 - [x] The relay is what mounts the `agent` port, and the harnesses on their
@@ -163,7 +186,7 @@ rather than a claim about internals.
       (proof: assertion:relay.names_the_skills_there_were_to_choose_from)
 
 **Exit condition:** the gate carries a sealed manifest whose report shows
-these twenty-one assertions passing against the built artifacts, and touching
+these twenty-two assertions passing against the built artifacts, and touching
 the relay or the shared agent kit turns `sf check` red until the run is
 repeated and resealed.
 
