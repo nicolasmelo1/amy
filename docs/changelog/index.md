@@ -72,6 +72,16 @@ no model — is now refused under a `costUsd` ceiling, because there is no id to
 price it by and codex reports nothing to price it with. Name the model
 (`codex:gpt-5`) or set the ceiling in tokens.
 
+### Nothing is installed by default: the command arrives alone, the first workflow is the one the person there names or writes.
+
+`minor` · `amy-workspace`
+
+`@amykit/cli` depends on no workflow and no notifier. The roster the ticket workflow reads is contributed by the host under the name the workflow looks up — spelled where the file is read, not imported — and whether a Hermes target is reachable is asked of the `notify` port the mounted channel contributes.
+
+`SHIPPED_PROFILES` is empty: a config with no `workflows:` block drives nothing, and every command that needs one says so and names `amy workflow new` and `amy add`. `EXAMPLE_CONFIG` keeps the two published workflows as commented examples, its plugin slices commented with them, and `amy init` writes its files and installs nothing. A machine with nothing mounted is still diagnosed: `amy doctor` reports everything it can see and names the missing workflow in the selection's own words.
+
+New gate `bare-install`: the scenario installs the command alone onto a machine with none of it and proves what it can and cannot do — twelve assertions, from "the command arrives alone" to "doctor asks the port, not the package".
+
 ### Add the plan-board consistency check to the gate so delivered plans can move into durable design notes without losing their required assertions.
 
 `patch` · `@amykit/cli`
