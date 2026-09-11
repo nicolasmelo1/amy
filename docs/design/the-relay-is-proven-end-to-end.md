@@ -184,9 +184,18 @@ mounting something nobody is offered.
       (proof: assertion:relay.refuses_a_skill_nobody_installed_at_boot)
 - [x] The refusal names what there was to choose from
       (proof: assertion:relay.names_the_skills_there_were_to_choose_from)
+- [x] The prompt an agent is handed carries the ticket's description, so a
+      body an agent cannot fetch is one it is never asked to
+      (proof: assertion:prompt.carries_the_ticket_body)
+- [x] A ticket with no description produces a prompt that says so, rather
+      than one that looks truncated
+      (proof: assertion:prompt.says_so_when_a_ticket_has_none)
+- [x] No prompt tells an agent to read a tracker page it cannot open; the
+      tracker is the thing that reads a tracker
+      (proof: assertion:prompt.sends_the_agent_to_the_repository_not_the_tracker)
 
 **Exit condition:** the gate carries a sealed manifest whose report shows
-these twenty-two assertions passing against the built artifacts, and touching
+these twenty-five assertions passing against the built artifacts, and touching
 the relay or the shared agent kit turns `sf check` red until the run is
 repeated and resealed.
 

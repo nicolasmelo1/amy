@@ -30,7 +30,7 @@ its first consumer) by
 | `freezeIsClear` | commit statuses, which no ruleset enforces |
 
 The Linear reader exists for three: `description` and `comments` are
-[the ticket body](the-ticket-body-reaches-the-agent.md) and
+[the ticket body](../docs/design/the-ticket-body-reaches-the-agent.md) and
 [an answer](an-answer-reaches-the-agent.md) already; `labels` is below. A
 label is how a team says what a ticket *is*: two epics labelled `Feature`
 were picked up as work to implement, and their sub-issues were the actual

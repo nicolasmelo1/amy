@@ -104,6 +104,9 @@ gates:
       - "relay.moves_to_the_next_skill_when_the_first_did_not_answer"
       - "relay.refuses_a_skill_nobody_installed_at_boot"
       - "relay.names_the_skills_there_were_to_choose_from"
+      - "prompt.carries_the_ticket_body"
+      - "prompt.says_so_when_a_ticket_has_none"
+      - "prompt.sends_the_agent_to_the_repository_not_the_tracker"
 
   # The one claim no unit test can make. They all import source from inside
   # the workspace, so an install missing half of what it needs passes every
@@ -218,6 +221,7 @@ gates:
     plan: "docs/design/the-lifecycle-is-proven-end-to-end.md"
     required_assertions:
       - "lifecycle.only_the_working_status_is_picked_up"
+      - "lifecycle.triage.reads_a_body_the_tracker_supplied"
       - "lifecycle.a_blocking_question_is_asked_on_the_ticket"
       - "lifecycle.the_operator_is_told_where_to_answer"
       - "lifecycle.a_waiting_state_makes_no_move_until_the_world_does"

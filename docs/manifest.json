@@ -248,6 +248,11 @@
           "description": ""
         },
         {
+          "title": "The ticket body reaches the agent",
+          "path": "/design/the-ticket-body-reaches-the-agent",
+          "description": ""
+        },
+        {
           "title": "What runs is not this repo",
           "path": "/design/what-runs-is-not-this-repo",
           "description": ""
@@ -671,6 +676,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "The ticket's description reaches the agent's prompt, instead of an instruction to go and read a page it cannot open.",
+          "slug": "the-tickets-description-reaches-the-agents-prompt-instead-of-an-instruction-to-go-and-read-a-page-it-cannot-open"
         },
         {
           "depth": 2,
@@ -1550,6 +1560,43 @@
           "depth": 2,
           "title": "The config the template writes is the same machine",
           "slug": "the-config-the-template-writes-is-the-same-machine"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-ticket-body-reaches-the-agent",
+      "file": "docs/design/the-ticket-body-reaches-the-agent.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-ticket-body-reaches-the-agent.md",
+      "title": "The ticket body reaches the agent",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What was wrong",
+          "slug": "what-was-wrong"
+        },
+        {
+          "depth": 2,
+          "title": "Why this is worse than a missing field",
+          "slug": "why-this-is-worse-than-a-missing-field"
+        },
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
         },
         {
           "depth": 2,
@@ -5318,7 +5365,10 @@
           "relay.asks_no_other_skill_once_one_answered",
           "relay.moves_to_the_next_skill_when_the_first_did_not_answer",
           "relay.refuses_a_skill_nobody_installed_at_boot",
-          "relay.names_the_skills_there_were_to_choose_from"
+          "relay.names_the_skills_there_were_to_choose_from",
+          "prompt.carries_the_ticket_body",
+          "prompt.says_so_when_a_ticket_has_none",
+          "prompt.sends_the_agent_to_the_repository_not_the_tracker"
         ],
         "scenario": ".software-factory/evidence/plugin-agent-relay-scenario.sh"
       },
@@ -5383,6 +5433,7 @@
         "plan": "docs/design/the-lifecycle-is-proven-end-to-end.md",
         "assertions": [
           "lifecycle.only_the_working_status_is_picked_up",
+          "lifecycle.triage.reads_a_body_the_tracker_supplied",
           "lifecycle.a_blocking_question_is_asked_on_the_ticket",
           "lifecycle.the_operator_is_told_where_to_answer",
           "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
@@ -5702,7 +5753,28 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "the-ticket-body-reaches-the-agent",
+        "title": "The ticket's description reaches the agent's prompt, instead of an instruction to go and read a page it cannot open.",
+        "body": "`ISSUE_FIELDS` asked Linear for `id`, `identifier`, `title`, `url`,\n`branchName`, `state` and `team` — not `description` — so `Ticket` had no body\nand never could have one. `triage` and `implement` then built their prompts\nfrom the title and the tracker URL, and told the agent to \"read the ticket\":\nan instruction nothing under `claude -p` could obey, with no credential and no\nbrowser. The visible failure was an honest refusal; the expensive one was a\nticket whose title sounded sufficient producing a full implementation that\nnever saw the description's acceptance criteria, its named file, or the\nownership boundary written in it — on an install where that duplicated an open\npull request, 8 files and +615 lines on a 2-point ticket.\n\nNow the fetch asks for `description`, `toTicket` maps it to `body` (absent\nstays absent — an empty description is a real state, not an error), and the\nprompts carry the body where the work is judged by it. A ticket with no body\nsays `(this ticket has no description)` rather than looking truncated, which is\nwhat lets the agent ask for one instead of inventing one. A tracker that\nsupplies no body is unaffected: the field is optional and the prompt names the\ncase it is in.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

@@ -56,8 +56,8 @@ export class HarnessAgent implements Agent {
         ``,
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
-        ``,
-        `Read the ticket and enough of this repository to judge it. Answer with a`,
+        ...this.bodyLines(ticket),
+        `Read enough of this repository to judge it. Answer with a`,
         `single JSON object and nothing else:`,
         ``,
         `{"clear": true}`,
@@ -102,6 +102,7 @@ export class HarnessAgent implements Agent {
         ``,
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
+        ...this.bodyLines(ticket),
         ...(retryContext
           ? [
               ``,
@@ -206,7 +207,7 @@ export class HarnessAgent implements Agent {
         : `A human reviewer left comments on the pull request for this ticket.`,
       ``,
       `Ticket ${ticket.id}: ${ticket.title}`,
-      ``,
+      ...this.bodyLines(ticket),
       `Comments:`,
       ...threads.map((thread) => `\n[${thread.id}] ${thread.author} said:\n${thread.body}`),
       ...(hints.length ? [``, `Reviewer notes:`, ...hints.map((hint) => `- ${hint}`)] : []),
@@ -227,6 +228,17 @@ export class HarnessAgent implements Agent {
     return this.harness.ask(this.invoke(prompt), this.git.pathFor(ticket.repo), {
       workId: ticket.id,
     });
+  }
+
+  /**
+   * The ticket's body, in the prompt, where the work can be judged by it.
+   *
+   * A ticket with no body says so rather than looking truncated: the absent
+   * line is the difference between an agent that asks for the description
+   * and one that guesses there was nothing to know.
+   */
+  private bodyLines(ticket: Ticket): string[] {
+    return [``, ticket.body ?? `(this ticket has no description)`];
   }
 
   /** The prompt, addressed to a skill when one was named. */

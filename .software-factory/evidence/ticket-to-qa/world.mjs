@@ -127,6 +127,11 @@ const TRACKER_STATE = {
       stateId: "s-progress",
       teamId: TEAM.id,
       assigneeId: VIEWER.id,
+      // An instruction the title does not carry, and the shape of the whole
+      // claim this proves: only the tracker could have delivered it, so a
+      // prompt carrying it is a trip that worked end to end.
+      description:
+        "The total line must show the same currency as the rest of the invoice. Do not round here.",
       comments: [],
     },
     // In Review, which the tracker files under the same category as In

@@ -27,6 +27,15 @@ export interface Ticket {
    */
   status: string;
 
+  /**
+   * The description the tracker fetched, when it fetched one.
+   *
+   * Absent stays absent: an empty description is a real state and not an
+   * error, and a prompt that says so is what lets the agent ask for a body
+   * rather than invent one.
+   */
+  body?: string;
+
   /** Repository the work belongs to, as `owner/name`. */
   repo: string;
 }

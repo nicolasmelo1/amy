@@ -17,6 +17,7 @@ const ISSUE_FIELDS = `
   id
   identifier
   title
+  description
   url
   branchName
   state { name }
@@ -27,6 +28,7 @@ interface IssueNode {
   id: string;
   identifier: string;
   title: string;
+  description: string | null;
   url: string;
   branchName: string;
   state: { name: string };
@@ -216,6 +218,10 @@ export class LinearTracker implements Tracker {
       url: node.url,
       branchName: node.branchName,
       status: node.state.name,
+      // Absent stays absent. An empty description is a real state, and a
+      // ticket whose body never reached the agent has to look like one
+      // rather than like an empty string pretending there was nothing to say.
+      ...(node.description ? { body: node.description } : {}),
       repo: this.config.repoByTeam[node.team.key] ?? this.config.defaultRepo,
     };
   }

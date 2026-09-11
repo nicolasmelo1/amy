@@ -99,6 +99,37 @@ describe("how it calls the CLI", () => {
     expect(call.options?.cwd).toBe("/w/northwind/northwind-backend");
     expect(call.options?.stdin).toContain("PROJ-1239");
   });
+
+  it("carries the ticket's body in the prompt instead of sending the agent to read it", async () => {
+    const { runner, agent } = agentFor([claudeReturns(envelope({ result: '{"clear": true}' }))]);
+
+    await agent.triage(ticket({ body: "Consume the DB-layer aggregate from TBO-1236." }));
+
+    const prompt = runner.callsTo("claude")[0]!.options?.stdin ?? "";
+    expect(prompt).toContain("Consume the DB-layer aggregate from TBO-1236");
+    // The tracker is the thing that reads a tracker; the agent reads a
+    // repository. The instruction to fetch the page is gone with the excuse
+    // to write it, because nothing in a `-p` session could have obeyed it.
+    expect(prompt).not.toContain("Read the ticket");
+    expect(prompt).toContain("Read enough of this repository to judge it");
+  });
+
+  it("says so when a ticket has no body, rather than looking truncated", async () => {
+    const { runner, agent } = agentFor([claudeReturns(envelope({ result: '{"clear": true}' }))]);
+
+    await agent.triage(ticket({ body: undefined }));
+
+    expect(runner.callsTo("claude")[0]!.options?.stdin).toContain("(this ticket has no description)");
+  });
+
+  it("carries the body into implement, where an ownership boundary lives", async () => {
+    const { runner, agent } = agentFor([claudeReturns(envelope()), treeIsDirty(true)]);
+
+    await agent.implement(ticket({ body: "Named file: src/aggregate.ts. Do not rebuild the SUM." }));
+
+    const prompt = runner.callsTo("claude")[0]!.options?.stdin ?? "";
+    expect(prompt).toContain("Named file: src/aggregate.ts. Do not rebuild the SUM.");
+  });
 });
 
 describe("what it says the run took", () => {

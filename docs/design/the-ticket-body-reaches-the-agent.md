@@ -1,12 +1,20 @@
 # The ticket body reaches the agent
 
-`ISSUE_FIELDS` asks Linear for `id`, `identifier`, `title`, `url`,
-`branchName`, `state` and `team` (`plugins/linear/src/LinearTracker.ts:16`).
-Not `description`. `toTicket` cannot carry what was never fetched (`:211`), so
-`Ticket` has no body and never has.
+Delivered. The record of this decision is this document; what proves it is the
+`plugin-agent-relay` gate, for the prompt itself, and the `ticket-to-qa` gate,
+for the trip from the tracker to the step that drives work. The plan that came
+before kept the argument below; what it promised is the acceptance criteria
+at the end.
 
-`HarnessAgent.triage` then builds its prompt from three of those fields and
-tells the agent to go and get the rest:
+## What was wrong
+
+`ISSUE_FIELDS` asked Linear for `id`, `identifier`, `title`, `url`,
+`branchName`, `state` and `team` (`plugins/linear/src/LinearTracker.ts:16`).
+Not `description`. `toTicket` cannot carry what was never fetched, so
+`Ticket` had no body and never could have one.
+
+`HarnessAgent.triage` then built its prompt from three of those fields and
+told the agent to go and get the rest:
 
 ```
 Ticket ${ticket.id}: ${ticket.title}
@@ -23,8 +31,8 @@ the body were available. `implement` is built the same way.
 
 It fails in two directions and only one of them is visible.
 
-A ticket whose title does not carry the work produces an honest refusal. Ours
-said:
+A ticket whose title does not carry the work produces an honest refusal. One
+install said:
 
 > I'm unable to access the Linear ticket in this non-interactive session — both
 > the Linear MCP and WebFetch require authentication that can't be set up
@@ -52,7 +60,7 @@ Linear API itself with the key from `~/.amy/.env`, and replacing `triage` and
 reimplementing the tracker because the tracker would not carry a body, and
 stepping off two of the core's actions to do it.
 
-## What changes
+## What changed
 
 `Ticket` gains `body`, and the fetch asks for it:
 
@@ -72,8 +80,8 @@ const ISSUE_FIELDS = `
 `toTicket` maps `description` to `body`. Absent stays absent — a ticket with
 an empty description is a real state and is not an error.
 
-The two prompts in `agent-kit` include it, and stop instructing a fetch nobody
-can perform:
+The three prompts in `agent-kit` include it, and stop instructing a fetch
+nobody can perform:
 
 ```
 Ticket ${ticket.id}: ${ticket.title}
@@ -94,33 +102,40 @@ prompt says which case it is in.
 
 `plugin-agent-relay`, extended. It already drives the agent side against fake
 CLIs with no credential, which is exactly what proving a prompt needs — the
-fake records what it was asked. Add:
+fake records what it was asked. Added:
 
 - `prompt.carries_the_ticket_body`
 - `prompt.says_so_when_a_ticket_has_none`
+- `prompt.sends_the_agent_to_the_repository_not_the_tracker`
 
 `ticket-to-qa` covers the other half, that a body fetched from the tracker
 survives the trip to the action:
 
-- `triage.reads_a_body_the_tracker_supplied`
+- `lifecycle.triage.reads_a_body_the_tracker_supplied`
 
 ## Acceptance criteria
 
-- [ ] The prompt an agent receives contains the ticket's description
+- [x] The prompt an agent receives contains the ticket's description
       (proof: assertion:prompt.carries_the_ticket_body)
-- [ ] A ticket with no description produces a prompt that says so, rather than
+- [x] A ticket with no description produces a prompt that says so, rather than
       one that looks truncated
       (proof: assertion:prompt.says_so_when_a_ticket_has_none)
-- [ ] No prompt tells an agent to read a tracker page
-      (proof: test:packages/agent-kit/tests/HarnessAgent.test.ts)
-- [ ] `inProgress` and `get` both return the body
+- [x] No prompt tells an agent to read a tracker page
+      (proof: assertion:prompt.sends_the_agent_to_the_repository_not_the_tracker)
+- [x] `inProgress` and `get` both return the body
       (proof: test:plugins/linear/tests/LinearTracker.test.ts)
-- [ ] A body reaches `triage` and `implement` through the runtime unchanged
-      (proof: assertion:triage.reads_a_body_the_tracker_supplied)
-- [ ] A tracker that supplies no body still mounts and still drives work
+- [x] A body reaches `triage` and `implement` through the runtime unchanged
+      (proof: assertion:lifecycle.triage.reads_a_body_the_tracker_supplied)
+- [x] A tracker that supplies no body still mounts and still drives work
       (proof: test:packages/workflow-ticket-to-qa/tests/runtime.test.ts)
 
 **Exit condition:** a ticket whose description contains an instruction the
 title does not — an ownership boundary, an acceptance criterion, a named
 file — is implemented in accordance with it, and a ticket with no description
-is asked about rather than guessed at.
+is asked about rather than guessed at. The first half is sealed in the
+`ticket-to-qa` gate (the stand-in ticket's description carries an instruction
+its title does not, and the triage prompt carries it); the second holds on the
+same run's question-and-answer path, where a body that leaves a question
+hanging is asked about on the ticket rather than guessed at, and in the
+`plugin-agent-relay` gate's say-so assertion, where an absent body is named
+rather than truncated.

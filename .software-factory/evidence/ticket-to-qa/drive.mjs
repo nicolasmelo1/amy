@@ -426,6 +426,15 @@ function assertionsFor(first, second) {
     // The question, and that it reached both the ticket and the operator.
     ["lifecycle.a_blocking_question_is_asked_on_the_ticket", Boolean(questionAsked)],
     [
+      // The description only the tracker could have supplied, found in the
+      // prompt the agent was actually handed: a body that survived
+      // discovery, the record, and the runtime to reach the step it drives.
+      "lifecycle.triage.reads_a_body_the_tracker_supplied",
+      Boolean(
+        agentCallsFor(first, "triage")[0]?.prompt.includes("Do not round here."),
+      ),
+    ],
+    [
       "lifecycle.the_operator_is_told_where_to_answer",
       first.inbox.some((file) => file.includes(TICKET)),
     ],

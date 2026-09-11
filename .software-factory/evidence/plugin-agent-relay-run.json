@@ -12,9 +12,9 @@
     ]
   },
   "observed": {
-    "assertions_run": 35,
+    "assertions_run": 38,
     "assertions_failed": 0,
-    "node": "v22.22.1"
+    "node": "v22.22.2"
   },
   "assertions": [
     {
@@ -39,6 +39,18 @@
     },
     {
       "type": "relay.asks_nobody_else_when_the_first_rung_worked",
+      "status": "passed"
+    },
+    {
+      "type": "prompt.carries_the_ticket_body",
+      "status": "passed"
+    },
+    {
+      "type": "prompt.says_so_when_a_ticket_has_none",
+      "status": "passed"
+    },
+    {
+      "type": "prompt.sends_the_agent_to_the_repository_not_the_tracker",
       "status": "passed"
     },
     {
