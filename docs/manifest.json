@@ -218,6 +218,11 @@
           "description": "The design behind one warning down, silence, one warning back — and the rule about which port calls may be swallowed."
         },
         {
+          "title": "An answer reaches the agent",
+          "path": "/design/an-answer-reaches-the-agent",
+          "description": ""
+        },
+        {
           "title": "Every plugin is proven end to end",
           "path": "/design/every-plugin-is-proven-end-to-end",
           "description": ""
@@ -676,6 +681,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
+          "slug": "the-answer-on-the-ticket-reaches-the-agent-and-the-tracker-stops-carrying-progress-notices"
         },
         {
           "depth": 3,
@@ -1246,6 +1256,38 @@
           "depth": 2,
           "title": "Writing one",
           "slug": "writing-one"
+        }
+      ]
+    },
+    {
+      "path": "/design/an-answer-reaches-the-agent",
+      "file": "docs/design/an-answer-reaches-the-agent.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/an-answer-reaches-the-agent.md",
+      "title": "An answer reaches the agent",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What was wrong",
+          "slug": "what-was-wrong"
+        },
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
         }
       ]
     },
@@ -4803,13 +4845,6 @@
         "contributes": [],
         "settings": [
           {
-            "name": "announceOnTicket",
-            "type": "boolean",
-            "required": false,
-            "default": false,
-            "description": "also comment every notification on the ticket. Off: the tracker is for questions and answers, and a progress notice is neither"
-          },
-          {
             "name": "defaultRepo",
             "type": "string",
             "required": false,
@@ -5368,7 +5403,8 @@
           "relay.names_the_skills_there_were_to_choose_from",
           "prompt.carries_the_ticket_body",
           "prompt.says_so_when_a_ticket_has_none",
-          "prompt.sends_the_agent_to_the_repository_not_the_tracker"
+          "prompt.sends_the_agent_to_the_repository_not_the_tracker",
+          "prompt.carries_the_answers_to_its_own_questions"
         ],
         "scenario": ".software-factory/evidence/plugin-agent-relay-scenario.sh"
       },
@@ -5438,6 +5474,9 @@
           "lifecycle.the_operator_is_told_where_to_answer",
           "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
           "lifecycle.the_answer_on_the_ticket_releases_the_work",
+          "clarifying.clears_when_the_question_is_answered",
+          "clarifying.does_not_ask_the_same_question_twice",
+          "clarifying.ignores_its_own_comments",
           "lifecycle.a_red_gate_sends_the_work_back_to_the_agent",
           "lifecycle.the_agent_is_told_what_the_gate_said",
           "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green",
@@ -5754,6 +5793,26 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "an-answer-reaches-the-agent",
+        "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
+        "body": "`hasReplyAfter` could say *whether* a ticket was answered and never *what* was\nsaid, so `CLARIFYING` re-ran triage on an unchanged ticket, got the same\nquestions back, and asked them again until it ran out of attempts — the one\npath built for \"a human knows something the ticket does not\" threw that\nknowledge away on arrival. The port gains `comments(ticketId, since?)`\nreturning `{ author, body, at, fromAmy }`, with `fromAmy` settled by the\ntracker's own account of who wrote each comment; `hasReplyAfter` stays as the\ncheap boolean a waiting state polls with, and still fetches no text. An\nanswered question now moves the work on: the state re-reads the ticket with\nthe conversation attached, amy's own comments labelled as questions it already\nasked, and the second look never repeats a question the answer closed. The\n`triage` and `implement` prompts carry that conversation, attributed.\n\n`plugin-linear` also stops contributing its notification channel: a tracker\ncomment is for a question that needs a person, and `failing`, `recovered` and\n`gave-up` are for the operator's channels. That removes the pollution —\nprogress notices commented on a ticket under the operator's own name — rather\nthan teaching every reader to filter it. `notify.tracker` is gone with it.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
       {
         "id": "the-ticket-body-reaches-the-agent",
         "title": "The ticket's description reaches the agent's prompt, instead of an instruction to go and read a page it cannot open.",

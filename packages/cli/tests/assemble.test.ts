@@ -30,7 +30,7 @@ const CONFIG = {
   qaStatusName: "In QA",
   defaultBranch: "dev",
   gate: { "acme/widgets": ["npm test"] },
-  notify: { tracker: true, hermes: "slack:ops", inbox: true },
+  notify: { hermes: "slack:ops", inbox: true },
 };
 
 /**
@@ -120,10 +120,12 @@ describe("assembling the built-in set", () => {
     const outcome = await assemble();
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
+    // Two, not three: the tracker channel is gone. It commented every
+    // progress notice on the ticket under the operator's own name, and a
+    // tracker comment is for a question that needs a person.
     expect([...outcome.mounted.contributions.get("notify-channel")!.keys()].sort()).toEqual([
       "hermes",
       "inbox",
-      "tracker",
     ]);
   });
 

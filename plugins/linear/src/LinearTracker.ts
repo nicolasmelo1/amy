@@ -1,5 +1,5 @@
 import { GraphQLClient } from "@amykit/core";
-import { FollowUpRequest, Tracker } from "@amykit/workflow-ticket-to-qa";
+import { Comment, FollowUpRequest, Tracker } from "@amykit/workflow-ticket-to-qa";
 import { Ticket } from "@amykit/workflow-ticket-to-qa";
 
 export const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
@@ -109,6 +109,50 @@ export class LinearTracker implements Tracker {
       (comment) =>
         new Date(comment.createdAt).getTime() > cutoff && comment.user?.id !== viewer,
     );
+  }
+
+  /**
+   * The conversation on the ticket, oldest first, in full.
+   *
+   * The query asks for the author, the text and the timestamp — the three
+   * things a reader needs — and `fromAmy` is settled by the account the
+   * tracker says wrote each comment, which is the tracker's answer and not a
+   * guess by whatever reads it. `since` narrows the fetch, so a waiting state
+   * asking for what arrived after its question is not paying for the thread
+   * that came before it.
+   */
+  async comments(ticketId: string, since?: string): Promise<Comment[]> {
+    const [viewer, data] = await Promise.all([
+      this.viewer(),
+      this.client.request<{
+        issue: {
+          comments: {
+            nodes: { createdAt: string; body: string; user: { id: string; name: string } | null }[];
+          } | null;
+        };
+      }>(
+        `query Conversation($id: String!) {
+          issue(id: $id) {
+            comments(first: 100) { nodes { createdAt body user { id name } } }
+          }
+        }`,
+        { id: ticketId },
+      ),
+    ]);
+
+    const cutoff = since === undefined ? 0 : new Date(since).getTime();
+
+    const nodes = data.issue?.comments?.nodes ?? [];
+
+    return nodes
+      .filter((comment) => new Date(comment.createdAt).getTime() > cutoff)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .map((comment) => ({
+        author: comment.user?.name ?? "",
+        body: comment.body,
+        at: comment.createdAt,
+        fromAmy: comment.user?.id === viewer,
+      }));
   }
 
   async setStatus(ticketId: string, statusName: string): Promise<void> {

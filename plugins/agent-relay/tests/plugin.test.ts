@@ -27,7 +27,7 @@ function harnessPlugin(harness: string, models: string[]): Plugin {
           agent: fakeAgent({
             triage: async () =>
               agentResult(
-                { clear: true, questions: [], at: "2026-09-05T10:00:00.000Z" },
+                { clear: true, questions: [], askedQuestions: [], at: "2026-09-05T10:00:00.000Z" },
                 { outcome: "completed", harness, model },
               ),
           }),

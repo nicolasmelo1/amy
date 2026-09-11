@@ -193,9 +193,12 @@ mounting something nobody is offered.
 - [x] No prompt tells an agent to read a tracker page it cannot open; the
       tracker is the thing that reads a tracker
       (proof: assertion:prompt.sends_the_agent_to_the_repository_not_the_tracker)
+- [x] The prompt an agent is handed carries the conversation on the ticket,
+      attributed, so a question is answered by the answer and not read as one
+      (proof: assertion:prompt.carries_the_answers_to_its_own_questions)
 
 **Exit condition:** the gate carries a sealed manifest whose report shows
-these twenty-five assertions passing against the built artifacts, and touching
+these twenty-six assertions passing against the built artifacts, and touching
 the relay or the shared agent kit turns `sf check` red until the run is
 repeated and resealed.
 

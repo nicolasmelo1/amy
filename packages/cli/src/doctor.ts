@@ -84,7 +84,7 @@ function configContents({ config }: DoctorDeps): Check[] {
     { label: "gate configured", ok: Object.keys(config.gate).length > 0 },
     {
       label: "a notification channel is on",
-      ok: config.notify.tracker || config.notify.inbox || Boolean(config.notify.hermes),
+      ok: config.notify.inbox || Boolean(config.notify.hermes),
     },
   ];
 }

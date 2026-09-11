@@ -62,7 +62,10 @@ class FakeWorld {
       pullRequest: this.pullRequest,
       reviewLoad: this.reviewLoad,
       roster: roster(),
-      questionAnswered: this.questionAnswered,
+      // Empty, which is what a ticket nobody has answered looks like. The
+      // walkthrough is about the whole lifecycle, and CLARIFYING is exercised
+      // by machine.test.ts against a real conversation.
+      conversation: [],
       escalationAnswered: this.escalationAnswered,
       now: new Date(this.clock),
     };
@@ -114,7 +117,12 @@ class FakeWorld {
     for (const effect of effects) {
       switch (effect.type) {
         case "triage":
-          outcomes.triage = { clear: true, questions: [], at: this.now().toISOString() };
+          outcomes.triage = {
+            clear: true,
+            questions: [],
+            askedQuestions: [],
+            at: this.now().toISOString(),
+          };
           break;
         case "ask-question":
           this.questionAnswered = true;

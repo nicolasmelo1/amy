@@ -140,8 +140,8 @@ export function ticketRuntime(
   const outcomesOf = (ctx: Context): EffectOutcomes => ctx.outcomes as EffectOutcomes;
 
   const handlers: TicketHandlers = {
-    "triage": async (_effect, ctx) => {
-      const { value, run } = await deps.agent.triage(ctx.observation.ticket);
+    "triage": async (effect, ctx) => {
+      const { value, run } = await deps.agent.triage(ctx.observation.ticket, effect.conversation);
       recordAgentRun(ctx, run);
       refuseAnIncompleteRun("triage", run);
       outcomesOf(ctx).triage = value;
@@ -247,7 +247,7 @@ export function ticketRuntime(
           ? await deps.host.reviewLoad(deps.config.repos)
           : {};
 
-      const awaitingAnswer = current.triage && !current.triage.clear;
+      const awaitingAnswer = current.state === "CLARIFYING" && Boolean(current.triage);
       const awaitingOwner = current.escalation && !current.escalation.resolvedAt;
 
       return {
@@ -255,9 +255,9 @@ export function ticketRuntime(
         pullRequest,
         reviewLoad,
         roster: deps.roster(),
-        questionAnswered: awaitingAnswer
-          ? await deps.tracker.hasReplyAfter(ticket.id, current.triage!.at)
-          : false,
+        conversation: awaitingAnswer
+          ? await deps.tracker.comments(ticket.id, current.triage!.at)
+          : [],
         escalationAnswered: awaitingOwner
           ? await deps.tracker.hasReplyAfter(ticket.id, current.escalation!.askedAt)
           : false,

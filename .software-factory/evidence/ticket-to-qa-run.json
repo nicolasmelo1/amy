@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 31,
+    "assertions_run": 34,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 38,
@@ -56,14 +56,15 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question on the ticket",
-      "the automated reviewer looked at 84eeac8 and left one comment",
-      "the automated reviewer looked at 3966575 and had nothing to say",
+      "the automated reviewer looked at 12dd9ed and left one comment",
+      "the automated reviewer looked at 9885f4d and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 3966575",
+      "ada asked for changes on 9885f4d",
       "the owner settled the disagreement on the ticket",
-      "ada approved 661449a"
+      "ada approved 59a51f0"
     ],
     "agent_calls": [
+      "triage",
       "triage",
       "implement",
       "implement",
@@ -72,7 +73,7 @@
       "address-threads"
     ],
     "gh_calls": 47,
-    "tracker_calls": 127,
+    "tracker_calls": 55,
     "commits_on_the_branch": [
       "BILL-4021: address review comments",
       "BILL-4021: address review comments",
@@ -110,6 +111,18 @@
     },
     {
       "type": "lifecycle.the_answer_on_the_ticket_releases_the_work",
+      "status": "passed"
+    },
+    {
+      "type": "clarifying.clears_when_the_question_is_answered",
+      "status": "passed"
+    },
+    {
+      "type": "clarifying.does_not_ask_the_same_question_twice",
+      "status": "passed"
+    },
+    {
+      "type": "clarifying.ignores_its_own_comments",
       "status": "passed"
     },
     {

@@ -100,7 +100,7 @@ describe("diagnose", () => {
   it("fails when nothing could reach the operator", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      notify: { tracker: false, hermes: null, inbox: false },
+      notify: { hermes: null, inbox: false },
     };
 
     const checks = await diagnose(deps({ config }));
@@ -162,7 +162,7 @@ describe("diagnose", () => {
   });
 
   it("says nothing about hermes when no channel is configured", async () => {
-    const config = { ...DEFAULT_CONFIG, notify: { tracker: true, hermes: null, inbox: true } };
+    const config = { ...DEFAULT_CONFIG, notify: { hermes: null, inbox: true } };
 
     const checks = await diagnose(deps({ config }));
 
@@ -172,7 +172,7 @@ describe("diagnose", () => {
   it("reports a configured target when no channel is mounted to ask", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      notify: { tracker: true, hermes: "slack:ops", inbox: true },
+      notify: { hermes: "slack:ops", inbox: true },
     };
 
     const checks = await diagnose(deps({ config }));
@@ -183,7 +183,7 @@ describe("diagnose", () => {
   it("fails a hermes target hermes does not have", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      notify: { tracker: true, hermes: "slack:#nope", inbox: true },
+      notify: { hermes: "slack:#nope", inbox: true },
     };
 
     const checks = await diagnose(deps({ config, notifyPort: KNOWN_TARGETS() }));
@@ -197,7 +197,7 @@ describe("diagnose", () => {
   it("passes a hermes target hermes does have", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      notify: { tracker: true, hermes: "slack:ops", inbox: true },
+      notify: { hermes: "slack:ops", inbox: true },
     };
 
     const checks = await diagnose(deps({ config, notifyPort: KNOWN_TARGETS() }));
@@ -208,7 +208,7 @@ describe("diagnose", () => {
   it("says so when the channel cannot be asked", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      notify: { tracker: true, hermes: "slack:ops", inbox: true },
+      notify: { hermes: "slack:ops", inbox: true },
     };
     const broken = {
       isReachable: async () => {

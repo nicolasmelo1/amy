@@ -34,6 +34,7 @@ describe("a runtime whose tracker supplies no body", () => {
         inProgress,
         get,
         comment: async () => {},
+        comments: async () => [],
         hasReplyAfter: async () => false,
         setStatus: async () => {},
         assign: async () => {},

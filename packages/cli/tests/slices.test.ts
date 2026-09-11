@@ -39,21 +39,17 @@ describe("pluginSlices", () => {
     });
   });
 
-  /**
-   * The plugin owns the ticket channel, so it is the only thing that can
-   * decline to contribute it — and it cannot see `notify.tracker` unless this
-   * line hands it over. Without it the setting was dead: an operator turned
-   * commenting off, and every progress notice was still posted on the ticket.
-   */
-  it("tells the tracker whether announcements may be commented on the ticket", () => {
-    const off = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
-    const on = pluginSlices(
-      { ...CONFIG, notify: { ...CONFIG.notify, tracker: true } },
-      TICKETS,
-    ) as Record<string, Record<string, unknown>>;
+  it("tells the tracker the status name it matches on, and nothing about channels", () => {
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(off["@amykit/plugin-linear"]?.announceOnTicket).toBe(false);
-    expect(on["@amykit/plugin-linear"]?.announceOnTicket).toBe(true);
+    // The plugin used to be handed `notify.tracker` as `announceOnTicket` and
+    // contributed a comment channel with it. A tracker comment is for a
+    // question that needs a person, so the setting is gone with the channel.
+    expect(Object.keys(slices["@amykit/plugin-linear"] ?? {})).toEqual([
+      "workingStatusName",
+      "repoByTeam",
+      "defaultRepo",
+    ]);
   });
 
   it("gives the agent and the gate the branch new work is cut from", () => {
@@ -103,7 +99,7 @@ describe("pluginSlices", () => {
 
   it("says nothing about a channel that is not configured", () => {
     const slices = pluginSlices(
-      { ...CONFIG, notify: { tracker: true, hermes: null, inbox: false } },
+      { ...CONFIG, notify: { hermes: null, inbox: false } },
       TICKETS,
     );
 
@@ -218,14 +214,14 @@ describe("pluginList", () => {
   it("leaves out a channel nobody configured", () => {
     // Mounting it would have the fan-out announce into a target that is not
     // there, which fails at the worst moment rather than at boot.
-    const config = { ...CONFIG, notify: { tracker: true, hermes: null, inbox: false } };
+    const config = { ...CONFIG, notify: { hermes: null, inbox: false } };
 
     expect(pluginList(config, TICKETS)).not.toContain("@amykit/plugin-notify-hermes");
     expect(pluginList(config, TICKETS)).not.toContain("@amykit/plugin-notify-inbox");
   });
 
   it("keeps a channel that is configured", () => {
-    const config = { ...CONFIG, notify: { tracker: true, hermes: "slack:ops", inbox: true } };
+    const config = { ...CONFIG, notify: { hermes: "slack:ops", inbox: true } };
 
     expect(pluginList(config, TICKETS)).toContain("@amykit/plugin-notify-hermes");
     expect(pluginList(config, TICKETS)).toContain("@amykit/plugin-notify-inbox");

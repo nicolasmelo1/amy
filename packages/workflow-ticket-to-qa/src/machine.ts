@@ -27,7 +27,7 @@ export function plan(record: TicketRecord, obs: Observation, policy: Policy): Pl
     case "DISCOVERED":
       return planDiscovered(record);
     case "CLARIFYING":
-      return planClarifying(obs, policy);
+      return planClarifying(record, obs, policy);
     case "READY":
       return advance("IMPLEMENTING", "nothing is blocking the implementation");
     case "IMPLEMENTING":
@@ -75,10 +75,52 @@ function planDiscovered(record: TicketRecord): Plan {
   );
 }
 
-function planClarifying(obs: Observation, policy: Policy): Plan {
-  if (obs.questionAnswered) {
-    return advance("READY", "the question on the ticket was answered");
+/**
+ * What a reply on the ticket said, split by who wrote it.
+ *
+ * Amy's own comments are labelled as questions it already asked — they are
+ * how the machine's account of the conversation and the record's agree, and
+ * without the label a second look reads its own words as the answer it was
+ * waiting for. A comment nobody can attribute is left out rather than guessed
+ * at: the tracker is where `fromAmy` is settled, and a comment with no author
+ * is a conversation with a hole in it, which is a finding rather than an
+ * input.
+ *
+ * An answer from somebody is only news when it is not the machine's own
+ * question quoted back — a tracker that copies the body into a reply, or a
+ * system that quotes the thread, must not pass for an answer.
+ */
+function conversationLines(record: TicketRecord, conversation: Observation["conversation"]): string[] {
+  const asked = new Set(record.triage?.askedQuestions ?? []);
+
+  const lines: string[] = [];
+  for (const comment of conversation) {
+    if (comment.fromAmy) {
+      if (asked.has(comment.body)) continue;
+      asked.add(comment.body);
+      lines.push(`You asked: ${comment.body}`);
+    } else if (comment.author && !asked.has(comment.body)) {
+      lines.push(`${comment.author} answered: ${comment.body}`);
+    }
   }
+
+  return lines;
+}
+
+function planClarifying(record: TicketRecord, obs: Observation, policy: Policy): Plan {
+  const said = conversationLines(record, obs.conversation);
+  const answer = said.find((line) => line.includes("answered:"));
+
+  if (answer) {
+    return advance("READY", `the question on the ticket was answered`, {
+      type: "triage",
+      conversation: said,
+    });
+  }
+
+  // Re-asking is the defect this state used to be: a look without an answer
+  // holds rather than posts the same words again. `CLARIFYING` cannot clear
+  // because the ticket was touched — only because it was answered.
   return wait(policy.pollBackoffMs, "waiting for an answer on the ticket");
 }
 

@@ -18,10 +18,6 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       workingStatusName: config.workingStatusName,
       repoByTeam: config.repoByTeam,
       defaultRepo: config.repos[0] ?? "",
-      // `notify.tracker`, reaching the plugin that owns the channel. Without
-      // this line the plugin cannot see the setting at all, and contributed
-      // its channel whatever the operator had written.
-      announceOnTicket: config.notify.tracker,
     },
     "@amykit/plugin-claude": harnessSlice(config, "claude"),
     "@amykit/plugin-codex": harnessSlice(config, "codex"),

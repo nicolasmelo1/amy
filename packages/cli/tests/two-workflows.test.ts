@@ -34,7 +34,7 @@ const CONFIG = {
   repos: ["acme/widgets"],
   gate: { "acme/widgets": ["npm test"] },
   workspaceRoot: "/checkouts",
-  notify: { tracker: true, hermes: null, inbox: false },
+  notify: { hermes: null, inbox: false },
   plans: {
     ...DEFAULT_CONFIG.plans,
     repos: ["acme/amy", "acme/software-factory"],
