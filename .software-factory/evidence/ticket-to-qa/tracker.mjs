@@ -36,6 +36,7 @@ function issueNode(state, issue) {
     id: issue.id,
     identifier: issue.identifier,
     title: issue.title,
+    description: issue.description ?? null,
     url: issue.url,
     branchName: issue.branchName,
     state: { name: stateName(state, issue) },

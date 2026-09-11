@@ -12,6 +12,7 @@ const issue = {
   id: "uuid-1239",
   identifier: "PROJ-1239",
   title: "The total is wrong on the invoice",
+  description: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
   url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
   branchName: "ada/proj-1239-total-is-wrong",
   state: { name: "In Progress" },
@@ -41,6 +42,44 @@ describe("LinearTracker.inProgress", () => {
     await new LinearTracker(client, config).inProgress();
 
     expect(client.calls[0]!.query).toContain("assignee: { isMe: { eq: true } }");
+  });
+
+  it("asks for the description alongside the fields a prompt is built from", async () => {
+    const client = new ScriptedGraphQL([
+      { contains: "query Working", data: { issues: { nodes: [issue] } } },
+    ]);
+
+    await new LinearTracker(client, config).inProgress();
+
+    const query = client.calls[0]!.query;
+    // A field never fetched is a field no prompt can carry: the whole defect
+    // this test pins is `toTicket` being unable to map what was never asked.
+    expect(query).toContain("description");
+  });
+
+  it("carries the tracker's description as the ticket's body", async () => {
+    const client = new ScriptedGraphQL([
+      { contains: "query Working", data: { issues: { nodes: [issue] } } },
+    ]);
+
+    const [ticket] = await new LinearTracker(client, config).inProgress();
+
+    expect(ticket?.body).toBe(
+      "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+    );
+  });
+
+  it("leaves the body absent when the tracker supplied no description", async () => {
+    const client = new ScriptedGraphQL([
+      {
+        contains: "query Working",
+        data: { issues: { nodes: [{ ...issue, description: null }] } },
+      },
+    ]);
+
+    const [ticket] = await new LinearTracker(client, config).inProgress();
+
+    expect("body" in (ticket ?? {})).toBe(false);
   });
 
   it("uses the branch name the tracker derived", async () => {
@@ -102,6 +141,16 @@ describe("LinearTracker.get", () => {
 
     expect(ticket?.id).toBe("PROJ-1239");
     expect(client.variablesFor("query Issue")).toEqual({ id: "PROJ-1239" });
+  });
+
+  it("returns the body it fetched, wherever the ticket sits", async () => {
+    const client = new ScriptedGraphQL([{ contains: "query Issue", data: { issue } }]);
+
+    const ticket = await new LinearTracker(client, config).get("PROJ-1239");
+
+    expect(ticket?.body).toBe(
+      "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+    );
   });
 
   it("returns nothing for a ticket that is gone", async () => {

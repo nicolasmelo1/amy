@@ -50,6 +50,10 @@ else
   echo "claude:$model" >> "$AMY_E2E_CALLS"
 fi
 
+# The prompt itself is recorded, because a prompt is a claim amy makes about
+# what the agent was told, and the body-in-the-prompt assertions read it back.
+printf '%s' "$prompt" > "$(dirname "$AMY_E2E_CALLS")/last-prompt.txt"
+
 # The real CLI reports the model that actually ran, under a full id with a
 # window suffix, not the short alias that was asked for. The fake has to do
 # the same or the scenario would be proving something easier than the truth.
@@ -123,6 +127,9 @@ const TICKET = {
   repo: "acme/widgets",
   branch: "proj-1239",
 };
+
+/** The prompt the fake claude was last handed, which is what a triage claim reads. */
+const lastPrompt = () => fs.readFileSync(path.join(work, "last-prompt.txt"), "utf-8");
 
 /** Mounts the four built plugins with a ladder, and returns the agent port. */
 async function hostWith(
@@ -252,6 +259,34 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 
   record("relay.first_rung_answers_when_it_works", result.value.clear === true);
   record("relay.asks_nobody_else_when_the_first_rung_worked", called().length === 1);
+}
+
+// 2b. The ticket's body is in the prompt, and a ticket with none says so.
+// The whole defect this gate exists to keep closed: an agent that cannot open
+// a tracker page was being told to read one, and worked from the title alone.
+{
+  reset("fine");
+  const { agent } = await hostWith(LADDER);
+  await agent.triage({
+    ...TICKET,
+    body: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+  });
+
+  record(
+    "prompt.carries_the_ticket_body",
+    lastPrompt().includes("Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here."),
+  );
+
+  reset("fine");
+  await agent.triage({ ...TICKET, body: undefined });
+  record("prompt.says_so_when_a_ticket_has_none", lastPrompt().includes("(this ticket has no description)"));
+
+  // The instruction nobody without a credential could obey is gone with the
+  // body that made it look optional.
+  record(
+    "prompt.sends_the_agent_to_the_repository_not_the_tracker",
+    !lastPrompt().includes("Read the ticket"),
+  );
 }
 
 // 3. A failure escalates the model, inside the same harness.
