@@ -107,6 +107,7 @@ gates:
       - "prompt.carries_the_ticket_body"
       - "prompt.says_so_when_a_ticket_has_none"
       - "prompt.sends_the_agent_to_the_repository_not_the_tracker"
+      - "prompt.carries_the_answers_to_its_own_questions"
 
   # The one claim no unit test can make. They all import source from inside
   # the workspace, so an install missing half of what it needs passes every
@@ -226,6 +227,9 @@ gates:
       - "lifecycle.the_operator_is_told_where_to_answer"
       - "lifecycle.a_waiting_state_makes_no_move_until_the_world_does"
       - "lifecycle.the_answer_on_the_ticket_releases_the_work"
+      - "clarifying.clears_when_the_question_is_answered"
+      - "clarifying.does_not_ask_the_same_question_twice"
+      - "clarifying.ignores_its_own_comments"
       - "lifecycle.a_red_gate_sends_the_work_back_to_the_agent"
       - "lifecycle.the_agent_is_told_what_the_gate_said"
       - "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green"

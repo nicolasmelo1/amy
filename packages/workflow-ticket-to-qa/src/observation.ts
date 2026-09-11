@@ -1,4 +1,5 @@
 import { PullRequestView } from "@amykit/core";
+import { Comment } from "./ports/Tracker.js";
 import { Roster } from "./roster.js";
 import { Ticket } from "./ticket.js";
 
@@ -19,8 +20,15 @@ export interface Observation {
    */
   reviewLoad: Readonly<Record<string, number>>;
   roster: Roster;
-  /** Whether the blocking question posted on the ticket has been answered. */
-  questionAnswered: boolean;
+  /**
+   * The conversation on the ticket, oldest first, in full.
+   *
+   * Fetched where it is used — a poll that is only waiting for a review does
+   * not pay for text — and carried whole rather than reduced to a boolean, so
+   * the state that re-reads the ticket can put the answer in front of the
+   * agent instead of merely knowing one arrived.
+   */
+  conversation: Comment[];
   /** Whether the owner has answered an escalation. */
   escalationAnswered: boolean;
   now: Date;

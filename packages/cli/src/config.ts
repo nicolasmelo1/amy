@@ -55,8 +55,6 @@ interface ErrandsConfig {
 }
 
 interface NotifyConfig {
-  /** Comment on the ticket itself. */
-  tracker: boolean;
   /** A Hermes delivery target, e.g. `telegram`. Null disables the channel. */
   hermes: string | null;
   /** A file on disk plus a desktop notification. */
@@ -203,11 +201,9 @@ export const DEFAULT_CONFIG: AmyConfig = {
   gate: {},
   agent: {},
   skills: {},
-  // `tracker: false`, and the default is the decision: an announcement
-  // carries no channel, so "on" comments every progress notice the engine
-  // emits on the ticket. A tracker carries questions and answers, and a
-  // workflow with a question comments directly whatever this says.
-  notify: { tracker: false, hermes: null, inbox: true },
+  // A tracker comment is for a question that needs a person, and the workflow
+  // posts those itself — announcements are the operator's channels' job.
+  notify: { hermes: null, inbox: true },
   plans: { repos: [], check: { default: ["sf check"] }, policy: {} },
   errands: { policy: {} },
   plugins: {},
@@ -485,14 +481,11 @@ gate:
 
 # Where the machine reaches you. It needs at least one of these.
 #
-# The tracker is off by default and worth leaving off. Announcements go to
-# every channel that is on — there is no routing one of them — so turning it
-# on comments each progress notice on the ticket, and "ACME-1 is failing in
-# IMPLEMENTING and I am retrying: ..." is a machine talking about itself where
-# a team talks to each other. It does not silence a question: a workflow that
-# needs an answer about a ticket comments on it directly.
+# There is no tracker line any more. A tracker comment is for a question that
+# needs a person, and the workflow posts those itself; progress notices belong
+# on the operator's channels, which are the two below. That removes the
+# pollution rather than teaching every reader to filter it.
 notify:
-  tracker: false     # also comment every notification on the ticket
   hermes: slack:my-channel   # a Hermes delivery target, or null
   inbox: true        # a file in .amy/needs-input plus a desktop notification
 

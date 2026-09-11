@@ -6,9 +6,9 @@
   "observed": {
     "assertions_run": 7,
     "assertions_failed": 0,
-    "version": "0.3.1 (670f409, built 2026-09-11T01:11:15Z)",
-    "tree_was_dirty": "no",
-    "build_on_log_line": "0.3.1+670f409"
+    "version": "dev (running from source, not an installed build)",
+    "tree_was_dirty": "yes",
+    "build_on_log_line": "dev"
   },
   "assertions": [{"type":"installed.runs_without_a_checkout","status":"passed"},{"type":"installed.keeps_state_in_its_own_home","status":"passed"},{"type":"installed.keeps_nothing_where_you_stand","status":"passed"},{"type":"installed.does_not_write_into_the_source_tree","status":"passed"},{"type":"installed.log_line_names_the_build","status":"passed"},{"type":"installed.says_dev_only_when_it_is_one","status":"passed"},{"type":"installed.log_build_matches_the_binary","status":"passed"}]
 }

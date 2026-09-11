@@ -103,7 +103,19 @@ function implement() {
 }
 
 const ANSWERS = {
-  triage: () => JSON.stringify(script.triage),
+  triage: () => {
+    // The re-read, after somebody answered the question on the ticket: clear.
+    // The machine must not re-ask, and the answer it was given is what makes
+    // this attempt honest — an answer that never reached the prompt is one
+    // the agent would have to guess at.
+    if (prompt.includes("answered:")) {
+      script.answeredRead = true;
+      fs.writeFileSync(scriptFile, `${JSON.stringify(script, null, 2)}\n`, "utf-8");
+      return JSON.stringify({ clear: true, questions: [] });
+    }
+
+    return JSON.stringify(script.triage);
+  },
   implement,
   "address-threads": addressThreads,
   unknown: () => {

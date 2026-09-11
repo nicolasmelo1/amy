@@ -84,7 +84,9 @@ export function observation(overrides: Partial<Observation> = {}): Observation {
     pullRequest: null,
     reviewLoad: {},
     roster: roster(),
-    questionAnswered: false,
+    // No conversation, which is what a ticket nobody has answered looks
+    // like. A test about an answer overrides it with the comments.
+    conversation: [],
     escalationAnswered: false,
     now: WORKDAY,
     ...overrides,

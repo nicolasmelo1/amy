@@ -23,7 +23,7 @@
     "plugins/file-tasks/package.json": "418e3a5e491521b402dce2b5eab5461637470ae87ddaf84e1b6853f1717374fc",
     "plugins/github/package.json": "a267afbe879599ab86f792cb9967048f9ec6a6c025a9fde3502071a2ed2b4c88",
     "plugins/hermes-agent/package.json": "ade18fd68b2a8b2b26de593ed1ba7b9b1406dc75764f7d8a9e88bc64f4fee0de",
-    "plugins/linear/package.json": "0bf058f28ae978e1ed5b03c554368706519aa80266536aa83de15af2fbd34c25",
+    "plugins/linear/package.json": "1bcd08866791e294202d5c08102e85867b39a259e78a00d5bc304786465045a4",
     "plugins/notify-fanout/package.json": "8ed8c6c039ba262827a7394273aab8182dd2bbdbdab2e34dd74b2feb7ccc9574",
     "plugins/notify-hermes/package.json": "52fa94f3bec4e7f47b88c2378eb87cbab795ec0d520e4698b3faa422c928b8c1",
     "plugins/notify-inbox/package.json": "6b7b942cf6e0ac0234ca63d2f23d4013f7d673d9fef82ed72e1c4d262a4ef8bf",

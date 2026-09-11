@@ -35,14 +35,14 @@ const TEAM = {
   ],
 };
 
-const VIEWER = { id: "u-amy", email: "amy@example.test" };
+const VIEWER = { id: "u-amy", email: "amy@example.test", name: "amy" };
 
 const USERS = [
   VIEWER,
-  { id: "u-ada", email: "ada@example.test" },
-  { id: "u-alan", email: "alan@example.test" },
-  { id: "u-grace", email: "grace@example.test" },
-  { id: "u-owner", email: "owner@example.test" },
+  { id: "u-ada", email: "ada@example.test", name: "Ada Lovelace" },
+  { id: "u-alan", email: "alan@example.test", name: "Alan Turing" },
+  { id: "u-grace", email: "grace@example.test", name: "Grace Hopper" },
+  { id: "u-owner", email: "owner@example.test", name: "Ticket Owner" },
 ];
 
 function git(cwd, ...args) {
@@ -251,8 +251,10 @@ agent:
     perWeek: { tokens: 100000000, costUsd: 200 }
     stopAt: 0.9
 
+# The question the machine asks the person, and what they answered on the
+# ticket. The comment amy leaves is the first, quoted in the prompt as its own;
+# the answer is what the re-read carries to the agent.
 notify:
-  tracker: true
   hermes: null
   inbox: true
 

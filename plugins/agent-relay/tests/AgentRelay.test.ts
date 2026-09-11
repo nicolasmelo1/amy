@@ -30,7 +30,10 @@ function rung(name: string, harness: string, model: string, outcomes: AgentOutco
   const agentWith = (skill?: string): Agent => ({
     triage: async (): Promise<AgentResult<TriageOutcome>> => {
       calls.push({ name, skill });
-      return agentResult<TriageOutcome>({ clear: true, questions: [], at: AT }, { outcome: next(), harness, model });
+      return agentResult<TriageOutcome>(
+        { clear: true, questions: [], askedQuestions: [], at: AT },
+        { outcome: next(), harness, model },
+      );
     },
     implement: async (_t, retryContext?: string): Promise<AgentResult<AttemptOutcome>> => {
       calls.push({ name, retryContext, skill });
@@ -208,7 +211,7 @@ describe("the other two methods relay the same way", () => {
     const result = await relay.triage(TICKET);
 
     expect(calls).toHaveLength(2);
-    expect(result.value).toEqual({ clear: true, questions: [], at: AT });
+    expect(result.value).toEqual({ clear: true, questions: [], askedQuestions: [], at: AT });
     expect(log.of("agent.handoff")[0]?.detail).toMatchObject({ action: "triage" });
   });
 

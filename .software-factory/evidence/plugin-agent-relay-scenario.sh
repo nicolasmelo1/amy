@@ -287,6 +287,23 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
     "prompt.sends_the_agent_to_the_repository_not_the_tracker",
     !lastPrompt().includes("Read the ticket"),
   );
+
+  // 2c. A question amy asked is labelled as its own, and the answer to it is
+  // part of the ticket. The relay is what hands a step its prompt, so the
+  // attribution has to survive the ladder, not just the kit.
+  reset("fine");
+  await agent.triage({
+    ...TICKET,
+    body: "The total line must show the same currency as the rest of the invoice.",
+  }, [
+    "You asked: - Which currency should the invoice total be shown in?",
+    "Ticket Owner answered: In BRL, the same as the rest of the invoice.",
+  ]);
+  record(
+    "prompt.carries_the_answers_to_its_own_questions",
+    lastPrompt().includes("You asked: - Which currency should the invoice total be shown in?") &&
+      lastPrompt().includes("Ticket Owner answered: In BRL, the same as the rest of the invoice."),
+  );
 }
 
 // 3. A failure escalates the model, inside the same harness.

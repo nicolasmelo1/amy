@@ -12,7 +12,7 @@
     ]
   },
   "observed": {
-    "assertions_run": 38,
+    "assertions_run": 39,
     "assertions_failed": 0,
     "node": "v22.22.2"
   },
@@ -51,6 +51,10 @@
     },
     {
       "type": "prompt.sends_the_agent_to_the_repository_not_the_tracker",
+      "status": "passed"
+    },
+    {
+      "type": "prompt.carries_the_answers_to_its_own_questions",
       "status": "passed"
     },
     {

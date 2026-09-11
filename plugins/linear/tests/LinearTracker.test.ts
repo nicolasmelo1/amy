@@ -246,6 +246,165 @@ describe("LinearTracker.hasReplyAfter", () => {
   });
 });
 
+describe("LinearTracker.comments", () => {
+  const viewer = { contains: "query Viewer", data: { viewer: { id: "u-amy" } } };
+
+  const node = (over: Partial<{ createdAt: string; body: string; user: unknown }>) => ({
+    createdAt: "2026-09-03T12:00:00.000Z",
+    body: "a comment",
+    user: { id: "u-ada", name: "Ada Lovelace" },
+    ...over,
+  });
+
+  it("returns author, text and time for a ticket", async () => {
+    const client = new ScriptedGraphQL([
+      viewer,
+      {
+        contains: "query Conversation",
+        data: {
+          issue: {
+            comments: {
+              nodes: [
+                node({ createdAt: "2026-09-03T12:00:00.000Z", body: "In BRL, like the rest." }),
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const comments = await new LinearTracker(client, config).comments("PROJ-1239");
+
+    expect(comments).toEqual([
+      {
+        author: "Ada Lovelace",
+        body: "In BRL, like the rest.",
+        at: "2026-09-03T12:00:00.000Z",
+        fromAmy: false,
+      },
+    ]);
+  });
+
+  it("marks the comments amy's own account wrote, by the tracker's answer", async () => {
+    const client = new ScriptedGraphQL([
+      viewer,
+      {
+        contains: "query Conversation",
+        data: {
+          issue: {
+            comments: {
+              nodes: [
+                node({
+                  createdAt: "2026-09-03T10:00:00.000Z",
+                  body: "- Which currency?",
+                  user: { id: "u-amy", name: "amy" },
+                }),
+                node({ createdAt: "2026-09-03T12:00:00.000Z" }),
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const comments = await new LinearTracker(client, config).comments("PROJ-1239");
+
+    expect(comments.map((c) => [c.body, c.fromAmy])).toEqual([
+      ["- Which currency?", true],
+      ["a comment", false],
+    ]);
+  });
+
+  it("names nobody for a comment the tracker cannot attribute", async () => {
+    const client = new ScriptedGraphQL([
+      viewer,
+      {
+        contains: "query Conversation",
+        data: {
+          issue: { comments: { nodes: [node({ user: null })] } },
+        },
+      },
+    ]);
+
+    const comments = await new LinearTracker(client, config).comments("PROJ-1239");
+
+    expect(comments[0]).toMatchObject({ author: "", fromAmy: false });
+  });
+
+  it("narrows to what arrived after the given instant", async () => {
+    const client = new ScriptedGraphQL([
+      viewer,
+      {
+        contains: "query Conversation",
+        data: {
+          issue: {
+            comments: {
+              nodes: [
+                node({ createdAt: "2026-09-03T09:00:00.000Z" }),
+                node({ createdAt: "2026-09-03T12:00:00.000Z" }),
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const comments = await new LinearTracker(
+      client,
+      config,
+    ).comments("PROJ-1239", "2026-09-03T10:00:00.000Z");
+
+    expect(comments).toHaveLength(1);
+    expect(comments[0]!.at).toBe("2026-09-03T12:00:00.000Z");
+    expect(client.variablesFor("query Conversation")).toEqual({ id: "PROJ-1239" });
+  });
+
+  it("returns the thread oldest first, whatever order the tracker held it in", async () => {
+    const client = new ScriptedGraphQL([
+      viewer,
+      {
+        contains: "query Conversation",
+        data: {
+          issue: {
+            comments: {
+              nodes: [
+                node({ createdAt: "2026-09-03T12:00:00.000Z" }),
+                node({ createdAt: "2026-09-03T09:00:00.000Z" }),
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const comments = await new LinearTracker(client, config).comments("PROJ-1239");
+
+    expect(comments.map((c) => c.at)).toEqual([
+      "2026-09-03T09:00:00.000Z",
+      "2026-09-03T12:00:00.000Z",
+    ]);
+  });
+
+  it("never fetches text in hasReplyAfter", async () => {
+    const client = new ScriptedGraphQL([
+      viewer,
+      {
+        contains: "query Replies",
+        data: {
+          issue: {
+            comments: { nodes: [{ createdAt: "2026-09-03T12:00:00.000Z", user: { id: "them" } }] },
+          },
+        },
+      },
+    ]);
+
+    await new LinearTracker(client, config).hasReplyAfter("PROJ-1239", "2026-09-03T10:00:00.000Z");
+
+    // The cheap boolean does not pay for the thread: no body field is in it.
+    expect(client.calls[1]!.query).not.toContain("body");
+  });
+});
+
 describe("LinearTracker.setStatus", () => {
   it("resolves the status name to its id on the ticket's own team", async () => {
     const client = new ScriptedGraphQL([

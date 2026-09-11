@@ -187,7 +187,12 @@ describe("Worker", () => {
     records.save({
       ...newRecord("PROJ-1239", clock),
       state: "DISCOVERED",
-      triage: { clear: false, questions: ["Does a write-off reduce the balance?"], at: clock.toISOString() },
+      triage: {
+        clear: false,
+        questions: ["Does a write-off reduce the balance?"],
+        askedQuestions: ["Does a write-off reduce the balance?"],
+        at: clock.toISOString(),
+      },
     });
     queue.enqueue({ workId: "PROJ-1239", reason: "read" }, clock);
     const tracker = fakeTracker();

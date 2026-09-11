@@ -6,6 +6,15 @@ export interface TriageOutcome {
   clear: boolean;
   questions: string[];
   at: string;
+  /**
+   * The questions the machine asked on the ticket for this ticket to be
+   * read again.
+   *
+   * Recorded beside the questions rather than re-derived from history, so a
+   * second look can tell its own words from new information without reading
+   * anything but the record and the conversation.
+   */
+  askedQuestions: string[];
 }
 
 export interface AttemptOutcome {

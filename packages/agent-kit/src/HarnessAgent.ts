@@ -48,7 +48,7 @@ export class HarnessAgent implements Agent {
     private readonly config: HarnessAgentConfig = {},
   ) {}
 
-  async triage(ticket: Ticket): Promise<AgentResult<TriageOutcome>> {
+  async triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>> {
     const reply = await this.ask(
       ticket,
       [
@@ -57,6 +57,7 @@ export class HarnessAgent implements Agent {
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
         ...this.bodyLines(ticket),
+        ...this.conversationLines(conversation),
         `Read enough of this repository to judge it. Answer with a`,
         `single JSON object and nothing else:`,
         ``,
@@ -68,6 +69,8 @@ export class HarnessAgent implements Agent {
         ``,
         `listing only questions that genuinely block the work. A question you`,
         `could answer yourself by reading the code is not a blocking question.`,
+        `A question already answered in the conversation above is not a`,
+        `question: an answer to an earlier question is part of the ticket.`,
       ].join("\n"),
     );
 
@@ -77,7 +80,15 @@ export class HarnessAgent implements Agent {
     // when it is needed. Nothing consumes this value: an agent action whose
     // run did not complete is failed by the engine.
     if (reply.run.outcome !== "completed") {
-      return { value: { clear: false, questions: [], at: new Date().toISOString() }, run: reply.run };
+      return {
+        value: {
+          clear: false,
+          questions: [],
+          askedQuestions: [],
+          at: new Date().toISOString(),
+        },
+        run: reply.run,
+      };
     }
 
     const answer = extractJson<TriageReply>(reply.text);
@@ -86,13 +97,21 @@ export class HarnessAgent implements Agent {
       value: {
         clear: answer.clear,
         questions: answer.clear ? [] : (answer.questions ?? []),
+        // Recorded so the next look can tell its own words from new
+        // information, and so a question that was answered is never asked
+        // again.
+        askedQuestions: answer.clear ? [] : (answer.questions ?? []),
         at: new Date().toISOString(),
       },
       run: reply.run,
     };
   }
 
-  async implement(ticket: Ticket, retryContext?: string): Promise<AgentResult<AttemptOutcome>> {
+  async implement(
+    ticket: Ticket,
+    retryContext?: string,
+    conversation?: readonly string[],
+  ): Promise<AgentResult<AttemptOutcome>> {
     await this.git.prepareBranch(ticket.repo, ticket.branchName);
 
     const reply = await this.ask(
@@ -103,6 +122,7 @@ export class HarnessAgent implements Agent {
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
         ...this.bodyLines(ticket),
+        ...this.conversationLines(conversation),
         ...(retryContext
           ? [
               ``,
@@ -239,6 +259,22 @@ export class HarnessAgent implements Agent {
    */
   private bodyLines(ticket: Ticket): string[] {
     return [``, ticket.body ?? `(this ticket has no description)`];
+  }
+
+  /**
+   * The conversation on the ticket, split by who wrote it.
+   *
+   * What amy asked is labelled as its own, so the agent reads its words as a
+   * question already put rather than as new information, and does not ask it
+   * twice. An answer from somebody is the answer to an earlier question, and
+   * carries their name, because an unattributed sentence is not a
+   * conversation. Nothing here is no conversation at all: most tickets have
+   * never been asked anything.
+   */
+  private conversationLines(conversation?: readonly string[]): string[] {
+    if (!conversation || conversation.length === 0) return [];
+
+    return [``, `The conversation on the ticket, so far:`, ...conversation.map((line) => `- ${line}`)];
   }
 
   /** The prompt, addressed to a skill when one was named. */

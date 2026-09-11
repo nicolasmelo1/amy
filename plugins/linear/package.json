@@ -29,7 +29,6 @@
   ],
   "dependencies": {
     "@amykit/core": "^0.3.1",
-    "@amykit/plugin-notify-fanout": "^0.3.1",
     "@amykit/workflow-ticket-to-qa": "^0.3.1"
   },
   "devDependencies": {

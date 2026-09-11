@@ -11,7 +11,7 @@ import { TicketState } from "./state.js";
  */
 export type Effect =
   /** Read the ticket and decide whether it can be implemented as written. */
-  | { type: "triage" }
+  | { type: "triage"; conversation?: string[] }
   | { type: "ask-question"; questions: string[] }
   | { type: "implement"; retryContext?: string }
   | { type: "run-gate" }

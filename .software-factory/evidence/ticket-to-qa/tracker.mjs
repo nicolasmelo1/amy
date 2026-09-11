@@ -88,6 +88,29 @@ const OPERATIONS = [
     },
   },
   {
+    // The conversation, with the text in it. `hasReplyAfter` answers whether
+    // the ticket was answered; this answers what was said, which is what the
+    // waiting state needs to put the answer in front of the agent.
+    match: "query Conversation",
+    run: (state, variables) => {
+      const issue = issueOf(state, variables.id);
+      if (!issue) return { issue: null };
+      return {
+        issue: {
+          comments: {
+            nodes: issue.comments.map((comment) => ({
+              createdAt: comment.createdAt,
+              body: comment.body,
+              user: comment.userId
+                ? state.users.find((user) => user.id === comment.userId) ?? { id: comment.userId, name: comment.userId }
+                : null,
+            })),
+          },
+        },
+      };
+    },
+  },
+  {
     match: "query States",
     run: (state, variables) => {
       const team = state.teams.find((candidate) => candidate.id === variables.teamId);

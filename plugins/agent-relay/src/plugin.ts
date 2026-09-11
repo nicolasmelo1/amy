@@ -74,10 +74,14 @@ export const plugin: Plugin = {
     const lazily = (): AgentRelay => relayFor(ctx);
 
     const facade: Agent = {
-      triage: (ticket: Ticket): Promise<AgentResult<TriageOutcome>> => lazily().triage(ticket),
+      triage: (ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>> =>
+        lazily().triage(ticket, conversation),
 
-      implement: (ticket: Ticket, retryContext?: string): Promise<AgentResult<AttemptOutcome>> =>
-        lazily().implement(ticket, retryContext),
+      implement: (
+        ticket: Ticket,
+        retryContext?: string,
+        conversation?: readonly string[],
+      ): Promise<AgentResult<AttemptOutcome>> => lazily().implement(ticket, retryContext, conversation),
 
       addressThreads: (
         ticket: Ticket,

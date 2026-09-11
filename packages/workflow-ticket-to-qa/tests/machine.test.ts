@@ -46,7 +46,7 @@ describe("DISCOVERED", () => {
 
   it("goes straight to work when the ticket is unambiguous", () => {
     const r = record("DISCOVERED", {
-      triage: { clear: true, questions: [], at: "2026-09-03T10:00:00.000Z" },
+      triage: { clear: true, questions: [], askedQuestions: [], at: "2026-09-03T10:00:00.000Z" },
     });
 
     expect(expectAdvance(plan(r, observation(), policy)).to).toBe("READY");
@@ -57,6 +57,7 @@ describe("DISCOVERED", () => {
       triage: {
         clear: false,
         questions: ["Does write-off count towards the balance?"],
+        askedQuestions: ["Does write-off count towards the balance?"],
         at: "2026-09-03T10:00:00.000Z",
       },
     });
@@ -71,16 +72,96 @@ describe("DISCOVERED", () => {
 });
 
 describe("CLARIFYING", () => {
+  const asked = {
+    clear: false,
+    questions: ["Which currency should the invoice total be shown in?"],
+    askedQuestions: ["Which currency should the invoice total be shown in?"],
+    at: "2026-09-03T10:00:00.000Z",
+  };
+
+  const amyAsked = {
+    author: "amy",
+    body: "- Which currency should the invoice total be shown in?",
+    at: "2026-09-03T10:01:00.000Z",
+    fromAmy: true,
+  };
+  const answered = {
+    author: "ada",
+    body: "In BRL, the same as the rest of the invoice.",
+    at: "2026-09-03T12:00:00.000Z",
+    fromAmy: false,
+  };
+
   it("holds while the question is unanswered", () => {
-    const p = expectWait(plan(record("CLARIFYING"), observation(), policy));
+    const p = expectWait(
+      plan(record("CLARIFYING", { triage: asked }), observation(), policy),
+    );
 
     expect(p.retryAfterMs).toBe(policy.pollBackoffMs);
   });
 
-  it("moves on once it is answered", () => {
-    const obs = observation({ questionAnswered: true });
+  it("re-reads the ticket once it is answered, with the answer attached", () => {
+    const obs = observation({ conversation: [amyAsked, answered] });
 
-    expect(expectAdvance(plan(record("CLARIFYING"), obs, policy)).to).toBe("READY");
+    const p = expectAdvance(plan(record("CLARIFYING", { triage: asked }), obs, policy));
+
+    expect(p.to).toBe("READY");
+    expect(p.why).toContain("answered");
+    expect(p.effects).toEqual([
+      {
+        type: "triage",
+        conversation: [
+          "You asked: - Which currency should the invoice total be shown in?",
+          "ada answered: In BRL, the same as the rest of the invoice.",
+        ],
+      },
+    ]);
+  });
+
+  it("does not read its own question, quoted back, as the answer", () => {
+    // A tracker that copies the body into a reply, or a system that quotes
+    // the thread, must not pass for an answer: only one line carries
+    // "answered:", and it is the human's.
+    const obs = observation({ conversation: [amyAsked] });
+
+    const p = plan(record("CLARIFYING", { triage: asked }), obs, policy);
+
+    expect(p.kind).toBe("wait");
+  });
+
+  it("never re-asks a question already answered", () => {
+    const obs = observation({ conversation: [amyAsked, answered] });
+
+    const p = plan(record("CLARIFYING", { triage: asked }), obs, policy);
+
+    // The move is a re-read, not a question: no effect asks anything.
+    expect(JSON.stringify((p as { effects?: { type: string }[] }).effects)).not.toContain(
+      "ask-question",
+    );
+  });
+
+  it("ignores its own comments even when the record forgot the questions", () => {
+    // A record from a version before `askedQuestions` existed, or a hand-built
+    // one: every amy comment is still labelled as its own, from the tracker's
+    // `fromAmy`, not from the record's memory.
+    const obs = observation({
+      conversation: [
+        amyAsked,
+        { ...amyAsked, body: "anything else amy wrote" },
+        answered,
+      ],
+    });
+
+    const p = expectAdvance(plan(record("CLARIFYING", { triage: asked }), obs, policy));
+
+    expect(p.effects[0]).toMatchObject({
+      type: "triage",
+      conversation: expect.arrayContaining([
+        "You asked: - Which currency should the invoice total be shown in?",
+        "You asked: anything else amy wrote",
+        "ada answered: In BRL, the same as the rest of the invoice.",
+      ]),
+    });
   });
 });
 

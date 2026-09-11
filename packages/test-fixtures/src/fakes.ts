@@ -44,6 +44,10 @@ export function fakeTracker(overrides: Partial<Tracker> = {}): Tracker {
     inProgress: vi.fn<Tracker["inProgress"]>().mockResolvedValue([ticket()]),
     get: vi.fn<Tracker["get"]>().mockResolvedValue(ticket()),
     comment: vi.fn<Tracker["comment"]>().mockResolvedValue(undefined),
+    // Whole thread, oldest first. A test that wants a specific conversation
+    // overrides it; a test that never names one reads an empty thread, which
+    // is what most tickets look like.
+    comments: vi.fn<Tracker["comments"]>().mockResolvedValue([]),
     hasReplyAfter: vi.fn<Tracker["hasReplyAfter"]>().mockResolvedValue(false),
     setStatus: vi.fn<Tracker["setStatus"]>().mockResolvedValue(undefined),
     assign: vi.fn<Tracker["assign"]>().mockResolvedValue(undefined),
@@ -86,7 +90,9 @@ export function fakeAgent(overrides: Partial<Agent> = {}): Agent {
   return {
     triage: vi
       .fn<Agent["triage"]>()
-      .mockResolvedValue(agentResult({ clear: true, questions: [], at: "2026-09-03T12:00:00.000Z" })),
+      .mockResolvedValue(
+        agentResult({ clear: true, questions: [], askedQuestions: [], at: "2026-09-03T12:00:00.000Z" }),
+      ),
     implement: vi
       .fn<Agent["implement"]>()
       .mockResolvedValue(agentResult({ ok: true, output: "", at: "2026-09-03T12:00:00.000Z" })),

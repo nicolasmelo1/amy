@@ -47,8 +47,8 @@ export class AgentRelay implements Agent {
     }
   }
 
-  triage(ticket: Ticket): Promise<AgentResult<TriageOutcome>> {
-    return this.perform("triage", ticket, (agent) => agent.triage(ticket));
+  triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>> {
+    return this.perform("triage", ticket, (agent) => agent.triage(ticket, conversation));
   }
 
   /**
@@ -60,9 +60,13 @@ export class AgentRelay implements Agent {
    * away whatever was already right, and on a long ticket that is expensive
    * enough to risk hitting the same quota again.
    */
-  implement(ticket: Ticket, retryContext?: string): Promise<AgentResult<AttemptOutcome>> {
+  implement(
+    ticket: Ticket,
+    retryContext?: string,
+    conversation?: readonly string[],
+  ): Promise<AgentResult<AttemptOutcome>> {
     return this.perform("implement", ticket, (agent, handoff) =>
-      agent.implement(ticket, join(retryContext, handoff)),
+      agent.implement(ticket, join(retryContext, handoff), conversation),
     );
   }
 

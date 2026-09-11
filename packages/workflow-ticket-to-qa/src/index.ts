@@ -1,6 +1,8 @@
 export { pullRequestTitle } from "./ticket.js";
 export type { Ticket, TicketId } from "./ticket.js";
 
+export type { Comment } from "./ports/Tracker.js";
+
 export { TICKET_STATES, WAITING_STATES, isTerminal, isWaiting } from "./state.js";
 export type { TicketState } from "./state.js";
 

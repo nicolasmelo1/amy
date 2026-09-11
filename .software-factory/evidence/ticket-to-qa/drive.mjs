@@ -191,8 +191,21 @@ function reactions() {
     );
 
   return {
-    CLARIFYING(root, record) {
-      if (repliedAfter(root, "u-owner", record.triage.at)) return null;
+    CLARIFYING(root) {
+      const issue = issueOf(root, TICKET);
+
+      // First held look: the colleague answers the question amy asked on the
+      // ticket. Only once — a second held look must find the answer already
+      // there, which is what puts a genuine wait in front of every later
+      // look and would catch the machine re-asking on the way past.
+      const answered = issue.comments.some(
+        (entry) => entry.userId === "u-owner" && entry.body.includes("BRL"),
+      );
+      if (answered) return null;
+
+      const asked = issue.comments.filter((entry) => entry.userId === "u-amy");
+      if (asked.length === 0) return null;
+
       comment(root, "u-owner", "In BRL, the same as the rest of the invoice.");
       return "a colleague answered the question on the ticket";
     },
@@ -385,6 +398,10 @@ const ghApiCalls = (world, method, endpoint) =>
 const issueIn = (world, identifier) =>
   world.tracker.issues.find((issue) => issue.identifier === identifier);
 
+/** Reads the raw tracker state file, which the reactions need between looks. */
+const issueOf = (root, identifier) =>
+  read(trackerFile(root)).issues.find((issue) => issue.identifier === identifier);
+
 const statusOf = (world, identifier) => {
   const issue = issueIn(world, identifier);
   const team = world.tracker.teams.find((candidate) => candidate.id === issue.teamId);
@@ -409,6 +426,7 @@ function assertionsFor(first, second) {
   const questionAsked = issueIn(first, TICKET).comments.find(
     (entry) => entry.userId === "u-amy" && entry.body.includes("currency"),
   );
+  const reReadCall = agentCallsFor(first, "triage").find((call) => call.prompt.includes("answered:"));
   const ceilingHold = first.trail.find(
     (look) => look.after === "REVIEWER_ASSIGNED" && look.before === "REVIEWER_ASSIGNED",
   );
@@ -445,6 +463,34 @@ function assertionsFor(first, second) {
     [
       "lifecycle.the_answer_on_the_ticket_releases_the_work",
       transitions(first).includes("CLARIFYING>READY"),
+    ],
+
+    // The answer, and that it reached the agent rather than being re-asked.
+    // The world answers exactly once (see the CLARIFYING guard), so the
+    // question comments amy left can only ever be one — a machine that
+    // re-asked would have left two.
+    [
+      "clarifying.clears_when_the_question_is_answered",
+      Boolean(
+        reReadCall &&
+          transitions(first).includes("CLARIFYING>READY") &&
+          reReadCall.prompt.includes("Ticket Owner answered:") &&
+          reReadCall.prompt.includes("BRL"),
+      ),
+    ],
+    [
+      "clarifying.does_not_ask_the_same_question_twice",
+      issueIn(first, TICKET).comments.filter((entry) => entry.userId === "u-amy").length === 1,
+    ],
+    [
+      "clarifying.ignores_its_own_comments",
+      Boolean(
+        reReadCall &&
+          reReadCall.prompt.includes("You asked:") &&
+          !reReadCall.prompt.slice(reReadCall.prompt.indexOf("You asked:")).includes(
+            "answered: You asked:",
+          ),
+      ),
     ],
 
     // The gate, which is the only thing that lets work out of the door.

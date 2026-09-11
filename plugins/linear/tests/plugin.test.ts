@@ -1,17 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 import { plugin } from "../src/plugin.js";
 
 /**
- * Whether an announcement is also commented on the ticket.
+ * What the linear plugin mounts, and nothing more.
  *
- * `notify.tracker: false` used to be dead configuration. This plugin
- * contributed the channel unconditionally, the fan-out reaches every
- * contributed channel, and `Announcement` carries no channel of its own — so
- * an operator who had turned it off still got "PROJ-1241 is failing in
- * IMPLEMENTING and I am retrying: git checkout ... Aborting" commented on a
- * ticket their team reads. The setting read as honoured and was not, which is
- * worse than not having it.
+ * It used to contribute a notification channel to the fan-out, which made
+ * every progress notice the engine emits a comment on the ticket — under the
+ * operator's own name, because amy authenticates with a key issued to a
+ * person. A tracker comment is for a question that needs a person, and the
+ * workflow posts those itself, so the channel is gone rather than taught to
+ * filter its own writing.
  */
 function mount(slice: Record<string, unknown>) {
   const contributed: string[] = [];
@@ -27,7 +25,7 @@ function mount(slice: Record<string, unknown>) {
   return { contributed, ports };
 }
 
-describe("the ticket channel", () => {
+describe("the linear plugin", () => {
   beforeEach(() => {
     process.env.LINEAR_API_KEY = "lin_api_test";
   });
@@ -35,32 +33,14 @@ describe("the ticket channel", () => {
     delete process.env.LINEAR_API_KEY;
   });
 
-  it("is not contributed when the operator did not ask for it", () => {
-    const { contributed } = mount({ announceOnTicket: false });
-
-    expect(contributed).not.toContain(`${CHANNEL_COLLECTION}/tracker`);
+  it("mounts the tracker, which is the one thing it owns", () => {
+    expect(mount({}).ports).toContain("tracker");
   });
 
-  /** The absent case is the same case: a slice that says nothing says no. */
-  it("is not contributed when nothing says either way", () => {
-    const { contributed } = mount({});
-
-    expect(contributed).not.toContain(`${CHANNEL_COLLECTION}/tracker`);
-  });
-
-  it("is contributed when it is asked for", () => {
-    const { contributed } = mount({ announceOnTicket: true });
-
-    expect(contributed).toContain(`${CHANNEL_COLLECTION}/tracker`);
-  });
-
-  /**
-   * Silencing the announcements must not unmount the tracker. Every workflow
-   * reads a ticket through this port, and a question about a ticket is
-   * commented through it directly rather than through the channel.
-   */
-  it("mounts the tracker either way", () => {
-    expect(mount({ announceOnTicket: false }).ports).toContain("tracker");
-    expect(mount({ announceOnTicket: true }).ports).toContain("tracker");
+  it("contributes no channel at all", () => {
+    // The fan-out reaches every contributed channel with no way to route one
+    // announcement, so "a channel on the tracker" meant every retry notice
+    // the engine wrote became a comment on a ticket a team reads.
+    expect(mount({}).contributed).toEqual([]);
   });
 });
