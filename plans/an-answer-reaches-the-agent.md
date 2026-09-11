@@ -22,7 +22,7 @@ escalates. **`CLARIFYING` cannot clear because it was answered. It can only
 time out.** The one path built for "a human knows something the ticket does
 not" throws that knowledge away on arrival.
 
-This is the sibling of [the ticket body](the-ticket-body-reaches-the-agent.md)
+This is the sibling of [the ticket body](../docs/design/the-ticket-body-reaches-the-agent.md)
 and worse in one way: that one produced wrong work from a thin input, and this
 one guarantees that asking never fixes anything.
 

@@ -71,11 +71,20 @@ None of that is decoration. Each one is a line in the README's "things that
 look obvious and are wrong", and each one is a way this has already been seen
 to break.
 
+The ticket's description carries an instruction its title does not — "Do not
+round here", which only the tracker could have delivered. The assertion beside
+it reads the prompt the agent was actually handed, so what it proves is a body
+that survived discovery, the record and the runtime to reach the step it
+drives, not a field existing somewhere in the middle.
+
 ## Acceptance criteria
 
 - [x] A ticket in the working status is picked up, and neither the one past
       implementation nor somebody else's is
       (proof: assertion:lifecycle.only_the_working_status_is_picked_up)
+- [x] The description the tracker supplied reaches the prompt the agent is
+      actually handed, past discovery, the record and the runtime
+      (proof: assertion:lifecycle.triage.reads_a_body_the_tracker_supplied)
 - [x] A ticket that leaves a question open gets that question asked on the
       ticket itself
       (proof: assertion:lifecycle.a_blocking_question_is_asked_on_the_ticket)
