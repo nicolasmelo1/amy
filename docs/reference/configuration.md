@@ -34,7 +34,7 @@ For what the two halves mean and why, see
 | `gate` | `Record<string, string[]>` | `{}` | Gate commands per repository, with a `default` fallback. |
 | `agent` | `{ model?: string; /** Model tiers offered to the relay, cheapest first. */ models?: string[]; /** * Which contributed agents to try, in order, such as * `[claude:sonnet, claude:opus, codex:gpt-5]`. Empty means every agent * that was contributed, in mounting order. * * Naming a harness here is also what mounts it, so a ladder is the one * place an operator says which harnesses they have. */ ladder?: string[]; /** * A ladder for one step, keyed by the workflow's action name, overriding * the one above. * * Reading a ticket to decide whether it is clear enough to start is not * the same job as writing the change, and one list for both means paying * the expensive model to do the cheap step. A name here mounts its * harness exactly as a name in `ladder` does. */ ladderByStep?: Record<string, string[]>; reviewerHints?: Record<string, string>; timeoutMs?: number; /** * What the agents may spend, per window. Read by the relay, which is the * only thing here that spends one. Shape checked at boot, not here. */ budget?: Record<string, unknown>; }` | `{}` |  |
 | `skills` | `Record<string, string[]>` | `{}` | Which skills answer for a step, in the order they are tried, keyed by the workflow's action name. A skill named here has to be installed. |
-| `notify` | `NotifyConfig` | `{ tracker: false, hermes: null, inbox: true }` |  |
+| `notify` | `NotifyConfig` | `{ hermes: null, inbox: true }` |  |
 | `plans` | `PlansConfig` | `{ repos: [], check: { default: ["sf check"] }, policy: {} }` |  |
 | `errands` | `ErrandsConfig` | `{ policy: {} }` |  |
 | `plugins` | `Record<string, unknown>` | `{}` | One slice per plugin, keyed by package name. |
@@ -220,14 +220,11 @@ gate:
 
 # Where the machine reaches you. It needs at least one of these.
 #
-# The tracker is off by default and worth leaving off. Announcements go to
-# every channel that is on — there is no routing one of them — so turning it
-# on comments each progress notice on the ticket, and "ACME-1 is failing in
-# IMPLEMENTING and I am retrying: ..." is a machine talking about itself where
-# a team talks to each other. It does not silence a question: a workflow that
-# needs an answer about a ticket comments on it directly.
+# There is no tracker line any more. A tracker comment is for a question that
+# needs a person, and the workflow posts those itself; progress notices belong
+# on the operator's channels, which are the two below. That removes the
+# pollution rather than teaching every reader to filter it.
 notify:
-  tracker: false     # also comment every notification on the ticket
   hermes: slack:my-channel   # a Hermes delivery target, or null
   inbox: true        # a file in .amy/needs-input plus a desktop notification
 

@@ -134,7 +134,7 @@ this repository.
 | `@amykit/plugin-file-tasks` | plugin | `@amykit/core` |
 | `@amykit/plugin-github` | plugin | `@amykit/core` |
 | `@amykit/plugin-hermes-agent` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
-| `@amykit/plugin-linear` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-linear` | plugin | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/plugin-notify-fanout` | plugin | `@amykit/core` |
 | `@amykit/plugin-notify-hermes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-notify-inbox` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |

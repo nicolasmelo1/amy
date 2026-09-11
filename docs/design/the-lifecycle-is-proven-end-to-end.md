@@ -96,6 +96,13 @@ drives, not a field existing somewhere in the middle.
 - [x] An answer on the ticket, from somebody other than the machine itself,
       releases the work
       (proof: assertion:lifecycle.the_answer_on_the_ticket_releases_the_work)
+- [x] The answer does its work by being read: the clearing look carries the
+      conversation, so the second triage judges the ticket as amended
+      (proof: assertion:clarifying.clears_when_the_question_is_answered)
+- [x] A question answered on the ticket is not asked again
+      (proof: assertion:clarifying.does_not_ask_the_same_question_twice)
+- [x] amy's own comments on the ticket are never read as answers
+      (proof: assertion:clarifying.ignores_its_own_comments)
 - [x] A red gate sends the work back to the agent instead of bouncing between
       the two forever
       (proof: assertion:lifecycle.a_red_gate_sends_the_work_back_to_the_agent)
