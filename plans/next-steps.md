@@ -22,6 +22,14 @@ against real pull requests — five findings, filed as issues and converted
 here. 16 is first because 19 adds six methods to one port and every one of
 them should have to get past 16 on arrival.
 
+Rows 21 and 22 come from two issues filed against that same private
+workflow's day on real tickets (#46, #45), converted the way issues are:
+grounded in the code first, one plan each. 21 is first because it changes
+where work *runs* — every effect, gate and git action answers for one work
+item's own tree — and 22's progress signals are about whether another run
+in that tree is worth anything; a workflow should not learn to count
+no-evidence retries against a tree two tickets can still contend for.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [A spec is a name, a URL or a path](a-spec-is-a-name-a-url-or-a-path.md) | One function turns any of the five forms into what npm installs and what the config names, and nothing else in the CLI parses a spec |
@@ -44,3 +52,5 @@ them should have to get past 16 on arrival.
 | 18 | [The threads close when they are answered](the-threads-close-when-they-are-answered.md) | A state whose exit is "no automated thread unresolved" reaches that exit — the threads it answered are closed, and the ceiling is for work that is genuinely stuck |
 | 19 | [The forge is asked, not run beside](the-forge-is-asked-not-run-beside.md) | A workflow that needs what the plugins know asks the mounted plugin, and no registry ever again says there are two code hosts because a workflow had to mount one of its own |
 | 20 | [An escalation can be withdrawn](an-escalation-can-be-withdrawn.md) | A record that escalated on a defect comes back by a command — counter honest, history truthful, and the daemon never once raced the repair |
+| 21 | [The worktree is the workplace](the-worktree-is-the-workplace.md) | Two work items in the same repository drive their whole lifecycle concurrently, each in its own worktree, and no workflow had to invent isolation, cleanup, discovery or recovery to get it |
+| 22 | [No retry is free](no-retry-is-free.md) | A retry that produces no new evidence is refused before the agent starts, by every workflow, with the reason a person can read — and no workflow had to write a counter of its own to get it |
