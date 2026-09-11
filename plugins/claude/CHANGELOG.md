@@ -1,5 +1,15 @@
 # @amykit/plugin-claude
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [64b4d24]
+- Updated dependencies [a499e82]
+  - @amykit/agent-kit@0.3.2
+  - @amykit/core@0.3.2
+  - @amykit/model-specs@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @amykit/plugin-file-notes
 
+## 0.3.2
+
+### Patch Changes
+
+- @amykit/core@0.3.2
+  - @amykit/plugin-notify-fanout@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@amykit/workflow-ticket-to-qa",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
   "type": "module",
   "license": "MIT",
@@ -28,11 +28,11 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.3.1"
+    "@amykit/core": "^0.3.2"
   },
   "devDependencies": {
-    "@amykit/plugin-file-queue": "^0.3.1",
-    "@amykit/plugin-serial-engine": "^0.3.1",
+    "@amykit/plugin-file-queue": "^0.3.2",
+    "@amykit/plugin-serial-engine": "^0.3.2",
     "@amykit/test-fixtures": "^0.1.0"
   }
 }
