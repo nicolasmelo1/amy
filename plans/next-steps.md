@@ -17,6 +17,11 @@ rather than by how wrong they are: 12, 13 and 16 are additive and help
 somebody who already has a workflow, 14, 15 and 17 change what a workflow
 package looks like and are worth doing together, once.
 
+Rows 18 to 22 come from a day of a private workflow driving this machine
+against real pull requests — five findings, filed as issues and converted
+here. 18 is first because 21 adds six methods to one port and every one of
+them should have to get past 18 on arrival.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [The ticket body reaches the agent](the-ticket-body-reaches-the-agent.md) | A ticket whose description carries an instruction its title does not is implemented in accordance with it, and a ticket with no description is asked about rather than guessed at |
@@ -36,3 +41,8 @@ package looks like and are worth doing together, once.
 | 15 | [The fold is told what moved](the-fold-is-told-what-moved.md) | A workflow can tell where a tick came from without reading the history, and reading `record.state` in a fold is refused by a rule rather than discovered by a ticket that went round its whole lifecycle on every reply |
 | 16 | [Work that is over goes away](work-that-is-over-goes-away.md) | A machine that has driven work for a month lists what is happening and not what has happened, and one piece of work that will never finish on its own can be retired with a command rather than with `rm` |
 | 17 | [The ports belong to the core](the-ports-belong-to-the-core.md) | A workflow nobody shipped declares every port it needs by importing `@amykit/core`, and no plugin in the install depends on a workflow package to know what a tracker is |
+| 18 | [No port method ships unproven](no-port-method-ships-unproven.md) | The interface reads as five capabilities because five capabilities are proven, and a port method a plugin claims cannot reach a workflow as its first consumer |
+| 19 | [A reply inside a thread reaches the agent](a-reply-inside-a-thread-reaches-the-agent.md) | A reply written inside a thread is read by the agent answering that thread, and a workflow can tell whose turn a thread is from the view alone |
+| 20 | [The threads close when they are answered](the-threads-close-when-they-are-answered.md) | A state whose exit is "no automated thread unresolved" reaches that exit — the threads it answered are closed, and the ceiling is for work that is genuinely stuck |
+| 21 | [The forge is asked, not run beside](the-forge-is-asked-not-run-beside.md) | A workflow that needs what the plugins know asks the mounted plugin, and no registry ever again says there are two code hosts because a workflow had to mount one of its own |
+| 22 | [An escalation can be withdrawn](an-escalation-can-be-withdrawn.md) | A record that escalated on a defect comes back by a command — counter honest, history truthful, and the daemon never once raced the repair |
