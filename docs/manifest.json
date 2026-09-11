@@ -683,16 +683,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
-          "slug": "the-answer-on-the-ticket-reaches-the-agent-and-the-tracker-stops-carrying-progress-notices"
-        },
-        {
-          "depth": 3,
-          "title": "The ticket's description reaches the agent's prompt, instead of an instruction to go and read a page it cannot open.",
-          "slug": "the-tickets-description-reaches-the-agents-prompt-instead-of-an-instruction-to-go-and-read-a-page-it-cannot-open"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -4312,7 +4302,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "library",
         "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
         "directory": "packages/agent-kit",
@@ -4326,7 +4316,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -4340,7 +4330,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -4354,7 +4344,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -4368,7 +4358,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -4420,7 +4410,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "The claude CLI as the agent, with git on the side.",
         "directory": "plugins/claude",
@@ -4479,7 +4469,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -4538,7 +4528,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -4575,7 +4565,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -4612,7 +4602,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -4626,7 +4616,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -4664,7 +4654,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -4702,7 +4692,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -4726,7 +4716,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -4757,7 +4747,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -4773,7 +4763,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -4832,7 +4822,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -4878,7 +4868,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
         "directory": "plugins/notify-fanout",
@@ -4894,7 +4884,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -4922,7 +4912,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -4949,7 +4939,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -4991,7 +4981,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -5034,7 +5024,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
@@ -5074,7 +5064,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
@@ -5114,7 +5104,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
@@ -5792,48 +5782,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "an-answer-reaches-the-agent",
-        "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
-        "body": "`hasReplyAfter` could say *whether* a ticket was answered and never *what* was\nsaid, so `CLARIFYING` re-ran triage on an unchanged ticket, got the same\nquestions back, and asked them again until it ran out of attempts — the one\npath built for \"a human knows something the ticket does not\" threw that\nknowledge away on arrival. The port gains `comments(ticketId, since?)`\nreturning `{ author, body, at, fromAmy }`, with `fromAmy` settled by the\ntracker's own account of who wrote each comment; `hasReplyAfter` stays as the\ncheap boolean a waiting state polls with, and still fetches no text. An\nanswered question now moves the work on: the state re-reads the ticket with\nthe conversation attached, amy's own comments labelled as questions it already\nasked, and the second look never repeats a question the answer closed. The\n`triage` and `implement` prompts carry that conversation, attributed.\n\n`plugin-linear` also stops contributing its notification channel: a tracker\ncomment is for a question that needs a person, and `failing`, `recovered` and\n`gave-up` are for the operator's channels. That removes the pollution —\nprogress notices commented on a ticket under the operator's own name — rather\nthan teaching every reader to filter it. `notify.tracker` is gone with it.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "the-ticket-body-reaches-the-agent",
-        "title": "The ticket's description reaches the agent's prompt, instead of an instruction to go and read a page it cannot open.",
-        "body": "`ISSUE_FIELDS` asked Linear for `id`, `identifier`, `title`, `url`,\n`branchName`, `state` and `team` — not `description` — so `Ticket` had no body\nand never could have one. `triage` and `implement` then built their prompts\nfrom the title and the tracker URL, and told the agent to \"read the ticket\":\nan instruction nothing under `claude -p` could obey, with no credential and no\nbrowser. The visible failure was an honest refusal; the expensive one was a\nticket whose title sounded sufficient producing a full implementation that\nnever saw the description's acceptance criteria, its named file, or the\nownership boundary written in it — on an install where that duplicated an open\npull request, 8 files and +615 lines on a 2-point ticket.\n\nNow the fetch asks for `description`, `toTicket` maps it to `body` (absent\nstays absent — an empty description is a real state, not an error), and the\nprompts carry the body where the work is judged by it. A ticket with no body\nsays `(this ticket has no description)` rather than looking truncated, which is\nwhat lets the agent ask for one instead of inventing one. A tracker that\nsupplies no body is unaffected: the field is optional and the prompt names the\ncase it is in.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

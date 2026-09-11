@@ -1,5 +1,14 @@
 # @amykit/plugin-serial-engine
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [64b4d24]
+- Updated dependencies [a499e82]
+  - @amykit/workflow-ticket-to-qa@0.3.2
+  - @amykit/core@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

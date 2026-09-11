@@ -1,5 +1,17 @@
 # @amykit/cli
 
+## 0.3.2
+
+### Patch Changes
+
+- @amykit/core@0.3.2
+  - @amykit/model-specs@0.3.2
+  - @amykit/plugin-file-log@0.3.2
+  - @amykit/plugin-file-notes@0.3.2
+  - @amykit/plugin-file-queue@0.3.2
+  - @amykit/plugin-file-store@0.3.2
+  - @amykit/plugin-file-tasks@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

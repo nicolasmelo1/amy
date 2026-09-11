@@ -1,5 +1,11 @@
 # @amykit/plugin-file-queue
 
+## 0.3.2
+
+### Patch Changes
+
+- @amykit/core@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes
