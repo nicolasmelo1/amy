@@ -30,6 +30,18 @@ item's own tree — and 22's progress signals are about whether another run
 in that tree is worth anything; a workflow should not learn to count
 no-evidence retries against a tree two tickets can still contend for.
 
+Rows 25 to 28 come from issue #50, a third day of that workflow driving
+real reviews. 25 is the write the code host never had — answering a
+review inside its own thread — and 26, the strong model that reads a
+review before the executor is spent, orders after it because its
+`answer` verdicts land through the reply 25 adds. 27 is the record
+remembering what a review settled, deferred or answered, and orders
+after 26 because the triage reads the memory it keeps. 28 is the
+picture in the comment — attachments on Linear and GitHub reaching the
+agent — independent of the other three and last only because it ships
+beside them. Rows 23 and 24, from issue #48, sit in an open pull
+request; the numbering leaves their place.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [A spec is a name, a URL or a path](a-spec-is-a-name-a-url-or-a-path.md) | One function turns any of the five forms into what npm installs and what the config names, and nothing else in the CLI parses a spec |
@@ -54,3 +66,7 @@ no-evidence retries against a tree two tickets can still contend for.
 | 20 | [An escalation can be withdrawn](an-escalation-can-be-withdrawn.md) | A record that escalated on a defect comes back by a command — counter honest, history truthful, and the daemon never once raced the repair |
 | 21 | [The worktree is the workplace](the-worktree-is-the-workplace.md) | Two work items in the same repository drive their whole lifecycle concurrently, each in its own worktree, and no workflow had to invent isolation, cleanup, discovery or recovery to get it |
 | 22 | [No retry is free](no-retry-is-free.md) | A retry that produces no new evidence is refused before the agent starts, by every workflow, with the reason a person can read — and no workflow had to write a counter of its own to get it |
+| 25 | [A review thread can be replied to](a-review-thread-can-be-replied-to.md) | A workflow that owes a reviewer an answer can write it inside the thread the reviewer opened, and the next look reads it back as part of the conversation |
+| 26 | [A strong model reads the review first](a-strong-model-reads-the-review-first.md) | A workflow that wants a strong model reading its reviews before the executor is spent can say so with one action, one ladder key and one state — and the review arrives with the whole ticket behind it |
+| 27 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) | What a review settled, deferred or answered is remembered with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it |
+| 28 | [A picture is a comment too](a-picture-is-a-comment-too.md) | A comment that arrives with a picture is a comment the agent can see, on Linear or GitHub alike, and no workflow has to know that pictures were ever missing |
