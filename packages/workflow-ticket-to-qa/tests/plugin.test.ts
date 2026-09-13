@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, mount } from "@amykit/core";
+import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, dispatchesTo, mount } from "@amykit/core";
 import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amykit/test-fixtures";
 import { WORKFLOW_DATA, plugin } from "../src/plugin.js";
 
@@ -40,6 +40,26 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     // runtime for the workflow it was given rather than for some other one.
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("ticket-to-qa");
     expect(runtime).toBeDefined();
+  });
+
+  it("dispatches resolve-review-thread to the code-host port", async () => {
+    const outcome = await mountWith([plugin, world]);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    const runtime = outcome.mounted.contributions
+      .get(WORKFLOW_RUNTIME)
+      ?.get("ticket-to-qa") as WorkflowRuntime;
+    const handlers = runtime.handlers();
+
+    // The core's catalogue names the port, the runtime carries the handler,
+    // and the two agree — so a mount that cannot run it is refused at boot by
+    // name, and a plan that emits it is not a wish.
+    expect(dispatchesTo("resolve-review-thread", "code-host")).toBe(true);
+    expect(handlers["resolve-review-thread"]).toBeDefined();
+    expect(outcome.mounted.actions.get("resolve-review-thread")).toMatchObject({
+      port: "code-host",
+      method: "resolveReviewThread",
+    });
   });
 
   it("brings a handler for every action the workflow says it emits", async () => {

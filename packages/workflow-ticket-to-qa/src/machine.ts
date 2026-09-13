@@ -279,6 +279,30 @@ function planAutomatedReviewFix(record: TicketRecord, obs: Observation, policy: 
   if (isPlan(pr)) return pr;
 
   const open = outstanding(pr, "automated", record);
+
+  /**
+   * Close what this machine answered and the forge still holds open, before
+   * looking at anything left.
+   *
+   * The pool is every unresolved automated thread the forge reports, not the
+   * unjudged remainder: a thread the record judged `fixed` drops out of
+   * `outstanding`, and a state that only looked there would leave the way its
+   * exit condition reads while the conversation was still open on the forge —
+   * a judged thread is one the record has an opinion about, not one the forge
+   * agrees is settled. The move is one act per thread judged `fixed`: the
+   * code changed, so the conversation is over. One act per look, because the
+   * next look sees the threads resolved and finds nothing more to close.
+   */
+  const answered = unresolvedThreads(pr, "automated").filter((t) =>
+    record.judged.some((j) => j.threadId === t.id && j.verdict === "fixed"),
+  );
+  if (answered.length > 0) {
+    return act(
+      `closing ${answered.length} thread(s) the fix answered`,
+      ...answered.map((t) => ({ type: "resolve-review-thread" as const, threadId: t.id })),
+    );
+  }
+
   if (open.length === 0) {
     return advance("COPILOT_WAIT", "every automated thread has been judged");
   }

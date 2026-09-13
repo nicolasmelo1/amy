@@ -43,7 +43,7 @@ workflows:
 | `QA_HANDOFF` | working |
 | `DONE` | terminal |
 
-It emits `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `run-gate` and `triage`.
+It emits `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `resolve-review-thread`, `run-gate` and `triage`.
 
 ## Configuration
 

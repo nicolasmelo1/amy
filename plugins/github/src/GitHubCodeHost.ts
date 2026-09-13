@@ -180,6 +180,28 @@ export class GitHubCodeHost implements CodeHost {
   }
 
   /**
+   * The mutation, the variable, and nothing else: the thread id the view
+   * already carried is what closes it, and the reply the API sends is not
+   * read — a thread that refused to close comes back as a failed call.
+   */
+  async resolveReviewThread(threadId: string): Promise<void> {
+    await this.threadMutation("resolveReviewThread", threadId);
+  }
+
+  async unresolveReviewThread(threadId: string): Promise<void> {
+    await this.threadMutation("unresolveReviewThread", threadId);
+  }
+
+  private async threadMutation(mutation: string, threadId: string): Promise<void> {
+    await this.graphql(
+      `mutation Thread($id: ID!) {
+        ${mutation}(input: {threadId: $id}) { thread { id isResolved } }
+      }`,
+      { id: threadId },
+    );
+  }
+
+  /**
    * Counted across every repository given, because counting one would send
    * every review to whoever happens to be quiet in that one.
    */

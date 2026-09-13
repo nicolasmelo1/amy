@@ -16,6 +16,7 @@ export type Effect =
   | { type: "implement"; retryContext?: string }
   | { type: "run-gate" }
   | { type: "open-pull-request" }
+  | { type: "resolve-review-thread"; threadId: string }
   | { type: "address-threads"; threadIds: string[]; from: "automated" | "human" }
   | { type: "assign-reviewer"; host: string }
   | { type: "request-rereview"; host: string }
@@ -30,6 +31,7 @@ export const USES_ACTIONS = [
   "implement",
   "run-gate",
   "open-pull-request",
+  "resolve-review-thread",
   "address-threads",
   "assign-reviewer",
   "request-rereview",

@@ -339,6 +339,60 @@ describe("GitHubCodeHost.requestReview", () => {
   });
 });
 
+describe("GitHubCodeHost.resolveReviewThread", () => {
+  // The shape the plan was verified against: one mutation, the thread id the
+  // view already carried as its only variable, one call.
+  it("closes a thread by its id in one call", async () => {
+    const runner = new ScriptedRunner([
+      {
+        match: whenArgsInclude("graphql"),
+        result: {
+          stdout: JSON.stringify({
+            data: { resolveReviewThread: { thread: { id: "T1", isResolved: true } } },
+          }),
+        },
+      },
+    ]);
+
+    await new GitHubCodeHost(runner).resolveReviewThread("T1");
+
+    const asked = runner.argvFor("gh").join(" ");
+    expect(asked).toContain("mutation Thread($id: ID!)");
+    expect(asked).toContain("resolveReviewThread(input: {threadId: $id})");
+    expect(asked).toContain("id=T1");
+    expect(runner.calls).toHaveLength(1);
+  });
+
+  it("closes the unresolvable twin through the same one call", async () => {
+    const runner = new ScriptedRunner([
+      {
+        match: whenArgsInclude("graphql"),
+        result: {
+          stdout: JSON.stringify({
+            data: { unresolveReviewThread: { thread: { id: "T1", isResolved: false } } },
+          }),
+        },
+      },
+    ]);
+
+    await new GitHubCodeHost(runner).unresolveReviewThread("T1");
+
+    const asked = runner.argvFor("gh").join(" ");
+    expect(asked).toContain("unresolveReviewThread(input: {threadId: $id})");
+    expect(runner.calls).toHaveLength(1);
+  });
+
+  it("surfaces a GraphQL error instead of pretending the thread closed", async () => {
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("graphql"), result: { stdout: JSON.stringify({ errors: [{ message: "Thread already resolved" }] }) } },
+    ]);
+
+    await expect(new GitHubCodeHost(runner).resolveReviewThread("T1")).rejects.toThrow(
+      /Thread already resolved/,
+    );
+  });
+});
+
 describe("GitHubCodeHost.reviewLoad", () => {
   it("counts open review requests across every repository", async () => {
     const backend = [

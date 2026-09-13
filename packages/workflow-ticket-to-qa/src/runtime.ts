@@ -178,6 +178,12 @@ export function ticketRuntime(
       });
     },
 
+    // The thread id the effect carries is all the call needs — the context
+    // is not read here, and the signature still takes it positionally.
+    "resolve-review-thread": async (effect, _ctx) => {
+      await deps.host.resolveReviewThread(effect.threadId);
+    },
+
     "address-threads": async (effect, ctx) => {
       const threads = (ctx.observation.pullRequest?.threads ?? []).filter((thread) =>
         effect.threadIds.includes(thread.id),

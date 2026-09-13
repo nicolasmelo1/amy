@@ -21,7 +21,7 @@ Three things are true together, and each is right on its own:
 Together: a defect that has since been fixed leaves records parked for
 ever, and the fix does not reach them. On that evening, three records were
 parked on a missing capability — automated threads nobody could close, now
-[planned](the-threads-close-when-they-are-answered.md) — and two on a
+[delivered](../docs/design/the-threads-close-when-they-are-answered.md) — and two on a
 counter that charged a branch checkout to the implementing state, so one
 real round was billed as three.
 

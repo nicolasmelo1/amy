@@ -357,15 +357,106 @@ describe("COPILOT_FIX", () => {
     ]);
   });
 
-  it("goes back to waiting once everything is judged", () => {
+  it("closes a thread the fix already answered, in one act", () => {
     const r = record("COPILOT_FIX", {
-      judged: [{ threadId: "B1", verdict: "fixed", note: "done" }],
+      judged: [{ threadId: "B1", verdict: "fixed", note: "added the unique index" }],
     });
     const obs = observation({
-      pullRequest: pullRequest({ reviews: [botReview()], threads: [botThread()] }),
+      pullRequest: pullRequest({ reviews: [botReview()], threads: [botThread({ id: "B1" })] }),
     });
 
-    expect(expectAdvance(plan(r, obs, policy)).to).toBe("COPILOT_WAIT");
+    const p = expectAct(plan(r, obs, policy));
+
+    expect(p.why).toContain("closing");
+    expect(p.effects).toEqual([{ type: "resolve-review-thread", threadId: "B1" }]);
+  });
+
+  it("closes every answered thread in one look, and nothing it never judged", () => {
+    const r = record("COPILOT_FIX", {
+      judged: [
+        { threadId: "B1", verdict: "fixed", note: "added the unique index" },
+        { threadId: "B2", verdict: "fixed", note: "inlined it" },
+      ],
+    });
+    const obs = observation({
+      pullRequest: pullRequest({
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" }), botThread({ id: "B2" }), botThread({ id: "B3" })],
+      }),
+    });
+
+    const p = expectAct(plan(r, obs, policy));
+
+    // One act each, and B3 — never answered — is left for the agent.
+    expect(p.effects).toEqual([
+      { type: "resolve-review-thread", threadId: "B1" },
+      { type: "resolve-review-thread", threadId: "B2" },
+    ]);
+  });
+
+  it("never closes a colleague's thread, however it was judged", () => {
+    // A human thread judged `fixed` means the code changed in answer to a
+    // person — settling it is the person's call, not the machine's. Only the
+    // bot's unanswered thread is worth an agent.
+    const r = record("COPILOT_FIX", {
+      judged: [{ threadId: "T1", verdict: "fixed", note: "removed the alias" }],
+    });
+    const obs = observation({
+      pullRequest: pullRequest({
+        reviews: [botReview()],
+        threads: [thread({ id: "T1" }), botThread({ id: "B1" })],
+      }),
+    });
+
+    const p = expectAct(plan(r, obs, policy));
+
+    expect(p.effects).toEqual([
+      { type: "address-threads", threadIds: ["B1"], from: "automated" },
+    ]);
+  });
+
+  it("does not close a thread the record only disagreed with", () => {
+    // A disagreement parks for the owner; the forge's button is not this
+    // machine's to press while the objection stands. The unjudged sibling is
+    // still work for the agent.
+    const r = record("COPILOT_FIX", {
+      judged: [{ threadId: "B1", verdict: "disagreed", note: "the types already prove this" }],
+    });
+    const obs = observation({
+      pullRequest: pullRequest({
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1" }), botThread({ id: "B2" })],
+      }),
+    });
+
+    const p = expectAct(plan(r, obs, policy));
+
+    expect(p.effects).toEqual([
+      { type: "address-threads", threadIds: ["B2"], from: "automated" },
+    ]);
+  });
+
+  it("closes a thread it answered and sees it closed on the next look", () => {
+    // The two-look dance the port's write makes possible: the first look
+    // closes what the fix answered, the second finds nothing open and leaves
+    // the way the exit condition reads — not because attempts ran out.
+    const judged = [{ threadId: "B1", verdict: "fixed" as const, note: "added the unique index" }];
+
+    const firstLook = observation({
+      pullRequest: pullRequest({ reviews: [botReview()], threads: [botThread({ id: "B1" })] }),
+    });
+    const closeIt = expectAct(plan(record("COPILOT_FIX", { judged }), firstLook, policy));
+    expect(closeIt.effects).toEqual([{ type: "resolve-review-thread", threadId: "B1" }]);
+
+    const secondLook = observation({
+      pullRequest: pullRequest({
+        reviews: [botReview()],
+        threads: [botThread({ id: "B1", isResolved: true })],
+      }),
+    });
+    expect(expectAdvance(plan(record("COPILOT_FIX", { judged }), secondLook, policy)).to).toBe(
+      "COPILOT_WAIT",
+    );
   });
 });
 

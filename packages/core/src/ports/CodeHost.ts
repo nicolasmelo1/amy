@@ -143,6 +143,29 @@ export interface CodeHost {
   requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>;
 
   /**
+   * Closes one review thread, by its own id, in one act.
+   *
+   * The id is the one `findPullRequest` already carried on the thread, so a
+   * caller never has to know which forge it is talking to — the same reason
+   * the thread carries a `url` nobody derives.
+   *
+   * Settling a thread is the forge's word for "this is answered", and it is
+   * the one act a state whose exit reads "no open thread" was missing: without
+   * it, code that answers a review still leaves the conversation open for
+   * somebody to close by hand.
+   */
+  resolveReviewThread(threadId: string): Promise<void>;
+
+  /**
+   * Puts a closed thread back, for a fix that was reverted.
+   *
+   * Mounted beside `resolveReviewThread` rather than invented for a day that
+   * may never come, because the two are one capability — a forge either lets
+   * this machine speak in a thread's lifecycle or it does not.
+   */
+  unresolveReviewThread(threadId: string): Promise<void>;
+
+  /**
    * Open reviews per login, counted across every given repository.
    *
    * Counting one repository would send every review to whoever happens to be

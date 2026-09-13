@@ -27,6 +27,8 @@ class FakeWorld {
   };
   handedToQa: string | null = null;
   announcements: string[] = [];
+  /** Thread ids this machine itself closed on the forge, read after the walk. */
+  readonly closed = new Set<string>();
   private heads = 0;
   private clock = WORKDAY.getTime();
 
@@ -44,6 +46,14 @@ class FakeWorld {
     private readonly checksStart: "passing" | "failing" | "running" = "passing",
     /** What the forge says stands between the branch and its base. */
     private readonly mergeState: "mergeable" | "conflicting" | "behind" = "mergeable",
+    /**
+     * Whether a push settles the conversation it answered.
+     *
+     * False is the honest forge: the code changed and the thread stayed open,
+     * which is the shape that once escalated three good tickets. The machine
+     * has to close what it answered itself.
+     */
+    private readonly pushesResolveThreads: boolean = true,
   ) {}
 
   private now(): Date {
@@ -168,6 +178,17 @@ class FakeWorld {
           }));
           this.resolve(effect.threadIds.filter((id) => !this.disagreeWith.includes(id)));
           break;
+        case "resolve-review-thread":
+          this.closed.add(effect.threadId);
+          if (this.pullRequest) {
+            this.pullRequest = {
+              ...this.pullRequest,
+              threads: this.pullRequest.threads.map((t) =>
+                t.id === effect.threadId ? { ...t, isResolved: true } : t,
+              ),
+            };
+          }
+          break;
         case "escalate":
           outcomes.escalation = { reason: effect.reason, askedAt: this.now().toISOString() };
           // The owner sides with the reviewer, so the next pass fixes it.
@@ -213,7 +234,9 @@ class FakeWorld {
       ...this.pullRequest,
       headSha: this.nextHead(),
       threads: this.pullRequest.threads.map((t) =>
-        threadIds.includes(t.id) ? { ...t, isResolved: true } : t,
+        threadIds.includes(t.id)
+          ? { ...t, isResolved: this.pushesResolveThreads ? true : t.isResolved }
+          : t,
       ),
     };
   }
@@ -299,6 +322,45 @@ describe("driving a ticket end to end", () => {
     expect(states).toContain("COPILOT_FIX");
     expect(states.indexOf("COPILOT_FIX")).toBeLessThan(states.indexOf("REVIEWER_ASSIGNED"));
     expect(record.judged).toEqual([{ threadId: "B1", verdict: "fixed", note: "n" }]);
+  });
+
+  // The shape that escalated three good tickets on a real board: the code was
+  // fixed every round, the forge kept the conversation open, and the ceiling
+  // ran out over a button nobody could press. The machine closes what it
+  // answered, and the state leaves because nothing is unresolved.
+  it("closes the thread it answered when the forge would not, and leaves on the exit condition", () => {
+    const world = new FakeWorld(
+      [
+        {
+          id: "B1",
+          author: "copilot-pull-request-reviewer",
+          body: "this index does not enforce the mapping",
+          isResolved: false,
+          isOutdated: false,
+          comments: [
+            {
+              author: "copilot-pull-request-reviewer",
+              body: "this index does not enforce the mapping",
+              createdAt: "2026-09-03T10:00:00.000Z",
+            },
+          ],
+        },
+      ],
+      [{ decision: "APPROVED" }],
+      [],
+      "passing",
+      "mergeable",
+      // The honest forge: a push never settles the conversation.
+      false,
+    );
+
+    const { record, states } = drive(world);
+
+    // The machine pressed the button itself, once, for the thread it fixed.
+    expect(world.closed).toEqual(new Set(["B1"]));
+    expect(record.state).toBe("DONE");
+    expect(states).toContain("COPILOT_FIX");
+    expect(states.indexOf("COPILOT_FIX")).toBeLessThan(states.indexOf("REVIEWER_ASSIGNED"));
   });
 
   it("survives a round of requested changes and comes back for approval", () => {

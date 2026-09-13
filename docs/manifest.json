@@ -258,6 +258,11 @@
           "description": ""
         },
         {
+          "title": "The threads close when they are answered",
+          "path": "/design/the-threads-close-when-they-are-answered",
+          "description": ""
+        },
+        {
           "title": "The ticket body reaches the agent",
           "path": "/design/the-ticket-body-reaches-the-agent",
           "description": ""
@@ -696,6 +701,11 @@
           "depth": 3,
           "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
           "slug": "the-answer-on-the-ticket-reaches-the-agent-and-the-tracker-stops-carrying-progress-notices"
+        },
+        {
+          "depth": 3,
+          "title": "The threads close when they are answered.",
+          "slug": "the-threads-close-when-they-are-answered"
         },
         {
           "depth": 3,
@@ -1639,6 +1649,38 @@
           "depth": 2,
           "title": "The config the template writes is the same machine",
           "slug": "the-config-the-template-writes-is-the-same-machine"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-threads-close-when-they-are-answered",
+      "file": "docs/design/the-threads-close-when-they-are-answered.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-threads-close-when-they-are-answered.md",
+      "title": "The threads close when they are answered",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What was wrong",
+          "slug": "what-was-wrong"
+        },
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
         },
         {
           "depth": 2,
@@ -3053,6 +3095,12 @@
         "doc": ""
       },
       {
+        "name": "resolve-review-thread",
+        "port": "code-host",
+        "method": "resolveReviewThread",
+        "doc": "Close one review thread, by its id."
+      },
+      {
         "name": "run-errand",
         "port": "agent",
         "method": "ask",
@@ -3103,6 +3151,16 @@
             "name": "requestReview",
             "signature": "requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>",
             "doc": ""
+          },
+          {
+            "name": "resolveReviewThread",
+            "signature": "resolveReviewThread(threadId: string): Promise<void>",
+            "doc": "Closes one review thread, by its own id, in one act."
+          },
+          {
+            "name": "unresolveReviewThread",
+            "signature": "unresolveReviewThread(threadId: string): Promise<void>",
+            "doc": "Puts a closed thread back, for a fix that was reverted."
           },
           {
             "name": "reviewLoad",
@@ -4178,7 +4236,8 @@
         "actions": [
           "assign-reviewer",
           "open-pull-request",
-          "request-rereview"
+          "request-rereview",
+          "resolve-review-thread"
         ],
         "mountedBy": [
           "@amykit/plugin-github"
@@ -5287,6 +5346,7 @@
         "implement",
         "open-pull-request",
         "request-rereview",
+        "resolve-review-thread",
         "run-gate",
         "triage"
       ],
@@ -5520,6 +5580,7 @@
           "lifecycle.the_branch_the_tracker_named_is_what_gets_pushed",
           "lifecycle.the_pull_request_is_opened_on_that_branch",
           "lifecycle.the_bot_is_answered_before_a_human_is_asked",
+          "lifecycle.the_thread_the_machine_answered_is_closed",
           "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling",
           "lifecycle.review_load_is_counted_across_every_repository",
           "lifecycle.a_stale_review_does_not_count",
@@ -5861,6 +5922,26 @@
           },
           {
             "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-threads-close-when-they-are-answered",
+        "title": "The threads close when they are answered.",
+        "body": "`CodeHost` carried no way to settle a review conversation, so a workflow\nstate whose exit reads \"no open thread\" could not reach its own exit: the\ncode was fixed, the forge kept the thread open, and a ticket that had done\nnothing wrong escalated at the ceiling. The port grows\n`resolveReviewThread` and `unresolveReviewThread` — one id, one call — the\nGitHub adapter runs the `resolveReviewThread`/`unresolveReviewThread`\nGraphQL mutations through the scripted runner, and the action catalogue\ngrows `resolve-review-thread`, dispatched to the code-host port, so a mount\nthat cannot run it is refused at boot by name.\n\nThe ticket-to-qa machine presses the button where the gap was: inside\n`COPILOT_FIX`, threads the record judged `fixed` and the forge still holds\nopen get one act of `resolve-review-thread` each, and the next look finds\nthem resolved and leaves through the exit condition instead of through the\nattempts. Who may close what stays the workflow's policy — only the\nautomated reviewer's threads, only the ones the machine itself answered,\nand never a colleague's; `HUMAN_FIX` does not emit the effect at all.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
             "level": "patch"
           },
           {

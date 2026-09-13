@@ -236,6 +236,7 @@ gates:
       - "lifecycle.the_branch_the_tracker_named_is_what_gets_pushed"
       - "lifecycle.the_pull_request_is_opened_on_that_branch"
       - "lifecycle.the_bot_is_answered_before_a_human_is_asked"
+      - "lifecycle.the_thread_the_machine_answered_is_closed"
       - "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling"
       - "lifecycle.review_load_is_counted_across_every_repository"
       - "lifecycle.a_stale_review_does_not_count"

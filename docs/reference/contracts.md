@@ -22,7 +22,7 @@ explains why for each.
 | Port | Mounted by | Actions dispatched to it |
 | :-- | :-- | :-- |
 | `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `triage` |
-| `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview` |
+| `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview`, `resolve-review-thread` |
 | `commands` | `@amykit/plugin-command` | `run-command` |
 | `gate` | `@amykit/plugin-command-gate` | `run-gate` |
 | `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
@@ -52,6 +52,7 @@ explains why for each.
 | `implement` | `agent` | `implement()` | `@amykit/core` |  |
 | `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
 | `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `resolve-review-thread` | `code-host` | `resolveReviewThread()` | `@amykit/core` | Close one review thread, by its id. |
 | `run-errand` | `agent` | `ask()` | `@amykit/core` | Do the thing somebody asked for, in their own words. |
 | `run-gate` | `gate` | `run()` | `@amykit/core` |  |
 | `triage` | `agent` | `triage()` | `@amykit/core` |  |
@@ -98,6 +99,8 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | `findPullRequest(repo: string, branch: string): Promise<PullRequestView \| null>` |  |
 | `openPullRequest(request: OpenPullRequestRequest): Promise<number>` |  |
 | `requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>` |  |
+| `resolveReviewThread(threadId: string): Promise<void>` | Closes one review thread, by its own id, in one act. |
+| `unresolveReviewThread(threadId: string): Promise<void>` | Puts a closed thread back, for a fix that was reverted. |
 | `reviewLoad(repos: readonly string[]): Promise<Record<string, number>>` | Open reviews per login, counted across every given repository. |
 | `reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests waiting on one login's review, in these repositories and no others. |
 
