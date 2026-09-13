@@ -51,7 +51,8 @@ at boot, by the workflow that used it.
 `{ port: "code-host", method: "replyToReviewThread" }`
 (`packages/core/src/actions.ts:21`), so a workflow emits it the way it
 emits `resolve-review-thread`
-([the-threads-close-when-they-are-answered.md](the-threads-close-when-they-are-answered.md))
+([the-threads-close-when-they-are-answered plan, now
+delivered](../docs/design/the-threads-close-when-they-are-answered.md))
 and a mount that cannot run it is refused at boot by name.
 
 **The reply is data, not prose policy.** Who may reply, and what the

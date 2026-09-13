@@ -13,7 +13,8 @@ that hits the same gap writes it again.
 
 The `gh` adapter exists for eleven methods. Three of them are answered by
 plans already in the order: `resolveThread` by
-[the threads close when they are answered](the-threads-close-when-they-are-answered.md),
+[the threads close when they are answered, now
+delivered](../docs/design/the-threads-close-when-they-are-answered.md),
 `reviewsRequestedOf` (which was broken, and found because this workflow was
 its first consumer) by
 [no port method ships unproven](no-port-method-ships-unproven.md), and
