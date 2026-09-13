@@ -39,16 +39,22 @@ and the two must not disagree about which list a step is checked against;
 23 ships a new gate with it, so what it adds to one port has to get past
 the same boot that 22 tightens.
 
-Rows 24 to 27 come from issue #50, a third day of that workflow driving
-real reviews. 24 is the write the code host never had — answering a
-review inside its own thread — and 25, the strong model that reads a
-review before the executor is spent, orders after it because its
-`answer` verdicts land through the reply 24 adds. 26 is the record
-remembering what a review settled, deferred or answered, and orders
-after 25 because the triage reads the memory it keeps. 27 is the
-picture in the comment — attachments on Linear and GitHub reaching the
-agent — independent of the other three and last only because it ships
-beside them.
+Rows 23 and 26 to 28 come from issue #50, a third day of that workflow
+driving real reviews. 23 is the write the code host never had — answering
+a review inside its own thread — and 26, the strong model that reads a
+review before the executor is spent, orders after it because its `answer`
+verdicts land through the reply 23 adds. 27 is the record remembering what
+a review settled, deferred or answered, and orders after 26 because the
+triage reads the memory it keeps. 28 is the picture in the comment —
+attachments on Linear and GitHub reaching the agent — independent of the
+other three and last only because it ships beside them.
+
+Rows 24 and 25 come from issue #54, two configurable choices found after the
+thread-closing capability shipped. 24 makes the Linear plugin's project and
+ancestor context available before any review step consumes a partial ticket;
+25 turns the workflow's hard-coded closing decision into policy before 26
+adds another kind of answer. They are separate rows because one grows the
+tracker and agent context seam while the other changes a workflow decision.
 
 | # | Work | Exit condition |
 | --- | --- | --- |
@@ -75,6 +81,8 @@ beside them.
 | 21 | [A skill for the half-step](a-skill-for-the-half-step.md) | A workflow that phases one action into several steps can give each of them its own skill and its own model ladder, from `config.yaml`, with the typos refused at boot by name |
 | 22 | [A stack knows its parent](a-stack-knows-its-parent.md) | A workflow that stacks pull requests names one explicit parent per item, resolves the base from the remote code host on every observation, and never learns which forge answered |
 | 23 | [A review thread can be replied to](a-review-thread-can-be-replied-to.md) | A workflow that owes a reviewer an answer can write it inside the thread the reviewer opened, and the next look reads it back as part of the conversation |
-| 24 | [A strong model reads the review first](a-strong-model-reads-the-review-first.md) | A workflow that wants a strong model reading its reviews before the executor is spent can say so with one action, one ladder key and one state — and the review arrives with the whole ticket behind it |
-| 25 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) | What a review settled, deferred or answered is remembered with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it |
-| 26 | [A picture is a comment too](a-picture-is-a-comment-too.md) | A comment that arrives with a picture is a comment the agent can see, on Linear or GitHub alike, and no workflow has to know that pictures were ever missing |
+| 24 | [A child carries its roots](a-child-carries-its-roots.md) | One leaf ticket can carry its project and every parent to all agent steps, including self-review, when configured; the same install can turn that context down or off |
+| 25 | [An answered thread closes by policy](an-answered-thread-closes-by-policy.md) | An operator independently chooses whether answered automated and human threads close, changes that choice on remount, and the remote mutations match it exactly |
+| 26 | [A strong model reads the review first](a-strong-model-reads-the-review-first.md) | A workflow that wants a strong model reading its reviews before the executor is spent can say so with one action, one ladder key and one state — and the review arrives with the whole ticket behind it |
+| 27 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) | What a review settled, deferred or answered is remembered with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it |
+| 28 | [A picture is a comment too](a-picture-is-a-comment-too.md) | A comment that arrives with a picture is a comment the agent can see, on Linear or GitHub alike, and no workflow has to know that pictures were ever missing |
