@@ -218,6 +218,11 @@
           "description": "The design behind one warning down, silence, one warning back — and the rule about which port calls may be swallowed."
         },
         {
+          "title": "A reply inside a thread reaches the agent",
+          "path": "/design/a-reply-inside-a-thread-reaches-the-agent",
+          "description": ""
+        },
+        {
           "title": "An answer reaches the agent",
           "path": "/design/an-answer-reaches-the-agent",
           "description": ""
@@ -681,6 +686,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "A reply inside a review thread reaches the agent.",
+          "slug": "a-reply-inside-a-review-thread-reaches-the-agent"
         },
         {
           "depth": 3,
@@ -1256,6 +1266,33 @@
           "depth": 2,
           "title": "Writing one",
           "slug": "writing-one"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-reply-inside-a-thread-reaches-the-agent",
+      "file": "docs/design/a-reply-inside-a-thread-reaches-the-agent.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-reply-inside-a-thread-reaches-the-agent.md",
+      "title": "A reply inside a thread reaches the agent",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What was wrong",
+          "slug": "what-was-wrong"
+        },
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
         }
       ]
     },
@@ -5793,6 +5830,26 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-reply-inside-a-thread-reaches-the-agent",
+        "title": "A reply inside a review thread reaches the agent.",
+        "body": "`ReviewThread` carried the first comment of a thread and nothing that\nfollowed it, so a reviewer's correction written inside the thread sat one\nfield away from every consumer: `address-threads` handed the agent what the\nthread *started* with, and \"whose turn is it\" was a question the view could\nnot answer. The port grows `comments` — the conversation, oldest first,\nopening comment included — and `author`/`body` stay the opening comment's,\nso a consumer that never asked for the conversation is unaffected and\n`comments.at(-1)?.author` answers whose turn a thread is from the view\nalone. The GitHub query asks for `comments(first: 50)` with `createdAt` in\nthe same request, and the adapter maps the list. The `address-threads`\nprompt renders the conversation attributed — a later comment is introduced\nas a reply, not restated as the objection — and says that a later comment\nanswers the earlier ones, so an agent handed a correction inside the thread\nis handed the correction.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
       {
         "id": "an-answer-reaches-the-agent",
         "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
