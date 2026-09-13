@@ -329,8 +329,22 @@ describe("implement", () => {
 
 describe("addressThreads", () => {
   const threads = [
-    { id: "T1", author: "edsger", body: "why a new variable?", isResolved: false, isOutdated: false },
-    { id: "T2", author: "edsger", body: "delete this guard", isResolved: false, isOutdated: false },
+    {
+      id: "T1",
+      author: "edsger",
+      body: "why a new variable?",
+      isResolved: false,
+      isOutdated: false,
+      comments: [{ author: "edsger", body: "why a new variable?", createdAt: "2026-09-03T10:00:00.000Z" }],
+    },
+    {
+      id: "T2",
+      author: "edsger",
+      body: "delete this guard",
+      isResolved: false,
+      isOutdated: false,
+      comments: [{ author: "edsger", body: "delete this guard", createdAt: "2026-09-03T10:00:00.000Z" }],
+    },
   ];
 
   const verdicts = (json: string) => claudeReturns(envelope({ result: json }));

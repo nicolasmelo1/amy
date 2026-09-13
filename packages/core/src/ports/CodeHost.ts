@@ -16,6 +16,17 @@ export interface ReviewThread {
   body: string;
   isResolved: boolean;
   isOutdated: boolean;
+  /**
+   * The conversation the thread carries, oldest first, opening comment included.
+   *
+   * `author` and `body` above stay the opening comment's, so a consumer that
+   * asks what a thread is *about* keeps its answer whether or not it asked for
+   * the conversation. What follows it is what decides whose turn it is —
+   * `comments.at(-1)?.author` reads that off the view alone, with no second
+   * call — and a correction written inside the thread reaches whoever is
+   * handed the whole of it.
+   */
+  comments: readonly { author: string; body: string; createdAt: string }[];
 }
 
 /**

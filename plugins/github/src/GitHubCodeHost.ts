@@ -53,7 +53,7 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
             id
             isResolved
             isOutdated
-            comments(first: 1) { nodes { author { login } body } }
+            comments(first: 50) { nodes { author { login } body createdAt } }
           }
         }
       }
@@ -116,7 +116,9 @@ interface RawPullRequest {
       id: string;
       isResolved: boolean;
       isOutdated: boolean;
-      comments: { nodes: { author: { login: string } | null; body: string }[] };
+      comments: {
+        nodes: { author: { login: string } | null; body: string; createdAt: string | null }[];
+      };
     }[];
   };
 }
@@ -334,6 +336,13 @@ function toView(node: RawPullRequest): PullRequestView {
           body: first.body,
           isResolved: thread.isResolved,
           isOutdated: thread.isOutdated,
+          // GitHub already returns a thread's comments oldest first; the
+          // type carries that order so a workflow never has to re-sort.
+          comments: thread.comments.nodes.map((comment) => ({
+            author: comment.author?.login ?? "",
+            body: comment.body,
+            createdAt: comment.createdAt ?? "",
+          })),
         },
       ];
     }),

@@ -283,6 +283,13 @@ describe("driving a ticket end to end", () => {
         body: "this index does not enforce the mapping",
         isResolved: false,
         isOutdated: false,
+        comments: [
+          {
+            author: "copilot-pull-request-reviewer",
+            body: "this index does not enforce the mapping",
+            createdAt: "2026-09-03T10:00:00.000Z",
+          },
+        ],
       },
     ]);
 
@@ -307,6 +314,13 @@ describe("driving a ticket end to end", () => {
               body: "any reason to have a new variable for an existing variable?",
               isResolved: false,
               isOutdated: false,
+              comments: [
+                {
+                  author: "edsger",
+                  body: "any reason to have a new variable for an existing variable?",
+                  createdAt: "2026-09-03T10:00:00.000Z",
+                },
+              ],
             },
           ],
         },
@@ -335,6 +349,13 @@ describe("driving a ticket end to end", () => {
               body: "delete this guard",
               isResolved: false,
               isOutdated: false,
+              comments: [
+                {
+                  author: "edsger",
+                  body: "delete this guard",
+                  createdAt: "2026-09-03T10:00:00.000Z",
+                },
+              ],
             },
           ],
         },
