@@ -229,8 +229,22 @@ export class HarnessAgent implements Agent {
       `Ticket ${ticket.id}: ${ticket.title}`,
       ...this.bodyLines(ticket),
       `Comments:`,
-      ...threads.map((thread) => `\n[${thread.id}] ${thread.author} said:\n${thread.body}`),
+      ...threads.flatMap((thread) => [
+        `\n[${thread.id}] ${thread.author} said:\n${thread.body}`,
+        // A review is a conversation, not one comment: what follows the
+        // opening comment is a correction of it or an answer to it. The
+        // first comment is the header above, so the bullets carry only what
+        // came after it, oldest first — the last one says who is being
+        // waited on.
+        ...thread.comments
+          .slice(1)
+          .map((comment) => `  - ${comment.author} replied:\n${comment.body}`),
+      ]),
       ...(hints.length ? [``, `Reviewer notes:`, ...hints.map((hint) => `- ${hint}`)] : []),
+      ``,
+      `A later comment in a thread answers the earlier ones, and the last`,
+      `comment says who the thread is waiting on. Answer the thread as it`,
+      `stands now, not as its first comment left it.`,
       ``,
       `For each comment, either change the code or say why you disagree. Do not`,
       `argue on the pull request. Do not commit: that is handled for you.`,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Git, HarnessReply, Harness } from "@amykit/core";
-import { ScriptedRunner, ticket } from "@amykit/test-fixtures";
+import { ScriptedRunner, ticket, thread } from "@amykit/test-fixtures";
 import { HarnessAgent } from "../src/HarnessAgent.js";
 
 /**
@@ -78,5 +78,71 @@ describe("HarnessAgent prompts", () => {
     await agent.addressThreads(ticket({ body: "The rename is owned by TBO-1236." }), [], "human");
 
     expect(prompts[0]).toContain("The rename is owned by TBO-1236.");
+  });
+
+  it("shows the whole conversation inside a thread, attributed", async () => {
+    const { agent, prompts } = agentWithBody();
+
+    await agent.addressThreads(
+      ticket(),
+      [
+        thread({
+          id: "T9",
+          author: "edsger",
+          body: "external_invoice_id is free-form",
+          comments: [
+            { author: "edsger", body: "external_invoice_id is free-form", createdAt: "2026-09-03T10:00:00Z" },
+            { author: "amy-machine", body: "inlined it in 4b2f1c", createdAt: "2026-09-03T11:00:00Z" },
+            { author: "edsger", body: "that still leaves the old one behind", createdAt: "2026-09-03T12:00:00Z" },
+          ],
+        }),
+      ],
+      "human",
+    );
+
+    const prompt = prompts[0] ?? "";
+
+    // Every voice in the thread is named, in the order it spoke.
+    expect(prompt).toContain("[T9] edsger said:");
+    expect(prompt).toContain("  - edsger replied:");
+    expect(prompt).toContain("  - amy-machine replied:");
+    // The correction inside the thread is on the page the agent reads.
+    expect(prompt).toContain("that still leaves the old one behind");
+    // Oldest first: the correction the reviewer came back with sits after
+    // the answer it corrects.
+    expect(prompt.indexOf("inlined it in 4b2f1c")).toBeLessThan(
+      prompt.indexOf("that still leaves the old one behind"),
+    );
+  });
+
+  it("never presents a reply as part of the original objection", async () => {
+    const { agent, prompts } = agentWithBody();
+
+    await agent.addressThreads(
+      ticket(),
+      [
+        thread({
+          id: "T9",
+          author: "edsger",
+          body: "external_invoice_id is free-form",
+          comments: [
+            { author: "edsger", body: "external_invoice_id is free-form", createdAt: "2026-09-03T10:00:00Z" },
+            { author: "edsger", body: "correction: it must stay in the form the API returns", createdAt: "2026-09-03T11:00:00Z" },
+          ],
+        }),
+      ],
+      "human",
+    );
+
+    const prompt = prompts[0] ?? "";
+
+    // The opening comment is what the thread said; the reply is marked as a
+    // reply, so a correction of the thread's own claim is never read as the
+    // objection it started with.
+    expect(prompt).toContain("[T9] edsger said:\nexternal_invoice_id is free-form\n");
+    expect(prompt).toContain("  - edsger replied:\ncorrection: it must stay in the form the API returns");
+    // A reply is introduced as a reply, and the prompt says a later comment
+    // answers the earlier ones rather than restating the objection.
+    expect(prompt).toContain("A later comment in a thread answers the earlier ones");
   });
 });

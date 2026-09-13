@@ -53,7 +53,8 @@ Optional on the interface and absent in every existing response, so no
 tracker adapter breaks and no workflow changes behaviour until a
 tracker actually returns one. `ReviewThread.comments` — the thread
 conversation the sibling plan carries
-([a-reply-inside-a-thread-reaches-the-agent.md](a-reply-inside-a-thread-reaches-the-agent.md))
+([the-reply-inside-a-thread-reaches-the-agent plan, now
+delivered](../docs/design/a-reply-inside-a-thread-reaches-the-agent.md))
 — grows the same field, so a picture in a thread reply is carried too.
 
 **The adapters fetch what the trackers hold.** Linear: the description

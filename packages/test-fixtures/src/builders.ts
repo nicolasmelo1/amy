@@ -45,12 +45,20 @@ export function review(overrides: Partial<ReviewSubmission> = {}): ReviewSubmiss
 }
 
 export function thread(overrides: Partial<ReviewThread> = {}): ReviewThread {
-  return {
-    id: "T1",
+  const opening = {
     author: "ada",
     body: "why do we need this?",
+  };
+
+  return {
+    id: "T1",
+    ...opening,
     isResolved: false,
     isOutdated: false,
+    // The conversation carries the opening comment and nothing after it, so
+    // a fixture about a thread nobody has touched says so in its shape and
+    // one about a reply overrides with the reply.
+    comments: [{ ...opening, createdAt: "2026-09-03T10:00:00.000Z" }],
     ...overrides,
   };
 }

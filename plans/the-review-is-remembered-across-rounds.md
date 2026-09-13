@@ -22,7 +22,8 @@ The last one is the expensive one. `outstanding` filters threads the
 record has judged (`packages/workflow-ticket-to-qa/src/machine.ts:224`),
 but a thread *reopened* by a reply — the conversation the sibling plan
 carries into the view
-([a-reply-inside-a-thread-reaches-the-agent.md](a-reply-inside-a-thread-reaches-the-agent.md))
+([the-reply-inside-a-thread-reaches-the-agent plan, now
+delivered](../docs/design/a-reply-inside-a-thread-reaches-the-agent.md))
 — is a thread whose opening comment the record already judged, and the
 record's memory is keyed by `threadId` alone, so it cannot tell "judged
 the opening comment" from "judged everything that was said in it".

@@ -89,6 +89,34 @@ const REAL_RESPONSE = {
                     ],
                   },
                 },
+                // The shape that motivated this: the thread's author replied
+                // to their own comment, so what the thread is waiting on is
+                // not what it started with.
+                {
+                  id: "T_replied_bot",
+                  isResolved: false,
+                  isOutdated: false,
+                  comments: {
+                    nodes: [
+                      { author: { login: "copilot-pull-request-reviewer" }, body: "external_invoice_id is free-form", createdAt: "2026-08-24T10:00:00Z" },
+                      { author: { login: "copilot-pull-request-reviewer" }, body: "correction: it must stay in the form the API returns", createdAt: "2026-08-24T11:00:00Z" },
+                    ],
+                  },
+                },
+                // The machine answered and the reviewer came back inside the
+                // thread — the last speaker decides whose turn it is.
+                {
+                  id: "T_answered_then_human",
+                  isResolved: false,
+                  isOutdated: false,
+                  comments: {
+                    nodes: [
+                      { author: { login: "edsger" }, body: "why a new variable?", createdAt: "2026-08-23T09:00:00Z" },
+                      { author: { login: "amy-machine" }, body: "inlined it in 4b2f1c", createdAt: "2026-08-23T15:00:00Z" },
+                      { author: { login: "edsger" }, body: "that still leaves the old one behind", createdAt: "2026-08-24T09:30:00Z" },
+                    ],
+                  },
+                },
               ],
             },
           },
@@ -149,8 +177,61 @@ describe("GitHubCodeHost.findPullRequest", () => {
 
     const pr = (await host.findPullRequest("Northwind/northwind-backend", "b"))!;
 
-    expect(unresolvedThreads(pr, "automated").map((t) => t.id)).toEqual(["T_open_bot"]);
-    expect(unresolvedThreads(pr, "human").map((t) => t.id)).toEqual(["T_open_human"]);
+    expect(unresolvedThreads(pr, "automated").map((t) => t.id)).toEqual([
+      "T_open_bot",
+      "T_replied_bot",
+    ]);
+    expect(unresolvedThreads(pr, "human").map((t) => t.id)).toEqual([
+      "T_open_human",
+      "T_answered_then_human",
+    ]);
+  });
+
+  it("carries the whole conversation a thread holds, oldest first", async () => {
+    const { host } = hostFor(REAL_RESPONSE);
+
+    const pr = (await host.findPullRequest("Northwind/northwind-backend", "b"))!;
+
+    // A reply written inside the thread reaches every consumer of the view;
+    // the reply that once sat one field away is on the thread it belongs to.
+    const replied = pr.threads.find((t) => t.id === "T_replied_bot")!;
+    expect(replied.comments.map((c) => c.body)).toEqual([
+      "external_invoice_id is free-form",
+      "correction: it must stay in the form the API returns",
+    ]);
+    expect(replied.comments.map((c) => c.createdAt)).toEqual([
+      "2026-08-24T10:00:00Z",
+      "2026-08-24T11:00:00Z",
+    ]);
+  });
+
+  it("keeps author and body as the opening comment's, so what a thread is about does not move", async () => {
+    const { host } = hostFor(REAL_RESPONSE);
+
+    const pr = (await host.findPullRequest("Northwind/northwind-backend", "b"))!;
+
+    // A consumer that never asked for the conversation is unaffected: the
+    // bot's thread that grew a correction still reads as the bot's, about
+    // what the bot opened it with.
+    const replied = pr.threads.find((t) => t.id === "T_replied_bot")!;
+    expect(replied.author).toBe("copilot-pull-request-reviewer");
+    expect(replied.body).toBe("external_invoice_id is free-form");
+    expect(unresolvedThreads(pr, "automated").map((t) => t.id)).toContain("T_replied_bot");
+  });
+
+  it("answers whose turn a thread is from the view alone, with the last comment's author", async () => {
+    const { host } = hostFor(REAL_RESPONSE);
+
+    const pr = (await host.findPullRequest("Northwind/northwind-backend", "b"))!;
+
+    // No second call: every turn signal rides on the same reply the view
+    // already carried.
+    const waitingOnHuman = pr.threads.find((t) => t.id === "T_answered_then_human")!;
+    expect(waitingOnHuman.comments.at(-1)!.author).toBe("edsger");
+    expect(waitingOnHuman.comments.at(-1)!.body).toBe("that still leaves the old one behind");
+
+    const waitingOnNobody = pr.threads.find((t) => t.id === "T_open_bot")!;
+    expect(waitingOnNobody.comments.at(-1)!.author).toBe("copilot-pull-request-reviewer");
   });
 
   it("returns nothing when the branch has no open pull request", async () => {
