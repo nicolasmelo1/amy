@@ -30,6 +30,15 @@ item's own tree — and 22's progress signals are about whether another run
 in that tree is worth anything; a workflow should not learn to count
 no-evidence retries against a tree two tickets can still contend for.
 
+Rows 23 and 24 come from issue #48, another day of that private workflow
+driving amy — two findings, filed together because they arrived together,
+split the way they must be: 23 is about who answers a step the config
+cannot even name, 24 is a port growing what a stacked pull request needs.
+23 comes first because its sibling (row 6) already has an approved plan,
+and the two must not disagree about which list a step is checked against;
+24 ships a new gate with it, so what it adds to one port has to get past
+the same boot that 23 tightens.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [A spec is a name, a URL or a path](a-spec-is-a-name-a-url-or-a-path.md) | One function turns any of the five forms into what npm installs and what the config names, and nothing else in the CLI parses a spec |
@@ -54,3 +63,5 @@ no-evidence retries against a tree two tickets can still contend for.
 | 20 | [An escalation can be withdrawn](an-escalation-can-be-withdrawn.md) | A record that escalated on a defect comes back by a command — counter honest, history truthful, and the daemon never once raced the repair |
 | 21 | [The worktree is the workplace](the-worktree-is-the-workplace.md) | Two work items in the same repository drive their whole lifecycle concurrently, each in its own worktree, and no workflow had to invent isolation, cleanup, discovery or recovery to get it |
 | 22 | [No retry is free](no-retry-is-free.md) | A retry that produces no new evidence is refused before the agent starts, by every workflow, with the reason a person can read — and no workflow had to write a counter of its own to get it |
+| 23 | [A skill for the half-step](a-skill-for-the-half-step.md) | A workflow that phases one action into several steps can give each of them its own skill and its own model ladder, from `config.yaml`, with the typos refused at boot by name |
+| 24 | [A stack knows its parent](a-stack-knows-its-parent.md) | A workflow that stacks pull requests names one explicit parent per item, resolves the base from the remote code host on every observation, and never learns which forge answered |
