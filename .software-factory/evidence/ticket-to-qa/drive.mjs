@@ -233,6 +233,14 @@ function reactions() {
         : `the automated reviewer looked at ${head.slice(0, 7)} and had nothing to say`;
     },
 
+    // The machine fixed the bot's thread and pushed, and the thread is still
+    // open: this forge does not settle a conversation because the code
+    // changed. The reaction answers a held COPILOT_FIX look — the look after
+    // the fix — which is the machine's cue to close what it answered.
+    COPILOT_FIX() {
+      return null;
+    },
+
     // Somebody else's review lands, which is the only thing that can make
     // room on a reviewer's pile.
     REVIEWER_ASSIGNED(root) {
@@ -534,6 +542,22 @@ function assertionsFor(first, second) {
         threadCalls[0]?.prompt.includes("BOT-1") &&
           reviewRequests[0] &&
           new Date(threadCalls[0].at) < new Date(reviewRequests[0].at),
+      ),
+    ],
+    [
+      // The write the lifecycle was missing: the machine fixed BOT-1 and
+      // pushed, the forge kept the conversation open, and the machine closed
+      // the thread itself — by id, in one mutation — instead of spending
+      // rounds against a button nobody could press. The next look reads it
+      // resolved, which is how the state leaves on its exit condition.
+      "lifecycle.the_thread_the_machine_answered_is_closed",
+      Boolean(
+        first.pull?.threads.some(
+          (thread) => thread.id === "BOT-1" && thread.isResolved && thread.author === BOT,
+        ) &&
+          ghCallsMatching(first, "graphql", "resolveReviewThread(input: {threadId: $id})", "id=BOT-1")
+            .length === 1 &&
+          !ghCallsMatching(first, "graphql", "id=HUM-1").length,
       ),
     ],
     [

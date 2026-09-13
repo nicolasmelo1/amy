@@ -118,6 +118,9 @@ drives, not a field existing somewhere in the middle.
 - [x] The automated reviewer's comments are answered before a person is asked
       to look
       (proof: assertion:lifecycle.the_bot_is_answered_before_a_human_is_asked)
+- [x] The thread the machine answered is closed when the forge would not close
+      it — by id, in one mutation, and no human thread is ever sent one
+      (proof: assertion:lifecycle.the_thread_the_machine_answered_is_closed)
 - [x] While every reviewer is at the ceiling, the pull request waits with
       nobody assigned and the operator is told once
       (proof: assertion:lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling)

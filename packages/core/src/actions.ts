@@ -45,6 +45,15 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
    */
   "run-errand": { port: "agent", method: "ask" },
   "open-pull-request": { port: "code-host", method: "openPullRequest" },
+  /**
+   * Close one review thread, by its id.
+   *
+   * The write the lifecycle was missing: a state whose exit reads "no open
+   * thread" could wait for a fix and be right about the code and still see
+   * the conversation open, because nobody could close it. Who may close what
+   * stays the workflow's policy — the port only has to make it possible.
+   */
+  "resolve-review-thread": { port: "code-host", method: "resolveReviewThread" },
   "address-threads": { port: "agent", method: "addressThreads" },
   "assign-reviewer": { port: "code-host", method: "requestReview" },
   "request-rereview": { port: "code-host", method: "requestReview" },

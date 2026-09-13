@@ -48,6 +48,7 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 | `implement` | `agent` | `implement()` | `@amykit/core` |  |
 | `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
 | `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `resolve-review-thread` | `code-host` | `resolveReviewThread()` | `@amykit/core` | Close one review thread, by its id. |
 | `run-errand` | `agent` | `ask()` | `@amykit/core` | Do the thing somebody asked for, in their own words. |
 | `run-gate` | `gate` | `run()` | `@amykit/core` |  |
 | `triage` | `agent` | `triage()` | `@amykit/core` |  |

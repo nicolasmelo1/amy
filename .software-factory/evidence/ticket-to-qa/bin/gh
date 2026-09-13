@@ -114,6 +114,35 @@ function pullRequestNode(repo, pull) {
 }
 
 function graphql(state, args) {
+  // A thread mutation names itself: the adapter's query carries
+  // `resolveReviewThread(input: {threadId: $id})` or its unresolve twin, and
+  // the stand-in answers with the thread the id names.
+  const mutation = /mutation Thread\(\$id: ID!\)\s*{\s*(resolve|unresolve)ReviewThread/.exec(
+    args.join(" "),
+  );
+  if (mutation) {
+    const id = fields(args).id;
+    const resolved = mutation[1] === "resolve";
+    const everyPull = Object.values(state.repos)
+      .map((entry) => entry.pulls)
+      .flat(1);
+    const pull = everyPull.find((candidate) => candidate.threads.some((thread) => thread.id === id));
+    if (!pull) fail(`no review thread called ${id} on any open pull request`);
+
+    pull.threads = pull.threads.map((thread) =>
+      thread.id === id ? { ...thread, isResolved: resolved } : thread,
+    );
+    write(state);
+
+    // An object, like the query branch below: `api` stringifies whatever
+    // this returns once, and a branch that pre-stringifies answers the
+    // adapter with JSON inside JSON — no data, and a mutation that never
+    // happened as far as the caller can tell.
+    return {
+      data: { [`${resolved ? "" : "un"}resolveReviewThread`]: { thread: { id, isResolved: resolved } } },
+    };
+  }
+
   const { owner, name, branch } = fields(args);
   const repo = `${owner}/${name}`;
   const open = pullsIn(state, repo).filter(

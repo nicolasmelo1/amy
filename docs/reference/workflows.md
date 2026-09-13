@@ -82,7 +82,7 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 | Starts in | `DISCOVERED` |
 | Terminal | `DONE` |
 | Waits in | `CLARIFYING`, `COPILOT_WAIT`, `HUMAN_REVIEW`, `ESCALATED` |
-| Actions it emits | `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `run-gate`, `triage` |
+| Actions it emits | `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `resolve-review-thread`, `run-gate`, `triage` |
 | Observations it reads | _none_ |
 
 | # | State | Kind |

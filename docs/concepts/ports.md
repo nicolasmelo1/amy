@@ -25,7 +25,7 @@ dispatches to is still a port — a workflow's runtime may reach one directly.
 | Port | Mounted by | Actions dispatched to it |
 | :-- | :-- | :-- |
 | `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `triage` |
-| `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview` |
+| `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview`, `resolve-review-thread` |
 | `commands` | `@amykit/plugin-command` | `run-command` |
 | `gate` | `@amykit/plugin-command-gate` | `run-gate` |
 | `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
@@ -77,6 +77,8 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | `findPullRequest(repo: string, branch: string): Promise<PullRequestView \| null>` |  |
 | `openPullRequest(request: OpenPullRequestRequest): Promise<number>` |  |
 | `requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>` |  |
+| `resolveReviewThread(threadId: string): Promise<void>` | Closes one review thread, by its own id, in one act. |
+| `unresolveReviewThread(threadId: string): Promise<void>` | Puts a closed thread back, for a fix that was reverted. |
 | `reviewLoad(repos: readonly string[]): Promise<Record<string, number>>` | Open reviews per login, counted across every given repository. |
 | `reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests waiting on one login's review, in these repositories and no others. |
 
