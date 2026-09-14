@@ -56,6 +56,12 @@ ancestor context available before any review step consumes a partial ticket;
 adds another kind of answer. They are separate rows because one grows the
 tracker and agent context seam while the other changes a workflow decision.
 
+Row 28 comes from issue #57, after a real grooming run produced work with no
+source behind it. It follows the core-port and retirement work it depends on:
+the policy-shaped brief belongs to a workflow, while its opaque storage,
+current delivery to later steps, retention and declared tracker-write boundary
+belong below that workflow.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [A spec is a name, a URL or a path](a-spec-is-a-name-a-url-or-a-path.md) | One function turns any of the five forms into what npm installs and what the config names, and nothing else in the CLI parses a spec |
@@ -85,3 +91,4 @@ tracker and agent context seam while the other changes a workflow decision.
 | 25 | [A strong model reads the review first](a-strong-model-reads-the-review-first.md) | A workflow that wants a strong model reading its reviews before the executor is spent can say so with one action, one ladder key and one state — and the review arrives with the whole ticket behind it |
 | 26 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) | What a review settled, deferred or answered is remembered with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it |
 | 27 | [A picture is a comment too](a-picture-is-a-comment-too.md) | A comment that arrives with a picture is a comment the agent can see, on Linear or GitHub alike, and no workflow has to know that pictures were ever missing |
+| 28 | [A brief reaches every ticket it explains](a-brief-reaches-every-ticket-it-explains.md) | A grooming workflow can keep one revisable brief for a feature; every ticket step that needs it reads the current version, and a workflow that promised not to edit the tracker cannot begin a tracker write |
