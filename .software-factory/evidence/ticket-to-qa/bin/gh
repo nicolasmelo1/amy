@@ -77,6 +77,8 @@ function pullRequestNode(repo, pull) {
     changedFiles: pull.changedFiles,
     additions: pull.additions,
     deletions: pull.deletions,
+    merged: pull.merged ?? false,
+    baseRefName: pull.base ?? "main",
     mergeable: pull.mergeable,
     mergeStateStatus: pull.mergeStateStatus,
     commits: {
@@ -143,16 +145,28 @@ function graphql(state, args) {
     };
   }
 
-  const { owner, name, branch } = fields(args);
-  const repo = `${owner}/${name}`;
-  const open = pullsIn(state, repo).filter(
-    (pull) => pull.state === "open" && pull.head === branch,
+  // A pull request read by number, merged or not: the branch the adapter's
+  // by-branch search keeps for itself does not belong here, and the
+  // fragment this query shares is what the node answers with.
+  const byNumber = /pullRequest\(number: \$number\)/.test(args.join(" "));
+  const fieldsGiven = fields(args);
+  const repoName = `${fieldsGiven.owner}/${fieldsGiven.name}`;
+  if (byNumber) {
+    const number = Number(fieldsGiven.number);
+    const found = pullsIn(state, repoName).find((pull) => pull.number === number);
+    return {
+      data: { repository: { pullRequest: found ? pullRequestNode(repoName, found) : null } },
+    };
+  }
+
+  const open = pullsIn(state, repoName).filter(
+    (pull) => pull.state === "open" && pull.head === fieldsGiven.branch,
   );
 
   return {
     data: {
       repository: {
-        pullRequests: { nodes: open.slice(0, 1).map((pull) => pullRequestNode(repo, pull)) },
+        pullRequests: { nodes: open.slice(0, 1).map((pull) => pullRequestNode(repoName, pull)) },
       },
     },
   };

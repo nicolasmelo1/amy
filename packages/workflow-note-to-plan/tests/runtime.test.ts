@@ -60,12 +60,18 @@ function fakeStore(records: PlanRecord[] = []): Store<PlanRecord> {
 function fakeHost(overrides: Partial<CodeHost> = {}): CodeHost {
   return {
     findPullRequest: vi.fn<CodeHost["findPullRequest"]>().mockResolvedValue(null),
+    pullRequest: vi.fn<CodeHost["pullRequest"]>().mockResolvedValue(null),
     openPullRequest: vi.fn<CodeHost["openPullRequest"]>().mockResolvedValue(12),
     requestReview: vi.fn<CodeHost["requestReview"]>().mockResolvedValue(undefined),
     resolveReviewThread: vi.fn<CodeHost["resolveReviewThread"]>().mockResolvedValue(undefined),
     unresolveReviewThread: vi.fn<CodeHost["unresolveReviewThread"]>().mockResolvedValue(undefined),
     reviewLoad: vi.fn<CodeHost["reviewLoad"]>().mockResolvedValue({}),
     reviewsRequestedOf: vi.fn<CodeHost["reviewsRequestedOf"]>().mockResolvedValue([]),
+    changesRequestedOf: vi.fn<CodeHost["changesRequestedOf"]>().mockResolvedValue([]),
+    merge: vi.fn<CodeHost["merge"]>().mockResolvedValue(undefined),
+    submitReview: vi.fn<CodeHost["submitReview"]>().mockResolvedValue(undefined),
+    createIssue: vi.fn<CodeHost["createIssue"]>().mockResolvedValue(1204),
+    commitStatuses: vi.fn<CodeHost["commitStatuses"]>().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -404,6 +410,8 @@ describe("the pull request the machine can see", () => {
       reviewDecision: null,
       checks: { state: "passing", commitSha: "head" },
       mergeState: "mergeable",
+      merged: false,
+      base: "main",
       reviews: [],
       threads: [],
       requestedReviewers: [],

@@ -101,6 +101,18 @@ export interface PullRequestView {
   /** What the forge's own checks say about the head, or null where it runs none. */
   checks: ChecksView | null;
   mergeState: MergeState;
+  /**
+   * Whether the forge has already merged it, and where it would land.
+   *
+   * The open-only filter belongs to the by-branch search, so a pull request
+   * read by number is readable after the merge too — and what a merged one
+   * was against is the fact a stack wants without a second call. Carried
+   * from the same node the rest of the view is mapped from, so a caller
+   * never asks twice for what arrived together.
+   */
+  merged: boolean;
+  /** The branch it is aimed at, as the forge names it. */
+  base: string;
   reviews: readonly ReviewSubmission[];
   threads: readonly ReviewThread[];
   requestedReviewers: readonly string[];
@@ -185,4 +197,73 @@ export interface CodeHost {
    * which.
    */
   reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>;
+
+  /**
+   * The open pull requests one login's review left changes requested on, in
+   * these repositories and no others.
+   *
+   * The mirror of `reviewsRequestedOf`: that answers "what is waiting on
+   * me", this answers "where did my review leave changes requested", and a
+   * discovery by review state is the second of the two. Scoped for the same
+   * account-wide reason, and returning views rather than a count for the
+   * same reason — the caller filters by what the review state means, which
+   * is policy, and the port only says what the forge reports.
+   */
+  changesRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>;
+
+  /**
+   * One pull request by its number, merged or not.
+   *
+   * `findPullRequest` is a search, and a search is a filter: a review request
+   * only ever knows a number, and a number can be a pull request that has
+   * already landed — which is exactly when a stack still wants to read what
+   * it sits on. The open-only filter belongs to the by-branch search, and
+   * stays there.
+   */
+  pullRequest(repo: string, number: number): Promise<PullRequestView | null>;
+
+  /**
+   * Merges it, by the method the caller named.
+   *
+   * Which method a repository's ruleset allows is the caller's to decide —
+   * that is policy, and it differs per repository and per team. The forge
+   * only has to carry out what was asked and refuse honestly where it will
+   * not: a refused merge comes back as a failed call, not as a quiet no-op.
+   */
+  merge(repo: string, number: number, method: "merge" | "squash" | "rebase"): Promise<void>;
+
+  /**
+   * Submits a review of it, in the state the caller decided on.
+   *
+   * The state is forge vocabulary — the same words every review in the view
+   * is already carried as — and whether to submit one at all is the
+   * workflow's, which is the same split that leaves thread-closing policy
+   * in the workflow while the port makes it possible.
+   */
+  submitReview(
+    repo: string,
+    number: number,
+    review: { state: ReviewState; body: string },
+  ): Promise<void>;
+
+  /**
+   * Files an issue in the repository, as the forge writes one.
+   *
+   * A tracker port is a ticket somebody is driving; this is the repository's
+   * own defect list, and a workflow that reports a finding to the forge
+   * should not need a second key or a second client to say it.
+   */
+  createIssue(repo: string, issue: { title: string; body: string }): Promise<number>;
+
+  /**
+   * The statuses the forge recorded on one commit, as a list.
+   *
+   * A freeze is one reader's conclusion over this list — which names which
+   * statuses count and which are noise — and the list is the port's
+   * contribution. Reading it here, rather than beside the plugin, is what
+   * keeps the second reader from shelling out on its own.
+   */
+  commitStatuses(repo: string, sha: string): Promise<
+    { context: string; state: "passing" | "failing" | "running" }[]
+  >;
 }

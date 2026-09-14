@@ -26,6 +26,8 @@ const REAL_RESPONSE = {
             changedFiles: 7,
             additions: 214,
             deletions: 31,
+            merged: false,
+            baseRefName: "main",
             mergeable: "MERGEABLE",
             mergeStateStatus: "CLEAN",
             commits: {
@@ -590,3 +592,301 @@ describe("GitHubCodeHost.reviewsRequestedOf", () => {
   });
 });
 
+
+const BY_NUMBER_RESPONSE = {
+  data: {
+    repository: {
+      pullRequest: REAL_RESPONSE.data.repository.pullRequests.nodes[0],
+    },
+  },
+};
+
+describe("GitHubCodeHost.pullRequest", () => {
+  it("looks one up by its number, with no open-only filter in the query", async () => {
+    const { runner, host } = hostFor(BY_NUMBER_RESPONSE);
+
+    const pr = await host.pullRequest("Northwind/northwind-backend", 4926);
+
+    expect(pr?.number).toBe(4926);
+    const asked = runner.argvFor("gh").join(" ");
+    // The number is what the search cannot carry, so the document asks for
+    // the pull request by it and never by a branch.
+    expect(asked).toContain("number=4926");
+    expect(asked).not.toContain("headRefName");
+    expect(asked).toContain("pullRequest(number: $number)");
+  });
+
+  it("returns nothing when the number is not a pull request", async () => {
+    const { host } = hostFor({ data: { repository: { pullRequest: null } } });
+
+    await expect(host.pullRequest("Northwind/northwind-backend", 1)).resolves.toBeNull();
+  });
+
+  it("says what a merged one merged into", async () => {
+    const { host } = hostFor({
+      data: {
+        repository: {
+          pullRequest: {
+            ...REAL_RESPONSE.data.repository.pullRequests.nodes[0],
+            merged: true,
+            baseRefName: "trunk",
+          },
+        },
+      },
+    });
+
+    const pr = await host.pullRequest("Northwind/northwind-backend", 4926);
+
+    expect(pr).toMatchObject({ merged: true, base: "trunk" });
+  });
+});
+
+describe("GitHubCodeHost.merge", () => {
+  it("merges by the method the caller named", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await host.merge("Northwind/northwind-backend", 4926, "squash");
+
+    const argv = runner.argvFor("gh");
+    expect(argv).toContain("--method");
+    expect(argv).toContain("PUT");
+    expect(argv).toContain("/repos/Northwind/northwind-backend/pulls/4926/merge");
+    expect(argv).toContain("merge_method=squash");
+  });
+
+  it("does not swallow a refusal from GitHub", async () => {
+    const { host } = hostFor(REAL_RESPONSE, [
+      { match: whenArgsInclude("/merge"), result: { ok: false, exitCode: 1, stderr: "Merge blocked by ruleset" } },
+    ]);
+
+    await expect(host.merge("Northwind/northwind-backend", 4926, "squash")).rejects.toThrow(
+      /Merge blocked by ruleset/,
+    );
+  });
+});
+
+describe("GitHubCodeHost.submitReview", () => {
+  it("submits the state the caller decided on", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await host.submitReview("Northwind/northwind-backend", 4926, {
+      state: "APPROVED",
+      body: "the mapping holds",
+    });
+
+    const argv = runner.argvFor("gh");
+    expect(argv).toContain("--method");
+    expect(argv).toContain("POST");
+    expect(argv).toContain("/repos/Northwind/northwind-backend/pulls/4926/reviews");
+    expect(argv).toContain("event=APPROVED");
+    expect(argv).toContain("body=the mapping holds");
+  });
+
+  it("sends the empty body rather than leaving it to the API's default", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await host.submitReview("Northwind/northwind-backend", 4926, { state: "APPROVED", body: "" });
+
+    expect(runner.argvFor("gh")).toContain("body=");
+  });
+});
+
+describe("GitHubCodeHost.createIssue", () => {
+  it("files one and returns its number", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE, [
+      { match: whenArgsInclude("/issues"), result: { stdout: JSON.stringify({ number: 1204 }) } },
+    ]);
+
+    const number = await host.createIssue("Northwind/northwind-backend", {
+      title: "the aggregate is duplicated",
+      body: "Consume the DB-layer aggregate from TBO-1236.",
+    });
+
+    expect(number).toBe(1204);
+    const argv = runner.argvFor("gh");
+    expect(argv).toContain("--method");
+    expect(argv).toContain("POST");
+    expect(argv).toContain("/repos/Northwind/northwind-backend/issues");
+    expect(argv).toContain("title=the aggregate is duplicated");
+  });
+
+  it("fails when GitHub does not return a number", async () => {
+    const { host } = hostFor(REAL_RESPONSE, [
+      { match: whenArgsInclude("/issues"), result: { stdout: "{}" } },
+    ]);
+
+    await expect(
+      host.createIssue("Northwind/northwind-backend", { title: "t", body: "b" }),
+    ).rejects.toThrow(/did not return an issue number/);
+  });
+});
+
+describe("GitHubCodeHost.commitStatuses", () => {
+  it("reads the statuses the forge recorded on one commit", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE, [
+      {
+        match: whenArgsInclude("/status"),
+        result: {
+          stdout: JSON.stringify({
+            state: "success",
+            statuses: [
+              { context: "ci/build", state: "SUCCESS" },
+              { context: "freeze", state: "FAILURE" },
+              { context: "deploy", state: "PENDING" },
+            ],
+          }),
+        },
+      },
+    ]);
+
+    const statuses = await host.commitStatuses("Northwind/northwind-backend", HEAD);
+
+    expect(statuses).toEqual([
+      { context: "ci/build", state: "passing" },
+      { context: "freeze", state: "failing" },
+      { context: "deploy", state: "running" },
+    ]);
+    expect(runner.argvFor("gh")).toContain(`/repos/Northwind/northwind-backend/commits/${HEAD}/status`);
+  });
+
+  it("answers an empty list where the forge ran nothing, which is a real answer", async () => {
+    const { host } = hostFor(REAL_RESPONSE, [
+      { match: whenArgsInclude("/status"), result: { stdout: JSON.stringify({ state: "none", statuses: [] }) } },
+    ]);
+
+    await expect(host.commitStatuses("Northwind/northwind-backend", HEAD)).resolves.toEqual([]);
+  });
+});
+
+describe("GitHubCodeHost.changesRequestedOf", () => {
+  const REVIEWED = {
+    ...SEARCH_RESPONSE,
+    data: {
+      search: {
+        nodes: [
+          SEARCH_RESPONSE.data.search.nodes[0],
+          // Also reviewed but not with changes requested: the read below drops it.
+          {
+            ...SEARCH_RESPONSE.data.search.nodes[0],
+            number: 4900,
+            repository: { nameWithOwner: "Northwind/northwind-frontend" },
+          },
+        ],
+      },
+    },
+  };
+
+  const APPROVED_VIEW = {
+    data: {
+      repository: {
+        pullRequest: {
+          ...REAL_RESPONSE.data.repository.pullRequests.nodes[0],
+          number: 4900,
+          reviews: {
+            nodes: [
+              {
+                author: { login: "edsger" },
+                state: "APPROVED",
+                submittedAt: "2026-08-20T11:00:00Z",
+                commit: { oid: HEAD },
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  it("asks the mirrored search, scoped to the repositories it was given", async () => {
+    const { runner, host } = hostFor(REVIEWED, [
+      { match: whenArgsInclude("pullRequest(number"), result: { stdout: JSON.stringify(APPROVED_VIEW) } },
+    ]);
+
+    await host.changesRequestedOf("edsger", ["Northwind/northwind-backend"]);
+
+    const asked = runner.argvFor("gh").join(" ");
+    expect(asked).toContain("reviewed-by:edsger");
+    expect(asked).toContain("is:open");
+    expect(asked).toContain("repo:Northwind/northwind-backend");
+  });
+
+  it("keeps the ones this login's review still leaves changes requested on", async () => {
+    const changesRequestedView = {
+      data: {
+        repository: {
+          pullRequest: {
+            ...REAL_RESPONSE.data.repository.pullRequests.nodes[0],
+            reviews: {
+              nodes: [
+                {
+                  author: { login: "edsger" },
+                  state: "CHANGES_REQUESTED",
+                  submittedAt: "2026-08-20T11:00:00Z",
+                  commit: { oid: HEAD },
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+    // The by-number read is scripted first: the runner answers with the
+    // first match, and the search response would swallow it the other way.
+    // This login's review stands as CHANGES_REQUESTED on one candidate and
+    // as APPROVED on the other, so the scripted runner answers by the number
+    // in the query and the adapter keeps exactly the first.
+    const runner = new ScriptedRunner([
+      {
+        match: (_command, args) =>
+          args.some((arg) => arg.includes("graphql")) && args.some((arg) => arg.includes("number=4886")),
+        result: { stdout: JSON.stringify(changesRequestedView) },
+      },
+      {
+        match: (_command, args) =>
+          args.some((arg) => arg.includes("graphql")) && args.some((arg) => arg.includes("number=4900")),
+        result: { stdout: JSON.stringify(APPROVED_VIEW) },
+      },
+      { match: whenArgsInclude("graphql"), result: { stdout: JSON.stringify(REVIEWED) } },
+    ]);
+    const host = new GitHubCodeHost(runner);
+
+    expect(await host.changesRequestedOf("edsger", ["Northwind/northwind-backend"])).toEqual([
+      {
+        repo: "Northwind/northwind-backend",
+        number: 4886,
+        title: "Improve logging around knit syncs",
+        url: "https://github.example.test/Northwind/northwind-backend/pull/4886",
+        author: "alan",
+        headSha: HEAD,
+      },
+    ]);
+  });
+
+  it("drops a pull request whose only review from this login is an approval", async () => {
+    const onlyApproved = {
+      data: { search: { nodes: [REVIEWED.data.search.nodes[1]] } },
+    };
+    const { host } = hostFor(onlyApproved, [
+      { match: whenArgsInclude("pullRequest(number"), result: { stdout: JSON.stringify(APPROVED_VIEW) } },
+    ]);
+
+    expect(await host.changesRequestedOf("edsger", ["Northwind/northwind-frontend"])).toEqual([]);
+  });
+
+  it("searches nothing at all when it was given no repository", async () => {
+    const { runner, host } = hostFor(REVIEWED);
+
+    expect(await host.changesRequestedOf("edsger", [])).toEqual([]);
+    expect(runner.calls).toHaveLength(0);
+  });
+});
+
+describe("GitHubCodeHost: the view carries what a merge decision needs", () => {
+  it("says whether the pull request merged and what its base is", async () => {
+    const { host } = hostFor(REAL_RESPONSE);
+
+    const pr = await host.findPullRequest("Northwind/northwind-backend", "b");
+
+    expect(pr).toMatchObject({ merged: false, base: "main" });
+  });
+});

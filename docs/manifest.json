@@ -704,6 +704,11 @@
         },
         {
           "depth": 3,
+          "title": "The forge is asked, not run beside.",
+          "slug": "the-forge-is-asked-not-run-beside"
+        },
+        {
+          "depth": 3,
           "title": "The threads close when they are answered.",
           "slug": "the-threads-close-when-they-are-answered"
         },
@@ -3171,6 +3176,36 @@
             "name": "reviewsRequestedOf",
             "signature": "reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>",
             "doc": "The open pull requests waiting on one login's review, in these repositories and no others."
+          },
+          {
+            "name": "changesRequestedOf",
+            "signature": "changesRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>",
+            "doc": "The open pull requests one login's review left changes requested on, in these repositories and no others."
+          },
+          {
+            "name": "pullRequest",
+            "signature": "pullRequest(repo: string, number: number): Promise<PullRequestView | null>",
+            "doc": "One pull request by its number, merged or not."
+          },
+          {
+            "name": "merge",
+            "signature": "merge(repo: string, number: number, method: \"merge\" | \"squash\" | \"rebase\"): Promise<void>",
+            "doc": "Merges it, by the method the caller named."
+          },
+          {
+            "name": "submitReview",
+            "signature": "submitReview(repo: string, number: number, review: { state: ReviewState; body: string }): Promise<void>",
+            "doc": "Submits a review of it, in the state the caller decided on."
+          },
+          {
+            "name": "createIssue",
+            "signature": "createIssue(repo: string, issue: { title: string; body: string }): Promise<number>",
+            "doc": "Files an issue in the repository, as the forge writes one."
+          },
+          {
+            "name": "commitStatuses",
+            "signature": "commitStatuses(repo: string, sha: string): Promise< { context: string; state: \"passing\" | \"failing\" | \"running\" }[] >",
+            "doc": "The statuses the forge recorded on one commit, as a list."
           }
         ]
       },
@@ -5499,6 +5534,7 @@
           "relay.refuses_a_skill_nobody_installed_at_boot",
           "relay.names_the_skills_there_were_to_choose_from",
           "prompt.carries_the_ticket_body",
+          "prompt.carries_the_label_the_tracker_supplied",
           "prompt.says_so_when_a_ticket_has_none",
           "prompt.sends_the_agent_to_the_repository_not_the_tracker",
           "prompt.carries_the_answers_to_its_own_questions"
@@ -5567,6 +5603,7 @@
         "assertions": [
           "lifecycle.only_the_working_status_is_picked_up",
           "lifecycle.triage.reads_a_body_the_tracker_supplied",
+          "lifecycle.triage.reads_the_label_the_tracker_supplied",
           "lifecycle.a_blocking_question_is_asked_on_the_ticket",
           "lifecycle.the_operator_is_told_where_to_answer",
           "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
@@ -5918,6 +5955,30 @@
         "bumps": [
           {
             "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-forge-is-asked-not-run-beside",
+        "title": "The forge is asked, not run beside.",
+        "body": "Every gap in a port became an adapter in whoever hit it: a workflow that\nneeded what the plugins know was shelling out to `gh` beside the plugin that\nalready owned it and opening its own GraphQL connection to Linear beside the\ntracker that already had one, and the second workflow to hit the same gap\nwrote it all again. The port grows what the adapters were compensating for.\n\n`CodeHost` grows `pullRequest(repo, number)` — readable merged or not, the\nopen-only filter staying where it belongs, in the by-branch search — and\n`PullRequestView` grows `merged` and `base`, mapped from the same node in\nthe same query, with both reads running one shared fragment so they cannot\ndrift apart. It grows `merge(repo, number, method)`, the method the base's\nruleset allows being the caller's to name; `submitReview(repo, number,\nreview)`, the state as forge vocabulary and the decision to submit as\nworkflow policy; `createIssue(repo, { title, body })`; `commitStatuses(repo,\nsha)`, so a freeze is a workflow's reading of a status list rather than a\nprivate `gh api` of its own; and `changesRequestedOf(login, repos)`, the\nmirror of `reviewsRequestedOf` — \"where did my review leave changes\nrequested\" — kept honest by the adapter reading each candidate by number,\nbecause the search cannot narrow on who left the changes requested.\n\nThe tracker carries what a ticket is: `ISSUE_FIELDS` grows\n`labels { nodes { name } }` and `Ticket` grows `labels: string[]` — a label\nis how a team says what a ticket *is*, and with the description and the\ncomments already shipped, the Linear reader a workflow carried has nothing\nleft in it. What stays in the workflow is policy: which review state to\nsubmit, whose thread to close, what counts as a freeze.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
             "level": "patch"
           },
           {

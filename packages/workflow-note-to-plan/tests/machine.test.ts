@@ -227,6 +227,8 @@ describe("PR_OPEN", () => {
         reviewDecision: null,
         checks: { state: "passing", commitSha: "head" },
         mergeState: "mergeable",
+        merged: false,
+        base: "main",
         reviews: [],
         threads: [],
         requestedReviewers: [],

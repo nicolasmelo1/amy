@@ -15,6 +15,7 @@ const issue = {
   description: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
   url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
   branchName: "ada/proj-1239-total-is-wrong",
+  labels: { nodes: [{ name: "Bug" }] },
   state: { name: "In Progress" },
   team: { id: "team-proj", key: "PROJ", name: "Platform" },
 };
@@ -67,6 +68,59 @@ describe("LinearTracker.inProgress", () => {
     expect(ticket?.body).toBe(
       "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
     );
+  });
+
+  it("asks for the labels alongside the fields a prompt is built from", async () => {
+    const client = new ScriptedGraphQL([
+      { contains: "query Working", data: { issues: { nodes: [issue] } } },
+    ]);
+
+    await new LinearTracker(client, config).inProgress();
+
+    const query = client.calls[0]!.query;
+    // A field never fetched is a field no prompt can carry: the whole defect
+    // this test pins is `toTicket` being unable to map what was never asked.
+    expect(query).toContain("labels { nodes { name } }");
+  });
+
+  it("carries the tracker's labels as the ticket's labels", async () => {
+    const client = new ScriptedGraphQL([
+      {
+        contains: "query Working",
+        data: {
+          issues: {
+            nodes: [
+              issue,
+              {
+                ...issue,
+                identifier: "PROJ-1240",
+                labels: { nodes: [{ name: "Feature" }, { name: "Epic" }] },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+
+    const tickets = await new LinearTracker(client, config).inProgress();
+
+    // A label is what the team says the ticket *is*: an epic labelled
+    // `Feature` is picked up as work to implement, and its sub-issues are
+    // the actual tickets. The names arrive as the tracker spelled them.
+    expect(tickets.map((t) => t.labels)).toEqual([["Bug"], ["Feature", "Epic"]]);
+  });
+
+  it("carries no labels where the tracker supplied none, which is a state", async () => {
+    const client = new ScriptedGraphQL([
+      {
+        contains: "query Working",
+        data: { issues: { nodes: [{ ...issue, labels: { nodes: [] } }] } },
+      },
+    ]);
+
+    const [ticket] = await new LinearTracker(client, config).inProgress();
+
+    expect(ticket?.labels).toEqual([]);
   });
 
   it("leaves the body absent when the tracker supplied no description", async () => {

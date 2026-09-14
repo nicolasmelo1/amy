@@ -36,6 +36,16 @@ export interface Ticket {
    */
   body?: string;
 
+  /**
+   * What the team says this ticket *is*, as the tracker's own names.
+   *
+   * A label is how a team marks what a ticket is for — an epic labelled
+   * `Feature` carries its sub-issues as the actual work — and it is the
+   * tracker's fact rather than the caller's guess. Empty where the ticket
+   * carries none, which is most of them and is a state, not an error.
+   */
+  labels: string[];
+
   /** Repository the work belongs to, as `owner/name`. */
   repo: string;
 }

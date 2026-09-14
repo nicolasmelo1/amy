@@ -461,6 +461,15 @@ function assertionsFor(first, second) {
       ),
     ],
     [
+      // The label only the tracker could have supplied, beside the body it
+      // already carried: what the team says the ticket *is*, surviving the
+      // same trip the description does, into the prompt the agent is handed.
+      "lifecycle.triage.reads_the_label_the_tracker_supplied",
+      Boolean(
+        agentCallsFor(first, "triage")[0]?.prompt.includes("Bug"),
+      ),
+    ],
+    [
       "lifecycle.the_operator_is_told_where_to_answer",
       first.inbox.some((file) => file.includes(TICKET)),
     ],

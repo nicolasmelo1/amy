@@ -16,6 +16,9 @@ export function ticket(overrides: Partial<Ticket> = {}): Ticket {
     url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
     branchName: "ada/proj-1239-total-is-wrong",
     status: "In Progress",
+    // Most tickets carry none, so a test about labels has to say which ones
+    // it means and the default stays the honest empty.
+    labels: [],
     repo: "Northwind/northwind-backend",
     ...overrides,
   };
@@ -79,6 +82,9 @@ export function pullRequest(overrides: Partial<PullRequestView> = {}): PullReque
     // and a test about a broken branch has to say so.
     checks: { state: "passing", commitSha: HEAD },
     mergeState: "mergeable",
+    // Unmerged and aimed at main, so a test about either has to say so.
+    merged: false,
+    base: "main",
     reviews: [],
     threads: [],
     requestedReviewers: [],

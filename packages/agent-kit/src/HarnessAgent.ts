@@ -57,6 +57,7 @@ export class HarnessAgent implements Agent {
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
         ...this.bodyLines(ticket),
+        ...this.labelLines(ticket),
         ...this.conversationLines(conversation),
         `Read enough of this repository to judge it. Answer with a`,
         `single JSON object and nothing else:`,
@@ -122,6 +123,7 @@ export class HarnessAgent implements Agent {
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
         ...this.bodyLines(ticket),
+        ...this.labelLines(ticket),
         ...this.conversationLines(conversation),
         ...(retryContext
           ? [
@@ -228,6 +230,7 @@ export class HarnessAgent implements Agent {
       ``,
       `Ticket ${ticket.id}: ${ticket.title}`,
       ...this.bodyLines(ticket),
+      ...this.labelLines(ticket),
       `Comments:`,
       ...threads.flatMap((thread) => [
         `\n[${thread.id}] ${thread.author} said:\n${thread.body}`,
@@ -273,6 +276,20 @@ export class HarnessAgent implements Agent {
    */
   private bodyLines(ticket: Ticket): string[] {
     return [``, ticket.body ?? `(this ticket has no description)`];
+  }
+
+  /**
+   * What the team says this ticket *is*, beside the body it says it with.
+   *
+   * A label is the tracker's fact, not the caller's — an epic labelled
+   * `Feature` is not work to implement, and its sub-issues are. Naming them
+   * here is what lets a step that judges the ticket see the label instead of
+   * guessing it; a ticket with none says nothing, because most carry none.
+   */
+  private labelLines(ticket: Ticket): string[] {
+    if (ticket.labels.length === 0) return [];
+
+    return [`Labels: ${ticket.labels.join(", ")}`];
   }
 
   /**
