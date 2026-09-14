@@ -28,6 +28,8 @@ const PULL_REQUEST: PullRequestView = {
   reviewDecision: null,
   checks: { state: "passing", commitSha: "head" },
   mergeState: "mergeable",
+  merged: false,
+  base: "main",
   reviews: [],
   threads: [],
   requestedReviewers: [],

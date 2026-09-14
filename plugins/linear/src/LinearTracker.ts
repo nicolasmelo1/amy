@@ -20,6 +20,7 @@ const ISSUE_FIELDS = `
   description
   url
   branchName
+  labels { nodes { name } }
   state { name }
   team { id key name }
 `;
@@ -31,6 +32,7 @@ interface IssueNode {
   description: string | null;
   url: string;
   branchName: string;
+  labels: { nodes: { name: string }[] } | null;
   state: { name: string };
   team: { id: string; key: string; name: string };
 }
@@ -266,6 +268,10 @@ export class LinearTracker implements Tracker {
       // ticket whose body never reached the agent has to look like one
       // rather than like an empty string pretending there was nothing to say.
       ...(node.description ? { body: node.description } : {}),
+      // A label is what the team says the ticket *is*, so the names arrive
+      // as given, in the order the tracker keeps them, empty where there are
+      // none — a ticket without a label is a real ticket, not an error.
+      labels: (node.labels?.nodes ?? []).map((label) => label.name),
       repo: this.config.repoByTeam[node.team.key] ?? this.config.defaultRepo,
     };
   }

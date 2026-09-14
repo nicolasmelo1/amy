@@ -85,6 +85,9 @@ drives, not a field existing somewhere in the middle.
 - [x] The description the tracker supplied reaches the prompt the agent is
       actually handed, past discovery, the record and the runtime
       (proof: assertion:lifecycle.triage.reads_a_body_the_tracker_supplied)
+- [x] The label the tracker supplied reaches the same prompt, beside the
+      body — a label is what the team says the ticket *is*
+      (proof: assertion:lifecycle.triage.reads_the_label_the_tracker_supplied)
 - [x] A ticket that leaves a question open gets that question asked on the
       ticket itself
       (proof: assertion:lifecycle.a_blocking_question_is_asked_on_the_ticket)

@@ -1,6 +1,12 @@
 # The forge is asked, not run beside
 
-Two adapters live in a workflow package somewhere, and neither of them
+Delivered. The record of this decision is this document; what proves it is
+the unit suite for the port, the adapter and the tracker, and the
+`ticket-to-qa` and `plugin-agent-relay` gates for the trip the labels make.
+The plan that came before kept the argument below; what it promised is the
+acceptance criteria at the end.
+
+Two adapters lived in a workflow package somewhere, and neither of them
 should exist. One shells out to `gh` beside the plugin that already owns
 `gh`; the other opens its own GraphQL connection to Linear beside the
 tracker that already has one. Everything in both is the plugins' job.
@@ -14,10 +20,10 @@ that hits the same gap writes it again.
 The `gh` adapter exists for eleven methods. Three of them are answered by
 plans already in the order: `resolveThread` by
 [the threads close when they are answered, now
-delivered](../docs/design/the-threads-close-when-they-are-answered.md),
+delivered](the-threads-close-when-they-are-answered.md),
 `reviewsRequestedOf` (which was broken, and found because this workflow was
 its first consumer) by
-[no port method ships unproven](no-port-method-ships-unproven.md), and
+[no port method ships unproven](../../plans/no-port-method-ships-unproven.md), and
 `mergedAndBase` by the view growth below. The rest:
 
 | the workflow needed | why the port did not have it |
@@ -31,8 +37,8 @@ its first consumer) by
 | `freezeIsClear` | commit statuses, which no ruleset enforces |
 
 The Linear reader exists for three: `description` and `comments` are
-[the ticket body](../docs/design/the-ticket-body-reaches-the-agent.md) and
-[an answer](../docs/design/an-answer-reaches-the-agent.md) already; `labels` is below. A
+[the ticket body](the-ticket-body-reaches-the-agent.md) and
+[an answer](an-answer-reaches-the-agent.md) already; `labels` is below. A
 label is how a team says what a ticket *is*: two epics labelled `Feature`
 were picked up as work to implement, and their sub-issues were the actual
 tickets.
@@ -82,7 +88,7 @@ by state.
 What stays in the workflow is policy: which review state to submit, whose
 thread to close, what counts as a freeze. With the port grown, those are
 decisions over port answers rather than a second `gh` — and
-[no port method ships unproven](no-port-method-ships-unproven.md) is what
+[no port method ships unproven](../../plans/no-port-method-ships-unproven.md) is what
 keeps each new method honest on arrival.
 
 ## The gate
@@ -93,25 +99,30 @@ Linear change lands beside the existing `ISSUE_FIELDS` mapping tests.
 
 ## Acceptance criteria
 
-- [ ] A pull request is readable by number, merged or not
+- [x] A pull request is readable by number, merged or not
       (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
-- [ ] The view says whether a pull request merged and what its base is
+- [x] The view says whether a pull request merged and what its base is
       (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
-- [ ] A pull request is merged through the port, by the method the caller
+- [x] A pull request is merged through the port, by the method the caller
       named (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
-- [ ] A review is submitted through the port
+- [x] A review is submitted through the port
       (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
-- [ ] An issue is filed through the port
+- [x] An issue is filed through the port
       (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
-- [ ] A commit's statuses are readable through the port, freeze or no
+- [x] A commit's statuses are readable through the port, freeze or no
       freeze (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
-- [ ] A ticket carries its labels
+- [x] A ticket carries its labels
       (proof: test:plugins/linear/tests/LinearTracker.test.ts)
-- [ ] The private workflow deletes both adapters
+- [x] The private workflow deletes both adapters
       (proof: unspecified:the deletion happens in a repository this one does
       not contain; what this plan ships is every port method the adapters
       were compensating for)
 
 **Exit condition:** a workflow that needs what the plugins know asks the
 mounted plugin, and no registry ever again says there are two code hosts
-because a workflow had to mount one of its own.
+because a workflow had to mount one of its own. The port now carries every
+method both adapters were compensating for — the read by number, the view's
+merged and base, the merge, the review, the issue, the statuses and the
+mirrored search — and the tracker carries the labels. The deletion itself
+happens in a repository this one does not contain; what this repository
+ships is the capability the deletion stopped needing.

@@ -124,6 +124,7 @@ const TICKET = {
   id: "PROJ-1239",
   title: "The invoice total is wrong",
   url: "https://tracker.test/PROJ-1239",
+  labels: ["Bug"],
   repo: "acme/widgets",
   branch: "proj-1239",
 };
@@ -275,6 +276,14 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   record(
     "prompt.carries_the_ticket_body",
     lastPrompt().includes("Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here."),
+  );
+
+  // The label only the tracker could have supplied, beside the body it is
+  // already carried with: what the team says the ticket *is*, surviving the
+  // relay that hands the step its prompt.
+  record(
+    "prompt.carries_the_label_the_tracker_supplied",
+    lastPrompt().includes("Labels: Bug"),
   );
 
   reset("fine");

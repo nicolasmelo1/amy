@@ -187,6 +187,10 @@ mounting something nobody is offered.
 - [x] The prompt an agent is handed carries the ticket's description, so a
       body an agent cannot fetch is one it is never asked to
       (proof: assertion:prompt.carries_the_ticket_body)
+- [x] The prompt an agent is handed carries the ticket's labels beside the
+      description — what the team says the ticket *is*, as the tracker spelled
+      it
+      (proof: assertion:prompt.carries_the_label_the_tracker_supplied)
 - [x] A ticket with no description produces a prompt that says so, rather
       than one that looks truncated
       (proof: assertion:prompt.says_so_when_a_ticket_has_none)

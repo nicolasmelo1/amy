@@ -12,7 +12,7 @@
     ]
   },
   "observed": {
-    "assertions_run": 39,
+    "assertions_run": 40,
     "assertions_failed": 0,
     "node": "v22.22.2"
   },
@@ -43,6 +43,10 @@
     },
     {
       "type": "prompt.carries_the_ticket_body",
+      "status": "passed"
+    },
+    {
+      "type": "prompt.carries_the_label_the_tracker_supplied",
       "status": "passed"
     },
     {

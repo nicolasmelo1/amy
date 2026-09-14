@@ -105,6 +105,7 @@ gates:
       - "relay.refuses_a_skill_nobody_installed_at_boot"
       - "relay.names_the_skills_there_were_to_choose_from"
       - "prompt.carries_the_ticket_body"
+      - "prompt.carries_the_label_the_tracker_supplied"
       - "prompt.says_so_when_a_ticket_has_none"
       - "prompt.sends_the_agent_to_the_repository_not_the_tracker"
       - "prompt.carries_the_answers_to_its_own_questions"
@@ -223,6 +224,7 @@ gates:
     required_assertions:
       - "lifecycle.only_the_working_status_is_picked_up"
       - "lifecycle.triage.reads_a_body_the_tracker_supplied"
+      - "lifecycle.triage.reads_the_label_the_tracker_supplied"
       - "lifecycle.a_blocking_question_is_asked_on_the_ticket"
       - "lifecycle.the_operator_is_told_where_to_answer"
       - "lifecycle.a_waiting_state_makes_no_move_until_the_world_does"

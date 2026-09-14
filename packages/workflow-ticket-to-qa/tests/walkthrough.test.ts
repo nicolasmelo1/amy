@@ -156,6 +156,8 @@ class FakeWorld {
             reviewDecision: "REVIEW_REQUIRED",
             checks: { state: this.checksStart, commitSha: head },
             mergeState: this.mergeState,
+            merged: false,
+            base: "main",
             reviews: [],
             threads: [],
             requestedReviewers: [],

@@ -103,6 +103,12 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | `unresolveReviewThread(threadId: string): Promise<void>` | Puts a closed thread back, for a fix that was reverted. |
 | `reviewLoad(repos: readonly string[]): Promise<Record<string, number>>` | Open reviews per login, counted across every given repository. |
 | `reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests waiting on one login's review, in these repositories and no others. |
+| `changesRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests one login's review left changes requested on, in these repositories and no others. |
+| `pullRequest(repo: string, number: number): Promise<PullRequestView \| null>` | One pull request by its number, merged or not. |
+| `merge(repo: string, number: number, method: "merge" \| "squash" \| "rebase"): Promise<void>` | Merges it, by the method the caller named. |
+| `submitReview(repo: string, number: number, review: { state: ReviewState; body: string }): Promise<void>` | Submits a review of it, in the state the caller decided on. |
+| `createIssue(repo: string, issue: { title: string; body: string }): Promise<number>` | Files an issue in the repository, as the forge writes one. |
+| `commitStatuses(repo: string, sha: string): Promise< { context: string; state: "passing" \| "failing" \| "running" }[] >` | The statuses the forge recorded on one commit, as a list. |
 
 ### `CommandRunner`
 

@@ -132,6 +132,7 @@ const TRACKER_STATE = {
       // prompt carrying it is a trip that worked end to end.
       description:
         "The total line must show the same currency as the rest of the invoice. Do not round here.",
+      labels: ["Bug"],
       comments: [],
     },
     // In Review, which the tracker files under the same category as In

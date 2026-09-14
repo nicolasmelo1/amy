@@ -25,6 +25,8 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
         changedFiles
         additions
         deletions
+        merged
+        baseRefName
         mergeable
         mergeStateStatus
         commits(last: 1) {
@@ -61,6 +63,71 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
   }
 }`;
 
+/**
+ * Shared between the two queries, so a field the view carries is asked for
+ * once and mapped once — the two reads cannot drift apart.
+ */
+const PULL_REQUEST_FIELDS = `
+fragment PullRequestFields on PullRequest {
+  number
+  url
+  isDraft
+  reviewDecision
+  headRefOid
+  changedFiles
+  additions
+  deletions
+  merged
+  baseRefName
+  mergeable
+  mergeStateStatus
+  commits(last: 1) {
+    nodes { commit { oid statusCheckRollup { state } } }
+  }
+  reviewRequests(first: 20) {
+    nodes {
+      requestedReviewer {
+        __typename
+        ... on User { login }
+        ... on Bot { login }
+        ... on Team { slug }
+      }
+    }
+  }
+  reviews(first: 100) {
+    nodes {
+      author { login }
+      state
+      submittedAt
+      commit { oid }
+    }
+  }
+  reviewThreads(first: 100) {
+    nodes {
+      id
+      isResolved
+      isOutdated
+      comments(first: 50) { nodes { author { login } body createdAt } }
+    }
+  }
+}`;
+
+/**
+ * The same fields, reached by number instead of by branch, and with no
+ * open-only filter: a number is a pull request that has already landed as
+ * often as one still waiting.
+ */
+const PULL_REQUEST_BY_NUMBER_QUERY = `
+query PullRequestByNumber($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      ...PullRequestFields
+    }
+  }
+}
+
+${PULL_REQUEST_FIELDS}`;
+
 const REVIEW_REQUESTS_QUERY = `
 query ReviewRequests($query: String!) {
   search(query: $query, type: ISSUE, first: 50) {
@@ -95,6 +162,8 @@ interface RawPullRequest {
   changedFiles: number;
   additions: number;
   deletions: number;
+  merged: boolean;
+  baseRefName: string;
   mergeable: string | null;
   mergeStateStatus: string | null;
   commits?: {
@@ -134,6 +203,22 @@ export class GitHubCodeHost implements CodeHost {
     }>(PULL_REQUEST_QUERY, { owner, name, branch });
 
     const node = raw.repository?.pullRequests.nodes[0];
+    return node ? toView(node) : null;
+  }
+
+  /**
+   * One pull request by its number, merged or not — the same mapping as the
+   * by-branch search, because the two reads run one shared fragment and
+   * cannot drift apart.
+   */
+  async pullRequest(repo: string, number: number): Promise<PullRequestView | null> {
+    const { owner, name } = split(repo);
+
+    const raw = await this.graphql<{
+      repository: { pullRequest: RawPullRequest | null } | null;
+    }>(PULL_REQUEST_BY_NUMBER_QUERY, { owner, name, number: String(number) });
+
+    const node = raw.repository?.pullRequest;
     return node ? toView(node) : null;
   }
 
@@ -190,6 +275,89 @@ export class GitHubCodeHost implements CodeHost {
 
   async unresolveReviewThread(threadId: string): Promise<void> {
     await this.threadMutation("unresolveReviewThread", threadId);
+  }
+
+  /**
+   * Carried out as asked, and refused out loud where GitHub will not.
+   *
+   * The method is the caller's vocabulary, so the adapter has no opinion on
+   * squash versus merge; a ruleset that disallows it answers through the
+   * failed call, which is the same honesty every other mutation here gets.
+   */
+  async merge(repo: string, number: number, method: "merge" | "squash" | "rebase"): Promise<void> {
+    await this.gh([
+      "api",
+      "--method",
+      "PUT",
+      `/repos/${repo}/pulls/${number}/merge`,
+      "-f",
+      `merge_method=${method}`,
+    ]);
+  }
+
+  async submitReview(
+    repo: string,
+    number: number,
+    review: { state: ReviewState; body: string },
+  ): Promise<void> {
+    await this.gh([
+      "api",
+      "--method",
+      "POST",
+      `/repos/${repo}/pulls/${number}/reviews`,
+      "-f",
+      `event=${review.state}`,
+      // Sent explicitly so an empty body is a decision rather than an omission.
+      "-f",
+      `body=${review.body}`,
+    ]);
+  }
+
+  async createIssue(repo: string, issue: { title: string; body: string }): Promise<number> {
+    const created = await this.gh([
+      "api",
+      "--method",
+      "POST",
+      `/repos/${repo}/issues`,
+      "-f",
+      `title=${issue.title}`,
+      "-f",
+      `body=${issue.body}`,
+    ]);
+
+    const parsed = JSON.parse(created) as { number?: number };
+    if (typeof parsed.number !== "number") {
+      throw new Error(`GitHub did not return an issue number for ${repo}`);
+    }
+
+    return parsed.number;
+  }
+
+  /**
+   * What the forge recorded on one commit, as the list it keeps.
+   *
+   * GitHub's combined status answers with `none` where nothing ran, which is
+   * the same honest distinction `ChecksView.state` carries: an empty list is
+   * a real answer, and a freeze reading it must be able to tell that from a
+   * refusal.
+   */
+  async commitStatuses(
+    repo: string,
+    sha: string,
+  ): Promise<{ context: string; state: "passing" | "failing" | "running" }[]> {
+    const raw = await this.gh(["api", `/repos/${repo}/commits/${sha}/status`]);
+
+    const parsed = JSON.parse(raw) as {
+      status?: string;
+      statuses?: { context?: string; state?: string }[];
+    };
+
+    return (parsed.statuses ?? []).flatMap((status) => {
+      const context = status.context;
+      if (!context) return [];
+
+      return [{ context, state: toStatusState(status.state) }];
+    });
   }
 
   private async threadMutation(mutation: string, threadId: string): Promise<void> {
@@ -271,6 +439,52 @@ export class GitHubCodeHost implements CodeHost {
     });
   }
 
+  /**
+   * The same scoped search, mirrored: the pull requests one login's own
+   * review left changes requested on. The qualifier is GitHub's search
+   * grammar, and the scope behaves exactly as its twin's does.
+   */
+  async changesRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]> {
+    if (repos.length === 0) return [];
+
+    const scope = repos.map((repo) => `repo:${repo}`).join(" ");
+    const data = await this.graphql<{ search: { nodes: RawReviewRequest[] } }>(
+      REVIEW_REQUESTS_QUERY,
+      { query: `is:pr is:open reviewed-by:${login} ${scope}` },
+    );
+
+    const requested = data.search.nodes.flatMap<ReviewRequest>((node) => {
+      // The search returns issues too, and the fragment leaves those empty.
+      if (node.number === undefined || !node.repository) return [];
+
+      return [
+        {
+          repo: node.repository.nameWithOwner,
+          number: node.number,
+          url: node.url ?? "",
+          title: node.title ?? "",
+          author: node.author?.login ?? "",
+          headSha: node.headRefOid ?? "",
+        },
+      ];
+    });
+
+    // The search cannot narrow on who left the changes requested, so the
+    // adapter does: keep the ones this login's own review still stands as
+    // CHANGES_REQUESTED, and drop the approval, the comment and the stale
+    // review from the same search. One read per candidate, by number — the
+    // read this method's twin never needed, because "review requested" is
+    // what the search itself reports.
+    const kept = [] as ReviewRequest[];
+    for (const request of requested) {
+      const view = await this.pullRequest(request.repo, request.number);
+      if (view?.reviews.some((review) => review.author === login && review.state === "CHANGES_REQUESTED")) {
+        kept.push(request);
+      }
+    }
+    return kept;
+  }
+
   private async defaultBranch(repo: string): Promise<string> {
     return this.gh(["api", `/repos/${repo}`, "--jq", ".default_branch"]);
   }
@@ -330,6 +544,10 @@ function toView(node: RawPullRequest): PullRequestView {
     reviewDecision: toDecision(node.reviewDecision),
     checks: toChecks(node),
     mergeState: toMergeState(node.mergeable, node.mergeStateStatus),
+    // The branch search carries these too: one mapping, so a view read by
+    // branch and one read by number agree about the same pull request.
+    merged: node.merged,
+    base: node.baseRefName,
     requestedReviewers: node.reviewRequests.nodes
       .map((request) => request.requestedReviewer?.login ?? request.requestedReviewer?.slug)
       .filter((who): who is string => Boolean(who)),
@@ -397,6 +615,25 @@ function toChecksState(state: string): NonNullable<ChecksView>["state"] {
       // EXPECTED and PENDING both mean "no verdict yet", and an unrecognised
       // state is treated the same way: waiting is the answer that costs
       // nothing, where guessing either verdict costs a wrong move.
+      return "running";
+  }
+}
+
+/**
+ * A commit status in the same three words the checks rollup is carried as.
+ *
+ * GitHub's own state vocabulary is the same alphabet here, and an
+ * unrecognised state is waiting rather than a guess — the same rule
+ * `toChecksState` keeps, in the words the port's vocabulary uses.
+ */
+function toStatusState(state: string | undefined): "passing" | "failing" | "running" {
+  switch (state) {
+    case "SUCCESS":
+      return "passing";
+    case "FAILURE":
+    case "ERROR":
+      return "failing";
+    default:
       return "running";
   }
 }
