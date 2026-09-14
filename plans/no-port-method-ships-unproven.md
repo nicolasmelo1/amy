@@ -34,7 +34,7 @@ read as five capabilities and was four.
 
 The workaround in the consuming workflow was `gh pr list --search`, one call
 per repository and no GraphQL at all — which is its own finding, recorded as
-[the forge is asked, not run beside](the-forge-is-asked-not-run-beside.md).
+[the forge is asked, not run beside](../docs/design/the-forge-is-asked-not-run-beside.md).
 
 ## What changes
 
