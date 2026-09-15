@@ -17,6 +17,8 @@ export interface EffectOutcomes {
   triage?: TriageOutcome;
   implementation?: AttemptOutcome;
   gate?: AttemptOutcome;
+  /** What the self-review said, so the record holds the latest one. */
+  selfReview?: AttemptOutcome;
   pullRequestNumber?: number;
   reviewer?: string;
   verdicts?: ThreadVerdict[];
@@ -39,21 +41,15 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   if (outcomes.triage) next.triage = outcomes.triage;
   if (outcomes.implementation) next.lastImplementation = outcomes.implementation;
   if (outcomes.gate) next.lastGate = outcomes.gate;
+  // The newest review of itself, exactly like the newest gate output: the
+  // record holds what the last look said, never a running history.
+  if (outcomes.selfReview) next.lastSelfReview = outcomes.selfReview;
   if (outcomes.pullRequestNumber !== undefined) {
     next.pullRequestNumber = outcomes.pullRequestNumber;
   }
   if (outcomes.reviewer) next.reviewer = outcomes.reviewer;
 
-  if (outcomes.verdicts) {
-    for (const verdict of outcomes.verdicts) {
-      const existing = next.judged.findIndex((j) => j.threadId === verdict.threadId);
-      if (existing === -1) {
-        next.judged.push(verdict);
-      } else {
-        next.judged[existing] = verdict;
-      }
-    }
-  }
+  mergeVerdicts(next, outcomes.verdicts);
 
   if (outcomes.escalation) next.escalation = outcomes.escalation;
 
@@ -67,6 +63,15 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   }
 
   return next;
+}
+
+/** Replace a judgement by thread id, preserving unrelated prior verdicts. */
+function mergeVerdicts(record: TicketRecord, verdicts: ThreadVerdict[] | undefined): void {
+  for (const verdict of verdicts ?? []) {
+    const existing = record.judged.findIndex((judged) => judged.threadId === verdict.threadId);
+    if (existing === -1) record.judged.push(verdict);
+    else record.judged[existing] = verdict;
+  }
 }
 
 /**

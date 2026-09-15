@@ -704,6 +704,11 @@
         },
         {
           "depth": 3,
+          "title": "A brief reaches every ticket it explains.",
+          "slug": "a-brief-reaches-every-ticket-it-explains"
+        },
+        {
+          "depth": 3,
           "title": "A reply inside a review thread reaches the agent.",
           "slug": "a-reply-inside-a-review-thread-reaches-the-agent"
         },
@@ -2097,6 +2102,11 @@
         },
         {
           "depth": 3,
+          "title": "amy brief",
+          "slug": "amy-brief"
+        },
+        {
+          "depth": 3,
           "title": "amy btw",
           "slug": "amy-btw"
         },
@@ -3247,6 +3257,12 @@
         "doc": ""
       },
       {
+        "name": "self-review",
+        "port": "agent",
+        "method": "ask",
+        "doc": "A workflow-declared half-step: the work reviews itself before a person is asked to."
+      },
+      {
         "name": "triage",
         "port": "agent",
         "method": "triage",
@@ -4042,6 +4058,26 @@
       "commands": [
         {
           "path": [
+            "brief"
+          ],
+          "description": "The current statement of a feature, as the workflow keeps it",
+          "arguments": [
+            {
+              "name": "<id>",
+              "required": true,
+              "description": "the brief id, as the workflow named it"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--json",
+              "description": "the same snapshot as data, for something else to render"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
             "btw"
           ],
           "description": "Something to do, said in passing. Goes on the queue, never becomes a ticket",
@@ -4509,10 +4545,18 @@
           "draft-plan",
           "implement",
           "run-errand",
+          "self-review",
           "triage"
         ],
         "mountedBy": [
           "@amykit/plugin-agent-relay"
+        ]
+      },
+      {
+        "kind": "brief",
+        "actions": [],
+        "mountedBy": [
+          "@amykit/plugin-file-store"
         ]
       },
       {
@@ -5090,10 +5134,18 @@
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-store",
         "readme": "plugins/file-store/README.md",
         "mounts": [
+          "brief",
           "store"
         ],
         "contributes": [],
         "settings": [
+          {
+            "name": "briefsDirectory",
+            "type": "string",
+            "required": false,
+            "default": "briefs",
+            "description": "where the briefs are kept, relative to the state directory. One per workflow, for the same reason the records are"
+          },
           {
             "name": "directory",
             "type": "string",
@@ -5598,6 +5650,7 @@
         "READY",
         "IMPLEMENTING",
         "CHECKED",
+        "SELF_REVIEW",
         "PR_OPEN",
         "COPILOT_WAIT",
         "COPILOT_FIX",
@@ -5632,6 +5685,7 @@
         "request-rereview",
         "resolve-review-thread",
         "run-gate",
+        "self-review",
         "triage"
       ],
       "usesObservers": []
@@ -5839,6 +5893,7 @@
           "packages/workflow-ticket-to-qa/src/**",
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
+          "plugins/file-store/src/**",
           "plugins/serial-engine/src/**",
           "plugins/linear/src/**",
           "plugins/github/src/**",
@@ -5850,6 +5905,12 @@
         "evidence": ".software-factory/evidence/ticket-to-qa.json",
         "plan": "docs/design/the-lifecycle-is-proven-end-to-end.md",
         "assertions": [
+          "brief.parent_is_the_tracker_supplied_shared_id",
+          "brief.triage_reads_the_operator_authored_constraint",
+          "brief.question_is_appended_with_its_work_id",
+          "brief.a_revision_between_ticks_reaches_self_review",
+          "brief.self_review_is_a_declared_agent_step",
+          "brief.show_reads_the_port_without_exposing_its_directory",
           "lifecycle.only_the_working_status_is_picked_up",
           "lifecycle.triage.reads_a_body_the_tracker_supplied",
           "lifecycle.triage.reads_the_label_the_tracker_supplied",
@@ -6177,6 +6238,38 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-brief-reaches-every-ticket-it-explains",
+        "title": "A brief reaches every ticket it explains.",
+        "body": "Tickets may inherit a shared brief from their Linear parent. The workflow reads\nthat brief freshly on every observation, carries it to triage, implementation,\nreview and its self-review half-step, records questions against it, and keeps a\nbrief only while its explained work remains non-terminal or inside retention.\n`amy brief <id>` renders the mounted brief without exposing its store path.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-store",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
       {
         "id": "a-reply-inside-a-thread-reaches-the-agent",
         "title": "A reply inside a review thread reaches the agent.",

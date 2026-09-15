@@ -31,7 +31,9 @@ describe("parseSkills", () => {
     // skill for it would never be asked. That is a typo, not a preference.
     const problems = problemsOf({ "open-pull-request": ["/logion"] });
 
-    expect(problems.join("\n")).toContain("triage, implement, draft-plan, run-errand, address-threads");
+    expect(problems.join("\n")).toContain(
+      "triage, implement, draft-plan, run-errand, self-review, address-threads",
+    );
   });
 
   it("accepts a step that reaches the agent with no vocabulary in it", () => {

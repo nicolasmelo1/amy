@@ -31,6 +31,7 @@ workflows:
 | `READY` | working |
 | `IMPLEMENTING` | working |
 | `CHECKED` | working |
+| `SELF_REVIEW` | working |
 | `PR_OPEN` | working |
 | `COPILOT_WAIT` | waiting |
 | `COPILOT_FIX` | working |
@@ -43,7 +44,7 @@ workflows:
 | `QA_HANDOFF` | working |
 | `DONE` | terminal |
 
-It emits `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `resolve-review-thread`, `run-gate` and `triage`.
+It emits `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `resolve-review-thread`, `run-gate`, `self-review` and `triage`.
 
 ## Configuration
 

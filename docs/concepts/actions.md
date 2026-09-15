@@ -51,6 +51,7 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 | `resolve-review-thread` | `code-host` | `resolveReviewThread()` | `@amykit/core` | Close one review thread, by its id. |
 | `run-errand` | `agent` | `ask()` | `@amykit/core` | Do the thing somebody asked for, in their own words. |
 | `run-gate` | `gate` | `run()` | `@amykit/core` |  |
+| `self-review` | `agent` | `ask()` | `@amykit/core` | A workflow-declared half-step: the work reviews itself before a person is asked to. |
 | `triage` | `agent` | `triage()` | `@amykit/core` |  |
 | `check-plan` | `plan-check` | `check()` | `@amykit/plugin-plan-check` | Registered by the plugin that brings the port behind it. |
 | `run-command` | `commands` | `run()` | `@amykit/plugin-command` | Registered by the plugin that brings the port behind it. |

@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@amykit/plugin-file-queue": "^0.3.1",
+    "@amykit/plugin-file-store": "^0.3.1",
     "@amykit/plugin-serial-engine": "^0.3.1",
     "@amykit/test-fixtures": "^0.1.0"
   }

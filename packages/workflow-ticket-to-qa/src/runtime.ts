@@ -2,15 +2,18 @@ import {
   ActionContext,
   ActionHandler,
   AgentRun,
+  BriefStore,
   CodeHost,
   Event,
   EventKind,
   EventLog,
   Notifier,
   Plan,
+  renderBrief,
   WorkflowRuntime,
 } from "@amykit/core";
-import { Agent, Gate, Tracker } from "@amykit/core";
+import { Agent, Gate, Tracker, HarnessReply } from "@amykit/core";
+import type { AskContext, Git } from "@amykit/core";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
@@ -28,15 +31,32 @@ export interface TicketRuntimeConfig {
 export interface TicketRuntimeDeps {
   tracker: Tracker;
   host: CodeHost;
-  agent: Agent;
+  /**
+   * The relay's port, at both of its levels: the ticket-shaped half this
+   * workflow's prompts were written for, and the `ask` half a
+   * workflow-declared half-step runs on, on the same ladder and under the
+   * same ceiling. `AskContext` is what lets the second half carry a brief
+   * without the workflow's vocabulary leaking into the relay's.
+   */
+  agent: Agent & {
+    ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
+  };
   gate: Gate;
   notifier: Notifier;
   roster: () => Roster;
   now: () => Date;
   config: TicketRuntimeConfig;
   policy: Policy;
+  /** The checkout half of the ports, for the self-review's working tree. */
+  git: Git;
   /** Optional, so a runtime with no log still runs. */
   log?: EventLog;
+  /**
+   * The mounted brief store, when one is. Optional on purpose: an install
+   * whose tickets carry no briefs is a real install, and the runtime resolves
+   * what a ticket references rather than reaching for the store on its own.
+   */
+  briefs?: BriefStore;
 }
 
 type Context = ActionContext<TicketRecord, Observation>;
@@ -126,6 +146,26 @@ export function ticketRuntime(
     return found;
   };
 
+  /**
+   * The ticket with its brief resolved, when it has one.
+   *
+   * Read here rather than at discovery so a revision between ticks reaches
+   * the second tick as the current text: the record never holds a copy, and
+   * a step that needs the brief again re-observes, the way every other field
+   * here is re-read rather than replayed. A ticket that references no brief,
+   * or references one the store does not hold, is returned as it arrived —
+   * an absent brief is a state, not an error.
+   */
+  const requireTicketWithBrief = async (workId: string): Promise<Ticket> => {
+    const ticket = await requireTicket(workId);
+    if (!ticket.briefId || !deps.briefs) return ticket;
+
+    const record = await deps.briefs.get(ticket.briefId);
+    if (!record) return ticket;
+
+    return { ...ticket, brief: renderBrief(record).text };
+  };
+
   const requestReview = async (ctx: Context, host: string): Promise<void> => {
     const number = ctx.observation.pullRequest?.number ?? ctx.record.pullRequestNumber;
     if (number === undefined) {
@@ -151,6 +191,21 @@ export function ticketRuntime(
         effect.questions.map((question) => `- ${question}`).join("\n"),
       );
       await announce(`${ctx.record.id} needs an answer before I can start.`, ctx);
+
+      // The same question, appended to the brief it is about, with this
+      // ticket's id and the time — the one channel a later sibling reads.
+      // Nothing appends an answer: deciding the question is the owning
+      // workflow's revision, never this workflow's write.
+      const briefId = ctx.observation.ticket.briefId;
+      if (briefId && deps.briefs) {
+        for (const question of effect.questions) {
+          await deps.briefs.appendQuestion({
+            id: briefId,
+            question: { workId: ctx.record.id, question, at: deps.now().toISOString() },
+            at: deps.now().toISOString(),
+          });
+        }
+      }
     },
 
     "implement": async (effect, ctx) => {
@@ -164,6 +219,34 @@ export function ticketRuntime(
 
     "run-gate": async (_effect, ctx) => {
       outcomesOf(ctx).gate = await deps.gate.run(ctx.observation.ticket);
+    },
+
+    "self-review": async (_effect, ctx) => {
+      // A workflow-declared half-step, in this workflow's own words: the
+      // work reads itself against the brief before a person is asked to.
+      // The brief travels in the context — the same field every generic
+      // `ask` reads — so a workflow half-step can never silently lose it,
+      // and an install whose ticket carries none asks the question without
+      // it, unchanged.
+      const ticket = ctx.observation.ticket;
+      const reply = await deps.agent.ask(
+        [
+          `The ticket ${ticket.id} was implemented in this repository. Review`,
+          `the change on the current branch against what the work was for,`,
+          `and say what a reviewer should look at first.`,
+          ...(ticket.brief
+            ? [``, `The current brief for the feature this ticket belongs to:`, ``, ticket.brief]
+            : []),
+        ].join("\n"),
+        deps.git.pathFor(ticket.repo),
+        { workId: ctx.record.id, step: "self-review", brief: ticket.brief },
+      );
+      recordAgentRun(ctx, reply.run);
+      outcomesOf(ctx).selfReview = {
+        ok: reply.run.outcome === "completed",
+        output: reply.text,
+        at: deps.now().toISOString(),
+      };
     },
 
     "open-pull-request": async (_effect, ctx) => {
@@ -241,7 +324,7 @@ export function ticketRuntime(
     newRecord,
 
     async observe(current) {
-      const ticket = await requireTicket(current.id);
+      const ticket = await requireTicketWithBrief(current.id);
       const pullRequest = await deps.host.findPullRequest(ticket.repo, ticket.branchName);
 
       // Only fetched where it is used, so a poll that is only waiting for a

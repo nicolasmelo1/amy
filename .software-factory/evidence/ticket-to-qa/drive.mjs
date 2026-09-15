@@ -18,6 +18,7 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   BOT,
   BRANCH,
+  BRIEF,
   OTHER_REPO,
   PAST_IMPLEMENTATION,
   REPO,
@@ -45,7 +46,8 @@ const EXPECTED = [
   "IMPLEMENTING>CHECKED",
   "CHECKED>IMPLEMENTING",
   "IMPLEMENTING>CHECKED",
-  "CHECKED>PR_OPEN",
+  "CHECKED>SELF_REVIEW",
+  "SELF_REVIEW>PR_OPEN",
   "PR_OPEN>COPILOT_WAIT",
   "COPILOT_WAIT>COPILOT_FIX",
   "COPILOT_FIX>COPILOT_WAIT",
@@ -207,7 +209,13 @@ function reactions() {
       if (asked.length === 0) return null;
 
       comment(root, "u-owner", "In BRL, the same as the rest of the invoice.");
-      return "a colleague answered the question on the ticket";
+      const briefFile = path.join(root, "home", ".amy", "briefs", `${BRIEF}.json`);
+      const brief = read(briefFile);
+      brief.sections[0].body = "Keep BRL beside the total; do not round the total.";
+      brief.updatedAt = new Date().toISOString();
+      brief.revision += 1;
+      write(briefFile, brief);
+      return "a colleague answered the question and revised the brief";
     },
 
     // The bot posts a review even when it found nothing, so it is asked per
@@ -338,6 +346,7 @@ function lifecycle() {
     }
 
     world.status = amy(root, ["status"]);
+    world.briefShow = amy(root, ["brief", BRIEF, "--json"]);
     world.budget = amy(root, ["budget"]);
     world.record = recordOf(root);
     world.tracker = read(trackerFile(root));
@@ -345,6 +354,7 @@ function lifecycle() {
     world.ghCalls = lines(path.join(root, "world", "gh.log"));
     world.agentCalls = lines(path.join(root, "world", "claude.log"));
     world.trackerCalls = lines(path.join(root, "world", "tracker.log"));
+    world.brief = read(path.join(root, "home", ".amy", "briefs", `${BRIEF}.json`));
     world.inbox = fs.existsSync(path.join(root, "home", ".amy", "needs-input"))
       ? fs.readdirSync(path.join(root, "home", ".amy", "needs-input"))
       : [];
@@ -439,8 +449,42 @@ function assertionsFor(first, second) {
     (look) => look.after === "REVIEWER_ASSIGNED" && look.before === "REVIEWER_ASSIGNED",
   );
   const budgetRuns = /(\d+) run\(s\)/.exec(first.budget.out)?.[1];
+  const firstTriage = agentCallsFor(first, "triage")[0];
+  const selfReview = agentCallsFor(first, "self-review")[0];
+  const briefQuestions = first.brief.questions ?? [];
 
   return [
+    // The tracker parent names the durable brief; every agent half-step reads
+    // it again rather than trusting a record snapshot from the first look.
+    [
+      "brief.parent_is_the_tracker_supplied_shared_id",
+      issueIn(first, TICKET).parentId === BRIEF &&
+        first.trackerCalls.some((call) => call.query.includes("parent { id }")) &&
+        Boolean(firstTriage?.prompt.includes("Keep the currency beside the total")),
+    ],
+    [
+      "brief.triage_reads_the_operator_authored_constraint",
+      Boolean(firstTriage?.prompt.includes("Keep the currency beside the total")),
+    ],
+    [
+      "brief.question_is_appended_with_its_work_id",
+      briefQuestions.some((question) => question.workId === TICKET && question.question.includes("currency")),
+    ],
+    [
+      "brief.a_revision_between_ticks_reaches_self_review",
+      first.brief.revision === 2 && Boolean(selfReview?.prompt.includes("Keep BRL beside the total")),
+    ],
+    [
+      "brief.self_review_is_a_declared_agent_step",
+      Boolean(selfReview) && transitions(first).includes("SELF_REVIEW>PR_OPEN"),
+    ],
+    [
+      "brief.show_reads_the_port_without_exposing_its_directory",
+      first.briefShow.code === 0 &&
+        first.briefShow.out.includes(BRIEF) &&
+        !first.briefShow.out.includes(path.join(".amy", "briefs")),
+    ],
+
     // Discovery, and the two tickets that look like work and are not.
     [
       "lifecycle.only_the_working_status_is_picked_up",
@@ -715,6 +759,7 @@ fs.writeFileSync(
         reviewer: first.record.reviewer,
         follow_up: first.record.escalation?.followUpTicketId,
         final_status: statusOf(first, TICKET),
+        brief_show: first.briefShow,
         budget: first.budget.out.split("\n").at(-1),
         second_run_transitions: transitions(second).length,
       },

@@ -9,7 +9,13 @@ export const TICKET_STATES = [
   "IMPLEMENTING",
   /** Implementation exists, the deterministic gate decides if it holds. */
   "CHECKED",
-  /** Gate is green, the pull request has to exist. */
+  /**
+   * Gate is green, the work reads itself against the brief before a person
+   * is asked to. A workflow-declared half-step: the machine asks a question
+   * of its own agent, in its own words, before it publishes anything.
+   */
+  "SELF_REVIEW",
+  /** Self-review is done, the pull request has to exist. */
   "PR_OPEN",
   /** Waiting for the automated reviewer to look at the current head. */
   "COPILOT_WAIT",

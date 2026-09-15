@@ -1,7 +1,9 @@
 import {
   Budget,
+  BriefStore,
   CodeHost,
   EventLog,
+  Git,
   Notifier,
   Plan,
   StopSwitch,
@@ -20,6 +22,22 @@ import {
 } from "@amykit/workflow-ticket-to-qa";
 import { fakeAgent, fakeGate, fakeHost, fakeTracker, runtimeConfig, workerConfig } from "./fakes.js";
 import { roster } from "./builders.js";
+import { CommandRunner } from "@amykit/core";
+import type { AskContext, HarnessReply } from "@amykit/core";
+
+/**
+ * A runner that never runs anything, for the `Git` the fixture builds.
+ *
+ * The fake agent's `ask` never touches a working tree, so no git command is
+ * ever issued; the port exists only because the runtime's type asks for the
+ * checkout half the self-review would read. If a test makes the fake agent
+ * actually look at files, this is the wrong fixture for that test.
+ */
+class NullRunner {
+  run(): Promise<never> {
+    throw new Error("the fixture's Git was used, and no fake should have used it");
+  }
+}
 
 /**
  * What a test wants to vary about an engine driving the ticket workflow.
@@ -31,7 +49,9 @@ import { roster } from "./builders.js";
 export interface TicketWorkerOverrides {
   tracker?: Tracker;
   host?: CodeHost;
-  agent?: Agent;
+  agent?: Agent & Partial<{
+    ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
+  }>;
   gate?: Gate;
   notifier?: Notifier;
   roster?: () => Roster;
@@ -43,6 +63,8 @@ export interface TicketWorkerOverrides {
   config?: Partial<EngineConfig>;
   /** A decision this workflow would never make, for a test that needs one. */
   plan?: Workflow["plan"];
+  /** The brief store, when the test is about one ticket reading a brief. */
+  briefs?: BriefStore;
 }
 
 interface EngineConfig {
@@ -84,12 +106,24 @@ export function ticketWorkerDeps(overrides: TicketWorkerOverrides = {}): TicketW
     runtime: ticketRuntime({
       tracker: overrides.tracker ?? fakeTracker(),
       host: overrides.host ?? fakeHost(),
-      agent: overrides.agent ?? fakeAgent(),
+      // The relay's port carries both halves, and so does the fake: the
+      // ticket-shaped methods answer as they always did, and `ask` — the
+      // self-review's half-step — records the prompt it was asked, which is
+      // what the brief tests read.
+      agent: {
+        ...fakeAgent(),
+        ...overrides.agent,
+      },
       gate: overrides.gate ?? fakeGate(),
       notifier,
       roster: overrides.roster ?? ((): Roster => roster()),
       now,
       log: overrides.log,
+      briefs: overrides.briefs,
+      git: new Git(new NullRunner() as unknown as CommandRunner, {
+        workspaceRoot: "/tmp/amy-fixture",
+        defaultBranch: "main",
+      }),
       config: runtimeConfig,
       policy: overrides.policy ?? DEFAULT_POLICY,
       // The same boundary `ticketToQa` casts at, for the same reason: this

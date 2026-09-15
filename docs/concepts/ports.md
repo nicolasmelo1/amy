@@ -24,7 +24,8 @@ dispatches to is still a port — a workflow's runtime may reach one directly.
 
 | Port | Mounted by | Actions dispatched to it |
 | :-- | :-- | :-- |
-| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `triage` |
+| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `self-review`, `triage` |
+| `brief` | `@amykit/plugin-file-store` | _reached directly_ |
 | `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview`, `resolve-review-thread` |
 | `commands` | `@amykit/plugin-command` | `run-command` |
 | `gate` | `@amykit/plugin-command-gate` | `run-gate` |

@@ -79,6 +79,22 @@ drives, not a field existing somewhere in the middle.
 
 ## Acceptance criteria
 
+- [x] A child ticket receives the shared brief identified by its tracker parent,
+      rather than inferring one from title or description
+      (proof: assertion:brief.parent_is_the_tracker_supplied_shared_id)
+- [x] Triage receives the operator-authored constraint from that brief
+      (proof: assertion:brief.triage_reads_the_operator_authored_constraint)
+- [x] A question adds its words, work id and time to the brief
+      (proof: assertion:brief.question_is_appended_with_its_work_id)
+- [x] A revision made between looks reaches self-review, rather than the
+      first look's snapshot
+      (proof: assertion:brief.a_revision_between_ticks_reaches_self_review)
+- [x] A green gate runs a declared self-review before it opens a pull request
+      (proof: assertion:brief.self_review_is_a_declared_agent_step)
+- [x] The installed CLI reads a brief through its port without printing the
+      file store directory
+      (proof: assertion:brief.show_reads_the_port_without_exposing_its_directory)
+
 - [x] A ticket in the working status is picked up, and neither the one past
       implementation nor somebody else's is
       (proof: assertion:lifecycle.only_the_working_status_is_picked_up)

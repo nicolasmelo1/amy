@@ -28,6 +28,17 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    */
   readonly usesActions: readonly string[];
   readonly usesObservers: readonly string[];
+  /**
+   * The tracker writes this workflow claims, by capability name.
+   *
+   * Derived from the actions it declares rather than written by hand, so
+   * the claim cannot drift from the table it is checked against. A
+   * workflow that declares no tracker-mutating action claims none and is
+   * free to mount beside any tracker; one that declares a mutator without
+   * claiming its capability is refused at boot, naming the action and the
+   * capability, before any tracker call log records a write.
+   */
+  readonly trackerWrites?: readonly string[];
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
 }
 

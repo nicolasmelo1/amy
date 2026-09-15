@@ -31,6 +31,14 @@ export interface TicketRecord extends WorkRecord {
   triage?: TriageOutcome;
   lastImplementation?: AttemptOutcome;
   lastGate?: AttemptOutcome;
+  /**
+   * What the work's own review of itself last said, against the brief.
+   *
+   * Held for the operator and the record's reader, not for the machine: the
+   * plan reads the state, and this says what the last look at the change
+   * actually found — the same relationship `lastGate` has to `CHECKED`.
+   */
+  lastSelfReview?: AttemptOutcome;
   pullRequestNumber?: number;
   reviewer?: string;
   /** Threads already judged, so the same comment is never worked twice. */

@@ -4,6 +4,8 @@ import {
   AgentResult,
   AgentRun,
   Announcement,
+  AskContext,
+  HarnessReply,
   CodeHost,
   Event,
   EventLog,
@@ -94,7 +96,15 @@ export function agentResult<T>(value: T, run: Partial<AgentRun> = {}): AgentResu
   return { value, run: fakeRun(run) };
 }
 
-export function fakeAgent(overrides: Partial<Agent> = {}): Agent {
+/**
+ * The relay's port at both of its levels, which is the shape every runtime
+ * and every test drives with: the ticket-shaped half answers as it always
+ * did, and the `ask` half — the one a workflow-declared half-step like a
+ * self-review runs on — answers as a completed run.
+ */
+export function fakeAgent(overrides: Partial<Agent> = {}): Agent & {
+  ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
+} {
   return {
     triage: vi
       .fn<Agent["triage"]>()
@@ -105,6 +115,12 @@ export function fakeAgent(overrides: Partial<Agent> = {}): Agent {
       .fn<Agent["implement"]>()
       .mockResolvedValue(agentResult({ ok: true, output: "", at: "2026-09-03T12:00:00.000Z" })),
     addressThreads: vi.fn<Agent["addressThreads"]>().mockResolvedValue(agentResult([])),
+    ask: vi
+      .fn<(prompt: string, _cwd: string, context?: AskContext) => Promise<HarnessReply>>()
+      .mockImplementation(async (prompt, _cwd, context) => ({
+        text: `reviewed${context?.brief ? " against the brief" : ""}: ${prompt.slice(0, 60)}`,
+        run: fakeRun({ outcome: "completed", output: "" }),
+      })),
     ...overrides,
   };
 }

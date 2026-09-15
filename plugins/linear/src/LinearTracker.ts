@@ -19,6 +19,7 @@ const ISSUE_FIELDS = `
   description
   url
   branchName
+  parent { id }
   labels { nodes { name } }
   state { name }
   team { id key name }
@@ -31,6 +32,8 @@ interface IssueNode {
   description: string | null;
   url: string;
   branchName: string;
+  /** The parent is the tracker-native shared brief anchor for child work. */
+  parent: { id: string } | null;
   labels: { nodes: { name: string }[] } | null;
   state: { name: string };
   team: { id: string; key: string; name: string };
@@ -267,6 +270,9 @@ export class LinearTracker implements Tracker {
       // ticket whose body never reached the agent has to look like one
       // rather than like an empty string pretending there was nothing to say.
       ...(node.description ? { body: node.description } : {}),
+      // A parent groups child tickets under one tracker-native brief. The
+      // workflow owns no guessed fallback: a ticket without a parent has no brief.
+      ...(node.parent ? { briefId: node.parent.id } : {}),
       // A label is what the team says the ticket *is*, so the names arrive
       // as given, in the order the tracker keeps them, empty where there are
       // none — a ticket without a label is a real ticket, not an error.

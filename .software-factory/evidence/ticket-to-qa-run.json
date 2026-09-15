@@ -8,10 +8,10 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 36,
+    "assertions_run": 42,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
-    "looks": 39,
+    "looks": 41,
     "transitions": [
       "DISCOVERED>CLARIFYING",
       "CLARIFYING>READY",
@@ -19,7 +19,8 @@
       "IMPLEMENTING>CHECKED",
       "CHECKED>IMPLEMENTING",
       "IMPLEMENTING>CHECKED",
-      "CHECKED>PR_OPEN",
+      "CHECKED>SELF_REVIEW",
+      "SELF_REVIEW>PR_OPEN",
       "PR_OPEN>COPILOT_WAIT",
       "COPILOT_WAIT>COPILOT_FIX",
       "COPILOT_FIX>COPILOT_WAIT",
@@ -41,6 +42,7 @@
       "CHECKED",
       "IMPLEMENTING",
       "CHECKED",
+      "SELF_REVIEW",
       "PR_OPEN",
       "COPILOT_WAIT",
       "COPILOT_FIX",
@@ -56,25 +58,26 @@
       "DONE"
     ],
     "what_the_world_did": [
-      "a colleague answered the question on the ticket",
-      "the automated reviewer looked at f6b8567 and left one comment",
-      "the automated reviewer looked at 1ceb708 and had nothing to say",
+      "a colleague answered the question and revised the brief",
+      "the automated reviewer looked at 9eceb5c and left one comment",
+      "the automated reviewer looked at df1d46a and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 1ceb708",
+      "ada asked for changes on df1d46a",
       "the owner settled the disagreement on the ticket",
-      "ada approved 5a4fd2f"
+      "ada approved b59ef9b"
     ],
     "agent_calls": [
       "triage",
       "triage",
       "implement",
       "implement",
+      "self-review",
       "address-threads",
       "address-threads",
       "address-threads"
     ],
-    "gh_calls": 49,
-    "tracker_calls": 56,
+    "gh_calls": 51,
+    "tracker_calls": 58,
     "commits_on_the_branch": [
       "BILL-4021: address review comments",
       "BILL-4021: address review comments",
@@ -86,10 +89,38 @@
     "reviewer": "ada",
     "follow_up": "BILL-4024",
     "final_status": "In QA",
+    "brief_show": {
+      "code": 0,
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-15T14:44:59.756Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-15T14:44:59.548Z): Which currency should the invoice total be shown in?\"\n}"
+    },
     "budget": "new work: allowed",
-    "second_run_transitions": 20
+    "second_run_transitions": 21
   },
   "assertions": [
+    {
+      "type": "brief.parent_is_the_tracker_supplied_shared_id",
+      "status": "passed"
+    },
+    {
+      "type": "brief.triage_reads_the_operator_authored_constraint",
+      "status": "passed"
+    },
+    {
+      "type": "brief.question_is_appended_with_its_work_id",
+      "status": "passed"
+    },
+    {
+      "type": "brief.a_revision_between_ticks_reaches_self_review",
+      "status": "passed"
+    },
+    {
+      "type": "brief.self_review_is_a_declared_agent_step",
+      "status": "passed"
+    },
+    {
+      "type": "brief.show_reads_the_port_without_exposing_its_directory",
+      "status": "passed"
+    },
     {
       "type": "lifecycle.only_the_working_status_is_picked_up",
       "status": "passed"

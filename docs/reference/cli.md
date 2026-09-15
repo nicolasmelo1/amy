@@ -34,6 +34,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 
 | Command | What it does |
 | :-- | :-- |
+| [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
 | [`amy btw`](#amy-btw) | Something to do, said in passing. Goes on the queue, never becomes a ticket |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
 | [`amy daemon`](#amy-daemon) | The loop itself, in the foreground. `amy start` runs this for you |
@@ -72,6 +73,22 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 ## Commands in detail
 
 <!-- amy:generated cli-commands -->
+
+### `amy brief`
+
+The current statement of a feature, as the workflow keeps it
+
+```sh
+amy brief [options] <id>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<id>` | yes | the brief id, as the workflow named it |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--json` |  | the same snapshot as data, for something else to render |
 
 ### `amy btw`
 

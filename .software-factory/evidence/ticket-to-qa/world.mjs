@@ -17,6 +17,8 @@ import { execFileSync } from "node:child_process";
 export const TICKET = "BILL-4021";
 export const PAST_IMPLEMENTATION = "BILL-4022";
 export const SOMEBODY_ELSES = "BILL-4023";
+/** The shared Linear parent that anchors this ticket's operator-authored brief. */
+export const BRIEF = "uuid-BILL-brief-4020";
 
 export const BRANCH = "amy/bill-4021-show-the-currency-on-the-invoice-total";
 export const REPO = "acme/widgets";
@@ -124,6 +126,7 @@ const TRACKER_STATE = {
       title: "Show the currency on the invoice total",
       url: `https://tracker.test/issue/${TICKET}`,
       branchName: BRANCH,
+      parentId: BRIEF,
       stateId: "s-progress",
       teamId: TEAM.id,
       assigneeId: VIEWER.id,
@@ -312,6 +315,18 @@ export function configure(root, endpoint) {
   const amyDir = path.join(root, "home", ".amy");
   fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint), "utf-8");
   fs.writeFileSync(path.join(amyDir, "roster.yaml"), ROSTER, "utf-8");
+  // An operator's brief is durable state, not a prompt fixture. The child
+  // ticket names this exact parent id through the tracker on each observation.
+  fs.mkdirSync(path.join(amyDir, "briefs"), { recursive: true });
+  write(path.join(amyDir, "briefs", `${BRIEF}.json`), {
+    id: BRIEF,
+    sections: [{ name: "Constraint", body: "Keep the currency beside the total; do not round it." }],
+    questions: [],
+    explains: [TICKET],
+    createdAt: "2026-09-01T00:00:00.000Z",
+    updatedAt: "2026-09-01T00:00:00.000Z",
+    revision: 1,
+  });
 }
 
 export function write(file, value) {

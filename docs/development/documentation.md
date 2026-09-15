@@ -80,7 +80,7 @@ A page is markdown with markers in it:
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
 | `@amykit/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
 | `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
-| `@amykit/plugin-file-store` | Work records kept as one file per item. | `store` |  |
+| `@amykit/plugin-file-store` | Work records kept as one file per item. | `brief`<br>`store` |  |
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
 | `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |

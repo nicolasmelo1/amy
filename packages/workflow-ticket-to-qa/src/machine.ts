@@ -34,6 +34,8 @@ export function plan(record: TicketRecord, obs: Observation, policy: Policy): Pl
       return planImplementing(record, policy);
     case "CHECKED":
       return planChecked(record, policy);
+    case "SELF_REVIEW":
+      return planSelfReview(record);
     case "PR_OPEN":
       return planPullRequestOpen(obs);
     case "COPILOT_WAIT":
@@ -184,7 +186,7 @@ function planChecked(record: TicketRecord, policy: Policy): Plan {
   }
 
   if (record.lastGate?.ok) {
-    return advance("PR_OPEN", "the gate is green");
+    return advance("SELF_REVIEW", "the gate is green");
   }
 
   const attempts = attemptsIn(record, "CHECKED");
@@ -200,6 +202,23 @@ function planChecked(record: TicketRecord, policy: Policy): Plan {
   // last attempt, so it acts again and picks the gate output up as its retry
   // context. That keeps every retry counted in exactly one place.
   return advance("IMPLEMENTING", "the gate is red, back to the agent with its output");
+}
+
+/**
+ * The half-step between a green gate and a published pull request.
+ *
+ * The review runs once per implementation: a record that carries a self
+ * review has been read against its brief, and one that does not has not.
+ * Re-running it on every look would ask the same question of the same tree
+ * until a reviewer existed, which is what `lastSelfReview` is not for.
+ */
+function planSelfReview(record: TicketRecord): Plan {
+  if (record.lastSelfReview) {
+    return advance("PR_OPEN", "the work has read itself against the brief");
+  }
+  return act("the change has not been reviewed against what it was for", {
+    type: "self-review",
+  });
 }
 
 function planPullRequestOpen(obs: Observation): Plan {
@@ -603,6 +622,12 @@ export const ticketToQa: Workflow<Observation, Policy> = {
   initialState: "DISCOVERED",
   terminalStates: ["DONE"],
   usesActions: USES_ACTIONS,
+  // Claimed rather than derived, because the claim is the contract: what this
+  // workflow may do to a ticket is written here, reviewed here, and refused
+  // here when a mount gives it less than a runtime reach for. `ask-question`
+  // comments, `escalate` files a follow-up, `hand-off-to-qa` sets the status;
+  // nothing here assigns a ticket to a person, and now nothing could.
+  trackerWrites: ["comment", "set-status", "create-follow-up"],
   // Empty, and honestly so. This workflow's engine assembles the observation
   // from the very ports its actions already require: the tracker, the code
   // host and the roster. There is no separate slice for a plugin to

@@ -10,7 +10,7 @@
     "packages/test-fixtures/package.json": "a00360b2d507eaca570ce1c14c8b46a4a21bba9b11dd57a0cb5bf4d6f8989065",
     "packages/workflow-errand/package.json": "a0d38605d6233e9cbc6db3883e8791b0ee0b82d0bd4e40a4789823961060ddec",
     "packages/workflow-note-to-plan/package.json": "0301df6fe2ede04ebdb339ca7330f04b46211d202367f0bfbc29fdd5c1c244e3",
-    "packages/workflow-ticket-to-qa/package.json": "dfa18f6b3372142c5ed3b1a72677412d6b6012f2cd3a6c09a2b3b5701bf1d009",
+    "packages/workflow-ticket-to-qa/package.json": "1d62bbf1086b6c3a31acb3ccfeb096b5edfd52301740bd1ef21f38904955d4ef",
     "plugins/agent-relay/package.json": "90b1dd1e138bc8d90485c87fc50c1ee6e31ba6c8a6a2186834e1ba0624b2ea2c",
     "plugins/claude/package.json": "7dbe229dc60c40048eb3bf2242a67b3f826344e4d117a13619f2c3f9da5ca843",
     "plugins/codex/package.json": "090314edd4f676a1dd2659fac0c291106c87ec777f4fcc34510a6e5075e01769",

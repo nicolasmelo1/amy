@@ -15,6 +15,7 @@ const issue = {
   description: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
   url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
   branchName: "ada/proj-1239-total-is-wrong",
+  parent: null,
   labels: { nodes: [{ name: "Bug" }] },
   state: { name: "In Progress" },
   team: { id: "team-proj", key: "PROJ", name: "Platform" },
@@ -68,6 +69,17 @@ describe("LinearTracker.inProgress", () => {
     expect(ticket?.body).toBe(
       "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
     );
+  });
+
+  it("carries a parent id as the shared brief id", async () => {
+    const client = new ScriptedGraphQL([
+      { contains: "query Working", data: { issues: { nodes: [{ ...issue, parent: { id: "uuid-BRIEF-12" } }] } } },
+    ]);
+
+    const [ticket] = await new LinearTracker(client, config).inProgress();
+
+    expect(client.calls[0]!.query).toContain("parent { id }");
+    expect(ticket?.briefId).toBe("uuid-BRIEF-12");
   });
 
   it("asks for the labels alongside the fields a prompt is built from", async () => {

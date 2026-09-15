@@ -15,6 +15,7 @@ export type Effect =
   | { type: "ask-question"; questions: string[] }
   | { type: "implement"; retryContext?: string }
   | { type: "run-gate" }
+  | { type: "self-review" }
   | { type: "open-pull-request" }
   | { type: "resolve-review-thread"; threadId: string }
   | { type: "address-threads"; threadIds: string[]; from: "automated" | "human" }
@@ -30,6 +31,7 @@ export const USES_ACTIONS = [
   "ask-question",
   "implement",
   "run-gate",
+  "self-review",
   "open-pull-request",
   "resolve-review-thread",
   "address-threads",

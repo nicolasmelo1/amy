@@ -246,6 +246,53 @@ describe("unmetNeeds", () => {
     expect(unmetNeeds(mounted, WORKFLOW)).toEqual(["observation `ticket`: nothing contributes it"]);
   });
 
+  it("refuses a workflow that mutates the tracker while claiming no capability", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
+    ]);
+    // `ask-question` is a core tracker action, so it is defined and its port
+    // is mounted; the refusal is the undeclared write alone.
+    const workflow = { ...WORKFLOW, usesActions: ["ask-question"], usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `ask-question` writes the tracker (`comment`), " +
+        "but the workflow does not claim that capability — add `comment` to its `trackerWrites`",
+    ]);
+  });
+
+  it("accepts the claim a workflow makes for the writes it uses", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
+    ]);
+    const workflow = {
+      ...WORKFLOW,
+      usesActions: ["ask-question"],
+      usesObservers: [],
+      trackerWrites: ["comment"],
+    };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([]);
+  });
+
+  it("refuses a claimed capability no mounted tracker could honour", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
+    ]);
+    const workflow = {
+      ...WORKFLOW,
+      usesActions: ["ask-question"],
+      usesObservers: [],
+      trackerWrites: ["delete-everything"],
+    };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "the workflow claims the tracker write `delete-everything`, which is not one a mounted tracker could honour — " +
+        "`comment`, `set-status`, `assign` or `create-follow-up`",
+      "action `ask-question` writes the tracker (`comment`), " +
+        "but the workflow does not claim that capability — add `comment` to its `trackerWrites`",
+    ]);
+  });
+
   it("finds nothing missing when everything the workflow named is there", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", {
