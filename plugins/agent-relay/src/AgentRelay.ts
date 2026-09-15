@@ -16,7 +16,7 @@ import {
   ThreadVerdict,
   Ticket,
   TriageOutcome,
-} from "@amykit/workflow-ticket-to-qa";
+} from "@amykit/core";
 
 export interface RelayDeps {
   log?: EventLog;

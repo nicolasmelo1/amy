@@ -114,7 +114,7 @@ this repository.
 
 | Package | Kind | Depends on, in this workspace |
 | :-- | :-- | :-- |
-| `@amykit/agent-kit` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/agent-kit` | library | `@amykit/core` |
 | `@amykit/cli` | cli | `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks` |
 | `@amykit/core` | library | _nothing_ |
 | `@amykit/model-specs` | library | `@amykit/core` |
@@ -122,11 +122,11 @@ this repository.
 | `@amykit/workflow-errand` | workflow | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/core` |
-| `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-claude` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-codex` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-command` | plugin | `@amykit/core` |
-| `@amykit/plugin-command-gate` | plugin | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-command-gate` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-log` | library | `@amykit/core` |
 | `@amykit/plugin-file-notes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-file-queue` | plugin | `@amykit/core` |
@@ -134,12 +134,12 @@ this repository.
 | `@amykit/plugin-file-tasks` | plugin | `@amykit/core` |
 | `@amykit/plugin-github` | plugin | `@amykit/core` |
 | `@amykit/plugin-hermes-agent` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
-| `@amykit/plugin-linear` | plugin | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-linear` | plugin | `@amykit/core` |
 | `@amykit/plugin-notify-fanout` | plugin | `@amykit/core` |
 | `@amykit/plugin-notify-hermes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-notify-inbox` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-plan-check` | plugin | `@amykit/core`, `@amykit/workflow-note-to-plan` |
-| `@amykit/plugin-serial-engine` | plugin | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| `@amykit/plugin-serial-engine` | plugin | `@amykit/core` |
 
 <!-- amy:end workspace-dependencies -->
 

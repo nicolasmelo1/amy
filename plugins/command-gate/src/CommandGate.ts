@@ -1,7 +1,4 @@
-import { CommandRunner, Git } from "@amykit/core";
-import { Gate } from "@amykit/workflow-ticket-to-qa";
-import { AttemptOutcome } from "@amykit/workflow-ticket-to-qa";
-import { Ticket } from "@amykit/workflow-ticket-to-qa";
+import { CommandRunner, Git, AttemptOutcome, Gate, Ticket } from "@amykit/core";
 
 
 export interface CommandGateConfig {

@@ -10,9 +10,7 @@ import {
   Plan,
   WorkflowRuntime,
 } from "@amykit/core";
-import { Agent } from "./ports/Agent.js";
-import { Gate } from "./ports/Gate.js";
-import { Tracker } from "./ports/Tracker.js";
+import { Agent, Gate, Tracker } from "@amykit/core";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes } from "./outcomes.js";

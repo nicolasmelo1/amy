@@ -10,7 +10,7 @@ import {
   ticketWorkerDeps,
 } from "@amykit/test-fixtures";
 import { Worker } from "@amykit/plugin-serial-engine";
-import type { Tracker } from "../src/ports/Tracker.js";
+import type { Tracker } from "@amykit/core";
 import type { Ticket } from "../src/ticket.js";
 
 /**

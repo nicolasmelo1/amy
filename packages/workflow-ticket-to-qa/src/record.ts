@@ -1,35 +1,15 @@
 import { WorkRecord } from "@amykit/core";
+import {
+  AttemptOutcome,
+  ThreadVerdict,
+  TriageOutcome,
+} from "@amykit/core";
 import { TicketState } from "./state.js";
 
-export interface TriageOutcome {
-  /** True when the ticket can be implemented as written. */
-  clear: boolean;
-  questions: string[];
-  at: string;
-  /**
-   * The questions the machine asked on the ticket for this ticket to be
-   * read again.
-   *
-   * Recorded beside the questions rather than re-derived from history, so a
-   * second look can tell its own words from new information without reading
-   * anything but the record and the conversation.
-   */
-  askedQuestions: string[];
-}
-
-export interface AttemptOutcome {
-  ok: boolean;
-  /** Whatever the agent or the gate said, verbatim, for the next prompt. */
-  output: string;
-  at: string;
-}
-
-export interface ThreadVerdict {
-  threadId: string;
-  /** `fixed` means the code changed. `disagreed` means it needs the owner. */
-  verdict: "fixed" | "disagreed";
-  note: string;
-}
+// The outcome contracts moved to the core beside the ports that carry them;
+// re-exported here so the workflow's own consumers keep compiling, and so
+// the record's fields keep meaning the same thing everywhere.
+export type { AttemptOutcome, ThreadVerdict, TriageOutcome };
 
 export interface Escalation {
   reason: string;

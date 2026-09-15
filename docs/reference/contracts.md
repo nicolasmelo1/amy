@@ -78,6 +78,32 @@ explains why for each.
 
 <!-- amy:generated core-contracts -->
 
+### `Agent`
+
+The coding agent, and the only probabilistic thing in the system.
+
+Declared in `packages/core/src/ports/Ticketing.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>>` | Reads the ticket and says whether it can be implemented as written. |
+| `implement(ticket: Ticket, retryContext?: string, conversation?: readonly string[]): Promise<AgentResult<AttemptOutcome>>` | Writes the change, or the next attempt after one that did not hold. |
+| `addressThreads(ticket: Ticket, threads: readonly ReviewThread[], from: "automated" \| "human"): Promise<AgentResult<ThreadVerdict[]>>` | Judges review comments one by one. A comment it agrees with is fixed, a comment it disagrees with comes back as a disagreement for the owner rather than being argued with on the pull request. |
+
+### `BriefStore`
+
+The mounted persistence port behind every brief read and write.
+
+Declared in `packages/core/src/ports/Brief.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `get(id: BriefId): Promise<BriefRecord \| null>` | The current brief by id, or null when no such brief exists. |
+| `write(input: { id: BriefId; sections: { name: string; body: string }[]; /** The work ids this brief explains, in the caller's own vocabulary. */ explains: string[]; at: string; }): Promise<BriefRecord>` | Creates a brief, or replaces every section of an existing one. The id is the caller's to choose and stable for the brief's life; an append is a separate operation, so a revision never loses a question. |
+| `appendQuestion(input: { id: BriefId; question: BriefQuestion; at: string }): Promise<BriefRecord>` | Appends a question, with its work id and time. There is no operation that appends an answer: a question is decided by the workflow that owns the brief, and that decision is a revision, not an append. |
+| `retired(explainsAreTerminal: (workId: string) => boolean, retentionCutoffMs: number, now: Date): Promise<BriefId[]>` | Lists brief ids whose every work id is terminal and older than the store's retention policy, for the retirement sweep. The caller decides what terminal means in its own vocabulary; this only reports what it was told at write time and cannot invent a work state it never knew. |
+| `remove(id: BriefId): Promise<void>` | Removes a brief by id. The event log remains the durable history. |
+
 ### `Budget`
 
 Whether work that spends an agent may start.
@@ -141,6 +167,16 @@ Declared in `packages/core/src/ports/EventLog.ts`.
 | :-- | :-- |
 | `append(event: Event): void` |  |
 | `read(since?: Date): Event[]` | Events at or after the given instant, oldest first. |
+
+### `Gate`
+
+The gate: the check that decides whether an implementation holds, before anything is published for a person to read.
+
+Declared in `packages/core/src/ports/Ticketing.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `run(ticket: Ticket): Promise<AttemptOutcome>` | Runs the gate against the ticket's own checkout, and says what happened. |
 
 ### `GraphQLClient`
 
@@ -215,5 +251,31 @@ Declared in `packages/core/src/ports/Store.ts`.
 | `load(workId: string): R \| null` |  |
 | `save(record: R): void` |  |
 | `all(): R[]` |  |
+
+### `TrackerReads`
+
+Reads a tracker answers, and writes only the workflow's declared surface.
+
+Declared in `packages/core/src/ports/Ticketing.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `inProgress(): Promise<Ticket[]>` | Tickets assigned to the operator that sit in the working status. |
+| `get(ticketId: string): Promise<Ticket \| null>` | One ticket by id, including after it has left the working status. |
+| `comments(ticketId: string, since?: string): Promise<Comment[]>` | The conversation on a ticket, oldest first, up to now. |
+| `hasReplyAfter(ticketId: string, since: string): Promise<boolean>` | Whether anybody other than the machine has replied since the given instant. |
+
+### `TrackerWrites`
+
+The writes a tracker answers — deliberately its own surface rather than half of one contract.
+
+Declared in `packages/core/src/ports/Ticketing.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `comment(ticketId: string, body: string): Promise<void>` |  |
+| `setStatus(ticketId: string, statusName: string): Promise<void>` |  |
+| `assign(ticketId: string, trackerIdentity: string): Promise<void>` |  |
+| `createFollowUp(request: FollowUpRequest): Promise<string>` |  |
 
 <!-- amy:end core-contracts -->

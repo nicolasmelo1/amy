@@ -9,9 +9,7 @@ import {
   WorkflowRuntime,
 } from "@amykit/core";
 import { Observation, DEFAULT_POLICY, Policy } from "./observation.js";
-import { Agent } from "./ports/Agent.js";
-import { Gate } from "./ports/Gate.js";
-import { Tracker } from "./ports/Tracker.js";
+import { Agent, Gate, Tracker } from "@amykit/core";
 import { Roster } from "./roster.js";
 import { TicketRecord } from "./record.js";
 import { ticketRuntime } from "./runtime.js";
