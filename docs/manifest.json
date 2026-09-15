@@ -258,6 +258,11 @@
           "description": ""
         },
         {
+          "title": "The ports belong to the core",
+          "path": "/design/the-ports-belong-to-the-core",
+          "description": ""
+        },
+        {
           "title": "The relay is proven end to end",
           "path": "/design/the-relay-is-proven-end-to-end",
           "description": ""
@@ -1679,6 +1684,33 @@
           "depth": 2,
           "title": "The world it is put to work in",
           "slug": "the-world-it-is-put-to-work-in"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-ports-belong-to-the-core",
+      "file": "docs/design/the-ports-belong-to-the-core.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-ports-belong-to-the-core.md",
+      "title": "The ports belong to the core",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What it cost the second workflow",
+          "slug": "what-it-cost-the-second-workflow"
+        },
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
         },
         {
           "depth": 2,
