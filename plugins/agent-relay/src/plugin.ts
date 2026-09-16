@@ -21,12 +21,12 @@ import {
 } from "@amykit/agent-kit";
 import {
   Agent,
+  AgentResult,
   AttemptOutcome,
   ThreadVerdict,
   Ticket,
   TriageOutcome,
-} from "@amykit/workflow-ticket-to-qa";
-import { AgentResult } from "@amykit/core";
+} from "@amykit/core";
 import { AgentRelay } from "./AgentRelay.js";
 import { configSchema } from "./config.js";
 import { inertCeilingProblems } from "./pricing.js";

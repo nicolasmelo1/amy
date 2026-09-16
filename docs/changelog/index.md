@@ -95,6 +95,21 @@ comments already shipped, the Linear reader a workflow carried has nothing
 left in it. What stays in the workflow is policy: which review state to
 submit, whose thread to close, what counts as a freeze.
 
+### The ports belong to the core.
+
+`patch` · `@amykit/agent-kit`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-command-gate`, `@amykit/plugin-github`, `@amykit/plugin-linear`, `@amykit/plugin-serial-engine`, `@amykit/workflow-ticket-to-qa`
+
+`Tracker`, `Agent`, `Gate`, `Ticket` and the outcome contracts they carry
+moved from `@amykit/workflow-ticket-to-qa` to `@amykit/core`, beside
+`CodeHost` and `Harness`, so a workflow nobody shipped declares every port
+it needs by importing `@amykit/core` and no plugin in the install depends
+on a workflow package to know what a tracker is. The workflow re-exports
+every name for one minor version so nothing breaks on the way past, and
+the tracker contract grows a declared write surface: reads
+(`TrackerReads`) and writes (`TrackerWrites`) are separate interfaces a
+mount can hand out separately, with `TRACKER_WRITE_CAPABILITIES` naming
+what each core action resolves to.
+
 ### The threads close when they are answered.
 
 `patch` · `@amykit/core`, `@amykit/plugin-github`, `@amykit/workflow-ticket-to-qa`

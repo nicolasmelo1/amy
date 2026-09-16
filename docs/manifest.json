@@ -258,6 +258,11 @@
           "description": ""
         },
         {
+          "title": "The ports belong to the core",
+          "path": "/design/the-ports-belong-to-the-core",
+          "description": ""
+        },
+        {
           "title": "The relay is proven end to end",
           "path": "/design/the-relay-is-proven-end-to-end",
           "description": ""
@@ -714,6 +719,11 @@
         },
         {
           "depth": 3,
+          "title": "The ports belong to the core.",
+          "slug": "the-ports-belong-to-the-core"
+        },
+        {
+          "depth": 3,
           "title": "The threads close when they are answered.",
           "slug": "the-threads-close-when-they-are-answered"
         },
@@ -1068,6 +1078,16 @@
         },
         {
           "depth": 3,
+          "title": "Agent",
+          "slug": "agent"
+        },
+        {
+          "depth": 3,
+          "title": "BriefStore",
+          "slug": "briefstore"
+        },
+        {
+          "depth": 3,
           "title": "Budget",
           "slug": "budget"
         },
@@ -1090,6 +1110,11 @@
           "depth": 3,
           "title": "EventLog",
           "slug": "eventlog"
+        },
+        {
+          "depth": 3,
+          "title": "Gate",
+          "slug": "gate"
         },
         {
           "depth": 3,
@@ -1120,6 +1145,16 @@
           "depth": 3,
           "title": "Store",
           "slug": "store"
+        },
+        {
+          "depth": 3,
+          "title": "TrackerReads",
+          "slug": "trackerreads"
+        },
+        {
+          "depth": 3,
+          "title": "TrackerWrites",
+          "slug": "trackerwrites"
         },
         {
           "depth": 2,
@@ -1649,6 +1684,33 @@
           "depth": 2,
           "title": "The world it is put to work in",
           "slug": "the-world-it-is-put-to-work-in"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-ports-belong-to-the-core",
+      "file": "docs/design/the-ports-belong-to-the-core.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-ports-belong-to-the-core.md",
+      "title": "The ports belong to the core",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What it cost the second workflow",
+          "slug": "what-it-cost-the-second-workflow"
+        },
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
         },
         {
           "depth": 2,
@@ -2264,6 +2326,16 @@
         },
         {
           "depth": 3,
+          "title": "Agent",
+          "slug": "agent"
+        },
+        {
+          "depth": 3,
+          "title": "BriefStore",
+          "slug": "briefstore"
+        },
+        {
+          "depth": 3,
           "title": "Budget",
           "slug": "budget"
         },
@@ -2286,6 +2358,11 @@
           "depth": 3,
           "title": "EventLog",
           "slug": "eventlog"
+        },
+        {
+          "depth": 3,
+          "title": "Gate",
+          "slug": "gate"
         },
         {
           "depth": 3,
@@ -2316,6 +2393,16 @@
           "depth": 3,
           "title": "Store",
           "slug": "store"
+        },
+        {
+          "depth": 3,
+          "title": "TrackerReads",
+          "slug": "trackerreads"
+        },
+        {
+          "depth": 3,
+          "title": "TrackerWrites",
+          "slug": "trackerwrites"
         }
       ]
     },
@@ -3168,6 +3255,60 @@
     ],
     "contracts": [
       {
+        "interface": "Agent",
+        "file": "packages/core/src/ports/Ticketing.ts",
+        "doc": "The coding agent, and the only probabilistic thing in the system.",
+        "methods": [
+          {
+            "name": "triage",
+            "signature": "triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>>",
+            "doc": "Reads the ticket and says whether it can be implemented as written."
+          },
+          {
+            "name": "implement",
+            "signature": "implement(ticket: Ticket, retryContext?: string, conversation?: readonly string[]): Promise<AgentResult<AttemptOutcome>>",
+            "doc": "Writes the change, or the next attempt after one that did not hold."
+          },
+          {
+            "name": "addressThreads",
+            "signature": "addressThreads(ticket: Ticket, threads: readonly ReviewThread[], from: \"automated\" | \"human\"): Promise<AgentResult<ThreadVerdict[]>>",
+            "doc": "Judges review comments one by one. A comment it agrees with is fixed, a comment it disagrees with comes back as a disagreement for the owner rather than being argued with on the pull request."
+          }
+        ]
+      },
+      {
+        "interface": "BriefStore",
+        "file": "packages/core/src/ports/Brief.ts",
+        "doc": "The mounted persistence port behind every brief read and write.",
+        "methods": [
+          {
+            "name": "get",
+            "signature": "get(id: BriefId): Promise<BriefRecord | null>",
+            "doc": "The current brief by id, or null when no such brief exists."
+          },
+          {
+            "name": "write",
+            "signature": "write(input: { id: BriefId; sections: { name: string; body: string }[]; /** The work ids this brief explains, in the caller's own vocabulary. */ explains: string[]; at: string; }): Promise<BriefRecord>",
+            "doc": "Creates a brief, or replaces every section of an existing one. The id is the caller's to choose and stable for the brief's life; an append is a separate operation, so a revision never loses a question."
+          },
+          {
+            "name": "appendQuestion",
+            "signature": "appendQuestion(input: { id: BriefId; question: BriefQuestion; at: string }): Promise<BriefRecord>",
+            "doc": "Appends a question, with its work id and time. There is no operation that appends an answer: a question is decided by the workflow that owns the brief, and that decision is a revision, not an append."
+          },
+          {
+            "name": "retired",
+            "signature": "retired(explainsAreTerminal: (workId: string) => boolean, retentionCutoffMs: number, now: Date): Promise<BriefId[]>",
+            "doc": "Lists brief ids whose every work id is terminal and older than the store's retention policy, for the retirement sweep. The caller decides what terminal means in its own vocabulary; this only reports what it was told at write time and cannot invent a work state it never knew."
+          },
+          {
+            "name": "remove",
+            "signature": "remove(id: BriefId): Promise<void>",
+            "doc": "Removes a brief by id. The event log remains the durable history."
+          }
+        ]
+      },
+      {
         "interface": "Budget",
         "file": "packages/core/src/ports/Budget.ts",
         "doc": "Whether work that spends an agent may start.",
@@ -3294,6 +3435,18 @@
             "name": "read",
             "signature": "read(since?: Date): Event[]",
             "doc": "Events at or after the given instant, oldest first."
+          }
+        ]
+      },
+      {
+        "interface": "Gate",
+        "file": "packages/core/src/ports/Ticketing.ts",
+        "doc": "The gate: the check that decides whether an implementation holds, before anything is published for a person to read.",
+        "methods": [
+          {
+            "name": "run",
+            "signature": "run(ticket: Ticket): Promise<AttemptOutcome>",
+            "doc": "Runs the gate against the ticket's own checkout, and says what happened."
           }
         ]
       },
@@ -3435,6 +3588,60 @@
           {
             "name": "all",
             "signature": "all(): R[]",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "TrackerReads",
+        "file": "packages/core/src/ports/Ticketing.ts",
+        "doc": "Reads a tracker answers, and writes only the workflow's declared surface.",
+        "methods": [
+          {
+            "name": "inProgress",
+            "signature": "inProgress(): Promise<Ticket[]>",
+            "doc": "Tickets assigned to the operator that sit in the working status."
+          },
+          {
+            "name": "get",
+            "signature": "get(ticketId: string): Promise<Ticket | null>",
+            "doc": "One ticket by id, including after it has left the working status."
+          },
+          {
+            "name": "comments",
+            "signature": "comments(ticketId: string, since?: string): Promise<Comment[]>",
+            "doc": "The conversation on a ticket, oldest first, up to now."
+          },
+          {
+            "name": "hasReplyAfter",
+            "signature": "hasReplyAfter(ticketId: string, since: string): Promise<boolean>",
+            "doc": "Whether anybody other than the machine has replied since the given instant."
+          }
+        ]
+      },
+      {
+        "interface": "TrackerWrites",
+        "file": "packages/core/src/ports/Ticketing.ts",
+        "doc": "The writes a tracker answers — deliberately its own surface rather than half of one contract.",
+        "methods": [
+          {
+            "name": "comment",
+            "signature": "comment(ticketId: string, body: string): Promise<void>",
+            "doc": ""
+          },
+          {
+            "name": "setStatus",
+            "signature": "setStatus(ticketId: string, statusName: string): Promise<void>",
+            "doc": ""
+          },
+          {
+            "name": "assign",
+            "signature": "assign(ticketId: string, trackerIdentity: string): Promise<void>",
+            "doc": ""
+          },
+          {
+            "name": "createFollowUp",
+            "signature": "createFollowUp(request: FollowUpRequest): Promise<string>",
             "doc": ""
           }
         ]
@@ -6025,6 +6232,46 @@
           },
           {
             "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-ports-belong-to-the-core",
+        "title": "The ports belong to the core.",
+        "body": "`Tracker`, `Agent`, `Gate`, `Ticket` and the outcome contracts they carry\nmoved from `@amykit/workflow-ticket-to-qa` to `@amykit/core`, beside\n`CodeHost` and `Harness`, so a workflow nobody shipped declares every port\nit needs by importing `@amykit/core` and no plugin in the install depends\non a workflow package to know what a tracker is. The workflow re-exports\nevery name for one minor version so nothing breaks on the way past, and\nthe tracker contract grows a declared write surface: reads\n(`TrackerReads`) and writes (`TrackerWrites`) are separate interfaces a\nmount can hand out separately, with `TRACKER_WRITE_CAPABILITIES` naming\nwhat each core action resolves to.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
             "level": "patch"
           },
           {

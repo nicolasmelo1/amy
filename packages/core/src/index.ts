@@ -40,6 +40,34 @@ export type {
   ReviewSubmission,
   ReviewThread,
 } from "./ports/CodeHost.js";
+export type {
+  Agent,
+  AttemptOutcome,
+  Comment,
+  FollowUpRequest,
+  Gate,
+  Ticket,
+  ThreadVerdict,
+  Tracker,
+  TrackerReads,
+  TrackerWrites,
+  TrackerWriteCapability,
+  TriageOutcome,
+} from "./ports/Ticketing.js";
+export {
+  TRACKER_WRITE_CAPABILITIES,
+  pullRequestTitle,
+  trackerCapabilitiesFor,
+  trackerWriteFor,
+} from "./ports/Ticketing.js";
+export type {
+  BriefId,
+  BriefQuestion,
+  BriefRecord,
+  BriefStore,
+  BriefView,
+} from "./ports/Brief.js";
+export { renderBrief } from "./ports/Brief.js";
 
 export { NodeCommandRunner } from "./NodeCommandRunner.js";
 export { FileStopSwitch } from "./FileStopSwitch.js";

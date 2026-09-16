@@ -56,7 +56,7 @@ One agent made of several: swaps harness on a quota, escalates model on a failur
 | Mounts | `agent` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs`, `@amykit/workflow-ticket-to-qa` |
+| Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
 plugins:
@@ -172,7 +172,7 @@ A gate that runs the target repository's own commands.
 | Mounts | `gate` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| Depends on | `@amykit/core` |
 
 ```yaml
 plugins:
@@ -340,7 +340,7 @@ Linear as the tracker, over its GraphQL API.
 | Mounts | `tracker` |
 | Contributes | _nothing_ |
 | Needs in the environment | `LINEAR_API_KEY` |
-| Depends on | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| Depends on | `@amykit/core` |
 
 ```yaml
 plugins:
@@ -454,7 +454,7 @@ Advances one work item by one move per tick.
 | Mounts | the engine |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
+| Depends on | `@amykit/core` |
 
 ```yaml
 plugins:

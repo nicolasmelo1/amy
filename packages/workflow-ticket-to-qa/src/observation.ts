@@ -1,5 +1,5 @@
 import { PullRequestView } from "@amykit/core";
-import { Comment } from "./ports/Tracker.js";
+import { Comment } from "@amykit/core";
 import { Roster } from "./roster.js";
 import { Ticket } from "./ticket.js";
 
