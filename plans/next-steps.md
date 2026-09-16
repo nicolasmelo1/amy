@@ -62,6 +62,12 @@ the policy-shaped brief belongs to a workflow, while its opaque storage,
 current delivery to later steps, retention and declared tracker-write boundary
 belong below that workflow.
 
+Row 28 comes from issue #61. It follows the review-reply, triage and across-round
+memory rows because those produce and classify the review outcomes it preserves,
+but it is not another ticket-record field: it adds a cross-work corpus, generic
+source contributions and a non-blocking terminal collection seam. Human verdict
+and evidence remain outside every machine action.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [A spec is a name, a URL or a path](a-spec-is-a-name-a-url-or-a-path.md) | One function turns any of the five forms into what npm installs and what the config names, and nothing else in the CLI parses a spec |
@@ -91,3 +97,4 @@ belong below that workflow.
 | 25 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) | What a review settled, deferred or answered is remembered with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it |
 | 26 | [A picture is a comment too](a-picture-is-a-comment-too.md) | A comment that arrives with a picture is a comment the agent can see, on Linear or GitHub alike, and no workflow has to know that pictures were ever missing |
 | 27 | [A brief reaches every ticket it explains](a-brief-reaches-every-ticket-it-explains.md) | A grooming workflow can keep one revisable brief for a feature; every ticket step that needs it reads the current version, and a workflow that promised not to edit the tracker cannot begin a tracker write |
+| 28 | [A review finding outlives the review](a-review-finding-outlives-the-review.md) | Review and self-review findings survive finished work in one queryable corpus with their mechanical outcomes, repeated collection is idempotent, contradictions are visible, and no machine surface can fill the human verdict or evidence that would turn an anecdote into a rule |
