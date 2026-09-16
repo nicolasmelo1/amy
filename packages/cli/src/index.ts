@@ -9,6 +9,7 @@ import { FileNotes } from "@amykit/plugin-file-notes";
 import { FileTasks } from "@amykit/plugin-file-tasks";
 import {
   BUDGET_WINDOWS,
+  BriefStore,
   Engine,
   FileStopSwitch,
   Mounted,
@@ -17,6 +18,7 @@ import {
   describeBuild,
   mount,
   parseBudget,
+  renderBrief,
   stampId,
   unmetNeeds,
 } from "@amykit/core";
@@ -648,6 +650,52 @@ program
   });
 
 program
+  .command("brief")
+  .description("The current statement of a feature, as the workflow keeps it")
+  .argument("<id>", "the brief id, as the workflow named it")
+  .option("--json", "the same snapshot as data, for something else to render")
+  .action(async (id: string, options: { json?: boolean }) => {
+    const profile = selected();
+
+    // Assembled, because the store is a mounted port rather than a path:
+    // `amy brief show` resolves the adapter the same way a tick does, and a
+    // caller never learns where the files live. A mount that will not come
+    // up is exactly when somebody wants to look, so the refusal is reported
+    // rather than thrown.
+    const assembled = await assemble(profile);
+    const store = assembled.ok ? (assembled.mounted.ports.get("brief") as BriefStore | undefined) : undefined;
+
+    if (!store) {
+      const why = assembled.ok
+        ? "nothing mounted the `brief` port"
+        : `amy could not start: ${assembled.problems.join("; ")}`;
+      console.error(`there is no brief \`${id}\`: ${why}`);
+      process.exitCode = 1;
+      return;
+    }
+
+    // One snapshot, both renderings, the way `amy status` does: the person
+    // and the machine read the same brief at the same revision, so they
+    // cannot disagree about what it currently says.
+    const record = await store.get(id);
+    if (!record) {
+      console.error(`there is no brief \`${id}\``);
+      process.exitCode = 1;
+      return;
+    }
+    const view = renderBrief(record);
+
+    if (options.json) {
+      console.log(JSON.stringify({ id: record.id, revision: view.revision, explains: record.explains, updatedAt: record.updatedAt, text: view.text }, null, 2));
+      return;
+    }
+
+    console.log(`${record.id}, revision ${view.revision}, explaining ${record.explains.join(", ")}`);
+    console.log();
+    console.log(view.text);
+  });
+
+program
   .command("status")
   .description("Show where every piece of work stands and what the queue holds")
   .option("--json", "the same thing as data, for something else to render")
@@ -1117,11 +1165,20 @@ queueCommand
   .command("prune")
   .description("Delete finished queue items past their retention")
   .option("--days <n>", "override the configured retention")
-  .action((options: { days?: string }) => {
+  .action(async (options: { days?: string }) => {
     const config = loadConfig(home);
     const days = options.days ? Number(options.days) : config.retentionDays;
-    const removed = new FileQueue(profilePaths(home, selected().name).queue).prune(days, new Date());
-    console.log(`removed ${removed} finished item(s) older than ${days} day(s)`);
+    const now = new Date();
+    const removed = new FileQueue(profilePaths(home, selected().name).queue).prune(days, now);
+    const assembled = await assemble(selected());
+    const briefStore = assembled.ok ? (assembled.mounted.ports.get("brief") as BriefStore | undefined) : undefined;
+    const records = assembled.ok ? assembled.mounted.store : undefined;
+    const terminal = assembled.ok ? new Set(assembled.mounted.workflow?.terminalStates ?? []) : new Set<string>();
+    const retired = briefStore && records
+      ? await briefStore.retired((id) => terminal.has(records.load(id)?.state ?? ""), days * 86_400_000, now)
+      : [];
+    await Promise.all(retired.map((id) => briefStore!.remove(id)));
+    console.log(`removed ${removed} finished item(s) and ${retired.length} retired brief(s) older than ${days} day(s)`);
   });
 
 queueCommand

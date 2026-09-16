@@ -13,6 +13,11 @@ import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { Queue } from "./ports/Queue.js";
 import { Store } from "./ports/Store.js";
+import {
+  TRACKER_WRITE_CAPABILITIES,
+  TrackerWriteCapability,
+  trackerWriteFor,
+} from "./ports/Ticketing.js";
 
 /** The few services the host lends every plugin. */
 export interface HostServices {
@@ -228,6 +233,29 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
     if (!mounted.ports.has(spec.port)) {
       unmet.push(`action \`${action}\`: needs the \`${spec.port}\` port, which nothing mounted`);
     }
+  }
+
+  // The declaration rule: a workflow's claimed tracker writes are the only
+  // surface its runtime may reach. The claim is written by hand, never
+  // derived, so a workflow that declares a tracker-mutating action while
+  // claiming none is refused here, at boot, naming the action and the
+  // capability — the one place every install is checked, before any tracker
+  // call log records a write.
+  const claimed = new Set(workflow.trackerWrites ?? []);
+  for (const capability of claimed) {
+    if (!TRACKER_WRITE_CAPABILITIES.includes(capability as TrackerWriteCapability)) {
+      unmet.push(
+        `the workflow claims the tracker write \`${capability}\`, which is not one a mounted tracker could honour — \`comment\`, \`set-status\`, \`assign\` or \`create-follow-up\``,
+      );
+    }
+  }
+  for (const action of workflow.usesActions) {
+    const capability = trackerWriteFor(action);
+    if (capability === undefined || claimed.has(capability)) continue;
+    unmet.push(
+      `action \`${action}\` writes the tracker (\`${capability}\`), ` +
+        `but the workflow does not claim that capability — add \`${capability}\` to its \`trackerWrites\``,
+    );
   }
 
   for (const slice of workflow.usesObservers) {

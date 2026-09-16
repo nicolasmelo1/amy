@@ -19,6 +19,15 @@ export interface AskContext {
   workId?: string;
   /** The action being performed, in the workflow's own vocabulary. */
   step?: string;
+  /**
+   * The current brief the work belongs to, rendered, when there is one.
+   *
+   * A workflow-declared half-step — a self-review, say — is a generic `ask`
+   * with no ticket in it, so without this field it would be the one step
+   * blind to the reason the work exists. A caller with no brief passes
+   * nothing, and the prompt is unchanged.
+   */
+  brief?: string;
 }
 
 /**

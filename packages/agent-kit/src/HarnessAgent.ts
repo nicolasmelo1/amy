@@ -56,6 +56,7 @@ export class HarnessAgent implements Agent {
         ``,
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
+        ...this.briefLines(ticket),
         ...this.bodyLines(ticket),
         ...this.labelLines(ticket),
         ...this.conversationLines(conversation),
@@ -122,6 +123,7 @@ export class HarnessAgent implements Agent {
         ``,
         `Ticket ${ticket.id}: ${ticket.title}`,
         `Tracker: ${ticket.url}`,
+        ...this.briefLines(ticket),
         ...this.bodyLines(ticket),
         ...this.labelLines(ticket),
         ...this.conversationLines(conversation),
@@ -229,6 +231,7 @@ export class HarnessAgent implements Agent {
         : `A human reviewer left comments on the pull request for this ticket.`,
       ``,
       `Ticket ${ticket.id}: ${ticket.title}`,
+      ...this.briefLines(ticket),
       ...this.bodyLines(ticket),
       ...this.labelLines(ticket),
       `Comments:`,
@@ -265,6 +268,27 @@ export class HarnessAgent implements Agent {
     return this.harness.ask(this.invoke(prompt), this.git.pathFor(ticket.repo), {
       workId: ticket.id,
     });
+  }
+
+  /**
+   * The current brief the ticket's work belongs to, when it has one.
+   *
+   * Rendered rather than referenced: a brief is the revisable statement of
+   * the feature, and what a step must judge is what it says *now*, not a link
+   * that says "see elsewhere". A ticket with no brief carries none, and every
+   * prompt built from it is unchanged — that is the compatibility rule.
+   */
+  private briefLines(ticket: Ticket): string[] {
+    if (!ticket.brief) return [];
+
+    return [
+      `The current brief for the feature this ticket belongs to:`,
+      ``,
+      ticket.brief,
+      ``,
+      `Answer for the brief as it stands above, not for what the ticket`,
+      `title alone says.`,
+    ];
   }
 
   /**

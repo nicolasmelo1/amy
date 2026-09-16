@@ -88,6 +88,10 @@ describe("assembling the built-in set", () => {
 
     expect([...outcome.mounted.ports.keys()].sort()).toEqual([
       "agent",
+      // The briefs a grooming workflow writes and every later step reads,
+      // mounted unconditionally by the store plugin: a port with nothing
+      // behind it is a boot refusal, and the store costs one empty directory.
+      "brief",
       "code-host",
       "gate",
       // The notes are mounted in both profiles: this one writes them when it

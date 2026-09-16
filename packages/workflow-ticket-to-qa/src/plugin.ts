@@ -1,6 +1,8 @@
 import {
+  BriefStore,
   CodeHost,
   ConfigSchema,
+  Git,
   Notifier,
   Plan,
   Plugin,
@@ -10,6 +12,7 @@ import {
 } from "@amykit/core";
 import { Observation, DEFAULT_POLICY, Policy } from "./observation.js";
 import { Agent, Gate, Tracker } from "@amykit/core";
+import type { AskContext, HarnessReply } from "@amykit/core";
 import { Roster } from "./roster.js";
 import { TicketRecord } from "./record.js";
 import { ticketRuntime } from "./runtime.js";
@@ -83,10 +86,29 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
   const built = ticketRuntime({
     tracker: required<Tracker>(ctx, "tracker"),
     host: required<CodeHost>(ctx, "code-host"),
-    agent: required<Agent>(ctx, "agent"),
+    // Both halves of the relay's one port: the ticket-shaped methods this
+    // workflow's prompts were written for, and the `ask` the self-review
+    // runs on. The relay always mounts both, so the cast is narrowing, not
+    // wishing — the same one the errand workflow makes at its own edge.
+    agent: required<Agent>(ctx, "agent") as Agent & {
+      ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
+    },
     gate: required<Gate>(ctx, "gate"),
     notifier: required<Notifier>(ctx, "notifier"),
     roster: () => provided<Roster>(ctx, "roster") ?? rosterProvider()(),
+    // The same checkout the gate runs in, for the self-review to read: the
+    // gate already runs against the ticket's own branch, so this is the
+    // second reader of a layout the host already owns.
+    git: new Git(ctx.runner, {
+      workspaceRoot: ctx.paths.workspace,
+      defaultBranch: ctx.config.defaultBranch as string,
+    }),
+    // Optional on purpose: the `brief` port is the persistence seam a
+    // grooming workflow's briefs live behind, and an install whose tickets
+    // reference none is a real install that mounts and runs exactly as
+    // before. A ticket that does reference one is resolved against whatever
+    // mounted here, at read time, on every observation.
+    briefs: ctx.port("brief") as BriefStore | undefined,
     now: ctx.now,
     log: ctx.log,
     config: {

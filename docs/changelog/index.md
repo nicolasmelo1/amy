@@ -22,6 +22,16 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
+### A brief reaches every ticket it explains.
+
+`patch` · `@amykit/agent-kit`, `@amykit/cli`, `@amykit/core`, `@amykit/plugin-file-store`, `@amykit/plugin-linear`, `@amykit/workflow-ticket-to-qa`
+
+Tickets may inherit a shared brief from their Linear parent. The workflow reads
+that brief freshly on every observation, carries it to triage, implementation,
+review and its self-review half-step, records questions against it, and keeps a
+brief only while its explained work remains non-terminal or inside retention.
+`amy brief <id>` renders the mounted brief without exposing its store path.
+
 ### A reply inside a review thread reaches the agent.
 
 `patch` · `@amykit/agent-kit`, `@amykit/core`, `@amykit/plugin-github`

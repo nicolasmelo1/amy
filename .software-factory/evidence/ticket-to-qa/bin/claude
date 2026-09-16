@@ -31,6 +31,7 @@ const STEPS = [
   { step: "triage", says: "deciding whether a ticket can be implemented as written" },
   { step: "implement", says: "Implement this ticket in the current repository." },
   { step: "address-threads", says: "left comments on the pull request" },
+  { step: "self-review", says: "was implemented in this repository." },
 ];
 
 const step = STEPS.find((candidate) => prompt.includes(candidate.says))?.step ?? "unknown";

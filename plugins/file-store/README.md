@@ -4,7 +4,7 @@
 
 Work records kept as one file per item.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `store` port.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `brief` port and the `store` port.
 
 ## Install
 
@@ -26,11 +26,13 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-file-store":
+    briefsDirectory: "briefs"
     directory: "tickets"
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `briefsDirectory` | `string` | no | `briefs` | where the briefs are kept, relative to the state directory. One per workflow, for the same reason the records are |
 | `directory` | `string` | no | `tickets` | where the records are kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not read each other's work |
 
 Every field is checked at boot against the schema this package declares. A key that is

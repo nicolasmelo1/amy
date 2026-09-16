@@ -143,6 +143,9 @@ class FakeWorld {
         case "run-gate":
           outcomes.gate = { ok: true, output: "", at: this.now().toISOString() };
           break;
+        case "self-review":
+          outcomes.selfReview = { ok: true, output: "", at: this.now().toISOString() };
+          break;
         case "open-pull-request": {
           const head = this.nextHead();
           this.pullRequest = {
@@ -282,6 +285,7 @@ describe("driving a ticket end to end", () => {
       "READY",
       "IMPLEMENTING",
       "CHECKED",
+      "SELF_REVIEW",
       "PR_OPEN",
       "COPILOT_WAIT",
       "REVIEWER_ASSIGNED",

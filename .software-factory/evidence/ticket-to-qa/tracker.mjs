@@ -39,6 +39,7 @@ function issueNode(state, issue) {
     description: issue.description ?? null,
     url: issue.url,
     branchName: issue.branchName,
+    parent: issue.parentId ? { id: issue.parentId } : null,
     labels: { nodes: (issue.labels ?? []).map((name) => ({ name })) },
     state: { name: stateName(state, issue) },
     team: { id: team.id, key: team.key, name: team.name },

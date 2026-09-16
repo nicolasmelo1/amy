@@ -80,6 +80,55 @@ describe("HarnessAgent prompts", () => {
     expect(prompts[0]).toContain("The rename is owned by TBO-1236.");
   });
 
+  it("carries the current brief into triage, above the body it explains", async () => {
+    const { agent, prompts } = agentWithBody();
+
+    await agent.triage(
+      ticket({
+        brief: "Goal\nOne currency on every invoice line.\n\nQuestion (from PROJ-1238, 2026-09-02): Which currency for the total?",
+        body: "The total line, only.",
+      }),
+    );
+
+    const prompt = prompts[0]!;
+    expect(prompt).toContain("The current brief for the feature this ticket belongs to:");
+    expect(prompt).toContain("One currency on every invoice line.");
+    expect(prompt).toContain("Which currency for the total?");
+    // Above the body: the brief is what the work is *for*, the body is the
+    // slice of it this ticket takes.
+    expect(prompt.indexOf("One currency")).toBeLessThan(prompt.indexOf("The total line, only."));
+  });
+
+  it("carries the current brief into implement, where it steers the change", async () => {
+    const { agent, prompts } = agentWithBody();
+
+    await agent.implement(ticket({ brief: "Goal\nOne currency on every invoice line." }));
+
+    expect(prompts[0]).toContain("One currency on every invoice line.");
+    expect(prompts[0]).toContain("Answer for the brief as it stands above");
+  });
+
+  it("carries the current brief into addressing review comments", async () => {
+    const { agent, prompts } = agentWithBody();
+
+    await agent.addressThreads(
+      ticket({ brief: "Goal\nOne currency on every invoice line." }),
+      [],
+      "human",
+    );
+
+    expect(prompts[0]).toContain("One currency on every invoice line.");
+  });
+
+  it("leaves a ticket with no brief with the prompt it has always had", async () => {
+    const { agent, prompts } = agentWithBody();
+
+    await agent.triage(ticket({ body: "Consume the aggregate from TBO-1236." }));
+
+    expect(prompts[0]).not.toContain("current brief");
+    expect(prompts[0]).toContain("Consume the aggregate from TBO-1236.");
+  });
+
   it("shows the whole conversation inside a thread, attributed", async () => {
     const { agent, prompts } = agentWithBody();
 

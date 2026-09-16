@@ -44,6 +44,16 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
    * port out from under the relay.
    */
   "run-errand": { port: "agent", method: "ask" },
+  /**
+   * A workflow-declared half-step: the work reviews itself before a person
+   * is asked to.
+   *
+   * The third consumer of the generic `ask`, and the one whose prompt is
+   * entirely the workflow's own: no ticket vocabulary lives here, which is
+   * what lets the brief reach it the same way it reaches every other step —
+   * through the context, rather than by rebuilding the agent's prompts.
+   */
+  "self-review": { port: "agent", method: "ask" },
   "open-pull-request": { port: "code-host", method: "openPullRequest" },
   /**
    * Close one review thread, by its id.

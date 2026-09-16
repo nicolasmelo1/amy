@@ -175,6 +175,17 @@ export interface Ticket {
   repo: string;
 
   /**
+   * The brief this ticket's work belongs to, when a grooming workflow kept
+   * one: its id, for the workflow's runtime to resolve against the mounted
+   * brief store, and the rendered text beside it, so a step that never asks
+   * the store still reads the current statement.
+   *
+   * The tracker's own facts — the parent, say — decide the id; nothing
+   * derives it from the body. A ticket with no brief carries neither field,
+   * and every prompt built from it is unchanged.
+   */
+  briefId?: string;
+  /**
    * The current statement of the feature this ticket's work belongs to, when
    * a grooming workflow keeps one.
    *

@@ -231,7 +231,27 @@ describe("CHECKED", () => {
       lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
     });
 
-    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("PR_OPEN");
+    // Green no longer publishes: the work reads itself against the brief
+    // first, and only then does a pull request exist for a person.
+    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("SELF_REVIEW");
+  });
+
+  it("asks the work to review itself before publishing, then publishes", () => {
+    const fresh = record("SELF_REVIEW", {
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
+    });
+
+    const ask = expectAct(plan(fresh, observation(), policy));
+    expect(ask.effects).toEqual([{ type: "self-review" }]);
+
+    const read = record("SELF_REVIEW", {
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
+      lastSelfReview: attempt(true, "2026-09-03T10:06:00.000Z"),
+    });
+
+    expect(expectAdvance(plan(read, observation(), policy)).to).toBe("PR_OPEN");
   });
 
   it("sends a red gate back to the agent", () => {
