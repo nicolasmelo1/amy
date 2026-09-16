@@ -1,6 +1,6 @@
 {
   "name": "@amykit/model-specs",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "What each model costs per token, vendored and versioned.",
   "type": "module",
   "license": "MIT",
@@ -29,6 +29,6 @@
     "specs.json"
   ],
   "dependencies": {
-    "@amykit/core": "^0.3.1"
+    "@amykit/core": "^0.3.2"
   }
 }

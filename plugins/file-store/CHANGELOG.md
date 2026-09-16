@@ -1,5 +1,23 @@
 # @amykit/plugin-file-store
 
+## 0.3.2
+
+### Patch Changes
+
+- 2dc9117: A brief reaches every ticket it explains.
+  
+  Tickets may inherit a shared brief from their Linear parent. The workflow reads
+  that brief freshly on every observation, carries it to triage, implementation,
+  review and its self-review half-step, records questions against it, and keeps a
+  brief only while its explained work remains non-terminal or inside retention.
+  `amy brief <id>` renders the mounted brief without exposing its store path.
+- Updated dependencies [2dc9117]
+- Updated dependencies [0ca2c1c]
+- Updated dependencies [fc6748a]
+- Updated dependencies [5b37451]
+- Updated dependencies [bfda1ac]
+  - @amykit/core@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes
