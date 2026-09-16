@@ -1,5 +1,92 @@
 # @amykit/core
 
+## 0.3.2
+
+### Patch Changes
+
+- 2dc9117: A brief reaches every ticket it explains.
+  
+  Tickets may inherit a shared brief from their Linear parent. The workflow reads
+  that brief freshly on every observation, carries it to triage, implementation,
+  review and its self-review half-step, records questions against it, and keeps a
+  brief only while its explained work remains non-terminal or inside retention.
+  `amy brief <id>` renders the mounted brief without exposing its store path.
+- 0ca2c1c: A reply inside a review thread reaches the agent.
+  
+  `ReviewThread` carried the first comment of a thread and nothing that
+  followed it, so a reviewer's correction written inside the thread sat one
+  field away from every consumer: `address-threads` handed the agent what the
+  thread *started* with, and "whose turn is it" was a question the view could
+  not answer. The port grows `comments` — the conversation, oldest first,
+  opening comment included — and `author`/`body` stay the opening comment's,
+  so a consumer that never asked for the conversation is unaffected and
+  `comments.at(-1)?.author` answers whose turn a thread is from the view
+  alone. The GitHub query asks for `comments(first: 50)` with `createdAt` in
+  the same request, and the adapter maps the list. The `address-threads`
+  prompt renders the conversation attributed — a later comment is introduced
+  as a reply, not restated as the objection — and says that a later comment
+  answers the earlier ones, so an agent handed a correction inside the thread
+  is handed the correction.
+- fc6748a: The forge is asked, not run beside.
+  
+  Every gap in a port became an adapter in whoever hit it: a workflow that
+  needed what the plugins know was shelling out to `gh` beside the plugin that
+  already owned it and opening its own GraphQL connection to Linear beside the
+  tracker that already had one, and the second workflow to hit the same gap
+  wrote it all again. The port grows what the adapters were compensating for.
+  
+  `CodeHost` grows `pullRequest(repo, number)` — readable merged or not, the
+  open-only filter staying where it belongs, in the by-branch search — and
+  `PullRequestView` grows `merged` and `base`, mapped from the same node in
+  the same query, with both reads running one shared fragment so they cannot
+  drift apart. It grows `merge(repo, number, method)`, the method the base's
+  ruleset allows being the caller's to name; `submitReview(repo, number,
+  review)`, the state as forge vocabulary and the decision to submit as
+  workflow policy; `createIssue(repo, { title, body })`; `commitStatuses(repo,
+  sha)`, so a freeze is a workflow's reading of a status list rather than a
+  private `gh api` of its own; and `changesRequestedOf(login, repos)`, the
+  mirror of `reviewsRequestedOf` — "where did my review leave changes
+  requested" — kept honest by the adapter reading each candidate by number,
+  because the search cannot narrow on who left the changes requested.
+  
+  The tracker carries what a ticket is: `ISSUE_FIELDS` grows
+  `labels { nodes { name } }` and `Ticket` grows `labels: string[]` — a label
+  is how a team says what a ticket *is*, and with the description and the
+  comments already shipped, the Linear reader a workflow carried has nothing
+  left in it. What stays in the workflow is policy: which review state to
+  submit, whose thread to close, what counts as a freeze.
+- 5b37451: The ports belong to the core.
+  
+  `Tracker`, `Agent`, `Gate`, `Ticket` and the outcome contracts they carry
+  moved from `@amykit/workflow-ticket-to-qa` to `@amykit/core`, beside
+  `CodeHost` and `Harness`, so a workflow nobody shipped declares every port
+  it needs by importing `@amykit/core` and no plugin in the install depends
+  on a workflow package to know what a tracker is. The workflow re-exports
+  every name for one minor version so nothing breaks on the way past, and
+  the tracker contract grows a declared write surface: reads
+  (`TrackerReads`) and writes (`TrackerWrites`) are separate interfaces a
+  mount can hand out separately, with `TRACKER_WRITE_CAPABILITIES` naming
+  what each core action resolves to.
+- bfda1ac: The threads close when they are answered.
+  
+  `CodeHost` carried no way to settle a review conversation, so a workflow
+  state whose exit reads "no open thread" could not reach its own exit: the
+  code was fixed, the forge kept the thread open, and a ticket that had done
+  nothing wrong escalated at the ceiling. The port grows
+  `resolveReviewThread` and `unresolveReviewThread` — one id, one call — the
+  GitHub adapter runs the `resolveReviewThread`/`unresolveReviewThread`
+  GraphQL mutations through the scripted runner, and the action catalogue
+  grows `resolve-review-thread`, dispatched to the code-host port, so a mount
+  that cannot run it is refused at boot by name.
+  
+  The ticket-to-qa machine presses the button where the gap was: inside
+  `COPILOT_FIX`, threads the record judged `fixed` and the forge still holds
+  open get one act of `resolve-review-thread` each, and the next look finds
+  them resolved and leaves through the exit condition instead of through the
+  attempts. Who may close what stays the workflow's policy — only the
+  automated reviewer's threads, only the ones the machine itself answered,
+  and never a colleague's; `HUMAN_FIX` does not emit the effect at all.
+
 ## 0.3.1
 
 ### Patch Changes

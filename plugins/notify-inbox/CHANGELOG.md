@@ -1,5 +1,17 @@
 # @amykit/plugin-notify-inbox
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [2dc9117]
+- Updated dependencies [0ca2c1c]
+- Updated dependencies [fc6748a]
+- Updated dependencies [5b37451]
+- Updated dependencies [bfda1ac]
+  - @amykit/core@0.3.2
+  - @amykit/plugin-notify-fanout@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes
