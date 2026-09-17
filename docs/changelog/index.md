@@ -165,6 +165,21 @@ what lets the agent ask for one instead of inventing one. A tracker that
 supplies no body is unaffected: the field is optional and the prompt names the
 case it is in.
 
+### The worktree is the workplace.
+
+`minor` · `@amykit/agent-kit`, `@amykit/cli`, `@amykit/core`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-command-gate`, `@amykit/plugin-file-worktree`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-plan-check`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
+
+The core grows a `worktree` port (`acquire`, `pathFor`, `states`, `release`,
+`prune`) and the `acquire-worktree` action beside it. `Git` gains worktree
+mode without losing shared-checkout mode: with the port mounted, every path
+it answers — agent prompts, the gate, plan checks, commits and pushes — is
+the item's own tree, cut from the default branch, and preparing an item never
+repoints the standing checkout's branch. The new `@amykit/plugin-file-worktree`
+mounts the port over `~/.amy/worktrees/<workflow>/<workId>/<repo>`, prunes
+terminal clean trees after retention, logs every removal as
+`worktree.removed`, and refuses to delete an in-flight or dirty tree. The CLI
+gains `amy worktrees list|remove|prune`, and `amy doctor` reports both roots.
+
 <!-- amy:end changelog-unreleased -->
 
 ## Released

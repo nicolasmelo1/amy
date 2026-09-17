@@ -172,6 +172,23 @@ drives, not a field existing somewhere in the middle.
       (proof: assertion:lifecycle.what_the_agents_spent_is_read_off_the_log)
 - [x] The same run, in a second world, makes exactly the same moves
       (proof: assertion:lifecycle.the_same_run_twice_leaves_the_same_trail)
+- [x] Two tickets in one repository receive separate worktrees while the
+      standing checkout remains untouched
+      (proof: assertion:worktree.two_items_in_one_repository_run_concurrently)
+- [x] The agent, gate and git branch operations use the ticket's own path
+      (proof: assertion:worktree.the_agent_the_gate_and_git_effects_receive_the_own_path)
+- [x] Dirty or in-flight worktrees are retained rather than automatically removed
+      (proof: assertion:worktree.a_crash_or_dirty_tree_never_deletes_a_worktree)
+- [x] A clean terminal worktree past retention is removed and logged
+      (proof: assertion:worktree.a_terminal_clean_tree_is_prunable_after_retention)
+- [x] The worktree list names its state, workflow, repository, branch and cleanliness
+      (proof: assertion:worktree.the_list_names_state_workflow_repo_branch_and_cleanliness)
+- [x] A tree whose record disappeared is offered for recovery as orphaned
+      (proof: assertion:worktree.an_orphaned_tree_is_offered_for_recovery)
+- [x] Prune leaves an in-flight tree in place
+      (proof: assertion:worktree.prune_refuses_an_in_flight_tree)
+- [x] Preparing a second item does not repoint the standing checkout branch
+      (proof: assertion:worktree.preparing_an_item_never_repoints_the_shared_checkout_branch)
 - [x] The run leaves nothing behind: no world on disk, no child process still
       listening, and no build artefact dropped in the checkout
       (proof: assertion:lifecycle.the_run_leaves_nothing_behind)

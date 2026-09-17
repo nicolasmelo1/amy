@@ -34,6 +34,7 @@ explains why for each.
 | `store` | `@amykit/plugin-file-store` | _reached directly_ |
 | `tasks` | `@amykit/plugin-file-tasks` | _reached directly_ |
 | `tracker` | `@amykit/plugin-linear` | `ask-question`, `escalate`, `hand-off-to-qa` |
+| `worktree` | `@amykit/plugin-file-worktree` | `acquire-worktree` |
 
 <!-- amy:end port-kinds -->
 
@@ -43,6 +44,7 @@ explains why for each.
 
 | Action | Port | Method | Shipped by | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `acquire-worktree` | `worktree` | `acquire()` | `@amykit/core` | An isolated checkout for one piece of work, created or reused. |
 | `address-threads` | `agent` | `addressThreads()` | `@amykit/core` |  |
 | `announce` | `notifier` | `announce()` | `@amykit/core` |  |
 | `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |
@@ -279,5 +281,19 @@ Declared in `packages/core/src/ports/Ticketing.ts`.
 | `setStatus(ticketId: string, statusName: string): Promise<void>` |  |
 | `assign(ticketId: string, trackerIdentity: string): Promise<void>` |  |
 | `createFollowUp(request: FollowUpRequest): Promise<string>` |  |
+
+### `Worktree`
+
+Checkout isolation for one install.
+
+Declared in `packages/core/src/ports/Worktree.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `acquire(workId: string, repo: string): Promise<string>` | The path of this item's own tree, creating it when it does not exist and reusing it when it does. A new tree is cut from the default branch; the item's branch is prepared there by `Git`, which owns branch vocabulary. |
+| `pathFor(workId: string, repo: string): string` | The path this item's tree would live at, without touching the disk. |
+| `states(): Promise<WorktreeInfo[]>` | Every tree this machine holds, and what state each is in. |
+| `release(workId: string, repo: string, options?: { force?: boolean }): Promise<boolean>` | Removes a tree that has become safe to remove, and says whether it did. |
+| `prune(now: Date): Promise<string[]>` | Removes every tree the retention predicate allows, and leaves every other one exactly as it was. |
 
 <!-- amy:end core-contracts -->
