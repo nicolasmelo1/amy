@@ -32,6 +32,17 @@ review and its self-review half-step, records questions against it, and keeps a
 brief only while its explained work remains non-terminal or inside retention.
 `amy brief <id>` renders the mounted brief without exposing its store path.
 
+### A checkout root per repository.
+
+`patch` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-command-gate`, `@amykit/plugin-file-worktree`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-plan-check`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
+
+`checkouts:` maps a repository to its own path beside `workspaceRoot`; a
+repository named there is never looked for under the root at all, `~` expands
+the way the root's does, and a config without the block resolves exactly as
+before. The map rides the host paths and every `Git` layout to the worktree
+manager, which cuts a named repository's trees from its own checkout, and
+`amy doctor` names which root it asked for each repository.
+
 ### A reply inside a review thread reaches the agent.
 
 `patch` · `@amykit/agent-kit`, `@amykit/core`, `@amykit/plugin-github`
