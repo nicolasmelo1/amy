@@ -56,11 +56,12 @@ ancestor context available before any review step consumes a partial ticket;
 adds another kind of answer. They are separate rows because one grows the
 tracker and agent context seam while the other changes a workflow decision.
 
-Row 27 comes from issue #57, after a real grooming run produced work with no
-source behind it. It follows the core-port and retirement work it depends on:
-the policy-shaped brief belongs to a workflow, while its opaque storage,
-current delivery to later steps, retention and declared tracker-write boundary
-belong below that workflow.
+Row 27 came from issue #57, after a real grooming run produced work with no
+source behind it. It followed the core-port work it depends on: the
+policy-shaped brief belongs to a workflow, while its opaque storage, current
+delivery to later steps and declared tracker-write boundary belong below that
+workflow. It is delivered — the note lives at
+`docs/design/a-brief-reaches-every-ticket-it-explains.md`.
 
 Row 28 comes from issue #61. It follows the review-reply, triage and across-round
 memory rows because those produce and classify the review outcomes it preserves,
@@ -95,5 +96,4 @@ and evidence remain outside every machine action.
 | 24 | [A strong model reads the review first](a-strong-model-reads-the-review-first.md) | A workflow that wants a strong model reading its reviews before the executor is spent can say so with one action, one ladder key and one state — and the review arrives with the whole ticket behind it |
 | 25 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) | What a review settled, deferred or answered is remembered with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it |
 | 26 | [A picture is a comment too](a-picture-is-a-comment-too.md) | A comment that arrives with a picture is a comment the agent can see, on Linear or GitHub alike, and no workflow has to know that pictures were ever missing |
-| 27 | [A brief reaches every ticket it explains](a-brief-reaches-every-ticket-it-explains.md) | A grooming workflow can keep one revisable brief for a feature; every ticket step that needs it reads the current version, and a workflow that promised not to edit the tracker cannot begin a tracker write |
-| 28 | [A review finding outlives the review](a-review-finding-outlives-the-review.md) | Review and self-review findings survive finished work in one queryable corpus with their mechanical outcomes, repeated collection is idempotent, contradictions are visible, and no machine surface can fill the human verdict or evidence that would turn an anecdote into a rule |
+| 27 | [A review finding outlives the review](a-review-finding-outlives-the-review.md) | Review and self-review findings survive finished work in one queryable corpus with their mechanical outcomes, repeated collection is idempotent, contradictions are visible, and no machine surface can fill the human verdict or evidence that would turn an anecdote into a rule |
