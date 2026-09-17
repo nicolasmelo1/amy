@@ -40,6 +40,7 @@ pids="$bin/trackers.pid"
 # its start and its `finally` would leave one listening. So every pid it
 # starts is written down and this ends them, whatever happened.
 cleanup() {
+  trap - EXIT INT TERM
   if [ -f "$pids" ]; then
     while read -r pid; do
       kill "$pid" 2>/dev/null || true
@@ -47,7 +48,9 @@ cleanup() {
   fi
   rm -rf "$bin"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 "$repo/scripts/install.sh" "$bin" >/dev/null
 test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }

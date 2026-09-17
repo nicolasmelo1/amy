@@ -248,6 +248,14 @@ function expandHomeIn(checkouts: Record<string, string>): Record<string, string>
   );
 }
 
+/** The checkout layout is one merge unit, so every reader resolves it alike. */
+function checkoutLayoutFrom(parsed: Partial<AmyConfig>): Pick<AmyConfig, "workspaceRoot" | "checkouts"> {
+  return {
+    workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
+    checkouts: expandHomeIn(parsed.checkouts ?? DEFAULT_CONFIG.checkouts),
+  };
+}
+
 /**
  * Parses one config document through the loader's own merge.
  *
@@ -300,8 +308,7 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
       retentionDays:
         parsed.worktrees?.retentionDays ?? DEFAULT_CONFIG.worktrees.retentionDays,
     },
-    workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
-    checkouts: expandHomeIn(parsed.checkouts ?? DEFAULT_CONFIG.checkouts),
+    ...checkoutLayoutFrom(parsed),
   };
 }
 

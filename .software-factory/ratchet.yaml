@@ -6,8 +6,7 @@ version: 1
 rules:
   L1.COMPLEXITY_CEILING:
     review_by: 2027-03-03
-    note: 'Three are exhaustive dispatch or merge steps: plan() over every ticket state, the fake world''s execute() over every action, and fromParsed over every config field the loader merges — a field left out of the spread is a default silently dropped, so splitting the merge would hide the one place that proves nothing was forgotten. Two others used to be here and are not any more: Worker.execute() became a typed handler map, and the doctor became a list of small checks. Revisit if any of these grows logic inside a case rather than delegating out of it.'
+    note: 'Both are exhaustive dispatch switches: plan() over every ticket state, and the fake world''s execute() over every action. The branch count is the number of cases, and splitting them would hide the one place that proves nothing was forgotten. Two others used to be here and are not any more: Worker.execute() became a typed handler map, and the doctor became a list of small checks. Revisit if either of these grows logic inside a case rather than delegating out of it.'
     allow:
     - packages/workflow-ticket-to-qa/src/machine.ts:plan
     - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts:execute
-    - packages/cli/src/config.ts:fromParsed
