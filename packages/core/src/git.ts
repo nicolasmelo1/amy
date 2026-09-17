@@ -5,8 +5,32 @@ import { Worktree } from "./ports/Worktree.js";
 export interface RepoLayout {
   /** Directory that holds one checkout per repository. */
   workspaceRoot: string;
+  /**
+   * Where one repository's checkout is, instead of under the root.
+   *
+   * A repository named here is never looked for under `workspaceRoot` at all,
+   * which is what makes the answer one fact rather than two guesses: work can
+   * span repositories two unrelated parents hold, with no symlink holding the
+   * map together and nothing in the state directory standing for config.
+   */
+  checkouts?: Readonly<Record<string, string>>;
   /** Branch new work is cut from. */
   defaultBranch: string;
+}
+
+/**
+ * The one checkout answer there is: a repository that named its own root is
+ * found there, and every other is found under the shared root.
+ *
+ * Both halves of `RepoLayout` answer here so no caller ever re-derives the
+ * rule, and `amy doctor` asks the same function, so a missing checkout names
+ * the root that was actually asked.
+ */
+export function checkoutFor(layout: RepoLayout, repo: string): string {
+  const named = layout.checkouts?.[repo];
+  if (named !== undefined) return named;
+  const name = repo.includes("/") ? repo.slice(repo.indexOf("/") + 1) : repo;
+  return path.join(layout.workspaceRoot, name);
 }
 
 /**
@@ -38,8 +62,7 @@ export class Git {
     if (this.worktrees && workId !== undefined) {
       return this.worktrees.pathFor(workId, repo);
     }
-    const name = repo.includes("/") ? repo.slice(repo.indexOf("/") + 1) : repo;
-    return path.join(this.layout.workspaceRoot, name);
+    return checkoutFor(this.layout, repo);
   }
 
   /**

@@ -36,7 +36,7 @@ describe("amy brief show", () => {
     host = {
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date("2026-09-03T12:00:00.000Z"),
-      paths: { workspace: path.join(root, "checkouts"), state: path.join(root, ".amy") },
+      paths: { workspace: path.join(root, "checkouts"), checkouts: {}, state: path.join(root, ".amy") },
     };
   });
 

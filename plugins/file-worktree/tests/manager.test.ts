@@ -157,6 +157,25 @@ describe("the worktree manager", () => {
     expect(git(standing, "status", "--porcelain")).toContain("uncommitted.txt");
   });
 
+  it("cuts a tree from a checkout the repository named its own root for", async () => {
+    // The named checkout, under a parent unrelated to the tree root: the
+    // source is the map's answer, not a join under the configured root.
+    const bare = origin(root, "widgets");
+    const own = path.join(root, "elsewhere", "widgets");
+    execFileSync("git", ["clone", "-q", bare, own], { stdio: "ignore" });
+
+    const manager = managerFor({
+      checkouts: { "acme/widgets": own },
+    });
+
+    await manager.acquire("ITEM-1", "acme/widgets");
+
+    // The cut is from the named checkout's main, which is what the tree's
+    // first commit being the bare's proves.
+    const tree = manager.pathFor("ITEM-1", "acme/widgets");
+    expect(git(tree, "rev-parse", "HEAD")).toBe(git(bare, "rev-parse", "refs/heads/main"));
+  });
+
   it("prepares an item's branch inside its own tree, and never repoints the standing checkout", async () => {
     const bare = path.join(root, "widgets.git");
     origin(root, "widgets");

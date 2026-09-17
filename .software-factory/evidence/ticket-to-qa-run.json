@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 50,
+    "assertions_run": 53,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 41,
@@ -59,12 +59,15 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at 69c0dc7 and left one comment",
-      "the automated reviewer looked at c96bafd and had nothing to say",
+      "the automated reviewer looked at b2f8a84 and left one comment",
+      "the automated reviewer looked at 14cacc8 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on c96bafd",
+      "ada asked for changes on 14cacc8",
       "the owner settled the disagreement on the ticket",
-      "ada approved 475839f"
+      "ada approved 9e7a83d",
+      "the automated reviewer looked at 9e7a83d and had nothing to say",
+      "the automated reviewer looked at fddec17 and had nothing to say",
+      "ada approved fddec17"
     ],
     "agent_calls": [
       "triage",
@@ -87,11 +90,11 @@
       "the first commit"
     ],
     "reviewer": "ada",
-    "follow_up": "BILL-4024",
+    "follow_up": "BILL-4026",
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-17T01:56:18.517Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-17T01:56:18.311Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-17T03:34:28.863Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-17T03:34:28.664Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
     "second_run_transitions": 21
@@ -271,6 +274,18 @@
     },
     {
       "type": "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch",
+      "status": "passed"
+    },
+    {
+      "type": "checkout.a_repository_can_name_its_own_root",
+      "status": "passed"
+    },
+    {
+      "type": "checkout.the_root_still_answers_for_the_rest",
+      "status": "passed"
+    },
+    {
+      "type": "checkout.a_missing_checkout_names_which_root_was_asked",
       "status": "passed"
     },
     {

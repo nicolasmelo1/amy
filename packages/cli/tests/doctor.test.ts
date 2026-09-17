@@ -238,6 +238,43 @@ describe("diagnose", () => {
     expect(labelled(checks, "checkout acme/widgets")?.ok).toBe(true);
   });
 
+  it("finds a checkout a repository named its own root for", async () => {
+    const own = path.join(os.tmpdir(), "amy-doctor-own-root-");
+    fs.mkdirSync(path.join(own, ".git"), { recursive: true });
+    try {
+      const config = {
+        ...DEFAULT_CONFIG,
+        repos: ["acme/widgets"],
+        workspaceRoot: checkouts(),
+        checkouts: { "acme/widgets": own },
+      };
+
+      const checks = await diagnose(deps({ config }));
+
+      const named = labelled(checks, "checkout acme/widgets");
+      expect(named?.ok).toBe(true);
+      expect(named?.detail).toContain(own);
+      expect(named?.detail).toContain("its own root");
+    } finally {
+      fs.rmSync(own, { recursive: true, force: true });
+    }
+  });
+
+  it("names the workspace root it asked for a missing checkout", async () => {
+    const config = {
+      ...DEFAULT_CONFIG,
+      repos: ["acme/widgets"],
+      workspaceRoot: checkouts(),
+      checkouts: { "acme/other": "/somewhere/else" },
+    };
+
+    const checks = await diagnose(deps({ config }));
+
+    const named = labelled(checks, "checkout acme/widgets");
+    expect(named?.ok).toBe(false);
+    expect(named?.detail).toContain(`the workspace root (${checkouts()})`);
+  });
+
   it("says nothing about plugin settings when none are configured", async () => {
     const checks = await diagnose(deps());
 

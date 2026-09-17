@@ -26,6 +26,7 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-command-gate":
+    checkouts: {}
     commands: <record>
     defaultBranch: "main"
     timeoutMs: 1800000
@@ -33,6 +34,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run |
 | `commands` | `record` | **yes** |  | the check commands per repository, with a `default` fallback |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |

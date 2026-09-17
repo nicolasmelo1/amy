@@ -26,6 +26,7 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-file-worktree":
+    checkouts: {}
     defaultBranch: "main"
     retentionDays: 7
     root: ""
@@ -34,6 +35,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `checkouts` | `record` | no | `{}` | where one repository's standing checkout is, instead of under the workspace root. A repository named here is never looked for under `root` at all |
 | `defaultBranch` | `string` | no | `main` | the branch a new tree is cut from, which is not always `main` |
 | `retentionDays` | `number` | no | `7` | how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's |
 | `root` | `string` | no | `""` | where the worktrees live, outside every repository. `~` is expanded. The default is beside the state directory, which keeps one install's trees together |

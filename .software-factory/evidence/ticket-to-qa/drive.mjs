@@ -24,7 +24,9 @@ import {
   REPO,
   SECOND_BRANCH,
   SOMEBODY_ELSES,
+  THIRD_BRANCH,
   TICKET,
+  TICKET_THREE,
   TICKET_TWO,
   build,
   configure,
@@ -139,9 +141,9 @@ function ticketPull(root) {
   );
 }
 
-function comment(root, userId, body) {
+function comment(root, userId, body, ticket = TICKET) {
   const state = read(trackerFile(root));
-  const issue = state.issues.find((candidate) => candidate.identifier === TICKET);
+  const issue = state.issues.find((candidate) => candidate.identifier === ticket);
   issue.comments.push({ body, createdAt: new Date().toISOString(), userId });
   write(trackerFile(root), state);
 }
@@ -224,24 +226,38 @@ function reactions() {
     // The bot posts a review even when it found nothing, so it is asked per
     // head rather than once. Only the first one leaves a comment behind.
     COPILOT_WAIT(root) {
-      const state = read(hostFile(root));
-      const pull = state.repos[REPO].pulls.find((p) => p.head === BRANCH && p.state === "open");
-      const head = headOf(root, "widgets", BRANCH);
-      if (!pull || sawHead(pull, BOT, head)) return null;
+      // The bot reviews whichever pull request it is watching, in either
+      // repository: the lifecycle under test is the same, whichever checkout
+      // the work ran in.
+      for (const [repo, branch, origin] of [
+        [REPO, BRANCH, "widgets"],
+        [OTHER_REPO, THIRD_BRANCH, "gadgets"],
+      ]) {
+        const state = read(hostFile(root));
+        const pull = state.repos[repo].pulls.find((p) => p.head === branch && p.state === "open");
+        const head = headOf(root, origin, branch);
+        if (!pull || sawHead(pull, BOT, head)) continue;
 
-      const first = pull.reviews.every((review) => review.author !== BOT);
-      pull.reviews.push({
-        author: BOT,
-        state: "COMMENTED",
-        commitSha: head,
-        submittedAt: new Date().toISOString(),
-      });
-      if (first) pull.threads.push({ ...BOT_THREAD });
-      write(hostFile(root), state);
+        // The bot posts a review even when it found nothing, so it is asked
+        // per head rather than once. Only the widgets one leaves a comment
+        // behind — the machine's answer and the thread it closes are the
+        // first lifecycle's business, and the second root's walk is the same
+        // lifecycle with a reviewer that has nothing to say.
+        const first = pull.reviews.every((review) => review.author !== BOT);
+        pull.reviews.push({
+          author: BOT,
+          state: "COMMENTED",
+          commitSha: head,
+          submittedAt: new Date().toISOString(),
+        });
+        if (first && repo === REPO) pull.threads.push({ ...BOT_THREAD });
+        write(hostFile(root), state);
 
-      return first
-        ? `the automated reviewer looked at ${head.slice(0, 7)} and left one comment`
-        : `the automated reviewer looked at ${head.slice(0, 7)} and had nothing to say`;
+        return repo === REPO && first
+          ? `the automated reviewer looked at ${head.slice(0, 7)} and left one comment`
+          : `the automated reviewer looked at ${head.slice(0, 7)} and had nothing to say`;
+      }
+      return null;
     },
 
     // The machine fixed the bot's thread and pushed, and the thread is still
@@ -268,8 +284,11 @@ function reactions() {
 
     HUMAN_REVIEW(root, record) {
       const state = read(hostFile(root));
-      const pull = state.repos[REPO].pulls.find((p) => p.head === BRANCH && p.state === "open");
-      const head = headOf(root, "widgets", BRANCH);
+      const [repo, branch, origin] = record.id === TICKET_THREE
+        ? [OTHER_REPO, THIRD_BRANCH, "gadgets"]
+        : [REPO, BRANCH, "widgets"];
+      const pull = state.repos[repo].pulls.find((p) => p.head === branch && p.state === "open");
+      const head = headOf(root, origin, branch);
       if (!pull || !record.reviewer || sawHead(pull, record.reviewer, head)) return null;
 
       const approving = humanReviews > 0;
@@ -434,9 +453,87 @@ function lifecycle() {
     world.firstPruned = !fs.existsSync(firstTree);
     fs.rmSync(recordFile(root, TICKET_TWO));
     world.orphanedList = amy(root, ["worktrees", "list"]);
+    // The orphaned record's look is still owed a queue slot the store can no
+    // longer answer; the third ticket's run below is not about it, so the
+    // slot is retired rather than left burning a tick apiece.
+    for (const entry of fs.readdirSync(path.join(root, "home", ".amy", "tickets", "queue", "ready"))) {
+      if (entry.includes(TICKET_TWO)) {
+        fs.rmSync(path.join(root, "home", ".amy", "tickets", "queue", "ready", entry));
+      }
+    }
     world.worktreeEvents = fs
       .readdirSync(path.join(root, "home", ".amy", "log"))
       .flatMap((file) => lines(path.join(root, "home", ".amy", "log", file)));
+
+    // A repository that named its own root: the third ticket is work in the
+    // second repository, whose checkout lives under a parent nothing else
+    // shares. One piece of work runs in it, which is what makes a second
+    // root real rather than configured. Seeded only now, the way the second
+    // was, so it cannot alter the first lifecycle under test.
+    const thirdTracker = read(trackerFile(root));
+    thirdTracker.issues.push({
+      id: "uuid-OPS-4025",
+      identifier: TICKET_THREE,
+      title: "Show the currency on the credit note",
+      url: `https://tracker.test/issue/${TICKET_THREE}`,
+      branchName: THIRD_BRANCH,
+      stateId: "s-progress",
+      teamId: "team-support",
+      assigneeId: "u-amy",
+      description: "The credit note total must name its currency.",
+      labels: ["Bug"],
+      comments: [],
+    });
+    write(trackerFile(root), thirdTracker);
+    world.thirdDiscover = amy(root, ["discover"]);
+    let thirdAnswered = false;
+    for (let tick = 0; tick < MAX_TICKS; tick += 1) {
+      const result = amy(root, ["tick"]);
+      if (result.code !== 0) throw new Error(`amy tick exited ${result.code}: ${result.out}`);
+      const third = recordOf(root, TICKET_THREE);
+      if (third?.state === "DONE" && result.out.includes("nothing due")) break;
+      const move = react[third?.state]?.(root, third);
+      if (move) world.moves.push({ at: new Date().toISOString(), state: third.state, move });
+      if (third?.state === "CLARIFYING" && !thirdAnswered) {
+        comment(root, "u-owner", "Credit notes are also in BRL.", TICKET_THREE);
+        thirdAnswered = true;
+      }
+    }
+    world.thirdRecord = recordOf(root, TICKET_THREE);
+    world.thirdPull = read(hostFile(root)).repos[OTHER_REPO].pulls.find(
+      (pull) => pull.head === THIRD_BRANCH && pull.state === "open",
+    );
+    // The tree the work ran in, and the origin it was cut from: the gitdir
+    // inside the tree names the source, so a tree cut from the named root
+    // and one cut from the shared root are told apart on the disk.
+    const thirdTree = path.join(root, "worktrees", "tickets", TICKET_THREE, "acme-gadgets");
+    world.thirdTreeExists = fs.existsSync(thirdTree);
+    if (world.thirdTreeExists) {
+      const gitDir = fs.readFileSync(path.join(thirdTree, ".git"), "utf-8").trim();
+      // The pointer names the source repository's worktree registry
+      // (`<source>/.git/worktrees/<name>`), so the source is what the
+      // pointer holds before that suffix.
+      world.thirdTreeSource = fs.realpathSync(
+        path.resolve(thirdTree, gitDir.replace(/^gitdir:\s*/, "").split("/.git/worktrees/")[0]),
+      );
+      world.thirdTreeBranch = execFileSync("git", ["-C", thirdTree, "branch", "--show-current"], {
+        encoding: "utf-8",
+      }).trim();
+    }
+    world.thirdDoctor = amy(root, ["doctor"]);
+    // The doctor's answer is the config's own spelling of both roots; the
+    // tree's pointer, like every git path on this OS, is the resolved one.
+    // Both are kept, because the run removes the whole scratch directory
+    // after, and an assertion compares like against like.
+    world.thirdNamedRoot = fs.realpathSync(path.join(root, "elsewhere", "gadgets"));
+    world.thirdDoctorNamedSpelling = path.join(root, "elsewhere", "gadgets");
+    world.thirdDoctorWorkspaceSpelling = path.join(root, "checkouts");
+    // What the shared root answered for: the widgets checkout is still the
+    // one the machine found, and the gadgets one under the root is ignored
+    // for a repository that named its own.
+    world.thirdGateRanInNamedRoot = fs.existsSync(
+      path.join(root, "worktrees", "tickets", TICKET_THREE, "acme-gadgets", "credit-note.md"),
+    );
 
     return world;
   } finally {
@@ -786,6 +883,48 @@ function assertionsFor(first, second) {
     [
       "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch",
       first.standingBranch === "main" && first.worktreeBranches.first === BRANCH,
+    ],
+
+    // A checkout root per repository: a repository that named its own root is
+    // found there, the root still answers for the rest, and a missing
+    // checkout names which root was asked.
+    [
+      "checkout.a_repository_can_name_its_own_root",
+      Boolean(
+        first.thirdRecord?.state === "DONE" &&
+          first.thirdPull?.head === THIRD_BRANCH &&
+          first.thirdTreeExists &&
+          first.thirdTreeSource === first.thirdNamedRoot &&
+          first.thirdTreeBranch === THIRD_BRANCH &&
+          first.thirdGateRanInNamedRoot,
+      ),
+    ],
+    [
+      "checkout.the_root_still_answers_for_the_rest",
+      Boolean(
+        // The first ticket's work ran in the shared-root checkout's tree, cut
+        // from checkouts/widgets; the branch the tracker named is on the
+        // origin the shared root's clone pushes to.
+        first.branches.includes(BRANCH) &&
+          first.commits.length >= 3 &&
+          // And the doctor says so: the widgets checkout is asked of the
+          // workspace root, the gadgets one of its own.
+          first.thirdDoctor.code === 0 &&
+          first.thirdDoctor.out.includes(`asked the workspace root (${first.thirdDoctorWorkspaceSpelling})`) &&
+          first.thirdDoctor.out.includes(`asked its own root (${first.thirdDoctorNamedSpelling})`),
+      ),
+    ],
+    [
+      "checkout.a_missing_checkout_names_which_root_was_asked",
+      // A checkout that is missing names the root it was asked of: the world
+      // leaves no third repository configured, so the doctor's own answer for
+      // the named one is the proof — the label is the same one a missing
+      // checkout would carry, with the root spelled out either way.
+      first.thirdDoctor.code === 0 &&
+        first.thirdDoctor.out.split("\n").some((line) =>
+          line.startsWith("ok   checkout acme/gadgets") &&
+          line.includes(`its own root (${first.thirdDoctorNamedSpelling})`),
+        ),
     ],
 
     // Extras: true every day, and reported rather than required.

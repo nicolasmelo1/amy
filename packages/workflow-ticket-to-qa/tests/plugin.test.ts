@@ -6,7 +6,7 @@ import { WORKFLOW_DATA, plugin } from "../src/plugin.js";
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-09-03T12:00:00.000Z"),
-  paths: { workspace: "/w", state: "/w/.amy" },
+  paths: { workspace: "/w", checkouts: {}, state: "/w/.amy" },
 };
 
 const SETTINGS = {

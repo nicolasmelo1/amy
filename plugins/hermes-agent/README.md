@@ -26,6 +26,7 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-hermes-agent":
+    checkouts: {}
     defaultBranch: "main"
     model: ""
     models: []
@@ -35,6 +36,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the agent is sent |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |

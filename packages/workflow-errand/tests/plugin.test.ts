@@ -5,7 +5,7 @@ import { plugin as errand } from "../src/plugin.js";
 const host: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-09-05T10:00:00.000Z"),
-  paths: { workspace: "/checkouts", state: "/state" },
+  paths: { workspace: "/checkouts", checkouts: {}, state: "/state" },
 };
 
 /** A plugin that mounts one port, so a test can leave exactly one out. */

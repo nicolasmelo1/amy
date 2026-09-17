@@ -58,6 +58,14 @@ export interface ObservationSource {
 export interface HostPaths {
   /** Where the checkouts a workflow works in live. */
   readonly workspace: string;
+  /**
+   * Where one repository's checkout is, instead of under the workspace root.
+   *
+   * The host answers with the map it read, and a repository absent from it
+   * resolves through `workspace` exactly as before; the workflows hand it to
+   * the `Git` layout and never join a path of their own.
+   */
+  readonly checkouts: Readonly<Record<string, string>>;
   /** Where the host keeps its own state. */
   readonly state: string;
 }

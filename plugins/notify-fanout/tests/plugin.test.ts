@@ -29,7 +29,7 @@ async function hostWith(channels: ReturnType<typeof channelPlugin>[], events: Ev
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: () => new Date("2026-09-03T12:00:00.000Z"),
     log: { append: (event) => events.push(event), read: () => [...events] },
-    paths: { workspace: "/w", state: "/w/.amy" },
+    paths: { workspace: "/w", checkouts: {}, state: "/w/.amy" },
   };
 
   const outcome = await mount([plugin, ...channels], {}, host);

@@ -103,5 +103,5 @@ export { mount, unmetNeeds } from "./mount.js";
 export type { HostServices, Mounted, MountOutcome } from "./mount.js";
 export { validateConfig } from "./config-schema.js";
 export type { ConfigField, ConfigFieldType, ConfigResult, ConfigSchema } from "./config-schema.js";
-export { Git } from "./git.js";
+export { checkoutFor, Git } from "./git.js";
 export type { RepoLayout } from "./git.js";

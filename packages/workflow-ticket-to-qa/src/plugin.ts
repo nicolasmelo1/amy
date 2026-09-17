@@ -106,6 +106,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
       ctx.runner,
       {
         workspaceRoot: ctx.paths.workspace,
+        checkouts: ctx.paths.checkouts,
         defaultBranch: ctx.config.defaultBranch as string,
       },
       ctx.port("worktree") as Worktree | undefined,

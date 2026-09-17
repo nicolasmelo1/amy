@@ -12,6 +12,7 @@ export const plugin: Plugin = {
       ctx.runner,
       {
         workspaceRoot: ctx.paths.workspace,
+        checkouts: ctx.paths.checkouts,
         defaultBranch: ctx.config.defaultBranch as string,
       },
       // The gate (and the agent it hands paths to) runs where the work runs:

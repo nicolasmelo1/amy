@@ -19,6 +19,12 @@ export const configSchema: ConfigSchema = {
     description: "the branch a new tree is cut from, which is not always `main`",
     default: "main",
   },
+  checkouts: {
+    type: "record",
+    description:
+      "where one repository's standing checkout is, instead of under the workspace root. A repository named here is never looked for under `root` at all",
+    default: {},
+  },
   retentionDays: {
     type: "number",
     description:

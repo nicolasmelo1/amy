@@ -7,6 +7,12 @@ export const configSchema: ConfigSchema = {
     description: "the branch new work is cut from, which is not always `main`",
     default: "main",
   },
+  checkouts: {
+    type: "record",
+    description:
+      "where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run",
+    default: {},
+  },
   commands: {
     type: "record",
     required: true,

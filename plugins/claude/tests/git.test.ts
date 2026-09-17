@@ -22,6 +22,24 @@ describe("Git.pathFor", () => {
   });
 });
 
+describe("Git.pathFor, when a repository names its own root", () => {
+  const own = { ...layout, checkouts: { "Northwind/northwind-backend": "/work/backend" } };
+
+  it("finds it there, and nowhere under the shared root", () => {
+    const git = new Git(new ScriptedRunner(), own);
+
+    expect(git.pathFor("Northwind/northwind-backend")).toBe("/work/backend");
+  });
+
+  it("still finds the rest under the shared root", () => {
+    const git = new Git(new ScriptedRunner(), own);
+
+    expect(git.pathFor("Northwind/northwind-frontend")).toBe(
+      "/home/dev/workspaces/northwind/northwind-frontend",
+    );
+  });
+});
+
 describe("Git.prepareBranch", () => {
   it("tracks the remote branch when it already exists", async () => {
     const runner = new ScriptedRunner();

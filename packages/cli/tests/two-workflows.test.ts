@@ -196,7 +196,7 @@ describe("two workflows, one machine", () => {
       // One log for both profiles, which is what makes "the same budget" a
       // fact rather than a claim: the ceiling is measured off the log.
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", state: path.join(root, ".amy") },
+      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
     };
   });
 
@@ -297,7 +297,7 @@ describe("a note reaching a pull request", () => {
       runner: { run: world.run },
       now: () => new Date("2026-09-04T20:00:00.000Z"),
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", state: path.join(root, ".amy") },
+      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
     };
   });
 
@@ -524,7 +524,7 @@ describe("a tick that gives up", () => {
       },
       now: () => new Date("2026-09-04T20:00:00.000Z"),
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", state: path.join(root, ".amy") },
+      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
     };
   });
 
@@ -622,7 +622,7 @@ describe("a task said in passing", () => {
       runner: { run: world.run },
       now: () => new Date("2026-09-05T10:00:00.000Z"),
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", state: path.join(root, ".amy") },
+      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
     };
   });
 
