@@ -30,6 +30,12 @@ export const configSchema: ConfigSchema = {
     description: "the branch an errand branch is cut from, which is not always `main`",
     default: "main",
   },
+  baseBranch: {
+    type: "record",
+    description:
+      "where one repository's base branch is, instead of the fallback. A repository named here has its errand opened against that branch",
+    default: {},
+  },
   policy: {
     type: "record",
     description:
@@ -63,9 +69,18 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observati
         workspaceRoot: ctx.paths.workspace,
         checkouts: ctx.paths.checkouts,
         defaultBranch: ctx.config.defaultBranch as string,
+        baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
       },
       ctx.port("worktree") as Worktree | undefined,
     ),
+    // The same layout, named for the question `Git` does not answer: what the
+    // pull request opens against.
+    layout: {
+      workspaceRoot: ctx.paths.workspace,
+      checkouts: ctx.paths.checkouts,
+      defaultBranch: ctx.config.defaultBranch as string,
+      baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
+    },
     now: ctx.now,
     log: ctx.log,
     config: { repos: ctx.config.repos as string[] },

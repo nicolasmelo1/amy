@@ -2,6 +2,7 @@ import {
   ActionContext,
   ActionHandler,
   AgentRun,
+  baseBranchFor,
   CodeHost,
   Event,
   EventKind,
@@ -9,6 +10,7 @@ import {
   Git,
   Harness,
   Notifier,
+  RepoLayout,
   Store,
   WorkflowRuntime,
 } from "@amykit/core";
@@ -32,6 +34,11 @@ export interface ErrandRuntimeDeps {
   host: CodeHost;
   notifier: Notifier;
   git: Git;
+  /**
+   * The layout the `Git` above resolves, named for the one question `Git`
+   * does not answer: what a repository's pull request opens against.
+   */
+  layout: RepoLayout;
   /** Read to count what is already in flight, never written to here. */
   records: Store<ErrandRecord>;
   now: () => Date;
@@ -139,6 +146,7 @@ export function errandRuntime(
         repo: task.repo,
         branch: branchFor(slugFor(task)),
         title: pullRequestTitle(task),
+        base: baseBranchFor(deps.layout, task.repo),
         body: pullRequestBody(task, ctx.record.lastAttempt?.output ?? ""),
         // A draft, because nobody asked for this at the moment it landed.
         // Work somebody is waiting on is not a draft; an errand is something

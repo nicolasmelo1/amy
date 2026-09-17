@@ -30,6 +30,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     },
     "@amykit/plugin-command-gate": {
       defaultBranch: config.defaultBranch,
+      baseBranch: config.baseBranch,
       checkouts: config.checkouts,
       commands: config.gate,
     },
@@ -52,6 +53,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     "@amykit/workflow-note-to-plan": {
       repos: config.plans.repos,
       defaultBranch: config.defaultBranch,
+      baseBranch: config.baseBranch,
       policy: config.plans.policy,
     },
     // The third workflow's vocabulary: where an errand may be done, and the
@@ -59,6 +61,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     "@amykit/workflow-errand": {
       repos: config.repos,
       defaultBranch: config.defaultBranch,
+      baseBranch: config.baseBranch,
       policy: config.errands.policy,
     },
     "@amykit/plugin-file-tasks": {
@@ -74,6 +77,12 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     // function reads.
     "@amykit/workflow-ticket-to-qa": {
       repos: config.repos,
+      // Both halves of the layout, named the way the workflow's own schema
+      // does: the branch a repository without a mapping is cut from, and the
+      // map that names one. Derived here so no workflow package carries a
+      // branch mapping of its own.
+      defaultBranch: config.defaultBranch,
+      baseBranch: config.baseBranch,
       qaStatusName: config.qaStatusName,
       policy: config.policy,
     },
@@ -85,6 +94,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       root: config.worktrees.root,
       workflow: profile.name,
       defaultBranch: config.defaultBranch,
+      baseBranch: config.baseBranch,
       checkouts: config.checkouts,
       retentionDays: config.worktrees.retentionDays,
     },
@@ -137,6 +147,10 @@ function harnessSlice(config: AmyConfig, harness: string): Record<string, unknow
     // The per-repository map rides beside the branch: both are the layout a
     // `Git` needs to find a checkout, and the shim is how they reach it.
     checkouts: config.checkouts,
+    // And the map of base branches rides beside them both, for the same
+    // reason: the repository is known per piece of work, not when the slice
+    // is built.
+    baseBranch: config.baseBranch,
     model: config.agent.model ?? "",
     models: fromLadder.length > 0 ? fromLadder : (config.agent.models ?? []),
     reviewerHints: config.agent.reviewerHints ?? {},

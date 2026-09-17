@@ -192,8 +192,22 @@ interface RawPullRequest {
   };
 }
 
+interface GitHubCodeHostConfig {
+  /**
+   * Where one repository's base branch is, instead of the forge's own default
+   * for it.
+   *
+   * The forge is asked when a repository named none, which keeps the answer
+   * an install without a mapping has always had: the forge's own.
+   */
+  baseBranch?: Readonly<Record<string, string>>;
+}
+
 export class GitHubCodeHost implements CodeHost {
-  constructor(private readonly runner: CommandRunner) {}
+  constructor(
+    private readonly runner: CommandRunner,
+    private readonly config: GitHubCodeHostConfig = {},
+  ) {}
 
   async findPullRequest(repo: string, branch: string): Promise<PullRequestView | null> {
     const { owner, name } = split(repo);
@@ -223,7 +237,10 @@ export class GitHubCodeHost implements CodeHost {
   }
 
   async openPullRequest(request: OpenPullRequestRequest): Promise<number> {
-    const base = await this.defaultBranch(request.repo);
+    // The forge is asked only when nothing named an answer: the mapped base
+    // is the install's own fact about the repository, and asking over it
+    // would answer a question already settled in the config.
+    const base = request.base ?? this.config.baseBranch?.[request.repo] ?? (await this.defaultBranch(request.repo));
 
     const created = await this.gh([
       "api",

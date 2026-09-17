@@ -719,6 +719,11 @@
         },
         {
           "depth": 3,
+          "title": "A base branch per repository.",
+          "slug": "a-base-branch-per-repository"
+        },
+        {
+          "depth": 3,
           "title": "A brief reaches every ticket it explains.",
           "slug": "a-brief-reaches-every-ticket-it-explains"
         },
@@ -5155,6 +5160,13 @@
         ],
         "settings": [
           {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
+          },
+          {
             "name": "checkouts",
             "type": "record",
             "required": false,
@@ -5220,6 +5232,13 @@
           }
         ],
         "settings": [
+          {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
+          },
           {
             "name": "checkouts",
             "type": "record",
@@ -5316,6 +5335,13 @@
         ],
         "contributes": [],
         "settings": [
+          {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
+          },
           {
             "name": "checkouts",
             "type": "record",
@@ -5514,6 +5540,13 @@
         "contributes": [],
         "settings": [
           {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its trees cut from that branch"
+          },
+          {
             "name": "checkouts",
             "type": "record",
             "required": false,
@@ -5525,7 +5558,7 @@
             "type": "string",
             "required": false,
             "default": "main",
-            "description": "the branch a new tree is cut from, which is not always `main`"
+            "description": "the branch a tree is cut from for a repository that named none, which is not always `main`"
           },
           {
             "name": "retentionDays",
@@ -5564,7 +5597,15 @@
           "code-host"
         ],
         "contributes": [],
-        "settings": [],
+        "settings": [
+          {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the forge's own default for it. A repository named here has its pull requests opened against that branch"
+          }
+        ],
         "environment": []
       },
       {
@@ -5588,6 +5629,13 @@
           }
         ],
         "settings": [
+          {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
+          },
           {
             "name": "checkouts",
             "type": "record",
@@ -5853,6 +5901,13 @@
         ],
         "settings": [
           {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its errand opened against that branch"
+          },
+          {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
@@ -5893,6 +5948,13 @@
         ],
         "settings": [
           {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its plan opened against that branch"
+          },
+          {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
@@ -5932,6 +5994,20 @@
           }
         ],
         "settings": [
+          {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
+          },
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
+          },
           {
             "name": "policy",
             "type": "record",
@@ -6254,7 +6330,9 @@
           "engine.records_the_notification_it_could_not_send",
           "engine.finishes_the_tick_when_every_channel_throws",
           "engine.finishes_the_tick_when_the_log_cannot_be_written",
-          "engine.every_line_matches_the_contract"
+          "engine.every_line_matches_the_contract",
+          "base.a_repository_can_name_its_own_branch",
+          "base.the_fallback_still_answers_for_the_rest"
         ],
         "scenario": ".software-factory/evidence/plugin-serial-engine-scenario.sh"
       },
@@ -6621,6 +6699,62 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-base-branch-per-repository",
+        "title": "A base branch per repository.",
+        "body": "`baseBranch:` maps a repository to its own base branch beside `defaultBranch`,\nwhich keeps its name and stays the fallback; a config without the block\nresolves exactly as before. The map rides `pluginSlices` to every reader of\nthe layout — the harnesses, the gate, the worktree manager, whose trees are\ncut from the mapped branch, and the workflows, which resolve the repository's\nown base where the piece of work is known — and the pull request each workflow\nopens is told that base by name, falling back to the forge's own default when\nnothing was named.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
       {
         "id": "a-brief-reaches-every-ticket-it-explains",
         "title": "A brief reaches every ticket it explains.",

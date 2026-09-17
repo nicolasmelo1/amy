@@ -39,6 +39,7 @@ It emits `announce`, `open-pull-request` and `run-errand`.
 ```yaml
 plugins:
   "@amykit/workflow-errand":
+    baseBranch: {}
     defaultBranch: "main"
     policy: {}
     repos: <string[]>
@@ -46,6 +47,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its errand opened against that branch |
 | `defaultBranch` | `string` | no | `main` | the branch an errand branch is cut from, which is not always `main` |
 | `policy` | `record` | no | `{}` | maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default |
 | `repos` | `string[]` | **yes** |  | the repositories an errand may be done in. A task about anything else is handed back to whoever asked |

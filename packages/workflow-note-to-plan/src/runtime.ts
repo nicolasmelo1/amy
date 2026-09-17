@@ -2,6 +2,7 @@ import {
   ActionContext,
   ActionHandler,
   AgentRun,
+  baseBranchFor,
   CodeHost,
   Event,
   EventKind,
@@ -10,6 +11,7 @@ import {
   Harness,
   Notifier,
   Plan,
+  RepoLayout,
   Store,
   WorkflowRuntime,
 } from "@amykit/core";
@@ -43,6 +45,11 @@ export interface PlanRuntimeDeps {
   host: CodeHost;
   notifier: Notifier;
   git: Git;
+  /**
+   * The layout the `Git` above resolves, named for the one question `Git`
+   * does not answer: what a repository's pull request opens against.
+   */
+  layout: RepoLayout;
   /** Read to count what is already in flight, never written to here. */
   records: Store<PlanRecord>;
   now: () => Date;
@@ -176,6 +183,7 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, 
         repo: note.repo,
         branch: branchFor(slug),
         title: pullRequestTitle(slug),
+        base: baseBranchFor(deps.layout, note.repo),
         // Written out, unlike the ticket workflow's. There is no ticket
         // behind this one to be the description.
         body: pullRequestBody(note, slug),

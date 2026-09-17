@@ -2,6 +2,7 @@ import {
   ActionContext,
   ActionHandler,
   AgentRun,
+  baseBranchFor,
   BriefStore,
   CodeHost,
   Event,
@@ -9,6 +10,7 @@ import {
   EventLog,
   Notifier,
   Plan,
+  RepoLayout,
   renderBrief,
   WorkflowRuntime,
 } from "@amykit/core";
@@ -49,6 +51,12 @@ export interface TicketRuntimeDeps {
   policy: Policy;
   /** The checkout half of the ports, for the self-review's working tree. */
   git: Git;
+  /**
+   * The layout the `Git` above resolves, named for the one question `Git`
+   * does not answer: what a repository's pull request opens against. Handed
+   * beside it rather than derived, so the two never disagree.
+   */
+  layout: RepoLayout;
   /** Optional, so a runtime with no log still runs. */
   log?: EventLog;
   /**
@@ -250,10 +258,14 @@ export function ticketRuntime(
     },
 
     "open-pull-request": async (_effect, ctx) => {
+      // The base is the repository's own: the mapping reached this runtime
+      // beside the fallback it overrides, and the host is told only what
+      // was named — an absent base keeps the forge's own default.
       outcomesOf(ctx).pullRequestNumber = await deps.host.openPullRequest({
         repo: ctx.observation.ticket.repo,
         branch: ctx.observation.ticket.branchName,
         title: pullRequestTitle(ctx.observation.ticket),
+        base: baseBranchFor(deps.layout, ctx.observation.ticket.repo),
         // Empty by convention. The ticket is the description.
         body: "",
       });

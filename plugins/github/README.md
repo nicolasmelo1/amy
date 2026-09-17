@@ -23,8 +23,19 @@ workflows:
 
 ## Configuration
 
-This package declares no settings. A config that gives it some is refused at boot,
-because a setting nobody reads is one somebody believes is working.
+```yaml
+plugins:
+  "@amykit/plugin-github":
+    baseBranch: {}
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the forge's own default for it. A repository named here has its pull requests opened against that branch |
+
+Every field is checked at boot against the schema this package declares. A key that is
+not one of the above is a refusal naming the plugin and the key, not a setting that
+silently never applied.
 
 ## Where the reasoning is
 

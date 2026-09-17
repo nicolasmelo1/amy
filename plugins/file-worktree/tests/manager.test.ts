@@ -126,6 +126,37 @@ describe("the worktree manager", () => {
     expect(git(first, "rev-parse", "HEAD")).toBe(git(second, "rev-parse", "HEAD"));
   });
 
+  it("cuts a tree from the base branch the repository named", async () => {
+    const bare = origin(root, "widgets");
+    const seed = path.join(root, "trunk-seed");
+    execFileSync("git", ["clone", "-q", bare, seed], { stdio: "ignore" });
+    git(seed, "config", "user.email", "amy@example.test");
+    git(seed, "config", "user.name", "amy");
+    git(seed, "checkout", "-q", "-b", "trunk");
+    fs.writeFileSync(path.join(seed, "trunk.txt"), "the other base\n", "utf-8");
+    git(seed, "add", "-A");
+    git(seed, "commit", "-q", "-m", "on trunk");
+    git(seed, "push", "-q", "origin", "trunk");
+
+    const manager = managerFor({ baseBranch: { [bare]: "trunk" } });
+
+    const tree = await manager.acquire("ITEM-1", bare);
+
+    // The tree stands on the mapped base's commit, not the fallback's.
+    expect(git(tree, "rev-parse", "HEAD")).toBe(git(bare, "rev-parse", "refs/heads/trunk"));
+  });
+
+  it("cuts a repository without a mapping from the fallback, in the same install", async () => {
+    const mapped = origin(root, "widgets");
+    const unmapped = origin(root, "gadgets");
+    const manager = managerFor({ baseBranch: { [mapped]: "main" } });
+
+    const tree = await manager.acquire("ITEM-1", unmapped);
+
+    // The fallback answered: the same main the origin was seeded with.
+    expect(git(tree, "rev-parse", "HEAD")).toBe(git(unmapped, "rev-parse", "refs/heads/main"));
+  });
+
   it("reuses a tree it already cut, rather than resetting it", async () => {
     const repo = origin(root, "widgets");
     const manager = managerFor();

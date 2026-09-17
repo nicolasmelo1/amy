@@ -22,6 +22,19 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
+### A base branch per repository.
+
+`patch` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-command-gate`, `@amykit/plugin-file-worktree`, `@amykit/plugin-github`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-plan-check`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
+
+`baseBranch:` maps a repository to its own base branch beside `defaultBranch`,
+which keeps its name and stays the fallback; a config without the block
+resolves exactly as before. The map rides `pluginSlices` to every reader of
+the layout — the harnesses, the gate, the worktree manager, whose trees are
+cut from the mapped branch, and the workflows, which resolve the repository's
+own base where the piece of work is known — and the pull request each workflow
+opens is told that base by name, falling back to the forge's own default when
+nothing was named.
+
 ### A brief reaches every ticket it explains.
 
 `patch` · `@amykit/agent-kit`, `@amykit/cli`, `@amykit/core`, `@amykit/plugin-file-store`, `@amykit/plugin-linear`, `@amykit/workflow-ticket-to-qa`

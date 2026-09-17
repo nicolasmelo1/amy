@@ -26,6 +26,7 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-command-gate":
+    baseBranch: {}
     checkouts: {}
     commands: <record>
     defaultBranch: "main"
@@ -34,6 +35,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run |
 | `commands` | `record` | **yes** |  | the check commands per repository, with a `default` fallback |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |

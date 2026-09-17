@@ -1232,6 +1232,7 @@ async function worktreeManager(config: AmyConfig): Promise<Worktree> {
     root: config.worktrees.root || path.join(home, "worktrees"),
     workflow: profile.name,
     defaultBranch: config.defaultBranch,
+    baseBranch: config.baseBranch,
     retentionDays: config.worktrees.retentionDays,
     record: (workId) => {
       const file = path.join(place.records, `${workId}.json`);

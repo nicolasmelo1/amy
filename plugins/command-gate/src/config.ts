@@ -7,6 +7,12 @@ export const configSchema: ConfigSchema = {
     description: "the branch new work is cut from, which is not always `main`",
     default: "main",
   },
+  baseBranch: {
+    type: "record",
+    description:
+      "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch",
+    default: {},
+  },
   checkouts: {
     type: "record",
     description:

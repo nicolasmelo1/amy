@@ -26,6 +26,7 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-hermes-agent":
+    baseBranch: {}
     checkouts: {}
     defaultBranch: "main"
     model: ""
@@ -36,6 +37,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the agent is sent |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |

@@ -302,6 +302,66 @@ describe("GitHubCodeHost.openPullRequest", () => {
     expect(argv).toContain("body=");
   });
 
+  it("opens against the base the repository named, without asking the forge", async () => {
+    const runner = new ScriptedRunner([
+      // No default_branch scripted: a call to it would fail the run, so the
+      // assertion below also proves the forge was never asked.
+      { match: whenArgsInclude("/pulls", "POST"), result: { stdout: JSON.stringify({ number: 4951 }) } },
+    ]);
+
+    const number = await new GitHubCodeHost(runner, {
+      baseBranch: { "Northwind/northwind-backend": "trunk" },
+    }).openPullRequest({
+      repo: "Northwind/northwind-backend",
+      branch: "ada/proj-1239-total-is-wrong",
+      title: "PROJ-1239: The total is wrong on the invoice",
+      body: "",
+    });
+
+    expect(number).toBe(4951);
+
+    const argv = runner.argvFor("gh", 0);
+    expect(argv).toContain("base=trunk");
+  });
+
+  it("keeps the forge's own default for a repository that named none, in the same install", async () => {
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("/repos/Northwind/northwind-frontend", ".default_branch"), result: { stdout: "main" } },
+      { match: whenArgsInclude("/pulls", "POST"), result: { stdout: JSON.stringify({ number: 4952 }) } },
+    ]);
+
+    await new GitHubCodeHost(runner, {
+      baseBranch: { "Northwind/northwind-backend": "trunk" },
+    }).openPullRequest({
+      repo: "Northwind/northwind-frontend",
+      branch: "b",
+      title: "t",
+      body: "",
+    });
+
+    const argv = runner.argvFor("gh", 1);
+    expect(argv).toContain("base=main");
+  });
+
+  it("answers the request's own base before the mapped one, when a caller names it", async () => {
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("/pulls", "POST"), result: { stdout: JSON.stringify({ number: 4953 }) } },
+    ]);
+
+    await new GitHubCodeHost(runner, {
+      baseBranch: { "Northwind/northwind-backend": "trunk" },
+    }).openPullRequest({
+      repo: "Northwind/northwind-backend",
+      branch: "b",
+      title: "t",
+      base: "develop",
+      body: "",
+    });
+
+    const argv = runner.argvFor("gh", 0);
+    expect(argv).toContain("base=develop");
+  });
+
   it("fails when GitHub does not return a number", async () => {
     const runner = new ScriptedRunner([
       { match: whenArgsInclude(".default_branch"), result: { stdout: "main" } },

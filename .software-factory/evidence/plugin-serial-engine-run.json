@@ -15,9 +15,9 @@
     ]
   },
   "observed": {
-    "assertions_run": 16,
+    "assertions_run": 18,
     "assertions_failed": 0,
-    "log_lines_written": 40,
+    "log_lines_written": 50,
     "node": "v22.22.2"
   },
   "assertions": [
@@ -83,6 +83,14 @@
     },
     {
       "type": "engine.every_line_matches_the_contract",
+      "status": "passed"
+    },
+    {
+      "type": "base.a_repository_can_name_its_own_branch",
+      "status": "passed"
+    },
+    {
+      "type": "base.the_fallback_still_answers_for_the_rest",
       "status": "passed"
     }
   ]
