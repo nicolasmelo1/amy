@@ -218,6 +218,11 @@
           "description": "The design behind one warning down, silence, one warning back — and the rule about which port calls may be swallowed."
         },
         {
+          "title": "A base branch per repository",
+          "path": "/design/a-base-branch-per-repository",
+          "description": ""
+        },
+        {
           "title": "A brief reaches every ticket it explains",
           "path": "/design/a-brief-reaches-every-ticket-it-explains",
           "description": ""
@@ -1366,6 +1371,33 @@
           "depth": 2,
           "title": "Writing one",
           "slug": "writing-one"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-base-branch-per-repository",
+      "file": "docs/design/a-base-branch-per-repository.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-base-branch-per-repository.md",
+      "title": "A base branch per repository",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
         }
       ]
     },

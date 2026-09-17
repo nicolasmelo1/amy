@@ -34,7 +34,7 @@
     "gave_up": "PR_OPEN",
     "agent_calls": 6,
     "check_calls": 6,
-    "gh_calls": 11,
+    "gh_calls": 8,
     "pull_requests": {
       "acme/amy": 2,
       "acme/software-factory": 0
@@ -42,8 +42,8 @@
     "notes_left": [
       "by-hand.md",
       "not-mine.md",
-      "note-2026-09-17T141251124.md",
-      "note-2026-09-17T141255220.md",
+      "note-2026-09-18T000621636.md",
+      "note-2026-09-18T000625475.md",
       "will-break.md"
     ],
     "budget": "new work: allowed"
