@@ -29,6 +29,7 @@ For what the two halves mean and why, see
 | `maxItemAttempts` | `number` | `5` |  |
 | `policy` | `Policy` | `DEFAULT_POLICY` |  |
 | `workspaceRoot` | `string` | `"."` | Directory holding one checkout per repository. `~` is expanded. |
+| `checkouts` | `Record<string, string>` | `{}` | Where one repository's checkout is, instead of under the root. |
 | `defaultBranch` | `string` | `"main"` | Branch new work is cut from. |
 | `repoByTeam` | `Record<string, string>` | `{}` | Which repository a team's tickets land in, by team key. |
 | `gate` | `Record<string, string[]>` | `{}` | Gate commands per repository, with a `default` fallback. |
@@ -208,6 +209,13 @@ agent:
 # Where the checkouts live. One directory per repository, named after the
 # repository without its owner.
 workspaceRoot: ~/workspaces/northwind
+# Where one repository's checkout is, instead of under the root. A repository
+# named here is not looked for under workspaceRoot at all, so work can span
+# repositories two unrelated parents hold — with no symlink standing in for
+# the map. Every value expands ~ the way workspaceRoot does.
+# checkouts:
+#   Northwind/northwind-backend: ~/work/backend
+#   acme/amy: ~/code/amy
 defaultBranch: main
 
 # Which repository a team's tickets land in, by team key. A team that is not

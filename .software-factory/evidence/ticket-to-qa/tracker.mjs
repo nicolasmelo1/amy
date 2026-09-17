@@ -175,7 +175,10 @@ const OPERATIONS = [
         title: variables.input.title,
         url: `https://tracker.test/issue/${identifier}`,
         branchName: `amy/${identifier.toLowerCase()}`,
-        stateId: team.states[0].id,
+        // Parked, not working: a follow-up is somebody else's decision to
+        // make, and a decision nobody has made yet is not the machine's next
+        // piece of work. The working status would put it in the queue.
+        stateId: team.states[1].id,
         teamId: team.id,
         assigneeId: state.viewer.id,
         parentId: variables.input.parentId,

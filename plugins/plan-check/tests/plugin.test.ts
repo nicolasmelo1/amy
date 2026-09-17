@@ -8,7 +8,7 @@ function hostWith(runner: ScriptedRunner): HostServices {
   return {
     runner,
     now: () => new Date("2026-09-04T20:00:00.000Z"),
-    paths: { workspace: "/checkouts", state: "/state" },
+    paths: { workspace: "/checkouts", checkouts: {}, state: "/state" },
   };
 }
 

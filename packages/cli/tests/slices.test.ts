@@ -66,6 +66,28 @@ describe("pluginSlices", () => {
     expect(slices["@amykit/plugin-command-gate"]?.commands).toEqual({ "acme/widgets": ["npm test"] });
   });
 
+  it("hands no checkout map when the config named none, so nothing resolves differently", () => {
+    // A config with no `checkouts:` block behaves exactly as before: the map
+    // the slices hand out is empty, and a `Git` given it resolves every
+    // repository under the root it already joined.
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amykit/plugin-claude"]?.checkouts).toEqual({});
+    expect(slices["@amykit/plugin-command-gate"]?.checkouts).toEqual({});
+    expect(slices["@amykit/plugin-file-worktree"]?.checkouts).toEqual({});
+  });
+
+  it("carries the per-repository map the config wrote, beside the root", () => {
+    const slices = pluginSlices(
+      { ...CONFIG, checkouts: { "acme/widgets": "/work/widgets" } },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amykit/plugin-claude"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
+    expect(slices["@amykit/plugin-command-gate"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
+    expect(slices["@amykit/plugin-file-worktree"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
+  });
+
   it("gives the workflow the policy, so a configured ceiling reaches the machine", () => {
     const slices = pluginSlices({
       ...CONFIG,

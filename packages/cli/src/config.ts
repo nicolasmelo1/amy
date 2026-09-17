@@ -131,6 +131,15 @@ export interface AmyConfig {
 
   /** Directory holding one checkout per repository. `~` is expanded. */
   workspaceRoot: string;
+  /**
+   * Where one repository's checkout is, instead of under the root.
+   *
+   * A repository named here is not looked for under `workspaceRoot` at all,
+   * so work can span repositories two unrelated parents hold, with no
+   * symlink standing in for the map and nothing in the state directory
+   * holding configuration. Values expand `~` the way `workspaceRoot` does.
+   */
+  checkouts: Record<string, string>;
   /** Branch new work is cut from. */
   defaultBranch: string;
   /** Which repository a team's tickets land in, by team key. */
@@ -210,6 +219,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   maxItemAttempts: 5,
   policy: DEFAULT_POLICY,
   workspaceRoot: ".",
+  checkouts: {},
   defaultBranch: "main",
   repoByTeam: {},
   gate: {},
@@ -229,6 +239,21 @@ function expandHome(value: string): string {
   if (value === "~") return os.homedir();
   if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
   return value;
+}
+
+/** Every value in the map, expanded the way `workspaceRoot` is. */
+function expandHomeIn(checkouts: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(checkouts).map(([repo, value]) => [repo, expandHome(value)]),
+  );
+}
+
+/** The checkout layout is one merge unit, so every reader resolves it alike. */
+function checkoutLayoutFrom(parsed: Partial<AmyConfig>): Pick<AmyConfig, "workspaceRoot" | "checkouts"> {
+  return {
+    workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
+    checkouts: expandHomeIn(parsed.checkouts ?? DEFAULT_CONFIG.checkouts),
+  };
 }
 
 /**
@@ -283,7 +308,7 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
       retentionDays:
         parsed.worktrees?.retentionDays ?? DEFAULT_CONFIG.worktrees.retentionDays,
     },
-    workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
+    ...checkoutLayoutFrom(parsed),
   };
 }
 
@@ -488,6 +513,13 @@ agent:
 # Where the checkouts live. One directory per repository, named after the
 # repository without its owner.
 workspaceRoot: ~/workspaces/northwind
+# Where one repository's checkout is, instead of under the root. A repository
+# named here is not looked for under workspaceRoot at all, so work can span
+# repositories two unrelated parents hold — with no symlink standing in for
+# the map. Every value expands ~ the way workspaceRoot does.
+# checkouts:
+#   Northwind/northwind-backend: ~/work/backend
+#   acme/amy: ~/code/amy
 defaultBranch: main
 
 # Which repository a team's tickets land in, by team key. A team that is not

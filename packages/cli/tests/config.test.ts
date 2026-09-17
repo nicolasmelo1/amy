@@ -38,6 +38,23 @@ describe("config", () => {
     expect(config.policy).toEqual(DEFAULT_CONFIG.policy);
   });
 
+  it("expands `~` in a per-repository checkout path", () => {
+    fs.writeFileSync(
+      paths(root).config,
+      "repos:\n  - a/b\ncheckouts:\n  a/b: ~/code/b\n",
+    );
+
+    const config = loadConfig(root);
+
+    expect(config.checkouts["a/b"]).toBe(path.join(os.homedir(), "code", "b"));
+  });
+
+  it("keeps an empty `checkouts` block when the file names none", () => {
+    fs.writeFileSync(paths(root).config, "repos:\n  - a/b\n");
+
+    expect(loadConfig(root).checkouts).toEqual({});
+  });
+
   it("merges a partial policy rather than replacing it", () => {
     fs.writeFileSync(paths(root).config, "policy:\n  maxGateAttempts: 9\n");
 

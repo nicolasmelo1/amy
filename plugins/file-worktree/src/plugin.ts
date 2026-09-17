@@ -32,6 +32,7 @@ function settingsFor(ctx: PluginContext): WorktreeManagerConfig {
     workflow,
     defaultBranch: ctx.config.defaultBranch as string,
     workspaceRoot: ctx.paths.workspace,
+    checkouts: ctx.paths.checkouts,
     retentionDays: ctx.config.retentionDays as number,
     // Read on every look, never folded in at mount: a record deleted under a
     // running install turns its tree orphaned at the next list, which is the

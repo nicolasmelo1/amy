@@ -11,6 +11,13 @@ export interface WorktreeManagerConfig {
   defaultBranch: string;
   /** The standing checkouts, used only as the source for a named repository. */
   workspaceRoot?: string;
+  /**
+   * Where one repository's standing checkout is, instead of under the root.
+   *
+   * The source a tree is cut from is the same answer `Git` resolves, so a
+   * repository named here is never looked for under `workspaceRoot` at all.
+   */
+  checkouts?: Readonly<Record<string, string>>;
   /** How many days a terminal, clean tree stays before a prune may take it. */
   retentionDays: number;
   /**
@@ -299,8 +306,11 @@ export class WorktreeManager implements Worktree {
   /** A logical `owner/repo` lives under the configured standing checkout root. */
   private sourceFor(repo: string): string {
     if (path.isAbsolute(repo)) return repo;
+    const named = this.config.checkouts?.[repo];
+    if (named !== undefined) return named;
+    if (!this.config.workspaceRoot) return repo;
     const name = repo.includes("/") ? repo.slice(repo.indexOf("/") + 1) : repo;
-    return this.config.workspaceRoot ? path.join(this.config.workspaceRoot, name) : repo;
+    return path.join(this.config.workspaceRoot, name);
   }
 }
 

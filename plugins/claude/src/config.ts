@@ -7,6 +7,12 @@ export const configSchema: ConfigSchema = {
     description: "the branch new work is cut from, which is not always `main`",
     default: "main",
   },
+  checkouts: {
+    type: "record",
+    description:
+      "where one repository's checkout is, instead of under the workspace root, which is where the agent is sent",
+    default: {},
+  },
   model: {
     type: "string",
     description: "passed to the CLI as --model, which is the flag it accepts",

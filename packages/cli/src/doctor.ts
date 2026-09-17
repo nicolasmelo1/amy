@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, ConfigSchema, validateConfig } from "@amykit/core";
+import { checkoutFor, CommandRunner, ConfigSchema, validateConfig } from "@amykit/core";
 import { AmyConfig, Roster } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
@@ -254,12 +254,18 @@ async function hermes({ config, notifyPort }: DoctorDeps): Promise<Check[]> {
 }
 
 function checkouts({ config }: DoctorDeps): Check[] {
+  // The same function the machine resolves through, so what the doctor names
+  // is the root that was actually asked rather than a second derivation.
   return config.repos.map((repo) => {
-    const checkout = path.join(config.workspaceRoot, repo.slice(repo.indexOf("/") + 1));
+    const checkout = checkoutFor(
+      { workspaceRoot: config.workspaceRoot, checkouts: config.checkouts, defaultBranch: config.defaultBranch },
+      repo,
+    );
+    const asked = repo in config.checkouts ? `its own root (${checkout})` : `the workspace root (${config.workspaceRoot})`;
     return {
       label: `checkout ${repo}`,
       ok: fs.existsSync(path.join(checkout, ".git")),
-      detail: checkout,
+      detail: `asked ${asked}`,
     };
   });
 }

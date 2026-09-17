@@ -223,6 +223,11 @@
           "description": ""
         },
         {
+          "title": "A checkout root per repository",
+          "path": "/design/a-checkout-root-per-repository",
+          "description": ""
+        },
+        {
           "title": "A reply inside a thread reaches the agent",
           "path": "/design/a-reply-inside-a-thread-reaches-the-agent",
           "description": ""
@@ -716,6 +721,11 @@
           "depth": 3,
           "title": "A brief reaches every ticket it explains.",
           "slug": "a-brief-reaches-every-ticket-it-explains"
+        },
+        {
+          "depth": 3,
+          "title": "A checkout root per repository.",
+          "slug": "a-checkout-root-per-repository"
         },
         {
           "depth": 3,
@@ -1354,6 +1364,33 @@
       "file": "docs/design/a-brief-reaches-every-ticket-it-explains.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-brief-reaches-every-ticket-it-explains.md",
       "title": "A brief reaches every ticket it explains",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-checkout-root-per-repository",
+      "file": "docs/design/a-checkout-root-per-repository.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-checkout-root-per-repository.md",
+      "title": "A checkout root per repository",
       "description": "",
       "group": "",
       "order": 999,
@@ -5109,6 +5146,13 @@
         ],
         "settings": [
           {
+            "name": "checkouts",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's checkout is, instead of under the workspace root, which is where the agent is sent"
+          },
+          {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
@@ -5167,6 +5211,13 @@
           }
         ],
         "settings": [
+          {
+            "name": "checkouts",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's checkout is, instead of under the workspace root, which is where the agent is sent"
+          },
           {
             "name": "defaultBranch",
             "type": "string",
@@ -5256,6 +5307,13 @@
         ],
         "contributes": [],
         "settings": [
+          {
+            "name": "checkouts",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run"
+          },
           {
             "name": "commands",
             "type": "record",
@@ -5447,6 +5505,13 @@
         "contributes": [],
         "settings": [
           {
+            "name": "checkouts",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's standing checkout is, instead of under the workspace root. A repository named here is never looked for under `root` at all"
+          },
+          {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
@@ -5514,6 +5579,13 @@
           }
         ],
         "settings": [
+          {
+            "name": "checkouts",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's checkout is, instead of under the workspace root, which is where the agent is sent"
+          },
           {
             "name": "defaultBranch",
             "type": "string",
@@ -6238,7 +6310,10 @@
           "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness",
           "worktree.an_orphaned_tree_is_offered_for_recovery",
           "worktree.prune_refuses_an_in_flight_tree",
-          "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch"
+          "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch",
+          "checkout.a_repository_can_name_its_own_root",
+          "checkout.the_root_still_answers_for_the_rest",
+          "checkout.a_missing_checkout_names_which_root_was_asked"
         ],
         "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
       }
@@ -6559,6 +6634,58 @@
           },
           {
             "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "a-checkout-root-per-repository",
+        "title": "A checkout root per repository.",
+        "body": "`checkouts:` maps a repository to its own path beside `workspaceRoot`; a\nrepository named there is never looked for under the root at all, `~` expands\nthe way the root's does, and a config without the block resolves exactly as\nbefore. The map rides the host paths and every `Git` layout to the worktree\nmanager, which cuts a named repository's trees from its own checkout, and\n`amy doctor` names which root it asked for each repository.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
             "level": "patch"
           },
           {

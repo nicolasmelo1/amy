@@ -25,12 +25,30 @@ export const BRANCH = "amy/bill-4021-show-the-currency-on-the-invoice-total";
 export const SECOND_BRANCH = "amy/bill-4024-show-the-currency-on-the-refund-total";
 export const REPO = "acme/widgets";
 export const OTHER_REPO = "acme/gadgets";
+/** The third ticket, and the repository that names its own root. */
+export const TICKET_THREE = "OPS-4025";
+export const THIRD_BRANCH = "amy/ops-4025-show-the-currency-on-the-credit-note";
 export const BOT = "copilot-pull-request-reviewer[bot]";
 
 const TEAM = {
   id: "team-billing",
   key: "BILL",
   name: "Billing",
+  states: [
+    { id: "s-progress", name: "In Progress" },
+    { id: "s-review", name: "In Review" },
+    { id: "s-qa", name: "In QA" },
+    { id: "s-shipped", name: "Ready To Release" },
+  ],
+};
+
+// A second team, whose tickets land in the repository that names its own
+// root: the whole claim this run makes about checkouts is that work in two
+// repositories under two unrelated parents is ordinary.
+const SUPPORT = {
+  id: "team-support",
+  key: "OPS",
+  name: "Support",
   states: [
     { id: "s-progress", name: "In Progress" },
     { id: "s-review", name: "In Review" },
@@ -119,8 +137,8 @@ function openReview(number, head, reviewer) {
 const TRACKER_STATE = {
   viewer: VIEWER,
   users: USERS,
-  teams: [TEAM],
-  nextIssueNumber: 4024,
+  teams: [TEAM, SUPPORT],
+  nextIssueNumber: 4026,
   issues: [
     {
       id: "uuid-BILL-4021",
@@ -198,6 +216,18 @@ const AGENT_SCRIPT = {
   verdicts: { "BOT-1": ["fixed"], "HUM-1": ["fixed"], "HUM-2": ["disagreed", "fixed"] },
 };
 
+// The second repository's own script: the same shape of work, in its own
+// file, with the same currency. The gate for this repository reads it, which
+// is what ties the named checkout to a real effect on the disk.
+const AGENT_GADGETS_SCRIPT = {
+  file: "credit-note.md",
+  currency: "BRL",
+  triage: {
+    clear: false,
+    questions: ["Which currency should the credit note total be shown in?"],
+  },
+};
+
 const ROSTER = `# Nobody has confirmed this yet, which is where every morning starts.
 confirmedOn: "1970-01-01"
 
@@ -238,6 +268,11 @@ policy:
   rosterBackoffMs: 0
 
 workspaceRoot: ${path.join(root, "checkouts")}
+# One repository names its own root: the checkout is under a parent nothing
+# else in this config shares, which is the claim — no symlink, and nothing
+# under the root that is not state.
+checkouts:
+  ${OTHER_REPO}: ${path.join(root, "elsewhere", "gadgets")}
 defaultBranch: main
 worktrees:
   root: ${path.join(root, "worktrees")}
@@ -245,6 +280,7 @@ worktrees:
 
 repoByTeam:
   BILL: ${REPO}
+  OPS: ${OTHER_REPO}
 
 # A real gate: two shell commands, run in the checkout, and the second one
 # fails until the work is actually right.
@@ -252,6 +288,9 @@ gate:
   ${REPO}:
     - test -f invoice.md
     - grep -q "currency:" invoice.md
+  ${OTHER_REPO}:
+    - test -f credit-note.md
+    - grep -q "currency:" credit-note.md
 
 agent:
   model: sonnet
@@ -274,6 +313,7 @@ plugins:
     workingStatusName: In Progress
     repoByTeam:
       BILL: ${REPO}
+      OPS: ${OTHER_REPO}
     defaultRepo: ${REPO}
     endpoint: ${endpoint}
 `;
@@ -291,17 +331,29 @@ plugins:
  * to write, and this run edits them the way an operator would.
  */
 export function build(root, { source }) {
-  for (const dir of ["home", "origins", "checkouts", "world", "bin"]) {
+  for (const dir of ["home", "origins", "checkouts", "world", "bin", "elsewhere"]) {
     fs.mkdirSync(path.join(root, dir), { recursive: true });
   }
 
   repository(root, REPO.slice(REPO.indexOf("/") + 1));
   repository(root, OTHER_REPO.slice(OTHER_REPO.indexOf("/") + 1));
 
+  // The checkout that names its own root: a real clone of the second
+  // repository, under a parent no other entry shares. The standing checkout
+  // under checkouts/gadgets is still there and still ignored for it.
+  const named = path.join(root, "elsewhere", "gadgets");
+  execFileSync("git", ["clone", "-q", path.join(root, "origins", "gadgets.git"), named], {
+    stdio: "ignore",
+  });
+  git(named, "config", "user.name", "amy");
+  git(named, "config", "user.email", "amy@example.test");
+  git(named, "config", "commit.gpgsign", "false");
+
   const world = path.join(root, "world");
   write(path.join(world, "tracker.json"), TRACKER_STATE);
   write(path.join(world, "code-host.json"), CODE_HOST_STATE);
   write(path.join(world, "agent.json"), AGENT_SCRIPT);
+  write(path.join(world, "agent-gadgets.json"), AGENT_GADGETS_SCRIPT);
 
   for (const tool of ["gh", "claude"]) {
     const installed = path.join(root, "bin", tool);

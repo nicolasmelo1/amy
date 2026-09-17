@@ -30,6 +30,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     },
     "@amykit/plugin-command-gate": {
       defaultBranch: config.defaultBranch,
+      checkouts: config.checkouts,
       commands: config.gate,
     },
     "@amykit/plugin-file-queue": {
@@ -84,6 +85,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       root: config.worktrees.root,
       workflow: profile.name,
       defaultBranch: config.defaultBranch,
+      checkouts: config.checkouts,
       retentionDays: config.worktrees.retentionDays,
     },
     // The engine's, and none of it names a domain.
@@ -132,6 +134,9 @@ function harnessSlice(config: AmyConfig, harness: string): Record<string, unknow
 
   return {
     defaultBranch: config.defaultBranch,
+    // The per-repository map rides beside the branch: both are the layout a
+    // `Git` needs to find a checkout, and the shim is how they reach it.
+    checkouts: config.checkouts,
     model: config.agent.model ?? "",
     models: fromLadder.length > 0 ? fromLadder : (config.agent.models ?? []),
     reviewerHints: config.agent.reviewerHints ?? {},
@@ -197,5 +202,9 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
 
 /** Where the host keeps its own state, and where the checkouts live. */
 export function hostPaths(config: AmyConfig, stateDir: string) {
-  return { workspace: path.resolve(config.workspaceRoot), state: stateDir };
+  return {
+    workspace: path.resolve(config.workspaceRoot),
+    checkouts: config.checkouts,
+    state: stateDir,
+  };
 }

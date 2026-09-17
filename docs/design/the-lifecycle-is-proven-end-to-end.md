@@ -189,6 +189,12 @@ drives, not a field existing somewhere in the middle.
       (proof: assertion:worktree.prune_refuses_an_in_flight_tree)
 - [x] Preparing a second item does not repoint the standing checkout branch
       (proof: assertion:worktree.preparing_an_item_never_repoints_the_shared_checkout_branch)
+- [x] A repository that named its own root has its work run in that checkout
+      (proof: assertion:checkout.a_repository_can_name_its_own_root)
+- [x] The workspace root still answers for every repository that named none
+      (proof: assertion:checkout.the_root_still_answers_for_the_rest)
+- [x] A checkout the machine cannot find names which root was asked
+      (proof: assertion:checkout.a_missing_checkout_names_which_root_was_asked)
 - [x] The run leaves nothing behind: no world on disk, no child process still
       listening, and no build artefact dropped in the checkout
       (proof: assertion:lifecycle.the_run_leaves_nothing_behind)

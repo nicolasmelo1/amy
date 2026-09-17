@@ -48,15 +48,15 @@ one piece of work in it.
 
 ## Acceptance criteria
 
-- [ ] A repository with its own path is found there, not under the root
+- [x] A repository with its own path is found there, not under the root
       (proof: assertion:checkout.a_repository_can_name_its_own_root)
-- [ ] A repository without one is still found under the root
+- [x] A repository without one is still found under the root
       (proof: assertion:checkout.the_root_still_answers_for_the_rest)
-- [ ] `amy doctor` names which root it asked for a missing checkout
+- [x] `amy doctor` names which root it asked for a missing checkout
       (proof: assertion:checkout.a_missing_checkout_names_which_root_was_asked)
-- [ ] `~` expands in a per-repository path
+- [x] `~` expands in a per-repository path
       (proof: test:packages/cli/tests/config.test.ts)
-- [ ] A config with no `checkouts:` block behaves exactly as before
+- [x] A config with no `checkouts:` block behaves exactly as before
       (proof: test:packages/cli/tests/slices.test.ts)
 
 **Exit condition:** an install drives work in two repositories under two
