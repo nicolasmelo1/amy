@@ -238,7 +238,7 @@ export function ticketRuntime(
             ? [``, `The current brief for the feature this ticket belongs to:`, ``, ticket.brief]
             : []),
         ].join("\n"),
-        deps.git.pathFor(ticket.repo),
+        deps.git.pathFor(ticket.repo, ctx.record.id),
         { workId: ctx.record.id, step: "self-review", brief: ticket.brief },
       );
       recordAgentRun(ctx, reply.run);

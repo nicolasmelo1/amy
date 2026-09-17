@@ -2,7 +2,7 @@
   "schema_version": 1,
   "files": {
     "docs/rules.md": "f2bedf5f9a1b07c43c8ccc47ee345d61c68942dd0017b9ce3f68922382d57574",
-    "packages/core/events.json": "6c11020cfe523f1fd123a216ed7a40d578cc9c1d088b1ef4e91f704c0b01e47f",
+    "packages/core/events.json": "c143d0e043ecb241de000d53f825878cecced43553c24fb3a96aa64b36087d0a",
     "packages/model-specs/specs.json": "510a95116df96792c6ee7b71876f27a201c6163e425664334adac1328cce65c8"
   }
 }

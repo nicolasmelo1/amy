@@ -28,6 +28,7 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/plugin-file-queue` | plugin | A queue kept as one file per item, claimed by rename. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-queue) |
 | `@amykit/plugin-file-store` | plugin | Work records kept as one file per item. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-store) |
 | `@amykit/plugin-file-tasks` | plugin | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-tasks) |
+| `@amykit/plugin-file-worktree` | plugin | One isolated checkout per piece of work, created or reused, pruned by retention. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-worktree) |
 | `@amykit/plugin-github` | plugin | GitHub as the code host, through the gh CLI. | [npm](https://www.npmjs.com/package/@amykit/plugin-github) |
 | `@amykit/plugin-hermes-agent` | plugin | Hermes as the agent, over its one-shot mode and usage report. | [npm](https://www.npmjs.com/package/@amykit/plugin-hermes-agent) |
 | `@amykit/plugin-linear` | plugin | Linear as the tracker, over its GraphQL API. | [npm](https://www.npmjs.com/package/@amykit/plugin-linear) |

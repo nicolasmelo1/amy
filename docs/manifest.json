@@ -278,6 +278,11 @@
           "description": ""
         },
         {
+          "title": "The worktree is the workplace",
+          "path": "/design/the-worktree-is-the-workplace",
+          "description": ""
+        },
+        {
           "title": "What runs is not this repo",
           "path": "/design/what-runs-is-not-this-repo",
           "description": ""
@@ -738,6 +743,11 @@
           "slug": "the-tickets-description-reaches-the-agents-prompt-instead-of-an-instruction-to-go-and-read-a-page-it-cannot-open"
         },
         {
+          "depth": 3,
+          "title": "The worktree is the workplace.",
+          "slug": "the-worktree-is-the-workplace"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -1160,6 +1170,11 @@
           "depth": 3,
           "title": "TrackerWrites",
           "slug": "trackerwrites"
+        },
+        {
+          "depth": 3,
+          "title": "Worktree",
+          "slug": "worktree"
         },
         {
           "depth": 2,
@@ -1841,6 +1856,33 @@
       ]
     },
     {
+      "path": "/design/the-worktree-is-the-workplace",
+      "file": "docs/design/the-worktree-is-the-workplace.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-worktree-is-the-workplace.md",
+      "title": "The worktree is the workplace",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
       "path": "/design/what-runs-is-not-this-repo",
       "file": "docs/design/what-runs-is-not-this-repo.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/what-runs-is-not-this-repo.md",
@@ -2264,6 +2306,26 @@
           "depth": 3,
           "title": "amy workflow rm",
           "slug": "amy-workflow-rm"
+        },
+        {
+          "depth": 3,
+          "title": "amy worktrees",
+          "slug": "amy-worktrees"
+        },
+        {
+          "depth": 3,
+          "title": "amy worktrees list",
+          "slug": "amy-worktrees-list"
+        },
+        {
+          "depth": 3,
+          "title": "amy worktrees prune",
+          "slug": "amy-worktrees-prune"
+        },
+        {
+          "depth": 3,
+          "title": "amy worktrees remove",
+          "slug": "amy-worktrees-remove"
         }
       ]
     },
@@ -2413,6 +2475,11 @@
           "depth": 3,
           "title": "TrackerWrites",
           "slug": "trackerwrites"
+        },
+        {
+          "depth": 3,
+          "title": "Worktree",
+          "slug": "worktree"
         }
       ]
     },
@@ -2502,6 +2569,11 @@
           "depth": 3,
           "title": "@amykit/plugin-file-tasks",
           "slug": "amykitplugin-file-tasks"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/plugin-file-worktree",
+          "slug": "amykitplugin-file-worktree"
         },
         {
           "depth": 3,
@@ -3179,6 +3251,12 @@
   "reference": {
     "actions": [
       {
+        "name": "acquire-worktree",
+        "port": "worktree",
+        "method": "acquire",
+        "doc": "An isolated checkout for one piece of work, created or reused."
+      },
+      {
         "name": "address-threads",
         "port": "agent",
         "method": "addressThreads",
@@ -3661,6 +3739,38 @@
             "doc": ""
           }
         ]
+      },
+      {
+        "interface": "Worktree",
+        "file": "packages/core/src/ports/Worktree.ts",
+        "doc": "Checkout isolation for one install.",
+        "methods": [
+          {
+            "name": "acquire",
+            "signature": "acquire(workId: string, repo: string): Promise<string>",
+            "doc": "The path of this item's own tree, creating it when it does not exist and reusing it when it does. A new tree is cut from the default branch; the item's branch is prepared there by `Git`, which owns branch vocabulary."
+          },
+          {
+            "name": "pathFor",
+            "signature": "pathFor(workId: string, repo: string): string",
+            "doc": "The path this item's tree would live at, without touching the disk."
+          },
+          {
+            "name": "states",
+            "signature": "states(): Promise<WorktreeInfo[]>",
+            "doc": "Every tree this machine holds, and what state each is in."
+          },
+          {
+            "name": "release",
+            "signature": "release(workId: string, repo: string, options?: { force?: boolean }): Promise<boolean>",
+            "doc": "Removes a tree that has become safe to remove, and says whether it did."
+          },
+          {
+            "name": "prune",
+            "signature": "prune(now: Date): Promise<string[]>",
+            "doc": "Removes every tree the retention predicate allows, and leaves every other one exactly as it was."
+          }
+        ]
       }
     ],
     "plans": [
@@ -4044,6 +4154,50 @@
           }
         ],
         "summary": "the work stayed put, to be looked at again later"
+      },
+      {
+        "kind": "worktree.removed",
+        "says": "A worktree was removed, and why it was safe to remove.",
+        "requires": [],
+        "detail": [
+          {
+            "field": "workId",
+            "type": "string?"
+          },
+          {
+            "field": "repo",
+            "type": "string"
+          },
+          {
+            "field": "path",
+            "type": "string"
+          },
+          {
+            "field": "reason",
+            "type": "string"
+          }
+        ],
+        "summary": "a worktree was removed, and why it was safe to"
+      },
+      {
+        "kind": "worktree.retained",
+        "says": "A worktree removal was refused, and why it was held.",
+        "requires": [],
+        "detail": [
+          {
+            "field": "workId",
+            "type": "string?"
+          },
+          {
+            "field": "repo",
+            "type": "string?"
+          },
+          {
+            "field": "reason",
+            "type": "string"
+          }
+        ],
+        "summary": "a worktree removal was refused, and why"
       }
     ],
     "cli": {
@@ -4496,6 +4650,56 @@
             }
           ],
           "isDefault": false
+        },
+        {
+          "path": [
+            "worktrees"
+          ],
+          "description": "Inspect and tidy the isolated checkouts work runs in",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "worktrees",
+            "list"
+          ],
+          "description": "Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention",
+          "arguments": [],
+          "options": [],
+          "isDefault": true
+        },
+        {
+          "path": [
+            "worktrees",
+            "prune"
+          ],
+          "description": "Remove every terminal, clean tree past its retention, and nothing else",
+          "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "worktrees",
+            "remove"
+          ],
+          "description": "Remove one worktree, refusing an in-flight or dirty one unless --force",
+          "arguments": [
+            {
+              "name": "<workId>",
+              "required": true,
+              "description": "the work whose tree is to go"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--force",
+              "description": "remove it even though the refusal above applies"
+            }
+          ],
+          "isDefault": false
         }
       ]
     },
@@ -4651,6 +4855,15 @@
         ],
         "mountedBy": [
           "@amykit/plugin-linear"
+        ]
+      },
+      {
+        "kind": "worktree",
+        "actions": [
+          "acquire-worktree"
+        ],
+        "mountedBy": [
+          "@amykit/plugin-file-worktree"
         ]
       }
     ],
@@ -5183,6 +5396,51 @@
             "required": false,
             "default": "",
             "description": "what a task is about when it does not say"
+          }
+        ],
+        "environment": []
+      },
+      {
+        "name": "@amykit/plugin-file-worktree",
+        "version": "0.1.0",
+        "kind": "plugin",
+        "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
+        "directory": "plugins/file-worktree",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-file-worktree",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-worktree",
+        "readme": "plugins/file-worktree/README.md",
+        "mounts": [
+          "worktree"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch a new tree is cut from, which is not always `main`"
+          },
+          {
+            "name": "retentionDays",
+            "type": "number",
+            "required": false,
+            "default": 7,
+            "description": "how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's"
+          },
+          {
+            "name": "root",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "where the worktrees live, outside every repository. `~` is expanded. The default is beside the state directory, which keeps one install's trees together"
+          },
+          {
+            "name": "workflow",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "the first path segment of every tree this mount creates, so two workflows under one install never share a tree"
           }
         ],
         "environment": []
@@ -5940,7 +6198,15 @@
           "lifecycle.the_machine_settles_instead_of_spinning",
           "lifecycle.what_the_agents_spent_is_read_off_the_log",
           "lifecycle.the_same_run_twice_leaves_the_same_trail",
-          "lifecycle.the_run_leaves_nothing_behind"
+          "lifecycle.the_run_leaves_nothing_behind",
+          "worktree.two_items_in_one_repository_run_concurrently",
+          "worktree.the_agent_the_gate_and_git_effects_receive_the_own_path",
+          "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree",
+          "worktree.a_terminal_clean_tree_is_prunable_after_retention",
+          "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness",
+          "worktree.an_orphaned_tree_is_offered_for_recovery",
+          "worktree.prune_refuses_an_in_flight_tree",
+          "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch"
         ],
         "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
       }
@@ -6413,6 +6679,62 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "the-worktree-is-the-workplace",
+        "title": "The worktree is the workplace.",
+        "body": "The core grows a `worktree` port (`acquire`, `pathFor`, `states`, `release`,\n`prune`) and the `acquire-worktree` action beside it. `Git` gains worktree\nmode without losing shared-checkout mode: with the port mounted, every path\nit answers — agent prompts, the gate, plan checks, commits and pushes — is\nthe item's own tree, cut from the default branch, and preparing an item never\nrepoints the standing checkout's branch. The new `@amykit/plugin-file-worktree`\nmounts the port over `~/.amy/worktrees/<workflow>/<workId>/<repo>`, prunes\nterminal clean trees after retention, logs every removal as\n`worktree.removed`, and refuses to delete an in-flight or dirty tree. The CLI\ngains `amy worktrees list|remove|prune`, and `amy doctor` reports both roots.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       }
     ],
     "changelogs": [

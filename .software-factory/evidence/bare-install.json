@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "bare-install",
-  "implementation_sha256": "ddf4cf85dfc7b6df03cb4363ab303d2a613f61de0c5dc7ad22be62941b43cb57",
+  "implementation_sha256": "31e044719c38a1f6737404aa054d6996134493f61f82f5ce71b32bb06ea3dc14",
   "runs": [
     {
       "scenario": "bare-install",
       "status": "passed",
       "actor": "Claude (agent), installing the command alone onto a scratch machine on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/bare-install-run.json",
-      "report_sha256": "3c72871c0b7c87a02fadb2924cf77e0ce1a3d54da6765e61ec51fe8558268a8c",
+      "report_sha256": "00dbddedb51ea7fb05449e4ed142ee013bdd022d3ca3958bb6fb891b26c5cebe",
       "required_assertions": []
     }
   ]

@@ -15,6 +15,7 @@ import {
   Mounted,
   NodeCommandRunner,
   WorkRecord,
+  Worktree,
   describeBuild,
   mount,
   parseBudget,
@@ -30,6 +31,7 @@ import {
   specTable,
 } from "@amykit/model-specs";
 import { FileEventLog } from "@amykit/plugin-file-log";
+import { WorktreeManager } from "@amykit/plugin-file-worktree";
 // Inspection builds these directly: `amy status` has to work even when a
 // plugin will not mount, which is exactly when you want to look.
 import { FileQueue } from "@amykit/plugin-file-queue";
@@ -1194,6 +1196,115 @@ queueCommand
   });
 
 const rosterCommand = program.command("roster").description("Who is reviewing today");
+
+/**
+ * The worktree manager, built the way a mount would build it.
+ *
+ * The list and the remove are inspection and recovery, not work: they read
+ * the trees on disk and the records beside them, and never need the whole
+ * machine to come up — which is exactly when somebody wants to look. The
+ * workflow's terminal states are asked of a mount when one can be assembled
+ * and answered with none when it cannot, so a broken machine can still be
+ * tidied by hand.
+ */
+async function worktreeManager(config: AmyConfig): Promise<Worktree> {
+  const profile = selected();
+  const place = profilePaths(home, profile.name);
+  const assembled = await assemble(profile);
+
+  return new WorktreeManager(runner, {
+    root: config.worktrees.root || path.join(home, "worktrees"),
+    workflow: profile.name,
+    defaultBranch: config.defaultBranch,
+    retentionDays: config.worktrees.retentionDays,
+    record: (workId) => {
+      const file = path.join(place.records, `${workId}.json`);
+      try {
+        return JSON.parse(fs.readFileSync(file, "utf-8")) as { state: string };
+      } catch {
+        return null;
+      }
+    },
+    terminalStates: assembled.ok
+      ? (assembled.mounted.workflow?.terminalStates ?? [])
+      : [],
+    log: new FileEventLog(paths(home).log, undefined, build),
+  });
+}
+
+const worktreesCommand = program
+  .command("worktrees")
+  .description("Inspect and tidy the isolated checkouts work runs in");
+
+worktreesCommand
+  .command("list", { isDefault: true })
+  .description("Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention")
+  .action(async () => {
+    const config = loadConfig(home);
+    const manager = await worktreeManager(config);
+    const states = await manager.states();
+
+    if (states.length === 0) {
+      console.log("no worktrees");
+      return;
+    }
+
+    const orphaned = states.filter((state) => state.state === "orphaned").length;
+    for (const state of states) {
+      const clean = state.clean ? "clean" : "dirty";
+      const retention = state.retentionEligible ? "past retention" : "held";
+      console.log(
+        `${state.workId}  ${state.workflow}  ${state.repo}  ${state.branch || "(detached)"}  ` +
+          `${state.state}  ${clean}  ${retention}`,
+      );
+      console.log(`  ${state.path}`);
+    }
+
+    if (orphaned > 0) {
+      console.log(`\n${orphaned} tree(s) name work the store no longer holds.`);
+      console.log("Recover with `amy worktrees remove <workId> --force`, or prune them by hand.");
+    }
+  });
+
+worktreesCommand
+  .command("remove")
+  .description("Remove one worktree, refusing an in-flight or dirty one unless --force")
+  .argument("<workId>", "the work whose tree is to go")
+  .option("--force", "remove it even though the refusal above applies")
+  .action(async (workId: string, options: { force?: boolean }) => {
+    const config = loadConfig(home);
+    const manager = await worktreeManager(config);
+    const states = await manager.states();
+    const found = states.filter((state) => state.workId === workId);
+
+    if (found.length === 0) {
+      console.log(`no worktree for ${workId}`);
+      process.exitCode = 1;
+      return;
+    }
+
+    let removed = 0;
+    for (const state of found) {
+      try {
+        if (await manager.release(workId, state.repo, { force: options.force })) removed += 1;
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exitCode = 1;
+      }
+    }
+
+    if (removed > 0) console.log(`removed ${removed} tree(s) for ${workId}`);
+  });
+
+worktreesCommand
+  .command("prune")
+  .description("Remove every terminal, clean tree past its retention, and nothing else")
+  .action(async () => {
+    const config = loadConfig(home);
+    const manager = await worktreeManager(config);
+    const removed = await manager.prune(new Date());
+    console.log(removed.length ? `removed ${removed.join(", ")}` : "nothing to prune");
+  });
 
 rosterCommand
   .command("confirm")

@@ -1,4 +1,4 @@
-import { Git, Plugin } from "@amykit/core";
+import { Git, Plugin, Worktree } from "@amykit/core";
 import { PlanCommandCheck } from "./PlanCommandCheck.js";
 import { configSchema } from "./config.js";
 
@@ -7,10 +7,16 @@ export const plugin: Plugin = {
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {
-    const git = new Git(ctx.runner, {
-      workspaceRoot: ctx.paths.workspace,
-      defaultBranch: ctx.config.defaultBranch as string,
-    });
+    const git = new Git(
+      ctx.runner,
+      {
+        workspaceRoot: ctx.paths.workspace,
+        defaultBranch: ctx.config.defaultBranch as string,
+      },
+      // The gate (and the agent it hands paths to) runs where the work runs:
+      // with a worktree port mounted, that is the item's own tree.
+      ctx.port("worktree") as Worktree | undefined,
+    );
 
     // The action and the port together, which is what the registry asks of a
     // plugin adding an action the core does not ship: an action nobody can

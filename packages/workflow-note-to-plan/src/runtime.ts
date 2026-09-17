@@ -125,11 +125,11 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, 
     "draft-plan": async (effect, ctx) => {
       const { note } = ctx.observation;
       const slug = slugFor(note);
-      await deps.git.prepareBranch(note.repo, branchFor(slug));
+      await deps.git.prepareBranch(note.repo, branchFor(slug), note.id);
 
       const reply = await deps.agent.ask(
         draftPrompt(note, slug, effect.finding),
-        deps.git.pathFor(note.repo),
+        deps.git.pathFor(note.repo, note.id),
         { workId: ctx.record.id, step: "draft-plan" },
       );
       recordAgentRun(ctx, reply.run);
@@ -147,6 +147,7 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, 
         note.repo,
         branchFor(slug),
         `docs(plans): ${slug.replace(/-/g, " ")}`,
+        note.id,
       );
 
       outcomesOf(ctx).draft = pushed
@@ -159,7 +160,12 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, 
     },
 
     "check-plan": async (_effect, ctx) => {
-      outcomesOf(ctx).check = await deps.check.check(ctx.observation.note.repo);
+      // The plan is judged where it was written: with a worktree port behind
+      // the Git, that is the note's own tree.
+      outcomesOf(ctx).check = await deps.check.check(
+        ctx.observation.note.repo,
+        ctx.observation.note.id,
+      );
     },
 
     "open-pull-request": async (_effect, ctx) => {

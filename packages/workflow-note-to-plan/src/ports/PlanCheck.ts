@@ -9,5 +9,12 @@ import { AttemptOutcome } from "../record.js";
  * becomes the finding the agent is sent back with.
  */
 export interface PlanCheck {
-  check(repo: string): Promise<AttemptOutcome>;
+  /**
+   * Runs the check in the work's own tree, when one was isolated for it.
+   *
+   * The work id is the second half of the address: without a worktree port
+   * behind the host's Git it is unused, and the check runs in the shared
+   * checkout exactly as it always did.
+   */
+  check(repo: string, workId?: string): Promise<AttemptOutcome>;
 }

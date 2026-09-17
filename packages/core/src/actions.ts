@@ -56,6 +56,16 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
   "self-review": { port: "agent", method: "ask" },
   "open-pull-request": { port: "code-host", method: "openPullRequest" },
   /**
+   * An isolated checkout for one piece of work, created or reused.
+   *
+   * The workplace itself, as a port rather than as git knowledge every
+   * workflow copies: two tickets on one repository implementing at the same
+   * time is the ordinary case, and preparing one item must never repoint the
+   * tree another is standing in. The branch inside the tree is still
+   * `Git`'s — this action owns the tree, not the branch vocabulary.
+   */
+  "acquire-worktree": { port: "worktree", method: "acquire" },
+  /**
    * Close one review thread, by its id.
    *
    * The write the lifecycle was missing: a state whose exit reads "no open

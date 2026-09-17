@@ -7,6 +7,7 @@ import {
   Plan,
   Plugin,
   PluginContext,
+  Worktree,
   WORKFLOW_RUNTIME,
   WorkflowRuntime,
 } from "@amykit/core";
@@ -98,11 +99,17 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
     roster: () => provided<Roster>(ctx, "roster") ?? rosterProvider()(),
     // The same checkout the gate runs in, for the self-review to read: the
     // gate already runs against the ticket's own branch, so this is the
-    // second reader of a layout the host already owns.
-    git: new Git(ctx.runner, {
-      workspaceRoot: ctx.paths.workspace,
-      defaultBranch: ctx.config.defaultBranch as string,
-    }),
+    // second reader of a layout the host already owns. With a worktree port
+    // mounted, the same Git resolves every path through it and the work runs
+    // in the ticket's own tree; without one, nothing here changes.
+    git: new Git(
+      ctx.runner,
+      {
+        workspaceRoot: ctx.paths.workspace,
+        defaultBranch: ctx.config.defaultBranch as string,
+      },
+      ctx.port("worktree") as Worktree | undefined,
+    ),
     // Optional on purpose: the `brief` port is the persistence seam a
     // grooming workflow's briefs live behind, and an install whose tickets
     // reference none is a real install that mounts and runs exactly as

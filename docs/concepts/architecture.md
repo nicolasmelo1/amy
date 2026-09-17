@@ -93,6 +93,7 @@ plugins/
 ├── file-queue           A queue kept as one file per item, claimed by rename.
 ├── file-store           Work records kept as one file per item.
 ├── file-tasks           Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.
+├── file-worktree        One isolated checkout per piece of work, created or reused, pruned by retention.
 ├── github               GitHub as the code host, through the gh CLI.
 ├── hermes-agent         Hermes as the agent, over its one-shot mode and usage report.
 ├── linear               Linear as the tracker, over its GraphQL API.
@@ -115,7 +116,7 @@ this repository.
 | Package | Kind | Depends on, in this workspace |
 | :-- | :-- | :-- |
 | `@amykit/agent-kit` | library | `@amykit/core` |
-| `@amykit/cli` | cli | `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks` |
+| `@amykit/cli` | cli | `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-file-worktree` |
 | `@amykit/core` | library | _nothing_ |
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
@@ -132,6 +133,7 @@ this repository.
 | `@amykit/plugin-file-queue` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-store` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-tasks` | plugin | `@amykit/core` |
+| `@amykit/plugin-file-worktree` | plugin | `@amykit/core` |
 | `@amykit/plugin-github` | plugin | `@amykit/core` |
 | `@amykit/plugin-hermes-agent` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-linear` | plugin | `@amykit/core` |

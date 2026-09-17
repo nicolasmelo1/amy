@@ -102,11 +102,11 @@ export function errandRuntime(
     "run-errand": async (effect, ctx) => {
       const { task } = ctx.observation;
       const slug = slugFor(task);
-      await deps.git.prepareBranch(task.repo, branchFor(slug));
+      await deps.git.prepareBranch(task.repo, branchFor(slug), task.id);
 
       const reply = await deps.agent.ask(
         errandPrompt(task, effect.finding),
-        deps.git.pathFor(task.repo),
+        deps.git.pathFor(task.repo, task.id),
         { workId: ctx.record.id, step: "run-errand" },
       );
       recordAgentRun(ctx, reply.run);
@@ -125,6 +125,7 @@ export function errandRuntime(
         task.repo,
         branchFor(slug),
         `chore: ${pullRequestTitle(task).toLowerCase()}`,
+        task.id,
       );
 
       outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };

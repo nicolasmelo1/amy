@@ -67,6 +67,10 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy workflow`](#amy-workflow) | What this install can drive, and what it keeps |
 | [`amy workflow list`](#amy-workflow-list) | Every workflow this install can drive |
 | [`amy workflow rm`](#amy-workflow-rm) | Delete a workflow's records, its queue and its entry in the config |
+| [`amy worktrees`](#amy-worktrees) | Inspect and tidy the isolated checkouts work runs in |
+| [`amy worktrees list`](#amy-worktrees-list) | Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention |
+| [`amy worktrees prune`](#amy-worktrees-prune) | Remove every terminal, clean tree past its retention, and nothing else |
+| [`amy worktrees remove`](#amy-worktrees-remove) | Remove one worktree, refusing an in-flight or dirty one unless --force |
 
 <!-- amy:end cli-index -->
 
@@ -424,5 +428,47 @@ amy workflow rm [options] <name>
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--yes` |  | actually delete, rather than saying what would go |
+
+### `amy worktrees`
+
+Inspect and tidy the isolated checkouts work runs in
+
+```sh
+amy worktrees
+```
+
+### `amy worktrees list`
+
+Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention
+
+```sh
+amy worktrees list
+```
+
+Runs when `amy worktrees` is given no subcommand.
+
+### `amy worktrees prune`
+
+Remove every terminal, clean tree past its retention, and nothing else
+
+```sh
+amy worktrees prune
+```
+
+### `amy worktrees remove`
+
+Remove one worktree, refusing an in-flight or dirty one unless --force
+
+```sh
+amy worktrees remove [options] <workId>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<workId>` | yes | the work whose tree is to go |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--force` |  | remove it even though the refusal above applies |
 
 <!-- amy:end cli-commands -->

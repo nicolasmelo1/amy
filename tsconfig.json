@@ -11,6 +11,9 @@
       "path": "./plugins/file-tasks"
     },
     {
+      "path": "./plugins/file-worktree"
+    },
+    {
       "path": "packages/agent-kit"
     },
     {

@@ -310,7 +310,7 @@ describe("checking", () => {
 
     await runtime.handlers()["check-plan"]!({ type: "check-plan" }, ctx);
 
-    expect(check.check).toHaveBeenCalledWith("acme/widgets");
+    expect(check.check).toHaveBeenCalledWith("acme/widgets", "note-1");
   });
 
   it("keeps what the check said, verbatim, because it becomes the finding", async () => {

@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 42,
+    "assertions_run": 50,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 41,
@@ -59,12 +59,12 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at 9eceb5c and left one comment",
-      "the automated reviewer looked at df1d46a and had nothing to say",
+      "the automated reviewer looked at f196265 and left one comment",
+      "the automated reviewer looked at 4f87bd6 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on df1d46a",
+      "ada asked for changes on 4f87bd6",
       "the owner settled the disagreement on the ticket",
-      "ada approved b59ef9b"
+      "ada approved 3f8a614"
     ],
     "agent_calls": [
       "triage",
@@ -91,7 +91,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-15T14:44:59.756Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-15T14:44:59.548Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-17T01:02:14.542Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-17T01:02:14.348Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
     "second_run_transitions": 21
@@ -239,6 +239,38 @@
     },
     {
       "type": "lifecycle.the_same_run_twice_leaves_the_same_trail",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.two_items_in_one_repository_run_concurrently",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.the_agent_the_gate_and_git_effects_receive_the_own_path",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.a_terminal_clean_tree_is_prunable_after_retention",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.an_orphaned_tree_is_offered_for_recovery",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.prune_refuses_an_in_flight_tree",
+      "status": "passed"
+    },
+    {
+      "type": "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch",
       "status": "passed"
     },
     {

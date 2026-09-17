@@ -38,6 +38,7 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 
 | Action | Port | Method | Shipped by | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `acquire-worktree` | `worktree` | `acquire()` | `@amykit/core` | An isolated checkout for one piece of work, created or reused. |
 | `address-threads` | `agent` | `addressThreads()` | `@amykit/core` |  |
 | `announce` | `notifier` | `announce()` | `@amykit/core` |  |
 | `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |

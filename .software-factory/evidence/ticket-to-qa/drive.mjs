@@ -22,8 +22,10 @@ import {
   OTHER_REPO,
   PAST_IMPLEMENTATION,
   REPO,
+  SECOND_BRANCH,
   SOMEBODY_ELSES,
   TICKET,
+  TICKET_TWO,
   build,
   configure,
   headOf,
@@ -117,10 +119,11 @@ function amy(root, args) {
   };
 }
 
-const recordFile = (root) => path.join(root, "home", ".amy", "tickets", "records", `${TICKET}.json`);
+const recordFile = (root, ticket = TICKET) =>
+  path.join(root, "home", ".amy", "tickets", "records", `${ticket}.json`);
 
-function recordOf(root) {
-  const file = recordFile(root);
+function recordOf(root, ticket = TICKET) {
+  const file = recordFile(root, ticket);
   return fs.existsSync(file) ? read(file) : null;
 }
 
@@ -373,6 +376,67 @@ function lifecycle() {
       .split("\n")
       .filter(Boolean);
     world.queueReady = fs.readdirSync(path.join(root, "home", ".amy", "tickets", "queue", "ready"));
+
+    // The finished first item stays until explicitly pruned. Add a second
+    // working ticket only now, so it cannot alter the lifecycle under test.
+    const secondTracker = read(trackerFile(root));
+    secondTracker.issues.push({
+      id: "uuid-BILL-4024",
+      identifier: TICKET_TWO,
+      title: "Show the currency on the refund total",
+      url: `https://tracker.test/issue/${TICKET_TWO}`,
+      branchName: SECOND_BRANCH,
+      stateId: "s-progress",
+      teamId: "team-billing",
+      assigneeId: "u-amy",
+      description: "The refund total must name its currency.",
+      labels: ["Bug"],
+      comments: [],
+    });
+    write(trackerFile(root), secondTracker);
+    world.secondDiscover = amy(root, ["discover"]);
+
+    // Drive the second item far enough to create its own tree, so both exist
+    // at once for one repository and one standing checkout.
+    let secondAnswered = false;
+    for (let tick = 0; tick < 8; tick += 1) {
+      amy(root, ["tick"]);
+      const second = recordOf(root, TICKET_TWO);
+      if (second?.state === "CLARIFYING" && !secondAnswered) {
+        comment(root, "u-owner", "The refund is also in BRL.");
+        secondAnswered = true;
+      }
+      if (second?.state === "IMPLEMENTING" && second.lastImplementation) break;
+    }
+    world.secondRecord = recordOf(root, TICKET_TWO);
+    world.worktreesBeforePrune = amy(root, ["worktrees", "list"]);
+    world.standingBranch = execFileSync("git", ["-C", path.join(root, "checkouts", "widgets"), "branch", "--show-current"], {
+      encoding: "utf-8",
+    }).trim();
+    const firstTree = path.join(root, "worktrees", "tickets", TICKET, "acme-widgets");
+    const secondTree = path.join(root, "worktrees", "tickets", TICKET_TWO, "acme-widgets");
+    world.worktreePaths = { first: fs.realpathSync(firstTree), second: fs.realpathSync(secondTree) };
+    world.twoTreesBeforePrune = fs.existsSync(firstTree) && fs.existsSync(secondTree);
+    world.worktreeBranches = {
+      first: execFileSync("git", ["-C", firstTree, "branch", "--show-current"], { encoding: "utf-8" }).trim(),
+      second: execFileSync("git", ["-C", secondTree, "branch", "--show-current"], { encoding: "utf-8" }).trim(),
+    };
+
+    // Dirty terminal work is retained. Once it is clean, retention zero allows
+    // a prune and records it. Removing the second record makes its remaining
+    // tree an orphan the CLI offers for recovery rather than deleting.
+    const dirty = path.join(firstTree, "operator-wip.txt");
+    fs.writeFileSync(dirty, "keep this\n", "utf-8");
+    world.dirtyPrune = amy(root, ["worktrees", "prune"]);
+    world.dirtyStillThere = fs.existsSync(dirty);
+    fs.rmSync(dirty);
+    world.cleanPrune = amy(root, ["worktrees", "prune"]);
+    world.firstPruned = !fs.existsSync(firstTree);
+    fs.rmSync(recordFile(root, TICKET_TWO));
+    world.orphanedList = amy(root, ["worktrees", "list"]);
+    world.worktreeEvents = fs
+      .readdirSync(path.join(root, "home", ".amy", "log"))
+      .flatMap((file) => lines(path.join(root, "home", ".amy", "log", file)));
 
     return world;
   } finally {
@@ -683,6 +747,45 @@ function assertionsFor(first, second) {
     [
       "lifecycle.the_same_run_twice_leaves_the_same_trail",
       transitions(second).join(",") === transitions(first).join(","),
+    ],
+
+    // The worktree is the workplace: two ticket ids, one repository, neither
+    // touching the standing checkout or the other's branch.
+    [
+      "worktree.two_items_in_one_repository_run_concurrently",
+      Boolean(first.secondRecord) &&
+        first.twoTreesBeforePrune &&
+        first.worktreePaths.first !== first.worktreePaths.second,
+    ],
+    [
+      "worktree.the_agent_the_gate_and_git_effects_receive_the_own_path",
+      agentCallsFor(first, "implement").every((call) => call.cwd === first.worktreePaths.first) &&
+        first.worktreeBranches.first === BRANCH,
+    ],
+    [
+      "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree",
+      first.dirtyPrune.code === 0 && first.dirtyStillThere && first.dirtyPrune.out.includes("nothing to prune"),
+    ],
+    [
+      "worktree.a_terminal_clean_tree_is_prunable_after_retention",
+      first.cleanPrune.code === 0 && first.firstPruned &&
+        first.worktreeEvents.some((event) => event.kind === "worktree.removed" && event.detail?.workId === TICKET),
+    ],
+    [
+      "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness",
+      ["terminal", "tickets", REPO, BRANCH, "clean"].every((word) => first.worktreesBeforePrune.out.includes(word)),
+    ],
+    [
+      "worktree.an_orphaned_tree_is_offered_for_recovery",
+      first.orphanedList.code === 0 && first.orphanedList.out.includes(TICKET_TWO) && first.orphanedList.out.includes("orphaned"),
+    ],
+    [
+      "worktree.prune_refuses_an_in_flight_tree",
+      first.dirtyPrune.code === 0 && first.twoTreesBeforePrune,
+    ],
+    [
+      "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch",
+      first.standingBranch === "main" && first.worktreeBranches.first === BRANCH,
     ],
 
     // Extras: true every day, and reported rather than required.

@@ -27,6 +27,7 @@ maintains.
 | `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
 | `@amykit/plugin-file-store` | Work records kept as one file per item. | `brief`<br>`store` |  |
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
+| `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
 | `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
 | `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` |  |
@@ -287,6 +288,34 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `directory` | `string` | no | `tasks` | where the tasks are kept, relative to the state directory |
 | `repo` | `string` | no | `""` | what a task is about when it does not say |
+
+### `@amykit/plugin-file-worktree`
+
+One isolated checkout per piece of work, created or reused, pruned by retention.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/file-worktree` |
+| Mounts | `worktree` |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core` |
+
+```yaml
+plugins:
+  "@amykit/plugin-file-worktree":
+    defaultBranch: main
+    retentionDays: 7
+    root: ""
+    workflow: ""
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `defaultBranch` | `string` | no | `main` | the branch a new tree is cut from, which is not always `main` |
+| `retentionDays` | `number` | no | `7` | how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's |
+| `root` | `string` | no | `""` | where the worktrees live, outside every repository. `~` is expanded. The default is beside the state directory, which keeps one install's trees together |
+| `workflow` | `string` | no | `""` | the first path segment of every tree this mount creates, so two workflows under one install never share a tree |
 
 ### `@amykit/plugin-github`
 

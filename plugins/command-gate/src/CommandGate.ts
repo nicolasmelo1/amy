@@ -42,7 +42,9 @@ export class CommandGate implements Gate {
 
     for (const command of commands) {
       const result = await this.runner.run("sh", ["-c", command], {
-        cwd: this.git.pathFor(ticket.repo),
+        // Where the work is, not where the checkout is: with a worktree port
+        // behind the Git, the gate runs in the ticket's own tree.
+        cwd: this.git.pathFor(ticket.repo, ticket.id),
         timeoutMs: this.config.timeoutMs,
       });
 
