@@ -24,15 +24,12 @@ re-enqueue work that reached one (`plugins/serial-engine/src/Worker.ts:109`).
 So a finished record is not reprocessed, and no agent is spent on it. That part
 is right and this plan does not touch it.
 
-What is missing is that the record never *leaves*. On one install after three
-days: `REVV-7716` finished, `TBO-1201` finished, both still listed, and the
-list only grows. The one page somebody keeps open becomes the page they stop
-reading.
+`amy status` no longer prints what has ended either: it counts it below the
+table, and `--all` brings it back. That hides the record. It does not remove
+it, and a store that never removes anything is still a store that grows for as
+long as the machine runs.
 
-`amy status` does not even know they are finished. It is handed the waiting
-states and not the terminal ones (`packages/cli/src/index.ts:681`), so it
-prints a `DONE` record as `active`. The JSON carries `terminalStates`; the
-human output does not use it.
+What is missing is that the record never *leaves*.
 
 ## The trap in deleting
 
@@ -58,8 +55,6 @@ append-only, the budget is measured on it, and it outlives every record.
 - `plugin-file-store` grows `retentionDays`, mirroring the queue's, and a
   `prune` that removes records in a terminal state older than it. The default
   matches the queue's so one number does not quietly mean two things.
-- `amy status` is told the terminal states it already receives in JSON, and
-  stops calling finished work active.
 - `amy forget <workId>` retires one piece of work by advancing it to a terminal
   state, not by deleting it — a tombstone that keeps refusing rediscovery.
   Deletion is retention's job. For work that can never reach an end on its own
@@ -77,8 +72,6 @@ has ended has nothing due.
       (proof: test:plugins/file-store/tests/prune.test.ts)
 - [ ] A record that is not terminal is never pruned, however old
       (proof: test:plugins/file-store/tests/prune.test.ts)
-- [ ] `amy status` prints a terminal record as finished rather than active
-      (proof: test:packages/cli/tests/status.test.ts)
 - [ ] `amy forget` on live work advances it to a terminal state, and the next
       `discover` does not enqueue it
       (proof: test:plugins/serial-engine/tests/Worker.discover.test.ts)
@@ -88,6 +81,6 @@ has ended has nothing due.
       has been pruned
       (proof: test:packages/cli/tests/forget.test.ts)
 
-**Exit condition:** a machine that has driven work for a month lists what is
-happening and not what has happened, and one piece of work that will never
-finish on its own can be retired with a command rather than with `rm`.
+**Exit condition:** a record that ended leaves the disk on its own, and one
+piece of work that will never finish on its own can be retired with a command
+rather than with `rm`.

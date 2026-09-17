@@ -270,6 +270,7 @@ gates:
       - "checkout.a_repository_can_name_its_own_root"
       - "checkout.the_root_still_answers_for_the_rest"
       - "checkout.a_missing_checkout_names_which_root_was_asked"
+      - "lifecycle.finished_work_leaves_the_listing"
 
   # The second workflow, and the claim the whole plugin model rests on: an
   # engine that learnt nothing drives it. What no unit test can say is that

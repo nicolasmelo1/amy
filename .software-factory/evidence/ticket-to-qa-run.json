@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 53,
+    "assertions_run": 54,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 41,
@@ -59,15 +59,15 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at 3ce330e and left one comment",
-      "the automated reviewer looked at 6c75c21 and had nothing to say",
+      "the automated reviewer looked at 1e6e69c and left one comment",
+      "the automated reviewer looked at b2f08fc and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 6c75c21",
+      "ada asked for changes on b2f08fc",
       "the owner settled the disagreement on the ticket",
-      "ada approved b12aec8",
-      "the automated reviewer looked at b12aec8 and had nothing to say",
-      "the automated reviewer looked at 2e99a4c and had nothing to say",
-      "ada approved 2e99a4c"
+      "ada approved 8cba745",
+      "the automated reviewer looked at 8cba745 and had nothing to say",
+      "the automated reviewer looked at 06a91de and had nothing to say",
+      "ada approved 06a91de"
     ],
     "agent_calls": [
       "triage",
@@ -94,7 +94,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-17T11:40:43.592Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-17T11:40:43.391Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-17T14:12:00.544Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-17T14:12:00.336Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
     "second_run_transitions": 21
@@ -310,6 +310,10 @@
     },
     {
       "type": "lifecycle.status_says_where_the_work_stands",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.finished_work_leaves_the_listing",
       "status": "passed"
     }
   ]
