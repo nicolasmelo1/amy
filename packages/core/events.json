@@ -186,6 +186,25 @@
         "error": "string",
         "text": "string"
       }
+    },
+    "worktree.removed": {
+      "says": "A worktree was removed, and why it was safe to remove.",
+      "requires": [],
+      "detail": {
+        "workId": "string?",
+        "repo": "string",
+        "path": "string",
+        "reason": "string"
+      }
+    },
+    "worktree.retained": {
+      "says": "A worktree removal was refused, and why it was held.",
+      "requires": [],
+      "detail": {
+        "workId": "string?",
+        "repo": "string?",
+        "reason": "string"
+      }
     }
   }
 }

@@ -76,6 +76,16 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       qaStatusName: config.qaStatusName,
       policy: config.policy,
     },
+    // The workplace: where the trees live and how long finished ones stay.
+    // `workflow` names the mount itself, because the tree paths carry it —
+    // the profile's name is what the config calls this workflow, and two
+    // profiles must never share a tree.
+    "@amykit/plugin-file-worktree": {
+      root: config.worktrees.root,
+      workflow: profile.name,
+      defaultBranch: config.defaultBranch,
+      retentionDays: config.worktrees.retentionDays,
+    },
     // The engine's, and none of it names a domain.
     "@amykit/plugin-serial-engine": {
       staleClaimMs: config.staleClaimMs,

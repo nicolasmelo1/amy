@@ -122,7 +122,8 @@ function transitionsOf(record) {
  */
 function walkthrough() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-note-to-plan-"));
-  build(root, { source });
+  try {
+    build(root, { source });
 
   const init = amy(root, ["init"]);
   configure(root);
@@ -207,10 +208,14 @@ function walkthrough() {
     leftBehind: fs.existsSync(path.join(process.cwd(), ".amy")),
   };
 
-  if (!keep) fs.rmSync(root, { recursive: true, force: true });
-  else process.stdout.write(`kept ${root}\n`);
+    if (keep) process.stdout.write(`kept ${root}\n`);
 
-  return state;
+    return state;
+  } finally {
+    // A failed assertion must leave exactly as little state as a passing one:
+    // the whole world is a disposable fixture, never an operator checkout.
+    if (!keep) fs.rmSync(root, { recursive: true, force: true });
+  }
 }
 
 function logFile(root) {
@@ -234,7 +239,9 @@ const pullFor = (state, repo, slug) =>
 /** Where in the run each thing happened, so an ordering can be asserted. */
 function orderOf(state) {
   const drafted = state.agentCalls.findIndex((call) => call.plan === `plans/${SLUG}.md`);
-  const checked = state.checkCalls.findIndex((call) => call.cwd.endsWith("/amy"));
+  const checked = state.checkCalls.findIndex(
+    (call) => call.cwd.endsWith("/amy") || call.cwd.endsWith("/acme-amy"),
+  );
   const opened = state.ghCalls.findIndex((call) =>
     call.argv.some((arg) => arg === `/repos/${REPO}/pulls`),
   );

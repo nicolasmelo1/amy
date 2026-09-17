@@ -66,6 +66,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     ...(await tools(deps)),
     ...(await hermes(deps)),
     ...checkouts(deps),
+    ...worktrees(deps),
   ];
 }
 
@@ -261,4 +262,23 @@ function checkouts({ config }: DoctorDeps): Check[] {
       detail: checkout,
     };
   });
+}
+
+/**
+ * Both roots, named together: where the standing checkouts live, and where
+ * the isolated trees do.
+ *
+ * An install migrating to worktrees keeps its existing checkouts exactly as
+ * they are — the worktree manager never touches one — so `amy doctor`
+ * reporting both is how an operator sees that nothing moved under them.
+ */
+function worktrees({ config, home }: DoctorDeps): Check[] {
+  const root = config.worktrees.root || path.join(home, "worktrees");
+  return [
+    {
+      label: "worktrees root",
+      ok: true,
+      detail: `${root} (checkouts stay in ${config.workspaceRoot})`,
+    },
+  ];
 }

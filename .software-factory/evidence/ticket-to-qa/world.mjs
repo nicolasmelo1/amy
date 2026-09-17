@@ -15,12 +15,14 @@ import { execFileSync } from "node:child_process";
 
 /** The ticket the run is about, and the two that must be left alone. */
 export const TICKET = "BILL-4021";
+export const TICKET_TWO = "BILL-4024";
 export const PAST_IMPLEMENTATION = "BILL-4022";
 export const SOMEBODY_ELSES = "BILL-4023";
 /** The shared Linear parent that anchors this ticket's operator-authored brief. */
 export const BRIEF = "uuid-BILL-brief-4020";
 
 export const BRANCH = "amy/bill-4021-show-the-currency-on-the-invoice-total";
+export const SECOND_BRANCH = "amy/bill-4024-show-the-currency-on-the-refund-total";
 export const REPO = "acme/widgets";
 export const OTHER_REPO = "acme/gadgets";
 export const BOT = "copilot-pull-request-reviewer[bot]";
@@ -237,6 +239,9 @@ policy:
 
 workspaceRoot: ${path.join(root, "checkouts")}
 defaultBranch: main
+worktrees:
+  root: ${path.join(root, "worktrees")}
+  retentionDays: 0
 
 repoByTeam:
   BILL: ${REPO}

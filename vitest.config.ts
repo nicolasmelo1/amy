@@ -10,6 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts"],
+
     // Named explicitly, or the default pattern walks
     // `.software-factory/mutations` as well, where the repositories are
     // deliberately broken.
@@ -37,6 +38,7 @@ export default defineConfig({
       "@amykit/workflow-note-to-plan": resolve(here, "packages/workflow-note-to-plan/src/index.ts"),
       "@amykit/model-specs": resolve(here, "packages/model-specs/src/index.ts"),
       "@amykit/plugin-file-queue": resolve(here, "plugins/file-queue/src/index.ts"),
+      "@amykit/plugin-file-worktree": resolve(here, "plugins/file-worktree/src/index.ts"),
       "@amykit/plugin-file-log": resolve(here, "plugins/file-log/src/index.ts"),
       "@amykit/plugin-file-store": resolve(here, "plugins/file-store/src/index.ts"),
       "@amykit/plugin-file-notes": resolve(here, "plugins/file-notes/src/index.ts"),

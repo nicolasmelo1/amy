@@ -259,6 +259,14 @@ gates:
       - "lifecycle.what_the_agents_spent_is_read_off_the_log"
       - "lifecycle.the_same_run_twice_leaves_the_same_trail"
       - "lifecycle.the_run_leaves_nothing_behind"
+      - "worktree.two_items_in_one_repository_run_concurrently"
+      - "worktree.the_agent_the_gate_and_git_effects_receive_the_own_path"
+      - "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree"
+      - "worktree.a_terminal_clean_tree_is_prunable_after_retention"
+      - "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness"
+      - "worktree.an_orphaned_tree_is_offered_for_recovery"
+      - "worktree.prune_refuses_an_in_flight_tree"
+      - "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch"
 
   # The second workflow, and the claim the whole plugin model rests on: an
   # engine that learnt nothing drives it. What no unit test can say is that

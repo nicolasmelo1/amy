@@ -32,7 +32,7 @@ export class PlanCommandCheck implements PlanCheck {
     private readonly config: PlanCommandCheckConfig,
   ) {}
 
-  async check(repo: string): Promise<AttemptOutcome> {
+  async check(repo: string, workId?: string): Promise<AttemptOutcome> {
     const commands = this.config.commands[repo] ?? this.config.commands.default ?? [];
 
     if (commands.length === 0) {
@@ -47,7 +47,7 @@ export class PlanCommandCheck implements PlanCheck {
 
     for (const command of commands) {
       const result = await this.runner.run("sh", ["-c", command], {
-        cwd: this.git.pathFor(repo),
+        cwd: this.git.pathFor(repo, workId),
         timeoutMs: this.config.timeoutMs,
       });
 

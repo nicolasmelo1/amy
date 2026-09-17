@@ -48,6 +48,10 @@ const SHARED: readonly string[] = [
   "@amykit/plugin-file-store",
   "@amykit/plugin-file-notes",
   "@amykit/plugin-github",
+  // One isolated checkout per piece of work must mount before the harnesses
+  // and gates construct their Git bridges, or their optional port lookup sees
+  // nothing and silently falls back to the shared checkout.
+  "@amykit/plugin-file-worktree",
   "@amykit/plugin-claude",
   "@amykit/plugin-codex",
   "@amykit/plugin-hermes-agent",

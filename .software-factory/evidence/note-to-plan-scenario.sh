@@ -38,10 +38,12 @@ for argument in "$@"; do
 done
 
 bin=$(mktemp -d)
-cleanup() { rm -rf "$bin"; }
+install_lib=$(mktemp -d)
+tarballs=$(mktemp -d)
+cleanup() { rm -rf "$bin" "$install_lib" "$tarballs"; }
 trap cleanup EXIT INT TERM
 
-"$repo/scripts/install.sh" "$bin" >/dev/null
+AMY_INSTALL_LIB="$install_lib" AMY_TARBALLS="$tarballs" "$repo/scripts/install.sh" "$bin" >/dev/null
 test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 node "$here/note-to-plan/drive.mjs" "$here/note-to-plan" "$bin/amy" "$report" $keep

@@ -177,12 +177,26 @@ export interface AmyConfig {
   plans: PlansConfig;
   errands: ErrandsConfig;
   /**
+   * Where isolated worktrees live, and how long finished ones stay.
+   *
+   * The machine's own state, not a workflow's: the paths carry the workflow
+   * name, the retention is the same word the queue's retention is.
+   */
+  worktrees: WorktreesConfig;
+  /**
    * One slice per plugin, keyed by package name.
    *
    * The host never reads inside a slice. Each plugin declares what its own
    * looks like, and `amy doctor` refuses a slice that does not match.
    */
   plugins: Record<string, unknown>;
+}
+
+interface WorktreesConfig {
+  /** Where the trees live. `~` is expanded. Empty means beside the state. */
+  root: string;
+  /** How many days a terminal, clean tree stays before a prune takes it. */
+  retentionDays: number;
 }
 
 export const DEFAULT_CONFIG: AmyConfig = {
@@ -206,6 +220,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   notify: { hermes: null, inbox: true },
   plans: { repos: [], check: { default: ["sf check"] }, policy: {} },
   errands: { policy: {} },
+  worktrees: { root: "", retentionDays: 7 },
   plugins: {},
 };
 
@@ -263,6 +278,11 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
     plans: plansFrom(parsed.plans),
     errands: { policy: parsed.errands?.policy ?? {} },
+    worktrees: {
+      root: expandHome(parsed.worktrees?.root ?? DEFAULT_CONFIG.worktrees.root),
+      retentionDays:
+        parsed.worktrees?.retentionDays ?? DEFAULT_CONFIG.worktrees.retentionDays,
+    },
     workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
   };
 }
@@ -389,6 +409,24 @@ errands:
     # thirtieth pull request nobody asked to review.
     maxInFlight: 3
     ceilingBackoffMs: 1800000
+
+# Where isolated worktrees live, and how long finished ones stay. Every tree
+# is one work item's own checkout under this root, so two tickets on one
+# repository run at the same time without contending for a shared tree. A
+# dirty or in-flight tree is never pruned: retention only ever takes a
+# terminal, clean one.
+#
+# Leave "root" out and the trees live beside the state directory, under .amy.
+worktrees:
+  root: ~/workspaces/northwind-worktrees
+  retentionDays: 7
+
+# The worktree plugin itself, mounted when a workflow names it. The path
+# segment it puts every tree under is the profile's name, so two workflows
+# under one install never share a tree.
+#
+#   "@amykit/plugin-file-worktree":
+#     workflow: ticket-to-qa
 
 # How the machine behaves when something is in its way. Anything left out
 # keeps its default. maxOpenReviewsPerReviewer is the one that spends a

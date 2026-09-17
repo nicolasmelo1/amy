@@ -68,6 +68,7 @@ export type {
   BriefView,
 } from "./ports/Brief.js";
 export { renderBrief } from "./ports/Brief.js";
+export type { Worktree, WorktreeInfo } from "./ports/Worktree.js";
 
 export { NodeCommandRunner } from "./NodeCommandRunner.js";
 export { FileStopSwitch } from "./FileStopSwitch.js";

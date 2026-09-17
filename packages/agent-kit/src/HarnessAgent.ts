@@ -114,7 +114,7 @@ export class HarnessAgent implements Agent {
     retryContext?: string,
     conversation?: readonly string[],
   ): Promise<AgentResult<AttemptOutcome>> {
-    await this.git.prepareBranch(ticket.repo, ticket.branchName);
+    await this.git.prepareBranch(ticket.repo, ticket.branchName, ticket.id);
 
     const reply = await this.ask(
       ticket,
@@ -153,6 +153,7 @@ export class HarnessAgent implements Agent {
       ticket.repo,
       ticket.branchName,
       `${ticket.id}: ${ticket.title}`,
+      ticket.id,
     );
 
     if (!pushed) {
@@ -177,7 +178,7 @@ export class HarnessAgent implements Agent {
     threads: readonly ReviewThread[],
     from: "automated" | "human",
   ): Promise<AgentResult<ThreadVerdict[]>> {
-    await this.git.prepareBranch(ticket.repo, ticket.branchName);
+    await this.git.prepareBranch(ticket.repo, ticket.branchName, ticket.id);
 
     const reply = await this.ask(ticket, this.threadPrompt(ticket, threads, from));
 
@@ -207,6 +208,7 @@ export class HarnessAgent implements Agent {
       ticket.repo,
       ticket.branchName,
       `${ticket.id}: address review comments`,
+      ticket.id,
     );
 
     return { value: verdicts, run: reply.run };
@@ -264,8 +266,13 @@ export class HarnessAgent implements Agent {
     ].join("\n");
   }
 
-  private ask(ticket: Ticket, prompt: string): Promise<HarnessReply> {
-    return this.harness.ask(this.invoke(prompt), this.git.pathFor(ticket.repo), {
+  private async ask(ticket: Ticket, prompt: string): Promise<HarnessReply> {
+    // The work happens where the work is: with a worktree port behind the
+    // Git, the path handed over is the ticket's own tree, so the agent —
+    // the gate beside it, and every git effect — never sees another item's
+    // tree or the standing checkout.
+    const cwd = await this.git.acquire(ticket.repo, ticket.id);
+    return this.harness.ask(this.invoke(prompt), cwd, {
       workId: ticket.id,
     });
   }

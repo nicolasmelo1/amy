@@ -1,0 +1,33 @@
+{
+  "name": "@amykit/plugin-file-worktree",
+  "version": "0.1.0",
+  "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/file-worktree"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.3.1"
+  }
+}

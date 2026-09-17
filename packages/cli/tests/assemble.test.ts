@@ -104,6 +104,10 @@ describe("assembling the built-in set", () => {
       "queue",
       "store",
       "tracker",
+      // The workplace, mounted unconditionally by the worktree plugin: two
+      // tickets on one repository are the ordinary case, and the port costs
+      // one empty directory.
+      "worktree",
     ]);
   });
 

@@ -8,6 +8,7 @@ import {
   Plugin,
   PluginContext,
   Store,
+  Worktree,
   WORKFLOW_RUNTIME,
   WorkflowRuntime,
 } from "@amykit/core";
@@ -61,10 +62,14 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation
     host: required<CodeHost>(ctx, "code-host"),
     notifier: required<Notifier>(ctx, "notifier"),
     records: required<Store<PlanRecord>>(ctx, "store"),
-    git: new Git(ctx.runner, {
-      workspaceRoot: ctx.paths.workspace,
-      defaultBranch: ctx.config.defaultBranch as string,
-    }),
+    git: new Git(
+      ctx.runner,
+      {
+        workspaceRoot: ctx.paths.workspace,
+        defaultBranch: ctx.config.defaultBranch as string,
+      },
+      ctx.port("worktree") as Worktree | undefined,
+    ),
     now: ctx.now,
     log: ctx.log,
     config: { repos: ctx.config.repos as string[] },
