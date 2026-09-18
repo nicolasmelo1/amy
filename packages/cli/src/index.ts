@@ -36,6 +36,7 @@ import { WorktreeManager } from "@amykit/plugin-file-worktree";
 // plugin will not mount, which is exactly when you want to look.
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
+import { recordsToShow, standing } from "./status-view.js";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -701,7 +702,8 @@ program
   .command("status")
   .description("Show where every piece of work stands and what the queue holds")
   .option("--json", "the same thing as data, for something else to render")
-  .action(async (options: { json?: boolean }) => {
+  .option("--all", "include work that has finished")
+  .action(async (options: { json?: boolean; all?: boolean }) => {
     const profile = selected();
     const place = profilePaths(home, profile.name);
     const queue = new FileQueue(place.queue);
@@ -713,6 +715,7 @@ program
     const assembled = await assemble(profile);
     const workflow = assembled.ok ? assembled.mounted.workflow : undefined;
     const waiting = workflow?.waitingStates;
+    const terminal = workflow?.terminalStates;
 
     const records = new FileStore<AnyRecord>(place.records)
       .all()
@@ -728,7 +731,7 @@ program
       return;
     }
 
-    reportRecords(records, waiting);
+    reportRecords(records, waiting, terminal, options.all ?? false);
 
     console.log(
       `\nqueue: ${queue.ready(now).length} due, ${queue.pending().length} pending, ` +
@@ -767,6 +770,7 @@ program
           id: record.id,
           state: record.state,
           waiting: waiting ? waiting.includes(record.state) : null,
+          finished: terminal ? terminal.includes(record.state) : null,
           repo: record.repo ?? null,
           pullRequest: record.pullRequestNumber ?? null,
           updatedAt: record.updatedAt,
@@ -825,16 +829,28 @@ program
  */
 type AnyRecord = WorkRecord & { pullRequestNumber?: number; repo?: string };
 
-function reportRecords(records: readonly AnyRecord[], waiting: readonly string[] | undefined): void {
-  if (records.length === 0) console.log("nothing tracked yet");
+function reportRecords(
+  records: readonly AnyRecord[],
+  waiting: readonly string[] | undefined,
+  terminal: readonly string[] | undefined,
+  all: boolean,
+): void {
+  const view = recordsToShow(records, terminal, all);
 
-  for (const record of records) {
-    const held = waiting ? (waiting.includes(record.state) ? "waiting" : "active") : "?";
+  if (records.length === 0) console.log("nothing tracked yet");
+  else if (view.shown.length === 0) console.log("nothing open");
+
+  for (const record of view.shown) {
+    const held = standing(record.state, waiting, terminal);
     const pr = record.pullRequestNumber ? `#${record.pullRequestNumber}` : "";
     console.log(
       `${record.id.padEnd(28)} ${record.state.padEnd(18)} ${held.padEnd(8)} ` +
         `${(record.repo ?? "").padEnd(30)} ${pr}`.trimEnd(),
     );
+  }
+
+  if (view.finished) {
+    console.log(`\n${view.finished} finished, not shown. \`amy status --all\` lists them.`);
   }
 }
 

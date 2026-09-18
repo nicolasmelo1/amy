@@ -198,6 +198,11 @@ drives, not a field existing somewhere in the middle.
 - [x] The run leaves nothing behind: no world on disk, no child process still
       listening, and no build artefact dropped in the checkout
       (proof: assertion:lifecycle.the_run_leaves_nothing_behind)
+- [x] A ticket that reached a terminal state stops being listed, and is counted
+      instead: `discover` already refuses to queue it, so a line that never
+      goes away is a list that grows until nobody reads it. `--all` still shows
+      it, and the log still keeps what it did
+      (proof: assertion:lifecycle.finished_work_leaves_the_listing)
 - [ ] One real ticket, in the real tracker, with a real reviewer
       (proof: deferred:the stand-ins cannot prove somebody else's schema, and
       this is the step that has to happen with a person watching)

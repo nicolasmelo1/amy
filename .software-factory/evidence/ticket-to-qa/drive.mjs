@@ -368,6 +368,7 @@ function lifecycle() {
     }
 
     world.status = amy(root, ["status"]);
+    world.statusAll = amy(root, ["status", "--all"]);
     world.briefShow = amy(root, ["brief", BRIEF, "--json"]);
     world.budget = amy(root, ["budget"]);
     world.record = recordOf(root);
@@ -954,7 +955,14 @@ function assertionsFor(first, second) {
     ],
     [
       "lifecycle.status_says_where_the_work_stands",
-      first.status.out.includes("DONE") && first.status.out.includes(`#${first.pull.number}`),
+      first.statusAll.out.includes("DONE") && first.statusAll.out.includes(`#${first.pull.number}`),
+    ],
+    // Finished work leaves the listing. `discover` already refuses to queue a
+    // record in a terminal state, so what is left is a line that never goes
+    // away, and a list that only grows stops being read.
+    [
+      "lifecycle.finished_work_leaves_the_listing",
+      !first.status.out.includes("DONE") && first.status.out.includes("1 finished, not shown"),
     ],
   ].map(([type, ok]) => ({ type, status: ok ? "passed" : "failed" }));
 }

@@ -378,6 +378,7 @@ amy status [options]
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--json` |  | the same thing as data, for something else to render |
+| `--all` |  | include work that has finished |
 
 ### `amy stop`
 

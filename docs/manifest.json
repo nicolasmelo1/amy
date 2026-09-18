@@ -739,6 +739,11 @@
         },
         {
           "depth": 3,
+          "title": "amy status stops listing work that has finished.",
+          "slug": "amy-status-stops-listing-work-that-has-finished"
+        },
+        {
+          "depth": 3,
           "title": "The forge is asked, not run beside.",
           "slug": "the-forge-is-asked-not-run-beside"
         },
@@ -4658,6 +4663,10 @@
             {
               "flags": "--json",
               "description": "the same thing as data, for something else to render"
+            },
+            {
+              "flags": "--all",
+              "description": "include work that has finished"
             }
           ],
           "isDefault": false
@@ -6313,7 +6322,8 @@
           "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch",
           "checkout.a_repository_can_name_its_own_root",
           "checkout.the_root_still_answers_for_the_rest",
-          "checkout.a_missing_checkout_names_which_root_was_asked"
+          "checkout.a_missing_checkout_names_which_root_was_asked",
+          "lifecycle.finished_work_leaves_the_listing"
         ],
         "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
       }
@@ -6734,6 +6744,18 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "finished-work-leaves-the-listing",
+        "title": "`amy status` stops listing work that has finished.",
+        "body": "A record in a terminal state is done: `discover` already refuses to queue it,\nso it costs nothing to keep — but it never left the listing on its own, and a\nlist that only grows stops being read. Finished records are counted below the\ntable instead, `amy status --all` prints them, and `--json` marks each record\nwith `finished` so a page can make the same cut. Nothing is deleted and the\nlog still keeps what the work did.\n\nNothing is hidden when the workflow will not mount, because a mount that\nfailed is exactly when somebody wants every row.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "the-forge-is-asked-not-run-beside",
