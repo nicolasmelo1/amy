@@ -52,10 +52,11 @@ a workflow decision.
 **From four issues filed against this repository itself.** *The performance
 guard can fail* comes first and is small: a guard that cannot go red is the
 gate every other row's proof rides on. *Grooming reads the code it is about*
-needs nothing new — its two preconditions, a checkout root and a base branch
-per repository, have shipped — and it closes a measured loss of six cancelled
-tickets out of fourteen. *A project is three phases* is the slot, and *a phase
-is proven, not asserted* is what goes in the third one, so it follows.
+was delivered as `docs/design/grooming-reads-the-code-it-is-about.md`: it reads
+configured base-branch snapshots without changing standing checkouts, and only
+reconciles work carrying its own provenance. *A project is three phases* is the
+slot, and *a phase is proven, not asserted* is what goes in the third one, so
+it follows.
 
 | # | Work | Exit condition |
 | 1 | [A spec is a name, a URL or a path](a-spec-is-a-name-a-url-or-a-path.md) | One function turns any of the five forms into what npm installs and what the config names, and nothing else in the CLI parses a spec |
@@ -106,8 +107,6 @@ is proven, not asserted* is what goes in the third one, so it follows.
 
 | 24 | [The performance guard can fail](the-performance-guard-can-fail.md) | A commit that makes the budget ledger twenty times slower turns this repository's build red naming the benchmark, and the same gate goes red the day somebody replaces the comparison with a command that only reports. |
 
-| 25 | [Grooming reads the code it is about](grooming-reads-the-code-it-is-about.md) | A grooming run over a feature whose column already exists in the repository cuts that ticket before a branch is ever created, and an install that never configured a checkout is told which repository it could not read. |
+| 25 | [A project is three phases](a-project-is-three-phases.md) | One project drives grooming on a planning cadence with an expensive model and execution continuously with a cheap one, the second reads what the first wrote without either naming a path belonging to the other, and an install that never heard of phases does not change. |
 
-| 26 | [A project is three phases](a-project-is-three-phases.md) | One project drives grooming on a planning cadence with an expensive model and execution continuously with a cheap one, the second reads what the first wrote without either naming a path belonging to the other, and an install that never heard of phases does not change. |
-
-| 27 | [A phase is proven, not asserted](a-phase-is-proven-not-asserted.md) | A unit of work whose scenario names no example cannot leave planning, a phase whose run left one assertion unevaluated is refused with that assertion named, and a phase proven against code that has since changed goes red without anybody looking. |
+| 26 | [A phase is proven, not asserted](a-phase-is-proven-not-asserted.md) | A unit of work whose scenario names no example cannot leave planning, a phase whose run left one assertion unevaluated is refused with that assertion named, and a phase proven against code that has since changed goes red without anybody looking. |
