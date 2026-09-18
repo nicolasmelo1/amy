@@ -30,7 +30,7 @@ maintains.
 | `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
 | `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
-| `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `tracker` |  |
+| `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `feature`<br>`tracker` |  |
 | `@amykit/plugin-notify-fanout` | Sends one announcement down every configured channel, and keeps going when one is down. | `notifier` |  |
 | `@amykit/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. | `notify` | `notify-channel:hermes` |
 | `@amykit/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
@@ -396,7 +396,7 @@ Linear as the tracker, over its GraphQL API.
 |  |  |
 | :-- | :-- |
 | Source | `plugins/linear` |
-| Mounts | `tracker` |
+| Mounts | `feature`<br>`tracker` |
 | Contributes | _nothing_ |
 | Needs in the environment | `LINEAR_API_KEY` |
 | Depends on | `@amykit/core` |

@@ -79,6 +79,7 @@ packages/
 ├── model-specs          What each model costs per token, vendored and versioned.
 ├── test-fixtures        Shared test builders and scripted doubles. Not published.
 ├── workflow-errand      Something said in passing becomes work: capture it, do it, say what happened.
+├── workflow-feature-grooming Feature grooming against read-only base-branch source snapshots.
 ├── workflow-note-to-plan The note-to-plan workflow: friction becomes a plan in the repository it is about.
 └── workflow-ticket-to-qa The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
 
@@ -121,6 +122,7 @@ this repository.
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/workflow-errand` | workflow | `@amykit/core` |
+| `@amykit/workflow-feature-grooming` | workflow | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/core` |
 | `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |

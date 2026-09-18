@@ -39,6 +39,7 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * capability, before any tracker call log records a write.
    */
   readonly trackerWrites?: readonly string[];
+
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
 }
 

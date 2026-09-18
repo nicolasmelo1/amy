@@ -44,6 +44,11 @@ export type {
   Agent,
   AttemptOutcome,
   Comment,
+  Feature,
+  FeatureTracker,
+  FeatureWorkTracker,
+  GroomedWork,
+  GroomingTracker,
   FollowUpRequest,
   Gate,
   Ticket,
@@ -69,6 +74,8 @@ export type {
 } from "./ports/Brief.js";
 export { renderBrief } from "./ports/Brief.js";
 export type { Worktree, WorktreeInfo } from "./ports/Worktree.js";
+export { GitBaseSource } from "./ports/BaseSource.js";
+export type { BaseSource, BaseSourceSnapshot } from "./ports/BaseSource.js";
 
 export { NodeCommandRunner } from "./NodeCommandRunner.js";
 export { FileStopSwitch } from "./FileStopSwitch.js";

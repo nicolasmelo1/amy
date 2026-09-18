@@ -253,6 +253,11 @@
           "description": ""
         },
         {
+          "title": "Grooming reads the code it is about",
+          "path": "/design/grooming-reads-the-code-it-is-about",
+          "description": ""
+        },
+        {
           "title": "Nothing is installed by default",
           "path": "/design/nothing-is-installed-by-default",
           "description": ""
@@ -754,6 +759,11 @@
         },
         {
           "depth": 3,
+          "title": "Add provider-neutral feature grooming with read-only base-branch snapshots and reconciliation provenance.",
+          "slug": "add-provider-neutral-feature-grooming-with-read-only-base-branch-snapshots-and-reconciliation-provenance"
+        },
+        {
+          "depth": 3,
           "title": "The forge is asked, not run beside.",
           "slug": "the-forge-is-asked-not-run-beside"
         },
@@ -1128,6 +1138,16 @@
         },
         {
           "depth": 3,
+          "title": "BaseSource",
+          "slug": "basesource"
+        },
+        {
+          "depth": 3,
+          "title": "BaseSourceSnapshot",
+          "slug": "basesourcesnapshot"
+        },
+        {
+          "depth": 3,
           "title": "BriefStore",
           "slug": "briefstore"
         },
@@ -1155,6 +1175,16 @@
           "depth": 3,
           "title": "EventLog",
           "slug": "eventlog"
+        },
+        {
+          "depth": 3,
+          "title": "FeatureTracker",
+          "slug": "featuretracker"
+        },
+        {
+          "depth": 3,
+          "title": "FeatureWorkTracker",
+          "slug": "featureworktracker"
         },
         {
           "depth": 3,
@@ -1585,6 +1615,43 @@
           "depth": 2,
           "title": "What this deliberately does not do",
           "slug": "what-this-deliberately-does-not-do"
+        }
+      ]
+    },
+    {
+      "path": "/design/grooming-reads-the-code-it-is-about",
+      "file": "docs/design/grooming-reads-the-code-it-is-about.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/grooming-reads-the-code-it-is-about.md",
+      "title": "Grooming reads the code it is about",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Why the brief does not close this",
+          "slug": "why-the-brief-does-not-close-this"
+        },
+        {
+          "depth": 2,
+          "title": "The two preconditions have shipped",
+          "slug": "the-two-preconditions-have-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "Read-only, and it matters here",
+          "slug": "read-only-and-it-matters-here"
+        },
+        {
+          "depth": 2,
+          "title": "Running it more than once is the point",
+          "slug": "running-it-more-than-once-is-the-point"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
         }
       ]
     },
@@ -2514,6 +2581,16 @@
         },
         {
           "depth": 3,
+          "title": "BaseSource",
+          "slug": "basesource"
+        },
+        {
+          "depth": 3,
+          "title": "BaseSourceSnapshot",
+          "slug": "basesourcesnapshot"
+        },
+        {
+          "depth": 3,
           "title": "BriefStore",
           "slug": "briefstore"
         },
@@ -2541,6 +2618,16 @@
           "depth": 3,
           "title": "EventLog",
           "slug": "eventlog"
+        },
+        {
+          "depth": 3,
+          "title": "FeatureTracker",
+          "slug": "featuretracker"
+        },
+        {
+          "depth": 3,
+          "title": "FeatureWorkTracker",
+          "slug": "featureworktracker"
         },
         {
           "depth": 3,
@@ -3482,6 +3569,30 @@
         ]
       },
       {
+        "interface": "BaseSource",
+        "file": "packages/core/src/ports/BaseSource.ts",
+        "doc": "The narrow source capability grooming receives.",
+        "methods": [
+          {
+            "name": "snapshot",
+            "signature": "snapshot(repo: string): Promise<BaseSourceSnapshot>",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "BaseSourceSnapshot",
+        "file": "packages/core/src/ports/BaseSource.ts",
+        "doc": "A read-only view of one repository at its configured base revision.",
+        "methods": [
+          {
+            "name": "read",
+            "signature": "read(path: string): Promise<string | null>",
+            "doc": "Reads a tracked file as it exists at the configured base branch."
+          }
+        ]
+      },
+      {
         "interface": "BriefStore",
         "file": "packages/core/src/ports/Brief.ts",
         "doc": "The mounted persistence port behind every brief read and write.",
@@ -3640,6 +3751,50 @@
             "name": "read",
             "signature": "read(since?: Date): Event[]",
             "doc": "Events at or after the given instant, oldest first."
+          }
+        ]
+      },
+      {
+        "interface": "FeatureTracker",
+        "file": "packages/core/src/ports/Ticketing.ts",
+        "doc": "Read-only feature discovery supplied by a tracker provider.",
+        "methods": [
+          {
+            "name": "features",
+            "signature": "features(): Promise<Feature[]>",
+            "doc": ""
+          },
+          {
+            "name": "getFeature",
+            "signature": "getFeature(id: string): Promise<Feature | null>",
+            "doc": ""
+          }
+        ]
+      },
+      {
+        "interface": "FeatureWorkTracker",
+        "file": "packages/core/src/ports/Ticketing.ts",
+        "doc": "Tracker mutations a grooming workflow needs. They are feature-scoped rather than ticket-workflow operations so a provider can implement them without importing or knowing about ticket-to-qa.",
+        "methods": [
+          {
+            "name": "groomedWork",
+            "signature": "groomedWork(featureId: string, groomedBy: string): Promise<GroomedWork[]>",
+            "doc": ""
+          },
+          {
+            "name": "createGroomedWork",
+            "signature": "createGroomedWork(input: Omit<GroomedWork, \"id\" | \"retired\">): Promise<GroomedWork>",
+            "doc": ""
+          },
+          {
+            "name": "updateGroomedWork",
+            "signature": "updateGroomedWork(id: string, input: Pick<GroomedWork, \"title\" | \"body\">): Promise<GroomedWork>",
+            "doc": ""
+          },
+          {
+            "name": "retireGroomedWork",
+            "signature": "retireGroomedWork(id: string): Promise<void>",
+            "doc": ""
           }
         ]
       },
@@ -4900,12 +5055,33 @@
         ]
       },
       {
+        "kind": "feature",
+        "actions": [],
+        "mountedBy": [
+          "@amykit/plugin-linear"
+        ]
+      },
+      {
         "kind": "gate",
         "actions": [
           "run-gate"
         ],
         "mountedBy": [
           "@amykit/plugin-command-gate"
+        ]
+      },
+      {
+        "kind": "grooming-source",
+        "actions": [],
+        "mountedBy": [
+          "@amykit/workflow-feature-grooming"
+        ]
+      },
+      {
+        "kind": "grooming-tracker",
+        "actions": [],
+        "mountedBy": [
+          "@amykit/workflow-feature-grooming"
         ]
       },
       {
@@ -5723,6 +5899,7 @@
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/linear",
         "readme": "plugins/linear/README.md",
         "mounts": [
+          "feature",
           "tracker"
         ],
         "contributes": [],
@@ -5963,6 +6140,44 @@
         "environment": []
       },
       {
+        "name": "@amykit/workflow-feature-grooming",
+        "version": "0.1.0",
+        "kind": "workflow",
+        "description": "Feature grooming against read-only base-branch source snapshots.",
+        "directory": "packages/workflow-feature-grooming",
+        "npm": "https://www.npmjs.com/package/@amykit/workflow-feature-grooming",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-feature-grooming",
+        "readme": "packages/workflow-feature-grooming/README.md",
+        "mounts": [
+          "grooming-source",
+          "grooming-tracker"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "per-repository base branch"
+          },
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "fallback base branch for source snapshots"
+          },
+          {
+            "name": "repos",
+            "type": "string[]",
+            "required": true,
+            "description": "repositories whose configured base branch grooming may read"
+          }
+        ],
+        "environment": []
+      },
+      {
         "name": "@amykit/workflow-note-to-plan",
         "version": "0.3.1",
         "kind": "workflow",
@@ -6197,6 +6412,24 @@
           "bare.no_workflow_mounts_so_nothing_assembles"
         ],
         "scenario": ".software-factory/evidence/bare-install-scenario.sh"
+      },
+      {
+        "name": "feature-grooming",
+        "activation": [
+          "packages/workflow-feature-grooming/src/**",
+          "packages/core/src/ports/BaseSource.ts",
+          "packages/core/src/ports/Ticketing.ts",
+          "plugins/linear/src/**",
+          "packages/cli/src/slices.ts",
+          "packages/cli/src/profiles.ts"
+        ],
+        "evidence": ".software-factory/evidence/feature-grooming.json",
+        "plan": "docs/design/grooming-reads-the-code-it-is-about.md",
+        "assertions": [
+          "groom.the_step_reads_the_base_branch",
+          "groom.a_second_run_retires_what_it_cut"
+        ],
+        "scenario": ".software-factory/evidence/feature-grooming-scenario.sh"
       },
       {
         "name": "installed-binary",
@@ -6918,6 +7151,26 @@
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "grooming-reads-the-code-it-is-about",
+        "title": "Add provider-neutral feature grooming with read-only base-branch snapshots and reconciliation provenance.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-feature-grooming",
             "level": "minor"
           }
         ],

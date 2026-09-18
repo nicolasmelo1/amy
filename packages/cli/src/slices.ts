@@ -64,6 +64,11 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       baseBranch: config.baseBranch,
       policy: config.errands.policy,
     },
+    "@amykit/workflow-feature-grooming": {
+      repos: config.repos,
+      defaultBranch: config.defaultBranch,
+      baseBranch: config.baseBranch,
+    },
     "@amykit/plugin-file-tasks": {
       directory: "tasks",
       repo: config.repos[0] ?? "",

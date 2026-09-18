@@ -26,5 +26,8 @@ export const plugin: Plugin = {
     });
 
     registry.port("tracker", tracker);
+    // The same provider offers the read-only feature seam; workflow choice is
+    // above the adapter, so grooming never depends on ticket-to-qa.
+    registry.port("feature", tracker);
   },
 };

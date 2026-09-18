@@ -260,6 +260,50 @@ export interface TrackerWrites {
 export type Tracker = TrackerReads & TrackerWrites;
 
 /**
+ * A feature is a tracker-owned grouping of work, deliberately not a ticket
+ * workflow's private parent convention. Any workflow may read it through the
+ * same provider that supplies ticket work.
+ */
+export interface Feature {
+  id: string;
+  title: string;
+  body?: string;
+  repos: readonly string[];
+}
+
+/** Read-only feature discovery supplied by a tracker provider. */
+export interface FeatureTracker {
+  features(): Promise<Feature[]>;
+  getFeature(id: string): Promise<Feature | null>;
+}
+
+/** Work created by a grooming run, with durable grooming provenance. */
+export interface GroomedWork {
+  id: string;
+  featureId: string;
+  /** Identifies the grooming workflow, not a brief membership. */
+  groomedBy: string;
+  title: string;
+  body: string;
+  retired: boolean;
+}
+
+/**
+ * Tracker mutations a grooming workflow needs. They are feature-scoped rather
+ * than ticket-workflow operations so a provider can implement them without
+ * importing or knowing about ticket-to-qa.
+ */
+export interface FeatureWorkTracker {
+  groomedWork(featureId: string, groomedBy: string): Promise<GroomedWork[]>;
+  createGroomedWork(input: Omit<GroomedWork, "id" | "retired">): Promise<GroomedWork>;
+  updateGroomedWork(id: string, input: Pick<GroomedWork, "title" | "body">): Promise<GroomedWork>;
+  retireGroomedWork(id: string): Promise<void>;
+}
+
+/** Provider-neutral capability needed by a feature grooming workflow. */
+export type GroomingTracker = FeatureTracker & FeatureWorkTracker;
+
+/**
  * What one workflow declares about the writes it may make, named so a boot
  * refusal can quote it back.
  *

@@ -1,0 +1,24 @@
+{
+  "scenario": "feature-grooming",
+  "status": "passed",
+  "goal": "Re-groom a feature against configured base-branch source without changing the standing checkout, and retire only obsolete work the grooming workflow produced.",
+  "artifact": {
+    "package": "@amykit/workflow-feature-grooming",
+    "entry": "groomFeature with GitBaseSource",
+    "built_by": "npm run build"
+  },
+  "observed": {
+    "assertions_run": 2,
+    "assertions_failed": 0
+  },
+  "assertions": [
+    {
+      "type": "groom.the_step_reads_the_base_branch",
+      "status": "passed"
+    },
+    {
+      "type": "groom.a_second_run_retires_what_it_cut",
+      "status": "passed"
+    }
+  ]
+}
