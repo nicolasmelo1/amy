@@ -4,7 +4,7 @@
 
 Linear as the tracker, over its GraphQL API.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `tracker` port.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `feature` port and the `tracker` port.
 
 ## Install
 

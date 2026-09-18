@@ -93,6 +93,10 @@ describe("assembling the built-in set", () => {
       // behind it is a boot refusal, and the store costs one empty directory.
       "brief",
       "code-host",
+      // The same tracker provider exposes feature discovery as a separate,
+      // workflow-neutral port so a grooming workflow does not depend on this
+      // ticket lifecycle.
+      "feature",
       "gate",
       // The notes are mounted in both profiles: this one writes them when it
       // gives up, the other one reads them.

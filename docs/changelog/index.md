@@ -112,6 +112,12 @@ log still keeps what the work did.
 Nothing is hidden when the workflow will not mount, because a mount that
 failed is exactly when somebody wants every row.
 
+### Add provider-neutral feature grooming with read-only base-branch snapshots and reconciliation provenance.
+
+`minor` · `@amykit/core`, `@amykit/plugin-linear`, `@amykit/workflow-feature-grooming`
+
+
+
 ### The forge is asked, not run beside.
 
 `patch` · `@amykit/core`, `@amykit/plugin-github`, `@amykit/plugin-linear`, `@amykit/workflow-ticket-to-qa`

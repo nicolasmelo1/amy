@@ -72,6 +72,7 @@ describe("pluginSlices", () => {
     expect(slices["@amykit/workflow-ticket-to-qa"]?.baseBranch).toEqual({});
     expect(slices["@amykit/workflow-note-to-plan"]?.baseBranch).toEqual({});
     expect(slices["@amykit/workflow-errand"]?.baseBranch).toEqual({});
+    expect(slices["@amykit/workflow-feature-grooming"]?.baseBranch).toEqual({});
   });
 
   it("carries the per-repository base map beside the fallback, to every reader", () => {
@@ -92,6 +93,7 @@ describe("pluginSlices", () => {
     expect(slices["@amykit/workflow-ticket-to-qa"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
     expect(slices["@amykit/workflow-note-to-plan"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
     expect(slices["@amykit/workflow-errand"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/workflow-feature-grooming"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
   });
 
   it("gives the gate the commands, per repository", () => {

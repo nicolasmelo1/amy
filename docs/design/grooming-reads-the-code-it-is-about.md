@@ -36,13 +36,17 @@ work item.
 
 ## Read-only, and it matters here
 
-Grooming receives a path to read. It is given no branch, no commit and no
-worktree, and it should not pay for isolation it does not need — the worktree
-belongs to a work item driving its lifecycle, and this is not that.
+Grooming receives one `BaseSourceSnapshot` per named repository. It is given no
+checkout path, branch, commit or worktree: the narrow source port reads Git
+objects at `origin/<configured-base>` and exposes only `read()`. It therefore
+cannot repoint the standing checkout, create a branch, commit or acquire a
+worktree; the proof reads a base-only file while the standing tree remains on a
+private branch.
 
-That boundary has to be mechanical rather than a promise in a prompt, for the
-same reason the tracker-write capability is: a workflow that quietly acquires a
-write is a workflow whose blast radius nobody reviewed.
+The tracker is also a capability rather than a ticket-to-QA detail:
+`GroomingTracker` reads features and reconciles only work tagged with its own
+`groomedBy` provenance. A rerun cannot retire a human-owned item merely because
+it belongs to the same feature.
 
 ## Running it more than once is the point
 
@@ -61,16 +65,18 @@ workflow, which owns policy. The core parses no section.
 
 ## Acceptance criteria
 
-- [ ] A grooming step receives one checkout per repository its feature names,
-      resolved through the same map a work item uses, and a repository with no
-      entry is refused at boot naming the repository
+- [ ] A grooming step receives one base-source snapshot per repository its
+      feature names, resolved through the same checkout map a work item uses,
+      and a repository with no explicit entry is refused at boot naming it
       (proof: test:packages/cli/tests/slices.test.ts)
-- [ ] The path handed to a grooming step is at that repository's configured base
-      branch, whatever the working tree was on when the tick started
+- [ ] The source view handed to a grooming step reads that repository's
+      configured base branch, whatever the standing working tree was on when
+      the tick started
       (proof: assertion:groom.the_step_reads_the_base_branch)
-- [ ] A grooming step is handed no branch, no commit and no worktree, and a
-      workflow that declares a git effect on that path is refused at boot
-      (proof: test:packages/core/tests/mount.test.ts)
+- [ ] A grooming step is handed no checkout path, branch, commit or worktree;
+      its source port can only read base-branch Git objects and cannot create a
+      branch, commit or worktree
+      (proof: test:packages/workflow-feature-grooming/tests/groom.test.ts)
 - [ ] A second grooming run over the same feature rewrites the brief, bumps the
       revision, keeps every question already logged, and retires the work the
       first run produced that it no longer wants

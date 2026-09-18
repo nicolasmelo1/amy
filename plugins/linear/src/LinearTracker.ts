@@ -1,5 +1,5 @@
 import { GraphQLClient } from "@amykit/core";
-import { Comment, FollowUpRequest, Ticket, Tracker } from "@amykit/core";
+import { Comment, Feature, FeatureTracker, FollowUpRequest, GroomedWork, Ticket, Tracker } from "@amykit/core";
 
 export const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
 
@@ -39,7 +39,7 @@ interface IssueNode {
   team: { id: string; key: string; name: string };
 }
 
-export class LinearTracker implements Tracker {
+export class LinearTracker implements Tracker, FeatureTracker {
   private viewerId: string | null = null;
 
   constructor(
@@ -72,6 +72,55 @@ export class LinearTracker implements Tracker {
     );
 
     return data.issue ? this.toTicket(data.issue) : null;
+  }
+
+  async features(): Promise<Feature[]> {
+    const data = await this.client.request<{ issues: { nodes: IssueNode[] } }>(
+      `query Features { issues(filter: { labels: { some: { name: { eq: "Feature" } } } }, first: 50) { nodes { ${ISSUE_FIELDS} } } }`,
+    );
+    return data.issues.nodes.map((node) => this.toFeature(node));
+  }
+
+  async getFeature(id: string): Promise<Feature | null> {
+    const data = await this.client.request<{ issue: IssueNode | null }>(
+      `query Feature($id: String!) { issue(id: $id) { ${ISSUE_FIELDS} } }`,
+      { id },
+    );
+    return data.issue?.labels?.nodes.some((label) => label.name === "Feature") ? this.toFeature(data.issue) : null;
+  }
+
+  async groomedWork(featureId: string, groomedBy: string): Promise<GroomedWork[]> {
+    const feature = await this.requireIssue(featureId);
+    const data = await this.client.request<{ issue: { children: { nodes: IssueNode[] } } | null }>(
+      `query GroomedWork($id: String!) { issue(id: $id) { children(first: 100) { nodes { ${ISSUE_FIELDS} } } } }`,
+      { id: feature.id },
+    );
+    return (data.issue?.children.nodes ?? [])
+      .filter((node) => node.description?.includes(`<!-- amy:groomed-by=${groomedBy} -->`))
+      .map((node) => ({ id: node.identifier, featureId, groomedBy, title: node.title, body: node.description ?? "", retired: false }));
+  }
+
+  async createGroomedWork(input: Omit<GroomedWork, "id" | "retired">): Promise<GroomedWork> {
+    const parent = await this.requireIssue(input.featureId);
+    const data = await this.client.request<{ issueCreate: { success: boolean; issue: { identifier: string } | null } }>(
+      `mutation CreateGroomedWork($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { identifier } } }`,
+      { input: { teamId: parent.team.id, parentId: parent.id, title: input.title, description: `<!-- amy:groomed-by=${input.groomedBy} -->\n${input.body}` } },
+    );
+    if (!data.issueCreate.success || !data.issueCreate.issue) throw new Error(`Linear refused groomed work for ${input.featureId}`);
+    return { ...input, id: data.issueCreate.issue.identifier, retired: false };
+  }
+
+  async updateGroomedWork(id: string, input: Pick<GroomedWork, "title" | "body">): Promise<GroomedWork> {
+    const current = await this.requireIssue(id);
+    await this.update(id, { title: input.title, description: input.body });
+    return { id, featureId: current.parent?.id ?? "", groomedBy: "feature-grooming", ...input, retired: false };
+  }
+
+  async retireGroomedWork(id: string): Promise<void> {
+    const data = await this.client.request<{ issueArchive: { success: boolean } }>(
+      `mutation RetireGroomedWork($id: String!) { issueArchive(id: $id) { success } }`, { id },
+    );
+    if (!data.issueArchive.success) throw new Error(`Linear refused retirement of groomed work ${id}`);
   }
 
   async comment(ticketId: string, body: string): Promise<void> {
@@ -256,6 +305,15 @@ export class LinearTracker implements Tracker {
 
     this.viewerId = data.viewer.id;
     return this.viewerId;
+  }
+
+  private toFeature(node: IssueNode): Feature {
+    return {
+      id: node.identifier,
+      title: node.title,
+      ...(node.description ? { body: node.description } : {}),
+      repos: [this.config.repoByTeam[node.team.key] ?? this.config.defaultRepo].filter(Boolean),
+    };
   }
 
   private toTicket(node: IssueNode): Ticket {

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "gate": "feature-grooming",
+  "implementation_sha256": "86684117b3205361f19e3b237238a63e4ea4cc73d4015e8cf07086fc2c2219a3",
+  "runs": [
+    {
+      "scenario": "feature-grooming",
+      "status": "passed",
+      "actor": "Hermes Agent, driving real Git repositories through the feature-grooming public API for Nicolas Melo",
+      "report": ".software-factory/evidence/feature-grooming-run.json",
+      "report_sha256": "9d701bc11728c120a1c573523d3cfc5dbbccbaa1701d4145ae9ab264e531bc98",
+      "required_assertions": []
+    }
+  ]
+}

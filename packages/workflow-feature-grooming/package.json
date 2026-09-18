@@ -1,0 +1,17 @@
+{
+  "name": "@amykit/workflow-feature-grooming",
+  "version": "0.1.0",
+  "description": "Feature grooming against read-only base-branch source snapshots.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": { "type": "git", "url": "git+https://github.com/nicolasmelo1/amy.git", "directory": "packages/workflow-feature-grooming" },
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist"],
+  "dependencies": { "@amykit/core": "^0.3.1" }
+}

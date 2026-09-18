@@ -138,6 +138,7 @@ describe("mount", () => {
     });
     expect(outcome.ok === true && outcome.mounted.ports.has("browser")).toBe(true);
   });
+
 });
 
 describe("contributions", () => {

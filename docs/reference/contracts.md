@@ -25,7 +25,10 @@ explains why for each.
 | `brief` | `@amykit/plugin-file-store` | _reached directly_ |
 | `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview`, `resolve-review-thread` |
 | `commands` | `@amykit/plugin-command` | `run-command` |
+| `feature` | `@amykit/plugin-linear` | _reached directly_ |
 | `gate` | `@amykit/plugin-command-gate` | `run-gate` |
+| `grooming-source` | `@amykit/workflow-feature-grooming` | _reached directly_ |
+| `grooming-tracker` | `@amykit/workflow-feature-grooming` | _reached directly_ |
 | `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
 | `notifier` | `@amykit/plugin-notify-fanout` | `announce` |
 | `notify` | `@amykit/plugin-notify-hermes` | _reached directly_ |
@@ -93,6 +96,26 @@ Declared in `packages/core/src/ports/Ticketing.ts`.
 | `triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>>` | Reads the ticket and says whether it can be implemented as written. |
 | `implement(ticket: Ticket, retryContext?: string, conversation?: readonly string[]): Promise<AgentResult<AttemptOutcome>>` | Writes the change, or the next attempt after one that did not hold. |
 | `addressThreads(ticket: Ticket, threads: readonly ReviewThread[], from: "automated" \| "human"): Promise<AgentResult<ThreadVerdict[]>>` | Judges review comments one by one. A comment it agrees with is fixed, a comment it disagrees with comes back as a disagreement for the owner rather than being argued with on the pull request. |
+
+### `BaseSource`
+
+The narrow source capability grooming receives.
+
+Declared in `packages/core/src/ports/BaseSource.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `snapshot(repo: string): Promise<BaseSourceSnapshot>` |  |
+
+### `BaseSourceSnapshot`
+
+A read-only view of one repository at its configured base revision.
+
+Declared in `packages/core/src/ports/BaseSource.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `read(path: string): Promise<string \| null>` | Reads a tracked file as it exists at the configured base branch. |
 
 ### `BriefStore`
 
@@ -171,6 +194,30 @@ Declared in `packages/core/src/ports/EventLog.ts`.
 | :-- | :-- |
 | `append(event: Event): void` |  |
 | `read(since?: Date): Event[]` | Events at or after the given instant, oldest first. |
+
+### `FeatureTracker`
+
+Read-only feature discovery supplied by a tracker provider.
+
+Declared in `packages/core/src/ports/Ticketing.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `features(): Promise<Feature[]>` |  |
+| `getFeature(id: string): Promise<Feature \| null>` |  |
+
+### `FeatureWorkTracker`
+
+Tracker mutations a grooming workflow needs. They are feature-scoped rather than ticket-workflow operations so a provider can implement them without importing or knowing about ticket-to-qa.
+
+Declared in `packages/core/src/ports/Ticketing.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `groomedWork(featureId: string, groomedBy: string): Promise<GroomedWork[]>` |  |
+| `createGroomedWork(input: Omit<GroomedWork, "id" \| "retired">): Promise<GroomedWork>` |  |
+| `updateGroomedWork(id: string, input: Pick<GroomedWork, "title" \| "body">): Promise<GroomedWork>` |  |
+| `retireGroomedWork(id: string): Promise<void>` |  |
 
 ### `Gate`
 

@@ -32,6 +32,9 @@
       "path": "packages/workflow-note-to-plan"
     },
     {
+      "path": "packages/workflow-feature-grooming"
+    },
+    {
       "path": "packages/workflow-ticket-to-qa"
     },
     {

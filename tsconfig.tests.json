@@ -86,6 +86,9 @@
       "@amykit/workflow-note-to-plan": [
         "packages/workflow-note-to-plan/src/index.ts"
       ],
+      "@amykit/workflow-feature-grooming": [
+        "packages/workflow-feature-grooming/src/index.ts"
+      ],
       "@amykit/workflow-ticket-to-qa": [
         "packages/workflow-ticket-to-qa/src/index.ts"
       ]

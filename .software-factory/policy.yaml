@@ -316,6 +316,20 @@ gates:
       - "plan.one_look_makes_at_most_one_move"
       - "plan.the_machine_settles_instead_of_spinning"
 
+  feature-grooming:
+    activation:
+      - "packages/workflow-feature-grooming/src/**"
+      - "packages/core/src/ports/BaseSource.ts"
+      - "packages/core/src/ports/Ticketing.ts"
+      - "plugins/linear/src/**"
+      - "packages/cli/src/slices.ts"
+      - "packages/cli/src/profiles.ts"
+    evidence: ".software-factory/evidence/feature-grooming.json"
+    plan: "docs/design/grooming-reads-the-code-it-is-about.md"
+    required_assertions:
+      - "groom.the_step_reads_the_base_branch"
+      - "groom.a_second_run_retires_what_it_cut"
+
 rules:
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:
