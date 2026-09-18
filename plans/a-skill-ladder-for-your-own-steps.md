@@ -39,6 +39,43 @@ were — the same shape as every other refusal here.
 Both `skills` and `ladderByStep` go through it. A ladder keyed by a step
 nobody dispatches has never been anything but a typo.
 
+## And how hard to think
+
+A step can be given its own model. It cannot be given how hard that model should
+think, and that is the third map with the same shape:
+
+```yaml
+agent:
+  ladderByStep:
+    self-review: [claude:opus, codex:gpt-5.6-terra]
+  effortByStep:
+    self-review: high
+```
+
+Searching the core, the model specs and the agent kit for reasoning, thinking or
+effort returns one hit, and it is the English word in a comment. Both CLIs amy
+drives expose the control; amy does not.
+
+It matters most where it is missing. The steps worth paying for are not the ones
+that write the most code: a wrong decision at a planning step costs every ticket
+downstream of it, and a wrong decision at an implementation step costs one
+branch. On one real feature, fourteen tickets were groomed and six were
+cancelled after code had been written. So the step that should think hardest is
+usually the cheapest one to run and the one nobody would think to configure, and
+the only way to buy more thinking today is to name a bigger model — which buys a
+different tradeoff and costs the same on every step that model appears in.
+
+`AskContext` gains the field, so a relay composing harnesses can act on it and a
+single-harness install ignores it — the shape the two existing optional fields
+already have. Adapters map it to whatever their CLI calls it, and a harness with
+no such control receives the question unchanged rather than failing.
+
+The boot refusal is the part worth insisting on, and it is why this belongs
+here rather than in a row of its own: an unknown effort value is exactly the
+defect this plan already refuses for skills, one key over. A ladder that quietly
+means less than it says is worse than a loud refusal, and an effort level
+silently dropped is harder to notice because the run still succeeds.
+
 ## The gate
 
 `plugin-agent-relay`, extended. Add:
@@ -47,6 +84,8 @@ nobody dispatches has never been anything but a typo.
 - `relay.a_step_nobody_declares_is_refused_at_boot`
 - `relay.the_refusal_lists_the_steps_there_were`
 - `relay.a_model_ladder_is_checked_like_a_skill_ladder`
+- `relay.an_effort_reaches_the_harness_that_has_one`
+- `relay.an_effort_no_harness_accepts_is_refused_at_boot`
 
 Its scenario already mounts a workflow written outside this repository, so the
 step it declares is the one to key a skill on.
@@ -65,7 +104,19 @@ step it declares is the one to key a skill on.
       (proof: test:plugins/agent-relay/tests/skills.test.ts)
 - [ ] An action that does not reach the agent port is still refused
       (proof: test:plugins/agent-relay/tests/skills.test.ts)
+- [ ] A step given an effort passes it to the harness, a step without one
+      behaves exactly as today, and a harness with no such control receives the
+      question unchanged rather than failing
+      (proof: assertion:relay.an_effort_reaches_the_harness_that_has_one)
+- [ ] An effort value no mounted harness accepts is refused at boot, naming the
+      step and the value
+      (proof: assertion:relay.an_effort_no_harness_accepts_is_refused_at_boot)
+- [ ] The effort reaches a workflow-declared step through the relay, not only
+      the core's own steps
+      (proof: test:plugins/agent-relay/tests/skills.test.ts)
 
 **Exit condition:** a workflow somebody wrote themselves gives one of its own
-steps a cheaper model and a skill of its own, from `config.yaml`, with nothing
-in amy's code naming that step.
+steps a cheaper model, a skill of its own and how hard to think, from
+`config.yaml`, with nothing in amy's code naming that step — and a typo in any
+of the three is refused at boot rather than discovered by a run that succeeded
+while meaning less than it said.

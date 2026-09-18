@@ -45,7 +45,7 @@ is knowledge this project has and its users do not.
 ## The rule this one is missing
 
 The second of the three is a workaround for an API that hands over the wrong
-thing. [The fold is told what moved](the-fold-is-told-what-moved.md)
+thing. [The workflow contract changes once](the-workflow-contract-changes-once.md)
 removes the reason it exists. Ship it anyway and retire it there: a rule that
 outlives its defect is cheap, and a defect that outlives its rule is not.
 
