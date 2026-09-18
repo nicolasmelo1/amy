@@ -60,6 +60,40 @@ describe("pluginSlices", () => {
     expect(slices["@amykit/plugin-command-gate"]?.defaultBranch).toBe("dev");
   });
 
+  it("hands no base-branch map when the config named none, so nothing resolves differently", () => {
+    // A config with no `baseBranch:` block behaves exactly as before: every
+    // slice carries an empty map, and a layout given it keeps answering with
+    // `defaultBranch`.
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amykit/plugin-claude"]?.baseBranch).toEqual({});
+    expect(slices["@amykit/plugin-command-gate"]?.baseBranch).toEqual({});
+    expect(slices["@amykit/plugin-file-worktree"]?.baseBranch).toEqual({});
+    expect(slices["@amykit/workflow-ticket-to-qa"]?.baseBranch).toEqual({});
+    expect(slices["@amykit/workflow-note-to-plan"]?.baseBranch).toEqual({});
+    expect(slices["@amykit/workflow-errand"]?.baseBranch).toEqual({});
+  });
+
+  it("carries the per-repository base map beside the fallback, to every reader", () => {
+    // The mapping reaches a workflow that never heard of it: the workflows'
+    // slices are derived here, so a workflow carrying its own branch mapping
+    // of its own is a workaround this shim exists to retire.
+    const mapped = {
+      ...CONFIG,
+      baseBranch: { "acme/widgets": "trunk" },
+    };
+    const slices = pluginSlices(mapped, TICKETS) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amykit/plugin-claude"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/plugin-codex"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/plugin-hermes-agent"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/plugin-command-gate"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/plugin-file-worktree"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/workflow-ticket-to-qa"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/workflow-note-to-plan"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+    expect(slices["@amykit/workflow-errand"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
+  });
+
   it("gives the gate the commands, per repository", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 

@@ -197,6 +197,8 @@ gates:
       - "engine.finishes_the_tick_when_every_channel_throws"
       - "engine.finishes_the_tick_when_the_log_cannot_be_written"
       - "engine.every_line_matches_the_contract"
+      - "base.a_repository_can_name_its_own_branch"
+      - "base.the_fallback_still_answers_for_the_rest"
 
   # The whole product, in one claim: a ticket goes in the working status and
   # comes out in QA. Every other gate here proves one artifact; this one

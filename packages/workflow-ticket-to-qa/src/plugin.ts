@@ -58,6 +58,17 @@ export const configSchema: ConfigSchema = {
     required: true,
     description: "every repository review load is counted across",
   },
+  defaultBranch: {
+    type: "string",
+    description: "the branch new work is cut from, for a repository that named none, which is not always `main`",
+    default: "main",
+  },
+  baseBranch: {
+    type: "record",
+    description:
+      "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch",
+    default: {},
+  },
   qaStatusName: {
     type: "string",
     required: true,
@@ -108,9 +119,19 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
         workspaceRoot: ctx.paths.workspace,
         checkouts: ctx.paths.checkouts,
         defaultBranch: ctx.config.defaultBranch as string,
+        baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
       },
       ctx.port("worktree") as Worktree | undefined,
     ),
+    // The same layout, named for the question `Git` does not answer: what the
+    // pull request opens against. One map, resolved once, at the caller that
+    // knows the repository.
+    layout: {
+      workspaceRoot: ctx.paths.workspace,
+      checkouts: ctx.paths.checkouts,
+      defaultBranch: ctx.config.defaultBranch as string,
+      baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
+    },
     // Optional on purpose: the `brief` port is the persistence seam a
     // grooming workflow's briefs live behind, and an install whose tickets
     // reference none is a real install that mounts and runs exactly as

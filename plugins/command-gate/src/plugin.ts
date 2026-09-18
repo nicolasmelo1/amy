@@ -13,6 +13,7 @@ export const plugin: Plugin = {
         workspaceRoot: ctx.paths.workspace,
         checkouts: ctx.paths.checkouts,
         defaultBranch: ctx.config.defaultBranch as string,
+        baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
       },
       // The gate (and the agent it hands paths to) runs where the work runs:
       // with a worktree port mounted, that is the item's own tree.

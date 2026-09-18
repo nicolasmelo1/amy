@@ -111,6 +111,7 @@ function build(options: {
     notifier: options.notifier ?? { announce: async () => undefined },
     records: options.store ?? fakeStore(),
     git: new Git(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" }),
+    layout: { workspaceRoot: "/checkouts", defaultBranch: "main" },
     now: () => NOW,
     config: { repos: options.repos ?? ["acme/widgets"] },
     policy: DEFAULT_POLICY,

@@ -16,8 +16,14 @@ export const configSchema: ConfigSchema = {
   },
   defaultBranch: {
     type: "string",
-    description: "the branch a new tree is cut from, which is not always `main`",
+    description: "the branch a tree is cut from for a repository that named none, which is not always `main`",
     default: "main",
+  },
+  baseBranch: {
+    type: "record",
+    description:
+      "where one repository's base branch is, instead of the fallback. A repository named here has its trees cut from that branch",
+    default: {},
   },
   checkouts: {
     type: "record",

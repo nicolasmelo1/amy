@@ -123,6 +123,15 @@ export interface OpenPullRequestRequest {
   branch: string;
   title: string;
   /**
+   * What the pull request is opened against.
+   *
+   * Absent means the forge's own default, which is the answer an install
+   * that named no mapping has always meant. A repository whose base branch
+   * is not the forge's default for it names its own here — the lookup is the
+   * caller's, because the caller is the one that knows the repository.
+   */
+  base?: string;
+  /**
    * Opened as a draft, which says "look at this when you want to".
    *
    * For work nobody asked for at the moment it lands — an errand — that is

@@ -31,6 +31,7 @@ For what the two halves mean and why, see
 | `workspaceRoot` | `string` | `"."` | Directory holding one checkout per repository. `~` is expanded. |
 | `checkouts` | `Record<string, string>` | `{}` | Where one repository's checkout is, instead of under the root. |
 | `defaultBranch` | `string` | `"main"` | Branch new work is cut from. |
+| `baseBranch` | `Record<string, string>` | `{}` | Where one repository's base branch is, instead of the fallback. |
 | `repoByTeam` | `Record<string, string>` | `{}` | Which repository a team's tickets land in, by team key. |
 | `gate` | `Record<string, string[]>` | `{}` | Gate commands per repository, with a `default` fallback. |
 | `agent` | `{ model?: string; /** Model tiers offered to the relay, cheapest first. */ models?: string[]; /** * Which contributed agents to try, in order, such as * `[claude:sonnet, claude:opus, codex:gpt-5]`. Empty means every agent * that was contributed, in mounting order. * * Naming a harness here is also what mounts it, so a ladder is the one * place an operator says which harnesses they have. */ ladder?: string[]; /** * A ladder for one step, keyed by the workflow's action name, overriding * the one above. * * Reading a ticket to decide whether it is clear enough to start is not * the same job as writing the change, and one list for both means paying * the expensive model to do the cheap step. A name here mounts its * harness exactly as a name in `ladder` does. */ ladderByStep?: Record<string, string[]>; reviewerHints?: Record<string, string>; timeoutMs?: number; /** * What the agents may spend, per window. Read by the relay, which is the * only thing here that spends one. Shape checked at boot, not here. */ budget?: Record<string, unknown>; }` | `{}` |  |
@@ -217,6 +218,13 @@ workspaceRoot: ~/workspaces/northwind
 #   Northwind/northwind-backend: ~/work/backend
 #   acme/amy: ~/code/amy
 defaultBranch: main
+# Where one repository's base branch is, instead of the fallback above.
+# Repositories on one install do not agree on the name — a fork of this one
+# keeps master — and one string for all of them was a workaround a private
+# workflow had to carry its own mapping for. A repository named here is cut
+# from, and opened against, its own branch; every other keeps defaultBranch.
+# baseBranch:
+#   Northwind/northwind-frontend: trunk
 
 # Which repository a team's tickets land in, by team key. A team that is not
 # listed falls back to the first entry in "repos".

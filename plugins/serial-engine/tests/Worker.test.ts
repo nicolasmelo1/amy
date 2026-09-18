@@ -135,8 +135,34 @@ describe("Worker", () => {
       repo: "Northwind/northwind-backend",
       branch: "ada/proj-1239-total-is-wrong",
       title: "PROJ-1239: The total is wrong on the invoice",
+      // The base the layout resolved for this repository, named explicitly —
+      // an absent base would leave the choice to the host.
+      base: "main",
       body: "",
     });
+  });
+
+  it("opens the pull request on the base the repository named, not the fallback", async () => {
+    // The fixture's ticket names Northwind/northwind-backend, so the layout
+    // is what decides. A repository whose base is its own is opened against
+    // that one, and every other in the same install keeps the fallback.
+    const layout = {
+      workspaceRoot: "/tmp/amy-fixture",
+      defaultBranch: "main",
+      baseBranch: { "Northwind/northwind-backend": "trunk" },
+    };
+    records.save({
+      ...newRecord("PROJ-1239", clock),
+      state: "PR_OPEN",
+    });
+    queue.enqueue({ workId: "PROJ-1239", reason: "gate is green" }, clock);
+    const host = fakeHost();
+
+    await build({ host, layout }).tick();
+
+    expect(host.openPullRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ base: "trunk" }),
+    );
   });
 
   it("only counts review load when it is about to pick a reviewer", async () => {

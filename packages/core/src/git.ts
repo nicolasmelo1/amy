@@ -16,6 +16,26 @@ export interface RepoLayout {
   checkouts?: Readonly<Record<string, string>>;
   /** Branch new work is cut from. */
   defaultBranch: string;
+  /**
+   * Where one repository's base branch is, instead of the fallback.
+   *
+   * A repository named here is cut from, and opened against, its own branch;
+   * every other keeps `defaultBranch`. The map is passed through whole rather
+   * than resolved at the edge, because the slice is built once and the
+   * repository is known per piece of work.
+   */
+  baseBranch?: Readonly<Record<string, string>>;
+}
+
+/**
+ * The one base branch answer there is: a repository that named its own is
+ * answered by that name, and every other keeps the fallback.
+ *
+ * Both halves of `RepoLayout` answer here, beside `checkoutFor`, so no caller
+ * re-derives the rule and a second reader cannot drift from the first.
+ */
+export function baseBranchFor(layout: RepoLayout, repo: string): string {
+  return layout.baseBranch?.[repo] ?? layout.defaultBranch;
 }
 
 /**
@@ -111,7 +131,7 @@ export class Git {
         return;
       }
 
-      await this.gitIn(tree, "checkout", "-B", branch, `origin/${this.layout.defaultBranch}`, "--ignore-other-worktrees");
+      await this.gitIn(tree, "checkout", "-B", branch, `origin/${baseBranchFor(this.layout, repo)}`, "--ignore-other-worktrees");
       return;
     }
 
@@ -128,7 +148,7 @@ export class Git {
       return;
     }
 
-    await this.git(repo, "checkout", "-B", branch, `origin/${this.layout.defaultBranch}`);
+    await this.git(repo, "checkout", "-B", branch, `origin/${baseBranchFor(this.layout, repo)}`);
   }
 
   async headSha(repo: string): Promise<string> {

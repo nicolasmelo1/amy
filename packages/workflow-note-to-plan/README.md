@@ -40,6 +40,7 @@ It emits `announce`, `check-plan`, `draft-plan` and `open-pull-request`.
 ```yaml
 plugins:
   "@amykit/workflow-note-to-plan":
+    baseBranch: {}
     defaultBranch: "main"
     policy: {}
     repos: <string[]>
@@ -47,6 +48,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its plan opened against that branch |
 | `defaultBranch` | `string` | no | `main` | the branch a plan branch is cut from, which is not always `main` |
 | `policy` | `record` | no | `{}` | maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default |
 | `repos` | `string[]` | **yes** |  | the repositories a plan may be written into. A note about anything else is handed back to the operator |

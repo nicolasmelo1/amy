@@ -142,6 +142,16 @@ export interface AmyConfig {
   checkouts: Record<string, string>;
   /** Branch new work is cut from. */
   defaultBranch: string;
+  /**
+   * Where one repository's base branch is, instead of the fallback.
+   *
+   * Repositories on one install do not agree on the name, and the answer
+   * before this was one string for all of them. A repository named here is
+   * cut from, and opened against, its own branch; every other keeps
+   * `defaultBranch`, which is why it keeps its name — most installs never
+   * write the map.
+   */
+  baseBranch: Record<string, string>;
   /** Which repository a team's tickets land in, by team key. */
   repoByTeam: Record<string, string>;
   /** Gate commands per repository, with a `default` fallback. */
@@ -221,6 +231,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   workspaceRoot: ".",
   checkouts: {},
   defaultBranch: "main",
+  baseBranch: {},
   repoByTeam: {},
   gate: {},
   agent: {},
@@ -308,6 +319,7 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
       retentionDays:
         parsed.worktrees?.retentionDays ?? DEFAULT_CONFIG.worktrees.retentionDays,
     },
+    baseBranch: parsed.baseBranch ?? DEFAULT_CONFIG.baseBranch,
     ...checkoutLayoutFrom(parsed),
   };
 }
@@ -521,6 +533,13 @@ workspaceRoot: ~/workspaces/northwind
 #   Northwind/northwind-backend: ~/work/backend
 #   acme/amy: ~/code/amy
 defaultBranch: main
+# Where one repository's base branch is, instead of the fallback above.
+# Repositories on one install do not agree on the name — a fork of this one
+# keeps master — and one string for all of them was a workaround a private
+# workflow had to carry its own mapping for. A repository named here is cut
+# from, and opened against, its own branch; every other keeps defaultBranch.
+# baseBranch:
+#   Northwind/northwind-frontend: trunk
 
 # Which repository a team's tickets land in, by team key. A team that is not
 # listed falls back to the first entry in "repos".

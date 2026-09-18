@@ -1,8 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { Git } from "@amykit/core";
+import { baseBranchFor, Git } from "@amykit/core";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 
 const layout = { workspaceRoot: "/home/dev/workspaces/northwind", defaultBranch: "main" };
+
+describe("baseBranchFor", () => {
+  it("answers the repository's own branch when the layout named one", () => {
+    const own = { ...layout, baseBranch: { "Northwind/northwind-backend": "trunk" } };
+
+    expect(baseBranchFor(own, "Northwind/northwind-backend")).toBe("trunk");
+  });
+
+  it("keeps the fallback for a repository that named none", () => {
+    const own = { ...layout, baseBranch: { "Northwind/northwind-backend": "trunk" } };
+
+    expect(baseBranchFor(own, "Northwind/northwind-frontend")).toBe("main");
+  });
+
+  it("is the default branch when nothing is mapped at all", () => {
+    expect(baseBranchFor(layout, "Northwind/northwind-backend")).toBe("main");
+  });
+});
 
 describe("Git.pathFor", () => {
   it("drops the owner to find the local checkout", () => {
@@ -64,6 +82,30 @@ describe("Git.prepareBranch", () => {
 
     const checkout = runner.calls.find((call) => call.args[0] === "checkout");
     expect(checkout?.args).toEqual(["checkout", "-B", "ada/proj-1239", "origin/main"]);
+  });
+
+  it("cuts a new branch off the base the repository named, not the fallback", async () => {
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("rev-parse", "refs/remotes/origin/"), result: { exitCode: 1 } },
+    ]);
+    const own = { ...layout, baseBranch: { "Northwind/northwind-backend": "trunk" } };
+
+    await new Git(runner, own).prepareBranch("Northwind/northwind-backend", "ada/proj-1239");
+
+    const checkout = runner.calls.find((call) => call.args[0] === "checkout");
+    expect(checkout?.args).toEqual(["checkout", "-B", "ada/proj-1239", "origin/trunk"]);
+  });
+
+  it("cuts a repository without a mapping off the fallback, in the same install", async () => {
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("rev-parse", "refs/remotes/origin/"), result: { exitCode: 1 } },
+    ]);
+    const own = { ...layout, baseBranch: { "Northwind/northwind-backend": "trunk" } };
+
+    await new Git(runner, own).prepareBranch("Northwind/northwind-frontend", "ada/proj-1240");
+
+    const checkout = runner.calls.find((call) => call.args[0] === "checkout");
+    expect(checkout?.args).toEqual(["checkout", "-B", "ada/proj-1240", "origin/main"]);
   });
 
   it("fetches before deciding", async () => {

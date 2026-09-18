@@ -6,6 +6,7 @@ import {
   Git,
   Notifier,
   Plan,
+  RepoLayout,
   StopSwitch,
   Workflow,
   WorkflowRuntime,
@@ -65,6 +66,13 @@ export interface TicketWorkerOverrides {
   plan?: Workflow["plan"];
   /** The brief store, when the test is about one ticket reading a brief. */
   briefs?: BriefStore;
+  /**
+   * The layout the runtime's `Git` resolves, when a test is about what a
+   * repository's pull request opens against. Left out, the fixture answers
+   * with one `defaultBranch: "main"` for everything, which is the shape an
+   * install without a mapping has.
+   */
+  layout?: RepoLayout;
 }
 
 interface EngineConfig {
@@ -124,6 +132,7 @@ export function ticketWorkerDeps(overrides: TicketWorkerOverrides = {}): TicketW
         workspaceRoot: "/tmp/amy-fixture",
         defaultBranch: "main",
       }),
+      layout: overrides.layout ?? { workspaceRoot: "/tmp/amy-fixture", defaultBranch: "main" },
       config: runtimeConfig,
       policy: overrides.policy ?? DEFAULT_POLICY,
       // The same boundary `ticketToQa` casts at, for the same reason: this

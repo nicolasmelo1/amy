@@ -93,6 +93,9 @@ const ROSTER = {
   qa: { tracker: "grace@example.test", host: "grace", available: true },
 };
 
+/** Which repository each ticket works in; the base-branch stage re-points one. */
+const ticketRepos = {};
+
 function ticketFor(id) {
   return {
     id,
@@ -101,7 +104,7 @@ function ticketFor(id) {
     url: `https://tracker.test/${id}`,
     branchName: `ada/${id.toLowerCase()}-invoice-total`,
     status: "In Progress",
-    repo: "acme/widgets",
+    repo: ticketRepos[id] ?? "acme/widgets",
   };
 }
 
@@ -207,12 +210,16 @@ function refusingBudgetPlugin() {
  * anything that only works because one object stayed in memory is not a
  * property this scenario should be able to observe.
  */
-async function host({ channels = [channelPlugin("recorder")], extra = [], log } = {}) {
+async function host({ channels = [channelPlugin("recorder")], extra = [], log, overrides = {} } = {}) {
   const outcome = await mount(
     [queue, store, github, fanout, ...channels, worldPlugin(), workflow, ...extra, engine],
     {
       "@amykit/plugin-serial-engine": { maxItemAttempts: 5 },
-      "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
+      "@amykit/workflow-ticket-to-qa": {
+        repos: ["acme/widgets"],
+        qaStatusName: "In QA",
+        ...overrides["@amykit/workflow-ticket-to-qa"],
+      },
     },
     {
       runner: new NodeCommandRunner(),
@@ -484,6 +491,180 @@ const kindsOf = (kind) => linesIn(logDir).filter((event) => event.kind === kind)
     written.length > 0 && problems.length === 0,
   );
   if (problems.length > 0) for (const problem of problems) console.error(problem);
+}
+
+// 10. A base branch per repository. Two real bare origins, one kept on the
+// fallback and one whose base is its own, and the real workflow runtime driven
+// by the real engine: a ticket one look past `PR_OPEN` reaches the real
+// `plugin-github` adapter, and what it sent the stand-in `gh` is what the argv
+// log records. This is the claim no unit test makes — the mapping rides the
+// mount, resolves at the caller, and reaches the forge intact, for the mapped
+// repository and for the one that kept the fallback alike.
+{
+  // Two bare repositories, seeded the way the note-to-plan world seeds them:
+  // one commit on main, and a second branch the fallback does not name.
+  const origins = path.join(work, "origins");
+  fs.mkdirSync(origins, { recursive: true });
+  const realRunner = new NodeCommandRunner();
+  const git = async (cwd, ...args) => {
+    const result = await realRunner.run("git", args, { cwd });
+    if (!result.ok) throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
+    return result.stdout;
+  };
+
+  const seedOne = async (name, extraBranch) => {
+    const bare = path.join(origins, `${name}.git`);
+    fs.rmSync(bare, { recursive: true, force: true });
+    await git(work, "init", "--bare", "--initial-branch=main", bare);
+    const seed = path.join(work, `seed-${name}`);
+    fs.rmSync(seed, { recursive: true, force: true });
+    await git(work, "clone", "-q", bare, seed);
+    await git(seed, "config", "user.email", "amy@example.test");
+    await git(seed, "config", "user.name", "amy");
+    await git(seed, "config", "commit.gpgsign", "false");
+    fs.writeFileSync(path.join(seed, "README.md"), `# ${name}\n`, "utf-8");
+    await git(seed, "add", "-A");
+    await git(seed, "commit", "-q", "-m", "the first commit");
+    await git(seed, "push", "-q", "origin", "main");
+    if (extraBranch) {
+      await git(seed, "checkout", "-q", "-b", extraBranch);
+      fs.writeFileSync(path.join(seed, `${extraBranch}.txt`), `${extraBranch}\n`, "utf-8");
+      await git(seed, "add", "-A");
+      await git(seed, "commit", "-q", "-m", `on ${extraBranch}`);
+      await git(seed, "push", "-q", "origin", extraBranch);
+    }
+    fs.rmSync(seed, { recursive: true, force: true });
+  };
+  await seedOne("widgets", null);
+  await seedOne("gadgets", "trunk");
+
+  // The outage stand-in is swapped for a working forge: it answers the one
+  // GraphQL read the observation makes, opens a pull request, and answers a
+  // default-branch read. Every argv is logged, because the assertions read
+  // what the forge was asked, not what the machine reported asking.
+  const codeHostState = path.join(work, "world", "code-host.json");
+  fs.mkdirSync(path.dirname(codeHostState), { recursive: true });
+  fs.writeFileSync(
+    codeHostState,
+    `${JSON.stringify({ nextNumber: 51, repos: {} }, null, 2)}\n`,
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(work, "bin", "gh"),
+    [
+      "#!/usr/bin/env node",
+      'import fs from "node:fs";',
+      'import path from "node:path";',
+      `const stateFile = ${JSON.stringify(codeHostState)};`,
+      "const argv = process.argv.slice(2);",
+      'fs.appendFileSync(path.join(path.dirname(stateFile), "gh.argv.log"), JSON.stringify(argv) + "\\n");',
+      "const fields = (args) => {",
+      "  const found = {};",
+      "  for (let i = 0; i < args.length; i += 1) {",
+      '    if (args[i] !== "-f" && args[i] !== "-F") continue;',
+      '    const pair = args[i + 1] ?? "";',
+      '    const at = pair.indexOf("=");',
+      "    if (at > 0) found[pair.slice(0, at)] = pair.slice(at + 1);",
+      "  }",
+      "  return found;",
+      "};",
+      'if (argv.includes("graphql")) {',
+      '  process.stdout.write(\'{"data":{"repository":{"pullRequests":{"nodes":[]}}}}\\n\');',
+      "  process.exit(0);",
+      "}",
+      'const route = argv.find((a) => a.startsWith("/repos/")) ?? "";',
+      'if (route.endsWith("/pulls") && argv.includes("POST")) {',
+      '  const repo = route.slice("/repos/".length, route.length - "/pulls".length);',
+      "  const given = fields(argv);",
+      '  const state = JSON.parse(fs.readFileSync(stateFile, "utf-8"));',
+      '  const pull = { number: state.nextNumber, head: given.head, base: given.base, state: "open" };',
+      "  state.nextNumber += 1;",
+      "  (state.repos[repo] ??= []).push(pull);",
+      '  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2) + "\\n");',
+      '  process.stdout.write(JSON.stringify({ number: pull.number }) + "\\n");',
+      "  process.exit(0);",
+      "}",
+      'process.stdout.write("main\\n");',
+      "process.exit(0);",
+    ].join("\n"),
+    "utf-8",
+  );
+  fs.chmodSync(path.join(work, "bin", "gh"), 0o755);
+
+  const MAPPED = "acme/gadgets";
+  const UNMAPPED = "acme/widgets";
+  ticketRepos["PROJ-3001"] = MAPPED;
+
+  // A parked item from an earlier stage is past its backoff by now, so it is
+  // taken out of the way before this stage's tickets are enqueued: one tick
+  // advances one item, and these two are what this stage is about.
+  const baseMounted = await host({ overrides: {} });
+  drain(baseMounted);
+
+  const mounted = await host({
+    overrides: {
+      "@amykit/workflow-ticket-to-qa": {
+        repos: [UNMAPPED, MAPPED],
+        qaStatusName: "In QA",
+        defaultBranch: "main",
+        baseBranch: { [MAPPED]: "trunk" },
+      },
+    },
+  });
+
+  // One record per repository, parked at the state whose exit is the open:
+  // one look, one move, and the forge is what says which base was asked for.
+  const openOne = (workId) => {
+    mounted.store.save({
+      id: workId,
+      state: "PR_OPEN",
+      updatedAt: clock.toISOString(),
+      attempts: {},
+      history: [],
+      judged: [],
+    });
+    mounted.queue.enqueue({ workId, reason: "the gate is green" }, clock);
+  };
+  openOne("PROJ-3001"); // the repository that named its own base
+  openOne("PROJ-3002"); // the repository that kept the fallback
+
+  const first = await mounted.engine.tick();
+  const second = await mounted.engine.tick();
+
+  const opened = fs
+    .readFileSync(path.join(path.dirname(codeHostState), "gh.argv.log"), "utf-8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .filter((argv) => argv.some((argument) => argument.includes("/pulls")) && argv.includes("POST"));
+  const fieldOf = (argv, name) => {
+    const pair = argv.find((argument) => argument.startsWith(`${name}=`));
+    return pair ? pair.slice(name.length + 1) : null;
+  };
+
+  record(
+    "base.a_repository_can_name_its_own_branch",
+    Boolean(
+      first.kind === "worked" &&
+        second.kind === "worked" &&
+        opened.length === 2 &&
+        opened.some(
+          (argv) =>
+            fieldOf(argv, "head")?.startsWith("ada/proj-3001") &&
+            fieldOf(argv, "base") === "trunk",
+        ),
+    ),
+  );
+  record(
+    "base.the_fallback_still_answers_for_the_rest",
+    Boolean(
+      opened.some(
+        (argv) =>
+          fieldOf(argv, "head")?.startsWith("ada/proj-3002") &&
+          fieldOf(argv, "base") === "main",
+      ),
+    ),
+  );
 }
 
 const failed = assertions.filter((a) => a.status !== "passed");

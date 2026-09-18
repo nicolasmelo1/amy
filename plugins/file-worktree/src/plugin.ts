@@ -31,6 +31,7 @@ function settingsFor(ctx: PluginContext): WorktreeManagerConfig {
     root: expandHome(root),
     workflow,
     defaultBranch: ctx.config.defaultBranch as string,
+    baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
     workspaceRoot: ctx.paths.workspace,
     checkouts: ctx.paths.checkouts,
     retentionDays: ctx.config.retentionDays as number,

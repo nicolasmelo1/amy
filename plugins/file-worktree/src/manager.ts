@@ -1,14 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, EventLog, Worktree, WorktreeInfo } from "@amykit/core";
+import { baseBranchFor, CommandRunner, EventLog, Worktree, WorktreeInfo } from "@amykit/core";
 
 export interface WorktreeManagerConfig {
   /** Where every tree lives, outside any repository. `~` is expanded. */
   root: string;
   /** The workflow this install drives, which is the first path segment. */
   workflow: string;
-  /** The branch new trees are cut from. */
+  /** The branch new trees are cut from, for a repository that named none. */
   defaultBranch: string;
+  /**
+   * Where one repository's base branch is, instead of the fallback.
+   *
+   * The cut a tree is made from is the same answer `Git.prepareBranch` cuts
+   * the branch from, so the two cannot disagree about what a repository's
+   * base is: one map, one resolution, handed to both.
+   */
+  baseBranch?: Readonly<Record<string, string>>;
   /** The standing checkouts, used only as the source for a named repository. */
   workspaceRoot?: string;
   /**
@@ -67,11 +75,13 @@ export class WorktreeManager implements Worktree {
 
     fs.mkdirSync(tree, { recursive: true });
 
-    // Detached at the default branch. A ticket's branch is prepared later;
-    // detaching prevents two new trees claiming one branch.
+    // Detached at the base branch. A ticket's branch is prepared later;
+    // detaching prevents two new trees claiming one branch. The base is the
+    // same answer `Git` cuts from, resolved per repository rather than as one
+    // name for the whole install.
     const cut = await this.runner.run(
       "git",
-      ["worktree", "add", "--detach", tree, this.cutRef()],
+      ["worktree", "add", "--detach", tree, this.cutRef(repo)],
       { cwd: this.sourceFor(repo) },
     );
 
@@ -96,9 +106,10 @@ export class WorktreeManager implements Worktree {
     return tree;
   }
 
-  /** The default branch, named the way the thing being cut from holds it. */
-  private cutRef(): string {
-    return `refs/heads/${this.config.defaultBranch}`;
+  /** The base branch, named the way the thing being cut from holds it. */
+  private cutRef(repo: string): string {
+    const { defaultBranch, baseBranch } = this.config;
+    return `refs/heads/${baseBranchFor({ workspaceRoot: "", defaultBranch, baseBranch }, repo)}`;
   }
 
   pathFor(workId: string, repo: string): string {

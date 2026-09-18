@@ -501,6 +501,12 @@ E, ponta a ponta:
       (proof: assertion:engine.finishes_the_tick_when_the_log_cannot_be_written)
 - [x] Every line the run actually wrote keeps the declared event contract
       (proof: assertion:engine.every_line_matches_the_contract)
+- [x] A repository that named its own base branch has its pull request opened
+      against that branch, through the real adapter, in the same mount
+      (proof: assertion:base.a_repository_can_name_its_own_branch)
+- [x] A repository that named none is still opened against the fallback, in
+      the same install
+      (proof: assertion:base.the_fallback_still_answers_for_the_rest)
 
 **Exit condition:** the gate carries a sealed manifest whose report shows
 these assertions passing against the built artifacts, and touching the engine
