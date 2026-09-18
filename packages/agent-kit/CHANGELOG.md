@@ -1,5 +1,112 @@
 # @amykit/agent-kit
 
+## 0.4.0
+
+### Minor Changes
+
+- f1557f6: The worktree is the workplace.
+  
+  The core grows a `worktree` port (`acquire`, `pathFor`, `states`, `release`,
+  `prune`) and the `acquire-worktree` action beside it. `Git` gains worktree
+  mode without losing shared-checkout mode: with the port mounted, every path
+  it answers — agent prompts, the gate, plan checks, commits and pushes — is
+  the item's own tree, cut from the default branch, and preparing an item never
+  repoints the standing checkout's branch. The new `@amykit/plugin-file-worktree`
+  mounts the port over `~/.amy/worktrees/<workflow>/<workId>/<repo>`, prunes
+  terminal clean trees after retention, logs every removal as
+  `worktree.removed`, and refuses to delete an in-flight or dirty tree. The CLI
+  gains `amy worktrees list|remove|prune`, and `amy doctor` reports both roots.
+
+### Patch Changes
+
+- 2dc9117: A brief reaches every ticket it explains.
+  
+  Tickets may inherit a shared brief from their Linear parent. The workflow reads
+  that brief freshly on every observation, carries it to triage, implementation,
+  review and its self-review half-step, records questions against it, and keeps a
+  brief only while its explained work remains non-terminal or inside retention.
+  `amy brief <id>` renders the mounted brief without exposing its store path.
+- 0ca2c1c: A reply inside a review thread reaches the agent.
+  
+  `ReviewThread` carried the first comment of a thread and nothing that
+  followed it, so a reviewer's correction written inside the thread sat one
+  field away from every consumer: `address-threads` handed the agent what the
+  thread *started* with, and "whose turn is it" was a question the view could
+  not answer. The port grows `comments` — the conversation, oldest first,
+  opening comment included — and `author`/`body` stay the opening comment's,
+  so a consumer that never asked for the conversation is unaffected and
+  `comments.at(-1)?.author` answers whose turn a thread is from the view
+  alone. The GitHub query asks for `comments(first: 50)` with `createdAt` in
+  the same request, and the adapter maps the list. The `address-threads`
+  prompt renders the conversation attributed — a later comment is introduced
+  as a reply, not restated as the objection — and says that a later comment
+  answers the earlier ones, so an agent handed a correction inside the thread
+  is handed the correction.
+- 64b4d24: The answer on the ticket reaches the agent, and the tracker stops carrying
+  progress notices.
+  
+  `hasReplyAfter` could say *whether* a ticket was answered and never *what* was
+  said, so `CLARIFYING` re-ran triage on an unchanged ticket, got the same
+  questions back, and asked them again until it ran out of attempts — the one
+  path built for "a human knows something the ticket does not" threw that
+  knowledge away on arrival. The port gains `comments(ticketId, since?)`
+  returning `{ author, body, at, fromAmy }`, with `fromAmy` settled by the
+  tracker's own account of who wrote each comment; `hasReplyAfter` stays as the
+  cheap boolean a waiting state polls with, and still fetches no text. An
+  answered question now moves the work on: the state re-reads the ticket with
+  the conversation attached, amy's own comments labelled as questions it already
+  asked, and the second look never repeats a question the answer closed. The
+  `triage` and `implement` prompts carry that conversation, attributed.
+  
+  `plugin-linear` also stops contributing its notification channel: a tracker
+  comment is for a question that needs a person, and `failing`, `recovered` and
+  `gave-up` are for the operator's channels. That removes the pollution —
+  progress notices commented on a ticket under the operator's own name — rather
+  than teaching every reader to filter it. `notify.tracker` is gone with it.
+- 5b37451: The ports belong to the core.
+  
+  `Tracker`, `Agent`, `Gate`, `Ticket` and the outcome contracts they carry
+  moved from `@amykit/workflow-ticket-to-qa` to `@amykit/core`, beside
+  `CodeHost` and `Harness`, so a workflow nobody shipped declares every port
+  it needs by importing `@amykit/core` and no plugin in the install depends
+  on a workflow package to know what a tracker is. The workflow re-exports
+  every name for one minor version so nothing breaks on the way past, and
+  the tracker contract grows a declared write surface: reads
+  (`TrackerReads`) and writes (`TrackerWrites`) are separate interfaces a
+  mount can hand out separately, with `TRACKER_WRITE_CAPABILITIES` naming
+  what each core action resolves to.
+- a499e82: The ticket's description reaches the agent's prompt, instead of an instruction
+  to go and read a page it cannot open.
+  
+  `ISSUE_FIELDS` asked Linear for `id`, `identifier`, `title`, `url`,
+  `branchName`, `state` and `team` — not `description` — so `Ticket` had no body
+  and never could have one. `triage` and `implement` then built their prompts
+  from the title and the tracker URL, and told the agent to "read the ticket":
+  an instruction nothing under `claude -p` could obey, with no credential and no
+  browser. The visible failure was an honest refusal; the expensive one was a
+  ticket whose title sounded sufficient producing a full implementation that
+  never saw the description's acceptance criteria, its named file, or the
+  ownership boundary written in it — on an install where that duplicated an open
+  pull request, 8 files and +615 lines on a 2-point ticket.
+  
+  Now the fetch asks for `description`, `toTicket` maps it to `body` (absent
+  stays absent — an empty description is a real state, not an error), and the
+  prompts carry the body where the work is judged by it. A ticket with no body
+  says `(this ticket has no description)` rather than looking truncated, which is
+  what lets the agent ask for one instead of inventing one. A tracker that
+  supplies no body is unaffected: the field is optional and the prompt names the
+  case it is in.
+- Updated dependencies [c7a36eb]
+- Updated dependencies [2dc9117]
+- Updated dependencies [b3b7a07]
+- Updated dependencies [0ca2c1c]
+- Updated dependencies [c30789e]
+- Updated dependencies [fc6748a]
+- Updated dependencies [5b37451]
+- Updated dependencies [bfda1ac]
+- Updated dependencies [f1557f6]
+  - @amykit/core@0.4.0
+
 ## 0.3.1
 
 ### Patch Changes

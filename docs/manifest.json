@@ -728,66 +728,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "A base branch per repository.",
-          "slug": "a-base-branch-per-repository"
-        },
-        {
-          "depth": 3,
-          "title": "A brief reaches every ticket it explains.",
-          "slug": "a-brief-reaches-every-ticket-it-explains"
-        },
-        {
-          "depth": 3,
-          "title": "A checkout root per repository.",
-          "slug": "a-checkout-root-per-repository"
-        },
-        {
-          "depth": 3,
-          "title": "A reply inside a review thread reaches the agent.",
-          "slug": "a-reply-inside-a-review-thread-reaches-the-agent"
-        },
-        {
-          "depth": 3,
-          "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
-          "slug": "the-answer-on-the-ticket-reaches-the-agent-and-the-tracker-stops-carrying-progress-notices"
-        },
-        {
-          "depth": 3,
-          "title": "amy status stops listing work that has finished.",
-          "slug": "amy-status-stops-listing-work-that-has-finished"
-        },
-        {
-          "depth": 3,
-          "title": "Add provider-neutral feature grooming with read-only base-branch snapshots and reconciliation provenance.",
-          "slug": "add-provider-neutral-feature-grooming-with-read-only-base-branch-snapshots-and-reconciliation-provenance"
-        },
-        {
-          "depth": 3,
-          "title": "The forge is asked, not run beside.",
-          "slug": "the-forge-is-asked-not-run-beside"
-        },
-        {
-          "depth": 3,
-          "title": "The ports belong to the core.",
-          "slug": "the-ports-belong-to-the-core"
-        },
-        {
-          "depth": 3,
-          "title": "The threads close when they are answered.",
-          "slug": "the-threads-close-when-they-are-answered"
-        },
-        {
-          "depth": 3,
-          "title": "The ticket's description reaches the agent's prompt, instead of an instruction to go and read a page it cannot open.",
-          "slug": "the-tickets-description-reaches-the-agents-prompt-instead-of-an-instruction-to-go-and-read-a-page-it-cannot-open"
-        },
-        {
-          "depth": 3,
-          "title": "The worktree is the workplace.",
-          "slug": "the-worktree-is-the-workplace"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -5240,7 +5180,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "library",
         "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
         "directory": "packages/agent-kit",
@@ -5254,7 +5194,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -5268,7 +5208,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -5282,7 +5222,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -5296,7 +5236,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -5348,7 +5288,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "The claude CLI as the agent, with git on the side.",
         "directory": "plugins/claude",
@@ -5421,7 +5361,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -5494,7 +5434,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -5531,7 +5471,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -5582,7 +5522,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -5596,7 +5536,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -5634,7 +5574,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -5672,7 +5612,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -5704,7 +5644,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -5735,7 +5675,7 @@
       },
       {
         "name": "@amykit/plugin-file-worktree",
-        "version": "0.1.0",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
         "directory": "plugins/file-worktree",
@@ -5794,7 +5734,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -5818,7 +5758,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -5891,7 +5831,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -5938,7 +5878,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
         "directory": "plugins/notify-fanout",
@@ -5954,7 +5894,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -5982,7 +5922,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -6009,7 +5949,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -6051,7 +5991,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -6094,7 +6034,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
@@ -6141,7 +6081,7 @@
       },
       {
         "name": "@amykit/workflow-feature-grooming",
-        "version": "0.1.0",
+        "version": "0.4.0",
         "kind": "workflow",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "packages/workflow-feature-grooming",
@@ -6179,7 +6119,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
@@ -6226,7 +6166,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.3.1",
+        "version": "0.4.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
@@ -6963,380 +6903,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "a-base-branch-per-repository",
-        "title": "A base branch per repository.",
-        "body": "`baseBranch:` maps a repository to its own base branch beside `defaultBranch`,\nwhich keeps its name and stays the fallback; a config without the block\nresolves exactly as before. The map rides `pluginSlices` to every reader of\nthe layout — the harnesses, the gate, the worktree manager, whose trees are\ncut from the mapped branch, and the workflows, which resolve the repository's\nown base where the piece of work is known — and the pull request each workflow\nopens is told that base by name, falling back to the forge's own default when\nnothing was named.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-plan-check",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-brief-reaches-every-ticket-it-explains",
-        "title": "A brief reaches every ticket it explains.",
-        "body": "Tickets may inherit a shared brief from their Linear parent. The workflow reads\nthat brief freshly on every observation, carries it to triage, implementation,\nreview and its self-review half-step, records questions against it, and keeps a\nbrief only while its explained work remains non-terminal or inside retention.\n`amy brief <id>` renders the mounted brief without exposing its store path.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-file-store",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-checkout-root-per-repository",
-        "title": "A checkout root per repository.",
-        "body": "`checkouts:` maps a repository to its own path beside `workspaceRoot`; a\nrepository named there is never looked for under the root at all, `~` expands\nthe way the root's does, and a config without the block resolves exactly as\nbefore. The map rides the host paths and every `Git` layout to the worktree\nmanager, which cuts a named repository's trees from its own checkout, and\n`amy doctor` names which root it asked for each repository.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-plan-check",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-reply-inside-a-thread-reaches-the-agent",
-        "title": "A reply inside a review thread reaches the agent.",
-        "body": "`ReviewThread` carried the first comment of a thread and nothing that\nfollowed it, so a reviewer's correction written inside the thread sat one\nfield away from every consumer: `address-threads` handed the agent what the\nthread *started* with, and \"whose turn is it\" was a question the view could\nnot answer. The port grows `comments` — the conversation, oldest first,\nopening comment included — and `author`/`body` stay the opening comment's,\nso a consumer that never asked for the conversation is unaffected and\n`comments.at(-1)?.author` answers whose turn a thread is from the view\nalone. The GitHub query asks for `comments(first: 50)` with `createdAt` in\nthe same request, and the adapter maps the list. The `address-threads`\nprompt renders the conversation attributed — a later comment is introduced\nas a reply, not restated as the objection — and says that a later comment\nanswers the earlier ones, so an agent handed a correction inside the thread\nis handed the correction.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "an-answer-reaches-the-agent",
-        "title": "The answer on the ticket reaches the agent, and the tracker stops carrying progress notices.",
-        "body": "`hasReplyAfter` could say *whether* a ticket was answered and never *what* was\nsaid, so `CLARIFYING` re-ran triage on an unchanged ticket, got the same\nquestions back, and asked them again until it ran out of attempts — the one\npath built for \"a human knows something the ticket does not\" threw that\nknowledge away on arrival. The port gains `comments(ticketId, since?)`\nreturning `{ author, body, at, fromAmy }`, with `fromAmy` settled by the\ntracker's own account of who wrote each comment; `hasReplyAfter` stays as the\ncheap boolean a waiting state polls with, and still fetches no text. An\nanswered question now moves the work on: the state re-reads the ticket with\nthe conversation attached, amy's own comments labelled as questions it already\nasked, and the second look never repeats a question the answer closed. The\n`triage` and `implement` prompts carry that conversation, attributed.\n\n`plugin-linear` also stops contributing its notification channel: a tracker\ncomment is for a question that needs a person, and `failing`, `recovered` and\n`gave-up` are for the operator's channels. That removes the pollution —\nprogress notices commented on a ticket under the operator's own name — rather\nthan teaching every reader to filter it. `notify.tracker` is gone with it.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "finished-work-leaves-the-listing",
-        "title": "`amy status` stops listing work that has finished.",
-        "body": "A record in a terminal state is done: `discover` already refuses to queue it,\nso it costs nothing to keep — but it never left the listing on its own, and a\nlist that only grows stops being read. Finished records are counted below the\ntable instead, `amy status --all` prints them, and `--json` marks each record\nwith `finished` so a page can make the same cut. Nothing is deleted and the\nlog still keeps what the work did.\n\nNothing is hidden when the workflow will not mount, because a mount that\nfailed is exactly when somebody wants every row.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "grooming-reads-the-code-it-is-about",
-        "title": "Add provider-neutral feature grooming with read-only base-branch snapshots and reconciliation provenance.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-feature-grooming",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-forge-is-asked-not-run-beside",
-        "title": "The forge is asked, not run beside.",
-        "body": "Every gap in a port became an adapter in whoever hit it: a workflow that\nneeded what the plugins know was shelling out to `gh` beside the plugin that\nalready owned it and opening its own GraphQL connection to Linear beside the\ntracker that already had one, and the second workflow to hit the same gap\nwrote it all again. The port grows what the adapters were compensating for.\n\n`CodeHost` grows `pullRequest(repo, number)` — readable merged or not, the\nopen-only filter staying where it belongs, in the by-branch search — and\n`PullRequestView` grows `merged` and `base`, mapped from the same node in\nthe same query, with both reads running one shared fragment so they cannot\ndrift apart. It grows `merge(repo, number, method)`, the method the base's\nruleset allows being the caller's to name; `submitReview(repo, number,\nreview)`, the state as forge vocabulary and the decision to submit as\nworkflow policy; `createIssue(repo, { title, body })`; `commitStatuses(repo,\nsha)`, so a freeze is a workflow's reading of a status list rather than a\nprivate `gh api` of its own; and `changesRequestedOf(login, repos)`, the\nmirror of `reviewsRequestedOf` — \"where did my review leave changes\nrequested\" — kept honest by the adapter reading each candidate by number,\nbecause the search cannot narrow on who left the changes requested.\n\nThe tracker carries what a ticket is: `ISSUE_FIELDS` grows\n`labels { nodes { name } }` and `Ticket` grows `labels: string[]` — a label\nis how a team says what a ticket *is*, and with the description and the\ncomments already shipped, the Linear reader a workflow carried has nothing\nleft in it. What stays in the workflow is policy: which review state to\nsubmit, whose thread to close, what counts as a freeze.",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "the-ports-belong-to-the-core",
-        "title": "The ports belong to the core.",
-        "body": "`Tracker`, `Agent`, `Gate`, `Ticket` and the outcome contracts they carry\nmoved from `@amykit/workflow-ticket-to-qa` to `@amykit/core`, beside\n`CodeHost` and `Harness`, so a workflow nobody shipped declares every port\nit needs by importing `@amykit/core` and no plugin in the install depends\non a workflow package to know what a tracker is. The workflow re-exports\nevery name for one minor version so nothing breaks on the way past, and\nthe tracker contract grows a declared write surface: reads\n(`TrackerReads`) and writes (`TrackerWrites`) are separate interfaces a\nmount can hand out separately, with `TRACKER_WRITE_CAPABILITIES` naming\nwhat each core action resolves to.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "the-threads-close-when-they-are-answered",
-        "title": "The threads close when they are answered.",
-        "body": "`CodeHost` carried no way to settle a review conversation, so a workflow\nstate whose exit reads \"no open thread\" could not reach its own exit: the\ncode was fixed, the forge kept the thread open, and a ticket that had done\nnothing wrong escalated at the ceiling. The port grows\n`resolveReviewThread` and `unresolveReviewThread` — one id, one call — the\nGitHub adapter runs the `resolveReviewThread`/`unresolveReviewThread`\nGraphQL mutations through the scripted runner, and the action catalogue\ngrows `resolve-review-thread`, dispatched to the code-host port, so a mount\nthat cannot run it is refused at boot by name.\n\nThe ticket-to-qa machine presses the button where the gap was: inside\n`COPILOT_FIX`, threads the record judged `fixed` and the forge still holds\nopen get one act of `resolve-review-thread` each, and the next look finds\nthem resolved and leaves through the exit condition instead of through the\nattempts. Who may close what stays the workflow's policy — only the\nautomated reviewer's threads, only the ones the machine itself answered,\nand never a colleague's; `HUMAN_FIX` does not emit the effect at all.",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "the-ticket-body-reaches-the-agent",
-        "title": "The ticket's description reaches the agent's prompt, instead of an instruction to go and read a page it cannot open.",
-        "body": "`ISSUE_FIELDS` asked Linear for `id`, `identifier`, `title`, `url`,\n`branchName`, `state` and `team` — not `description` — so `Ticket` had no body\nand never could have one. `triage` and `implement` then built their prompts\nfrom the title and the tracker URL, and told the agent to \"read the ticket\":\nan instruction nothing under `claude -p` could obey, with no credential and no\nbrowser. The visible failure was an honest refusal; the expensive one was a\nticket whose title sounded sufficient producing a full implementation that\nnever saw the description's acceptance criteria, its named file, or the\nownership boundary written in it — on an install where that duplicated an open\npull request, 8 files and +615 lines on a 2-point ticket.\n\nNow the fetch asks for `description`, `toTicket` maps it to `body` (absent\nstays absent — an empty description is a real state, not an error), and the\nprompts carry the body where the work is judged by it. A ticket with no body\nsays `(this ticket has no description)` rather than looking truncated, which is\nwhat lets the agent ask for one instead of inventing one. A tracker that\nsupplies no body is unaffected: the field is optional and the prompt names the\ncase it is in.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "the-worktree-is-the-workplace",
-        "title": "The worktree is the workplace.",
-        "body": "The core grows a `worktree` port (`acquire`, `pathFor`, `states`, `release`,\n`prune`) and the `acquire-worktree` action beside it. `Git` gains worktree\nmode without losing shared-checkout mode: with the port mounted, every path\nit answers — agent prompts, the gate, plan checks, commits and pushes — is\nthe item's own tree, cut from the default branch, and preparing an item never\nrepoints the standing checkout's branch. The new `@amykit/plugin-file-worktree`\nmounts the port over `~/.amy/worktrees/<workflow>/<workId>/<repo>`, prunes\nterminal clean trees after retention, logs every removal as\n`worktree.removed`, and refuses to delete an in-flight or dirty tree. The CLI\ngains `amy worktrees list|remove|prune`, and `amy doctor` reports both roots.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-plan-check",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
@@ -7357,6 +6924,10 @@
       {
         "name": "@amykit/workflow-errand",
         "file": "packages/workflow-errand/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/workflow-feature-grooming",
+        "file": "packages/workflow-feature-grooming/CHANGELOG.md"
       },
       {
         "name": "@amykit/workflow-note-to-plan",
@@ -7405,6 +6976,10 @@
       {
         "name": "@amykit/plugin-file-tasks",
         "file": "plugins/file-tasks/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/plugin-file-worktree",
+        "file": "plugins/file-worktree/CHANGELOG.md"
       },
       {
         "name": "@amykit/plugin-github",

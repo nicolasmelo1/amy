@@ -1,5 +1,78 @@
 # @amykit/cli
 
+## 0.4.0
+
+### Minor Changes
+
+- 2388a13: `amy status` stops listing work that has finished.
+  
+  A record in a terminal state is done: `discover` already refuses to queue it,
+  so it costs nothing to keep — but it never left the listing on its own, and a
+  list that only grows stops being read. Finished records are counted below the
+  table instead, `amy status --all` prints them, and `--json` marks each record
+  with `finished` so a page can make the same cut. Nothing is deleted and the
+  log still keeps what the work did.
+  
+  Nothing is hidden when the workflow will not mount, because a mount that
+  failed is exactly when somebody wants every row.
+- f1557f6: The worktree is the workplace.
+  
+  The core grows a `worktree` port (`acquire`, `pathFor`, `states`, `release`,
+  `prune`) and the `acquire-worktree` action beside it. `Git` gains worktree
+  mode without losing shared-checkout mode: with the port mounted, every path
+  it answers — agent prompts, the gate, plan checks, commits and pushes — is
+  the item's own tree, cut from the default branch, and preparing an item never
+  repoints the standing checkout's branch. The new `@amykit/plugin-file-worktree`
+  mounts the port over `~/.amy/worktrees/<workflow>/<workId>/<repo>`, prunes
+  terminal clean trees after retention, logs every removal as
+  `worktree.removed`, and refuses to delete an in-flight or dirty tree. The CLI
+  gains `amy worktrees list|remove|prune`, and `amy doctor` reports both roots.
+
+### Patch Changes
+
+- c7a36eb: A base branch per repository.
+  
+  `baseBranch:` maps a repository to its own base branch beside `defaultBranch`,
+  which keeps its name and stays the fallback; a config without the block
+  resolves exactly as before. The map rides `pluginSlices` to every reader of
+  the layout — the harnesses, the gate, the worktree manager, whose trees are
+  cut from the mapped branch, and the workflows, which resolve the repository's
+  own base where the piece of work is known — and the pull request each workflow
+  opens is told that base by name, falling back to the forge's own default when
+  nothing was named.
+- 2dc9117: A brief reaches every ticket it explains.
+  
+  Tickets may inherit a shared brief from their Linear parent. The workflow reads
+  that brief freshly on every observation, carries it to triage, implementation,
+  review and its self-review half-step, records questions against it, and keeps a
+  brief only while its explained work remains non-terminal or inside retention.
+  `amy brief <id>` renders the mounted brief without exposing its store path.
+- b3b7a07: A checkout root per repository.
+  
+  `checkouts:` maps a repository to its own path beside `workspaceRoot`; a
+  repository named there is never looked for under the root at all, `~` expands
+  the way the root's does, and a config without the block resolves exactly as
+  before. The map rides the host paths and every `Git` layout to the worktree
+  manager, which cuts a named repository's trees from its own checkout, and
+  `amy doctor` names which root it asked for each repository.
+- Updated dependencies [c7a36eb]
+- Updated dependencies [2dc9117]
+- Updated dependencies [b3b7a07]
+- Updated dependencies [0ca2c1c]
+- Updated dependencies [c30789e]
+- Updated dependencies [fc6748a]
+- Updated dependencies [5b37451]
+- Updated dependencies [bfda1ac]
+- Updated dependencies [f1557f6]
+  - @amykit/core@0.4.0
+  - @amykit/plugin-file-worktree@0.4.0
+  - @amykit/plugin-file-store@0.4.0
+  - @amykit/model-specs@0.4.0
+  - @amykit/plugin-file-log@0.4.0
+  - @amykit/plugin-file-notes@0.4.0
+  - @amykit/plugin-file-queue@0.4.0
+  - @amykit/plugin-file-tasks@0.4.0
+
 ## 0.3.1
 
 ### Patch Changes
