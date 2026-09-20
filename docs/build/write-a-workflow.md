@@ -1,14 +1,15 @@
 ---
 title: Write a workflow
-description: Your process as a package — the pure decision, the runtime, and the walkthrough test that is the only real proof.
+description: Your process, as a directory of yours — the pure decision, the runtime, and the walkthrough test that is the only real proof.
 group: Build your own
 order: 2
 ---
 
 # Write a workflow
 
-A workflow is **your process**, as a package. Nothing in amy's code names the
-ones it ships, and nothing will name yours either.
+A workflow is **your process**. It is a directory on your machine, and a package
+only if you decide to share it later. Nothing in amy's code names the ones it
+ships, and nothing will name yours either.
 
 This page writes one end to end. There is a complete working example in the
 repository that a gate drives on every run —
@@ -17,6 +18,25 @@ repository that a gate drives on every run —
 
 `/amy-workflow` will interrogate you into a design a question at a time. This
 page is what it writes.
+
+## Start from one that already runs
+
+```sh
+amy workflow new review      # ~/.amy/workflows/review, and the profile naming it
+amy workflow check review    # drives its lifecycle against a stub world
+```
+
+`new` writes a workflow that already moves a piece of work — the states, a pure
+`plan()`, a runtime, and the `registry.contribute("workflow-runtime", …)` line
+whose absence is the first boot refusal nearly everybody meets. It is a valid
+npm package from the moment it is written — it is written `private`, so sharing
+it later is a scoped name, dropping that flag and `npm publish` in the same
+directory, rather than a restructuring.
+
+What it writes is one `index.js` holding both halves. Everything below is the
+same seven things with the types kept and the files split — what that directory
+looks like once the process is real enough to be worth the structure. Read it as
+what to change, not as a file to start from empty.
 
 ## Before you write anything: answer five questions
 
@@ -367,15 +387,22 @@ Then one test per branch that is not the happy path: the ceiling, every retry
 exhaustion, and every path to a `DECLINED`-shaped state. Those are where the
 bugs live, and every one of them runs in microseconds with no I/O.
 
+`amy workflow check <name>` is the first of those three as a command, plus a
+fourth: it drives the workflow against a stub world and refuses a waiting state
+that moved before the world did, an action the plan emits that no handler
+answers, a state the walkthrough never reaches, and a run that does not settle
+in a terminal state. It needs no test runner, which is the point — it is what to
+run while editing. The tests above are what survives the editing.
+
 ## 9. Drive it
 
 ```yaml
 # ~/.amy/config.yaml
 workflows:
   review:
-    workflow: "@acme/workflow-review"
+    workflow: review                      # the directory; a scoped name once published
     plugins:
-      - "@acme/workflow-review"
+      - review                            # the workflow mounts like any other plugin
       - "@amykit/plugin-file-queue"
       - "@amykit/plugin-file-store"
       - "@amykit/plugin-serial-engine"
@@ -386,11 +413,15 @@ workflows:
 ```
 
 ```sh
-npm install -g .
 amy --workflow review discover
 amy --workflow review tick
 amy --workflow review status
 ```
+
+Nothing is installed in between: the profile names the directory, and the loader
+resolves it before it looks in a registry. Publishing later changes one line —
+the profile names `@acme/workflow-review`, and that package is what gets
+installed on the next machine.
 
 It runs on the same engine, against the same budget, in the same log, with the
 same handbrake as everything else. Its records and queue live under

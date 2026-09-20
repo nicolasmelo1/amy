@@ -31,7 +31,7 @@ The one thing worth knowing first: **`sf` is not optional.** It is the tool that
 turns this repository's rules into checks that fail, and `npm run gate` runs it.
 
 ```sh
-cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.0 --locked
+cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.1 --locked
 ```
 
 That version is not a suggestion: the catalog ships inside the binary, so a
@@ -60,7 +60,7 @@ staged content, so a deliberately partial commit is checked loosely and
 
 ```sh
 npm run gate      # build, typecheck, release config, coverage, lint, knip, audit, docs, sf
-npm run e2e       # seven scenarios driving the installed command, a few minutes
+npm run e2e       # ten scenarios driving the installed command, a few minutes
 ```
 
 `npm run gate` is what CI runs, minus the scenarios. Run it before you open a

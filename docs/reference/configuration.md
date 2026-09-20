@@ -81,9 +81,10 @@ and beats the machine-wide one.
 # live in, so switching between two of them never loses the state of either.
 #
 # Declared here, not shipped: this machine drives nothing until a workflow is
-# named, and `amy workflow new` or `amy add` writes the block. The two
-# below are the ones this repository publishes, kept as examples rather than
-# defaults — uncomment one and install its package to drive it.
+# named. `amy workflow new <name>` writes the block for a workflow of your
+# own, under ~/.amy/workflows; a published one is a line you add here plus its
+# package installed. The two below are the ones this repository publishes,
+# kept as examples rather than defaults — uncomment one to drive it.
 #
 #   workflows:
 #     ticket-to-qa:

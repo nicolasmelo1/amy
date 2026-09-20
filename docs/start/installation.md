@@ -61,8 +61,10 @@ amy init --install        # install without asking
 amy init --no-install     # only print what is missing
 ```
 
-Adding a workflow later is the same two steps: name it in the config, run
-`amy init` again.
+Adding a published workflow later is the same two steps: name it in the config,
+run `amy init` again. Adding one of your own is `amy workflow new <name>`, which
+writes the directory and the config block together and installs nothing — see
+[Workflows and profiles](workflows-and-profiles.md).
 
 ### Why global
 

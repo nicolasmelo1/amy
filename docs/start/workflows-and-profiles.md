@@ -7,16 +7,15 @@ order: 6
 
 # Workflows and profiles
 
-A **workflow** is a package: what happens next, and how each step is done. A
-**profile** is a name in your config that points at one, plus what mounts under
-it.
+A **workflow** is what happens next, and how each step is done. A **profile** is
+a name in your config that points at one, plus what mounts under it.
 
 ```yaml
 workflows:
   ticket-to-qa:
-    workflow: "@amykit/workflow-ticket-to-qa"
+    workflow: "@amykit/workflow-ticket-to-qa"   # a package
   oncall:
-    workflow: "@acme/workflow-oncall"     # a package this repository never shipped
+    workflow: oncall                            # a directory on this machine
 defaultWorkflow: ticket-to-qa
 ```
 
@@ -27,6 +26,29 @@ amy --workflow oncall tick
 Nothing in amy's own code enumerates what is allowed. `--workflow oncall` works
 the moment a config declares `oncall`, because the shipped list is a *default*
 rather than an inventory.
+
+## Where a workflow lives
+
+Two places, and the config entry tells them apart by its shape:
+
+| What `workflow:` says | Where it is looked for |
+| :-- | :-- |
+| A bare name — `oncall` | `~/.amy/workflows/oncall/index.js`, this machine's own directory, first |
+| A package name — `@acme/workflow-oncall` | Resolved as an import, like any other package |
+
+A bare name that has no directory falls through to the same import, so a
+workflow can start as yours and become a package later without the profile
+changing.
+
+```sh
+amy workflow new oncall      # writes the directory, and the profile above
+amy workflow check oncall    # drives its lifecycle before it drives real work
+```
+
+That is the shorter road, and the one to take first: what `new` writes already
+runs, so the editing starts from a workflow that moves rather than from an empty
+file. [Write a workflow](../build/write-a-workflow.md) goes through what it
+wrote and what to change.
 
 ## What ships in the box
 

@@ -31,7 +31,7 @@ npm install @amykit/core
   "types": "./dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
   "files": ["dist"],
-  "dependencies": { "@amykit/core": "^0.1.0" }
+  "dependencies": { "@amykit/core": "^0.4.0" }
 }
 ```
 

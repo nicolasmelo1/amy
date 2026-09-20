@@ -26,6 +26,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 `minor` · `@amykit/cli`
 
+
+
+### The config template and the `/amy-workflow` skill say that a workflow of your own lives in `~/.amy/workflows`, instead of naming `amy add`, a command nothing ships, and telling a harness to install a package it does not need.
+
+`patch` · `@amykit/cli`
+
 <!-- amy:end changelog-unreleased -->
 
 ## Released

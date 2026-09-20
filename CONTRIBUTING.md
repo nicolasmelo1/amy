@@ -18,7 +18,7 @@ optional.** It is the tool that turns this repository's rules into checks that
 fail, and `npm run gate` runs it. The setup script installs it; by hand it is:
 
 ```sh
-cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.0 --locked
+cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.1 --locked
 ```
 
 That version is not a suggestion. The catalog ships inside the binary, so a
@@ -59,7 +59,7 @@ deliberately partial commit is checked loosely. `pre-push` has the last word.
 
 ```sh
 npm run gate      # build, typecheck, release config, docs, coverage, lint, knip, audit, sf check, sf verify
-npm run e2e       # seven scenarios driving the installed command, a few minutes
+npm run e2e       # ten scenarios driving the installed command, a few minutes
 ```
 
 `npm run gate` is what CI runs, minus the scenarios. Run it before you open a
@@ -81,7 +81,7 @@ Three of those are worth understanding rather than just obeying:
 
 ## The gates, and the thing that will surprise you
 
-Seven **gates** each pin a claim to a scenario that proves it, with the
+Ten **gates** each pin a claim to a scenario that proves it, with the
 evidence sealed by digest. A gate lists *activation paths*; touching one of
 them makes its evidence stale, and `sf check` goes red until the scenario runs
 again:

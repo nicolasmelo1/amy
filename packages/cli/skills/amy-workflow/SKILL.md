@@ -30,8 +30,9 @@ amy workflow check oncall
 The new command writes `~/.amy/workflows/oncall`: a complete npm package with
 its states, pure `plan()`, runtime, and the runtime contribution amy needs.
 `check` drives that lifecycle against its stub world before it touches real
-work. When the process becomes useful to more than one machine, run `npm
-publish` in that directory; nothing needs to move.
+work. When the process becomes useful to more than one machine, give it a
+scoped name, drop the `private` flag the scaffold wrote, and `npm publish` in
+that directory; nothing needs to move.
 
 ## How this skill runs
 
@@ -174,23 +175,27 @@ There is a working example of the whole shape, in about forty lines, at
 ## Making it drivable
 
 ```yaml
-# .amy/config.yaml
+# .amy/config.yaml — `amy workflow new` already wrote the profile
 workflows:
   oncall:
-    workflow: "@acme/workflow-oncall"
+    workflow: oncall               # a bare name is ~/.amy/workflows/oncall
     plugins:                       # empty means the recommended set
-      - "@acme/workflow-oncall"
+      - oncall
       - "@amykit/plugin-file-queue"
       - "@amykit/plugin-file-store"
       - "@amykit/plugin-serial-engine"
 ```
 
 ```sh
-npm install -g @acme/workflow-oncall
 amy --workflow oncall plugin list      # installed, and what this profile mounts
 amy --workflow oncall tick             # one move, watched
 amy --workflow oncall start            # the loop, in the background
 ```
+
+Nothing is installed for a workflow of your own — the loader resolves the bare
+name to the directory before it looks in a registry. Once it is published, the
+profile names `@acme/workflow-oncall` instead and that package is installed on
+the next machine; nothing else in the block changes.
 
 A plugin named and not installed is refused at boot with the list of what is
 installed, so a typo is one line to find.
