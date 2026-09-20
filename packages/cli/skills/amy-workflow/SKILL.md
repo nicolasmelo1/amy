@@ -174,13 +174,26 @@ There is a working example of the whole shape, in about forty lines, at
 
 ## Making it drivable
 
+This is the whole of what `amy workflow new oncall` wrote:
+
 ```yaml
-# .amy/config.yaml — `amy workflow new` already wrote the profile
+# ~/.amy/config.yaml
 workflows:
   oncall:
     workflow: oncall               # a bare name is ~/.amy/workflows/oncall
-    plugins:                       # empty means the recommended set
-      - oncall
+```
+
+No `plugins:` key, which is what selects the recommended set for the workflow —
+the workflow itself first, then a queue, a store, an engine and the rest.
+Naming the key replaces that set rather than adding to it, so an explicit list
+has to carry the workflow too:
+
+```yaml
+workflows:
+  oncall:
+    workflow: oncall
+    plugins:                       # this list replaces the recommended set
+      - oncall                     # the workflow mounts like any other plugin
       - "@amykit/plugin-file-queue"
       - "@amykit/plugin-file-store"
       - "@amykit/plugin-serial-engine"

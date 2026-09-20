@@ -27,7 +27,25 @@ const DEFAULT_CONFIG_DECLARING: AmyConfig = {
 
 describe("load", () => {
   it("loads nothing from nothing", async () => {
-    await expect(load([])).resolves.toEqual({ plugins: [], problems: [] });
+    await expect(load([])).resolves.toEqual({ plugins: [], problems: [], bySpec: new Map() });
+  });
+
+  // The spec is not the plugin's own name whenever a resolver is in play: a
+  // workflow of your own is asked for as `oncall` and calls itself
+  // `workflow-oncall`. A caller matching the two reported what it had just
+  // loaded as missing, which is what `amy plugin list` did.
+  it("answers what each spec loaded, under the spec that asked", async () => {
+    const result = await load(["queue"], () => "@amykit/plugin-file-queue");
+
+    expect(result.bySpec.get("queue")?.name).toBe("@amykit/plugin-file-queue");
+    expect(result.problems).toEqual([]);
+  });
+
+  it("keeps a spec that failed out of the answer", async () => {
+    const result = await load(["@acme/plugin-nobody-installed"]);
+
+    expect(result.bySpec.size).toBe(0);
+    expect(result.problems).toHaveLength(1);
   });
 
   it("takes the `plugin` export of a real package", async () => {

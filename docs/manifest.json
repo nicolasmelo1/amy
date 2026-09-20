@@ -749,6 +749,11 @@
         },
         {
           "depth": 3,
+          "title": "amy doctor and amy plugin list resolve a workflow of your own the same way mounting does, so amy plugin list no longer reports a directory written by amy workflow new as FAIL, and doctor validates its settings against the schema it declares.",
+          "slug": "amy-doctor-and-amy-plugin-list-resolve-a-workflow-of-your-own-the-same-way-mounting-does-so-amy-plugin-list-no-longer-reports-a-directory-written-by-amy-workflow-new-as-fail-and-doctor-validates-its-settings-against-the-schema-it-declares"
+        },
+        {
+          "depth": 3,
           "title": "The config template and the /amy-workflow skill say that a workflow of your own lives in ~/.amy/workflows, instead of naming amy add, a command nothing ships, and telling a harness to install a package it does not need.",
           "slug": "the-config-template-and-the-amy-workflow-skill-say-that-a-workflow-of-your-own-lives-in-amyworkflows-instead-of-naming-amy-add-a-command-nothing-ships-and-telling-a-harness-to-install-a-package-it-does-not-need"
         },
@@ -7213,6 +7218,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "a-workflow-of-your-own-is-found-by-every-command",
+        "title": "`amy doctor` and `amy plugin list` resolve a workflow of your own the same way mounting does, so `amy plugin list` no longer reports a directory written by `amy workflow new` as `FAIL`, and doctor validates its settings against the schema it declares.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "the-docs-say-where-a-workflow-lives",

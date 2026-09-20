@@ -28,6 +28,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### `amy doctor` and `amy plugin list` resolve a workflow of your own the same way mounting does, so `amy plugin list` no longer reports a directory written by `amy workflow new` as `FAIL`, and doctor validates its settings against the schema it declares.
+
+`patch` · `@amykit/cli`
+
+
+
 ### The config template and the `/amy-workflow` skill say that a workflow of your own lives in `~/.amy/workflows`, instead of naming `amy add`, a command nothing ships, and telling a harness to install a package it does not need.
 
 `patch` · `@amykit/cli`

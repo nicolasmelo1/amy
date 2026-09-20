@@ -50,7 +50,7 @@ import {
 import { budgetLines } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
-import { NOT_INSTALLED, installedPlugins, load } from "./loader.js";
+import { LoadResult, NOT_INSTALLED, installedPlugins, load } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
@@ -82,6 +82,17 @@ loadEnv(home);
 loadEnv(process.cwd());
 
 /**
+ * Every load resolves the same way, or a workflow of your own exists only for
+ * the command that mounts it.
+ *
+ * The resolver was passed at one of three call sites, so `plugin list`
+ * reported a directory `amy workflow new` had just written as `FAIL`.
+ */
+function loadMountable(specs: readonly string[]): Promise<LoadResult> {
+  return load(specs, (spec) => workflowSpecifier(home, spec));
+}
+
+/**
  * Loads the plugins the config asks for and assembles them.
  *
  * Every refusal happens here, by name, before a ticket is touched: a plugin
@@ -97,7 +108,7 @@ async function assemble(
   const place = profilePaths(home, profile.name);
   const specs = pluginList(config, profile);
 
-  const loaded = await load(specs, (spec) => workflowSpecifier(home, spec));
+  const loaded = await loadMountable(specs);
   if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
   const outcome = await mount(
@@ -321,7 +332,7 @@ program
 async function doctorReport(config: AmyConfig, profile: Profile, problem?: string): Promise<void> {
   const loaded = problem
     ? { plugins: [], problems: [] }
-    : await load(pluginList(config, profile));
+    : await loadMountable(pluginList(config, profile));
 
   const checks = await diagnose({
     home,
@@ -950,9 +961,9 @@ pluginCommand
 
     console.log(`${specs.length} plugin(s) to mount, from ${source}:\n`);
 
-    const loaded = await load(specs);
+    const loaded = await loadMountable(specs);
     for (const spec of specs) {
-      const found = loaded.plugins.find((plugin) => plugin.name === spec);
+      const found = loaded.bySpec.get(spec);
       console.log(`  ${found ? "ok  " : "FAIL"} ${spec}${found ? `  ${found.version}` : ""}`);
     }
     for (const problem of loaded.problems) console.log(`  ${problem}`);
