@@ -1,6 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { classify } from "../src/spec.js";
 
@@ -12,9 +13,17 @@ describe("a plugin spec", () => {
   });
   afterEach(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
-  function packageAt(directory: string): void {
+  /** A directory npm would find a package in, with the entry the loader imports. */
+  function packageAt(directory: string, main = "./index.js"): void {
     fs.mkdirSync(directory, { recursive: true });
-    fs.writeFileSync(path.join(directory, "package.json"), "{}\n", "utf-8");
+    fs.writeFileSync(
+      path.join(directory, "package.json"),
+      `${JSON.stringify({ main })}\n`,
+      "utf-8",
+    );
+    const entry = path.join(directory, main.replace(/^\.\//, ""));
+    fs.mkdirSync(path.dirname(entry), { recursive: true });
+    fs.writeFileSync(entry, "export {};\n", "utf-8");
   }
 
   it("gives a bare package name to npm and to the config", () => {
@@ -49,6 +58,8 @@ describe("a plugin spec", () => {
       "ssh://git@example.test/acme/plugin-oncall.git",
       "git+https://example.test/acme/plugin-oncall.git",
       "github:acme/plugin-oncall#v2.1.0",
+      "gitlab:acme/plugin-oncall",
+      "bitbucket:acme/plugin-oncall",
       "git@example.test:acme/plugin-oncall.git",
       "https://example.test/acme/plugin-oncall.git",
       "https://example.test/acme/plugin-oncall#v2.1.0",
@@ -58,11 +69,20 @@ describe("a plugin spec", () => {
   });
 
   it("classifies a tarball URL and names nothing yet", () => {
-    expect(classify("https://example.com/plugin-oncall-2.1.0.tgz", scratch)).toEqual({
-      kind: "tarball",
-      install: "https://example.com/plugin-oncall-2.1.0.tgz",
-      imported: undefined,
-    });
+    // The shape decides it, not the suffix: whatever else an http(s) endpoint
+    // that is not cloning serves, npm is the one that downloads it.
+    for (const spec of [
+      "https://example.com/plugin-oncall-2.1.0.tgz",
+      "https://example.com/plugin-oncall-2.1.0.tar.gz",
+      "https://example.com/plugin-oncall-2.1.0.tgz?token=abc",
+      "http://example.com/plugin-oncall-2.1.0.tgz",
+    ]) {
+      expect(classify(spec, scratch)).toEqual({
+        kind: "tarball",
+        install: spec,
+        imported: undefined,
+      });
+    }
   });
 
   it("resolves a relative path against the caller's directory", () => {
@@ -77,15 +97,64 @@ describe("a plugin spec", () => {
     expect(classify("./plugin-oncall", scratch)).toEqual({
       kind: "path",
       install: path.join(scratch, "plugin-oncall"),
-      imported: path.join(scratch, "plugin-oncall"),
+      imported: pathToFileURL(path.join(scratch, "plugin-oncall", "index.js")).href,
       absolute: path.join(scratch, "plugin-oncall"),
     });
     expect(classify("packages/plugin-x", scratch)).toEqual({
       kind: "path",
       install: path.join(scratch, "packages/plugin-x"),
-      imported: path.join(scratch, "packages/plugin-x"),
+      imported: pathToFileURL(path.join(scratch, "packages", "plugin-x", "index.js")).href,
       absolute: path.join(scratch, "packages/plugin-x"),
     });
+  });
+
+  it("reads the package's own entry, and hands import() a file", () => {
+    const directory = path.join(scratch, "custom");
+    packageAt(directory, "./src/entry.js");
+
+    expect(classify("./custom", scratch)).toEqual({
+      kind: "path",
+      install: directory,
+      imported: pathToFileURL(path.join(directory, "src/entry.js")).href,
+      absolute: directory,
+    });
+    expect(classify("./custom", scratch).imported).toMatch(/^file:\/\//);
+  });
+
+  it("reads the caller's package for a bare dot", () => {
+    packageAt(scratch);
+
+    expect(classify(".", scratch)).toEqual({
+      kind: "path",
+      install: scratch,
+      imported: pathToFileURL(path.join(scratch, "index.js")).href,
+      absolute: scratch,
+    });
+    expect(() => classify("..", scratch)).toThrow(/is not a package/);
+  });
+
+  it("expands only a bare tilde or one with a slash after it", () => {
+    const home = path.join(os.homedir(), "amy-spec-home");
+    packageAt(path.join(home, "plugin"));
+    packageAt(path.join(scratch, "~owner", "plugin"));
+
+    try {
+      expect(classify("~/amy-spec-home/plugin", scratch)).toEqual({
+        kind: "path",
+        install: path.join(home, "plugin"),
+        imported: pathToFileURL(path.join(home, "plugin", "index.js")).href,
+        absolute: path.join(home, "plugin"),
+      });
+      expect(classify("~owner/plugin", scratch)).toEqual({
+        kind: "path",
+        install: path.join(scratch, "~owner/plugin"),
+        imported: pathToFileURL(path.join(scratch, "~owner", "plugin", "index.js")).href,
+        absolute: path.join(scratch, "~owner/plugin"),
+      });
+    } finally {
+      fs.rmSync(path.join(scratch, "~owner"), { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 
   it("refuses a path that is not a package, before anything is run", () => {
@@ -100,15 +169,20 @@ describe("a plugin spec", () => {
   it("does not mistake a Windows-shaped path for a scoped name", () => {
     // A drive letter with a slash is a directory, so it resolves like one: the
     // package seeded where the caller's directory puts it is found, and the
-    // same spec read as a name with a range would have answered `range`.
-    const resolved = path.resolve(scratch, "C:/dev/plugin-oncall");
-    packageAt(resolved);
+    // same spec read as a name with a range would have answered `range`. The
+    // fixture is built inside the scratch directory on every platform — a
+    // drive-qualified seed would land at the root of C: on Windows itself.
+    const inside = path.join(scratch, "C:", "dev", "plugin-oncall");
+    fs.mkdirSync(inside, { recursive: true });
+    fs.writeFileSync(path.join(inside, "package.json"), "{}\n", "utf-8");
+    fs.writeFileSync(path.join(inside, "index.js"), "export {};\n", "utf-8");
+    const spec = process.platform === "win32" ? inside : "C:\\dev\\plugin-oncall";
 
-    expect(classify("C:\\dev\\plugin-oncall", scratch)).toEqual({
+    expect(classify(spec, scratch)).toEqual({
       kind: "path",
-      install: resolved,
-      imported: resolved,
-      absolute: resolved,
+      install: inside,
+      imported: pathToFileURL(path.join(inside, "index.js")).href,
+      absolute: inside,
     });
   });
 });

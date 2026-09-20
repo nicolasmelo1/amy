@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 /**
  * The five shapes a plugin spec arrives in.
@@ -16,9 +17,11 @@ type SpecKind = "name" | "range" | "git" | "tarball" | "path";
  * What one spec argument turns into.
  *
  * `install` is the string npm takes. `imported` is what the config names —
- * undefined for a git URL and a tarball, whose name is not knowable until the
- * package is on disk, which is the caller's cue to read the installed
- * `package.json` rather than guess. `absolute` is set for a path: the
+ * the string the loader passes to `import()`. Undefined for a git URL and a
+ * tarball, whose name is not knowable until the package is on disk, which is
+ * the caller's cue to read the installed `package.json` rather than guess.
+ * For a path it is the package's own entry, as a `file:` URL, because a
+ * directory is not something `import()` accepts — and `absolute` is the
  * directory the spec resolved to, so the config means the same directory from
  * wherever the command was typed.
  */
@@ -53,19 +56,16 @@ export function classify(spec: string, cwd: string): Resolved {
   const candidate = spec.replace(/\\/g, "/");
 
   if (isGitSpec(candidate)) return { kind: "git", install: candidate, imported: undefined };
-  if (isTarballSpec(candidate)) return { kind: "tarball", install: candidate, imported: undefined };
+  // What is left of http(s) is a download, whatever the suffix: the shape is
+  // the tarball, and npm is the one that finds out what the URL served.
+  if (/^https?:\/\//.test(candidate)) {
+    return { kind: "tarball", install: candidate, imported: undefined };
+  }
+
   const named = parseName(candidate);
   if (named) return named;
 
   return resolvePath(candidate, cwd);
-}
-
-/** An https endpoint that downloads a package rather than cloning it. */
-function isTarballSpec(spec: string): boolean {
-  // A literal, linear pattern: the plugin cannot see that, and the parser is
-  // the one place a spec-shaped string is read as one.
-  // eslint-disable-next-line security/detect-unsafe-regex -- literal regex, linear
-  return /^https?:\/\/[^#]+\.tgz(#.*)?$/.test(spec);
 }
 
 /**
@@ -73,9 +73,12 @@ function isTarballSpec(spec: string): boolean {
  *
  * A name is one segment with no slash in it, which is what keeps `./plugin-x`
  * and `packages/plugin-x` out of here: they are paths, and the path half
- * decides them.
+ * decides them. A bare `.` or `..` is a path too — npm reads both as the
+ * caller's directory, and neither is a name any registry carries.
  */
 function parseName(spec: string): Resolved | undefined {
+  if (spec === "." || spec === "..") return undefined;
+
   // eslint-disable-next-line security/detect-unsafe-regex -- literal regex, linear
   const scoped = /^@([\w.-]+)\/([\w.-]+)(?:@(.+))?$/s.exec(spec);
   if (scoped) {
@@ -96,14 +99,14 @@ function parseName(spec: string): Resolved | undefined {
 
 /**
  * Git is what npm cannot answer from the registry: a scheme naming git or
- * ssh, npm's own `github:` shorthand, the scp-like `host:owner/repo` shape,
- * and an https endpoint that ends in `.git` or carries a ref fragment. What
- * is left of https is a tarball.
+ * ssh, npm's own `github:` shorthand and the ones npm copies it from, the
+ * scp-like `host:owner/repo` shape, and an https endpoint that ends in `.git`
+ * or carries a ref fragment. Every other http(s) URL is a download.
  */
 function isGitSpec(spec: string): boolean {
   return (
     /^(?:git|git\+ssh|git\+https?|git\+file|ssh):\/\//.test(spec) ||
-    /^github:/.test(spec) ||
+    /^(?:github|gitlab|bitbucket|gist):/.test(spec) ||
     /^[^:/]+@[^:/]+:/.test(spec) ||
     // eslint-disable-next-line security/detect-unsafe-regex -- literal regex, linear
     /^https?:\/\/.+\.git(#.*)?$/.test(spec) ||
@@ -113,7 +116,7 @@ function isGitSpec(spec: string): boolean {
 
 /** A path the package manager can find a package in, or the refusal. */
 function resolvePath(candidate: string, cwd: string): Resolved {
-  const absolute = candidate.startsWith("~")
+  const absolute = isHomeRelative(candidate)
     ? path.join(os.homedir(), candidate.slice(2))
     : path.resolve(cwd, candidate);
 
@@ -121,7 +124,18 @@ function resolvePath(candidate: string, cwd: string): Resolved {
     throw new Error(`${candidate} is not a package: its package.json is missing at ${absolute}`);
   }
 
-  return { kind: "path", install: absolute, imported: absolute, absolute };
+  return { kind: "path", install: absolute, imported: entrySpecifier(absolute), absolute };
+}
+
+/**
+ * Only a bare `~` or a path under it names the home directory.
+ *
+ * `~owner/plugin` is npm's user shorthand and this program has no user
+ * database to ask, so it stays relative to the caller's directory, where a
+ * directory literally named `~owner` would be.
+ */
+function isHomeRelative(candidate: string): boolean {
+  return candidate === "~" || candidate.startsWith("~/");
 }
 
 /** A directory carrying a readable `package.json` file, not a directory named so. */
@@ -131,4 +145,26 @@ function isPackageDirectory(directory: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * The file the loader can import, read off the package's own entry.
+ *
+ * `main` is npm's word for it and `index.js` is the default both npm and Node
+ * fall back to. The import that eventually resolves it reports the rest — a
+ * missing file, a malformed `package.json` — against the directory it named.
+ */
+function entrySpecifier(directory: string): string {
+  let main = "./index.js";
+  try {
+    const read = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as {
+      main?: unknown;
+    };
+    if (typeof read.main === "string" && read.main.length > 0) main = read.main;
+  } catch {
+    // An unreadable package.json has already been refused above when it is
+    // missing; an unreadable *body* names no entry, and index.js is the truth
+    // npm would fall back to.
+  }
+  return pathToFileURL(path.join(directory, main)).href;
 }
