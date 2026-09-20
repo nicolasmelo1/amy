@@ -65,7 +65,9 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy stop`](#amy-stop) | Stop the background loop |
 | [`amy tick`](#amy-tick) | Advance one piece of work by one move |
 | [`amy workflow`](#amy-workflow) | What this install can drive, and what it keeps |
+| [`amy workflow check`](#amy-workflow-check) | Drive a workflow's lifecycle against its stub world |
 | [`amy workflow list`](#amy-workflow-list) | Every workflow this install can drive |
+| [`amy workflow new`](#amy-workflow-new) | Write an editable workflow under ~/.amy/workflows |
 | [`amy workflow rm`](#amy-workflow-rm) | Delete a workflow's records, its queue and its entry in the config |
 | [`amy worktrees`](#amy-worktrees) | Inspect and tidy the isolated checkouts work runs in |
 | [`amy worktrees list`](#amy-worktrees-list) | Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention |
@@ -404,6 +406,18 @@ What this install can drive, and what it keeps
 amy workflow
 ```
 
+### `amy workflow check`
+
+Drive a workflow's lifecycle against its stub world
+
+```sh
+amy workflow check <name>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<name>` | yes | the configured workflow to check |
+
 ### `amy workflow list`
 
 Every workflow this install can drive
@@ -413,6 +427,18 @@ amy workflow list
 ```
 
 Runs when `amy workflow` is given no subcommand.
+
+### `amy workflow new`
+
+Write an editable workflow under ~/.amy/workflows
+
+```sh
+amy workflow new <name>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<name>` | yes | one directory name, such as oncall |
 
 ### `amy workflow rm`
 

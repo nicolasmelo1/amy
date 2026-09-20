@@ -22,7 +22,9 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
-Nothing is pending. `.changeset/` is empty, which between releases is not a mistake.
+### `amy workflow new` writes an editable workflow under the machine state home, and `amy workflow check` drives its lifecycle before it reaches real work.
+
+`minor` · `@amykit/cli`
 
 <!-- amy:end changelog-unreleased -->
 

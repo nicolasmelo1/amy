@@ -238,6 +238,11 @@
           "description": ""
         },
         {
+          "title": "A workflow is yours, not a package",
+          "path": "/design/a-workflow-is-yours-not-a-package",
+          "description": ""
+        },
+        {
           "title": "An answer reaches the agent",
           "path": "/design/an-answer-reaches-the-agent",
           "description": ""
@@ -726,6 +731,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "amy workflow new writes an editable workflow under the machine state home, and amy workflow check drives its lifecycle before it reaches real work.",
+          "slug": "amy-workflow-new-writes-an-editable-workflow-under-the-machine-state-home-and-amy-workflow-check-drives-its-lifecycle-before-it-reaches-real-work"
         },
         {
           "depth": 2,
@@ -1444,6 +1454,33 @@
           "depth": 2,
           "title": "What changed",
           "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-is-yours-not-a-package",
+      "file": "docs/design/a-workflow-is-yours-not-a-package.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-is-yours-not-a-package.md",
+      "title": "A workflow is yours, not a package",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
         },
         {
           "depth": 2,
@@ -2417,8 +2454,18 @@
         },
         {
           "depth": 3,
+          "title": "amy workflow check",
+          "slug": "amy-workflow-check"
+        },
+        {
+          "depth": 3,
           "title": "amy workflow list",
           "slug": "amy-workflow-list"
+        },
+        {
+          "depth": 3,
+          "title": "amy workflow new",
+          "slug": "amy-workflow-new"
         },
         {
           "depth": 3,
@@ -4833,12 +4880,44 @@
         {
           "path": [
             "workflow",
+            "check"
+          ],
+          "description": "Drive a workflow's lifecycle against its stub world",
+          "arguments": [
+            {
+              "name": "<name>",
+              "required": true,
+              "description": "the configured workflow to check"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "workflow",
             "list"
           ],
           "description": "Every workflow this install can drive",
           "arguments": [],
           "options": [],
           "isDefault": true
+        },
+        {
+          "path": [
+            "workflow",
+            "new"
+          ],
+          "description": "Write an editable workflow under ~/.amy/workflows",
+          "arguments": [
+            {
+              "name": "<name>",
+              "required": true,
+              "description": "one directory name, such as oncall"
+            }
+          ],
+          "options": [],
+          "isDefault": false
         },
         {
           "path": [
@@ -6328,6 +6407,25 @@
   "factory": {
     "gates": [
       {
+        "name": "a-workflow-of-your-own",
+        "activation": [
+          "packages/cli/src/workflow.ts",
+          "packages/cli/src/loader.ts",
+          "packages/cli/src/index.ts",
+          "packages/cli/skills/amy-workflow/SKILL.md"
+        ],
+        "evidence": ".software-factory/evidence/workflow-new.json",
+        "plan": "docs/design/a-workflow-is-yours-not-a-package.md",
+        "assertions": [
+          "mine.the_scaffold_runs_before_it_is_edited",
+          "mine.a_directory_name_is_a_workflow",
+          "mine.a_workflow_that_spins_is_refused",
+          "mine.a_state_nothing_reaches_is_refused",
+          "mine.an_action_with_no_port_is_refused"
+        ],
+        "scenario": ".software-factory/evidence/workflow-new-scenario.sh"
+      },
+      {
         "name": "bare-install",
         "activation": [
           "packages/cli/package.json",
@@ -6903,7 +7001,20 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "a-workflow-is-yours-not-a-package",
+        "title": "`amy workflow new` writes an editable workflow under the machine state home, and `amy workflow check` drives its lifecycle before it reaches real work.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
