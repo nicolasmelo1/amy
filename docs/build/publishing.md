@@ -29,7 +29,7 @@ import.
   "files": ["dist"],
   "repository": { "type": "git", "url": "git+https://github.com/acme/amy-plugins.git", "directory": "plugins/jira" },
   "publishConfig": { "access": "public" },
-  "dependencies": { "@amykit/core": "^0.1.0" }
+  "dependencies": { "@amykit/core": "^0.4.0" }
 }
 ```
 
@@ -48,7 +48,7 @@ Four of those are not optional:
 ## Versioning
 
 Your plugin's version is yours. The one thing worth being careful about is
-`@amykit/core`: a caret range (`^0.1.0`) is right while amy is pre-1.0, because the
+`@amykit/core`: a caret range (`^0.4.0`) is right while amy is pre-1.0, because the
 contracts still move. When they stop moving, so can that.
 
 Breaking changes worth a major, in order of how often they catch people:

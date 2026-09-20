@@ -223,6 +223,12 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 
 ## Writing one
 
-[Write a workflow](../build/write-a-workflow.md) is the full walkthrough, from an
-empty package to a walkthrough test. `/amy-workflow` designs one by
+A workflow of yours is a directory under `~/.amy/workflows`, and it is a package
+only if you decide to share it later. `amy workflow new <name>` writes one that
+already declares the seven things above and already moves a piece of work;
+`amy workflow check <name>` drives it against a stub world and reports what it
+got wrong.
+
+[Write a workflow](../build/write-a-workflow.md) is the full walkthrough, from
+what the scaffold wrote to a walkthrough test. `/amy-workflow` designs one by
 interrogating you a question at a time.

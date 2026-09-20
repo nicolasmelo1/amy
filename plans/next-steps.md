@@ -58,6 +58,13 @@ reconciles work carrying its own provenance. *A project is three phases* is the
 slot, and *a phase is proven, not asserted* is what goes in the third one, so
 it follows.
 
+**From auditing what the gates actually watch.** *The errand is proven end to
+end* is the third shipped workflow's missing scenario: `amy btw` is the shortest
+road into this machine and the only one of the three whose source cannot expire
+a proof by changing. It sits beside *the performance guard can fail* because
+both are the same defect seen twice — a gate that reads like protection and
+cannot report the day it stops being any.
+
 | # | Work | Exit condition |
 | 1 | [A spec is a name, a URL or a path](a-spec-is-a-name-a-url-or-a-path.md) | One function turns any of the five forms into what npm installs and what the config names, and nothing else in the CLI parses a spec |
 
@@ -107,6 +114,8 @@ it follows.
 
 | 23 | [The performance guard can fail](the-performance-guard-can-fail.md) | A commit that makes the budget ledger twenty times slower turns this repository's build red naming the benchmark, and the same gate goes red the day somebody replaces the comparison with a command that only reports. |
 
-| 24 | [A project is three phases](a-project-is-three-phases.md) | One project drives grooming on a planning cadence with an expensive model and execution continuously with a cheap one, the second reads what the first wrote without either naming a path belonging to the other, and an install that never heard of phases does not change. |
+| 24 | [The errand is proven end to end](the-errand-is-proven-end-to-end.md) | Editing the errand workflow or the task store turns `sf check` red until the errand scenario is run again and resealed, the same way the other two shipped workflows already behave |
 
-| 25 | [A phase is proven, not asserted](a-phase-is-proven-not-asserted.md) | A unit of work whose scenario names no example cannot leave planning, a phase whose run left one assertion unevaluated is refused with that assertion named, and a phase proven against code that has since changed goes red without anybody looking. |
+| 25 | [A project is three phases](a-project-is-three-phases.md) | One project drives grooming on a planning cadence with an expensive model and execution continuously with a cheap one, the second reads what the first wrote without either naming a path belonging to the other, and an install that never heard of phases does not change. |
+
+| 26 | [A phase is proven, not asserted](a-phase-is-proven-not-asserted.md) | A unit of work whose scenario names no example cannot leave planning, a phase whose run left one assertion unevaluated is refused with that assertion named, and a phase proven against code that has since changed goes red without anybody looking. |

@@ -65,9 +65,10 @@ Everything hard in this repository is downstream of keeping that function pure.
 
 Three things, and it is worth being concrete about which.
 
-**A process that is yours.** The lifecycle amy walks is a package. Naming a
-different one in the config is the whole change — no fork, no flag, no case in a
-switch. See [Workflows and profiles](workflows-and-profiles.md).
+**A process that is yours.** The lifecycle amy walks is a directory of yours or
+a package somebody published, and naming a different one in the config is the
+whole change — no fork, no flag, no case in a switch. `amy workflow new` writes
+the first one. See [Workflows and profiles](workflows-and-profiles.md).
 
 **An adapter for a tool nobody here has heard of.** Your tracker is not Linear,
 your forge is not GitHub, your agent is something internal. Each of those is one

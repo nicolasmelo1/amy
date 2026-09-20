@@ -78,9 +78,10 @@ amy btw "bump the deps in the api"   # something you thought of in passing
 
 ## The part that makes it different
 
-**That process above is not baked in.** It is one *workflow*, and a workflow
-is just a small package you can read in one sitting. It says two things: what
-happens next, and how each step is done.
+**That process above is not baked in.** It is one *workflow*, and a workflow is
+just a small directory you can read in one sitting — yours, on your machine,
+and a published package only if you ever want it to be. It says two things:
+what happens next, and how each step is done.
 
 Your team does not work like mine. A tool that ships somebody else's process
 is a tool that is *nearly* right for you, and nearly-right is where automation
@@ -182,21 +183,32 @@ the three actions that would have failed.
 ## Make it yours
 
 The point is the ones that cannot be shared. A process that names your
-employer's tooling, a private feedback step, an on-call rota: those live in a
-package of yours, versioned wherever you like, and amy mounts them exactly the
-way it mounts its own.
-
-```yaml
-# ~/.amy/config.yaml
-workflows:
-  oncall:
-    workflow: "@acme/workflow-oncall"    # a package this repository never shipped
-```
+employer's tooling, a private feedback step, an on-call rota: **that one is
+yours before it is anybody's package.**
 
 ```sh
-npm install -g @acme/workflow-oncall
+amy workflow new oncall      # a directory under ~/.amy/workflows that already runs
+amy workflow check oncall    # drives its lifecycle against a stub world
 amy --workflow oncall start
 ```
+
+`new` writes the states, a pure `plan()`, a runtime and the profile that names
+them, so the editing starts from a workflow that moves. `check` is the
+walkthrough test as a command: it refuses a state nothing reaches, a look that
+makes two moves, a waiting state that moved before the world did, and a machine
+that spins instead of settling.
+
+```yaml
+# ~/.amy/config.yaml — what `new` wrote
+workflows:
+  oncall:
+    workflow: oncall                     # a bare name is this machine's own directory
+```
+
+Publishing is a later choice, not the price of using amy. When a process
+outgrows one laptop, give the directory a scoped name, drop `private`, and
+`npm publish` it — the profile then names the package instead, and nothing else
+changes.
 
 | | |
 | :-- | :-- |
@@ -248,7 +260,7 @@ full reference, with every option and default, is
 | `amy status` | Where everything stands, the queue, the loop. `--json`. |
 | `amy note "<text>"` | Write a piece of friction down and queue it. |
 | `amy btw "<text>"` | Something to do, said in passing. Queued as an errand, never a ticket. |
-| `amy workflow` / `amy plugin` | What this install can drive, and what it mounts. |
+| `amy workflow` / `amy plugin` | What this install can drive, and what it mounts. `amy workflow new` writes one of your own; `check` drives it. |
 | `amy skills` | Install the skills into the harnesses on this machine. |
 | `amy budget` | What the agents have spent, against the ceiling. |
 | `amy roster` | Who is reviewing today. |
@@ -271,7 +283,7 @@ on itself: **33 rules, and `sf verify` proves every one of them fires against
 a deliberately broken fixture.** So the tool that refuses to open a pull
 request until a gate is green is itself held to a gate that is proven to work.
 
-Seven **gates** each pin a claim to a scenario that drives the *built artifact*
+Ten **gates** each pin a claim to a scenario that drives the *built artifact*
 from another process, with the evidence sealed by digest — and touching the
 code a gate covers expires its proof, because the last run proved something
 that no longer exists.

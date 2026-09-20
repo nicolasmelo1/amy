@@ -112,12 +112,18 @@ async function introspect(dir, manifest, environment) {
 
   if (!module.plugin) return { kind: "library", exports: Object.keys(module).sort() };
 
+  // What makes a package a workflow is the machine it exports, never its name.
+  // `@amykit/workflow-feature-grooming` is named for the workflow it serves and
+  // exports no machine at all — it mounts ports — and calling it a workflow
+  // told every reader to name it under `workflows:`, where boot refuses it.
+  const shape = workflowShape(module);
+
   return {
-    kind: manifest.name.includes("/workflow-") ? "workflow" : "plugin",
+    kind: shape.workflow ? "workflow" : "plugin",
     exports: Object.keys(module).sort(),
     settings: settingsOf(module.plugin),
     ...(await registers(module.plugin, environment)),
-    ...workflowShape(module),
+    ...shape,
   };
 }
 

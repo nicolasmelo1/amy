@@ -17,7 +17,7 @@ else is found by two conventions rather than by a list somebody curates.
 | Package | Kind | What it is |  |
 | :-- | :-- | :-- | :-- |
 | `@amykit/workflow-errand` | workflow | Something said in passing becomes work: capture it, do it, say what happened. | [npm](https://www.npmjs.com/package/@amykit/workflow-errand) |
-| `@amykit/workflow-feature-grooming` | workflow | Feature grooming against read-only base-branch source snapshots. | [npm](https://www.npmjs.com/package/@amykit/workflow-feature-grooming) |
+| `@amykit/workflow-feature-grooming` | plugin | Feature grooming against read-only base-branch source snapshots. | [npm](https://www.npmjs.com/package/@amykit/workflow-feature-grooming) |
 | `@amykit/workflow-note-to-plan` | workflow | The note-to-plan workflow: friction becomes a plan in the repository it is about. | [npm](https://www.npmjs.com/package/@amykit/workflow-note-to-plan) |
 | `@amykit/workflow-ticket-to-qa` | workflow | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). | [npm](https://www.npmjs.com/package/@amykit/workflow-ticket-to-qa) |
 | `@amykit/plugin-agent-relay` | plugin | One agent made of several: swaps harness on a quota, escalates model on a failure. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-relay) |

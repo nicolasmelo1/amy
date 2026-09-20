@@ -12,3 +12,9 @@ dist
 
 # macOS leaves one of these in every directory it is browsed from.
 .DS_Store
+
+# What `sf check` learned about a finding somebody is already fighting with:
+# every failed attempt and one diff that cleared the same rule elsewhere. A
+# local trail for whoever is in that loop, kept out of the factory lock
+# upstream for the same reason it is kept out of the history here.
+.software-factory/escapes/

@@ -4,9 +4,7 @@
 
 Feature grooming against read-only base-branch source snapshots.
 
-A workflow for [amy](https://github.com/nicolasmelo1/amy): a pure `plan()` that says what
-happens next, and a runtime that says how each step is done. The engine drives it without
-knowing what any of its states mean.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `grooming-source` port and the `grooming-tracker` port.
 
 ## Install
 
@@ -19,7 +17,8 @@ Then name it in `~/.amy/config.yaml`:
 ```yaml
 workflows:
   your-profile:
-    workflow: "@amykit/workflow-feature-grooming"
+    plugins:
+      - "@amykit/workflow-feature-grooming"
 ```
 
 ## Configuration
@@ -44,8 +43,8 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)
-- [Reference: workflows](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/workflows.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 
 ## Licence

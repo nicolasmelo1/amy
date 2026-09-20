@@ -209,12 +209,19 @@ gates:
   # adapter an assertion rests on, because a change to any of them means the
   # last run proved a machine that no longer exists. That is a wide net on
   # purpose: this is the run that would have caught it.
+  #
+  # file-worktree arrived with the isolation work and its eight `worktree.`
+  # assertions, and was not listed here: for one release this gate asserted
+  # that two items run in their own trees, against a plugin it was not
+  # watching, so editing that plugin expired nothing. An assertion about a
+  # plugin and an activation path for it are the same decision.
   ticket-to-qa:
     activation:
       - "packages/workflow-ticket-to-qa/src/**"
       - "packages/agent-kit/src/**"
       - "packages/cli/src/**"
       - "plugins/file-store/src/**"
+      - "plugins/file-worktree/src/**"
       - "plugins/serial-engine/src/**"
       - "plugins/linear/src/**"
       - "plugins/github/src/**"
@@ -316,11 +323,16 @@ gates:
       - "plan.one_look_makes_at_most_one_move"
       - "plan.the_machine_settles_instead_of_spinning"
 
+  # config.ts is here because `workflow new` writes a profile as well as a
+  # directory: `writeWorkflowProfile` is what makes the scaffold drivable, and
+  # the first two assertions below are false the moment it stops writing a
+  # block the loader can read.
   a-workflow-of-your-own:
     activation:
       - "packages/cli/src/workflow.ts"
       - "packages/cli/src/loader.ts"
       - "packages/cli/src/index.ts"
+      - "packages/cli/src/config.ts"
       - "packages/cli/skills/amy-workflow/SKILL.md"
     evidence: ".software-factory/evidence/workflow-new.json"
     plan: "docs/design/a-workflow-is-yours-not-a-package.md"
@@ -385,6 +397,11 @@ rules:
     options:
       scope:
         - "docs/rules.md"
+        # Written by `sf docs` from the installed binary, the same as the
+        # rules document beside it: locking it is what makes a bump of the
+        # pinned `sf` show up as a reviewable diff rather than as a page that
+        # quietly describes a version nobody runs any more.
+        - "docs/development/the-factory.md"
         - "packages/model-specs/specs.json"
         # Four harnesses, a budget ledger and a reporter read the event
         # log, so the kinds and the shape of each `detail` are a contract

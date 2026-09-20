@@ -311,7 +311,7 @@ function pluginSettings(packages) {
           "```yaml",
           "plugins:",
           `  "${entry.name}":`,
-          ...entry.settings.map((setting) => `    ${setting.name}: ${asYaml(setting)}`),
+          ...entry.settings.map((setting) => `    ${setting.name}:${asYaml(setting)}`),
           "```",
           "",
           table(
@@ -601,7 +601,17 @@ function unique(values) {
 function asYaml(setting) {
   const value = setting.default !== undefined ? setting.default : placeholder(setting.type);
   const rendered = yaml.stringify(value).trim();
-  return rendered.includes("\n") ? `\n${indent(rendered, 6)}` : rendered;
+
+  // A one-item list stringifies to a single line — `- …` — and a single line
+  // used to mean "small enough to sit after the key", which produced
+  // `repos: - …`: a sample nobody can paste. What decides is the shape, not
+  // the line count. Empty `[]` and `{}` are the two that stay inline.
+  return isScalar(value) && !rendered.includes("\n") ? ` ${rendered}` : `\n${indent(rendered, 6)}`;
+}
+
+function isScalar(value) {
+  if (typeof value !== "object" || value === null) return true;
+  return (Array.isArray(value) ? value : Object.keys(value)).length === 0;
 }
 
 function placeholder(type) {

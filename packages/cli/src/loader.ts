@@ -6,6 +6,11 @@ import { Plugin } from "@amykit/core";
 export interface LoadResult {
   plugins: Plugin[];
   problems: string[];
+  // What was asked for, against what came back. A plugin's own `name` is not
+  // the spec that found it — a workflow of your own is asked for by its
+  // directory, `oncall`, and calls itself `workflow-oncall` — so a caller
+  // matching one against the other reports a plugin it just loaded as missing.
+  bySpec: Map<string, Plugin>;
 }
 
 /**
@@ -22,6 +27,7 @@ export async function load(
 ): Promise<LoadResult> {
   const plugins: Plugin[] = [];
   const problems: string[] = [];
+  const bySpec = new Map<string, Plugin>();
 
   for (const spec of specs) {
     try {
@@ -31,12 +37,13 @@ export async function load(
         continue;
       }
       plugins.push(module.plugin);
+      bySpec.set(spec, module.plugin);
     } catch (error) {
       problems.push(missing(spec, error));
     }
   }
 
-  return { plugins, problems };
+  return { plugins, problems, bySpec };
 }
 
 /**
