@@ -192,11 +192,14 @@ describe("a plugin spec", () => {
     // same spec read as a name with a range would have answered `range`. The
     // fixture is built inside the scratch directory on every platform — a
     // drive-qualified seed would land at the root of C: on Windows itself.
-    const inside = path.join(scratch, "C:", "dev", "plugin-oncall");
+    const inside =
+      process.platform === "win32"
+        ? path.join(scratch, "dev", "plugin-oncall")
+        : path.join(scratch, "C:", "dev", "plugin-oncall");
     fs.mkdirSync(inside, { recursive: true });
     fs.writeFileSync(path.join(inside, "package.json"), "{}\n", "utf-8");
     fs.writeFileSync(path.join(inside, "index.js"), "export {};\n", "utf-8");
-    const spec = process.platform === "win32" ? inside : "C:\\dev\\plugin-oncall";
+    const spec = process.platform === "win32" ? inside.replaceAll("/", "\\") : "C:\\dev\\plugin-oncall";
 
     expect(classify(spec, scratch)).toEqual({
       kind: "path",
