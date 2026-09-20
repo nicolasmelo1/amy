@@ -122,7 +122,7 @@ this repository.
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/workflow-errand` | workflow | `@amykit/core` |
-| `@amykit/workflow-feature-grooming` | workflow | `@amykit/core` |
+| `@amykit/workflow-feature-grooming` | plugin | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/core` |
 | `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |

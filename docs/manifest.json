@@ -127,7 +127,7 @@
         {
           "title": "Write a workflow",
           "path": "/build/write-a-workflow",
-          "description": "Your process as a package — the pure decision, the runtime, and the walkthrough test that is the only real proof."
+          "description": "Your process, as a directory of yours — the pure decision, the runtime, and the walkthrough test that is the only real proof."
         },
         {
           "title": "Testing",
@@ -327,7 +327,7 @@
         {
           "title": "The gate",
           "path": "/development/the-gate",
-          "description": "One command, thirty-three rules proven to fire, and seven gates whose proofs expire."
+          "description": "One command, thirty-three rules proven to fire, and ten gates whose proofs expire."
         },
         {
           "title": "Releasing",
@@ -338,6 +338,11 @@
           "title": "Documentation",
           "path": "/development/documentation",
           "description": "How half of this is generated from the code, why the gate goes red when it drifts, and what a site consumes."
+        },
+        {
+          "title": "The factory itself",
+          "path": "/development/the-factory",
+          "description": "The tool the gate is made of, printed by the version this repository pins."
         }
       ]
     }
@@ -581,11 +586,16 @@
       "file": "docs/build/write-a-workflow.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/write-a-workflow.md",
       "title": "Write a workflow",
-      "description": "Your process as a package — the pure decision, the runtime, and the walkthrough test that is the only real proof.",
+      "description": "Your process, as a directory of yours — the pure decision, the runtime, and the walkthrough test that is the only real proof.",
       "group": "Build your own",
       "order": 2,
       "generated": false,
       "headings": [
+        {
+          "depth": 2,
+          "title": "Start from one that already runs",
+          "slug": "start-from-one-that-already-runs"
+        },
         {
           "depth": 2,
           "title": "Before you write anything: answer five questions",
@@ -736,6 +746,11 @@
           "depth": 3,
           "title": "amy workflow new writes an editable workflow under the machine state home, and amy workflow check drives its lifecycle before it reaches real work.",
           "slug": "amy-workflow-new-writes-an-editable-workflow-under-the-machine-state-home-and-amy-workflow-check-drives-its-lifecycle-before-it-reaches-real-work"
+        },
+        {
+          "depth": 3,
+          "title": "The config template and the /amy-workflow skill say that a workflow of your own lives in ~/.amy/workflows, instead of naming amy add, a command nothing ships, and telling a harness to install a package it does not need.",
+          "slug": "the-config-template-and-the-amy-workflow-skill-say-that-a-workflow-of-your-own-lives-in-amyworkflows-instead-of-naming-amy-add-a-command-nothing-ships-and-telling-a-harness-to-install-a-package-it-does-not-need"
         },
         {
           "depth": 2,
@@ -2226,11 +2241,183 @@
       ]
     },
     {
+      "path": "/development/the-factory",
+      "file": "docs/development/the-factory.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/the-factory.md",
+      "title": "The factory itself",
+      "description": "The tool the gate is made of, printed by the version this repository pins.",
+      "group": "Development",
+      "order": 5,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The commands",
+          "slug": "the-commands"
+        },
+        {
+          "depth": 3,
+          "title": "In detail",
+          "slug": "in-detail"
+        },
+        {
+          "depth": 3,
+          "title": "sf catalog",
+          "slug": "sf-catalog"
+        },
+        {
+          "depth": 3,
+          "title": "sf check",
+          "slug": "sf-check"
+        },
+        {
+          "depth": 3,
+          "title": "sf docs",
+          "slug": "sf-docs"
+        },
+        {
+          "depth": 3,
+          "title": "sf explain",
+          "slug": "sf-explain"
+        },
+        {
+          "depth": 3,
+          "title": "sf fixtures",
+          "slug": "sf-fixtures"
+        },
+        {
+          "depth": 3,
+          "title": "sf init",
+          "slug": "sf-init"
+        },
+        {
+          "depth": 3,
+          "title": "sf interview",
+          "slug": "sf-interview"
+        },
+        {
+          "depth": 3,
+          "title": "sf lock",
+          "slug": "sf-lock"
+        },
+        {
+          "depth": 3,
+          "title": "sf ratchet",
+          "slug": "sf-ratchet"
+        },
+        {
+          "depth": 3,
+          "title": "sf seal",
+          "slug": "sf-seal"
+        },
+        {
+          "depth": 3,
+          "title": "sf skills",
+          "slug": "sf-skills"
+        },
+        {
+          "depth": 3,
+          "title": "sf verify",
+          "slug": "sf-verify"
+        },
+        {
+          "depth": 2,
+          "title": "The skills that drive it",
+          "slug": "the-skills-that-drive-it"
+        },
+        {
+          "depth": 2,
+          "title": "What it can parse",
+          "slug": "what-it-can-parse"
+        },
+        {
+          "depth": 2,
+          "title": "The hazard tools",
+          "slug": "the-hazard-tools"
+        },
+        {
+          "depth": 2,
+          "title": "The templates it scaffolds from",
+          "slug": "the-templates-it-scaffolds-from"
+        },
+        {
+          "depth": 2,
+          "title": "The interview",
+          "slug": "the-interview"
+        },
+        {
+          "depth": 3,
+          "title": "kind — What is this repository?",
+          "slug": "kind-what-is-this-repository"
+        },
+        {
+          "depth": 3,
+          "title": "architecture — How is the code organised, or how do you intend to organise it?",
+          "slug": "architecture-how-is-the-code-organised-or-how-do-you-intend-to-organise-it"
+        },
+        {
+          "depth": 3,
+          "title": "framework — Which HTTP framework?",
+          "slug": "framework-which-http-framework"
+        },
+        {
+          "depth": 3,
+          "title": "data_access — How does code reach the database?",
+          "slug": "dataaccess-how-does-code-reach-the-database"
+        },
+        {
+          "depth": 3,
+          "title": "errors_home — Where do error types get defined?",
+          "slug": "errorshome-where-do-error-types-get-defined"
+        },
+        {
+          "depth": 3,
+          "title": "validation — What validates data crossing the boundary?",
+          "slug": "validation-what-validates-data-crossing-the-boundary"
+        },
+        {
+          "depth": 3,
+          "title": "validation_placement — Where do request and response schemas live?",
+          "slug": "validationplacement-where-do-request-and-response-schemas-live"
+        },
+        {
+          "depth": 3,
+          "title": "client_data — How does the client fetch server data?",
+          "slug": "clientdata-how-does-the-client-fetch-server-data"
+        },
+        {
+          "depth": 3,
+          "title": "client_state — Where does global client state live?",
+          "slug": "clientstate-where-does-global-client-state-live"
+        },
+        {
+          "depth": 3,
+          "title": "client_root — Where does the client application live?",
+          "slug": "clientroot-where-does-the-client-application-live"
+        },
+        {
+          "depth": 3,
+          "title": "data_layer_packages — Which packages must the client never import directly?",
+          "slug": "datalayerpackages-which-packages-must-the-client-never-import-directly"
+        },
+        {
+          "depth": 3,
+          "title": "concurrency — Does this code share mutable state across threads or tasks?",
+          "slug": "concurrency-does-this-code-share-mutable-state-across-threads-or-tasks"
+        },
+        {
+          "depth": 3,
+          "title": "generated — Which files are generated, vendored or otherwise not hand-written?",
+          "slug": "generated-which-files-are-generated-vendored-or-otherwise-not-hand-written"
+        }
+      ]
+    },
+    {
       "path": "/development/the-gate",
       "file": "docs/development/the-gate.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/the-gate.md",
       "title": "The gate",
-      "description": "One command, thirty-three rules proven to fire, and seven gates whose proofs expire.",
+      "description": "One command, thirty-three rules proven to fire, and ten gates whose proofs expire.",
       "group": "Development",
       "order": 2,
       "generated": true,
@@ -2799,6 +2986,11 @@
           "depth": 3,
           "title": "@amykit/plugin-serial-engine",
           "slug": "amykitplugin-serial-engine"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/workflow-feature-grooming",
+          "slug": "amykitworkflow-feature-grooming"
         },
         {
           "depth": 2,
@@ -3400,6 +3592,11 @@
       "order": 6,
       "generated": true,
       "headings": [
+        {
+          "depth": 2,
+          "title": "Where a workflow lives",
+          "slug": "where-a-workflow-lives"
+        },
         {
           "depth": 2,
           "title": "What ships in the box",
@@ -6161,7 +6358,7 @@
       {
         "name": "@amykit/workflow-feature-grooming",
         "version": "0.4.0",
-        "kind": "workflow",
+        "kind": "plugin",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "packages/workflow-feature-grooming",
         "npm": "https://www.npmjs.com/package/@amykit/workflow-feature-grooming",
@@ -6412,6 +6609,7 @@
           "packages/cli/src/workflow.ts",
           "packages/cli/src/loader.ts",
           "packages/cli/src/index.ts",
+          "packages/cli/src/config.ts",
           "packages/cli/skills/amy-workflow/SKILL.md"
         ],
         "evidence": ".software-factory/evidence/workflow-new.json",
@@ -6646,6 +6844,7 @@
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
           "plugins/file-store/src/**",
+          "plugins/file-worktree/src/**",
           "plugins/serial-engine/src/**",
           "plugins/linear/src/**",
           "plugins/github/src/**",
@@ -6805,6 +7004,7 @@
           "options": {
             "scope": [
               "docs/rules.md",
+              "docs/development/the-factory.md",
               "packages/model-specs/specs.json",
               "packages/core/events.json"
             ]
@@ -7013,6 +7213,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-docs-say-where-a-workflow-lives",
+        "title": "The config template and the `/amy-workflow` skill say that a workflow of your own lives in `~/.amy/workflows`, instead of naming `amy add`, a command nothing ships, and telling a harness to install a package it does not need.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       }
     ],
     "changelogs": [

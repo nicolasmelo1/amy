@@ -91,6 +91,7 @@ A page is markdown with markers in it:
 | `@amykit/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
 | `@amykit/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
 | `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
+| `@amykit/workflow-feature-grooming` | Feature grooming against read-only base-branch source snapshots. | `grooming-source`<br>`grooming-tracker` |  |
 
 <!-- amy:end plugin-index -->
 
