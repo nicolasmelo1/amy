@@ -206,12 +206,23 @@ function entryFromExports(exports: unknown): string | undefined {
   // A bare string is the whole map for the root: Node reads
   // `exports: "./x.js"` exactly as `exports: { ".": "./x.js" }`.
   if (typeof exports === "string" && exports.length > 0) return exports;
-  const dot = (exports as Record<string, unknown> | undefined)?.["."];
-  if (typeof dot === "string" && dot.length > 0) return dot;
-  if (dot && typeof dot === "object") {
-    const conditions = dot as Record<string, unknown>;
-    const imported = conditions.import ?? conditions.default;
-    if (typeof imported === "string" && imported.length > 0) return imported;
+  return entryFromRoot((exports as Record<string, unknown> | undefined)?.["."]);
+}
+
+/**
+ * The entry one member of `exports` names, following Node's own walk.
+ *
+ * A string is the target. An object is conditions in declaration order:
+ * the first arm named `import`, `node` or `default` wins, whichever Node
+ * would take first — so `{"node": "./a.js", "default": "./b.js"}` answers
+ * `./a.js` rather than the fallback that happens to be read later.
+ */
+function entryFromRoot(member: unknown): string | undefined {
+  if (typeof member === "string" && member.length > 0) return member;
+  if (!member || typeof member !== "object") return undefined;
+  for (const [condition, value] of Object.entries(member as Record<string, unknown>)) {
+    if (!["import", "node", "default"].includes(condition)) continue;
+    if (typeof value === "string" && value.length > 0) return value;
   }
   return undefined;
 }

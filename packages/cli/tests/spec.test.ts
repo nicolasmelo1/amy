@@ -127,11 +127,21 @@ describe("a plugin spec", () => {
     fs.mkdirSync(path.join(conditional, "esm"), { recursive: true });
     fs.writeFileSync(path.join(conditional, "esm", "plugin.js"), "export {};\n", "utf-8");
 
+    const declared = path.join(scratch, "exports-declared");
+    packageAt(declared, { exports: { ".": { node: "./node/plugin.js", default: "./fallback/plugin.js" } } });
+    for (const dir of ["node", "fallback"]) {
+      fs.mkdirSync(path.join(declared, dir), { recursive: true });
+      fs.writeFileSync(path.join(declared, dir, "plugin.js"), "export {};\n", "utf-8");
+    }
+
     expect(classify("./exports-direct", scratch).imported).toBe(
       pathToFileURL(path.join(direct, "dist/plugin.js")).href,
     );
     expect(classify("./exports-conditional", scratch).imported).toBe(
       pathToFileURL(path.join(conditional, "esm/plugin.js")).href,
+    );
+    expect(classify("./exports-declared", scratch).imported).toBe(
+      pathToFileURL(path.join(declared, "node/plugin.js")).href,
     );
   });
 
