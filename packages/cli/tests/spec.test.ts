@@ -134,11 +134,17 @@ describe("a plugin spec", () => {
   });
 
   it("expands only a bare tilde or one with a slash after it", () => {
-    const home = path.join(os.homedir(), "amy-spec-home");
+    // The home the expansion reads is the process's own, which on this
+    // platform is the HOME environment variable — pointed at the scratch
+    // directory for the duration, so the test neither depends on nor
+    // deletes anything under the developer's real home.
+    const real = process.env.HOME;
+    const home = path.join(scratch, "amy-spec-home");
     packageAt(path.join(home, "plugin"));
     packageAt(path.join(scratch, "~owner", "plugin"));
 
     try {
+      process.env.HOME = scratch;
       expect(classify("~/amy-spec-home/plugin", scratch)).toEqual({
         kind: "path",
         install: path.join(home, "plugin"),
@@ -152,9 +158,23 @@ describe("a plugin spec", () => {
         absolute: path.join(scratch, "~owner/plugin"),
       });
     } finally {
+      if (real === undefined) delete process.env.HOME;
+      else process.env.HOME = real;
       fs.rmSync(path.join(scratch, "~owner"), { recursive: true, force: true });
-      fs.rmSync(home, { recursive: true, force: true });
     }
+  });
+
+  it("reads a file: spec as the package on this disk", () => {
+    const directory = path.join(scratch, "local-plugin");
+    packageAt(directory);
+
+    expect(classify("file:./local-plugin", scratch)).toEqual({
+      kind: "path",
+      install: directory,
+      imported: pathToFileURL(path.join(directory, "index.js")).href,
+      absolute: directory,
+    });
+    expect(classify("file:./local-plugin", scratch).imported).toMatch(/^file:\/\//);
   });
 
   it("refuses a path that is not a package, before anything is run", () => {

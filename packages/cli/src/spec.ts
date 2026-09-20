@@ -55,6 +55,9 @@ export function classify(spec: string, cwd: string): Resolved {
 
   const candidate = spec.replace(/\\/g, "/");
 
+  const filed = localFileOf(candidate);
+  if (filed) return resolvePath(filed, cwd);
+
   if (isGitSpec(candidate)) return { kind: "git", install: candidate, imported: undefined };
   // What is left of http(s) is a download, whatever the suffix: the shape is
   // the tarball, and npm is the one that finds out what the URL served.
@@ -112,6 +115,21 @@ function isGitSpec(spec: string): boolean {
     /^https?:\/\/.+\.git(#.*)?$/.test(spec) ||
     /^https?:\/\/[^#]+#/.test(spec)
   );
+}
+
+/**
+ * A `file:` spec is npm's own word for a package on this disk, and the
+ * documentation this repository carries promises it beside the path form.
+ * The prefix is dropped before the path half sees it, because what remains
+ * is exactly what a caller could have typed as a path — and a `file:` URL
+ * with an absolute body resolves the same either way.
+ */
+function localFileOf(candidate: string): string | undefined {
+  const absolute = /^file:\/\/(.+)$/.exec(candidate);
+  if (absolute?.[1]) return decodeURIComponent(absolute[1]);
+
+  const bare = /^file:(?!\/\/)(.+)$/.exec(candidate);
+  return bare?.[1];
 }
 
 /** A path the package manager can find a package in, or the refusal. */
