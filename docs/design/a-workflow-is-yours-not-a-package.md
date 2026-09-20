@@ -46,9 +46,9 @@ belongs to more than you.
 ## The gate
 
 New: `a-workflow-of-your-own`, scenario in
-`.software-factory/evidence/workflow-new-scenario.sh`, joined to
-`npm run e2e`. Activation on `packages/cli/src/scaffold.ts`,
-`packages/cli/src/loader.ts`, `packages/cli/skills/amy-workflow/SKILL.md`.
+`.software-factory/evidence/workflow-new-scenario.sh`, joined to `npm run e2e`.
+Activation covers `packages/cli/src/workflow.ts`, `packages/cli/src/loader.ts`,
+and `packages/cli/skills/amy-workflow/SKILL.md`.
 
 The scenario is the claim: a scratch machine with only the command installed
 runs `amy workflow new`, edits nothing, and gets a green `check` and a moved

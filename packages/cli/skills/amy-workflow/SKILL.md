@@ -18,14 +18,20 @@ metadata:
 
 # Designing a workflow
 
-A workflow is a package. It says what happens next and how each step is done,
-and amy drives it without knowing what any of it means. Nothing in amy's own
-code names a workflow, so a new one is **written, installed and configured** —
-never merged into amy unless it belongs to everybody.
+A workflow is **yours**. Start with a directory under `~/.amy/workflows`, where
+it runs before you edit it and stays private as long as the process does.
+Publishing it as a package is a later choice, not the price of using amy.
 
-That matters most for the ones that cannot be shared. A process that names
-your employer's tooling, a private feedback step, an on-call rota: those live
-in a package of yours, versioned wherever you like.
+```sh
+amy workflow new oncall
+amy workflow check oncall
+```
+
+The new command writes `~/.amy/workflows/oncall`: a complete npm package with
+its states, pure `plan()`, runtime, and the runtime contribution amy needs.
+`check` drives that lifecycle against its stub world before it touches real
+work. When the process becomes useful to more than one machine, run `npm
+publish` in that directory; nothing needs to move.
 
 ## How this skill runs
 
@@ -96,8 +102,8 @@ amy workflow list                          # what is configured, and what it hol
 amy --workflow oncall status               # where its work stands right now
 ```
 
-Then find its package — `workflows.<name>.workflow` in `.amy/config.yaml` —
-and read `plan()` before asking anything. Two rules for an edit:
+Then find its directory — `workflows.<name>.workflow` in `.amy/config.yaml`
+names it — and read `plan()` before asking anything. Two rules for an edit:
 
 - **A state that has records in it cannot simply disappear.** Ask what happens
   to the work sitting in it: migrate it to the nearest state, or drain it

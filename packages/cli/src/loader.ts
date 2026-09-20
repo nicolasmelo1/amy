@@ -16,13 +16,16 @@ export interface LoadResult {
  * is what lets an install carry a plugin this repository has never heard of,
  * and lets a machine skip the ones it has no use for.
  */
-export async function load(specs: readonly string[]): Promise<LoadResult> {
+export async function load(
+  specs: readonly string[],
+  resolve: (spec: string) => string = (spec) => spec,
+): Promise<LoadResult> {
   const plugins: Plugin[] = [];
   const problems: string[] = [];
 
   for (const spec of specs) {
     try {
-      const module = (await import(spec)) as { plugin?: Plugin };
+      const module = (await import(resolve(spec))) as { plugin?: Plugin };
       if (!module.plugin) {
         problems.push(`${spec}: imported, but exports no \`plugin\``);
         continue;

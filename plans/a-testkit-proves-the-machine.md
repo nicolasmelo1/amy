@@ -1,6 +1,6 @@
 # A testkit proves the machine
 
-[A workflow is yours, not a package](a-workflow-is-yours-not-a-package.md)
+[A workflow is yours, not a package](../docs/design/a-workflow-is-yours-not-a-package.md)
 gives somebody a workflow that runs. This is what keeps it running.
 
 A workflow package is two halves. One is the domain — which states exist, what
