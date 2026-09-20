@@ -6,6 +6,29 @@ generic reasoning with this repository's own decision as it acquires one,
 but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
+<!-- sf:generated rules-summary -->
+**41 rules shipped**, 33 enabled here, 8 switched off, 33 carrying a mutation fixture, 2 violations frozen.
+
+Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
+<!-- sf:end rules-summary -->
+
+What each layer is for, and how much of it this repository has switched on.
+A layer with nothing enabled is a deliberate choice, and
+[the gate](development/the-gate.md) says which and why.
+
+<!-- sf:generated layer-index -->
+| | Layer | What it checks | Shipped | Enabled here |
+| :-- | :-- | :-- | --: | --: |
+| **L0** | Shape | where things live | 5 | 3 |
+| **L1** | Grain | how the code reads | 6 | 5 |
+| **L2** | Contract | no drift from the source of truth | 7 | 7 |
+| **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
+| **L4** | Cadence | docs, plans and rules stay attached | 8 | 7 |
+| **L5** | Meta | the guardrail is proven to fire | 2 | 2 |
+| **L6** | Hazard | the defect classes this repository hunts | 10 | 7 |
+
+<!-- sf:end layer-index -->
+
 ## L0 — Shape: where things live
 
 ### L0.CORE_STAYS_IGNORANT
