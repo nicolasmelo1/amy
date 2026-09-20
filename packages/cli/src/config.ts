@@ -634,6 +634,29 @@ plans:
  * The `workflows:` block is the exception, because that is the block being
  * edited and there is no way to edit it without re-emitting it.
  */
+/** Adds one workflow profile without rewriting the rest of the operator's config. */
+export function writeWorkflowProfile(
+  root: string,
+  profile: string,
+  workflow: string,
+  config: AmyConfig,
+): void {
+  const file = paths(root).config;
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
+  const workflows = { ...config.workflows, [profile]: { workflow } };
+  const without = withoutBlock(existing, "workflows:").replace(/\n{3,}$/, "\n\n");
+  const defaultLine = config.defaultWorkflow || Object.keys(config.workflows).length > 0
+    ? ""
+    : `\ndefaultWorkflow: ${profile}\n`;
+
+  fs.mkdirSync(paths(root).base, { recursive: true });
+  fs.writeFileSync(
+    file,
+    `${without.replace(/\n*$/, "\n")}${defaultLine}\n${yaml.stringify({ workflows })}`,
+    "utf-8",
+  );
+}
+
 export function writeProfilePlugins(
   root: string,
   profile: string,

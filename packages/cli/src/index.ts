@@ -62,6 +62,7 @@ import { Harness as HarnessTarget, install, installedHarnesses } from "./harness
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profilePaths } from "./paths.js";
+import { checkWorkflow, localWorkflow, workflowSpecifier, workflowsDirectory, writeWorkflow } from "./workflow.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
 // harness you are in, from wherever you happen to be standing.
@@ -96,7 +97,7 @@ async function assemble(
   const place = profilePaths(home, profile.name);
   const specs = pluginList(config, profile);
 
-  const loaded = await load(specs);
+  const loaded = await load(specs, (spec) => workflowSpecifier(home, spec));
   if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
   const outcome = await mount(
@@ -1106,6 +1107,36 @@ const workflowCommand = program
   .description("What this install can drive, and what it keeps");
 
 workflowCommand
+  .command("new")
+  .description("Write an editable workflow under ~/.amy/workflows")
+  .argument("<name>", "one directory name, such as oncall")
+  .action((name: string) => {
+    try {
+      const directory = writeWorkflow(home, name, loadConfig(home));
+      console.log(`wrote ${directory}`);
+      console.log(`check it with: amy workflow check ${name}`);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
+
+workflowCommand
+  .command("check")
+  .description("Drive a workflow's lifecycle against its stub world")
+  .argument("<name>", "the configured workflow to check")
+  .action(async (name: string) => {
+    const problems = await checkWorkflow(home, name, loadConfig(home));
+    if (problems.length === 0) {
+      console.log(`${name} settles: its walkthrough is green`);
+      return;
+    }
+    console.error(`${name} does not pass its walkthrough:`);
+    for (const problem of problems) console.error(`  ${problem}`);
+    process.exitCode = 1;
+  });
+
+workflowCommand
   .command("list", { isDefault: true })
   .description("Every workflow this install can drive")
   .action(async () => {
@@ -1121,7 +1152,8 @@ workflowCommand
       const marks = [
         asked.ok && asked.profile.name === profile.name ? "default" : "",
         live?.workflow === profile.name ? "running" : "",
-        present.includes(profile.workflow) ? "" : "not installed",
+        localWorkflow(home, profile.workflow) ? `local: ${workflowsDirectory(home)}` : "",
+        present.includes(profile.workflow) || localWorkflow(home, profile.workflow) ? "" : "not installed",
       ].filter(Boolean);
 
       console.log(

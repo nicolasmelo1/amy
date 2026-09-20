@@ -316,6 +316,21 @@ gates:
       - "plan.one_look_makes_at_most_one_move"
       - "plan.the_machine_settles_instead_of_spinning"
 
+  a-workflow-of-your-own:
+    activation:
+      - "packages/cli/src/workflow.ts"
+      - "packages/cli/src/loader.ts"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/skills/amy-workflow/SKILL.md"
+    evidence: ".software-factory/evidence/workflow-new.json"
+    plan: "docs/design/a-workflow-is-yours-not-a-package.md"
+    required_assertions:
+      - "mine.the_scaffold_runs_before_it_is_edited"
+      - "mine.a_directory_name_is_a_workflow"
+      - "mine.a_workflow_that_spins_is_refused"
+      - "mine.a_state_nothing_reaches_is_refused"
+      - "mine.an_action_with_no_port_is_refused"
+
   feature-grooming:
     activation:
       - "packages/workflow-feature-grooming/src/**"
