@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /**
  * The five shapes a plugin spec arrives in.
@@ -120,13 +120,22 @@ function isGitSpec(spec: string): boolean {
 /**
  * A `file:` spec is npm's own word for a package on this disk, and the
  * documentation this repository carries promises it beside the path form.
- * The prefix is dropped before the path half sees it, because what remains
- * is exactly what a caller could have typed as a path — and a `file:` URL
- * with an absolute body resolves the same either way.
+ *
+ * An absolute `file:` URL is decoded by Node itself — `fileURLToPath` is what
+ * turns `file:///C:/...` into `C:\...` on Windows and reads UNC hosts and
+ * percent escapes the way an import would. A bare `file:` prefix is npm's
+ * relative shorthand: what follows is exactly what a caller could have typed
+ * as a path, and the path half decides it.
  */
 function localFileOf(candidate: string): string | undefined {
   const absolute = /^file:\/\/(.+)$/.exec(candidate);
-  if (absolute?.[1]) return decodeURIComponent(absolute[1]);
+  if (absolute?.[1]) {
+    try {
+      return fileURLToPath(new URL(candidate));
+    } catch (error) {
+      throw new Error(`${candidate} is not a file URL a package can live at`, { cause: error });
+    }
+  }
 
   const bare = /^file:(?!\/\/)(.+)$/.exec(candidate);
   return bare?.[1];
@@ -168,21 +177,46 @@ function isPackageDirectory(directory: string): boolean {
 /**
  * The file the loader can import, read off the package's own entry.
  *
- * `main` is npm's word for it and `index.js` is the default both npm and Node
- * fall back to. The import that eventually resolves it reports the rest — a
- * missing file, a malformed `package.json` — against the directory it named.
+ * The entry is decided by Node's own rules, in their order: the `exports`
+ * map's `"."` member (a string, or the conditional `import` or `default`
+ * arm of one), then `main`, then the `index.js` both npm and Node fall back
+ * to. A `package.json` that cannot be read or parsed is refused here rather
+ * than resolved past — a package that names no entry is not a package amy
+ * can mount, and guessing `index.js` would be answering a question the
+ * metadata never asked.
  */
 function entrySpecifier(directory: string): string {
-  let main = "./index.js";
+  const manifestPath = path.join(directory, "package.json");
+  let main: unknown;
   try {
-    const read = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as {
-      main?: unknown;
-    };
-    if (typeof read.main === "string" && read.main.length > 0) main = read.main;
-  } catch {
-    // An unreadable package.json has already been refused above when it is
-    // missing; an unreadable *body* names no entry, and index.js is the truth
-    // npm would fall back to.
+    main = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+  } catch (error) {
+    throw new Error(`${directory} carries a package.json that cannot be read`, { cause: error });
   }
-  return pathToFileURL(path.join(directory, main)).href;
+
+  const entry =
+    entryFromExports((main as { exports?: unknown }).exports) ??
+    entryFromMain((main as { main?: unknown }).main) ??
+    "./index.js";
+  return pathToFileURL(path.join(directory, entry)).href;
+}
+
+/** The `exports` member that names the package's own entry, or nothing. */
+function entryFromExports(exports: unknown): string | undefined {
+  // A bare string is the whole map for the root: Node reads
+  // `exports: "./x.js"` exactly as `exports: { ".": "./x.js" }`.
+  if (typeof exports === "string" && exports.length > 0) return exports;
+  const dot = (exports as Record<string, unknown> | undefined)?.["."];
+  if (typeof dot === "string" && dot.length > 0) return dot;
+  if (dot && typeof dot === "object") {
+    const conditions = dot as Record<string, unknown>;
+    const imported = conditions.import ?? conditions.default;
+    if (typeof imported === "string" && imported.length > 0) return imported;
+  }
+  return undefined;
+}
+
+/** The `main` member, when the package carries one. */
+function entryFromMain(main: unknown): string | undefined {
+  return typeof main === "string" && main.length > 0 ? main : undefined;
 }

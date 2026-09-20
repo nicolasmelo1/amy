@@ -14,16 +14,9 @@ describe("a plugin spec", () => {
   afterEach(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
   /** A directory npm would find a package in, with the entry the loader imports. */
-  function packageAt(directory: string, main = "./index.js"): void {
+  function packageAt(directory: string, manifest: object = { main: "./index.js" }): void {
     fs.mkdirSync(directory, { recursive: true });
-    fs.writeFileSync(
-      path.join(directory, "package.json"),
-      `${JSON.stringify({ main })}\n`,
-      "utf-8",
-    );
-    const entry = path.join(directory, main.replace(/^\.\//, ""));
-    fs.mkdirSync(path.dirname(entry), { recursive: true });
-    fs.writeFileSync(entry, "export {};\n", "utf-8");
+    fs.writeFileSync(path.join(directory, "package.json"), `${JSON.stringify(manifest)}\n`, "utf-8");
   }
 
   it("gives a bare package name to npm and to the config", () => {
@@ -110,7 +103,9 @@ describe("a plugin spec", () => {
 
   it("reads the package's own entry, and hands import() a file", () => {
     const directory = path.join(scratch, "custom");
-    packageAt(directory, "./src/entry.js");
+    packageAt(directory, { main: "./src/entry.js" });
+    fs.mkdirSync(path.join(directory, "src"), { recursive: true });
+    fs.writeFileSync(path.join(directory, "src", "entry.js"), "export {};\n", "utf-8");
 
     expect(classify("./custom", scratch)).toEqual({
       kind: "path",
@@ -119,6 +114,35 @@ describe("a plugin spec", () => {
       absolute: directory,
     });
     expect(classify("./custom", scratch).imported).toMatch(/^file:\/\//);
+  });
+
+  it("reads the entry through exports, the way Node does", () => {
+    const direct = path.join(scratch, "exports-direct");
+    packageAt(direct, { exports: "./dist/plugin.js" });
+    fs.mkdirSync(path.join(direct, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(direct, "dist", "plugin.js"), "export {};\n", "utf-8");
+
+    const conditional = path.join(scratch, "exports-conditional");
+    packageAt(conditional, { exports: { ".": { import: "./esm/plugin.js" } } });
+    fs.mkdirSync(path.join(conditional, "esm"), { recursive: true });
+    fs.writeFileSync(path.join(conditional, "esm", "plugin.js"), "export {};\n", "utf-8");
+
+    expect(classify("./exports-direct", scratch).imported).toBe(
+      pathToFileURL(path.join(direct, "dist/plugin.js")).href,
+    );
+    expect(classify("./exports-conditional", scratch).imported).toBe(
+      pathToFileURL(path.join(conditional, "esm/plugin.js")).href,
+    );
+  });
+
+  it("refuses a package.json it cannot read, rather than resolving past it", () => {
+    const directory = path.join(scratch, "unreadable");
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, "package.json"), "{ not json\n", "utf-8");
+
+    expect(() => classify("./unreadable", scratch)).toThrow(
+      `${directory} carries a package.json that cannot be read`,
+    );
   });
 
   it("reads the caller's package for a bare dot", () => {
@@ -134,17 +158,18 @@ describe("a plugin spec", () => {
   });
 
   it("expands only a bare tilde or one with a slash after it", () => {
-    // The home the expansion reads is the process's own, which on this
-    // platform is the HOME environment variable — pointed at the scratch
-    // directory for the duration, so the test neither depends on nor
-    // deletes anything under the developer's real home.
-    const real = process.env.HOME;
+    // The home the expansion reads is the process's own, which is the
+    // platform's home variable — HOME on Unix, USERPROFILE on Windows.
+    // Pointed at the scratch directory for the duration, the test neither
+    // depends on nor deletes anything under the developer's real home.
+    const variable = process.platform === "win32" ? "USERPROFILE" : "HOME";
+    const real = process.env[variable];
     const home = path.join(scratch, "amy-spec-home");
     packageAt(path.join(home, "plugin"));
     packageAt(path.join(scratch, "~owner", "plugin"));
 
     try {
-      process.env.HOME = scratch;
+      process.env[variable] = scratch;
       expect(classify("~/amy-spec-home/plugin", scratch)).toEqual({
         kind: "path",
         install: path.join(home, "plugin"),
@@ -158,8 +183,8 @@ describe("a plugin spec", () => {
         absolute: path.join(scratch, "~owner/plugin"),
       });
     } finally {
-      if (real === undefined) delete process.env.HOME;
-      else process.env.HOME = real;
+      if (real === undefined) delete process.env[variable];
+      else process.env[variable] = real;
       fs.rmSync(path.join(scratch, "~owner"), { recursive: true, force: true });
     }
   });
