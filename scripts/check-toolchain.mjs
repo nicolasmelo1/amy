@@ -17,8 +17,18 @@ import path from "node:path";
 const repo = path.resolve(import.meta.dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(repo, relative), "utf8");
 
-const WORKFLOW = ".github/workflows/software-factory.yml";
-const CONTRIBUTING = "CONTRIBUTING.md";
+// Every file that quotes the version. `release.yml` was missing from this
+// list for one bump, which is exactly the failure above happening again in
+// the one job nobody can take back: the release installs a prebuilt binary
+// by version, so a stale pin there re-locks the release against an older
+// catalog. The rule is that adding a fifth place to quote it means adding it
+// here in the same commit.
+const QUOTES_THE_VERSION = [
+  ".github/workflows/software-factory.yml",
+  ".github/workflows/release.yml",
+  "CONTRIBUTING.md",
+  "docs/development/contributing.md",
+];
 const SETUP = "scripts/setup-dev.sh";
 
 const locked = JSON.parse(read(".software-factory/catalog.lock.json")).sf_version;
@@ -29,12 +39,18 @@ if (!locked) {
   process.exit(1);
 }
 
-/** Every `--tag vX.Y.Z` in a file, with the line it sits on. */
+// Two ways this repository names a version: `--tag vX.Y.Z`, which builds it
+// from the tag, and `SF_VERSION: vX.Y.Z`, which downloads the release built
+// from that tag. A third form is a third way to drift, so anything that adds
+// one adds it here.
+const PIN = /(?:--tag\s+|SF_VERSION\s*[:=]\s*)v(\d+\.\d+\.\d+)/;
+
+/** Every pinned sf version in a file, with the line it sits on. */
 function pinsIn(relative) {
   return read(relative)
     .split("\n")
     .flatMap((line, index) => {
-      const found = line.match(/--tag\s+v(\d+\.\d+\.\d+)/);
+      const found = line.match(PIN);
       return found ? [{ line: index + 1, version: found[1] }] : [];
     });
 }
@@ -56,7 +72,7 @@ if (!setup.includes("catalog.lock.json")) {
   problems.push(`${SETUP} does not read the version from the catalog lock, so it can drift`);
 }
 
-for (const relative of [WORKFLOW, CONTRIBUTING]) {
+for (const relative of QUOTES_THE_VERSION) {
   const pins = pinsIn(relative);
 
   if (pins.length === 0) {
@@ -85,4 +101,7 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log(`sf v${locked}: the workflow and CONTRIBUTING.md match the lock, and the setup script reads it`);
+console.log(
+  `sf v${locked}: ${QUOTES_THE_VERSION.length} files quote the lock and agree with it, ` +
+    `and the setup script reads it rather than quoting it`,
+);
