@@ -145,6 +145,14 @@ describe("a plugin spec", () => {
     const escaping = path.join(scratch, "exports-escaping");
     packageAt(escaping, { exports: "./../../outside.js" });
 
+    const bareTarget = path.join(scratch, "exports-bare-target");
+    packageAt(bareTarget, { exports: { ".": "dist/index.js" } });
+
+    const topConditional = path.join(scratch, "exports-top-conditional");
+    packageAt(topConditional, { exports: { import: "./esm/index.js", default: "./fallback/index.js" } });
+    fs.mkdirSync(path.join(topConditional, "esm"), { recursive: true });
+    fs.writeFileSync(path.join(topConditional, "esm", "index.js"), "export {};\n", "utf-8");
+
     expect(classify("./exports-direct", scratch).imported).toBe(
       pathToFileURL(path.join(direct, "dist/plugin.js")).href,
     );
@@ -157,11 +165,17 @@ describe("a plugin spec", () => {
     expect(classify("./exports-nested", scratch).imported).toBe(
       pathToFileURL(path.join(nested, "node-esm/plugin.js")).href,
     );
+    expect(classify("./exports-top-conditional", scratch).imported).toBe(
+      pathToFileURL(path.join(topConditional, "esm/index.js")).href,
+    );
     expect(() => classify("./exports-subpath", scratch)).toThrow(
       `${subpathOnly} carries an exports map that names no root`,
     );
     expect(() => classify("./exports-escaping", scratch)).toThrow(
       `${escaping} carries an exports target outside the package`,
+    );
+    expect(() => classify("./exports-bare-target", scratch)).toThrow(
+      `${bareTarget} carries an exports target Node cannot take`,
     );
   });
 

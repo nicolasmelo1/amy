@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "ticket-to-qa",
-  "implementation_sha256": "473493339220cdf7ce61f3d8a8c673bd3154f0bfd751db94224ff313c44d0180",
+  "implementation_sha256": "c87285839855be0ac9b877d4c6d72eaf8af099a238d8daa08e1933c1d544bc9d",
   "runs": [
     {
       "scenario": "ticket-to-qa",

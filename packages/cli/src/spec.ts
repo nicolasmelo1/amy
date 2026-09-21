@@ -215,9 +215,13 @@ function entrySpecifier(directory: string): string {
  * A target must be a relative specifier into the package: it starts with
  * `./`, carries no `..` segment and no absolute body. Node refuses anything
  * else, and so does this half — a target like `./../../outside.js` would
- * otherwise have the loader import a file that is not in the package at all.
+ * otherwise have the loader import a file that is not in the package at all,
+ * and a bare `dist/index.js` is invalid to Node outright.
  */
 function packageTarget(directory: string, entry: string): string {
+  if (!entry.startsWith("./")) {
+    throw new Error(`${directory} carries an exports target Node cannot take: ${entry}`);
+  }
   const inside = path.resolve(directory, entry);
   if (path.relative(directory, inside).startsWith("..")) {
     throw new Error(`${directory} carries an exports target outside the package: ${entry}`);
@@ -230,7 +234,16 @@ function entryFromExports(exports: unknown): string | undefined {
   // A bare string is the whole map for the root: Node reads
   // `exports: "./x.js"` exactly as `exports: { ".": "./x.js" }`.
   if (typeof exports === "string" && exports.length > 0) return exports;
-  return entryFromRoot((exports as Record<string, unknown> | undefined)?.["."]);
+
+  const map = exports as Record<string, unknown> | undefined;
+  const dot = map?.["."];
+  // A top-level member named `import`, `node` or `default` is the root
+  // condition map itself — Node reads `{"import": "./x.js"}` as the root
+  // entry, and only a key starting with `.` names a subpath.
+  if (dot === undefined && Object.keys(map ?? {}).some((key) => !key.startsWith("."))) {
+    return entryFromRoot(map);
+  }
+  return entryFromRoot(dot);
 }
 
 /**
