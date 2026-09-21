@@ -28,12 +28,12 @@ delivered](../docs/design/a-reply-inside-a-thread-reaches-the-agent.md))
 record's memory is keyed by `threadId` alone, so it cannot tell "judged
 the opening comment" from "judged everything that was said in it".
 
-This was found on the Revv workflow (issue #50): what was deferred or
-answered must be remembered, with the bot reviewer's ticket and all its
-answered questions in the Linear thread as context. Revv needs the
-memory; the seam — a verdict vocabulary that can say more than
-fixed/disagreed, and a memory keyed by more than the thread id — is
-amy's, because the record and the `judged` list are amy's.
+This was found on a private workflow (issue #50): what was deferred or
+answered must be remembered, with the bot reviewer's ticket and all
+its answered questions in the Linear thread as context. That workflow
+needs the memory; the seam — a verdict vocabulary that can say more
+than fixed/disagreed, and a memory keyed by more than the thread id —
+is amy's, because the record and the `judged` list are amy's.
 
 ## What changes
 

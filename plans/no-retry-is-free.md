@@ -15,15 +15,16 @@ three times the tokens, three times the USD — before `maxImplementAttempts`
 ever answers, and the `parked` refusal is only about money already spent,
 not money about to be wasted (`plugins/serial-engine/src/Worker.ts:246`).
 
-This was found on the Revv workflow (issue #45), but it is not Revv's to
-fix: any workflow whose agent can answer without changing anything needs
-the same accounting, and today each one would build its own counter and
-its own diagnostic. The core already owns one honest bookkeeping seam —
-`applyPlan` counts attempts per state (`packages/core/src/work.ts:80`) —
-and the engine already owns one refusal seam — `parked` parks before a
-spending action runs (`plugins/serial-engine/src/Worker.ts:177`). What is
-missing is the middle: a signal the workflow sends about its own domain
-facts, and a stop rule the engine owns.
+This was found on a private workflow (issue #45), but it is not that
+workflow's to fix: any workflow whose agent can answer without changing
+anything needs the same accounting, and today each one would build its own
+counter and its own diagnostic. The core already owns one honest bookkeeping
+seam — `applyPlan` counts attempts per state
+(`packages/core/src/work.ts:80`) — and the engine already owns one refusal
+seam — `parked` parks before a spending action runs
+(`plugins/serial-engine/src/Worker.ts:177`). What is missing is the middle:
+a signal the workflow sends about its own domain facts, and a stop rule the
+engine owns.
 
 ## What changes
 

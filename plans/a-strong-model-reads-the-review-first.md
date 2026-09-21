@@ -22,13 +22,14 @@ than the executor can:
 - this one was already answered, deferred or settled in an earlier
   round, and re-litigating it is a retry the record cannot account for.
 
-This was found on the Revv workflow (issue #50), which needs a
+This was found on a private workflow (issue #50), which needs a
 `review_triage` state: a strong model receiving the bot reviewer's
 threads, answering them on GitHub directly or handing off to the
-executor. The state itself is Revv's — the seam it needs is amy's, and
-the seam is what a second workflow would have to rebuild on its own:
-the agent port has no step that reads a review and answers it, and no
-way to hand half of a review back while working the other half.
+executor. The state itself is that workflow's — the seam it needs is
+amy's, and the seam is what a second workflow would have to rebuild on
+its own: the agent port has no step that reads a review and answers
+it, and no way to hand half of a review back while working the other
+half.
 
 The nearest existing thing is `triage`
 (`packages/agent-kit/src/HarnessAgent.ts:51`): reads the ticket and
@@ -109,9 +110,9 @@ grows that method; this plan depends on it and orders after it.
 
 **`run-errand`'s generic `ask` does not change.** A workflow that
 triages reviews through a plain `ask` prompt keeps working — the new
-step is a first-class seam, not a replacement. Revv's `review_triage`
-state emits `triage-review` actions; its state machine, its
-`hand-off-to-executor` transition and its states stay Revv's own.
+step is a first-class seam, not a replacement. The private workflow's
+`review_triage` state emits `triage-review` actions; its state machine,
+its `hand-off-to-executor` transition and its states stay its own.
 
 ## The gate
 

@@ -44,6 +44,7 @@ run "typecheck"   npm run typecheck --silent
 run "toolchain"   npm run check:toolchain --silent
 run "docs"        npm run docs:check --silent
 run "plans"       npm run check:plans --silent
+run "private"     npm run check:private --silent
 run "config"      npm run check:config --silent
 run "release"     npm run check:release --silent
 run "tests"       npm test --silent

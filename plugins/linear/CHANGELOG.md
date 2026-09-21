@@ -122,7 +122,7 @@
   its notification channel unconditionally and never read the setting, so every
   engine notice was commented on the Linear ticket — under the operator's own
   name, because amy authenticates with a key issued to a person, and with no
-  prefix or marker because the channel posted the raw announcement text. `REVV-7716
+  prefix or marker because the channel posted the raw announcement text. `PROJ-7716
   is moving again in DONE after 2 failed attempt(s)` reached a real ticket and a
   colleague replied to it asking what it meant. The channel is now contributed
   only when asked for, the default is off, and what it writes says a machine
