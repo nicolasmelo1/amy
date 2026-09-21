@@ -1,7 +1,8 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { classify } from "../src/spec.js";
 
@@ -185,8 +186,11 @@ describe("a plugin spec", () => {
     expect(() => classify("./exports-bare-target", scratch)).toThrow(
       `${bareTarget} carries an exports target Node cannot take`,
     );
+    // The array walk answers the first VALID member — the file's existence
+    // is never part of it, exactly as Node's resolve behaves: it names
+    // missing.js and lets the import itself fail.
     expect(classify("./exports-fallback-array", scratch).imported).toBe(
-      pathToFileURL(path.join(fallbackArray, "real/plugin.js")).href,
+      pathToFileURL(path.join(fallbackArray, "missing/plugin.js")).href,
     );
     expect(() => classify("./exports-null-arm", scratch)).toThrow(
       `${nullArm} carries an exports arm that is null`,
@@ -258,6 +262,108 @@ describe("a plugin spec", () => {
       absolute: directory,
     });
     expect(classify("file:./local-plugin", scratch).imported).toMatch(/^file:\/\//);
+  });
+
+  it("reads a main without the ./ prefix, the way main has always worked", () => {
+    const legacy = path.join(scratch, "legacy-main");
+    packageAt(legacy, { main: "dist/index.js" });
+    fs.mkdirSync(path.join(legacy, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(legacy, "dist", "index.js"), "export {};\n", "utf-8");
+
+    expect(classify("./legacy-main", scratch).imported).toBe(
+      pathToFileURL(path.join(legacy, "dist", "index.js")).href,
+    );
+  });
+
+  it("agrees with Node's own resolution, form by form", () => {
+    // Every shape the entry walk can meet, each seeded twice: once for
+    // classify to answer, once inside a node_modules tree for Node's own
+    // resolve to answer. The oracle is the runtime — no restated rule can
+    // disagree with the thing it restates.
+    const forms: Array<[string, object, Array<[string, string]>]> = [
+      ["string-exports", { exports: "./lib/plugin.js" }, [["lib/plugin.js", "export {};\n"]]],
+      ["dot-string", { exports: { ".": "./lib/plugin.js" } }, [["lib/plugin.js", "export {};\n"]]],
+      [
+        "conditional-order",
+        { exports: { ".": { node: "./lib/node.js", default: "./lib/fb.js" } } },
+        [["lib/node.js", "export {};\n"], ["lib/fb.js", "export {};\n"]],
+      ],
+      [
+        "nested-conditions",
+        { exports: { ".": { node: { import: "./lib/ni.js" }, default: "./lib/fb.js" } } },
+        [["lib/ni.js", "export {};\n"], ["lib/fb.js", "export {};\n"]],
+      ],
+      [
+        "fallback-array",
+        { exports: { ".": ["./lib/missing.js", "./lib/real.js"] } },
+        [["lib/real.js", "export {};\n"]],
+      ],
+      ["main-legacy", { main: "dist/index.js" }, [["dist/index.js", "export {};\n"]]],
+      ["main-extension", { main: "dist/index" }, [["dist/index.js", "export {};\n"]]],
+      ["main-directory", { main: "./dist" }, [["dist/index.js", "export {};\n"]]],
+      ["bare-index", {}, [["index.js", "export {};\n"]]],
+    ];
+
+    const oracleRoot = fs.mkdtempSync(path.join(scratch, "oracle-"));
+    const answers = new Map<string, string>();
+    for (const [name, manifest, files] of forms) {
+      const local = path.join(scratch, name);
+      packageAt(local, manifest as { main?: string });
+      for (const [file, content] of files) {
+        fs.mkdirSync(path.dirname(path.join(local, file)), { recursive: true });
+        fs.writeFileSync(path.join(local, file), content, "utf-8");
+      }
+      answers.set(name, classify(`./${name}`, scratch).imported as string);
+
+      const pkg = path.join(oracleRoot, "node_modules", name);
+      fs.mkdirSync(pkg, { recursive: true });
+      fs.writeFileSync(
+        path.join(pkg, "package.json"),
+        `${JSON.stringify({ ...manifest, name, type: "module" })}\n`,
+        "utf-8",
+      );
+      for (const [file, content] of files) {
+        fs.mkdirSync(path.dirname(path.join(pkg, file)), { recursive: true });
+        fs.writeFileSync(path.join(pkg, file), content, "utf-8");
+      }
+    }
+
+    const probe = path.join(oracleRoot, "probe.mjs");
+    const names = forms.map(([name]) => name);
+    fs.writeFileSync(
+      probe,
+      `const names = ${JSON.stringify(names)};\n` +
+        "for (const n of names) {\n" +
+        "  try { console.log(n + ' RESOLVED:' + import.meta.resolve(n)); }\n" +
+        "  catch (e) { console.log(n + ' ERR:' + e.code); }\n" +
+        "}\n",
+      "utf-8",
+    );
+    const node = spawnSync(process.execPath, [probe], { encoding: "utf-8" });
+    expect(node.status).toBe(0);
+
+    const oracle = new Map<string, string>();
+    for (const line of node.stdout.split("\n")) {
+      const at = line.indexOf(" RESOLVED:");
+      if (at === -1) continue;
+      const url = line.slice(at + " RESOLVED:".length);
+      // Node reports the realpath, which on macOS rewrites /var to
+      // /private/var — compare the path inside the package, not the
+      // machine's spelling of the temp directory.
+      const pkg = fs.realpathSync(path.join(oracleRoot, "node_modules", line.slice(0, at)));
+      const resolved = fileURLToPath(url);
+      oracle.set(line.slice(0, at), path.relative(pkg, resolved));
+    }
+
+    for (const [name] of forms) {
+      const fromNode = oracle.get(name);
+      const fromClassify = answers.get(name);
+      expect(fromNode, `Node failed to resolve ${name}`).toBeDefined();
+      // classify reports the same entry, spelled against its own root.
+      expect(path.relative(path.join(scratch, name), fileURLToPath(fromClassify as string))).toBe(
+        fromNode,
+      );
+    }
   });
 
   it("refuses a path that is not a package, before anything is run", () => {

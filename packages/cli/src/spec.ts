@@ -198,13 +198,19 @@ function entrySpecifier(directory: string): string {
   const exported = (manifest as { exports?: unknown }).exports;
   const entry =
     exported === undefined
-      ? (entryFromMain((manifest as { main?: unknown }).main) ?? "./index.js")
+      ? (entryFromMain((manifest as { main?: unknown }).main, directory) ?? "./index.js")
       : entryFromExports(exported, directory);
 
   if (entry === undefined) {
     throw new Error(
       `${directory} carries an exports map that names no root, so nothing can import the package`,
     );
+  }
+  // `main` is Node's legacy field and its values are ordinary relative
+  // paths — "dist/index.js" without the `./` is common and valid there.
+  // Only an `exports` target is held to the `./` form.
+  if (exported === undefined) {
+    return pathToFileURL(path.join(directory, entry)).href;
   }
   return pathToFileURL(path.join(directory, packageTarget(directory, entry))).href;
 }
@@ -242,8 +248,8 @@ function entryFromExports(exports: unknown, directory: string): string | undefin
   // entry, and only a key starting with `.` names a subpath.
   const entry =
     dot === undefined && Object.keys(map ?? {}).some((key) => !key.startsWith("."))
-      ? entryFromRoot(map, directory)
-      : entryFromRoot(dot, directory);
+      ? entryFromRoot(map)
+      : entryFromRoot(dot);
   // A `null` arm is Node's terminal refusal for the root: not resolvable,
   // which is a different answer from "no root member at all".
   if (entry === null) {
@@ -256,9 +262,11 @@ function entryFromExports(exports: unknown, directory: string): string | undefin
  * The entry one member of `exports` names, following Node's own walk.
  *
  * A string is the target. An array is Node's fallback list: the first
- * member whose file exists wins — a member naming a file that is not there
- * moves to the next, and `null` inside an array is that member's refusal.
- * An object is conditions in declaration order: the first arm named
+ * member that names a valid target wins — validity is the `./` form Node
+ * demands, not the file's existence, which Node never checks at resolve
+ * time and only reports when the import actually runs. A `null` member
+ * inside an array is that member's refusal, and the walk moves on. An
+ * object is conditions in declaration order: the first arm named
  * `import`, `node` or `default` wins, recursing into a nested condition
  * object the way Node does — so `{"node": {"import": "./node.js"},
  * "default": "./b.js"}` answers `./node.js`, and `{"node": "./a.js",
@@ -267,36 +275,52 @@ function entryFromExports(exports: unknown, directory: string): string | undefin
  * word for "no target here" and is terminal, not an invitation to fall
  * through to whatever is declared beside it.
  */
-function entryFromRoot(member: unknown, directory: string): string | undefined | null {
+function entryFromRoot(member: unknown): string | undefined | null {
   if (typeof member === "string" && member.length > 0) return member;
   if (member === null) return null;
-  if (Array.isArray(member)) return entryFromFallbacks(member, directory);
+  if (Array.isArray(member)) return entryFromFallbacks(member);
   if (!member || typeof member !== "object") return undefined;
   for (const [condition, value] of Object.entries(member as Record<string, unknown>)) {
     if (!["import", "node", "default"].includes(condition)) continue;
-    const resolved = entryFromRoot(value, directory);
+    const resolved = entryFromRoot(value);
     if (resolved !== undefined) return resolved;
   }
   return undefined;
 }
 
 /**
- * Node's fallback list: the first member whose file exists wins.
+ * Node's fallback list: the first member that names a valid target wins.
  *
- * A member naming a file that is not on disk moves the walk to the next,
- * and `null` inside an array is that member's refusal — not the whole
- * list's.
+ * Validity is the `./` form Node demands of a target, checked once where
+ * the whole entry is validated; the file's existence is never part of the
+ * walk — Node answers the first valid member and lets the import itself
+ * fail on a file that is not there. A `null` member inside an array is
+ * that member's refusal, and the walk moves on to the next.
  */
-function entryFromFallbacks(members: unknown[], directory: string): string | undefined {
+function entryFromFallbacks(members: unknown[]): string | undefined {
   for (const fallback of members) {
-    const resolved = entryFromRoot(fallback, directory);
+    const resolved = entryFromRoot(fallback);
     if (resolved === undefined || resolved === null) continue;
-    if (fs.existsSync(path.join(directory, resolved))) return resolved;
+    return resolved;
   }
   return undefined;
 }
 
-/** The `main` member, when the package carries one. */
-function entryFromMain(main: unknown): string | undefined {
-  return typeof main === "string" && main.length > 0 ? main : undefined;
+/**
+ * The file `main` names, by Node's legacy resolution.
+ *
+ * `main` is not an `exports` target: its value is an ordinary relative
+ * path, where `dist/index.js` without the `./` is common and valid, and
+ * Node falls back the legacy way when the value names no file outright —
+ * `dist/index` resolves to `dist/index.js` beside it, and `./dist` to
+ * `dist/index.js` inside it. The file must be there: Node fails the
+ * resolve outright when it is not.
+ */
+function entryFromMain(main: unknown, directory: string): string | undefined {
+  if (typeof main !== "string" || main.length === 0) return undefined;
+  const declared = path.join(directory, main);
+  if (fs.existsSync(declared) && fs.statSync(declared).isFile()) return main;
+  if (fs.existsSync(`${declared}.js`)) return `${main}.js`;
+  if (fs.existsSync(path.join(declared, "index.js"))) return path.join(main, "index.js");
+  return main;
 }
