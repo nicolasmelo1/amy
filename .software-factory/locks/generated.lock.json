@@ -2,7 +2,7 @@
   "schema_version": 1,
   "files": {
     "docs/development/the-factory.md": "451bc3a40dff3f9c540401920dd0edc3fb8852233bee12c4c8a39ed32676855b",
-    "docs/rules.md": "1a6610c9ba55eb04770c0399a39beecf59605ccfe141b328fda7fc74b02e56a2",
+    "docs/rules.md": "437760569569c2857ad65f30fc2dd2b2279e525641115c3c08622dc7deb7d885",
     "packages/core/events.json": "c143d0e043ecb241de000d53f825878cecced43553c24fb3a96aa64b36087d0a",
     "packages/model-specs/specs.json": "510a95116df96792c6ee7b71876f27a201c6163e425664334adac1328cce65c8"
   }

@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**43 rules shipped**, 33 enabled here, 10 switched off, 33 carrying a mutation fixture, 2 violations frozen.
+**41 rules shipped**, 33 enabled here, 8 switched off, 33 carrying a mutation fixture, 2 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -25,7 +25,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
 | **L4** | Cadence | docs, plans and rules stay attached | 8 | 7 |
 | **L5** | Meta | the guardrail is proven to fire | 2 | 2 |
-| **L6** | Hazard | the defect classes this repository hunts | 12 | 7 |
+| **L6** | Hazard | the defect classes this repository hunts | 10 | 7 |
 
 <!-- sf:end layer-index -->
 
