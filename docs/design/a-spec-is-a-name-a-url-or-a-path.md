@@ -1,8 +1,8 @@
 # A spec is a name, a URL or a path
 
 `amy plugin add` takes one argument and calls it a spec: *"anything Node can
-import: a package name, or a path"* (`packages/cli/src/index.ts:895`). It then
-writes that string into `.amy/config.yaml` and tells you to install it
+import: a package name, or a path"* (`packages/cli/src/index.ts:1000`). It
+then writes that string into `.amy/config.yaml` and tells you to install it
 yourself. Two different strings are being conflated, and the seam only shows
 once amy is the thing doing the installing.
 
@@ -18,11 +18,11 @@ A relative path has a third problem on top. `.amy/config.yaml` is read from
 `~/.amy` no matter where you were standing when you typed the command, so
 `./workflow-oncall` written into it means a different directory to every
 caller — the same class of bug `strayState` exists to refuse
-(`packages/cli/src/home.ts:33`).
+(`packages/cli/src/home.ts:34`).
 
-## What changes
+## What shipped
 
-One pure function, and nothing else in this PR. It takes the argument and
+One pure function, and nothing else in the release. It takes the argument and
 returns what to hand npm, what the config should name, and which of the five
 kinds it was, so a caller can say something useful about each.
 
@@ -36,28 +36,27 @@ classify(spec: string, cwd: string): Resolved
 knowable until the package is on disk — which is the honest answer, and it is
 what makes the installing command read `package.json` afterwards rather than
 guess. A path is resolved against `cwd` on the way in, so what lands in the
-config is absolute and means the same thing from anywhere.
+config is absolute and means the same thing from anywhere. A path that is not
+a package is refused by name, before anything is run. A Windows-shaped spec is
+a path rather than a name with a range: the drive letter is a directory, and
+the spec is judged like any other path.
 
-## The gate
-
-No new gate and no scenario. This is a pure function with five inputs and it
-is proven by a table test, which is the cheapest deterministic check there is.
-It is the precondition for `amy add`, `amy remove` and `amy update`, and it
-ships alone so those three arrive with the parsing already argued about.
+`amy add`, `amy remove` and `amy update` take this parsing with them; they
+ship in their own rows and none of them re-parses a spec.
 
 ## Acceptance criteria
 
-- [ ] A bare package name gives the same string to npm and to the config
+- [x] A bare package name gives the same string to npm and to the config
       (proof: test:packages/cli/tests/spec.test.ts)
-- [ ] A name carrying a range installs the range and names the package
+- [x] A name carrying a range installs the range and names the package
       (proof: test:packages/cli/tests/spec.test.ts)
-- [ ] A git URL and a tarball URL are classified as such, and name nothing yet
+- [x] A git URL and a tarball URL are classified as such, and name nothing yet
       (proof: test:packages/cli/tests/spec.test.ts)
-- [ ] A relative path is resolved against the caller's directory, not amy's
+- [x] A relative path is resolved against the caller's directory, not amy's
       (proof: test:packages/cli/tests/spec.test.ts)
-- [ ] A path that is not a package is refused by name, before anything is run
+- [x] A path that is not a package is refused by name, before anything is run
       (proof: test:packages/cli/tests/spec.test.ts)
-- [ ] A Windows-shaped path is not mistaken for a scoped name
+- [x] A Windows-shaped path is not mistaken for a scoped name
       (proof: test:packages/cli/tests/spec.test.ts)
 
 **Exit condition:** one function turns any of the five forms into the pair

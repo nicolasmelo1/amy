@@ -1,0 +1,400 @@
+import os from "node:os";
+import path from "node:path";
+import fs from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { classify } from "../src/spec.js";
+
+describe("a plugin spec", () => {
+  let scratch: string;
+
+  beforeEach(() => {
+    scratch = fs.mkdtempSync(path.join(os.tmpdir(), "amy-spec-"));
+  });
+  afterEach(() => fs.rmSync(scratch, { recursive: true, force: true }));
+
+  /** A directory npm would find a package in, with the entry the loader imports. */
+  function packageAt(directory: string, manifest: object = { main: "./index.js" }): void {
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, "package.json"), `${JSON.stringify(manifest)}\n`, "utf-8");
+  }
+
+  it("gives a bare package name to npm and to the config", () => {
+    expect(classify("plugin-oncall", scratch)).toEqual({
+      kind: "name",
+      install: "plugin-oncall",
+      imported: "plugin-oncall",
+    });
+    expect(classify("@acme/plugin-oncall", scratch)).toEqual({
+      kind: "name",
+      install: "@acme/plugin-oncall",
+      imported: "@acme/plugin-oncall",
+    });
+  });
+
+  it("installs a range and names the package", () => {
+    expect(classify("plugin-oncall@2.1.0", scratch)).toEqual({
+      kind: "range",
+      install: "plugin-oncall@2.1.0",
+      imported: "plugin-oncall",
+    });
+    expect(classify("@acme/plugin-oncall@^2", scratch)).toEqual({
+      kind: "range",
+      install: "@acme/plugin-oncall@^2",
+      imported: "@acme/plugin-oncall",
+    });
+  });
+
+  it("classifies a git URL and names nothing yet", () => {
+    for (const spec of [
+      "git+ssh://git@example.test/acme/plugin-oncall.git#semver:^2",
+      "ssh://git@example.test/acme/plugin-oncall.git",
+      "git+https://example.test/acme/plugin-oncall.git",
+      "github:acme/plugin-oncall#v2.1.0",
+      "gitlab:acme/plugin-oncall",
+      "bitbucket:acme/plugin-oncall",
+      "git@example.test:acme/plugin-oncall.git",
+      "https://example.test/acme/plugin-oncall.git",
+      "https://example.test/acme/plugin-oncall#v2.1.0",
+    ]) {
+      expect(classify(spec, scratch)).toEqual({ kind: "git", install: spec, imported: undefined });
+    }
+  });
+
+  it("classifies a tarball URL and names nothing yet", () => {
+    // The shape decides it, not the suffix: whatever else an http(s) endpoint
+    // that is not cloning serves, npm is the one that downloads it.
+    for (const spec of [
+      "https://example.com/plugin-oncall-2.1.0.tgz",
+      "https://example.com/plugin-oncall-2.1.0.tar.gz",
+      "https://example.com/plugin-oncall-2.1.0.tgz?token=abc",
+      "http://example.com/plugin-oncall-2.1.0.tgz",
+    ]) {
+      expect(classify(spec, scratch)).toEqual({
+        kind: "tarball",
+        install: spec,
+        imported: undefined,
+      });
+    }
+  });
+
+  it("resolves a relative path against the caller's directory", () => {
+    packageAt(path.join(scratch, "plugin-oncall"));
+    packageAt(path.join(scratch, "packages", "plugin-x"));
+
+    expect(classify("plugin-oncall", path.join(scratch, "plugin-oncall"))).toEqual({
+      kind: "name",
+      install: "plugin-oncall",
+      imported: "plugin-oncall",
+    });
+    expect(classify("./plugin-oncall", scratch)).toEqual({
+      kind: "path",
+      install: path.join(scratch, "plugin-oncall"),
+      imported: pathToFileURL(path.join(scratch, "plugin-oncall", "index.js")).href,
+      absolute: path.join(scratch, "plugin-oncall"),
+    });
+    expect(classify("packages/plugin-x", scratch)).toEqual({
+      kind: "path",
+      install: path.join(scratch, "packages/plugin-x"),
+      imported: pathToFileURL(path.join(scratch, "packages", "plugin-x", "index.js")).href,
+      absolute: path.join(scratch, "packages/plugin-x"),
+    });
+  });
+
+  it("reads the package's own entry, and hands import() a file", () => {
+    const directory = path.join(scratch, "custom");
+    packageAt(directory, { main: "./src/entry.js" });
+    fs.mkdirSync(path.join(directory, "src"), { recursive: true });
+    fs.writeFileSync(path.join(directory, "src", "entry.js"), "export {};\n", "utf-8");
+
+    expect(classify("./custom", scratch)).toEqual({
+      kind: "path",
+      install: directory,
+      imported: pathToFileURL(path.join(directory, "src/entry.js")).href,
+      absolute: directory,
+    });
+    expect(classify("./custom", scratch).imported).toMatch(/^file:\/\//);
+  });
+
+  it("reads the entry through exports, the way Node does", () => {
+    const direct = path.join(scratch, "exports-direct");
+    packageAt(direct, { exports: "./dist/plugin.js" });
+    fs.mkdirSync(path.join(direct, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(direct, "dist", "plugin.js"), "export {};\n", "utf-8");
+
+    const conditional = path.join(scratch, "exports-conditional");
+    packageAt(conditional, { exports: { ".": { import: "./esm/plugin.js" } } });
+    fs.mkdirSync(path.join(conditional, "esm"), { recursive: true });
+    fs.writeFileSync(path.join(conditional, "esm", "plugin.js"), "export {};\n", "utf-8");
+
+    const declared = path.join(scratch, "exports-declared");
+    packageAt(declared, { exports: { ".": { node: "./node/plugin.js", default: "./fallback/plugin.js" } } });
+    for (const dir of ["node", "fallback"]) {
+      fs.mkdirSync(path.join(declared, dir), { recursive: true });
+      fs.writeFileSync(path.join(declared, dir, "plugin.js"), "export {};\n", "utf-8");
+    }
+
+    const nested = path.join(scratch, "exports-nested");
+    packageAt(nested, { exports: { ".": { node: { import: "./node-esm/plugin.js" }, default: "./fallback/plugin.js" } } });
+    fs.mkdirSync(path.join(nested, "node-esm"), { recursive: true });
+    fs.writeFileSync(path.join(nested, "node-esm", "plugin.js"), "export {};\n", "utf-8");
+
+    const subpathOnly = path.join(scratch, "exports-subpath");
+    packageAt(subpathOnly, { exports: { "./lib.js": "./lib/plugin.js" } });
+
+    const escaping = path.join(scratch, "exports-escaping");
+    packageAt(escaping, { exports: "./../../outside.js" });
+
+    const bareTarget = path.join(scratch, "exports-bare-target");
+    packageAt(bareTarget, { exports: { ".": "dist/index.js" } });
+
+    const topConditional = path.join(scratch, "exports-top-conditional");
+    packageAt(topConditional, { exports: { import: "./esm/index.js", default: "./fallback/index.js" } });
+    fs.mkdirSync(path.join(topConditional, "esm"), { recursive: true });
+    fs.writeFileSync(path.join(topConditional, "esm", "index.js"), "export {};\n", "utf-8");
+
+    const fallbackArray = path.join(scratch, "exports-fallback-array");
+    packageAt(fallbackArray, { exports: { ".": ["./missing/plugin.js", "./real/plugin.js"] } });
+    fs.mkdirSync(path.join(fallbackArray, "real"), { recursive: true });
+    fs.writeFileSync(path.join(fallbackArray, "real", "plugin.js"), "export {};\n", "utf-8");
+
+    const nullArm = path.join(scratch, "exports-null-arm");
+    packageAt(nullArm, { exports: { ".": { node: null, default: "./fallback/plugin.js" } } });
+
+    expect(classify("./exports-direct", scratch).imported).toBe(
+      pathToFileURL(path.join(direct, "dist/plugin.js")).href,
+    );
+    expect(classify("./exports-conditional", scratch).imported).toBe(
+      pathToFileURL(path.join(conditional, "esm/plugin.js")).href,
+    );
+    expect(classify("./exports-declared", scratch).imported).toBe(
+      pathToFileURL(path.join(declared, "node/plugin.js")).href,
+    );
+    expect(classify("./exports-nested", scratch).imported).toBe(
+      pathToFileURL(path.join(nested, "node-esm/plugin.js")).href,
+    );
+    expect(classify("./exports-top-conditional", scratch).imported).toBe(
+      pathToFileURL(path.join(topConditional, "esm/index.js")).href,
+    );
+    expect(() => classify("./exports-subpath", scratch)).toThrow(
+      `${subpathOnly} carries an exports map that names no root`,
+    );
+    expect(() => classify("./exports-escaping", scratch)).toThrow(
+      `${escaping} carries an exports target outside the package`,
+    );
+    expect(() => classify("./exports-bare-target", scratch)).toThrow(
+      `${bareTarget} carries an exports target Node cannot take`,
+    );
+    // The array walk answers the first VALID member — the file's existence
+    // is never part of it, exactly as Node's resolve behaves: it names
+    // missing.js and lets the import itself fail.
+    expect(classify("./exports-fallback-array", scratch).imported).toBe(
+      pathToFileURL(path.join(fallbackArray, "missing/plugin.js")).href,
+    );
+    expect(() => classify("./exports-null-arm", scratch)).toThrow(
+      `${nullArm} carries an exports arm that is null`,
+    );
+  });
+
+  it("refuses a package.json it cannot read, rather than resolving past it", () => {
+    const directory = path.join(scratch, "unreadable");
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, "package.json"), "{ not json\n", "utf-8");
+
+    expect(() => classify("./unreadable", scratch)).toThrow(
+      `${directory} carries a package.json that cannot be read`,
+    );
+  });
+
+  it("reads the caller's package for a bare dot", () => {
+    packageAt(scratch);
+
+    expect(classify(".", scratch)).toEqual({
+      kind: "path",
+      install: scratch,
+      imported: pathToFileURL(path.join(scratch, "index.js")).href,
+      absolute: scratch,
+    });
+    expect(() => classify("..", scratch)).toThrow(/is not a package/);
+  });
+
+  it("expands only a bare tilde or one with a slash after it", () => {
+    // The home the expansion reads is the process's own, which is the
+    // platform's home variable — HOME on Unix, USERPROFILE on Windows.
+    // Pointed at the scratch directory for the duration, the test neither
+    // depends on nor deletes anything under the developer's real home.
+    const variable = process.platform === "win32" ? "USERPROFILE" : "HOME";
+    const real = process.env[variable];
+    const home = path.join(scratch, "amy-spec-home");
+    packageAt(path.join(home, "plugin"));
+    packageAt(path.join(scratch, "~owner", "plugin"));
+
+    try {
+      process.env[variable] = scratch;
+      expect(classify("~/amy-spec-home/plugin", scratch)).toEqual({
+        kind: "path",
+        install: path.join(home, "plugin"),
+        imported: pathToFileURL(path.join(home, "plugin", "index.js")).href,
+        absolute: path.join(home, "plugin"),
+      });
+      expect(classify("~owner/plugin", scratch)).toEqual({
+        kind: "path",
+        install: path.join(scratch, "~owner/plugin"),
+        imported: pathToFileURL(path.join(scratch, "~owner", "plugin", "index.js")).href,
+        absolute: path.join(scratch, "~owner/plugin"),
+      });
+    } finally {
+      if (real === undefined) delete process.env[variable];
+      else process.env[variable] = real;
+      fs.rmSync(path.join(scratch, "~owner"), { recursive: true, force: true });
+    }
+  });
+
+  it("reads a file: spec as the package on this disk", () => {
+    const directory = path.join(scratch, "local-plugin");
+    packageAt(directory);
+
+    expect(classify("file:./local-plugin", scratch)).toEqual({
+      kind: "path",
+      install: directory,
+      imported: pathToFileURL(path.join(directory, "index.js")).href,
+      absolute: directory,
+    });
+    expect(classify("file:./local-plugin", scratch).imported).toMatch(/^file:\/\//);
+  });
+
+  it("reads a main without the ./ prefix, the way main has always worked", () => {
+    const legacy = path.join(scratch, "legacy-main");
+    packageAt(legacy, { main: "dist/index.js" });
+    fs.mkdirSync(path.join(legacy, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(legacy, "dist", "index.js"), "export {};\n", "utf-8");
+
+    expect(classify("./legacy-main", scratch).imported).toBe(
+      pathToFileURL(path.join(legacy, "dist", "index.js")).href,
+    );
+  });
+
+  it("agrees with Node's own resolution, form by form", () => {
+    // Every shape the entry walk can meet, each seeded twice: once for
+    // classify to answer, once inside a node_modules tree for Node's own
+    // resolve to answer. The oracle is the runtime — no restated rule can
+    // disagree with the thing it restates.
+    const forms: Array<[string, object, Array<[string, string]>]> = [
+      ["string-exports", { exports: "./lib/plugin.js" }, [["lib/plugin.js", "export {};\n"]]],
+      ["dot-string", { exports: { ".": "./lib/plugin.js" } }, [["lib/plugin.js", "export {};\n"]]],
+      [
+        "conditional-order",
+        { exports: { ".": { node: "./lib/node.js", default: "./lib/fb.js" } } },
+        [["lib/node.js", "export {};\n"], ["lib/fb.js", "export {};\n"]],
+      ],
+      [
+        "nested-conditions",
+        { exports: { ".": { node: { import: "./lib/ni.js" }, default: "./lib/fb.js" } } },
+        [["lib/ni.js", "export {};\n"], ["lib/fb.js", "export {};\n"]],
+      ],
+      [
+        "fallback-array",
+        { exports: { ".": ["./lib/missing.js", "./lib/real.js"] } },
+        [["lib/real.js", "export {};\n"]],
+      ],
+      ["main-legacy", { main: "dist/index.js" }, [["dist/index.js", "export {};\n"]]],
+      ["main-extension", { main: "dist/index" }, [["dist/index.js", "export {};\n"]]],
+      ["main-directory", { main: "./dist" }, [["dist/index.js", "export {};\n"]]],
+      ["bare-index", {}, [["index.js", "export {};\n"]]],
+    ];
+
+    const oracleRoot = fs.mkdtempSync(path.join(scratch, "oracle-"));
+    const answers = new Map<string, string>();
+    for (const [name, manifest, files] of forms) {
+      const local = path.join(scratch, name);
+      packageAt(local, manifest as { main?: string });
+      for (const [file, content] of files) {
+        fs.mkdirSync(path.dirname(path.join(local, file)), { recursive: true });
+        fs.writeFileSync(path.join(local, file), content, "utf-8");
+      }
+      answers.set(name, classify(`./${name}`, scratch).imported as string);
+
+      const pkg = path.join(oracleRoot, "node_modules", name);
+      fs.mkdirSync(pkg, { recursive: true });
+      fs.writeFileSync(
+        path.join(pkg, "package.json"),
+        `${JSON.stringify({ ...manifest, name, type: "module" })}\n`,
+        "utf-8",
+      );
+      for (const [file, content] of files) {
+        fs.mkdirSync(path.dirname(path.join(pkg, file)), { recursive: true });
+        fs.writeFileSync(path.join(pkg, file), content, "utf-8");
+      }
+    }
+
+    const probe = path.join(oracleRoot, "probe.mjs");
+    const names = forms.map(([name]) => name);
+    fs.writeFileSync(
+      probe,
+      `const names = ${JSON.stringify(names)};\n` +
+        "for (const n of names) {\n" +
+        "  try { console.log(n + ' RESOLVED:' + import.meta.resolve(n)); }\n" +
+        "  catch (e) { console.log(n + ' ERR:' + e.code); }\n" +
+        "}\n",
+      "utf-8",
+    );
+    const node = spawnSync(process.execPath, [probe], { encoding: "utf-8" });
+    expect(node.status).toBe(0);
+
+    const oracle = new Map<string, string>();
+    for (const line of node.stdout.split("\n")) {
+      const at = line.indexOf(" RESOLVED:");
+      if (at === -1) continue;
+      const url = line.slice(at + " RESOLVED:".length);
+      // Node reports the realpath, which on macOS rewrites /var to
+      // /private/var — compare the path inside the package, not the
+      // machine's spelling of the temp directory.
+      const pkg = fs.realpathSync(path.join(oracleRoot, "node_modules", line.slice(0, at)));
+      const resolved = fileURLToPath(url);
+      oracle.set(line.slice(0, at), path.relative(pkg, resolved));
+    }
+
+    for (const [name] of forms) {
+      const fromNode = oracle.get(name);
+      const fromClassify = answers.get(name);
+      expect(fromNode, `Node failed to resolve ${name}`).toBeDefined();
+      // classify reports the same entry, spelled against its own root.
+      expect(path.relative(path.join(scratch, name), fileURLToPath(fromClassify as string))).toBe(
+        fromNode,
+      );
+    }
+  });
+
+  it("refuses a path that is not a package, before anything is run", () => {
+    fs.mkdirSync(path.join(scratch, "not-a-package"));
+    fs.writeFileSync(path.join(scratch, "not-a-package", "index.js"), "export {};\n", "utf-8");
+
+    expect(() => classify("./not-a-package", scratch)).toThrow(
+      "./not-a-package is not a package: its package.json is missing at " + path.join(scratch, "not-a-package"),
+    );
+  });
+
+  it("does not mistake a Windows-shaped path for a scoped name", () => {
+    // A drive letter with a slash is a directory, so it resolves like one: the
+    // package seeded where the caller's directory puts it is found, and the
+    // same spec read as a name with a range would have answered `range`. The
+    // fixture is built inside the scratch directory on every platform — a
+    // drive-qualified seed would land at the root of C: on Windows itself.
+    const inside =
+      process.platform === "win32"
+        ? path.join(scratch, "dev", "plugin-oncall")
+        : path.join(scratch, "C:", "dev", "plugin-oncall");
+    fs.mkdirSync(inside, { recursive: true });
+    fs.writeFileSync(path.join(inside, "package.json"), "{}\n", "utf-8");
+    fs.writeFileSync(path.join(inside, "index.js"), "export {};\n", "utf-8");
+    const spec = process.platform === "win32" ? inside.replaceAll("/", "\\") : "C:\\dev\\plugin-oncall";
+
+    expect(classify(spec, scratch)).toEqual({
+      kind: "path",
+      install: inside,
+      imported: pathToFileURL(path.join(inside, "index.js")).href,
+      absolute: inside,
+    });
+  });
+});

@@ -238,6 +238,11 @@
           "description": ""
         },
         {
+          "title": "A spec is a name, a URL or a path",
+          "path": "/design/a-spec-is-a-name-a-url-or-a-path",
+          "description": ""
+        },
+        {
           "title": "A workflow is yours, not a package",
           "path": "/design/a-workflow-is-yours-not-a-package",
           "description": ""
@@ -741,6 +746,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "classify turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before amy add, amy remove and amy update arrive.",
+          "slug": "classify-turns-a-plugin-spec-into-what-npm-installs-and-what-the-config-names-a-name-a-range-a-git-url-a-tarball-or-a-path-in-one-place-before-amy-add-amy-remove-and-amy-update-arrive"
         },
         {
           "depth": 3,
@@ -1474,6 +1484,28 @@
           "depth": 2,
           "title": "What changed",
           "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-spec-is-a-name-a-url-or-a-path",
+      "file": "docs/design/a-spec-is-a-name-a-url-or-a-path.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-spec-is-a-name-a-url-or-a-path.md",
+      "title": "A spec is a name, a URL or a path",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
         },
         {
           "depth": 2,
@@ -7207,6 +7239,18 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-spec-is-a-name-a-url-or-a-path",
+        "title": "`classify` turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before `amy add`, `amy remove` and `amy update` arrive.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
       {
         "id": "a-workflow-is-yours-not-a-package",
         "title": "`amy workflow new` writes an editable workflow under the machine state home, and `amy workflow check` drives its lifecycle before it reaches real work.",
