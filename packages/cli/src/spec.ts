@@ -199,7 +199,7 @@ function entrySpecifier(directory: string): string {
   const entry =
     exported === undefined
       ? (entryFromMain((manifest as { main?: unknown }).main) ?? "./index.js")
-      : entryFromExports(exported);
+      : entryFromExports(exported, directory);
 
   if (entry === undefined) {
     throw new Error(
@@ -230,7 +230,7 @@ function packageTarget(directory: string, entry: string): string {
 }
 
 /** The entry the `exports` field names, by Node's exports algorithm. */
-function entryFromExports(exports: unknown): string | undefined {
+function entryFromExports(exports: unknown, directory: string): string | undefined {
   // A bare string is the whole map for the root: Node reads
   // `exports: "./x.js"` exactly as `exports: { ".": "./x.js" }`.
   if (typeof exports === "string" && exports.length > 0) return exports;
@@ -240,29 +240,58 @@ function entryFromExports(exports: unknown): string | undefined {
   // A top-level member named `import`, `node` or `default` is the root
   // condition map itself — Node reads `{"import": "./x.js"}` as the root
   // entry, and only a key starting with `.` names a subpath.
-  if (dot === undefined && Object.keys(map ?? {}).some((key) => !key.startsWith("."))) {
-    return entryFromRoot(map);
+  const entry =
+    dot === undefined && Object.keys(map ?? {}).some((key) => !key.startsWith("."))
+      ? entryFromRoot(map, directory)
+      : entryFromRoot(dot, directory);
+  // A `null` arm is Node's terminal refusal for the root: not resolvable,
+  // which is a different answer from "no root member at all".
+  if (entry === null) {
+    throw new Error(`${directory} carries an exports arm that is null, which Node takes as no target`);
   }
-  return entryFromRoot(dot);
+  return entry;
 }
 
 /**
  * The entry one member of `exports` names, following Node's own walk.
  *
- * A string is the target. An object is conditions in declaration order:
- * the first arm named `import`, `node` or `default` wins, recursing into a
- * nested condition object the way Node does — so `{"node": {"import":
- * "./node.js"}, "default": "./b.js"}` answers `./node.js`, and
- * `{"node": "./a.js", "default": "./b.js"}` answers `./a.js` rather than
- * the fallback that happens to be read later.
+ * A string is the target. An array is Node's fallback list: the first
+ * member whose file exists wins — a member naming a file that is not there
+ * moves to the next, and `null` inside an array is that member's refusal.
+ * An object is conditions in declaration order: the first arm named
+ * `import`, `node` or `default` wins, recursing into a nested condition
+ * object the way Node does — so `{"node": {"import": "./node.js"},
+ * "default": "./b.js"}` answers `./node.js`, and `{"node": "./a.js",
+ * "default": "./b.js"}` answers `./a.js` rather than the fallback that
+ * happens to be read later. An explicit `null` arm at the root is Node's
+ * word for "no target here" and is terminal, not an invitation to fall
+ * through to whatever is declared beside it.
  */
-function entryFromRoot(member: unknown): string | undefined {
+function entryFromRoot(member: unknown, directory: string): string | undefined | null {
   if (typeof member === "string" && member.length > 0) return member;
+  if (member === null) return null;
+  if (Array.isArray(member)) return entryFromFallbacks(member, directory);
   if (!member || typeof member !== "object") return undefined;
   for (const [condition, value] of Object.entries(member as Record<string, unknown>)) {
     if (!["import", "node", "default"].includes(condition)) continue;
-    const resolved = entryFromRoot(value);
+    const resolved = entryFromRoot(value, directory);
     if (resolved !== undefined) return resolved;
+  }
+  return undefined;
+}
+
+/**
+ * Node's fallback list: the first member whose file exists wins.
+ *
+ * A member naming a file that is not on disk moves the walk to the next,
+ * and `null` inside an array is that member's refusal — not the whole
+ * list's.
+ */
+function entryFromFallbacks(members: unknown[], directory: string): string | undefined {
+  for (const fallback of members) {
+    const resolved = entryFromRoot(fallback, directory);
+    if (resolved === undefined || resolved === null) continue;
+    if (fs.existsSync(path.join(directory, resolved))) return resolved;
   }
   return undefined;
 }

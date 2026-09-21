@@ -153,6 +153,14 @@ describe("a plugin spec", () => {
     fs.mkdirSync(path.join(topConditional, "esm"), { recursive: true });
     fs.writeFileSync(path.join(topConditional, "esm", "index.js"), "export {};\n", "utf-8");
 
+    const fallbackArray = path.join(scratch, "exports-fallback-array");
+    packageAt(fallbackArray, { exports: { ".": ["./missing/plugin.js", "./real/plugin.js"] } });
+    fs.mkdirSync(path.join(fallbackArray, "real"), { recursive: true });
+    fs.writeFileSync(path.join(fallbackArray, "real", "plugin.js"), "export {};\n", "utf-8");
+
+    const nullArm = path.join(scratch, "exports-null-arm");
+    packageAt(nullArm, { exports: { ".": { node: null, default: "./fallback/plugin.js" } } });
+
     expect(classify("./exports-direct", scratch).imported).toBe(
       pathToFileURL(path.join(direct, "dist/plugin.js")).href,
     );
@@ -176,6 +184,12 @@ describe("a plugin spec", () => {
     );
     expect(() => classify("./exports-bare-target", scratch)).toThrow(
       `${bareTarget} carries an exports target Node cannot take`,
+    );
+    expect(classify("./exports-fallback-array", scratch).imported).toBe(
+      pathToFileURL(path.join(fallbackArray, "real/plugin.js")).href,
+    );
+    expect(() => classify("./exports-null-arm", scratch)).toThrow(
+      `${nullArm} carries an exports arm that is null`,
     );
   });
 
