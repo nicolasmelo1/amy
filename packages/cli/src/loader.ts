@@ -148,6 +148,7 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
     // own entry — is not Node's to walk, and handing it to the resolver
     // rooted at `<root>/package.json` would answer nothing useful.
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(spec)) return spec;
+    if (path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) return pathToFileURL(path.resolve(spec)).href;
 
     const requireFromRoot = createRequire(manifest);
     try {

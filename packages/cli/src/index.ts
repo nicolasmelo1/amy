@@ -269,7 +269,7 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<void
   const wanted = chosen ?? (process.stdin.isTTY ? confirm() : false);
 
   if (!wanted) {
-    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, ...absent])}`);
+    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, "--", ...absent])}`);
     return;
   }
 

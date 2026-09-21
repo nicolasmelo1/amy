@@ -14,11 +14,12 @@ export function packageManager(platform: string = process.platform): string {
   return platform === "win32" ? "npm.cmd" : "npm";
 }
 
-export function shellCommand(command: string, args: readonly string[]): string {
-  return [command, ...args].map(shellQuote).join(" ");
+export function shellCommand(command: string, args: readonly string[], platform: string = process.platform): string {
+  return [command, ...args].map((value) => shellQuote(value, platform)).join(" ");
 }
 
-function shellQuote(value: string): string {
+function shellQuote(value: string, platform: string): string {
+  if (platform === "win32") return /[\s"]/u.test(value) ? `"${value.replaceAll('"', '\\"')}"` : value;
   return /^[A-Za-z0-9_./:@=-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
@@ -48,7 +49,7 @@ export async function installIntoPluginsRoot(
   root: string,
   packages: readonly string[],
 ): Promise<InstallOutcome> {
-  const args = ["install", "--prefix", root, "--no-audit", "--no-fund", ...packages];
+  const args = ["install", "--prefix", root, "--no-audit", "--no-fund", "--", ...packages];
   const command = shellCommand(packageManager(), args);
 
   const result = await runner.run(packageManager(), args, { timeoutMs: 10 * 60 * 1000 });

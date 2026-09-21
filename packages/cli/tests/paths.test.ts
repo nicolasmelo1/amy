@@ -12,8 +12,9 @@ describe("the paths one amy owns", () => {
   });
 
   it("moves the plugin root when AMY_HOME moves", () => {
-    const home = amyHome({ AMY_HOME: "/tmp/amy-other-home" });
+    const configured = path.join(os.tmpdir(), "amy-other-home");
+    const home = amyHome({ AMY_HOME: configured });
 
-    expect(paths(home).plugins).toBe("/tmp/amy-other-home/plugins");
+    expect(paths(home).plugins).toBe(path.join(configured, "plugins"));
   });
 });

@@ -38,6 +38,7 @@ describe("installIntoPluginsRoot", () => {
       root,
       "--no-audit",
       "--no-fund",
+      "--",
       "@amykit/plugin-linear",
       "@amykit/plugin-github",
     ]);
@@ -64,7 +65,7 @@ describe("installIntoPluginsRoot", () => {
 
     const outcome = await installIntoPluginsRoot(runner, root, ["@amykit/core"]);
 
-    expect(outcome.command).toContain(`install --prefix ${root} --no-audit --no-fund @amykit/core`);
+    expect(outcome.command).toContain(`install --prefix ${root} --no-audit --no-fund -- @amykit/core`);
   });
 
   it("keeps both streams, because npm says the interesting part on either", async () => {
