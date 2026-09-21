@@ -9,7 +9,8 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `hermes` in
 ## Install
 
 ```sh
-npm install -g @amykit/plugin-hermes-agent
+# Add @amykit/plugin-hermes-agent to amy.yaml, then install configured plugins:
+amy init --install
 ```
 
 Then name it in `~/.amy/config.yaml`:

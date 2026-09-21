@@ -51,9 +51,8 @@ These are not installed yet:
 Install them now? [Y/n]
 ```
 
-It asks rather than assuming, because installing into a global prefix is a
-change to the machine and not to amy. With nothing to ask on — a script, a
-pipe, CI — it prints the command instead of running it, and `--install` is how
+It asks rather than assuming, because installing into Amy's private plugin root
+is a change to Amy's state. With nothing to ask on — a script, a pipe, CI — it prints the command instead of running it, and `--install` is how
 a pipeline says yes:
 
 ```sh

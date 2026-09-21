@@ -19,7 +19,10 @@ export function shellCommand(command: string, args: readonly string[], platform:
 }
 
 function shellQuote(value: string, platform: string): string {
-  if (platform === "win32") return /[\s"]/u.test(value) ? `"${value.replaceAll('"', '\\"')}"` : value;
+  if (platform === "win32") {
+    const escaped = value.replaceAll("^", "^^").replace(/["&|<>%!()]/gu, "^$&");
+    return /[\s"%!...&|<>^()]/u.test(value) ? `"${escaped}"` : escaped;
+  }
   return /^[A-Za-z0-9_./:@=-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 

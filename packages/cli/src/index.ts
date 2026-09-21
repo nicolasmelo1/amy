@@ -237,7 +237,7 @@ program
     const wanted = Object.values(profiles(config)).flatMap((profile) =>
       pluginList(config, profile),
     );
-    const absent = [...new Set(wanted)].filter((name) => !installedPlugins(place.plugins).includes(name));
+    const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !installedPlugins(place.plugins).includes(name));
     if (absent.length === 0) {
       if (wanted.length === 0) {
         console.log("\nkept the plugins it did not need: nothing is mounted yet.");

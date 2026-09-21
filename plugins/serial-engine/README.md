@@ -9,7 +9,8 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the engine.
 ## Install
 
 ```sh
-npm install -g @amykit/plugin-serial-engine
+# Add @amykit/plugin-serial-engine to amy.yaml, then install configured plugins:
+amy init --install
 ```
 
 Then name it in `~/.amy/config.yaml`:

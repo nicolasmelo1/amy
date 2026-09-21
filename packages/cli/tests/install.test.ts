@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
-import { ensurePluginsRoot, installIntoPluginsRoot, packageManager } from "../src/install.js";
+import { ensurePluginsRoot, installIntoPluginsRoot, packageManager, shellCommand } from "../src/install.js";
 
 describe("packageManager", () => {
   it("is `npm` where a shell is not needed to find it", () => {
@@ -16,6 +16,11 @@ describe("packageManager", () => {
     // ENOENT on the one command that exists to make installing easy, and it
     // is invisible on the machine this was written on.
     expect(packageManager("win32")).toBe("npm.cmd");
+  });
+
+  it("quotes Windows shell metacharacters in a command meant for copy and paste", () => {
+    expect(shellCommand("npm", ["install", "https://host/plugin.tgz?x=1&y=%PATH%!"], "win32"))
+      .toBe('npm install "https://host/plugin.tgz?x=1^&y=^%PATH^%^!"');
   });
 });
 

@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { createRequire } from "node:module";
 import { Plugin } from "@amykit/core";
 import { localWorkflow } from "./workflow.js";
 import { packageEntrySpecifier } from "./spec.js";
@@ -138,8 +137,6 @@ function read(directory: string): string[] {
  * has always handed `import()`.
  */
 export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: string) => string {
-  const manifest = path.join(pluginsRoot, "package.json");
-
   return (spec: string) => {
     const local = localWorkflow(home, spec);
     if (local) return local;
@@ -147,23 +144,12 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
     // A specifier that is already a URL — a path spec the CLI resolved to its
     // own entry — is not Node's to walk, and handing it to the resolver
     // rooted at `<root>/package.json` would answer nothing useful.
+    if (path.win32.isAbsolute(spec) || path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) return pathToFileURL(path.resolve(spec)).href;
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(spec)) return spec;
-    if (path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) return pathToFileURL(path.resolve(spec)).href;
 
-    const requireFromRoot = createRequire(manifest);
-    try {
-      return pathToFileURL(resolvedInPluginsRoot(pluginsRoot, spec, requireFromRoot.resolve(spec))).href;
-    } catch (error) {
-      // `createRequire` follows CommonJS's conditions, so an ESM-only package
-      // exporting just an `import` arm is deliberately invisible to it even
-      // though `import()` can load it. The root still tells us exactly where
-      // npm put that package; read its entry with the ESM walk used for a path
-      // spec, rather than falling back to amy's own parents or a second list.
-      const code = (error as { code?: string })?.code;
-      if (code === "MODULE_NOT_FOUND") throw pluginNotInstalled(spec);
-      if (code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
-      return packageEntrySpecifier(packageDirectory(pluginsRoot, spec));
-    }
+    const directory = packageDirectory(pluginsRoot, spec);
+    if (!fs.existsSync(directory)) throw pluginNotInstalled(spec);
+    return packageEntrySpecifier(directory);
   };
 }
 
@@ -177,18 +163,4 @@ function pluginNotInstalled(spec: string): Error & { code: string } {
 function packageDirectory(root: string, spec: string): string {
   const parts = spec.startsWith("@") ? spec.split("/", 2) : [spec.split("/", 1)[0]!];
   return path.join(root, "node_modules", ...parts);
-}
-
-/** Refuse Node's parent walk: this root is the complete installation boundary. */
-function resolvedInPluginsRoot(root: string, spec: string, resolved: string): string {
-  // npm can link a local package into this root. `require.resolve` follows
-  // that link to its source, but the link itself is the root-owned install.
-  if (fs.existsSync(packageDirectory(root, spec))) return resolved;
-
-  const nodeModulesPath = path.join(root, "node_modules");
-  const nodeModules = fs.existsSync(nodeModulesPath) ? fs.realpathSync(nodeModulesPath) : path.resolve(nodeModulesPath);
-  const physicalResolved = fs.realpathSync(resolved);
-  const relative = path.relative(nodeModules, physicalResolved);
-  if (relative && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative)) return physicalResolved;
-  throw pluginNotInstalled(spec);
 }
