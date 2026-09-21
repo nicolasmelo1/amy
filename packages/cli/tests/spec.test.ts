@@ -134,6 +134,14 @@ describe("a plugin spec", () => {
       fs.writeFileSync(path.join(declared, dir, "plugin.js"), "export {};\n", "utf-8");
     }
 
+    const nested = path.join(scratch, "exports-nested");
+    packageAt(nested, { exports: { ".": { node: { import: "./node-esm/plugin.js" }, default: "./fallback/plugin.js" } } });
+    fs.mkdirSync(path.join(nested, "node-esm"), { recursive: true });
+    fs.writeFileSync(path.join(nested, "node-esm", "plugin.js"), "export {};\n", "utf-8");
+
+    const subpathOnly = path.join(scratch, "exports-subpath");
+    packageAt(subpathOnly, { exports: { "./lib.js": "./lib/plugin.js" } });
+
     expect(classify("./exports-direct", scratch).imported).toBe(
       pathToFileURL(path.join(direct, "dist/plugin.js")).href,
     );
@@ -142,6 +150,12 @@ describe("a plugin spec", () => {
     );
     expect(classify("./exports-declared", scratch).imported).toBe(
       pathToFileURL(path.join(declared, "node/plugin.js")).href,
+    );
+    expect(classify("./exports-nested", scratch).imported).toBe(
+      pathToFileURL(path.join(nested, "node-esm/plugin.js")).href,
+    );
+    expect(() => classify("./exports-subpath", scratch)).toThrow(
+      `${subpathOnly} carries an exports map that names no root`,
     );
   });
 

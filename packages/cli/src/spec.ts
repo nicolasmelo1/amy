@@ -177,31 +177,39 @@ function isPackageDirectory(directory: string): boolean {
 /**
  * The file the loader can import, read off the package's own entry.
  *
- * The entry is decided by Node's own rules, in their order: the `exports`
- * map's `"."` member (a string, or the conditional `import` or `default`
- * arm of one), then `main`, then the `index.js` both npm and Node fall back
- * to. A `package.json` that cannot be read or parsed is refused here rather
- * than resolved past — a package that names no entry is not a package amy
- * can mount, and guessing `index.js` would be answering a question the
- * metadata never asked.
+ * The entry follows Node's exports algorithm for the package root:
+ * an `exports` field present is authoritative — a string, or its `.`
+ * member walked in declaration order through nested conditions, and an
+ * `exports` that names no root is a refusal, because Node itself cannot
+ * import the package root then. Without `exports`, `main` decides, and
+ * the `index.js` both npm and Node fall back to is last. A
+ * `package.json` that cannot be read or parsed is refused with the
+ * error carried as its cause rather than resolved past.
  */
 function entrySpecifier(directory: string): string {
   const manifestPath = path.join(directory, "package.json");
-  let main: unknown;
+  let manifest: unknown;
   try {
-    main = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
   } catch (error) {
     throw new Error(`${directory} carries a package.json that cannot be read`, { cause: error });
   }
 
+  const exported = (manifest as { exports?: unknown }).exports;
   const entry =
-    entryFromExports((main as { exports?: unknown }).exports) ??
-    entryFromMain((main as { main?: unknown }).main) ??
-    "./index.js";
+    exported === undefined
+      ? (entryFromMain((manifest as { main?: unknown }).main) ?? "./index.js")
+      : entryFromExports(exported);
+
+  if (entry === undefined) {
+    throw new Error(
+      `${directory} carries an exports map that names no root, so nothing can import the package`,
+    );
+  }
   return pathToFileURL(path.join(directory, entry)).href;
 }
 
-/** The `exports` member that names the package's own entry, or nothing. */
+/** The entry the `exports` field names, by Node's exports algorithm. */
 function entryFromExports(exports: unknown): string | undefined {
   // A bare string is the whole map for the root: Node reads
   // `exports: "./x.js"` exactly as `exports: { ".": "./x.js" }`.
@@ -213,16 +221,19 @@ function entryFromExports(exports: unknown): string | undefined {
  * The entry one member of `exports` names, following Node's own walk.
  *
  * A string is the target. An object is conditions in declaration order:
- * the first arm named `import`, `node` or `default` wins, whichever Node
- * would take first — so `{"node": "./a.js", "default": "./b.js"}` answers
- * `./a.js` rather than the fallback that happens to be read later.
+ * the first arm named `import`, `node` or `default` wins, recursing into a
+ * nested condition object the way Node does — so `{"node": {"import":
+ * "./node.js"}, "default": "./b.js"}` answers `./node.js`, and
+ * `{"node": "./a.js", "default": "./b.js"}` answers `./a.js` rather than
+ * the fallback that happens to be read later.
  */
 function entryFromRoot(member: unknown): string | undefined {
   if (typeof member === "string" && member.length > 0) return member;
   if (!member || typeof member !== "object") return undefined;
   for (const [condition, value] of Object.entries(member as Record<string, unknown>)) {
     if (!["import", "node", "default"].includes(condition)) continue;
-    if (typeof value === "string" && value.length > 0) return value;
+    const resolved = entryFromRoot(value);
+    if (resolved !== undefined) return resolved;
   }
   return undefined;
 }
