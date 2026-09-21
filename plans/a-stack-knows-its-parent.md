@@ -14,7 +14,7 @@ parent is invisible: the stack resolution the workflows need — open
 parent => its remote head branch; merged parent => its recorded base;
 absent or closed-unmerged => wait — cannot be answered through the port
 at all, and each workflow would reimplement the GitHub-specific lookup
-on its own. The Revv workflow hit this driving stacked PRs against real
+on its own. A private workflow hit this driving stacked PRs against real
 repositories (issue #48).
 
 Not every workflow stacks PRs, so nothing here may be required of a

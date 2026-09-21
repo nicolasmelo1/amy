@@ -12,7 +12,7 @@ it is not the thing that runs it.
 
 ```ts
 usesActions: ["hand-off-to-qa", ...]                                    // a string
-registry.action("merge", { port: REVV_FORGE, method: "merge" }, forge)  // a port and a method
+registry.action("merge", { port: FORGE_PORT, method: "merge" }, forge)  // a port and a method
 handlers: () => ({ "merge": async (action, ctx) => { ... } })           // a function
 ```
 
@@ -32,7 +32,7 @@ declarations of one fact and no single place where they are compared.
 ```ts
 actions: {
   "hand-off-to-qa": async (action, ctx) => { ... },
-  "merge": { port: REVV_FORGE, method: "merge" },
+  "merge": { port: FORGE_PORT, method: "merge" },
 }
 ```
 

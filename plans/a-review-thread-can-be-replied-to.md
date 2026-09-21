@@ -17,7 +17,7 @@ the strong model that reads a review first
 ([a-strong-model-reads-the-review-first.md](a-strong-model-reads-the-review-first.md))
 has an `answer` verdict with nowhere to put it.
 
-This was found on the Revv workflow (issue #49), but no workflow is
+This was found on a private workflow (issue #49), but no workflow is
 exempt: any workflow that answers reviews — which is every workflow
 that runs `address-threads` — needs the same write, and today each
 would escalate where a reply would do.

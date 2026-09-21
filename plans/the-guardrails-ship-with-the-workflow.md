@@ -4,7 +4,7 @@
 against it. What is not shipped is *which rules* — and that is the part that
 takes a day of production to learn.
 
-Three rules were written for `@nicolasmelo1/workflow-revv` after three defects
+Three rules were written for a private workflow after three defects
 reached a real board. None of them is about that project:
 
 | what it refuses | why any workflow needs it |

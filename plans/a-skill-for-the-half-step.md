@@ -8,17 +8,18 @@ the runtime already keys by them: `HarnessRelay.ask` reads
 `step: "self-review"` reaches the ladder machinery today
 (`packages/workflow-errand/src/runtime.ts:110`).
 
-The validator does not. `parseSkills` refuses any key that is not a core
-action dispatching to the agent port — *"`skills.<step>` is not a step an
-agent performs"* (`plugins/agent-relay/src/skills.ts:31`) — so
-`skills: self-review: [/antikus-code-review]` is refused at boot even
-though the runtime honors it. Workflow-revv's workaround is to attach the
-skill to `run-errand` whole, which then fires on triage, implementation
-and self-review alike: the wrong ladder for three of the four steps it
-was not about. The same blindness will meet `ladderByStep` the day a
-workflow routes a half-step to a cheaper model.
+The validator does not. `parseSkills` refuses any key that is not a
+core action dispatching to the agent port — *"`skills.<step>` is not a
+step an agent performs"* (`plugins/agent-relay/src/skills.ts:31`) — so
+`skills: self-review: [/code-review]` is refused at boot even though
+the runtime honors it. The private workflow's workaround is to attach
+the skill to `run-errand` whole, which then fires on triage,
+implementation and self-review alike: the wrong ladder for three of
+the four steps it was not about. The same blindness will meet
+`ladderByStep` the day a workflow routes a half-step to a cheaper
+model.
 
-This was found on the Revv workflow (issue #48), but no workflow is
+This was found on a private workflow (issue #48), but no workflow is
 exempt: any workflow that phases one action — ask, then check, then
 review — has half-steps the config cannot name. The sibling plan for the
 action-name half of this ([a-skill-ladder-for-your-own-steps.md](a-skill-ladder-for-your-own-steps.md))

@@ -84,6 +84,10 @@ jobs:
       # The execution board is part of the gate too: delivered work must move
       # to durable design notes, and plans/ must remain unfinished work only.
       - run: npm run check:plans
+      # This repository is public and some of the work that drove it is not.
+      # The terms are digests in scripts/private-terms.json, never words, so
+      # the list of what is being kept out is not itself published here.
+      - run: npm run check:private
       # A change to a published package without a changeset is a release that
       # would leave the version standing still. `--since` scopes it to what
       # this pull request adds, so a branch is judged on its own diff.

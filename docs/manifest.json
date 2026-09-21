@@ -754,6 +754,11 @@
         },
         {
           "depth": 3,
+          "title": "findPrivateReferences reads a tree against a policy of hashed terms, so the repository gate can refuse a private name — standing alone or glued into a longer identifier — without the list of forbidden names being published alongside the check that hides them.",
+          "slug": "findprivatereferences-reads-a-tree-against-a-policy-of-hashed-terms-so-the-repository-gate-can-refuse-a-private-name-standing-alone-or-glued-into-a-longer-identifier-without-the-list-of-forbidden-names-being-published-alongside-the-check-that-hides-them"
+        },
+        {
+          "depth": 3,
           "title": "classify turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before amy add, amy remove and amy update arrive.",
           "slug": "classify-turns-a-plugin-spec-into-what-npm-installs-and-what-the-config-names-a-name-a-range-a-git-url-a-tarball-or-a-path-in-one-place-before-amy-add-amy-remove-and-amy-update-arrive"
         },
@@ -7279,6 +7284,18 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-private-name-does-not-reach-a-public-repository",
+        "title": "`findPrivateReferences` reads a tree against a policy of hashed terms, so the repository gate can refuse a private name — standing alone or glued into a longer identifier — without the list of forbidden names being published alongside the check that hides them.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
       {
         "id": "a-spec-is-a-name-a-url-or-a-path",
         "title": "`classify` turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before `amy add`, `amy remove` and `amy update` arrive.",

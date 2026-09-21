@@ -54,7 +54,7 @@ without the core learning what a workflow's policy means.
       (proof: test:packages/workflow-ticket-to-qa/tests/index.test.ts)
 - [x] A workflow declares its dependencies as the core's contracts and nothing
       is restated by hand
-      (proof: unspecified:the proof is the diff that deletes `RevvDeps`, in a repository this one does not contain)
+      (proof: unspecified:the proof is the diff that deletes a private workflow's hand-rolled deps type, in a repository this one does not contain)
 - [x] The install scenario still drives a ticket with the plugins resolving one
       copy of the core (proof: test:.software-factory/evidence/installed-plugins-scenario.sh)
 
