@@ -56,7 +56,7 @@ import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
-import { ensurePluginsRoot, installIntoPluginsRoot } from "./install.js";
+import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
 import { clearDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
@@ -269,7 +269,7 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<void
   const wanted = chosen ?? (process.stdin.isTTY ? confirm() : false);
 
   if (!wanted) {
-    console.log(`\nInstall them with:\n  npm install --prefix ${paths(home).plugins} ${absent.join(" ")}`);
+    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, ...absent])}`);
     return;
   }
 

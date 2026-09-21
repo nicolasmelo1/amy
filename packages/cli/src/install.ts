@@ -14,6 +14,14 @@ export function packageManager(platform: string = process.platform): string {
   return platform === "win32" ? "npm.cmd" : "npm";
 }
 
+export function shellCommand(command: string, args: readonly string[]): string {
+  return [command, ...args].map(shellQuote).join(" ");
+}
+
+function shellQuote(value: string): string {
+  return /^[A-Za-z0-9_./:@=-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\"'\"'")}'`;
+}
+
 export interface InstallOutcome {
   ok: boolean;
   /** What was run, so a failure can be retried by hand. */
@@ -41,7 +49,7 @@ export async function installIntoPluginsRoot(
   packages: readonly string[],
 ): Promise<InstallOutcome> {
   const args = ["install", "--prefix", root, "--no-audit", "--no-fund", ...packages];
-  const command = `${packageManager()} ${args.join(" ")}`;
+  const command = shellCommand(packageManager(), args);
 
   const result = await runner.run(packageManager(), args, { timeoutMs: 10 * 60 * 1000 });
 

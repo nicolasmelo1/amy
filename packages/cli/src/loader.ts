@@ -64,18 +64,19 @@ export async function load(
  * answer it once with what *is* installed.
  */
 export const NOT_INSTALLED = "not installed";
+const PLUGIN_NOT_INSTALLED = "AMY_PLUGIN_NOT_INSTALLED";
 
 function missing(spec: string, error: unknown, pluginsRoot?: string): string {
   const why = error instanceof Error ? error.message : String(error);
-  if (!isUnresolved(error)) return `${spec}: could not be imported — ${why}`;
+  if (!isUnresolved(error, pluginsRoot)) return `${spec}: could not be imported — ${why}`;
 
   return `${spec}: ${NOT_INSTALLED} — install it, or drop it from the config${pluginsRoot ? ` (${pluginsRoot})` : ""}`;
 }
 
 /** Node's own word for "no such package", told apart from a plugin that threw. */
-function isUnresolved(error: unknown): boolean {
+function isUnresolved(error: unknown, pluginsRoot?: string): boolean {
   const code = (error as { code?: string })?.code;
-  return code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND";
+  return code === PLUGIN_NOT_INSTALLED || (!pluginsRoot && code === "ERR_MODULE_NOT_FOUND");
 }
 
 /**
@@ -157,10 +158,18 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
       // though `import()` can load it. The root still tells us exactly where
       // npm put that package; read its entry with the ESM walk used for a path
       // spec, rather than falling back to amy's own parents or a second list.
-      if ((error as { code?: string })?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
+      const code = (error as { code?: string })?.code;
+      if (code === "MODULE_NOT_FOUND") throw pluginNotInstalled(spec);
+      if (code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
       return packageEntrySpecifier(packageDirectory(pluginsRoot, spec));
     }
   };
+}
+
+function pluginNotInstalled(spec: string): Error & { code: string } {
+  const error = new Error(`${spec} is not in amy's plugins root`) as Error & { code: string };
+  error.code = PLUGIN_NOT_INSTALLED;
+  return error;
 }
 
 /** The directory npm gives one exact package name beneath this root. */
@@ -180,7 +189,5 @@ function resolvedInPluginsRoot(root: string, spec: string, resolved: string): st
   const physicalResolved = fs.realpathSync(resolved);
   const relative = path.relative(nodeModules, physicalResolved);
   if (relative && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative)) return physicalResolved;
-  const error = new Error(`${spec} resolved outside ${nodeModules}`) as Error & { code?: string };
-  error.code = "MODULE_NOT_FOUND";
-  throw error;
+  throw pluginNotInstalled(spec);
 }

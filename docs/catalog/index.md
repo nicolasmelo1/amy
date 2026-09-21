@@ -62,7 +62,7 @@ gh search repos --topic amy-plugin
 Anything either query returns is installable the same way everything else is:
 
 ```sh
-npm install -g @acme/plugin-jira
+amy init --install
 ```
 
 ```yaml

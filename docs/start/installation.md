@@ -72,9 +72,7 @@ Node resolves a package by walking up from the importing module, so a package
 installed beside the command is one the command can import. That is what lets
 an install carry a plugin this repository has never heard of:
 
-```sh
-npm install -g @acme/plugin-jira
-```
+`amy init --install` installs the configured plugins under `~/.amy/plugins`.
 
 If npm exits zero and a package still does not resolve, `amy init` says so
 rather than leaving you with a mount that refuses by name later. The usual
