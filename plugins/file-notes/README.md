@@ -9,7 +9,8 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `notes`
 ## Install
 
 ```sh
-npm install -g @amykit/plugin-file-notes
+# Add @amykit/plugin-file-notes to amy.yaml, then install configured plugins:
+amy init --install
 ```
 
 Then name it in `~/.amy/config.yaml`:

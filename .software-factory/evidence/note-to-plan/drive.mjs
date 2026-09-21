@@ -62,6 +62,20 @@ function amy(root, args) {
 /** The second profile, which is the one this run is about. */
 const plans = (root, args) => amy(root, ["--workflow", "plans", ...args]);
 
+function installPlugins(root) {
+  const tarballs = process.env.AMY_E2E_TARBALLS;
+  if (!tarballs) throw new Error("the scenario did not name the packaged plugins");
+  const packages = fs.readdirSync(tarballs)
+    .filter((name) => name.endsWith(".tgz"))
+    .map((name) => path.join(tarballs, name));
+  const result = spawnSync(
+    "npm",
+    ["install", "--prefix", path.join(root, "home", ".amy", "plugins"), "--no-audit", "--no-fund", ...packages],
+    { encoding: "utf-8" },
+  );
+  if (result.status !== 0) throw new Error(`the scenario could not install the packaged plugins: ${result.stderr}`);
+}
+
 const recordsDir = (root) => path.join(root, "home", ".amy", "plans", "records");
 const notesDir = (root) => path.join(root, "home", ".amy", "notes");
 const worldDir = (root) => path.join(root, "world");
@@ -127,6 +141,7 @@ function walkthrough() {
 
   const init = amy(root, ["init"]);
   configure(root);
+  installPlugins(root);
 
   const version = amy(root, ["--version"]);
 

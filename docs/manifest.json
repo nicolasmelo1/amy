@@ -278,6 +278,11 @@
           "description": ""
         },
         {
+          "title": "Plugins live where amy can see them",
+          "path": "/design/plugins-live-in-amy-home",
+          "description": ""
+        },
+        {
           "title": "The forge is asked, not run beside",
           "path": "/design/the-forge-is-asked-not-run-beside",
           "description": ""
@@ -761,6 +766,11 @@
           "depth": 3,
           "title": "amy doctor and amy plugin list resolve a workflow of your own the same way mounting does, so amy plugin list no longer reports a directory written by amy workflow new as FAIL, and doctor validates its settings against the schema it declares.",
           "slug": "amy-doctor-and-amy-plugin-list-resolve-a-workflow-of-your-own-the-same-way-mounting-does-so-amy-plugin-list-no-longer-reports-a-directory-written-by-amy-workflow-new-as-fail-and-doctor-validates-its-settings-against-the-schema-it-declares"
+        },
+        {
+          "depth": 3,
+          "title": "Plugins configured for an amy install now live in ~/.amy/plugins: amy init --install installs them through that root rather than npm's global prefix, and mounting plus amy plugin list resolve from the same root.",
+          "slug": "plugins-configured-for-an-amy-install-now-live-in-amyplugins-amy-init---install-installs-them-through-that-root-rather-than-npms-global-prefix-and-mounting-plus-amy-plugin-list-resolve-from-the-same-root"
         },
         {
           "depth": 3,
@@ -1740,6 +1750,33 @@
           "depth": 2,
           "title": "What this does not finish",
           "slug": "what-this-does-not-finish"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/plugins-live-in-amy-home",
+      "file": "docs/design/plugins-live-in-amy-home.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/plugins-live-in-amy-home.md",
+      "title": "Plugins live where amy can see them",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "The proof",
+          "slug": "the-proof"
         },
         {
           "depth": 2,
@@ -3359,8 +3396,8 @@
         },
         {
           "depth": 3,
-          "title": "Why global",
-          "slug": "why-global"
+          "title": "Amy's plugin root",
+          "slug": "amys-plugin-root"
         },
         {
           "depth": 3,
@@ -6749,7 +6786,10 @@
           "plugins.a_missing_plugin_is_refused_at_boot",
           "plugins.the_refusal_names_what_was_installed_instead",
           "plugins.nothing_is_touched_before_the_refusal",
-          "plugins.the_listing_tells_installed_from_mounted"
+          "plugins.the_listing_tells_installed_from_mounted",
+          "plugins.resolve_from_amys_own_root",
+          "plugins.a_global_install_is_not_needed",
+          "plugins.the_listing_is_read_from_one_directory"
         ],
         "scenario": ".software-factory/evidence/installed-plugins-scenario.sh"
       },
@@ -7274,6 +7314,18 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "plugins-live-in-amy-home",
+        "title": "Plugins configured for an amy install now live in `~/.amy/plugins`: `amy init --install` installs them through that root rather than npm's global prefix, and mounting plus `amy plugin list` resolve from the same root.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "the-docs-say-where-a-workflow-lives",

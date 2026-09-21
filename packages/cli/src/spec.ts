@@ -151,7 +151,7 @@ function resolvePath(candidate: string, cwd: string): Resolved {
     throw new Error(`${candidate} is not a package: its package.json is missing at ${absolute}`);
   }
 
-  return { kind: "path", install: absolute, imported: entrySpecifier(absolute), absolute };
+  return { kind: "path", install: absolute, imported: packageEntrySpecifier(absolute), absolute };
 }
 
 /**
@@ -186,7 +186,7 @@ function isPackageDirectory(directory: string): boolean {
  * `package.json` that cannot be read or parsed is refused with the
  * error carried as its cause rather than resolved past.
  */
-function entrySpecifier(directory: string): string {
+export function packageEntrySpecifier(directory: string): string {
   const manifestPath = path.join(directory, "package.json");
   let manifest: unknown;
   try {

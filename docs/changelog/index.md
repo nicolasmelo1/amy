@@ -40,6 +40,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### Plugins configured for an amy install now live in `~/.amy/plugins`: `amy init --install` installs them through that root rather than npm's global prefix, and mounting plus `amy plugin list` resolve from the same root.
+
+`minor` · `@amykit/cli`
+
+
+
 ### The config template and the `/amy-workflow` skill say that a workflow of your own lives in `~/.amy/workflows`, instead of naming `amy add`, a command nothing ships, and telling a harness to install a package it does not need.
 
 `patch` · `@amykit/cli`

@@ -9,7 +9,8 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `tasks`
 ## Install
 
 ```sh
-npm install -g @amykit/plugin-file-tasks
+# Add @amykit/plugin-file-tasks to amy.yaml, then install configured plugins:
+amy init --install
 ```
 
 Then name it in `~/.amy/config.yaml`:

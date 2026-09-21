@@ -98,7 +98,7 @@ done while it lists a problem; name each one and what fixes it.
 ## The failures that are worth knowing before you hit them
 
 - **A plugin named and not installed is refused at boot**, with the list of
-  what *is* installed. That is a typo, nearly always. `npm install -g <name>`
+  what *is* installed. That is a typo, nearly always. `amy init --install`
   fixes it; `amy plugin list` shows both sides.
 - **`LINEAR_API_KEY` lives in `~/.amy/.env`**, not in the shell profile, so a
   loop started from a launchd agent has it too.

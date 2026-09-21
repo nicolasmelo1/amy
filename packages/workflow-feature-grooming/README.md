@@ -9,7 +9,8 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `groomi
 ## Install
 
 ```sh
-npm install -g @amykit/workflow-feature-grooming
+# Add @amykit/workflow-feature-grooming to amy.yaml, then install configured plugins:
+amy init --install
 ```
 
 Then name it in `~/.amy/config.yaml`:

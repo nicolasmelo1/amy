@@ -11,7 +11,8 @@ knowing what any of its states mean.
 ## Install
 
 ```sh
-npm install -g @amykit/workflow-errand
+# Add @amykit/workflow-errand to amy.yaml, then install configured plugins:
+amy init --install
 ```
 
 Then name it in `~/.amy/config.yaml`:

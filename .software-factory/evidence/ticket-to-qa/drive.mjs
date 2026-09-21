@@ -318,6 +318,20 @@ function reactions() {
   };
 }
 
+function installPlugins(root) {
+  const tarballs = process.env.AMY_E2E_TARBALLS;
+  if (!tarballs) throw new Error("the scenario did not name the packaged plugins");
+  const packages = fs.readdirSync(tarballs)
+    .filter((name) => name.endsWith(".tgz"))
+    .map((name) => path.join(tarballs, name));
+  const result = spawnSync(
+    "npm",
+    ["install", "--prefix", path.join(root, "home", ".amy", "plugins"), "--no-audit", "--no-fund", ...packages],
+    { encoding: "utf-8" },
+  );
+  if (result.status !== 0) throw new Error(`the scenario could not install the packaged plugins: ${result.stderr}`);
+}
+
 /**
  * One whole run, in its own world.
  *
@@ -340,6 +354,7 @@ function lifecycle() {
     );
 
     configure(root, tracker.endpoint);
+    installPlugins(root);
     world.doctorStale = amy(root, ["doctor"]);
     world.confirm = amy(root, ["roster", "confirm"]);
     world.doctor = amy(root, ["doctor"]);

@@ -9,7 +9,8 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `queue`
 ## Install
 
 ```sh
-npm install -g @amykit/plugin-file-queue
+# Add @amykit/plugin-file-queue to amy.yaml, then install configured plugins:
+amy init --install
 ```
 
 Then name it in `~/.amy/config.yaml`:

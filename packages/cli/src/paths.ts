@@ -19,6 +19,14 @@ export function paths(home: string) {
     stop: path.join(home, "PAUSED"),
     /** Written by the daemon, so a second one refuses rather than doubles up. */
     pid: path.join(home, "daemon.pid"),
+    /**
+     * The npm root amy's plugins are installed into and resolved from.
+     *
+     * Part of the state like everything else here, so `AMY_HOME` moves it with
+     * the rest: a plugin follows its machine's state directory, not a global
+     * prefix shared with whatever else npm has put there.
+     */
+    plugins: path.join(home, "plugins"),
   };
 }
 

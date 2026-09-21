@@ -123,6 +123,12 @@ host that cannot resolve a plugin.
 - [x] `amy plugin list` distinguishes installed from mounted, so a missing
       plugin is visible before it is needed
       (proof: assertion:plugins.the_listing_tells_installed_from_mounted)
+- [x] A plugin installed under `~/.amy/plugins` mounts, with no global package
+      needed (proof: assertion:plugins.resolve_from_amys_own_root)
+- [x] Installing the plugins a config names touches no global npm prefix
+      (proof: assertion:plugins.a_global_install_is_not_needed)
+- [x] The installed listing reads the one plugins root rather than a parent
+      walk (proof: assertion:plugins.the_listing_is_read_from_one_directory)
 
 **Exit condition:** a second machine with node, `@amykit/cli` and only the
 plugins it needs runs work end to end, a workflow it wrote itself drives on

@@ -55,4 +55,5 @@ trap 'exit 143' TERM
 "$repo/scripts/install.sh" "$bin" >/dev/null
 test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
 
-AMY_E2E_PIDFILE="$pids" node "$here/ticket-to-qa/drive.mjs" "$here/ticket-to-qa" "$bin/amy" "$report" $keep
+AMY_E2E_PIDFILE="$pids" AMY_E2E_TARBALLS="$bin/../lib/amy/packages" \
+  node "$here/ticket-to-qa/drive.mjs" "$here/ticket-to-qa" "$bin/amy" "$report" $keep

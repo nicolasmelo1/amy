@@ -51,9 +51,8 @@ These are not installed yet:
 Install them now? [Y/n]
 ```
 
-It asks rather than assuming, because installing into a global prefix is a
-change to the machine and not to amy. With nothing to ask on — a script, a
-pipe, CI — it prints the command instead of running it, and `--install` is how
+It asks rather than assuming, because installing into Amy's private plugin root
+is a change to Amy's state. With nothing to ask on — a script, a pipe, CI — it prints the command instead of running it, and `--install` is how
 a pipeline says yes:
 
 ```sh
@@ -66,20 +65,16 @@ run `amy init` again. Adding one of your own is `amy workflow new <name>`, which
 writes the directory and the config block together and installs nothing — see
 [Workflows and profiles](workflows-and-profiles.md).
 
-### Why global
+### Amy's plugin root
 
-Node resolves a package by walking up from the importing module, so a package
-installed beside the command is one the command can import. That is what lets
-an install carry a plugin this repository has never heard of:
-
-```sh
-npm install -g @acme/plugin-jira
-```
+Amy resolves configured plugins only from `~/.amy/plugins` (or
+`$AMY_HOME/plugins`). `amy init --install` writes packages there with npm's
+explicit prefix, so its result does not depend on npm's global prefix or on
+where the command itself is installed.
 
 If npm exits zero and a package still does not resolve, `amy init` says so
-rather than leaving you with a mount that refuses by name later. The usual
-cause is a global prefix that is not the one amy is installed under —
-`npm prefix -g` is the thing to compare.
+rather than leaving you with a mount that refuses by name later. Check that
+package under Amy's plugin root, then rerun `amy init --install`.
 
 ### A plugin a config names and nothing installed
 

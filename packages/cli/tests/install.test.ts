@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
-import { installGlobally, packageManager } from "../src/install.js";
+import { ensurePluginsRoot, installIntoPluginsRoot, packageManager, shellCommand } from "../src/install.js";
 
 describe("packageManager", () => {
   it("is `npm` where a shell is not needed to find it", () => {
@@ -14,17 +17,33 @@ describe("packageManager", () => {
     // is invisible on the machine this was written on.
     expect(packageManager("win32")).toBe("npm.cmd");
   });
+
+  it("quotes Windows shell metacharacters in a command meant for copy and paste", () => {
+    expect(shellCommand("npm", ["install", "https://host/plugin.tgz?x=1&y=%PATH%!"], "win32"))
+      .toBe('npm install "https://host/plugin.tgz?x=1^&y=^%PATH^%^!"');
+  });
 });
 
-describe("installGlobally", () => {
-  it("installs into the global prefix, where amy resolves plugins from", async () => {
+describe("installIntoPluginsRoot", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-install-"));
+  });
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it("installs into amy's own root, which is where amy resolves plugins from", async () => {
     const runner = new ScriptedRunner();
 
-    await installGlobally(runner, ["@amykit/plugin-linear", "@amykit/plugin-github"]);
+    await installIntoPluginsRoot(runner, root, ["@amykit/plugin-linear", "@amykit/plugin-github"]);
 
     expect(runner.calls[0]?.args).toEqual([
       "install",
-      "--global",
+      "--prefix",
+      root,
+      "--no-audit",
+      "--no-fund",
+      "--",
       "@amykit/plugin-linear",
       "@amykit/plugin-github",
     ]);
@@ -33,7 +52,7 @@ describe("installGlobally", () => {
   it("installs every package in one call, so one resolution sees them all", async () => {
     const runner = new ScriptedRunner();
 
-    await installGlobally(runner, ["@amykit/plugin-linear", "@amykit/plugin-github"]);
+    await installIntoPluginsRoot(runner, root, ["@amykit/plugin-linear", "@amykit/plugin-github"]);
 
     expect(runner.calls).toHaveLength(1);
   });
@@ -41,7 +60,7 @@ describe("installGlobally", () => {
   it("allows longer than the runner's default, because a cold cache is not a hang", async () => {
     const runner = new ScriptedRunner();
 
-    await installGlobally(runner, ["@amykit/core"]);
+    await installIntoPluginsRoot(runner, root, ["@amykit/core"]);
 
     expect(runner.calls[0]?.options?.timeoutMs).toBe(10 * 60 * 1000);
   });
@@ -49,9 +68,9 @@ describe("installGlobally", () => {
   it("reports the command it ran, so a failure can be retried by hand", async () => {
     const runner = new ScriptedRunner();
 
-    const outcome = await installGlobally(runner, ["@amykit/core"]);
+    const outcome = await installIntoPluginsRoot(runner, root, ["@amykit/core"]);
 
-    expect(outcome.command).toContain("install --global @amykit/core");
+    expect(outcome.command).toContain(`install --prefix ${root} --no-audit --no-fund -- @amykit/core`);
   });
 
   it("keeps both streams, because npm says the interesting part on either", async () => {
@@ -62,7 +81,7 @@ describe("installGlobally", () => {
       },
     ]);
 
-    const outcome = await installGlobally(runner, ["@amykit/plugin-nope"]);
+    const outcome = await installIntoPluginsRoot(runner, root, ["@amykit/plugin-nope"]);
 
     expect(outcome.ok).toBe(false);
     expect(outcome.output).toContain("added 0 packages");
@@ -74,6 +93,35 @@ describe("installGlobally", () => {
       { match: whenArgsInclude("install"), result: { ok: false, exitCode: 1 } },
     ]);
 
-    await expect(installGlobally(runner, ["@amykit/core"])).resolves.toMatchObject({ ok: false });
+    await expect(installIntoPluginsRoot(runner, root, ["@amykit/core"])).resolves.toMatchObject({ ok: false });
+  });
+});
+
+describe("a plugin root", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-root-"));
+  });
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it("becomes a real npm root the first time it is needed", () => {
+    ensurePluginsRoot(root);
+
+    expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf-8"))).toMatchObject({
+      name: "amy-plugins",
+      private: true,
+    });
+  });
+
+  it("leaves a root that already has a manifest exactly as it was", () => {
+    // An existing manifest is npm's state — the dependency list an install
+    // wrote. Rewriting it would drop what the last install put there.
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), '{"name":"someone-else"}\n', "utf-8");
+
+    ensurePluginsRoot(root);
+
+    expect(fs.readFileSync(path.join(root, "package.json"), "utf-8")).toBe('{"name":"someone-else"}\n');
   });
 });
