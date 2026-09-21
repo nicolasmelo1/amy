@@ -1,8 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { AmyConfig, DEFAULT_CONFIG } from "../src/config.js";
-import { NOT_INSTALLED, installedPlugins, load } from "../src/loader.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { NOT_INSTALLED, installedPlugins, load, pluginsRootResolver } from "../src/loader.js";
 import { Profile, recommendedFor } from "../src/profiles.js";
-import { pluginList } from "../src/slices.js";
 
 /**
  * A workflow declared the way a config declares one.
@@ -17,12 +19,6 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
-};
-
-/** A config that names the workflow above, as an operator's would. */
-const DEFAULT_CONFIG_DECLARING: AmyConfig = {
-  ...DEFAULT_CONFIG,
-  workflows: { tickets: { workflow: "@amykit/workflow-ticket-to-qa" } },
 };
 
 describe("load", () => {
@@ -102,25 +98,84 @@ describe("load", () => {
 });
 
 describe("what this machine has", () => {
-  it("reads the plugins off disk rather than off a list", () => {
-    const found = installedPlugins();
+  let home: string;
+  let root: string;
 
-    expect(found).toContain("@amykit/plugin-serial-engine");
-    expect(found).toContain("@amykit/workflow-ticket-to-qa");
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-loader-home-"));
+    root = path.join(home, "plugins");
   });
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
-  it("reports nothing about a directory that holds no node_modules", () => {
-    expect(installedPlugins(new URL("file:///"))).toEqual([]);
-  });
+  function packageAt(
+    name: string,
+    source = 'export const plugin = { name: "@acme/plugin-oncall", version: "1.0.0", register() {} };\n',
+    manifest: object = { name, type: "module", exports: "./index.js" },
+  ): string {
+    const directory = path.join(root, "node_modules", ...name.split("/"));
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, "package.json"), `${JSON.stringify(manifest)}\n`, "utf-8");
+    fs.writeFileSync(path.join(directory, "index.js"), source, "utf-8");
+    return directory;
+  }
 
-  it("has every plugin a declared profile would mount", () => {
-    // Opt-in means "not mounted", not "not installable": the gating happens
-    // in `pluginList`, by whether the ladder names the harness.
-    const found = installedPlugins();
+  it("resolves a plugin from amy's own root, not from the command's parents", async () => {
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");
+    packageAt("@acme/plugin-oncall");
 
-    for (const spec of recommendedFor(TICKETS)) expect(found).toContain(spec);
-    expect(pluginList(DEFAULT_CONFIG_DECLARING, TICKETS).length).toBeLessThan(
-      recommendedFor(TICKETS).length,
+    const loaded = await load(
+      ["@acme/plugin-oncall"],
+      pluginsRootResolver(home, root),
+      root,
     );
+
+    expect(loaded.problems).toEqual([]);
+    expect(loaded.plugins.map((plugin) => plugin.name)).toEqual(["@acme/plugin-oncall"]);
+  });
+
+  it("resolves an import-only exports arm from the same root", async () => {
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");
+    packageAt(
+      "@acme/plugin-import-only",
+      'export const plugin = { name: "@acme/plugin-import-only", version: "1.0.0", register() {} };\n',
+      { name: "@acme/plugin-import-only", type: "module", exports: { ".": { import: "./index.js" } } },
+    );
+
+    const loaded = await load(
+      ["@acme/plugin-import-only"],
+      pluginsRootResolver(home, root),
+      root,
+    );
+
+    expect(loaded.problems).toEqual([]);
+    expect(loaded.plugins.map((plugin) => plugin.name)).toEqual(["@acme/plugin-import-only"]);
+  });
+
+  it("reads the listing from that one root, rather than a parent walk", () => {
+    packageAt("@acme/plugin-oncall");
+    packageAt("@acme/not-a-plugin");
+
+    expect(installedPlugins(root)).toEqual(["@acme/plugin-oncall"]);
+  });
+
+  it("reports nothing about a root that holds no node_modules", () => {
+    expect(installedPlugins(root)).toEqual([]);
+  });
+
+  it("keeps a spec that is already a path unchanged", async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-loader-path-"));
+    const entry = path.join(directory, "index.js");
+    fs.writeFileSync(entry, 'export const plugin = { name: "@acme/plugin-path", version: "1.0.0", register() {} };\n', "utf-8");
+    try {
+      const spec = pathToFileURL(entry).href;
+      const loaded = await load([spec], pluginsRootResolver(home, root), root);
+
+      expect(loaded.problems).toEqual([]);
+      expect(loaded.bySpec.get(spec)?.name).toBe("@acme/plugin-path");
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

@@ -25,22 +25,22 @@ case "$report" in /*) ;; *) report="$PWD/$report" ;; esac
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-mkdir -p "$work/bin" "$work/home"
+mkdir -p "$work/bin" "$work/home" "$work/global"
+npm_real=$(command -v npm)
 
-# What this machine has any use for: a queue, a store, an engine and somewhere
-# to be told something. No tracker, no forge, no agent, no gate, and not the
-# second workflow this repository ships.
-AMY_PACKAGES="@amykit/cli @amykit/plugin-serial-engine @amykit/plugin-notify-fanout @amykit/plugin-notify-inbox" \
+# Amy is installed alone. The packages its config names arrive after that,
+# through `amy init --install`, not in the command's own install.
+AMY_PACKAGES="@amykit/cli" \
   AMY_INSTALL_LIB="$work/lib" "$repo/scripts/install.sh" "$work/bin" >/dev/null
 amy="$work/bin/amy"
 test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
 
-# The third-party workflow, copied out of the repository before it is
-# installed. A `file:` dependency npm may link would leave this checkout
-# reachable from the install, which is the one thing being disproved.
+# The workflow is copied out before npm sees it, so the installed machine has
+# no path back into this checkout. The npm stand-in answers named packages
+# from the tarballs the command install made and answers the third-party name
+# from that copy; the CLI is still the process that calls npm, with its own
+# `--prefix` root. A registry would answer the same names on a real machine.
 cp -R "$here/installed-plugins/workflow-oncall" "$work/third-party"
-(cd "$work/lib" && npm install --install-links --no-audit --no-fund --loglevel=error \
-  "$work/third-party" >/dev/null)
 
 # amy keeps its state in one place per machine, so this run gets its own.
 export HOME="$work/home"
@@ -65,6 +65,43 @@ notify:
   inbox: true
 YAML
 
+# npm sees the command's requested package names. The stand-in maps the names
+# to this run's artifacts, logs the exact argv, and delegates the real install
+# with the prefix amy supplied. It is deliberately not a fake success: npm
+# writes the root and Node loads the files it wrote.
+cat > "$work/bin/npm" <<SH
+#!/bin/sh
+set -eu
+printf '%s\n' "\$*" >> "$work/npm.log"
+args=""
+for arg in "\$@"; do
+  case "\$arg" in
+    @amykit/*)
+      stem=\$(printf '%s' "\${arg#@amykit/}" | tr '/' '-')
+      set -- "\$@"
+      args="\$args '$work/lib/packages/amykit-\$stem-'*'.tgz'"
+      ;;
+    @acme/workflow-oncall)
+      args="\$args '$work/third-party'"
+      ;;
+    *)
+      args="\$args '\$arg'"
+      ;;
+  esac
+done
+# The artifact paths are made by this scenario, without spaces; eval expands
+# the tarball glob only after the package name above has become that path.
+eval "exec '$npm_real' \$args"
+SH
+chmod +x "$work/bin/npm"
+export PATH="$work/bin:$PATH"
+export NPM_CONFIG_PREFIX="$work/global"
+
+# The config names only packages. `amy init --install` is the sole installer
+# of the workflow and support plugins below, and it writes all of them under
+# `$HOME/.amy/plugins`.
+init=$("$amy" init --install 2>&1 || echo "")
+
 assertions=""
 record() {
   status=failed
@@ -78,16 +115,41 @@ says() {
   case "$2" in *"$3"*) record "$1" 0 ;; *) record "$1" 1 ;; esac
 }
 
-# 1. The machine carries what it uses, and nothing else.
-if [ -d "$work/lib/node_modules/@amykit/plugin-linear" ] ||
-   [ -d "$work/lib/node_modules/@amykit/workflow-note-to-plan" ] ||
-   [ -d "$work/lib/node_modules/@amykit/plugin-codex" ]; then
+# 1. Amy installed every configured package into its own npm root, through the
+# command. The global prefix is deliberately empty and no npm call may carry
+# `--global`: a root install that silently fell back would leave the same
+# machine-wide side effect this change exists to remove.
+plugins="$work/home/.amy/plugins"
+if [ -d "$plugins/node_modules/@acme/workflow-oncall" ] &&
+   [ -f "$plugins/package.json" ]; then
+  record plugins.resolve_from_amys_own_root 0
+else
+  record plugins.resolve_from_amys_own_root 1
+fi
+
+if [ -d "$plugins/node_modules/@amykit/plugin-linear" ] ||
+   [ -d "$plugins/node_modules/@amykit/workflow-note-to-plan" ] ||
+   [ -d "$plugins/node_modules/@amykit/plugin-codex" ]; then
   record plugins.a_machine_installs_only_what_it_uses 1
 else
   record plugins.a_machine_installs_only_what_it_uses 0
 fi
 
-# 2. Everything the config names resolves, with no table naming any of it.
+if [ ! -e "$work/global/lib/node_modules" ] &&
+   ! grep -q -- '--global' "$work/npm.log" &&
+   grep -q -- "--prefix $plugins" "$work/npm.log"; then
+  record plugins.a_global_install_is_not_needed 0
+else
+  record plugins.a_global_install_is_not_needed 1
+fi
+
+# Something parent-walk resolution would have found, but the explicit root
+# must not. It lives beside the command, never in `.amy/plugins`.
+mkdir -p "$work/lib/node_modules/@amykit/plugin-parent-walk"
+printf '{"name":"@amykit/plugin-parent-walk"}\n' > "$work/lib/node_modules/@amykit/plugin-parent-walk/package.json"
+
+# 2. Everything the config names resolves from that root, with no table naming
+# any of it. The listing also says nothing about the parent-only fake package.
 listing=$("$amy" plugin list 2>&1 || echo "")
 case "$listing" in
   *FAIL*|*"not installed"*) record plugins.resolve_at_run_time_with_no_table 1 ;;
@@ -95,7 +157,11 @@ case "$listing" in
   *) record plugins.resolve_at_run_time_with_no_table 1 ;;
 esac
 says plugins.a_workflow_from_outside_this_repository_mounts "$listing" "workflow: oncall"
-says plugins.the_listing_tells_installed_from_mounted "$listing" "installed but not mounted"
+says plugins.the_listing_tells_installed_from_mounted "$listing" "installed, 6 mounted"
+case "$listing" in
+  *plugin-parent-walk*) record plugins.the_listing_is_read_from_one_directory 1 ;;
+  *) record plugins.the_listing_is_read_from_one_directory 0 ;;
+esac
 
 # 3. The engine drives it, knowing nothing about it.
 discovered=$("$amy" discover 2>&1 || echo "")
@@ -143,7 +209,7 @@ total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)
 status=passed
 if [ "$failed" != "0" ]; then status=failed; fi
 
-installed=$(ls "$work/lib/node_modules/@amy" | wc -l | tr -d ' ')
+installed=$(ls "$plugins/node_modules/@amykit" | wc -l | tr -d ' ')
 
 cat > "$report" <<JSON
 {

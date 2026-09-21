@@ -50,19 +50,19 @@ import {
 import { budgetLines } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
-import { LoadResult, NOT_INSTALLED, installedPlugins, load } from "./loader.js";
+import { LoadResult, NOT_INSTALLED, installedPlugins, load, pluginsRootResolver } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
-import { installGlobally } from "./install.js";
+import { ensurePluginsRoot, installIntoPluginsRoot } from "./install.js";
 import { clearDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profilePaths } from "./paths.js";
-import { checkWorkflow, localWorkflow, workflowSpecifier, workflowsDirectory, writeWorkflow } from "./workflow.js";
+import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
 // harness you are in, from wherever you happen to be standing.
@@ -85,11 +85,14 @@ loadEnv(process.cwd());
  * Every load resolves the same way, or a workflow of your own exists only for
  * the command that mounts it.
  *
- * The resolver was passed at one of three call sites, so `plugin list`
- * reported a directory `amy workflow new` had just written as `FAIL`.
+ * One resolver for every command, built once from the state directory: the
+ * local workflow directory wins, the plugin root answers a package name, and
+ * a spec that is already a file or URL passes through. A resolver passed at
+ * one call site and not the others is what made `plugin list` report a
+ * directory `amy workflow new` had just written as `FAIL`.
  */
 function loadMountable(specs: readonly string[]): Promise<LoadResult> {
-  return load(specs, (spec) => workflowSpecifier(home, spec));
+  return load(specs, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
 }
 
 /**
@@ -174,7 +177,7 @@ async function engineOrExit(): Promise<Engine> {
 
 /** What this machine has, for a refusal to be answerable rather than final. */
 function installed(): string {
-  const found = installedPlugins();
+  const found = installedPlugins(paths(home).plugins);
   return found.length > 0 ? found.join(", ") : "nothing that looks like a plugin";
 }
 
@@ -234,7 +237,7 @@ program
     const wanted = Object.values(profiles(config)).flatMap((profile) =>
       pluginList(config, profile),
     );
-    const absent = [...new Set(wanted)].filter((name) => !installedPlugins().includes(name));
+    const absent = [...new Set(wanted)].filter((name) => !installedPlugins(place.plugins).includes(name));
     if (absent.length === 0) {
       if (wanted.length === 0) {
         console.log("\nkept the plugins it did not need: nothing is mounted yet.");
@@ -249,11 +252,15 @@ program
 /**
  * Installs what the config asks for and this machine has not got.
  *
- * Asked rather than assumed, because installing into a global prefix is a
- * change to the machine and not to amy. With nothing to ask on — a script, a
- * pipe, CI — it prints the command instead of running it: a setup step that
- * silently installed twenty packages in somebody's pipeline would be a
- * surprise nobody consented to, and `--install` is how a pipeline consents.
+ * Asked rather than assumed, because installing packages is a change to amy's
+ * own state directory and consent is how it is given. With nothing to ask on —
+ * a script, a pipe, CI — it prints the command instead of running it: a setup
+ * step that silently installed twenty packages in somebody's pipeline would be
+ * a surprise nobody consented to, and `--install` is how a pipeline consents.
+ *
+ * Into `<home>/plugins`, amy's own npm root, rather than a global prefix: the
+ * packages are amy's, resolved through the root the loader reads, and nothing
+ * outside `.amy` changes when one is added.
  */
 async function supply(absent: readonly string[], chosen?: boolean): Promise<void> {
   console.log(`\nThese are not installed yet:`);
@@ -262,12 +269,13 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<void
   const wanted = chosen ?? (process.stdin.isTTY ? confirm() : false);
 
   if (!wanted) {
-    console.log(`\nInstall them with:\n  npm install -g ${absent.join(" ")}`);
+    console.log(`\nInstall them with:\n  npm install --prefix ${paths(home).plugins} ${absent.join(" ")}`);
     return;
   }
 
-  console.log(`\nInstalling ${absent.length} package(s)…`);
-  const outcome = await installGlobally(runner, absent);
+  ensurePluginsRoot(paths(home).plugins);
+  console.log(`\nInstalling ${absent.length} package(s) into ${paths(home).plugins}…`);
+  const outcome = await installIntoPluginsRoot(runner, paths(home).plugins, absent);
 
   if (!outcome.ok) {
     console.error(`\n${outcome.command} failed:`);
@@ -277,13 +285,14 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<void
     return;
   }
 
-  const still = absent.filter((name) => !installedPlugins().includes(name));
+  const still = absent.filter((name) => !installedPlugins(paths(home).plugins).includes(name));
   if (still.length > 0) {
-    // npm exited zero and the packages are not resolvable, which usually
-    // means the global prefix is not one this command can see. Saying so
-    // beats a green install followed by a mount that refuses by name.
+    // npm exited zero and the packages are not in the root it was handed,
+    // which means the root npm wrote is not the one this command reads.
+    // Saying so beats a green install followed by a mount that refuses by
+    // name.
     console.error(`\nnpm succeeded, but these still do not resolve: ${still.join(", ")}`);
-    console.error("Check `npm prefix -g` against where amy is installed.");
+    console.error(`Check what is in ${paths(home).plugins} against the root npm wrote.`);
     process.exitCode = 1;
     return;
   }
@@ -972,7 +981,7 @@ pluginCommand
     // second is useless without the first: a plugin on disk that no config
     // names does nothing, and a config naming one that is not there is a
     // boot refusal waiting to happen.
-    const present = installedPlugins();
+    const present = installedPlugins(paths(home).plugins);
     const idle = present.filter((name) => !specs.includes(name));
     console.log(`\n${present.length} installed, ${specs.length} mounted`);
     if (idle.length > 0) console.log(`installed but not mounted: ${idle.join(", ")}`);
@@ -1154,7 +1163,7 @@ workflowCommand
     const config = loadConfig(home);
     const known = profiles(config);
     const asked = resolveProfile(config, undefined);
-    const present = installedPlugins();
+    const present = installedPlugins(paths(home).plugins);
     const live = running(paths(home).pid);
 
     for (const profile of Object.values(known)) {

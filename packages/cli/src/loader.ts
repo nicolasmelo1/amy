@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { Plugin } from "@amykit/core";
+import { localWorkflow } from "./workflow.js";
+import { packageEntrySpecifier } from "./spec.js";
 
 export interface LoadResult {
   plugins: Plugin[];
@@ -20,10 +23,16 @@ export interface LoadResult {
  * disk, or a path, and it resolves at run time like any other import — which
  * is what lets an install carry a plugin this repository has never heard of,
  * and lets a machine skip the ones it has no use for.
+ *
+ * Resolution is explicit rather than inherited: a package is looked up in the
+ * npm root amy's state directory holds, exactly the way Node would resolve it
+ * from inside that root, so where this file happens to sit has nothing to do
+ * with what an install can mount.
  */
 export async function load(
   specs: readonly string[],
   resolve: (spec: string) => string = (spec) => spec,
+  pluginsRoot?: string,
 ): Promise<LoadResult> {
   const plugins: Plugin[] = [];
   const problems: string[] = [];
@@ -39,7 +48,7 @@ export async function load(
       plugins.push(module.plugin);
       bySpec.set(spec, module.plugin);
     } catch (error) {
-      problems.push(missing(spec, error));
+      problems.push(missing(spec, error, pluginsRoot));
     }
   }
 
@@ -56,38 +65,35 @@ export async function load(
  */
 export const NOT_INSTALLED = "not installed";
 
-function missing(spec: string, error: unknown): string {
+function missing(spec: string, error: unknown, pluginsRoot?: string): string {
   const why = error instanceof Error ? error.message : String(error);
   if (!isUnresolved(error)) return `${spec}: could not be imported — ${why}`;
 
-  return `${spec}: ${NOT_INSTALLED} — install it, or drop it from the config`;
+  return `${spec}: ${NOT_INSTALLED} — install it, or drop it from the config${pluginsRoot ? ` (${pluginsRoot})` : ""}`;
 }
 
 /** Node's own word for "no such package", told apart from a plugin that threw. */
 function isUnresolved(error: unknown): boolean {
-  return (error as { code?: string })?.code === "ERR_MODULE_NOT_FOUND";
+  const code = (error as { code?: string })?.code;
+  return code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND";
 }
 
 /**
- * What this install could mount, read off disk rather than off a list.
+ * What this install could mount, read off one directory rather than walked.
  *
- * Walks up from this module the way Node's own resolution does, so it sees
- * the same `node_modules` an import would. Only names that look like a plugin
- * or a workflow are reported: the rest is the dependency tree, and nobody
- * mounting a plugin wants to read it.
+ * The npm root amy keeps under its state directory holds the packages amy's
+ * config may name, and the walk Node does from this module's own location
+ * cannot see it — the command's file sits in a checkout or an install
+ * prefix, and the root sits in `.amy`. Reading it directly makes the listing
+ * an answer instead of a heuristic that pattern-matches whatever a parent
+ * walk happened to find, and stops the refusal's "installed instead" list
+ * depending on how amy itself was put on the machine.
  */
-export function installedPlugins(from: URL = new URL("./", import.meta.url)): string[] {
+export function installedPlugins(root: string): string[] {
   const found = new Set<string>();
 
-  let directory = fileURLToPath(from);
-  for (let depth = 0; depth < 12; depth += 1) {
-    for (const name of packagesIn(path.join(directory, "node_modules"))) {
-      if (/(^|\/)(plugin|workflow)-/.test(name)) found.add(name);
-    }
-
-    const parent = path.dirname(directory);
-    if (parent === directory) break;
-    directory = parent;
+  for (const name of packagesIn(path.join(root, "node_modules"))) {
+    if (/(^|\/)(plugin|workflow)-/.test(name)) found.add(name);
   }
 
   return [...found].sort();
@@ -115,4 +121,50 @@ function read(directory: string): string[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * The resolver that turns a spec into something `import()` takes, through the
+ * npm root amy's state directory keeps.
+ *
+ * `createRequire(<root>/package.json)` is Node's resolution algorithm anchored
+ * at that root, so a name resolves to the file inside it exactly as it would
+ * for a module living there — the same walk, made explicit instead of
+ * inherited from wherever amy's own file happens to sit. The file Node names
+ * is then imported as a `file:` URL. A workflow of your own is resolved by
+ * its directory first, and a spec that is a path resolves as itself; both
+ * arrive here already a specifier, because that is what the resolver contract
+ * has always handed `import()`.
+ */
+export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: string) => string {
+  const manifest = path.join(pluginsRoot, "package.json");
+
+  return (spec: string) => {
+    const local = localWorkflow(home, spec);
+    if (local) return local;
+
+    // A specifier that is already a URL — a path spec the CLI resolved to its
+    // own entry — is not Node's to walk, and handing it to the resolver
+    // rooted at `<root>/package.json` would answer nothing useful.
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(spec)) return spec;
+
+    const requireFromRoot = createRequire(manifest);
+    try {
+      return pathToFileURL(requireFromRoot.resolve(spec)).href;
+    } catch (error) {
+      // `createRequire` follows CommonJS's conditions, so an ESM-only package
+      // exporting just an `import` arm is deliberately invisible to it even
+      // though `import()` can load it. The root still tells us exactly where
+      // npm put that package; read its entry with the ESM walk used for a path
+      // spec, rather than falling back to amy's own parents or a second list.
+      if ((error as { code?: string })?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
+      return packageEntrySpecifier(packageDirectory(pluginsRoot, spec));
+    }
+  };
+}
+
+/** The directory npm gives one exact package name beneath this root. */
+function packageDirectory(root: string, spec: string): string {
+  const parts = spec.startsWith("@") ? spec.split("/", 2) : [spec.split("/", 1)[0]!];
+  return path.join(root, "node_modules", ...parts);
 }
