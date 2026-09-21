@@ -52,11 +52,16 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig): st
   return directory;
 }
 
-export async function checkWorkflow(home: string, name: string, config: AmyConfig): Promise<string[]> {
+export async function checkWorkflow(
+  home: string,
+  name: string,
+  config: AmyConfig,
+  resolve: (spec: string) => string = (spec) => workflowSpecifier(home, spec),
+): Promise<string[]> {
   const profile = config.workflows[name];
   if (!profile) return [`there is no \`${name}\` workflow in the config`];
 
-  const registered = await registeredWorkflow(home, profile.workflow);
+  const registered = await registeredWorkflow(home, profile.workflow, resolve);
   if (typeof registered === "string") return [registered];
   return drive(registered);
 }
@@ -67,8 +72,8 @@ interface RegisteredWorkflow {
   now: () => Date;
 }
 
-async function registeredWorkflow(home: string, spec: string): Promise<RegisteredWorkflow | string> {
-  const plugin = await importedPlugin(home, spec);
+async function registeredWorkflow(home: string, spec: string, resolve: (spec: string) => string): Promise<RegisteredWorkflow | string> {
+  const plugin = await importedPlugin(spec, resolve);
   if (typeof plugin === "string") return plugin;
 
   let workflow: Workflow | undefined;
@@ -86,9 +91,9 @@ async function registeredWorkflow(home: string, spec: string): Promise<Registere
   return runtime ? { workflow, runtime, now } : `${workflow.name}: contributed no runtime, so nothing here knows how to run its actions`;
 }
 
-async function importedPlugin(home: string, spec: string): Promise<Plugin | string> {
+async function importedPlugin(spec: string, resolve: (spec: string) => string): Promise<Plugin | string> {
   try {
-    const loaded = (await import(workflowSpecifier(home, spec))) as { plugin?: Plugin };
+    const loaded = (await import(resolve(spec))) as { plugin?: Plugin };
     return loaded.plugin ?? `${spec}: imported, but exports no \`plugin\``;
   } catch (error) {
     return `${spec}: could not be imported — ${message(error)}`;

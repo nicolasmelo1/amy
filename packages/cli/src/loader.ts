@@ -150,7 +150,7 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
 
     const requireFromRoot = createRequire(manifest);
     try {
-      return pathToFileURL(requireFromRoot.resolve(spec)).href;
+      return pathToFileURL(resolvedInPluginsRoot(pluginsRoot, spec, requireFromRoot.resolve(spec))).href;
     } catch (error) {
       // `createRequire` follows CommonJS's conditions, so an ESM-only package
       // exporting just an `import` arm is deliberately invisible to it even
@@ -167,4 +167,20 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
 function packageDirectory(root: string, spec: string): string {
   const parts = spec.startsWith("@") ? spec.split("/", 2) : [spec.split("/", 1)[0]!];
   return path.join(root, "node_modules", ...parts);
+}
+
+/** Refuse Node's parent walk: this root is the complete installation boundary. */
+function resolvedInPluginsRoot(root: string, spec: string, resolved: string): string {
+  // npm can link a local package into this root. `require.resolve` follows
+  // that link to its source, but the link itself is the root-owned install.
+  if (fs.existsSync(packageDirectory(root, spec))) return resolved;
+
+  const nodeModulesPath = path.join(root, "node_modules");
+  const nodeModules = fs.existsSync(nodeModulesPath) ? fs.realpathSync(nodeModulesPath) : path.resolve(nodeModulesPath);
+  const physicalResolved = fs.realpathSync(resolved);
+  const relative = path.relative(nodeModules, physicalResolved);
+  if (relative && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative)) return physicalResolved;
+  const error = new Error(`${spec} resolved outside ${nodeModules}`) as Error & { code?: string };
+  error.code = "MODULE_NOT_FOUND";
+  throw error;
 }

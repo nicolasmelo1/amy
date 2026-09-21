@@ -153,6 +153,20 @@ describe("what this machine has", () => {
     expect(loaded.plugins.map((plugin) => plugin.name)).toEqual(["@acme/plugin-import-only"]);
   });
 
+  it("refuses Node's parent walk outside the plugins root", async () => {
+    const parent = path.join(home, "node_modules", "@acme", "plugin-parent");
+    fs.mkdirSync(parent, { recursive: true });
+    fs.writeFileSync(path.join(parent, "package.json"), JSON.stringify({ name: "@acme/plugin-parent", type: "module", main: "./index.js" }));
+    fs.writeFileSync(path.join(parent, "index.js"), 'export const plugin = { name: "@acme/plugin-parent", version: "1.0.0", register() {} };\n');
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n');
+
+    const result = await load(["@acme/plugin-parent"], pluginsRootResolver(home, root), root);
+
+    expect(result.problems).toEqual([`@acme/plugin-parent: not installed — install it, or drop it from the config (${root})`]);
+    expect(installedPlugins(root)).not.toContain("@acme/plugin-parent");
+  });
+
   it("reads the listing from that one root, rather than a parent walk", () => {
     packageAt("@acme/plugin-oncall");
     packageAt("@acme/not-a-plugin");

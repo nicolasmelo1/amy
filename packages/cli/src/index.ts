@@ -1146,7 +1146,7 @@ workflowCommand
   .description("Drive a workflow's lifecycle against its stub world")
   .argument("<name>", "the configured workflow to check")
   .action(async (name: string) => {
-    const problems = await checkWorkflow(home, name, loadConfig(home));
+    const problems = await checkWorkflow(home, name, loadConfig(home), pluginsRootResolver(home, paths(home).plugins));
     if (problems.length === 0) {
       console.log(`${name} settles: its walkthrough is green`);
       return;
