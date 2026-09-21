@@ -206,7 +206,23 @@ function entrySpecifier(directory: string): string {
       `${directory} carries an exports map that names no root, so nothing can import the package`,
     );
   }
-  return pathToFileURL(path.join(directory, entry)).href;
+  return pathToFileURL(path.join(directory, packageTarget(directory, entry))).href;
+}
+
+/**
+ * A target `exports` may name, held to Node's own constraints.
+ *
+ * A target must be a relative specifier into the package: it starts with
+ * `./`, carries no `..` segment and no absolute body. Node refuses anything
+ * else, and so does this half — a target like `./../../outside.js` would
+ * otherwise have the loader import a file that is not in the package at all.
+ */
+function packageTarget(directory: string, entry: string): string {
+  const inside = path.resolve(directory, entry);
+  if (path.relative(directory, inside).startsWith("..")) {
+    throw new Error(`${directory} carries an exports target outside the package: ${entry}`);
+  }
+  return entry;
 }
 
 /** The entry the `exports` field names, by Node's exports algorithm. */

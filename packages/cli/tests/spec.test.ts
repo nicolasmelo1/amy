@@ -142,6 +142,9 @@ describe("a plugin spec", () => {
     const subpathOnly = path.join(scratch, "exports-subpath");
     packageAt(subpathOnly, { exports: { "./lib.js": "./lib/plugin.js" } });
 
+    const escaping = path.join(scratch, "exports-escaping");
+    packageAt(escaping, { exports: "./../../outside.js" });
+
     expect(classify("./exports-direct", scratch).imported).toBe(
       pathToFileURL(path.join(direct, "dist/plugin.js")).href,
     );
@@ -156,6 +159,9 @@ describe("a plugin spec", () => {
     );
     expect(() => classify("./exports-subpath", scratch)).toThrow(
       `${subpathOnly} carries an exports map that names no root`,
+    );
+    expect(() => classify("./exports-escaping", scratch)).toThrow(
+      `${escaping} carries an exports target outside the package`,
     );
   });
 
