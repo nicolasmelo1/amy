@@ -1,16 +1,18 @@
 {
-  "name": "@amykit/plugin-file-store",
+  "name": "@amykit/plugin-file-brief-store",
   "version": "0.4.0",
-  "description": "Work records kept as one file per item.",
+  "description": "Briefs kept as one file per item.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",
   "homepage": "https://github.com/nicolasmelo1/amy#readme",
-  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "bugs": {
+    "url": "https://github.com/nicolasmelo1/amy/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nicolasmelo1/amy.git",
-    "directory": "plugins/file-store"
+    "directory": "plugins/file-brief-store"
   },
   "publishConfig": {
     "access": "public",
@@ -28,7 +30,6 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.4.0",
-    "@amykit/plugin-file-brief-store": "^0.4.0"
+    "@amykit/core": "^0.4.0"
   }
 }

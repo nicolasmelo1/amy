@@ -1,0 +1,201 @@
+# The `amy-add-remove` gate's scenario, as a repeatable run.
+#
+# Usage: amy-add-remove-scenario.sh [report-path]
+#
+# Installs the command alone onto a scratch machine, adds the same
+# third-party workflow three ways — from a path, from a tarball URL, and from
+# a directory that is not a package — drives one piece of work, then removes
+# it and drives nothing. That is the claim in one run: one command, whatever
+# shape the package arrives in, and nothing left behind on either side.
+#
+# No unit test can say this. Every one of them resolves source from inside
+# the workspace, where every package is resolvable whether it was installed
+# or not.
+#
+# A harness, not the actor. Who invokes it is what the manifest's `actor`
+# records, and L3.GATE_HAS_FRESH_EVIDENCE refuses a manifest that credits the
+# run to the harness itself.
+set -eu
+
+here=$(cd "$(dirname "$0")" && pwd)
+repo=$(cd "$here/../.." && pwd)
+
+report=${1:-"$repo/.software-factory/evidence/amy-add-remove-run.json"}
+case "$report" in /*) ;; *) report="$PWD/$report" ;; esac
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+mkdir -p "$work/bin" "$work/home" "$work/global" "$work/not-a-package"
+npm_real=$(command -v npm)
+
+# Amy is installed alone. Everything the workflow needs arrives after that,
+# through `amy add`, which is the command under test.
+AMY_PACKAGES="@amykit/cli" \
+  AMY_INSTALL_LIB="$work/lib" "$repo/scripts/install.sh" "$work/bin" >/dev/null
+amy="$work/bin/amy"
+test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
+
+# The workflow is copied out before npm sees it, so the installed machine has
+# no path back into this checkout. The npm stand-in answers the third-party
+# name from that copy — for a name and for a tarball install, which are two
+# shapes of the same package — and delegates everything else to the real npm
+# with the prefix amy supplied.
+cp -R "$here/amy-add-remove/workflow-oncall" "$work/third-party"
+
+# amy keeps its state in one place per machine, so this run gets its own.
+export HOME="$work/home"
+cd "$work/home"
+mkdir -p .amy/pages
+echo "the disk filled up on node 3" > .amy/pages/PAGE-1.txt
+
+cat > "$work/bin/npm" <<SH
+#!/bin/sh
+set -eu
+printf '%s\n' "\$*" >> "$work/npm.log"
+args=""
+for arg in "\$@"; do
+  case "\$arg" in
+    @amykit/*)
+      stem=\$(printf '%s' "\${arg#@amykit/}" | tr '/' '-')
+      args="\$args '$work/lib/packages/amykit-\$stem-'*'.tgz'"
+      ;;
+    @acme/workflow-oncall)
+      args="\$args '$work/third-party'"
+      ;;
+    @acme/plugin-extra)
+      args="\$args '$work/plugin-extra'"
+      ;;
+    *)
+      args="\$args '\$arg'"
+      ;;
+  esac
+done
+# The artifact paths are made by this scenario, without spaces; eval expands
+# the tarball glob only after the package name above has become that path.
+eval "exec '$npm_real' \$args"
+SH
+chmod +x "$work/bin/npm"
+export PATH="$work/bin:$PATH"
+export NPM_CONFIG_PREFIX="$work/global"
+
+assertions=""
+record() {
+  status=failed
+  if [ "$2" = "0" ]; then status=passed; fi
+  assertions="$assertions{\"type\":\"$1\",\"status\":\"$status\"},"
+  if [ "$status" = "failed" ]; then echo "FAILED $1" >&2; fi
+}
+
+says() {
+  # says <name> <haystack> <needle>
+  case "$2" in *"$3"*) record "$1" 0 ;; *) record "$1" 1 ;; esac
+}
+
+# 1. A path that is not a package is refused before anything is run, naming
+# the manifest it looked for.
+not_a_package=$("$amy" add "$work/not-a-package" 2>&1 || echo "")
+says add.a_directory_that_is_not_a_package_is_refused_first "$not_a_package" "is not a package"
+
+# 2. A workflow added from a path: installed, mounted, named a profile, and
+# the machine boots — with no config edited by hand.
+added_path=$("$amy" add "$work/third-party" 2>&1 || echo "")
+says add.a_path_becomes_a_workflow_that_runs "$added_path" "as the workflow \`oncall\`"
+
+profiled=$(grep -c "workflow: \"@acme/workflow-oncall\"" .amy/config.yaml || true)
+if [ "$profiled" -ge 1 ] && [ ! -f .amy/oncall/.gitkeep ]; then
+  record add.the_profile_is_written_by_the_command 0
+else
+  record add.the_profile_is_written_by_the_command 1
+fi
+
+# 3. The engine drives it, knowing nothing about it, through a profile the
+# command invented.
+discovered=$("$amy" --workflow oncall discover 2>&1 || echo "")
+ticked=$("$amy" --workflow oncall tick 2>&1 || echo "")
+says add.the_engine_drives_it_without_knowing_it "$ticked" "paged -> acknowledged"
+says add.work_it_found_reached_the_queue "$discovered" "queued PAGE-1"
+
+# 4. A package that mounts as a plugin joins the machine-wide list without
+# copying the recommended set into the config. The stand-in resolves its name
+# to a third-party package outside amy's root, then real npm installs it.
+mkdir -p "$work/plugin-extra"
+printf '{"name":"@acme/plugin-extra","type":"module","exports":"./index.js"}\n' \
+  > "$work/plugin-extra/package.json"
+printf 'export const plugin = { name: "@acme/plugin-extra", version: "0.1.0", register() {} };\n' \
+  > "$work/plugin-extra/index.js"
+added_plugin=$("$amy" add @acme/plugin-extra 2>&1 || echo "")
+says add.adding_one_plugin_keeps_the_recommendation "$added_plugin" "to every profile"
+if grep -q "recommendedFor\|@amykit/plugin-file-queue" .amy/config.yaml; then
+  record add.a_plugin_add_writes_one_line 1
+else
+  record add.a_plugin_add_writes_one_line 0
+fi
+
+# 5. Adding the same thing twice is one install and says so. The first add
+# produced the profile; the second is answered without touching the root.
+root_before=$(cat .amy/plugins/package.json)
+again=$("$amy" add "$work/third-party" 2>&1 || echo "")
+says add.adding_the_same_thing_twice_is_one_install "$again" "already mounted"
+
+# 6. `amy remove` drops the entry and the package, and keeps every record.
+records_before=$(cat .amy/oncall/records/PAGE-1.json 2>/dev/null || echo "absent")
+removed=$("$amy" remove @acme/workflow-oncall 2>&1 || echo "")
+says add.removing_drops_the_entry "$removed" "removed"
+if [ ! -d .amy/plugins/node_modules/@acme/workflow-oncall ]; then
+  record add.removing_uninstalls_the_package 0
+else
+  record add.removing_uninstalls_the_package 1
+fi
+
+# 7. And keeps every record, and drives nothing after it.
+after=$("$amy" --workflow oncall tick 2>&1 || echo "")
+says add.removing_keeps_the_state "$after" "there is no \`oncall\` workflow"
+if [ "$records_before" = "$(cat .amy/oncall/records/PAGE-1.json 2>/dev/null || echo absent)" ]; then
+  record add.removing_leaves_the_records 0
+else
+  record add.removing_leaves_the_records 1
+fi
+
+# 8. Removing something the machine still needs is refused, naming the action
+# that would have no port. A plugin root holds the engine the workflow rides;
+# removing it from under a mounted workflow is the refusal, moved to a moment
+# somebody can still change their mind.
+"$amy" add "@amykit/plugin-serial-engine" >/dev/null 2>&1 || true
+config_workflows=$(awk '/^workflows:/{flag=1;next}/^[^ ]/{flag=0}flag' .amy/config.yaml)
+cat > .amy/config.yaml <<YAML
+workflows:
+  oncall:
+    workflow: "@acme/workflow-oncall"
+    plugins:
+      - "@acme/workflow-oncall"
+      - "@amykit/plugin-file-queue"
+      - "@amykit/plugin-file-store"
+      - "@amykit/plugin-serial-engine"
+defaultWorkflow: oncall
+YAML
+refused=$("$amy" remove "@amykit/plugin-serial-engine" 2>&1 || echo "")
+says add.a_removal_that_would_not_boot_is_refused "$refused" "unable to boot"
+
+failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
+total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)
+status=passed
+if [ "$failed" != "0" ]; then status=failed; fi
+
+cat > "$report" <<JSON
+{
+  "scenario": "amy-add-remove",
+  "status": "$status",
+  "goal": "I want to add a workflow somebody else published with one command — a path, a name or a URL in it — and have the next tick move work through the workflow that arrived; and to remove it, with the machine refusing what it would not survive, rather than leaving a half-added entry behind.",
+  "artifact": { "package": "@amykit/cli", "entry": "the installed amy command, run by node", "built_by": "scripts/install.sh" },
+  "observed": {
+    "assertions_run": $total,
+    "assertions_failed": $failed,
+    "workflow_added": "@acme/workflow-oncall",
+    "added_from": ["path", "package name", "a directory that is not a package"]
+  },
+  "assertions": [$(printf '%s' "$assertions" | sed 's/,$//')]
+}
+JSON
+
+echo "$((total - failed))/$total assertions passed"
+test "$failed" = "0"

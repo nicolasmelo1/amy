@@ -23,9 +23,10 @@ maintains.
 | `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `agent:codex`<br>`harness:codex` |
 | `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
+| `@amykit/plugin-file-brief-store` | Briefs kept as one file per item. | `brief` |  |
 | `@amykit/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
 | `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
-| `@amykit/plugin-file-store` | Work records kept as one file per item. | `brief`<br>`store` |  |
+| `@amykit/plugin-file-store` | Work records kept as one file per item. | `store` |  |
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
 | `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
@@ -202,6 +203,28 @@ plugins:
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |
 
+### `@amykit/plugin-file-brief-store`
+
+Briefs kept as one file per item.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/file-brief-store` |
+| Mounts | `brief` |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core` |
+
+```yaml
+plugins:
+  "@amykit/plugin-file-brief-store":
+    directory: briefs
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `directory` | `string` | no | `briefs` | where briefs are kept, relative to the workflow state directory |
+
 ### `@amykit/plugin-file-notes`
 
 Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.
@@ -261,21 +284,19 @@ Work records kept as one file per item.
 |  |  |
 | :-- | :-- |
 | Source | `plugins/file-store` |
-| Mounts | `brief`<br>`store` |
+| Mounts | `store` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amykit/core` |
+| Depends on | `@amykit/core`, `@amykit/plugin-file-brief-store` |
 
 ```yaml
 plugins:
   "@amykit/plugin-file-store":
-    briefsDirectory: briefs
     directory: tickets
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `briefsDirectory` | `string` | no | `briefs` | where the briefs are kept, relative to the state directory. One per workflow, for the same reason the records are |
 | `directory` | `string` | no | `tickets` | where the records are kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not read each other's work |
 
 ### `@amykit/plugin-file-tasks`

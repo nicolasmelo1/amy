@@ -248,6 +248,11 @@
           "description": ""
         },
         {
+          "title": "Amy add and amy remove",
+          "path": "/design/amy-add-and-amy-remove",
+          "description": ""
+        },
+        {
           "title": "An answer reaches the agent",
           "path": "/design/an-answer-reaches-the-agent",
           "description": ""
@@ -771,6 +776,11 @@
           "depth": 3,
           "title": "amy doctor and amy plugin list resolve a workflow of your own the same way mounting does, so amy plugin list no longer reports a directory written by amy workflow new as FAIL, and doctor validates its settings against the schema it declares.",
           "slug": "amy-doctor-and-amy-plugin-list-resolve-a-workflow-of-your-own-the-same-way-mounting-does-so-amy-plugin-list-no-longer-reports-a-directory-written-by-amy-workflow-new-as-fail-and-doctor-validates-its-settings-against-the-schema-it-declares"
+        },
+        {
+          "depth": 3,
+          "title": "New amy add and amy remove commands: one argument — a package name, a URL, a git URL or a path — installs the package into ~/.amy/plugins, mounts it alone to decide whether it is a workflow or a plugin, writes the config entry (a profile for a workflow, the machine-wide extraPlugins: list for a plugin), and refuses what the machine would not survive instead of leaving a half-added entry behind. Plugins added this way join a profile without freezing its recommended set into the config.",
+          "slug": "new-amy-add-and-amy-remove-commands-one-argument-a-package-name-a-url-a-git-url-or-a-path-installs-the-package-into-amyplugins-mounts-it-alone-to-decide-whether-it-is-a-workflow-or-a-plugin-writes-the-config-entry-a-profile-for-a-workflow-the-machine-wide-extraplugins-list-for-a-plugin-and-refuses-what-the-machine-would-not-survive-instead-of-leaving-a-half-added-entry-behind-plugins-added-this-way-join-a-profile-without-freezing-its-recommended-set-into-the-config"
         },
         {
           "depth": 3,
@@ -1548,6 +1558,33 @@
           "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/amy-add-and-amy-remove",
+      "file": "docs/design/amy-add-and-amy-remove.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/amy-add-and-amy-remove.md",
+      "title": "Amy add and amy remove",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "The proof",
+          "slug": "the-proof"
         },
         {
           "depth": 2,
@@ -2565,6 +2602,11 @@
         },
         {
           "depth": 3,
+          "title": "amy add",
+          "slug": "amy-add"
+        },
+        {
+          "depth": 3,
           "title": "amy brief",
           "slug": "amy-brief"
         },
@@ -2662,6 +2704,11 @@
           "depth": 3,
           "title": "amy queue recover",
           "slug": "amy-queue-recover"
+        },
+        {
+          "depth": 3,
+          "title": "amy remove",
+          "slug": "amy-remove"
         },
         {
           "depth": 3,
@@ -3000,6 +3047,11 @@
           "depth": 3,
           "title": "@amykit/plugin-command-gate",
           "slug": "amykitplugin-command-gate"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/plugin-file-brief-store",
+          "slug": "amykitplugin-file-brief-store"
         },
         {
           "depth": 3,
@@ -4741,6 +4793,21 @@
       "commands": [
         {
           "path": [
+            "add"
+          ],
+          "description": "Add a workflow or a plugin: install it, mount it, and check the machine boots",
+          "arguments": [
+            {
+              "name": "<spec>",
+              "required": true,
+              "description": "a package name, a URL, a git URL, or a path"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
             "brief"
           ],
           "description": "The current statement of a feature, as the workflow keeps it",
@@ -5015,6 +5082,21 @@
           ],
           "description": "Return items abandoned by a dead worker",
           "arguments": [],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "remove"
+          ],
+          "description": "Remove a workflow or a plugin, refusing what the machine would not survive",
+          "arguments": [
+            {
+              "name": "<spec>",
+              "required": true,
+              "description": "the name the config carries"
+            }
+          ],
           "options": [],
           "isDefault": false
         },
@@ -5325,7 +5407,7 @@
         "kind": "brief",
         "actions": [],
         "mountedBy": [
-          "@amykit/plugin-file-store"
+          "@amykit/plugin-file-brief-store"
         ]
       },
       {
@@ -5876,6 +5958,30 @@
         "environment": []
       },
       {
+        "name": "@amykit/plugin-file-brief-store",
+        "version": "0.4.0",
+        "kind": "plugin",
+        "description": "Briefs kept as one file per item.",
+        "directory": "plugins/file-brief-store",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-file-brief-store",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-brief-store",
+        "readme": "plugins/file-brief-store/README.md",
+        "mounts": [
+          "brief"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "briefs",
+            "description": "where briefs are kept, relative to the workflow state directory"
+          }
+        ],
+        "environment": []
+      },
+      {
         "name": "@amykit/plugin-file-log",
         "version": "0.4.0",
         "kind": "library",
@@ -5975,18 +6081,10 @@
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-store",
         "readme": "plugins/file-store/README.md",
         "mounts": [
-          "brief",
           "store"
         ],
         "contributes": [],
         "settings": [
-          {
-            "name": "briefsDirectory",
-            "type": "string",
-            "required": false,
-            "default": "briefs",
-            "description": "where the briefs are kept, relative to the state directory. One per workflow, for the same reason the records are"
-          },
           {
             "name": "directory",
             "type": "string",
@@ -6703,6 +6801,25 @@
         "scenario": ".software-factory/evidence/workflow-new-scenario.sh"
       },
       {
+        "name": "amy-add-remove",
+        "activation": [
+          "packages/cli/src/index.ts",
+          "packages/cli/src/spec.ts",
+          "packages/cli/src/add.ts",
+          "packages/cli/src/slices.ts",
+          "packages/cli/src/config.ts"
+        ],
+        "evidence": ".software-factory/evidence/amy-add-remove.json",
+        "plan": "docs/design/amy-add-and-amy-remove.md",
+        "assertions": [
+          "add.a_path_becomes_a_workflow_that_runs",
+          "add.adding_one_plugin_keeps_the_recommendation",
+          "add.removing_keeps_the_state",
+          "add.a_removal_that_would_not_boot_is_refused"
+        ],
+        "scenario": ".software-factory/evidence/amy-add-remove-scenario.sh"
+      },
+      {
         "name": "bare-install",
         "activation": [
           "packages/cli/package.json",
@@ -6926,6 +7043,7 @@
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
           "plugins/file-store/src/**",
+          "plugins/file-brief-store/src/**",
           "plugins/file-worktree/src/**",
           "plugins/serial-engine/src/**",
           "plugins/linear/src/**",
@@ -7331,6 +7449,18 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "amy-add-and-amy-remove",
+        "title": "New `amy add` and `amy remove` commands: one argument — a package name, a URL, a git URL or a path — installs the package into `~/.amy/plugins`, mounts it alone to decide whether it is a workflow or a plugin, writes the config entry (a profile for a workflow, the machine-wide `extraPlugins:` list for a plugin), and refuses what the machine would not survive instead of leaving a half-added entry behind. Plugins added this way join a profile without freezing its recommended set into the config.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "plugins-live-in-amy-home",

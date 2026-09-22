@@ -46,6 +46,9 @@ const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {};
 const SHARED: readonly string[] = [
   "@amykit/plugin-file-queue",
   "@amykit/plugin-file-store",
+  // A BriefStore is intentionally its own mount: a Git-backed adapter can
+  // replace this local default without the record store claiming its port.
+  "@amykit/plugin-file-brief-store",
   "@amykit/plugin-file-notes",
   "@amykit/plugin-github",
   // One isolated checkout per piece of work must mount before the harnesses

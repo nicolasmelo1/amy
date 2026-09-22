@@ -40,6 +40,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       staleClaimMs: config.staleClaimMs,
     },
     "@amykit/plugin-file-store": { directory: dirs.records },
+    "@amykit/plugin-file-brief-store": { directory: "briefs" },
     // Mounted in both profiles: one writes the notes, the other reads them,
     // and an install running only the first would still be filing the
     // friction the second will pick up.
@@ -198,7 +199,7 @@ export function ladderNames(ladder: readonly string[], harness: string): boolean
 
 /** Which plugins to mount: what the profile asked for, or what is recommended. */
 export function pluginList(config: AmyConfig, profile: Profile): string[] {
-  if (profile.plugins.length > 0) return [...profile.plugins];
+  if (profile.plugins.length > 0) return [...profile.plugins, ...config.extraPlugins];
 
   const ladder = everyLadderEntry(config);
 
@@ -206,7 +207,7 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
   // announce into a target that is not there. Same reasoning for a harness:
   // mounting one whose binary is not installed only produces a doctor failure
   // for a tool the operator never asked for.
-  return recommendedFor(profile).filter((name) => {
+  const recommended = recommendedFor(profile).filter((name) => {
     // A note needs somewhere to go. An install that named no repository to
     // write plans into would be watching a directory nothing could ever come
     // out of, so it does not watch one.
@@ -217,6 +218,11 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
     if (name === "@amykit/plugin-hermes-agent") return ladderNames(ladder, "hermes");
     return true;
   });
+
+  // The extras ride after what was recommended, deduplicated: a plugin named
+  // both places is one mount, and `mount()` would refuse the second claim of
+  // a port rather than read the list as an intention.
+  return [...recommended, ...config.extraPlugins.filter((name) => !recommended.includes(name))];
 }
 
 /** Where the host keeps its own state, and where the checkouts live. */

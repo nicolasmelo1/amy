@@ -28,12 +28,12 @@ contracts importable without depending on `workflow-ticket-to-qa`, and the
 brief contract landed beside them: `BriefId`, `BriefRecord`, `BriefView` and
 the `BriefStore` port in `packages/core/src/ports/Brief.ts`, with
 `renderBrief` owned by the core so a workflow and a person read one document.
-The file-backed adapter (`FileBriefStore`, in `plugin-file-store`) owns the
-on-disk layout and an atomic write-then-rename, and is mounted unconditionally
-beside the records — a port with nothing behind it is a boot refusal, and one
-more directory costs nothing. Reads return the current version each time
-rather than a copy folded into a ticket record, so a revision between ticks
-cannot be hidden by old state.
+The file-backed adapter is now its own `plugin-file-brief-store` mount, so
+`plugin-file-store` owns records only and a second adapter — for example one
+that versions briefs in Git — can claim `brief` instead. The file adapter
+still owns the on-disk layout and an atomic write-then-rename; the CLI and
+workflows resolve the port rather than a directory, so no consumer changes
+when the mount changes.
 
 The grooming workflow that creates a brief writes its declared sections
 through that port. A later step may append a question, with its work id and
@@ -101,9 +101,9 @@ workflow declares are its own config, not a schema the core parses. What the
 plan asked for anyway is delivered as unit proof rather than gate assertion:
 the CLI's ordinary tests prove the two renderings come from one snapshot and
 that a missing brief is named (`packages/cli/tests/brief.test.ts`), the file
-store's tests prove atomic persistence and retention independently
-(`plugins/file-store/tests/FileBriefStore.test.ts`), and the core mount tests
-prove the declaration/action mismatch without a tracker adapter
+brief store's tests prove atomic persistence, retention and its independent
+mount (`plugins/file-brief-store/tests/FileBriefStore.test.ts`), and the core
+mount tests prove the declaration/action mismatch without a tracker adapter
 (`packages/core/tests/mount.test.ts`).
 
 ## Acceptance criteria
@@ -124,7 +124,7 @@ prove the declaration/action mismatch without a tracker adapter
       (proof: test:packages/cli/tests/brief.test.ts)
 - [x] A brief survives retention while any work it explains is open, and is
       retired only after all of it is terminal and old enough
-      (proof: test:plugins/file-store/tests/FileBriefStore.test.ts)
+      (proof: test:plugins/file-brief-store/tests/FileBriefStore.test.ts)
 - [x] A workflow declaring no tracker-write capability is refused at mount if
       it declares a tracker-mutating action, before any tick runs
       (proof: test:packages/core/tests/mount.test.ts)

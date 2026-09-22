@@ -56,6 +56,7 @@ workflows:
       - "@acme/workflow-oncall"
       - "@amykit/plugin-file-queue"
       - "@amykit/plugin-file-store"
+      - "@amykit/plugin-file-brief-store"
       - "@amykit/plugin-serial-engine"
       - "@amykit/plugin-notify-fanout"
       - "@amykit/plugin-notify-inbox"
@@ -157,7 +158,7 @@ case "$listing" in
   *) record plugins.resolve_at_run_time_with_no_table 1 ;;
 esac
 says plugins.a_workflow_from_outside_this_repository_mounts "$listing" "workflow: oncall"
-says plugins.the_listing_tells_installed_from_mounted "$listing" "installed, 6 mounted"
+says plugins.the_listing_tells_installed_from_mounted "$listing" "installed, 7 mounted"
 case "$listing" in
   *plugin-parent-walk*) record plugins.the_listing_is_read_from_one_directory 1 ;;
   *) record plugins.the_listing_is_read_from_one_directory 0 ;;

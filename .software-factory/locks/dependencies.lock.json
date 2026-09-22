@@ -1,8 +1,9 @@
 {
   "schema_version": 1,
   "files": {
+    ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "ef3d2175b8b0be268e780511700afb153c5f31b3b15a542689336286b2236d22",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
-    "package.json": "bccdf5226360a183b9c082a452cc4805a0f3cf76bd6287020abf3d818f865ba4",
+    "package.json": "4cab4b47173d62ae833a2dfe2580bfb5ecfb6e8f9544924ff783d296897dad50",
     "packages/agent-kit/package.json": "c3f9be70a3fd7bc8f59b369bb913e59cbe950eacd0c6956e072aa05a07c3eace",
     "packages/cli/package.json": "0e22e8e231cc0d4ba3d283cb185fc7346a62473a3bd8541ecd4b605d9f119226",
     "packages/core/package.json": "629321a2ea178a69316ee615e228bc5267b2e7ee487dcb6e6b0cbf80ecbeb1a9",
@@ -17,10 +18,11 @@
     "plugins/codex/package.json": "edec674d2e91d4beb33593895a639a0aeffa06ffc4536b752829a669c920e6f6",
     "plugins/command-gate/package.json": "95131d5d2acb7eeaadcc11040b25763bb6726af8bb483e39af76858681d404db",
     "plugins/command/package.json": "fbbb3f0dcfc33b24848edd7c5c05d2733320070f121443af89b08b2d22ce0756",
+    "plugins/file-brief-store/package.json": "697301ff5c2cee9cbce19777119ac00941fc0aa5b746101deced5799a4402689",
     "plugins/file-log/package.json": "f5f131a302f04542d7cb4fe14ec588e373859de99f5fb1e909b412fa290203c9",
     "plugins/file-notes/package.json": "3141578b05467492042bef0c68583ed3680011906de40604b77f1cc95a88a347",
     "plugins/file-queue/package.json": "623acf62a139fe0cd7d6828cf5e4d944a03131aebe6ac415ad16dbdd38d294b8",
-    "plugins/file-store/package.json": "299bbbe07b4b53544085afb35bb0c705257f2333be76e7cbb0e6a551a28bc0a0",
+    "plugins/file-store/package.json": "ad54f6c1a04e94d35a27c6f750ac4e4d1ef467eefbeb6ae2c8d6b56720c10959",
     "plugins/file-tasks/package.json": "c6ca0814861c7872f8b87e9d7db0fdb091e24175f2d3b2e55aaa9bbd3c10f51e",
     "plugins/file-worktree/package.json": "8ac52b0bb7f01391ae2a77a7d90a328f0a1285fc3236a1d0b1f9fe18a2cb0564",
     "plugins/github/package.json": "1914da77fb25b80e2df050261ef635b2b9910fcd6ad21a156edcdfd329f3acb6",

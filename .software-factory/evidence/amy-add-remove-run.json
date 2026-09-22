@@ -1,0 +1,13 @@
+{
+  "scenario": "amy-add-remove",
+  "status": "passed",
+  "goal": "I want to add a workflow somebody else published with one command — a path, a name or a URL in it — and have the next tick move work through the workflow that arrived; and to remove it, with the machine refusing what it would not survive, rather than leaving a half-added entry behind.",
+  "artifact": { "package": "@amykit/cli", "entry": "the installed amy command, run by node", "built_by": "scripts/install.sh" },
+  "observed": {
+    "assertions_run": 13,
+    "assertions_failed": 0,
+    "workflow_added": "@acme/workflow-oncall",
+    "added_from": ["path", "package name", "a directory that is not a package"]
+  },
+  "assertions": [{"type":"add.a_directory_that_is_not_a_package_is_refused_first","status":"passed"},{"type":"add.a_path_becomes_a_workflow_that_runs","status":"passed"},{"type":"add.the_profile_is_written_by_the_command","status":"passed"},{"type":"add.the_engine_drives_it_without_knowing_it","status":"passed"},{"type":"add.work_it_found_reached_the_queue","status":"passed"},{"type":"add.adding_one_plugin_keeps_the_recommendation","status":"passed"},{"type":"add.a_plugin_add_writes_one_line","status":"passed"},{"type":"add.adding_the_same_thing_twice_is_one_install","status":"passed"},{"type":"add.removing_drops_the_entry","status":"passed"},{"type":"add.removing_uninstalls_the_package","status":"passed"},{"type":"add.removing_keeps_the_state","status":"passed"},{"type":"add.removing_leaves_the_records","status":"passed"},{"type":"add.a_removal_that_would_not_boot_is_refused","status":"passed"}]
+}

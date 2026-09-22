@@ -131,6 +131,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | Gate | What expires it | Assertions |
 | :-- | :-- | :-- |
 | `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md` | 5 |
+| `amy-add-remove` | `packages/cli/src/index.ts`<br>`packages/cli/src/spec.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/config.ts` | 4 |
 | `bare-install` | `packages/cli/package.json`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/src/doctor.ts` | 12 |
 | `feature-grooming` | `packages/workflow-feature-grooming/src/**`<br>`packages/core/src/ports/BaseSource.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`plugins/linear/src/**`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/profiles.ts` | 2 |
 | `installed-binary` | `packages/cli/src/stamp.ts`<br>`packages/cli/src/home.ts`<br>`packages/core/src/build.ts`<br>`scripts/**` | 7 |
@@ -139,7 +140,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | `plugin-agent-relay` | `plugins/agent-relay/src/**`<br>`packages/agent-kit/src/**` | 27 |
 | `plugin-file-queue` | `plugins/file-queue/src/**` | 9 |
 | `plugin-serial-engine` | `plugins/serial-engine/src/**`<br>`plugins/notify-fanout/src/**` | 13 |
-| `ticket-to-qa` | `packages/workflow-ticket-to-qa/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**` | 48 |
+| `ticket-to-qa` | `packages/workflow-ticket-to-qa/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-brief-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**` | 48 |
 
 <!-- amy:end factory-gates -->
 

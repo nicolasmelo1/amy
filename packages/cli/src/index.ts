@@ -44,8 +44,11 @@ import {
   confirmRoster,
   loadConfig,
   loadRoster,
+  removeExtraPlugin,
   removeProfile,
+  writeExtraPlugins,
   writeProfilePlugins,
+  writeWorkflowProfile,
 } from "./config.js";
 import { budgetLines } from "./budget.js";
 import { loadEnv } from "./env.js";
@@ -57,11 +60,24 @@ import { hostPlugin } from "./hostPlugin.js";
 import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
 import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
+import {
+  BootCheck,
+  Picked,
+  importPluginBySpec,
+  nameInstalledPackage,
+  uninstallFromPluginsRoot,
+  unmetAction,
+  whatBoots,
+  whatMountingSays,
+  whatPackageIs,
+  withoutSpec,
+} from "./add.js";
 import { clearDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profilePaths } from "./paths.js";
+import { packageEntrySpecifier } from "./spec.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -842,6 +858,437 @@ program
   });
 
 /**
+ * Where an added package lands in the config, from what mounting it said.
+ *
+ * A workflow becomes a profile — the name read out of the package name, the
+ * way `amy workflow new` names one — and a plugin joins the machine-wide
+ * list. One edit each, so the write is a read of what came back rather than
+ * a decision made beside it.
+ */
+async function writeAddedEntry(
+  home: string,
+  config: AmyConfig,
+  picked: Picked,
+  workflow: boolean,
+): Promise<string> {
+  if (workflow) {
+    const name = path.parse(picked.imported).name.replace(/^workflow-/, "");
+    writeWorkflowProfile(home, name, picked.imported, config);
+    return `added ${picked.imported} as the workflow \`${name}\``;
+  }
+
+  writeExtraPlugins(home, [...config.extraPlugins, picked.imported]);
+  return `added ${picked.imported} to every profile`;
+}
+
+/**
+ * One command for both kinds, because adding a workflow and adding a plugin
+ * are the same act from the operator's side and only differ in what came
+ * back. Which of the two it is, is asked of the machine — mounting the
+ * package alone into a throwaway registry — rather than assumed from a name
+ * convention or a manifest field.
+ *
+ * The order is the order of an undo: install, import, probe, write, boot. A
+ * package that fails to mount is uninstalled again; a half-added workflow
+ * that only shows up as a boot refusal three commands later is worse than a
+ * command that failed.
+ */
+async function addCommand(home: string, spec: string): Promise<void> {
+  const config = loadConfig(home);
+  const place = paths(home);
+  const runner = new NodeCommandRunner();
+
+  // Before anything is run: a path that is not a package is refused here,
+  // with its package.json named, rather than by npm's own refusal an
+  // install later.
+  const picked = whatPackageIs(spec, process.cwd(), place.plugins);
+
+  // Already named is already mounted: a repeat of a name, a URL that
+  // produced the same name, or a path the config already carries, is one
+  // install and says so. Judged on the imported form, which is what the
+  // config carries — the same package by two specs is still one. Judged
+  // without a profile: `add` is what writes the first one, so a machine with
+  // nothing configured is the machine this command is for.
+  const declared = Object.values(config.workflows).map((entry) => entry.workflow);
+  const importAlreadyNamed = [
+    ...config.extraPlugins,
+    ...declared,
+  ].includes(picked.imported);
+
+  if (importAlreadyNamed) {
+    console.log(`${picked.imported} is already mounted`);
+    return;
+  }
+
+  const outcome = await addInstalled(runner, home, config, picked, declared);
+  if (outcome instanceof AddRefused) {
+    console.error(outcome.why);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(await writeAddedEntry(home, config, outcome.picked, outcome.workflow));
+
+  // The rest of the machine. A workflow's recommended set is derived at
+  // every read, so a bare machine now names plugins it has never seen —
+  // installed here, by the same command, the way `amy init --install`
+  // installs what a config names. A plugin add installs nothing extra: it
+  // joined a set that already boots.
+  if (outcome.workflow) {
+    const fresh = loadConfig(home);
+    const wanted = pluginList(fresh, selected(fresh));
+    const missing = wanted.filter((name) => !localWorkflow(home, name) && !pickedIsInstalled(place.plugins, name));
+    if (missing.length > 0) {
+      console.log(`\ninstalling what the workflow asks for: ${missing.join(", ")}`);
+      const supplied = await installIntoPluginsRoot(runner, place.plugins, missing);
+      if (!supplied.ok) {
+        console.error(`${supplied.command} failed:`);
+        console.error(supplied.output || "it said nothing");
+        console.error("Install them by hand, then run `amy doctor`.");
+        process.exitCode = 1;
+        return;
+      }
+    }
+  }
+
+  // The write is confirmed, not assumed: the machine the config now names is
+  // mounted. `selected()` reads the config again, because the profile the
+  // write may have just named is the one the boot has to prove — on a bare
+  // machine, this add made it the default.
+  const booted = await whatBoots(async () => {
+    const assembled = await assemble(selected());
+    return assembled.ok ? { ok: true, problems: [], mounted: assembled.mounted } : { ok: false, problems: assembled.problems };
+  });
+  if (!booted.ok) {
+    console.error("amy does not boot with the entry written:");
+    for (const problem of booted.problems) console.error(`  ${problem}`);
+    console.error(`Fix the config, or run \`amy remove ${picked.imported}\`.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log("the machine boots: run `amy doctor`, then `amy tick`.");
+}
+
+/**
+ * The refusals `add` answers before it writes: already the workflow this
+ * profile drives, unable to import, and unable to mount.
+ *
+ * A class rather than a union member: every refusal but the first uninstalls
+ * what the install put down, and a caller that forgets that distinction is
+ * the half-added package this command exists to prevent.
+ */
+class AddRefused {
+  constructor(readonly why: string) {}
+}
+
+/**
+ * Install, import and probe one package, undoing the install when any of the
+ * three fails.
+ *
+ * The probe answers what the package is; a package already carried as a
+ * profile's workflow is refused here rather than after the write, so a
+ * refusal never leaves an entry behind to uninstall.
+ */
+interface Added {
+  picked: Picked;
+  workflow: boolean;
+}
+
+async function addInstalled(
+  runner: NodeCommandRunner,
+  home: string,
+  config: AmyConfig,
+  picked: Picked,
+  declared: readonly string[],
+): Promise<AddRefused | Added> {
+  const place = paths(home);
+  const fromRegistry = picked.kind !== "path";
+  const before = installedPlugins(place.plugins);
+
+  if (fromRegistry) {
+    console.log(`installing ${picked.install} into ${place.plugins}…`);
+    const install = await installIntoPluginsRoot(runner, place.plugins, [picked.install]);
+    if (!install.ok) {
+      console.error(`${install.command} failed:`);
+      console.error(install.output || "it said nothing");
+      return new AddRefused("the install failed");
+    }
+  }
+
+  const completed =
+    picked.kind === "git" || picked.kind === "tarball"
+      ? { ...picked, imported: nameInstalledPackage(place.plugins, before) }
+      : picked;
+
+  // The probe imports the package where it actually is: a path add imports
+  // the directory's own entry, because the name it will carry is not in the
+  // plugins root yet — the install below is what puts it there. Everything
+  // else resolves through the root, the way the next boot will.
+  const probeImport =
+    completed.kind === "path" ? packageEntrySpecifier(completed.absolute!) : completed.imported;
+  const loaded = await importPluginBySpec(
+    probeImport,
+    completed.kind === "path" ? (spec) => spec : pluginsRootResolver(home, place.plugins),
+  );
+  if (!loaded.ok) return rollback(runner, place.plugins, completed, loaded.problem);
+
+  const probe = await whatMountingSays(loaded.plugin, place.plugins);
+  if (!probe.ok) {
+    return rollback(
+      runner,
+      place.plugins,
+      completed,
+      `${completed.imported} does not mount:\n${probe.problems.map((problem) => `  ${problem}`).join("\n")}`,
+    );
+  }
+
+  const alreadyDrives = declared.includes(completed.imported);
+  if (alreadyDrives) {
+    return rollback(
+      runner,
+      place.plugins,
+      completed,
+      `${completed.imported} is the workflow a profile already drives`,
+    );
+  }
+
+  return { picked: completed, workflow: probe.workflow };
+}
+
+/**
+ * Uninstalls and refuses, so a failed add leaves the root exactly as it
+ * found it and the operator reads one answer for the whole command.
+ */
+async function rollback(
+  runner: NodeCommandRunner,
+  root: string,
+  picked: Picked,
+  why: string,
+): Promise<AddRefused> {
+  const outcome = await uninstallFromPluginsRoot(runner, root, [picked.imported]);
+  if (outcome.ok) console.log(`uninstalled ${picked.install} again`);
+  else {
+    console.error(`${outcome.command} failed:`);
+    console.error(outcome.output || "it said nothing");
+    console.error("Remove it by hand, or leave it unmounted.");
+  }
+  return new AddRefused(why);
+}
+
+/**
+ * The machine the config would become with one package dropped from it, as
+ * the tick would mount it.
+ *
+ * Every place the config could carry the name is emptied for the trial — the
+ * profile that declares it, the selected profile's own list, the machine-wide
+ * list and the slice the mount would hand it — and the remaining machine is
+ * mounted for real. A trial that refuses means the removal refuses, with the
+ * mount's own problems carried back out.
+ */
+async function mountingWithout(
+  home: string,
+  config: AmyConfig,
+  profile: Profile,
+  spec: string,
+): Promise<BootCheck> {
+  const trialConfig: AmyConfig = {
+    ...config,
+    workflows: Object.fromEntries(
+      Object.entries(config.workflows).filter(([, entry]) => entry.workflow !== spec),
+    ),
+    extraPlugins: config.extraPlugins.filter((name) => name !== spec),
+  };
+  const trialProfile: Profile = {
+    ...profile,
+    plugins: profile.plugins.includes(spec) ? withoutSpec(profile.plugins, spec) : profile.plugins,
+  };
+  const trialSlices = { ...pluginSlices(trialConfig, trialProfile) };
+  if (trialSlices[spec]) delete trialSlices[spec];
+
+  const outcome = await mount(
+    [...(await loadMountable(pluginList(trialConfig, trialProfile))).plugins, hostPlugin(() => loadRoster(home))],
+    trialSlices,
+    {
+      runner,
+      now: () => new Date(),
+      log: new FileEventLog(paths(home).log, undefined, build),
+      paths: hostPaths(trialConfig, profilePaths(home, trialProfile.name).base),
+    },
+  );
+
+  if (!outcome.ok) return { ok: false, problems: outcome.problems };
+
+  const { mounted } = outcome;
+  if (!mounted.engine) {
+    return { ok: false, problems: ["no plugin mounted an engine, so nothing can advance work"] };
+  }
+  // Removing a workflow leaves the machine bare when it was the only one: a
+  // bare machine is the state the install arrived in, not a broken one. The
+  // refusal is for a machine that still declares work it cannot drive.
+  if (!mounted.workflow && Object.keys(trialConfig.workflows).length > 0) {
+    return { ok: false, problems: ["no plugin mounted a workflow, so there is no order to follow"] };
+  }
+
+  const unmet = mounted.workflow ? unmetNeeds(mounted, mounted.workflow) : [];
+  return unmet.length > 0 ? { ok: false, problems: unmet, mounted } : { ok: true, problems: [], mounted };
+}
+
+/**
+ * Which config entry the spec is carried by, so the write below edits the
+ * one place the name lives rather than all of them.
+ */
+function carriedBy(
+  config: AmyConfig,
+  profile: Profile,
+  spec: string,
+): { place: "profile" | "extras" | "workflow"; profile?: string } {
+  const owning = Object.entries(config.workflows).find(([, entry]) => entry.workflow === spec);
+  if (owning) return { place: "workflow", profile: owning[0] };
+  if (pluginList(config, profile).includes(spec)) return { place: "profile", profile: profile.name };
+  if (config.extraPlugins.includes(spec)) return { place: "extras" };
+  return { place: "extras" };
+}
+
+/**
+ * `amy remove`, the same command in reverse: drop the entry, uninstall from
+ * the root, and never touch records, queue or log.
+ *
+ * Refuses first, in the order the machine would hit the problems: a name the
+ * config does not carry, a workflow that is running, and then the boot the
+ * remaining machine would have to survive — with the action that would have
+ * no port named, the refusal the mount writes, moved to the moment somebody
+ * can still change their mind.
+ */
+
+/**
+ * Refuses what would make the removal a bad idea, in the order a person
+ * would want to hear them: a name the config never carried, and a workflow
+ * that is running right now.
+ */
+function refuseRemoval(
+  home: string,
+  config: AmyConfig,
+  profile: Profile,
+  spec: string,
+  carrier: { place: "profile" | "extras" | "workflow"; profile?: string },
+): string | undefined {
+  const carried =
+    Object.values(config.workflows).some((entry) => entry.workflow === spec) ||
+    pluginList(config, profile).includes(spec) ||
+    config.extraPlugins.includes(spec);
+
+  if (!carried) return `the config does not name ${spec}`;
+
+  const live = running(paths(home).pid);
+  if (live && carrier.profile === live.workflow) {
+    return `${carrier.profile} is running as pid ${live.pid}. Run \`amy stop\` first.`;
+  }
+
+  return undefined;
+}
+
+/**
+ * Drops the entry the config carried the spec in, and says which.
+ *
+ * The config first, so an uninstall that fails leaves the machine able to
+ * boot into the old shape rather than unable to boot at all — a config that
+ * names what is not installed is a boot refusal, and that refusal has to be
+ * recoverable by editing the config.
+ */
+function removeFromConfig(
+  home: string,
+  config: AmyConfig,
+  profile: Profile,
+  spec: string,
+  carrier: { place: "profile" | "extras" | "workflow"; profile?: string },
+): void {
+  if (carrier.place === "extras") {
+    removeExtraPlugin(home, spec);
+    console.log(`removed ${spec} from the machine-wide list`);
+    return;
+  }
+
+  // A carried workflow takes its whole profile with it: the profile exists
+  // to name it, and a profile pointing at an uninstalled workflow is a boot
+  // refusal waiting three commands ahead.
+  if (carrier.place === "workflow" && carrier.profile) {
+    removeProfile(home, carrier.profile, config);
+    console.log(`removed the \`${carrier.profile}\` profile for ${spec}`);
+    return;
+  }
+
+  writeProfilePlugins(home, profile.name, withoutSpec(pluginList(config, profile), spec), config);
+  console.log(`removed ${spec} from ${profile.name}`);
+}
+
+/**
+ * Uninstalls the package the config stopped naming.
+ *
+ * Records, queue and log are never touched here — that sentence is the
+ * command's last word, and everything above it kept it.
+ */
+async function uninstallRemoved(
+  runner: NodeCommandRunner,
+  root: string,
+  spec: string,
+): Promise<void> {
+  if (!pickedIsInstalled(root, spec)) return;
+
+  const outcome = await uninstallFromPluginsRoot(runner, root, [spec]);
+  if (!outcome.ok) {
+    console.error(`${outcome.command} failed:`);
+    console.error(outcome.output || "it said nothing");
+    console.error("Uninstall it by hand; the config no longer names it.");
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`uninstalled ${spec}`);
+}
+
+async function removeCommand(home: string, spec: string): Promise<void> {
+  const config = loadConfig(home);
+  const profile = selected(config);
+  const carrier = carriedBy(config, profile, spec);
+  const runner = new NodeCommandRunner();
+
+  const refusal = refuseRemoval(home, config, profile, spec, carrier);
+  if (refusal) {
+    console.error(refusal);
+    process.exitCode = 1;
+    return;
+  }
+
+  const booted = await whatBoots(() => mountingWithout(home, config, profile, spec));
+
+  if (!booted.ok) {
+    // The action first when the mount still holds the workflow: it is the
+    // machine's own refusal about its remaining order, and the port it names
+    // is the thing the removal would have left unmounted.
+    const lead = booted.mounted ? unmetAction(booted.mounted, booted.problems) : booted.problems[0];
+    console.error(`removing ${spec} would leave the machine unable to boot — ${lead}:`);
+    for (const problem of booted.problems) console.error(`  ${problem}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  removeFromConfig(home, config, profile, spec, carrier);
+  await uninstallRemoved(runner, paths(home).plugins, spec);
+
+  console.log("records, queue and log are kept: nothing here touches them.");
+}
+
+/** Whether the package root holds this name, by its manifest. */
+function pickedIsInstalled(root: string, name: string): boolean {
+  const manifest = path.join(root, "node_modules", ...name.split("/"), "package.json");
+  try {
+    return JSON.parse(fs.readFileSync(manifest, "utf-8")) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Every record the profile holds, in whatever shape its workflow gave them.
  *
  * The core's `WorkRecord` is all this reads, plus two fields a workflow may
@@ -958,6 +1405,27 @@ function perMillion(perToken: number | undefined): string {
 }
 
 const pluginCommand = program.command("plugin").description("What is mounted, and what is not");
+
+program
+  .command("add")
+  .description("Add a workflow or a plugin: install it, mount it, and check the machine boots")
+  .argument("<spec>", "a package name, a URL, a git URL, or a path")
+  .action(async (spec: string) => {
+    try {
+      await addCommand(home, spec);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("remove")
+  .description("Remove a workflow or a plugin, refusing what the machine would not survive")
+  .argument("<spec>", "the name the config carries")
+  .action(async (spec: string) => {
+    await removeCommand(home, spec);
+  });
 
 pluginCommand
   .command("list")
