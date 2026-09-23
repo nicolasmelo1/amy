@@ -250,9 +250,11 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
 /** Replaces the local BriefStore when a profile selects its own provider. */
 function withBriefStore(profile: Profile, plugins: readonly string[]): string[] {
   const local = "@amykit/plugin-file-brief-store";
-  const chosen = profile.briefStore ?? (
-    plugins.includes("@amykit/plugin-file-store") ? local : undefined
-  );
+  // `""` is the removal trial's explicit absence: do not let the legacy
+  // file-store compatibility rule recreate the provider it just removed.
+  const chosen = profile.briefStore === ""
+    ? undefined
+    : profile.briefStore ?? (plugins.includes("@amykit/plugin-file-store") ? local : undefined);
   if (!chosen) return [...plugins];
 
   const replaced = plugins.map((name) => name === local ? chosen : name);

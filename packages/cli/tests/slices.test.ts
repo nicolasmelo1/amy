@@ -216,6 +216,12 @@ describe("pluginSlices", () => {
 
     expect(slices["@amykit/plugin-file-brief-store"]?.directory).toBe("git-brief-cache");
   });
+
+  it("treats an empty brief provider as the explicit absence used by removal trials", () => {
+    expect(pluginList(CONFIG, { ...TICKETS, plugins: ["@amykit/plugin-file-store"], briefStore: "" })).not.toContain(
+      "@amykit/plugin-file-brief-store",
+    );
+  });
 });
 
 describe("the ladder, which is the one place harnesses are named", () => {

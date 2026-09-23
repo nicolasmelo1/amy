@@ -97,6 +97,27 @@ describe("remove configuration", () => {
     );
   });
 
+  it("clears an explicit BriefStore selector when its provider is removed", () => {
+    const before = {
+      ...config(),
+      workflows: {
+        oncall: {
+          workflow: ONCALL.workflow,
+          plugins: ["@amykit/plugin-file-store", "@acme/plugin-git-brief-store"],
+          briefStore: "@acme/plugin-git-brief-store",
+        },
+        weekly: { workflow: WEEKLY.workflow, plugins: ["@acme/plugin-local"] },
+      },
+    };
+    const profile = { ...ONCALL, plugins: before.workflows.oncall.plugins, briefStore: before.workflows.oncall.briefStore };
+    const after = configWithout(before, profile, "@acme/plugin-git-brief-store", { place: "profile", profile: "oncall" });
+
+    expect(after.workflows.oncall?.briefStore).toBe("");
+    expect(pluginList(after, { ...profile, plugins: after.workflows.oncall?.plugins ?? [], briefStore: after.workflows.oncall?.briefStore })).not.toContain(
+      "@acme/plugin-git-brief-store",
+    );
+  });
+
   it("removes only the selected owner of a shared workflow package", () => {
     const before = {
       ...config(),

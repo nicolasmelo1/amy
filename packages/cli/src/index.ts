@@ -969,18 +969,8 @@ async function addCommand(home: string, spec: string): Promise<void> {
     }
   }
 
-  // The write is confirmed, not assumed: the machine the config now names is
-  // mounted. `selected()` reads the config again, because the profile the
-  // write may have just named is the one the boot has to prove — on a bare
-  // machine, this add made it the default.
-  const booted = await whatBoots(async () => {
-    const profile = outcome.workflow
-      ? resolveProfile(loadConfig(home), added.profile)
-      : { ok: true as const, profile: selected() };
-    if (!profile.ok) return { ok: false, problems: [profile.problem] };
-    const assembled = await assemble(profile.profile);
-    return assembled.ok ? { ok: true, problems: [], mounted: assembled.mounted } : { ok: false, problems: assembled.problems };
-  });
+  // Confirm the resulting machine rather than assuming the config write did.
+  const booted = await bootsAfterAdd(home, outcome.workflow, added.profile);
   if (!booted.ok) {
     console.error("amy does not boot with the entry written:");
     for (const problem of booted.problems) console.error(`  ${problem}`);
@@ -1017,6 +1007,20 @@ interface Added {
   workflow: boolean;
   /** Complete root snapshot, so a refusal never removes an older package. */
   before: readonly string[];
+}
+
+/** Boots the profile the write just created; a bare plugin was already probed alone. */
+async function bootsAfterAdd(home: string, workflow: boolean, name?: string) {
+  const config = loadConfig(home);
+  if (Object.keys(config.workflows).length === 0) return { ok: true as const, problems: [] };
+  return whatBoots(async () => {
+    const profile = workflow ? resolveProfile(config, name) : { ok: true as const, profile: selected(config) };
+    if (!profile.ok) return { ok: false, problems: [profile.problem] };
+    const assembled = await assemble(profile.profile);
+    return assembled.ok
+      ? { ok: true as const, problems: [], mounted: assembled.mounted }
+      : { ok: false as const, problems: assembled.problems };
+  });
 }
 
 async function addInstalled(
@@ -1246,7 +1250,9 @@ function removeFromConfig(
   const own = target.plugins.length > 0
     ? target.plugins
     : pluginList(config, target).filter((name) => !config.extraPlugins.includes(name));
-  writeProfilePlugins(home, name, withoutSpec(own, spec), config);
+  const clearsBriefStore =
+    (spec === "@amykit/plugin-file-brief-store" && !target.briefStore) || target.briefStore === spec;
+  writeProfilePlugins(home, name, withoutSpec(own, spec), config, clearsBriefStore ? "" : target.briefStore);
   console.log(`removed ${spec} from ${name}`);
 }
 
@@ -1276,9 +1282,23 @@ async function uninstallRemoved(
 
 async function removeCommand(home: string, spec: string): Promise<void> {
   const config = loadConfig(home);
+  const runner = new NodeCommandRunner();
+  // Machine-wide plugins may exist before the first workflow. They were
+  // probed alone at add time, and removal must not require a profile merely
+  // to reverse that durable config entry.
+  if (Object.keys(config.workflows).length === 0) {
+    if (!config.extraPlugins.includes(spec)) {
+      console.error(`the config does not name ${spec}`);
+      process.exitCode = 1;
+      return;
+    }
+    removeExtraPlugin(home, spec);
+    await uninstallRemoved(runner, paths(home).plugins, spec);
+    console.log(`removed ${spec} from the machine-wide list`);
+    return;
+  }
   const profile = selected(config);
   const carrier = carriedBy(config, profile, spec);
-  const runner = new NodeCommandRunner();
 
   const refusal = refuseRemoval(home, config, profile, spec, carrier);
   if (refusal) {

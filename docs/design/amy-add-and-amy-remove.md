@@ -63,6 +63,8 @@ work, then removes it and drives nothing.
 
 - [x] A workflow added from a path drives work, with no config edited by hand
       (proof: assertion:add.a_path_becomes_a_workflow_that_runs)
+- [x] A machine-wide plugin can be added and removed before any workflow exists
+      (proof: assertion:add.a_plugin_can_be_added_before_any_workflow)
 - [x] The same workflow added from a tarball URL is the same install
       (proof: test:packages/cli/tests/add.test.ts)
 - [x] Whether it was a workflow or a plugin is decided by mounting it

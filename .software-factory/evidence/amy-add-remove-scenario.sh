@@ -50,6 +50,11 @@ node -e '
 ' "$work/tarball-workflow"
 mkdir -p "$work/tarballs"
 "$npm_real" pack "$work/tarball-workflow" --pack-destination "$work/tarballs" >/dev/null
+mkdir -p "$work/plugin-extra"
+printf '{"name":"@acme/plugin-extra","type":"module","exports":"./index.js"}\n' \
+  > "$work/plugin-extra/package.json"
+printf 'export const plugin = { name: "@acme/plugin-extra", version: "0.1.0", register() {} };\n' \
+  > "$work/plugin-extra/index.js"
 
 # amy keeps its state in one place per machine, so this run gets its own.
 export HOME="$work/home"
@@ -108,6 +113,18 @@ says() {
 not_a_package=$("$amy" add "$work/not-a-package" 2>&1 || echo "")
 says add.a_directory_that_is_not_a_package_is_refused_first "$not_a_package" "is not a package"
 
+# A machine-wide plugin is also valid before the first workflow. Both add and
+# remove must work without `selected()` finding a profile that does not exist.
+bare_added=$("$amy" add @acme/plugin-extra 2>&1 || echo "")
+says add.a_plugin_can_be_added_before_any_workflow "$bare_added" "added @acme/plugin-extra"
+bare_removed=$("$amy" remove @acme/plugin-extra 2>&1 || echo "")
+says add.a_plugin_can_be_removed_before_any_workflow "$bare_removed" "removed @acme/plugin-extra"
+if grep -q "@acme/plugin-extra" .amy/config.yaml; then
+  record add.a_bare_plugin_removal_clears_its_extra 1
+else
+  record add.a_bare_plugin_removal_clears_its_extra 0
+fi
+
 # 2. A workflow added from a path: installed, mounted, named a profile, and
 # the machine boots — with no config edited by hand.
 added_path=$("$amy" add "$work/third-party" 2>&1 || echo "")
@@ -130,11 +147,6 @@ says add.work_it_found_reached_the_queue "$discovered" "queued PAGE-1"
 # 4. A package that mounts as a plugin joins the machine-wide list without
 # copying the recommended set into the config. The stand-in resolves its name
 # to a third-party package outside amy's root, then real npm installs it.
-mkdir -p "$work/plugin-extra"
-printf '{"name":"@acme/plugin-extra","type":"module","exports":"./index.js"}\n' \
-  > "$work/plugin-extra/package.json"
-printf 'export const plugin = { name: "@acme/plugin-extra", version: "0.1.0", register() {} };\n' \
-  > "$work/plugin-extra/index.js"
 added_plugin=$("$amy" add @acme/plugin-extra 2>&1 || echo "")
 says add.adding_one_plugin_keeps_the_recommendation "$added_plugin" "to every profile"
 if grep -q "recommendedFor\|@amykit/plugin-file-queue" .amy/config.yaml; then

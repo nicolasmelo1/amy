@@ -727,12 +727,13 @@ export function writeProfilePlugins(
   profile: string,
   specs: readonly string[],
   config: AmyConfig,
+  briefStore = config.workflows[profile]?.briefStore,
 ): void {
   const declared = { ...config.workflows };
   const entry = declared[profile];
   if (!entry) throw new Error(`there is no \`${profile}\` workflow to add a plugin to`);
 
-  declared[profile] = { ...entry, plugins: [...specs] };
+  declared[profile] = { ...entry, plugins: [...specs], ...(briefStore !== entry.briefStore ? { briefStore } : {}) };
 
   writeBlock(root, "workflows:", yaml.stringify({ workflows: declared }));
 }

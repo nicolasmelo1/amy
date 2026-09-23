@@ -38,7 +38,8 @@ export function configWithout(config: AmyConfig, profile: Profile, spec: string,
   const own = target.plugins.length > 0
     ? target.plugins
     : pluginList(config, target).filter((name) => !config.extraPlugins.includes(name));
-  const suppressBriefCompatibility = spec === "@amykit/plugin-file-brief-store" && !target.briefStore;
+  const suppressBriefCompatibility =
+    (spec === "@amykit/plugin-file-brief-store" && !target.briefStore) || target.briefStore === spec;
   return {
     ...config,
     workflows: {
