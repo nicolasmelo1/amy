@@ -220,10 +220,7 @@ export function ladderNames(ladder: readonly string[], harness: string): boolean
 export function pluginList(config: AmyConfig, profile: Profile): string[] {
   if (profile.plugins.length > 0) {
     const explicit = [...profile.plugins, ...config.extraPlugins.filter((name) => !profile.plugins.includes(name))];
-    const briefStore = profile.briefStore ?? (
-      explicit.includes("@amykit/plugin-file-store") ? "@amykit/plugin-file-brief-store" : undefined
-    );
-    return briefStore && !explicit.includes(briefStore) ? [...explicit, briefStore] : explicit;
+    return withBriefStore(profile, explicit);
   }
 
   const ladder = everyLadderEntry(config);
@@ -247,7 +244,19 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
   // The extras ride after what was recommended, deduplicated: a plugin named
   // both places is one mount, and `mount()` would refuse the second claim of
   // a port rather than read the list as an intention.
-  return [...recommended, ...config.extraPlugins.filter((name) => !recommended.includes(name))];
+  return withBriefStore(profile, [...recommended, ...config.extraPlugins.filter((name) => !recommended.includes(name))]);
+}
+
+/** Replaces the local BriefStore when a profile selects its own provider. */
+function withBriefStore(profile: Profile, plugins: readonly string[]): string[] {
+  const local = "@amykit/plugin-file-brief-store";
+  const chosen = profile.briefStore ?? (
+    plugins.includes("@amykit/plugin-file-store") ? local : undefined
+  );
+  if (!chosen) return [...plugins];
+
+  const replaced = plugins.map((name) => name === local ? chosen : name);
+  return replaced.includes(chosen) ? replaced : [...replaced, chosen];
 }
 
 /** Where the host keeps its own state, and where the checkouts live. */

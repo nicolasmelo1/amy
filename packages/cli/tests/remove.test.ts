@@ -62,6 +62,41 @@ describe("remove configuration", () => {
     expect(stillMounted(after, "@acme/plugin-local")).toBe(true);
   });
 
+  it("finds and removes the profile that carries a plugin outside the selected workflow", () => {
+    const before = {
+      ...config(),
+      workflows: {
+        oncall: { workflow: ONCALL.workflow },
+        weekly: { workflow: WEEKLY.workflow, plugins: ["@acme/plugin-local"] },
+      },
+    };
+    const carrier = carriedBy(before, { ...ONCALL, plugins: [] }, "@acme/plugin-local");
+
+    expect(carrier).toEqual({ place: "profile", profile: "weekly" });
+    const after = configWithout(before, ONCALL, "@acme/plugin-local", carrier);
+    expect(after.workflows.oncall?.plugins).toBeUndefined();
+    expect(after.workflows.weekly?.plugins).toEqual([]);
+  });
+
+  it("does not inject the removed legacy brief provider into its removal trial", () => {
+    const before = {
+      ...config(),
+      workflows: {
+        oncall: { workflow: ONCALL.workflow, plugins: ["@amykit/plugin-file-store"] },
+        weekly: { workflow: WEEKLY.workflow, plugins: ["@acme/plugin-local"] },
+      },
+    };
+    const legacy = { ...ONCALL, plugins: ["@amykit/plugin-file-store"] };
+    const after = configWithout(before, legacy, "@amykit/plugin-file-brief-store", {
+      place: "profile",
+      profile: "oncall",
+    });
+
+    expect(pluginList(after, { ...legacy, briefStore: after.workflows.oncall?.briefStore })).not.toContain(
+      "@amykit/plugin-file-brief-store",
+    );
+  });
+
   it("removes only the selected owner of a shared workflow package", () => {
     const before = {
       ...config(),

@@ -296,6 +296,13 @@ describe("pluginList", () => {
     ]);
   });
 
+  it("replaces the recommended local brief provider for an otherwise empty profile", () => {
+    const alternative = { ...TICKETS, plugins: [], briefStore: "@example/plugin-git-brief-store" };
+
+    expect(pluginList(CONFIG, alternative)).toContain("@example/plugin-git-brief-store");
+    expect(pluginList(CONFIG, alternative)).not.toContain("@amykit/plugin-file-brief-store");
+  });
+
   it("falls back to what the workflow needs, starting with the workflow", () => {
     expect(pluginList(CONFIG, TICKETS)[0]).toBe("@amykit/workflow-ticket-to-qa");
     expect(pluginList(CONFIG, PLANS)[0]).toBe("@amykit/workflow-note-to-plan");

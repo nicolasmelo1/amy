@@ -6812,6 +6812,7 @@
           "packages/cli/src/index.ts",
           "packages/cli/src/spec.ts",
           "packages/cli/src/add.ts",
+          "packages/cli/src/remove.ts",
           "packages/cli/src/slices.ts",
           "packages/cli/src/config.ts"
         ],

@@ -1241,11 +1241,13 @@ function removeFromConfig(
     return;
   }
 
-  const own = profile.plugins.length > 0
-    ? profile.plugins
-    : pluginList(config, profile).filter((name) => !config.extraPlugins.includes(name));
-  writeProfilePlugins(home, profile.name, withoutSpec(own, spec), config);
-  console.log(`removed ${spec} from ${profile.name}`);
+  const name = carrier.profile ?? profile.name;
+  const target = profiles(config)[name] ?? profile;
+  const own = target.plugins.length > 0
+    ? target.plugins
+    : pluginList(config, target).filter((name) => !config.extraPlugins.includes(name));
+  writeProfilePlugins(home, name, withoutSpec(own, spec), config);
+  console.log(`removed ${spec} from ${name}`);
 }
 
 /**
