@@ -29,7 +29,6 @@ export class FileBriefStore implements BriefStore {
     at: string;
   }): Promise<BriefRecord> {
     const existing = await this.get(input.id);
-
     const record: BriefRecord = {
       id: input.id,
       sections: input.sections,
@@ -39,7 +38,6 @@ export class FileBriefStore implements BriefStore {
       updatedAt: input.at,
       revision: (existing?.revision ?? 0) + 1,
     };
-
     this.save(record);
     return record;
   }
@@ -50,16 +48,8 @@ export class FileBriefStore implements BriefStore {
     at: string;
   }): Promise<BriefRecord> {
     const existing = await this.get(input.id);
-    if (!existing) {
-      throw new Error(`there is no brief \`${input.id}\` to append a question to`);
-    }
-
-    const record: BriefRecord = {
-      ...existing,
-      questions: [...existing.questions, input.question],
-      updatedAt: input.at,
-    };
-
+    if (!existing) throw new Error(`there is no brief \`${input.id}\` to append a question to`);
+    const record: BriefRecord = { ...existing, questions: [...existing.questions, input.question], updatedAt: input.at };
     this.save(record);
     return record;
   }
@@ -70,20 +60,12 @@ export class FileBriefStore implements BriefStore {
     now: Date,
   ): Promise<BriefId[]> {
     const retired: BriefId[] = [];
-
     for (const id of this.ids()) {
       const record = await this.get(id);
-      if (!record) continue;
-
-      // One open child retains the whole brief, checked before the age, so
-      // a brief whose work just finished still lives until it is old.
-      if (!record.explains.every(explainsAreTerminal)) continue;
-
+      if (!record || !record.explains.every(explainsAreTerminal)) continue;
       if (now.getTime() - new Date(record.updatedAt).getTime() < retentionCutoffMs) continue;
-
       retired.push(id);
     }
-
     return retired;
   }
 
@@ -101,18 +83,11 @@ export class FileBriefStore implements BriefStore {
   }
 
   private ids(): BriefId[] {
-    return fs
-      .readdirSync(this.root)
-      .filter((name) => name.endsWith(".json"))
-      .map((name) => name.slice(0, -".json".length));
+    return fs.readdirSync(this.root).filter((name) => name.endsWith(".json")).map((name) => name.slice(0, -".json".length));
   }
 
   private file(id: BriefId): string {
-    // A brief id with a path separator in it would write outside the store,
-    // so it is refused rather than escaped.
-    if (id.includes("/") || id.includes(path.sep)) {
-      throw new Error(`a brief id cannot contain a path separator: \`${id}\``);
-    }
+    if (id.includes("/") || id.includes(path.sep)) throw new Error(`a brief id cannot contain a path separator: \`${id}\``);
     return path.join(this.root, `${id}.json`);
   }
 }

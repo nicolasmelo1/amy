@@ -11,7 +11,6 @@ export const configSchema: ConfigSchema = {
   briefsDirectory: {
     type: "string",
     description:
-      "where the briefs are kept, relative to the state directory. One per workflow, for the same reason the records are",
-    default: "briefs",
+      "deprecated: where briefs are kept, translated to @amykit/plugin-file-brief-store so existing installs keep their briefs",
   },
 };

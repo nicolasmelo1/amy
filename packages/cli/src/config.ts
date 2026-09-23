@@ -37,6 +37,12 @@ export interface WorkflowProfile {
   workflow: string;
   /** What to mount, in order. Empty means the recommended set. */
   plugins?: string[];
+  /**
+   * The package providing durable briefs for this workflow. When omitted,
+   * legacy explicit profiles that still name file-store receive the local
+   * file provider they had before briefs became their own mount.
+   */
+  briefStore?: string;
   /** Whether `amy note` files friction onto this profile's queue. */
   notes?: boolean;
   /** Whether `amy btw` puts a task onto this profile's queue. */
@@ -119,6 +125,13 @@ export interface AmyConfig {
   workflows: Record<string, WorkflowProfile>;
   /** Which profile runs when nothing is named. Empty means the first. */
   defaultWorkflow: string;
+  /**
+   * Plugins mounted under every profile, named here or added with
+   * `amy add`. A workflow's own plugins stay in its profile; this is the
+   * list for what somebody mounted on top, and it is kept apart so a
+   * profile left on the recommended set stays on it.
+   */
+  extraPlugins: string[];
 
   repos: string[];
   qaStatusName: string;
@@ -221,6 +234,7 @@ interface WorktreesConfig {
 export const DEFAULT_CONFIG: AmyConfig = {
   workflows: {},
   defaultWorkflow: "",
+  extraPlugins: [],
   repos: [],
   qaStatusName: "In QA",
   workingStatusName: "In Progress",
@@ -305,8 +319,7 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
-    workflows: parsed.workflows ?? {},
-    defaultWorkflow: parsed.defaultWorkflow ?? "",
+    ...mountingFrom(parsed),
     policy: { ...DEFAULT_POLICY, ...(parsed.policy ?? {}) },
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
     skills: parsed.skills ?? {},
@@ -321,6 +334,23 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
     },
     baseBranch: parsed.baseBranch ?? DEFAULT_CONFIG.baseBranch,
     ...checkoutLayoutFrom(parsed),
+  };
+}
+
+/**
+ * What a profile is read from, defaulted together.
+ *
+ * The three fields the profiles table and the mounting list are built from:
+ * they arrive as one block in the config and one of them missing is the same
+ * edit for all three, which is why they default in one place.
+ */
+function mountingFrom(
+  parsed: Partial<AmyConfig>,
+): Pick<AmyConfig, "workflows" | "defaultWorkflow" | "extraPlugins"> {
+  return {
+    workflows: parsed.workflows ?? {},
+    defaultWorkflow: parsed.defaultWorkflow ?? "",
+    extraPlugins: parsed.extraPlugins ?? [],
   };
 }
 
@@ -405,12 +435,19 @@ export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name 
 #     ticket-to-qa:
 #       workflow: "@amykit/workflow-ticket-to-qa"
 #       # plugins: []   # empty means the recommended set for this workflow
+#       # briefStore: "@acme/plugin-git-brief-store"  # replaces the local brief provider
 #     note-to-plan:
 #       workflow: "@amykit/workflow-note-to-plan"
 #       notes: true     # \`amy note\` files friction onto this profile's queue
 #
 # Which one runs when --workflow is not given. The first, if this is empty.
 # defaultWorkflow: ticket-to-qa
+
+# Plugins mounted under every workflow, named here or added with \`amy add\`.
+# Kept apart from a profile's own \`plugins:\` so a profile left on the
+# recommended set stays on it and gains one, rather than having the whole
+# recommendation copied into the config behind your back.
+# extraPlugins: []
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be
@@ -628,79 +665,6 @@ plans:
 `;
 
 /**
- * Rewrites one profile's plugin list, leaving every other line as it was.
- *
- * Rewriting the whole file from the parsed object would drop the comments
- * that explain what each setting is for, which is most of the file's value.
- * The `workflows:` block is the exception, because that is the block being
- * edited and there is no way to edit it without re-emitting it.
- */
-/** Adds one workflow profile without rewriting the rest of the operator's config. */
-export function writeWorkflowProfile(
-  root: string,
-  profile: string,
-  workflow: string,
-  config: AmyConfig,
-): void {
-  const file = paths(root).config;
-  const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
-  const workflows = { ...config.workflows, [profile]: { workflow } };
-  const without = withoutBlock(existing, "workflows:").replace(/\n{3,}$/, "\n\n");
-  const defaultLine = config.defaultWorkflow || Object.keys(config.workflows).length > 0
-    ? ""
-    : `\ndefaultWorkflow: ${profile}\n`;
-
-  fs.mkdirSync(paths(root).base, { recursive: true });
-  fs.writeFileSync(
-    file,
-    `${without.replace(/\n*$/, "\n")}${defaultLine}\n${yaml.stringify({ workflows })}`,
-    "utf-8",
-  );
-}
-
-export function writeProfilePlugins(
-  root: string,
-  profile: string,
-  specs: readonly string[],
-  config: AmyConfig,
-): void {
-  const file = paths(root).config;
-  const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
-
-  const declared = { ...config.workflows };
-  const entry = declared[profile];
-  if (!entry) throw new Error(`there is no \`${profile}\` workflow to add a plugin to`);
-
-  declared[profile] = { ...entry, plugins: [...specs] };
-
-  const without = withoutBlock(existing, "workflows:").replace(/\n{3,}$/, "\n\n");
-  const block = yaml.stringify({ workflows: declared });
-
-  fs.mkdirSync(paths(root).base, { recursive: true });
-  fs.writeFileSync(file, `${without.replace(/\n*$/, "\n")}\n${block}`, "utf-8");
-}
-
-/**
- * Drops a profile from the config, leaving every other line as it was.
- *
- * The entry only, never the state: what a profile did is in the log, which is
- * append-only because the budget is read off it.
- */
-export function removeProfile(root: string, profile: string, config: AmyConfig): void {
-  const file = paths(root).config;
-  const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
-
-  const declared = { ...config.workflows };
-  delete declared[profile];
-
-  const without = withoutBlock(existing, "workflows:").replace(/\n{3,}$/, "\n\n");
-  const block = Object.keys(declared).length > 0 ? yaml.stringify({ workflows: declared }) : "";
-
-  fs.mkdirSync(paths(root).base, { recursive: true });
-  fs.writeFileSync(file, `${without.replace(/\n*$/, "\n")}${block ? `\n${block}` : ""}`, "utf-8");
-}
-
-/**
  * The file without one top-level block, its indented lines included.
  *
  * A line walk rather than one multi-line pattern: a quantifier over indented
@@ -718,4 +682,100 @@ function withoutBlock(text: string, header: string): string {
   }
 
   return kept.join("\n");
+}
+
+/**
+ * Rewrites one top-level block, leaving every other line as it was.
+ *
+ * The one writer the profile and the extra list share: the block is the
+ * thing being edited and there is no way to edit it without re-emitting it,
+ * while everything beside it — the comments that explain what each setting
+ * is for — is most of the file's value and is kept as it was.
+ */
+function writeBlock(root: string, header: string, block: string): void {
+  const file = paths(root).config;
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
+  const without = withoutBlock(existing, header).replace(/\n{3,}$/, "\n\n");
+
+  fs.mkdirSync(paths(root).base, { recursive: true });
+  fs.writeFileSync(file, `${without.replace(/\n*$/, "\n")}\n${block}`.trimEnd() + "\n", "utf-8");
+}
+
+/**
+ * Adds one workflow profile without rewriting the rest of the operator's config.
+ */
+export function writeWorkflowProfile(
+  root: string,
+  profile: string,
+  workflow: string,
+  config: AmyConfig,
+): void {
+  const workflows = { ...config.workflows, [profile]: { workflow } };
+  const defaultLine = config.defaultWorkflow || Object.keys(config.workflows).length > 0
+    ? ""
+    : `\ndefaultWorkflow: ${profile}\n`;
+
+  writeBlock(
+    root,
+    "workflows:",
+    `${yaml.stringify({ workflows })}${defaultLine}`.trimEnd(),
+  );
+}
+
+export function writeProfilePlugins(
+  root: string,
+  profile: string,
+  specs: readonly string[],
+  config: AmyConfig,
+  briefStore = config.workflows[profile]?.briefStore,
+): void {
+  const declared = { ...config.workflows };
+  const entry = declared[profile];
+  if (!entry) throw new Error(`there is no \`${profile}\` workflow to add a plugin to`);
+
+  declared[profile] = { ...entry, plugins: [...specs], ...(briefStore !== entry.briefStore ? { briefStore } : {}) };
+
+  writeBlock(root, "workflows:", yaml.stringify({ workflows: declared }));
+}
+
+/**
+ * Drops a profile from the config, leaving every other line as it was.
+ *
+ * The entry only, never the state: what a profile did is in the log, which is
+ * append-only because the budget is read off it.
+ */
+export function removeProfile(root: string, profile: string, config: AmyConfig): void {
+  const declared = { ...config.workflows };
+  delete declared[profile];
+
+  writeBlock(
+    root,
+    "workflows:",
+    Object.keys(declared).length > 0 ? yaml.stringify({ workflows: declared }) : "",
+  );
+  // A default is a pointer into this table. Leaving it behind reads fine now
+  // but refuses a later command, so removal clears its own orphan.
+  if (config.defaultWorkflow === profile) writeBlock(root, "defaultWorkflow:", "");
+}
+
+/**
+ * Adds one package to the machine-wide plugin list, without rewriting the
+ * rest of the operator's config.
+ */
+export function writeExtraPlugins(
+  root: string,
+  specs: readonly string[],
+): void {
+  writeBlock(root, "extraPlugins:", yaml.stringify({ extraPlugins: [...specs] }));
+}
+
+/**
+ * Drops one package from the machine-wide plugin list.
+ */
+export function removeExtraPlugin(
+  root: string,
+  spec: string,
+): void {
+  const kept = loadConfig(root).extraPlugins.filter((name) => name !== spec);
+  writeBlock(root, "extraPlugins:", yaml.stringify({ extraPlugins: kept }));
 }

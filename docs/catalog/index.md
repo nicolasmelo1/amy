@@ -25,6 +25,7 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/plugin-codex` | plugin | The codex CLI as the agent, over its JSONL event stream. | [npm](https://www.npmjs.com/package/@amykit/plugin-codex) |
 | `@amykit/plugin-command` | plugin | Any command line tool, reached by a name the config allows. | [npm](https://www.npmjs.com/package/@amykit/plugin-command) |
 | `@amykit/plugin-command-gate` | plugin | A gate that runs the target repository's own commands. | [npm](https://www.npmjs.com/package/@amykit/plugin-command-gate) |
+| `@amykit/plugin-file-brief-store` | plugin | Briefs kept as one file per item. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-brief-store) |
 | `@amykit/plugin-file-notes` | plugin | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-notes) |
 | `@amykit/plugin-file-queue` | plugin | A queue kept as one file per item, claimed by rename. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-queue) |
 | `@amykit/plugin-file-store` | plugin | Work records kept as one file per item. | [npm](https://www.npmjs.com/package/@amykit/plugin-file-store) |

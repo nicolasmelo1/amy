@@ -41,6 +41,7 @@ export default defineConfig({
       "@amykit/plugin-file-worktree": resolve(here, "plugins/file-worktree/src/index.ts"),
       "@amykit/plugin-file-log": resolve(here, "plugins/file-log/src/index.ts"),
       "@amykit/plugin-file-store": resolve(here, "plugins/file-store/src/index.ts"),
+      "@amykit/plugin-file-brief-store": resolve(here, "plugins/file-brief-store/src/index.ts"),
       "@amykit/plugin-file-notes": resolve(here, "plugins/file-notes/src/index.ts"),
       "@amykit/plugin-plan-check": resolve(here, "plugins/plan-check/src/index.ts"),
       "@amykit/plugin-serial-engine": resolve(here, "plugins/serial-engine/src/index.ts"),

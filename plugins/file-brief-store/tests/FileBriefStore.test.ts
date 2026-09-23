@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { FileBriefStore } from "../src/FileBriefStore.js";
+import { mount } from "@amykit/core";
+import { FileBriefStore, plugin } from "../src/index.js";
+import { plugin as records } from "../../file-store/src/plugin.js";
 
 const NOW = new Date("2026-09-03T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
@@ -185,5 +187,20 @@ describe("FileBriefStore", () => {
     expect(first?.revision).toBe(1);
     expect(second?.revision).toBe(2);
     expect(second?.sections[0]?.body).toBe("Changed since the first look.");
+  });
+
+  it("mounts beside the record store, leaving the port free for another adapter", async () => {
+    const outcome = await mount(
+      [records, plugin],
+      {},
+      {
+        runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+        now: () => NOW,
+        paths: { workspace: root, checkouts: {}, state: root },
+      },
+    );
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok && outcome.mounted.ports.get("brief")).toBeInstanceOf(FileBriefStore);
   });
 });

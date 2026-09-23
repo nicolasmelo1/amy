@@ -21,6 +21,7 @@ For what the two halves mean and why, see
 | :-- | :-- | :-- | :-- |
 | `workflows` | `Record<string, WorkflowProfile>` | `{}` | The workflows this install can drive, by the name typed after `--workflow`. Merged over the shipped two, so naming one replaces it and naming a third adds it. |
 | `defaultWorkflow` | `string` | `""` | Which profile runs when nothing is named. Empty means the first. |
+| `extraPlugins` | `string[]` | `[]` | Plugins mounted under every profile, named here or added with `amy add`. A workflow's own plugins stay in its profile; this is the list for what somebody mounted on top, and it is kept apart so a profile left on the recommended set stays on it. |
 | `repos` | `string[]` | `[]` |  |
 | `qaStatusName` | `string` | `"In QA"` |  |
 | `workingStatusName` | `string` | `"In Progress"` | The tracker status a ticket must be in to be picked up. |
@@ -52,6 +53,7 @@ For what the two halves mean and why, see
 | :-- | :-- | :-- | :-- |
 | `workflow` | `string` | **yes** | The package contributing `plan()` and the runtime that answers it. |
 | `plugins` | `string[]` | no | What to mount, in order. Empty means the recommended set. |
+| `briefStore` | `string` | no | The package providing durable briefs for this workflow. When omitted, legacy explicit profiles that still name file-store receive the local file provider they had before briefs became their own mount. |
 | `notes` | `boolean` | no | Whether `amy note` files friction onto this profile's queue. |
 | `tasks` | `boolean` | no | Whether `amy btw` puts a task onto this profile's queue. |
 
@@ -90,12 +92,19 @@ and beats the machine-wide one.
 #     ticket-to-qa:
 #       workflow: "@amykit/workflow-ticket-to-qa"
 #       # plugins: []   # empty means the recommended set for this workflow
+#       # briefStore: "@acme/plugin-git-brief-store"  # replaces the local brief provider
 #     note-to-plan:
 #       workflow: "@amykit/workflow-note-to-plan"
 #       notes: true     # `amy note` files friction onto this profile's queue
 #
 # Which one runs when --workflow is not given. The first, if this is empty.
 # defaultWorkflow: ticket-to-qa
+
+# Plugins mounted under every workflow, named here or added with `amy add`.
+# Kept apart from a profile's own `plugins:` so a profile left on the
+# recommended set stays on it and gains one, rather than having the whole
+# recommendation copied into the config behind your back.
+# extraPlugins: []
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be

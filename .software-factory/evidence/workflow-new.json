@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "a-workflow-of-your-own",
-  "implementation_sha256": "9221cafcdcbf4302b01564aba6a96d8e31d12aa7bb7a82ec555c7452dd5ddf78",
+  "implementation_sha256": "af5180879bd303d761110f3b293319e6de34b902bd2a43f803bb0791bfc8ac32",
   "runs": [
     {
       "scenario": "a-workflow-of-your-own",

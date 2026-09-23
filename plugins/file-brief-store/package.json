@@ -1,0 +1,35 @@
+{
+  "name": "@amykit/plugin-file-brief-store",
+  "version": "0.4.0",
+  "description": "Briefs kept as one file per item.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": {
+    "url": "https://github.com/nicolasmelo1/amy/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/file-brief-store"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.4.0"
+  }
+}

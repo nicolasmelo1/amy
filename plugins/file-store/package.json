@@ -28,6 +28,7 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.4.0"
+    "@amykit/core": "^0.4.0",
+    "@amykit/plugin-file-brief-store": "^0.4.0"
   }
 }

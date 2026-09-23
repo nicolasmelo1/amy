@@ -123,4 +123,22 @@ describe("amy brief show", () => {
     // where it lives, not what it looks like.
     expect(fs.existsSync(path.join(state, "briefs"))).toBe(true);
   });
+
+  it("boots a legacy explicit file-store profile against its existing brief directory", async () => {
+    const legacy = { ...TICKETS, plugins: ["@amykit/plugin-file-store"] };
+    const config = {
+      ...CONFIG,
+      plugins: { "@amykit/plugin-file-store": { briefsDirectory: "briefs-before-the-split" } },
+    };
+    const loaded = await load(pluginList(config, legacy));
+    expect(loaded.problems).toEqual([]);
+
+    const { mount } = await import("@amykit/core");
+    const outcome = await mount(loaded.plugins, pluginSlices(config, legacy), host);
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.mounted.ports.has("brief")).toBe(true);
+    expect(fs.existsSync(path.join(host.paths.state, "briefs-before-the-split"))).toBe(true);
+  });
 });

@@ -19,6 +19,8 @@ export interface Profile {
   readonly workflow: string;
   /** What to mount. Empty means the recommended set for this workflow. */
   readonly plugins: readonly string[];
+  /** The brief provider this profile explicitly chose, if any. */
+  readonly briefStore?: string;
   /** Whether `amy note` files friction onto this profile's queue. */
   readonly takesNotes: boolean;
   /** Whether `amy btw` puts a task onto this profile's queue. */
@@ -46,6 +48,9 @@ const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {};
 const SHARED: readonly string[] = [
   "@amykit/plugin-file-queue",
   "@amykit/plugin-file-store",
+  // A BriefStore is intentionally its own mount: a Git-backed adapter can
+  // replace this local default without the record store claiming its port.
+  "@amykit/plugin-file-brief-store",
   "@amykit/plugin-file-notes",
   "@amykit/plugin-github",
   // One isolated checkout per piece of work must mount before the harnesses
@@ -94,6 +99,7 @@ export function profiles(config: AmyConfig): Record<string, Profile> {
       name,
       workflow: entry.workflow,
       plugins: entry.plugins ?? [],
+      briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
     };

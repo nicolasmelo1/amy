@@ -34,6 +34,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 
 | Command | What it does |
 | :-- | :-- |
+| [`amy add`](#amy-add) | Add a workflow or a plugin: install it, mount it, and check the machine boots |
 | [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
 | [`amy btw`](#amy-btw) | Something to do, said in passing. Goes on the queue, never becomes a ticket |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
@@ -54,6 +55,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy queue`](#amy-queue) | Inspect and tidy the queue |
 | [`amy queue prune`](#amy-queue-prune) | Delete finished queue items past their retention |
 | [`amy queue recover`](#amy-queue-recover) | Return items abandoned by a dead worker |
+| [`amy remove`](#amy-remove) | Remove a workflow or a plugin, refusing what the machine would not survive |
 | [`amy resume`](#amy-resume) | Release the handbrake |
 | [`amy roster`](#amy-roster) | Who is reviewing today |
 | [`amy roster confirm`](#amy-roster-confirm) | Stamp the roster with today's date |
@@ -79,6 +81,18 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 ## Commands in detail
 
 <!-- amy:generated cli-commands -->
+
+### `amy add`
+
+Add a workflow or a plugin: install it, mount it, and check the machine boots
+
+```sh
+amy add <spec>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<spec>` | yes | a package name, a URL, a git URL, or a path |
 
 ### `amy brief`
 
@@ -298,6 +312,18 @@ Return items abandoned by a dead worker
 ```sh
 amy queue recover
 ```
+
+### `amy remove`
+
+Remove a workflow or a plugin, refusing what the machine would not survive
+
+```sh
+amy remove <spec>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<spec>` | yes | the name the config carries |
 
 ### `amy resume`
 

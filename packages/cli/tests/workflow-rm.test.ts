@@ -21,6 +21,16 @@ describe("forgetting a workflow", () => {
 
   afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
+  it("clears a removed default so the config does not point at a missing profile", () => {
+    fs.appendFileSync(path.join(home, "config.yaml"), "defaultWorkflow: oncall\n", "utf-8");
+
+    removeProfile(home, "oncall", loadConfig(home));
+
+    const written = fs.readFileSync(path.join(home, "config.yaml"), "utf-8");
+    expect(written).not.toContain("defaultWorkflow:");
+    expect(resolveProfile(loadConfig(home))).toMatchObject({ profile: { workflow: "@acme/workflow-weekly" } });
+  });
+
   it("drops the one named", () => {
     removeProfile(home, "oncall", loadConfig(home));
 

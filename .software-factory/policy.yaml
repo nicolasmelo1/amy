@@ -224,6 +224,7 @@ gates:
       - "packages/agent-kit/src/**"
       - "packages/cli/src/**"
       - "plugins/file-store/src/**"
+      - "plugins/file-brief-store/src/**"
       - "plugins/file-worktree/src/**"
       - "plugins/serial-engine/src/**"
       - "plugins/linear/src/**"
@@ -345,6 +346,25 @@ gates:
       - "mine.a_workflow_that_spins_is_refused"
       - "mine.a_state_nothing_reaches_is_refused"
       - "mine.an_action_with_no_port_is_refused"
+
+  # One CLI adds or removes a mounted package; these are the paths that make
+  # that promise true, so changing one expires the proof.
+  amy-add-remove:
+    activation:
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/spec.ts"
+      - "packages/cli/src/add.ts"
+      - "packages/cli/src/remove.ts"
+      - "packages/cli/src/slices.ts"
+      - "packages/cli/src/config.ts"
+    evidence: ".software-factory/evidence/amy-add-remove.json"
+    plan: "docs/design/amy-add-and-amy-remove.md"
+    required_assertions:
+      - "add.a_path_becomes_a_workflow_that_runs"
+      - "add.a_plugin_can_be_added_before_any_workflow"
+      - "add.adding_one_plugin_keeps_the_recommendation"
+      - "add.removing_keeps_the_state"
+      - "add.a_removal_that_would_not_boot_is_refused"
 
   feature-grooming:
     activation:
