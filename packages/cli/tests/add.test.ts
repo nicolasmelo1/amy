@@ -401,6 +401,34 @@ describe("uninstallFromPluginsRoot", () => {
   });
 });
 
+describe("add rollback", () => {
+  it("leaves a pre-existing private-root package out of a failed probe rollback", async () => {
+    // `index.ts` is the command entry point, so load its pure rollback
+    // selector under an empty argv rather than letting Commander consume
+    // Vitest's own arguments.
+    const argv = process.argv;
+    process.argv = [process.execPath, "amy"];
+    try {
+      const { packagesIntroducedSince } = await import("../src/index.js");
+
+      expect(
+        packagesIntroducedSince(
+          ["@acme/plugin-already-there", "@amykit/core"],
+          ["@acme/plugin-already-there", "@amykit/core"],
+        ),
+      ).toEqual([]);
+      expect(
+        packagesIntroducedSince(
+          ["@acme/plugin-already-there", "@amykit/core"],
+          ["@acme/plugin-already-there", "@amykit/core", "@acme/plugin-refusing"],
+        ),
+      ).toEqual(["@acme/plugin-refusing"]);
+    } finally {
+      process.argv = argv;
+    }
+  });
+});
+
 describe("the config the two commands write", () => {
   it("refuses a workflow whose derived profile would replace another workflow", () => {
     expect(

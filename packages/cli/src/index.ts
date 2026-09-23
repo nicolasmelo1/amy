@@ -939,7 +939,7 @@ async function addCommand(home: string, spec: string): Promise<void> {
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
     console.error(why);
-    await rollback(runner, place.plugins, outcome.picked, why);
+    await rollback(runner, place.plugins, outcome.picked, outcome.before, why);
     process.exitCode = 1;
     return;
   }
@@ -1015,6 +1015,8 @@ class AddRefused {
 interface Added {
   picked: Picked;
   workflow: boolean;
+  /** Complete root snapshot, so a refusal never removes an older package. */
+  before: readonly string[];
 }
 
 async function addInstalled(
@@ -1035,10 +1037,21 @@ async function addInstalled(
     return new AddRefused("the install failed");
   }
 
-  const completed =
-    picked.kind === "git" || picked.kind === "tarball"
-      ? { ...picked, imported: nameInstalledPackage(place.plugins, before) }
-      : picked;
+  let completed: Picked;
+  try {
+    completed =
+      picked.kind === "git" || picked.kind === "tarball"
+        ? { ...picked, imported: nameInstalledPackage(place.plugins, before) }
+        : picked;
+  } catch (error) {
+    return rollback(
+      runner,
+      place.plugins,
+      picked,
+      before,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 
   // The probe imports the package where it actually is: a path add imports
   // the directory's own entry, because the name it will carry is not in the
@@ -1050,7 +1063,7 @@ async function addInstalled(
     probeImport,
     completed.kind === "path" ? (spec) => spec : pluginsRootResolver(home, place.plugins),
   );
-  if (!loaded.ok) return rollback(runner, place.plugins, completed, loaded.problem);
+  if (!loaded.ok) return rollback(runner, place.plugins, completed, before, loaded.problem);
 
   const probe = await whatMountingSays(loaded.plugin, place.plugins);
   if (!probe.ok) {
@@ -1058,6 +1071,7 @@ async function addInstalled(
       runner,
       place.plugins,
       completed,
+      before,
       `${completed.imported} does not mount:\n${probe.problems.map((problem) => `  ${problem}`).join("\n")}`,
     );
   }
@@ -1068,24 +1082,37 @@ async function addInstalled(
       runner,
       place.plugins,
       completed,
+      before,
       `${completed.imported} is the workflow a profile already drives`,
     );
   }
 
-  return { picked: completed, workflow: probe.workflow };
+  return { picked: completed, workflow: probe.workflow, before };
 }
 
 /**
- * Uninstalls and refuses, so a failed add leaves the root exactly as it
- * found it and the operator reads one answer for the whole command.
+ * The packages this add introduced, preserving packages the root already had.
+ *
+ * `npm install` is allowed to succeed when the named package was already in
+ * the private root. A later failed probe must leave that package alone: this
+ * command did not introduce it, even though it was not yet named in config.
  */
+export function packagesIntroducedSince(before: readonly string[], after: readonly string[]): string[] {
+  return after.filter((name) => !before.includes(name));
+}
+
+/** Uninstalls only what this add introduced, then returns one refusal. */
 async function rollback(
   runner: NodeCommandRunner,
   root: string,
   picked: Picked,
+  before: readonly string[],
   why: string,
 ): Promise<AddRefused> {
-  const outcome = await uninstallFromPluginsRoot(runner, root, [picked.imported]);
+  const introduced = packagesIntroducedSince(before, installedPackageNames(root));
+  if (introduced.length === 0) return new AddRefused(why);
+
+  const outcome = await uninstallFromPluginsRoot(runner, root, introduced);
   if (outcome.ok) console.log(`uninstalled ${picked.install} again`);
   else {
     console.error(`${outcome.command} failed:`);
