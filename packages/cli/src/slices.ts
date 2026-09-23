@@ -40,7 +40,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       staleClaimMs: config.staleClaimMs,
     },
     "@amykit/plugin-file-store": { directory: dirs.records },
-    "@amykit/plugin-file-brief-store": { directory: "briefs" },
+    "@amykit/plugin-file-brief-store": briefStoreSlice(config),
     // Mounted in both profiles: one writes the notes, the other reads them,
     // and an install running only the first would still be filing the
     // friction the second will pick up.
@@ -138,6 +138,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * The file-store setting from before BriefStore became its own plugin.
+ *
+ * Keep accepting it at the old slice and carry its value to the new mount:
+ * an upgrade must read the existing briefs, while a setting written directly
+ * for the new provider still wins in the ordinary per-plugin merge below.
+ */
+function fileStoreBriefDirectory(config: AmyConfig): string | undefined {
+  const fileStore = config.plugins["@amykit/plugin-file-store"];
+  return isRecord(fileStore) && typeof fileStore.briefsDirectory === "string"
+    ? fileStore.briefsDirectory
+    : undefined;
+}
+
+/** The file BriefStore's settings, including the one-time legacy translation. */
+function briefStoreSlice(config: AmyConfig): { directory: string } {
+  return { directory: fileStoreBriefDirectory(config) ?? "briefs" };
+}
+
+/**
  * The settings a harness plugin gets.
  *
  * The tiers come from the ladder rather than from a second list, so there is
@@ -199,7 +218,13 @@ export function ladderNames(ladder: readonly string[], harness: string): boolean
 
 /** Which plugins to mount: what the profile asked for, or what is recommended. */
 export function pluginList(config: AmyConfig, profile: Profile): string[] {
-  if (profile.plugins.length > 0) return [...profile.plugins, ...config.extraPlugins];
+  if (profile.plugins.length > 0) {
+    const explicit = [...profile.plugins, ...config.extraPlugins.filter((name) => !profile.plugins.includes(name))];
+    const briefStore = profile.briefStore ?? (
+      explicit.includes("@amykit/plugin-file-store") ? "@amykit/plugin-file-brief-store" : undefined
+    );
+    return briefStore && !explicit.includes(briefStore) ? [...explicit, briefStore] : explicit;
+  }
 
   const ladder = everyLadderEntry(config);
 

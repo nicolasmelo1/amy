@@ -37,6 +37,12 @@ export interface WorkflowProfile {
   workflow: string;
   /** What to mount, in order. Empty means the recommended set. */
   plugins?: string[];
+  /**
+   * The package providing durable briefs for this workflow. When omitted,
+   * legacy explicit profiles that still name file-store receive the local
+   * file provider they had before briefs became their own mount.
+   */
+  briefStore?: string;
   /** Whether `amy note` files friction onto this profile's queue. */
   notes?: boolean;
   /** Whether `amy btw` puts a task onto this profile's queue. */
@@ -429,6 +435,7 @@ export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name 
 #     ticket-to-qa:
 #       workflow: "@amykit/workflow-ticket-to-qa"
 #       # plugins: []   # empty means the recommended set for this workflow
+#       # briefStore: "@acme/plugin-git-brief-store"  # replaces the local brief provider
 #     note-to-plan:
 #       workflow: "@amykit/workflow-note-to-plan"
 #       notes: true     # \`amy note\` files friction onto this profile's queue

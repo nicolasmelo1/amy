@@ -190,6 +190,32 @@ describe("pluginSlices", () => {
 
     expect(slices["@amykit/plugin-claude"]).toMatchObject({ model: "opus", defaultBranch: "trunk" });
   });
+
+  it("moves a legacy file-store briefsDirectory to the independent provider", () => {
+    const slices = pluginSlices({
+      ...CONFIG,
+      plugins: {
+        "@amykit/plugin-file-store": { briefsDirectory: "shared-briefs" },
+      },
+    }, TICKETS) as Record<string, Record<string, unknown>>;
+
+    // The legacy key remains valid at the record-store boundary, but its
+    // value reaches the provider that now owns the brief port.
+    expect(slices["@amykit/plugin-file-store"]?.briefsDirectory).toBe("shared-briefs");
+    expect(slices["@amykit/plugin-file-brief-store"]?.directory).toBe("shared-briefs");
+  });
+
+  it("lets the new brief-store slice override a legacy directory", () => {
+    const slices = pluginSlices({
+      ...CONFIG,
+      plugins: {
+        "@amykit/plugin-file-store": { briefsDirectory: "old-briefs" },
+        "@amykit/plugin-file-brief-store": { directory: "git-brief-cache" },
+      },
+    }, TICKETS) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amykit/plugin-file-brief-store"]?.directory).toBe("git-brief-cache");
+  });
 });
 
 describe("the ladder, which is the one place harnesses are named", () => {
@@ -246,6 +272,28 @@ describe("pluginList", () => {
     const oncall = { ...TICKETS, plugins: ["@amykit/plugin-z", "@amykit/plugin-a"] };
 
     expect(pluginList(CONFIG, oncall)).toEqual(["@amykit/plugin-z", "@amykit/plugin-a"]);
+  });
+
+  it("keeps a legacy explicit file-store profile bootable with the local brief provider", () => {
+    const legacy = { ...TICKETS, plugins: ["@amykit/plugin-file-store"] };
+
+    expect(pluginList(CONFIG, legacy)).toEqual([
+      "@amykit/plugin-file-store",
+      "@amykit/plugin-file-brief-store",
+    ]);
+  });
+
+  it("uses the brief provider an explicit profile selected instead of adding the local one", () => {
+    const alternative = {
+      ...TICKETS,
+      plugins: ["@amykit/plugin-file-store", "@example/plugin-git-brief-store"],
+      briefStore: "@example/plugin-git-brief-store",
+    };
+
+    expect(pluginList(CONFIG, alternative)).toEqual([
+      "@amykit/plugin-file-store",
+      "@example/plugin-git-brief-store",
+    ]);
   });
 
   it("falls back to what the workflow needs, starting with the workflow", () => {

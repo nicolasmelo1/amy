@@ -23,6 +23,23 @@ export interface Picked {
   readonly absolute?: string;
 }
 
+/** The profile key a workflow package contributes when `amy add` writes it. */
+export function workflowProfileName(imported: string): string {
+  return path.parse(imported).name.replace(/^workflow-/, "");
+}
+
+/** Refuses a new workflow that would overwrite another workflow's profile. */
+export function workflowProfileConflict(
+  workflows: Readonly<Record<string, { workflow: string }>>,
+  imported: string,
+): string | undefined {
+  const profile = workflowProfileName(imported);
+  const existing = workflows[profile];
+  return existing && existing.workflow !== imported
+    ? `the workflow profile \`${profile}\` already names ${existing.workflow}`
+    : undefined;
+}
+
 /**
  * Decides what a spec argument is, and what each form becomes.
  *
@@ -36,13 +53,13 @@ export interface Picked {
  *
  * A git URL and a tarball defer to the manifest the install writes.
  */
-export function whatPackageIs(spec: string, cwd: string, root: string): Picked {
+export function whatPackageIs(spec: string, cwd: string, _root: string): Picked {
   const resolved = classify(spec, cwd);
 
   if (resolved.kind === "git" || resolved.kind === "tarball") {
     // Before installation there is no manifest to read. Keep the name blank;
     // `nameInstalledPackage` fills it from the package npm just added.
-    return { kind: resolved.kind, install: resolved.install, imported: packageNameOnDisk(root) ?? "" };
+    return { kind: resolved.kind, install: resolved.install, imported: "" };
   }
 
   if (resolved.kind === "path") {
@@ -66,25 +83,40 @@ function manifestName(directory: string): string | undefined {
   }
 }
 
-/**
- * The one package a fresh install wrote, read off its manifest.
- *
- * npm answers a git URL or a tarball with the name the package declares, and
- * that name is what the config has to carry. Read from amy's own npm root
- * rather than guessed from the URL, and asked for singular: an install that
- * produced two top-level packages did not do what was asked, and saying so
- * beats writing whichever name happened to sort first into a config.
- */
-function packageNameOnDisk(root: string): string | undefined {
-  const packages = packageNamesOnDisk(root);
-  return packages.length === 1 ? packages[0] : undefined;
+/** Every package a private npm root holds, including a direct package's dependencies. */
+export function installedPackageNames(root: string): string[] {
+  return packageNamesOnDisk(root);
 }
 
-/** The package name npm added, compared with the root as it was before. */
+/**
+ * The direct package an install wrote, read off the root's manifest.
+ *
+ * A git or tarball package can bring dependencies, and npm may hoist those
+ * alongside it. The root manifest is npm's declaration of which package was
+ * requested directly; intersecting it with the complete pre-install snapshot
+ * distinguishes that package from its newly written dependencies.
+ */
 export function nameInstalledPackage(root: string, before: readonly string[]): string {
-  const added = packageNamesOnDisk(root).filter((name) => !before.includes(name));
-  if (added.length !== 1) throw new Error(`the install did not add one package amy can name`);
-  return added[0]!;
+  const added = new Set(packageNamesOnDisk(root).filter((name) => !before.includes(name)));
+  const direct = packageNamesInManifest(root).filter((name) => added.has(name));
+  if (direct.length !== 1) throw new Error(`the install did not add one direct package amy can name`);
+  return direct[0]!;
+}
+
+/** The names the private root itself asks npm to install. */
+function packageNamesInManifest(root: string): string[] {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf-8")) as Record<string, unknown>;
+    const names = new Set<string>();
+    for (const field of ["dependencies", "devDependencies", "optionalDependencies"]) {
+      const dependencies = manifest[field];
+      if (typeof dependencies !== "object" || dependencies === null || Array.isArray(dependencies)) continue;
+      for (const name of Object.keys(dependencies)) names.add(name);
+    }
+    return [...names];
+  } catch {
+    return [];
+  }
 }
 
 function packageNamesOnDisk(root: string): string[] {

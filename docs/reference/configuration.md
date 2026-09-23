@@ -53,6 +53,7 @@ For what the two halves mean and why, see
 | :-- | :-- | :-- | :-- |
 | `workflow` | `string` | **yes** | The package contributing `plan()` and the runtime that answers it. |
 | `plugins` | `string[]` | no | What to mount, in order. Empty means the recommended set. |
+| `briefStore` | `string` | no | The package providing durable briefs for this workflow. When omitted, legacy explicit profiles that still name file-store receive the local file provider they had before briefs became their own mount. |
 | `notes` | `boolean` | no | Whether `amy note` files friction onto this profile's queue. |
 | `tasks` | `boolean` | no | Whether `amy btw` puts a task onto this profile's queue. |
 
@@ -91,6 +92,7 @@ and beats the machine-wide one.
 #     ticket-to-qa:
 #       workflow: "@amykit/workflow-ticket-to-qa"
 #       # plugins: []   # empty means the recommended set for this workflow
+#       # briefStore: "@acme/plugin-git-brief-store"  # replaces the local brief provider
 #     note-to-plan:
 #       workflow: "@amykit/workflow-note-to-plan"
 #       notes: true     # `amy note` files friction onto this profile's queue

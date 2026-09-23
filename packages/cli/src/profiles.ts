@@ -19,6 +19,8 @@ export interface Profile {
   readonly workflow: string;
   /** What to mount. Empty means the recommended set for this workflow. */
   readonly plugins: readonly string[];
+  /** The brief provider this profile explicitly chose, if any. */
+  readonly briefStore?: string;
   /** Whether `amy note` files friction onto this profile's queue. */
   readonly takesNotes: boolean;
   /** Whether `amy btw` puts a task onto this profile's queue. */
@@ -97,6 +99,7 @@ export function profiles(config: AmyConfig): Record<string, Profile> {
       name,
       workflow: entry.workflow,
       plugins: entry.plugins ?? [],
+      briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
     };

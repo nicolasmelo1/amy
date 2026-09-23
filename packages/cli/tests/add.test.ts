@@ -5,12 +5,15 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   importPluginBySpec,
+  installedPackageNames,
+  nameInstalledPackage,
   uninstallFromPluginsRoot,
   unmetAction,
   whatBoots,
   whatMountingSays,
   whatPackageIs,
   withoutSpec,
+  workflowProfileConflict,
 } from "../src/add.js";
 import { DEFAULT_CONFIG, loadConfig, removeExtraPlugin, writeExtraPlugins, writeWorkflowProfile } from "../src/config.js";
 import { load, pluginsRootResolver } from "../src/loader.js";
@@ -86,18 +89,13 @@ describe("whatPackageIs", () => {
     expect(picked.imported).toBe("@acme/workflow-standalone");
   });
 
-  it("reads a tarball's name off the manifest npm wrote, and asks for exactly one", () => {
-    fs.mkdirSync(path.join(root, "node_modules", "@acme", "workflow-oncall"), { recursive: true });
-    fs.writeFileSync(
-      path.join(root, "node_modules", "@acme", "workflow-oncall", "package.json"),
-      '{"name":"@acme/workflow-oncall"}',
-      "utf-8",
-    );
+  it("keeps a tarball name blank until npm has installed it", () => {
+    packageAt(root, "@acme/workflow-oncall", "export {};\n");
 
     expect(whatPackageIs("https://example.test/wf.tgz", home, root)).toEqual({
       kind: "tarball",
       install: "https://example.test/wf.tgz",
-      imported: "@acme/workflow-oncall",
+      imported: "",
     });
   });
 
@@ -112,6 +110,32 @@ describe("whatPackageIs", () => {
       install: "https://example.test/wf.tgz",
       imported: "",
     });
+  });
+});
+
+describe("nameInstalledPackage", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-add-direct-package-"));
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      '{"name":"amy-plugins","private":true,"dependencies":{"@amykit/core":"1.0.0"}}\n',
+    );
+    packageAt(root, "@amykit/core", "export {};\n");
+  });
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it("names the direct git or tarball package instead of its newly hoisted dependency", () => {
+    const before = installedPackageNames(root);
+    packageAt(root, "@acme/workflow-oncall", "export {};\n");
+    packageAt(root, "transitive", "export {};\n");
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      '{"name":"amy-plugins","private":true,"dependencies":{"@amykit/core":"1.0.0","@acme/workflow-oncall":"https://example.test/workflow-oncall.tgz"}}\n',
+    );
+
+    expect(nameInstalledPackage(root, before)).toBe("@acme/workflow-oncall");
   });
 });
 
@@ -378,6 +402,12 @@ describe("uninstallFromPluginsRoot", () => {
 });
 
 describe("the config the two commands write", () => {
+  it("refuses a workflow whose derived profile would replace another workflow", () => {
+    expect(
+      workflowProfileConflict({ oncall: { workflow: "@acme/workflow-oncall" } }, "@other/workflow-oncall"),
+    ).toBe("the workflow profile `oncall` already names @acme/workflow-oncall");
+  });
+
   let home: string;
 
   beforeEach(() => {
@@ -446,7 +476,7 @@ describe("the config the two commands write", () => {
     const oncall: Profile = {
       name: "oncall",
       workflow: "@acme/workflow-oncall",
-      plugins: [],
+      plugins: ["@amykit/plugin-file-queue"],
       takesNotes: false,
       takesTasks: false,
     };

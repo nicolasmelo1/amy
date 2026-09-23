@@ -27,11 +27,13 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-file-store":
+    briefsDirectory: <string>
     directory: "tickets"
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `briefsDirectory` | `string` | no |  | deprecated: where briefs are kept, translated to @amykit/plugin-file-brief-store so existing installs keep their briefs |
 | `directory` | `string` | no | `tickets` | where the records are kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not read each other's work |
 
 Every field is checked at boot against the schema this package declares. A key that is

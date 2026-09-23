@@ -64,6 +64,7 @@ import {
   BootCheck,
   Picked,
   importPluginBySpec,
+  installedPackageNames,
   nameInstalledPackage,
   uninstallFromPluginsRoot,
   unmetAction,
@@ -71,6 +72,8 @@ import {
   whatMountingSays,
   whatPackageIs,
   withoutSpec,
+  workflowProfileConflict,
+  workflowProfileName,
 } from "./add.js";
 import { clearDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, install, installedHarnesses } from "./harnesses.js";
@@ -78,6 +81,7 @@ import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
+import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -870,15 +874,17 @@ async function writeAddedEntry(
   config: AmyConfig,
   picked: Picked,
   workflow: boolean,
-): Promise<string> {
+): Promise<{ message: string; profile?: string }> {
   if (workflow) {
-    const name = path.parse(picked.imported).name.replace(/^workflow-/, "");
+    const name = workflowProfileName(picked.imported);
+    const conflict = workflowProfileConflict(config.workflows, picked.imported);
+    if (conflict) throw new Error(conflict);
     writeWorkflowProfile(home, name, picked.imported, config);
-    return `added ${picked.imported} as the workflow \`${name}\``;
+    return { message: `added ${picked.imported} as the workflow \`${name}\``, profile: name };
   }
 
   writeExtraPlugins(home, [...config.extraPlugins, picked.imported]);
-  return `added ${picked.imported} to every profile`;
+  return { message: `added ${picked.imported} to every profile` };
 }
 
 /**
@@ -927,7 +933,17 @@ async function addCommand(home: string, spec: string): Promise<void> {
     return;
   }
 
-  console.log(await writeAddedEntry(home, config, outcome.picked, outcome.workflow));
+  let added: { message: string; profile?: string };
+  try {
+    added = await writeAddedEntry(home, config, outcome.picked, outcome.workflow);
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    console.error(why);
+    await rollback(runner, place.plugins, outcome.picked, why);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(added.message);
 
   // The rest of the machine. A workflow's recommended set is derived at
   // every read, so a bare machine now names plugins it has never seen —
@@ -936,7 +952,9 @@ async function addCommand(home: string, spec: string): Promise<void> {
   // joined a set that already boots.
   if (outcome.workflow) {
     const fresh = loadConfig(home);
-    const wanted = pluginList(fresh, selected(fresh));
+    const resolution = resolveProfile(fresh, added.profile);
+    if (!resolution.ok) throw new Error(resolution.problem);
+    const wanted = pluginList(fresh, resolution.profile);
     const missing = wanted.filter((name) => !localWorkflow(home, name) && !pickedIsInstalled(place.plugins, name));
     if (missing.length > 0) {
       console.log(`\ninstalling what the workflow asks for: ${missing.join(", ")}`);
@@ -956,7 +974,11 @@ async function addCommand(home: string, spec: string): Promise<void> {
   // write may have just named is the one the boot has to prove — on a bare
   // machine, this add made it the default.
   const booted = await whatBoots(async () => {
-    const assembled = await assemble(selected());
+    const profile = outcome.workflow
+      ? resolveProfile(loadConfig(home), added.profile)
+      : { ok: true as const, profile: selected() };
+    if (!profile.ok) return { ok: false, problems: [profile.problem] };
+    const assembled = await assemble(profile.profile);
     return assembled.ok ? { ok: true, problems: [], mounted: assembled.mounted } : { ok: false, problems: assembled.problems };
   });
   if (!booted.ok) {
@@ -1003,17 +1025,14 @@ async function addInstalled(
   declared: readonly string[],
 ): Promise<AddRefused | Added> {
   const place = paths(home);
-  const fromRegistry = picked.kind !== "path";
-  const before = installedPlugins(place.plugins);
+  const before = installedPackageNames(place.plugins);
 
-  if (fromRegistry) {
-    console.log(`installing ${picked.install} into ${place.plugins}…`);
-    const install = await installIntoPluginsRoot(runner, place.plugins, [picked.install]);
-    if (!install.ok) {
-      console.error(`${install.command} failed:`);
-      console.error(install.output || "it said nothing");
-      return new AddRefused("the install failed");
-    }
+  console.log(`installing ${picked.install} into ${place.plugins}…`);
+  const install = await installIntoPluginsRoot(runner, place.plugins, [picked.install]);
+  if (!install.ok) {
+    console.error(`${install.command} failed:`);
+    console.error(install.output || "it said nothing");
+    return new AddRefused("the install failed");
   }
 
   const completed =
@@ -1091,63 +1110,41 @@ async function mountingWithout(
   config: AmyConfig,
   profile: Profile,
   spec: string,
+  carrier: Carrier,
 ): Promise<BootCheck> {
-  const trialConfig: AmyConfig = {
-    ...config,
-    workflows: Object.fromEntries(
-      Object.entries(config.workflows).filter(([, entry]) => entry.workflow !== spec),
-    ),
-    extraPlugins: config.extraPlugins.filter((name) => name !== spec),
-  };
-  const trialProfile: Profile = {
-    ...profile,
-    plugins: profile.plugins.includes(spec) ? withoutSpec(profile.plugins, spec) : profile.plugins,
-  };
-  const trialSlices = { ...pluginSlices(trialConfig, trialProfile) };
-  if (trialSlices[spec]) delete trialSlices[spec];
+  const trialConfig = configWithout(config, profile, spec, carrier);
 
-  const outcome = await mount(
-    [...(await loadMountable(pluginList(trialConfig, trialProfile))).plugins, hostPlugin(() => loadRoster(home))],
-    trialSlices,
-    {
-      runner,
-      now: () => new Date(),
-      log: new FileEventLog(paths(home).log, undefined, build),
-      paths: hostPaths(trialConfig, profilePaths(home, trialProfile.name).base),
-    },
-  );
+  // Extras mount under every profile. The trial is therefore all remaining
+  // profiles, not merely the one selected by this invocation.
+  for (const trialProfile of Object.values(profiles(trialConfig))) {
+    const trialSlices = { ...pluginSlices(trialConfig, trialProfile) };
+    delete trialSlices[spec];
+    const loaded = await loadMountable(pluginList(trialConfig, trialProfile));
+    if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
-  if (!outcome.ok) return { ok: false, problems: outcome.problems };
-
-  const { mounted } = outcome;
-  if (!mounted.engine) {
-    return { ok: false, problems: ["no plugin mounted an engine, so nothing can advance work"] };
-  }
-  // Removing a workflow leaves the machine bare when it was the only one: a
-  // bare machine is the state the install arrived in, not a broken one. The
-  // refusal is for a machine that still declares work it cannot drive.
-  if (!mounted.workflow && Object.keys(trialConfig.workflows).length > 0) {
-    return { ok: false, problems: ["no plugin mounted a workflow, so there is no order to follow"] };
+    const outcome = await mount(
+      [...loaded.plugins, hostPlugin(() => loadRoster(home))],
+      trialSlices,
+      {
+        runner,
+        now: () => new Date(),
+        log: new FileEventLog(paths(home).log, undefined, build),
+        paths: hostPaths(trialConfig, profilePaths(home, trialProfile.name).base),
+      },
+    );
+    if (!outcome.ok) return { ok: false, problems: outcome.problems };
+    if (!outcome.mounted.engine) {
+      return { ok: false, problems: ["no plugin mounted an engine, so nothing can advance work"] };
+    }
+    if (!outcome.mounted.workflow) {
+      return { ok: false, problems: ["no plugin mounted a workflow, so there is no order to follow"] };
+    }
+    const unmet = unmetNeeds(outcome.mounted, outcome.mounted.workflow);
+    if (unmet.length > 0) return { ok: false, problems: unmet, mounted: outcome.mounted };
   }
 
-  const unmet = mounted.workflow ? unmetNeeds(mounted, mounted.workflow) : [];
-  return unmet.length > 0 ? { ok: false, problems: unmet, mounted } : { ok: true, problems: [], mounted };
-}
-
-/**
- * Which config entry the spec is carried by, so the write below edits the
- * one place the name lives rather than all of them.
- */
-function carriedBy(
-  config: AmyConfig,
-  profile: Profile,
-  spec: string,
-): { place: "profile" | "extras" | "workflow"; profile?: string } {
-  const owning = Object.entries(config.workflows).find(([, entry]) => entry.workflow === spec);
-  if (owning) return { place: "workflow", profile: owning[0] };
-  if (pluginList(config, profile).includes(spec)) return { place: "profile", profile: profile.name };
-  if (config.extraPlugins.includes(spec)) return { place: "extras" };
-  return { place: "extras" };
+  // Removing the sole workflow returns the machine to its bare, valid state.
+  return { ok: true, problems: [] };
 }
 
 /**
@@ -1171,12 +1168,11 @@ function refuseRemoval(
   config: AmyConfig,
   profile: Profile,
   spec: string,
-  carrier: { place: "profile" | "extras" | "workflow"; profile?: string },
+  carrier: Carrier,
 ): string | undefined {
   const carried =
     Object.values(config.workflows).some((entry) => entry.workflow === spec) ||
-    pluginList(config, profile).includes(spec) ||
-    config.extraPlugins.includes(spec);
+    Object.values(profiles(config)).some((candidate) => pluginList(config, candidate).includes(spec));
 
   if (!carried) return `the config does not name ${spec}`;
 
@@ -1201,7 +1197,7 @@ function removeFromConfig(
   config: AmyConfig,
   profile: Profile,
   spec: string,
-  carrier: { place: "profile" | "extras" | "workflow"; profile?: string },
+  carrier: Carrier,
 ): void {
   if (carrier.place === "extras") {
     removeExtraPlugin(home, spec);
@@ -1218,7 +1214,10 @@ function removeFromConfig(
     return;
   }
 
-  writeProfilePlugins(home, profile.name, withoutSpec(pluginList(config, profile), spec), config);
+  const own = profile.plugins.length > 0
+    ? profile.plugins
+    : pluginList(config, profile).filter((name) => !config.extraPlugins.includes(name));
+  writeProfilePlugins(home, profile.name, withoutSpec(own, spec), config);
   console.log(`removed ${spec} from ${profile.name}`);
 }
 
@@ -1259,7 +1258,7 @@ async function removeCommand(home: string, spec: string): Promise<void> {
     return;
   }
 
-  const booted = await whatBoots(() => mountingWithout(home, config, profile, spec));
+  const booted = await whatBoots(() => mountingWithout(home, config, profile, spec, carrier));
 
   if (!booted.ok) {
     // The action first when the mount still holds the workflow: it is the
@@ -1273,7 +1272,8 @@ async function removeCommand(home: string, spec: string): Promise<void> {
   }
 
   removeFromConfig(home, config, profile, spec, carrier);
-  await uninstallRemoved(runner, paths(home).plugins, spec);
+  if (!stillMounted(loadConfig(home), spec)) await uninstallRemoved(runner, paths(home).plugins, spec);
+  else console.log(`${spec} remains mounted by another profile`);
 
   console.log("records, queue and log are kept: nothing here touches them.");
 }

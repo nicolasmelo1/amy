@@ -2,11 +2,9 @@
 #
 # Usage: amy-add-remove-scenario.sh [report-path]
 #
-# Installs the command alone onto a scratch machine, adds the same
-# third-party workflow three ways — from a path, from a tarball URL, and from
-# a directory that is not a package — drives one piece of work, then removes
-# it and drives nothing. That is the claim in one run: one command, whatever
-# shape the package arrives in, and nothing left behind on either side.
+# Installs the command alone, adds one workflow from a path and tarball URL,
+# then removes it. The tarball arrives while the path profile remains default,
+# so `add` must validate the profile it just wrote. Nothing remains behind.
 #
 # No unit test can say this. Every one of them resolves source from inside
 # the workspace, where every package is resolvable whether it was installed
@@ -37,10 +35,21 @@ test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 # The workflow is copied out before npm sees it, so the installed machine has
 # no path back into this checkout. The npm stand-in answers the third-party
-# name from that copy — for a name and for a tarball install, which are two
-# shapes of the same package — and delegates everything else to the real npm
-# with the prefix amy supplied.
+# name from that copy and maps the tarball URL to a real tarball, then delegates
+# everything else to the real npm with the prefix amy supplied.
 cp -R "$here/amy-add-remove/workflow-oncall" "$work/third-party"
+cp -R "$work/third-party" "$work/tarball-workflow"
+node -e '
+  const fs = require("fs");
+  const root = process.argv[1];
+  const manifest = JSON.parse(fs.readFileSync(`${root}/package.json`, "utf8"));
+  manifest.name = "@acme/workflow-afterhours";
+  fs.writeFileSync(`${root}/package.json`, `${JSON.stringify(manifest, null, 2)}\n`);
+  const entry = fs.readFileSync(`${root}/index.js`, "utf8").replaceAll("oncall", "afterhours");
+  fs.writeFileSync(`${root}/index.js`, entry);
+' "$work/tarball-workflow"
+mkdir -p "$work/tarballs"
+"$npm_real" pack "$work/tarball-workflow" --pack-destination "$work/tarballs" >/dev/null
 
 # amy keeps its state in one place per machine, so this run gets its own.
 export HOME="$work/home"
@@ -64,6 +73,9 @@ for arg in "\$@"; do
       ;;
     @acme/plugin-extra)
       args="\$args '$work/plugin-extra'"
+      ;;
+    https://example.test/workflow-afterhours.tgz)
+      args="\$args '$work/tarballs/'*.tgz"
       ;;
     *)
       args="\$args '\$arg'"
@@ -137,7 +149,19 @@ root_before=$(cat .amy/plugins/package.json)
 again=$("$amy" add "$work/third-party" 2>&1 || echo "")
 says add.adding_the_same_thing_twice_is_one_install "$again" "already mounted"
 
-# 6. `amy remove` drops the entry and the package, and keeps every record.
+# 6. A URL discovers its direct package name only after npm has installed it.
+# `oncall` remains the default, so the command's own dependency and boot
+# checks must select the newly written `afterhours` profile rather than the
+# profile that was already there.
+added_tarball=$("$amy" add "https://example.test/workflow-afterhours.tgz" 2>&1 || echo "")
+says add.a_tarball_discovers_the_direct_package "$added_tarball" "added @acme/workflow-afterhours as the workflow \`afterhours\`"
+mkdir -p .amy/afterhours/pages
+echo "the disk filled up on node 4" > .amy/afterhours/pages/PAGE-2.txt
+tarball_discovered=$("$amy" --workflow afterhours discover 2>&1 || echo "")
+tarball_ticked=$("$amy" --workflow afterhours tick 2>&1 || echo "")
+says add.the_newly_added_profile_is_validated "$tarball_discovered $tarball_ticked" "paged -> acknowledged"
+
+# 7. `amy remove` drops the entry and the package, and keeps every record.
 records_before=$(cat .amy/oncall/records/PAGE-1.json 2>/dev/null || echo "absent")
 removed=$("$amy" remove @acme/workflow-oncall 2>&1 || echo "")
 says add.removing_drops_the_entry "$removed" "removed"
@@ -147,7 +171,7 @@ else
   record add.removing_uninstalls_the_package 1
 fi
 
-# 7. And keeps every record, and drives nothing after it.
+# 8. And keeps every record, and drives nothing after it.
 after=$("$amy" --workflow oncall tick 2>&1 || echo "")
 says add.removing_keeps_the_state "$after" "there is no \`oncall\` workflow"
 if [ "$records_before" = "$(cat .amy/oncall/records/PAGE-1.json 2>/dev/null || echo absent)" ]; then
@@ -156,7 +180,7 @@ else
   record add.removing_leaves_the_records 1
 fi
 
-# 8. Removing something the machine still needs is refused, naming the action
+# 9. Removing something the machine still needs is refused, naming the action
 # that would have no port. A plugin root holds the engine the workflow rides;
 # removing it from under a mounted workflow is the refusal, moved to a moment
 # somebody can still change their mind.
@@ -191,7 +215,7 @@ cat > "$report" <<JSON
     "assertions_run": $total,
     "assertions_failed": $failed,
     "workflow_added": "@acme/workflow-oncall",
-    "added_from": ["path", "package name", "a directory that is not a package"]
+    "added_from": ["path", "tarball URL", "a directory that is not a package"]
   },
   "assertions": [$(printf '%s' "$assertions" | sed 's/,$//')]
 }

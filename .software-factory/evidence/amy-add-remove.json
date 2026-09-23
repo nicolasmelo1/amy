@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "amy-add-remove",
-  "implementation_sha256": "884496ffe6145f3bfe2a56aa9a499ad1be13c1436f7b1be12065572072068812",
+  "implementation_sha256": "b14ea1163582784236354393166aa67f42ba119f06efc2769da3ed7adda6af4e",
   "runs": [
     {
       "scenario": "amy-add-remove",
       "status": "passed",
       "actor": "Hermes Agent, installing the command onto a scratch machine on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/amy-add-remove-run.json",
-      "report_sha256": "5c7b04bb5b1a0a723b949ecd3145b0afc5f59b105d147fcd629a13fa6e127b9b",
+      "report_sha256": "9c64aa8cfd46c4f74da7c55b9e1b47f097571de562e32feae32d2bc61927d660",
       "required_assertions": [
         "add.a_path_becomes_a_workflow_that_runs",
         "add.adding_one_plugin_keeps_the_recommendation",

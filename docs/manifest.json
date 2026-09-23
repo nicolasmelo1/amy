@@ -6086,6 +6086,12 @@
         "contributes": [],
         "settings": [
           {
+            "name": "briefsDirectory",
+            "type": "string",
+            "required": false,
+            "description": "deprecated: where briefs are kept, translated to @amykit/plugin-file-brief-store so existing installs keep their briefs"
+          },
+          {
             "name": "directory",
             "type": "string",
             "required": false,

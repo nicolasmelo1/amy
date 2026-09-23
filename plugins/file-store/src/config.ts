@@ -8,4 +8,9 @@ export const configSchema: ConfigSchema = {
       "where the records are kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not read each other's work",
     default: "tickets",
   },
+  briefsDirectory: {
+    type: "string",
+    description:
+      "deprecated: where briefs are kept, translated to @amykit/plugin-file-brief-store so existing installs keep their briefs",
+  },
 };
