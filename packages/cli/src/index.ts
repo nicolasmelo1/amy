@@ -77,7 +77,7 @@ import {
   workflowProfileConflict,
   workflowProfileName,
 } from "./add.js";
-import { claimExitedDaemon, clearDaemon, running, writeDaemon } from "./daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
@@ -511,33 +511,53 @@ program
       throw new Error("amy update failed");
     }
 
-    // Detached, with its output on a file rather than this terminal: the
-    // point of starting it is that it outlives the session that started it.
-    const out = fs.openSync(path.join(place.base, "daemon.log"), "a");
-    const child = spawn(
-      process.execPath,
-      [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
-      { detached: true, stdio: ["ignore", out, out], env: process.env },
-    );
-    child.unref();
-    writeDaemon(place.pid, {
-      pid: child.pid ?? 0,
-      workflow: profile.name,
-      startedAt: new Date().toISOString(),
-    });
+    // The claim spans only the moment the loop becomes visible: an update
+    // refused to move packages while a child was between its spawn and its
+    // pid record. A due before-update runs unclaimed above, because it is
+    // an `amy update` itself and owns the boundary inside its own process.
+    const release = claimDaemonBoundary(place.pid);
+    if (!release) {
+      console.error("the loop is starting or amy update is running; try again when it finishes");
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const current = running(place.pid);
+      if (current) {
+        console.log(`already running: pid ${current.pid}, driving ${current.workflow}`);
+        return;
+      }
 
-    if (schedule.due && schedule.timing === "after") {
-      markDaemonUpdate(home, profile.name);
-      const reaper = spawn(
+      // Detached, with its output on a file rather than this terminal: the
+      // point of starting it is that it outlives the session that started it.
+      const out = fs.openSync(path.join(place.base, "daemon.log"), "a");
+      const child = spawn(
         process.execPath,
-        [process.argv[1]!, "after-daemon", String(child.pid), profile.name],
+        [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
         { detached: true, stdio: ["ignore", out, out], env: process.env },
       );
-      reaper.unref();
-    }
+      child.unref();
+      writeDaemon(place.pid, {
+        pid: child.pid ?? 0,
+        workflow: profile.name,
+        startedAt: new Date().toISOString(),
+      });
 
-    console.log(`started ${profile.name}: pid ${child.pid}`);
-    console.log(`Watch it: tail -f ${path.join(place.base, "daemon.log")}`);
+      if (schedule.due && schedule.timing === "after") {
+        markDaemonUpdate(home, profile.name);
+        const reaper = spawn(
+          process.execPath,
+          [process.argv[1]!, "after-daemon", String(child.pid), profile.name],
+          { detached: true, stdio: ["ignore", out, out], env: process.env },
+        );
+        reaper.unref();
+      }
+
+      console.log(`started ${profile.name}: pid ${child.pid}`);
+      console.log(`Watch it: tail -f ${path.join(place.base, "daemon.log")}`);
+    } finally {
+      release();
+    }
   });
 
 program
@@ -1588,11 +1608,23 @@ program
   .option("--check", "name every package that would move, and to what, without moving anything")
   .argument("[package]", "one package to update, by the name the root's manifest carries")
   .action(async (pkg: string | undefined, options: { check?: boolean }) => {
-    process.exitCode = await updateCommand(home, runner, pkg, options.check === true, {
-      mountProfiles: assembleProfiles,
-      skillsInto: rewriteSkillsInto,
-    });
+    try {
+      process.exitCode = await updateCommand(home, runner, pkg, options.check === true, {
+        mountProfiles: assembleProfiles,
+        skillsInto: rewriteSkillsInto,
+      });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
   });
+
+/** Claims package mutation before inspecting the daemon state. */
+function updateBoundary(home: string): () => void {
+  const release = claimDaemonBoundary(paths(home).pid);
+  if (release) return release;
+  throw new Error("the loop is starting or amy update is already running; try again when it finishes");
+}
 
 /** The update's command body, kept apart from its declaration so a test can drive it. */
 export async function updateCommand(
@@ -1609,6 +1641,8 @@ export async function updateCommand(
     installRoot?: string;
   },
 ): Promise<number> {
+    const release = updateBoundary(home);
+    try {
     const refused = refuseWhileRunning(home);
     if (refused !== undefined) return refused;
 
@@ -1659,6 +1693,9 @@ export async function updateCommand(
 
     console.log(`\n${movedList.moved.length} package(s) moved; every configured profile mounts. Run \`amy doctor\`, then \`amy start\`.`);
     return 0;
+    } finally {
+      release();
+    }
 }
 
 /**

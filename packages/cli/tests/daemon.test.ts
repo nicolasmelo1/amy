@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claimExitedDaemon, clearDaemon, isAlive, readDaemon, running, writeDaemon } from "../src/daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, isAlive, readDaemon, running, writeDaemon } from "../src/daemon.js";
 
 describe("the loop that is running", () => {
   let home: string;
@@ -62,6 +62,17 @@ describe("the loop that is running", () => {
     expect(claimExitedDaemon(file, 0x7fffffff)).toMatchObject({ workflow: "oncall" });
     expect(claimExitedDaemon(file, 0x7fffffff)).toBeUndefined();
     expect(fs.existsSync(file)).toBe(false);
+  });
+
+  it("makes startup and update mutually exclusive until the owner releases it", () => {
+    const release = claimDaemonBoundary(file);
+    expect(release).toBeTypeOf("function");
+    expect(claimDaemonBoundary(file)).toBeUndefined();
+
+    release?.();
+    const next = claimDaemonBoundary(file);
+    expect(next).toBeTypeOf("function");
+    next?.();
   });
 
   it("knows this process is alive and a made-up one is not", () => {
