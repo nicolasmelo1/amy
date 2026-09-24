@@ -2085,8 +2085,13 @@ program
     const found = installedHarnesses();
 
     if (options.dir) {
-      wrote(install(options.dir, skills), options.dir);
-      recordWrite(home, { directory: options.dir });
+      // Resolved once, before both the install and the record: a relative
+      // `--dir` recorded as typed would later be interpreted by `amy update`
+      // against whatever directory it runs from, rewriting a directory the
+      // operator never named.
+      const directory = path.resolve(options.dir);
+      wrote(install(directory, skills), directory);
+      recordWrite(home, { directory });
       return;
     }
 

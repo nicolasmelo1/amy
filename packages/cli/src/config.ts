@@ -82,7 +82,9 @@ const DEFAULT_AUTO_UPDATE: AutoUpdateConfig = {
 
 /** The host-owned schedule is checked before any workflow is allowed to run. */
 function autoUpdateProblems(value: unknown): string[] {
-  if (typeof value !== "object" || value === null) return ["`autoUpdate` must be a mapping"];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return ["`autoUpdate` must be a mapping"];
+  }
   const schedule = value as Partial<AutoUpdateConfig>;
   const problems: string[] = [];
   if (typeof schedule.enabled !== "boolean") problems.push("`autoUpdate.enabled` must be true or false");
@@ -355,12 +357,17 @@ export function loadConfig(root: string): AmyConfig {
  */
 function autoUpdateFrom(parsed: Partial<AmyConfig>): Pick<AmyConfig, "autoUpdate" | "autoUpdateSource"> {
   const rawAutoUpdate = Object.hasOwn(parsed, "autoUpdate") ? parsed.autoUpdate : undefined;
-  const autoUpdate = typeof rawAutoUpdate === "object" && rawAutoUpdate !== null
+  // Only a plain object is a mapping an operator wrote: an array is an
+  // object at runtime but not a mapping, so it stays the malformed source
+  // the validator refuses, instead of being silently replaced by defaults.
+  const autoUpdate = typeof rawAutoUpdate === "object" && rawAutoUpdate !== null && !Array.isArray(rawAutoUpdate)
     ? { ...DEFAULT_AUTO_UPDATE, ...(rawAutoUpdate as Partial<AutoUpdateConfig>) }
     : DEFAULT_AUTO_UPDATE;
   const autoUpdateSource = rawAutoUpdate === null || (rawAutoUpdate !== undefined && typeof rawAutoUpdate !== "object")
     ? { autoUpdateSource: rawAutoUpdate }
-    : {};
+    : Array.isArray(rawAutoUpdate)
+      ? { autoUpdateSource: rawAutoUpdate }
+      : {};
   return { autoUpdate, ...autoUpdateSource };
 }
 

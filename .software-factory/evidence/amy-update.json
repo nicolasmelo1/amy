@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "amy-update",
-  "implementation_sha256": "e90246b5375b83dce209cff17f7fbac1ce5383001855d2b6017f2d663537b68b",
+  "implementation_sha256": "9c09733051f97c25cf6d28dd820833eb3d9eaa9a56ed11dafd1a3003c5370f82",
   "runs": [
     {
       "scenario": "amy-update",

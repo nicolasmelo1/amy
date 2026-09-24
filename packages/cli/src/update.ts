@@ -84,13 +84,12 @@ export function versionIn(root: string, name: string): string | undefined {
  * now, which no command can discover. A bare name or a semver range is a
  * registry range, and `latest` is one too — an operator who wrote it wants
  * the newest one npm finds. The tilde of `~2.1.0` is a range; only a tilde
- * followed by a slash is a path into the home directory.
+ * followed by a slash is a path into the home directory. Spaces do not make
+ * a range a pin: `>=1.0.0 <2.0.0` is one registry range npm answers as a
+ * whole, and the prefixes above already name every pin form.
  */
 export function isRange(range: string): boolean {
-  return (
-    !/^(file:|https?:|git|ssh:|github:|gitlab:|bitbucket:|gist:|\/|\.{0,2}\/|~\/|[A-Za-z]:[\\/])/.test(range) &&
-    !range.includes(" ")
-  );
+  return !/^(file:|https?:|git|ssh:|github:|gitlab:|bitbucket:|gist:|\/|\.{0,2}\/|~\/|[A-Za-z]:[\\/])/.test(range);
 }
 
 /**
