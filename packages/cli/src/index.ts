@@ -84,7 +84,7 @@ import { paths, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
-import { Held, held, imports, line, move, restore, roots } from "./update.js";
+import { Held, held, imports, isRange, line, move, restore, roots } from "./update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -1534,6 +1534,9 @@ export async function updateCommand(
 
     reportWhatIsHeld(everything, installRoot);
 
+    const unresolvedFailure = reportUnresolved(everything, pkg);
+    if (unresolvedFailure !== undefined) return unresolvedFailure;
+
     if (check) return reportOnly(moving);
     if (moving.length === 0) return nothingMoved(deps);
 
@@ -1585,6 +1588,17 @@ function refuseWhileRunning(home: string): number | undefined {
 function reportWhatIsHeld(everything: readonly Held[], installRoot: string | undefined): void {
     console.log(`${everything.length} package(s) in ${installRoot ? "both roots" : "the plugins root"}${installRoot ? "" : " (running from a checkout, so no CLI half to move)"}`);
     for (const one of everything) console.log(`  ${line(one)}`);
+}
+
+/** Refuses an update whose registry target could not be resolved. */
+function reportUnresolved(everything: readonly Held[], pkg: string | undefined): number | undefined {
+    const unresolved = everything.filter(
+      (one) => (pkg === undefined || one.name === pkg) && isRange(one.range) && one.want === undefined,
+    );
+    if (unresolved.length === 0) return undefined;
+    console.error(`\ncould not resolve ${unresolved.length} package(s) from the registry; nothing moved:`);
+    for (const one of unresolved) console.error(`  ${one.name} (${one.range})`);
+    return 1;
 }
 
 /** `--check`'s whole answer: what would move, and nothing does. */

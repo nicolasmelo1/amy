@@ -273,6 +273,18 @@ describe("the move", () => {
     expect(outcome.output).toContain("no such version");
     expect(manifestOf(root)["@acme/workflow-oncall"]).toBe("^1.0.0");
   });
+
+  it("fails the move when it cannot put the operator's range back", async () => {
+    packageAt(root, "@acme/workflow-oncall", "1.0.0", "export {};");
+    const manifest = path.join(root, "package.json");
+    fs.chmodSync(manifest, 0o444);
+
+    const outcome = await move(runner, root, "@acme/workflow-oncall", "^1.0.0", "1.1.0");
+
+    fs.chmodSync(manifest, 0o644);
+    expect(outcome.ok).toBe(false);
+    expect(outcome.output).toContain("could not restore its manifest range");
+  });
 });
 
 describe("the rollback", () => {
@@ -431,6 +443,21 @@ describe("the running loop", () => {
     expect(code).toBe(0);
     // `npm view` was asked; `npm install` never ran.
     expect(runner.callsTo("npm").every((call) => call.args[0] === "view")).toBe(true);
+  });
+
+  it("refuses an unresolved registry range rather than calling it a no-op", async () => {
+    const root = rootWith(home, { "@acme/workflow-oncall": "^1.0.0" });
+    packageAt(root, "@acme/workflow-oncall", "1.0.0", "export const plugin = {}; ");
+
+    const { updateCommand } = await import("../src/index.js");
+    const runner = new ScriptedRunner();
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => ({ ok: true as const }),
+      skillsInto: () => [],
+    });
+
+    expect(code).toBe(1);
+    expect(runner.argvFor("npm").slice(0, 2)).toEqual(["view", "@acme/workflow-oncall@^1.0.0"]);
   });
 
   it("rolls back a version the profiles will not boot on", async () => {

@@ -219,7 +219,17 @@ export async function move(
     "--",
     `${name}@${to}`,
   ]);
-  if (outcome.ok) restoreManifestEntry(root, before, name);
+  if (!outcome.ok) return outcome;
+  const restoreProblem = restoreManifestEntry(root, before, name);
+  if (restoreProblem) {
+    return {
+      ...outcome,
+      ok: false,
+      output: [outcome.output, `installed ${name}@${to}, but could not restore its manifest range: ${restoreProblem}`]
+        .filter(Boolean)
+        .join("\n"),
+    };
+  }
   return outcome;
 }
 
@@ -240,7 +250,17 @@ export async function restore(
     "--",
     `${name}@${to}`,
   ]);
-  if (outcome.ok) restoreManifestEntry(root, before, name);
+  if (!outcome.ok) return outcome;
+  const restoreProblem = restoreManifestEntry(root, before, name);
+  if (restoreProblem) {
+    return {
+      ...outcome,
+      ok: false,
+      output: [outcome.output, `restored ${name}@${to}, but could not restore its manifest range: ${restoreProblem}`]
+        .filter(Boolean)
+        .join("\n"),
+    };
+  }
   return outcome;
 }
 
@@ -257,18 +277,21 @@ async function runWith(
 }
 
 /** Writes the manifest entry back to the spec it carried before the move. */
-function restoreManifestEntry(root: string, before: Record<string, string>, name: string): void {
+function restoreManifestEntry(root: string, before: Record<string, string>, name: string): string | undefined {
   const file = path.join(root, "package.json");
   try {
     const manifest = JSON.parse(fs.readFileSync(file, "utf-8")) as Record<string, unknown>;
     const dependencies = manifest.dependencies;
-    if (typeof dependencies !== "object" || dependencies === null) return;
-    (dependencies as Record<string, string>)[name] = before[name] ?? "";
+    if (typeof dependencies !== "object" || dependencies === null) {
+      return "package.json has no dependencies object";
+    }
+    const range = before[name];
+    if (typeof range !== "string") return `package.json had no prior range for ${name}`;
+    (dependencies as Record<string, string>)[name] = range;
     fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
-  } catch {
-    // The manifest is a record, not a gate: an entry that cannot be written
-    // back leaves the install one version ahead of its record, which the
-    // next `update --check` names.
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
 }
 
