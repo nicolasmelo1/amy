@@ -82,6 +82,41 @@ why it is the test that finds the bugs.
 Then one test per branch that is not the happy path: every ceiling, every retry
 exhaustion, every path to a terminal refusal.
 
+## The conformance suite
+
+The walkthrough proves the lifecycle is the one you meant. Five things are true
+of every lifecycle anybody will write, have nothing to do with what yours
+means, and are the ones nobody writes a test for:
+
+- every state is reachable, and every state has a way out
+- every action a plan emits has a handler that survives being called
+- a waiting state does not spend the ceiling that decides when to give up
+- a fold across a collection concludes nothing from an empty one
+- a state that gives up can be got out of again, and only by something new
+
+Every one of them was learned from a real ticket doing the wrong thing on a
+real board. `@amykit/workflow-testkit` checks all five against worlds you
+supply:
+
+```ts
+import { describe, it } from "vitest";
+import { conforms } from "@amykit/workflow-testkit";
+
+conforms(ticketToQa, {
+  runner: { describe, it },
+  runtime: (world, now) => world.runtime(now),
+  worlds: [new TicketWorld("a ticket that takes the long road to QA")],
+});
+```
+
+A world is one situation — a fresh ticket, one nobody triaged — carrying the
+fake ports the runtime is built from, and a `meanwhile` list of what the people
+in it do while the machine waits. The kit calls every handler for real against
+the observation the runtime built, so a fake has to take the arguments the real
+port takes; one that ignores them proves itself. Both shipped workflows run it
+unmodified, in `packages/workflow-*/tests/conformance.test.ts`, and a workflow
+from `amy workflow new` has it from its first commit as `npm test`.
+
 ## Artifact tests, and why unit tests are not enough
 
 > The tests exercise classes. The gates exercise the artifact.
@@ -156,7 +191,7 @@ required**. Everything the gate requires holds on a Tuesday and on a Sunday.
 You do not need `sf` for any of this. The shape worth stealing is:
 
 1. Unit tests against a scripted runner, with `now` injected.
-2. A walkthrough test, if you wrote a workflow.
+2. A walkthrough test and `conforms`, if you wrote a workflow.
 3. One script that installs the built package somewhere clean and drives it:
 
 ```sh
