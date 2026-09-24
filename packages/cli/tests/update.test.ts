@@ -14,6 +14,7 @@ import {
   oneVersion,
   restore,
   roots,
+  updateRangeOf,
   versionIn,
 } from "../src/update.js";
 import { readSkills, recordWrite, writeSkills } from "../src/skills-record.js";
@@ -176,6 +177,27 @@ describe("what the roots hold", () => {
       want: "0.5.0",
       root: "install",
     });
+  });
+
+  it("keeps a registry intent for the installed CLI while its dependency is a bootstrap tarball", async () => {
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.5.0"\n' } },
+    ]);
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({
+        dependencies: { "@amykit/cli": "file:/cache/amykit-cli-0.4.0.tgz" },
+        amyUpdateRanges: { "@amykit/cli": "latest" },
+      })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.4.0", "export {};");
+
+    expect(updateRangeOf(install, "@amykit/cli", "file:/cache/cli.tgz")).toBe("latest");
+    const found = await held(runner, home, install);
+    expect(found).toContainEqual(expect.objectContaining({ name: "@amykit/cli", range: "latest", want: "0.5.0" }));
   });
 });
 

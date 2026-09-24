@@ -44,6 +44,26 @@ export function manifestOf(root: string): Record<string, string> {
   }
 }
 
+/**
+ * The registry intent an installed machine carries beside a local tarball.
+ *
+ * `install.sh` must bootstrap unpublished packages from local tarballs, but
+ * the CLI itself still has a registry lifecycle after it is published. This
+ * metadata keeps the bootstrap source as the manifest dependency while giving
+ * `amy update` the explicit range it may safely resolve and install.
+ */
+export function updateRangeOf(root: string, name: string, fallback: string): string {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf-8")) as {
+      amyUpdateRanges?: Record<string, unknown>;
+    };
+    const range = parsed.amyUpdateRanges?.[name];
+    return typeof range === "string" ? range : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** The version one root's copy of a package carries, or nothing when it is not there. */
 export function versionIn(root: string, name: string): string | undefined {
   try {
@@ -135,7 +155,8 @@ export async function held(
   }
 
   if (installRoot) {
-    for (const [name, range] of Object.entries(manifestOf(installRoot))) {
+    for (const [name, dependency] of Object.entries(manifestOf(installRoot))) {
+      const range = updateRangeOf(installRoot, name, dependency);
       const have = versionIn(installRoot, name);
       if (!have) continue;
       found.push({

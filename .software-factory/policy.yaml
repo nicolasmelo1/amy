@@ -380,12 +380,14 @@ gates:
   amy-update:
     activation:
       - "packages/cli/src/update.ts"
+      - "packages/cli/src/index.ts"
       - "packages/cli/src/skills-record.ts"
       - "packages/cli/src/harnesses.ts"
     evidence: ".software-factory/evidence/amy-update.json"
     plan: "docs/design/amy-update.md"
     required_assertions:
       - "update.added_the_first_version"
+      - "update.the_installed_cli_keeps_a_registry_intent"
       - "update.v1_finds_the_page"
       - "update.v1_moves_the_page"
       - "update.a_check_names_what_would_move"

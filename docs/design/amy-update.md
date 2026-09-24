@@ -73,6 +73,7 @@ credential.
 - [x] The machine two versions behind is built the way a real one was: the
       workflow added at its first version, and one move driven on it
       (proof: assertion:update.added_the_first_version)
+      (proof: assertion:update.the_installed_cli_keeps_a_registry_intent)
       (proof: assertion:update.v1_moves_the_page)
       (proof: assertion:update.v1_finds_the_page)
 - [x] `--check` names every package that would move, and moves nothing

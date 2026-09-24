@@ -42,6 +42,13 @@ AMY_PACKAGES="@amykit/cli" \
   AMY_INSTALL_LIB="$work/lib" "$repo/scripts/install.sh" "$work/bin" >/dev/null
 amy="$work/bin/amy"
 test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
+# The bootstrap dependency is a local tarball, but the installed CLI declares
+# its registry intent so `amy update` can move itself after publication.
+if node -e 'const m=require(process.argv[1]); process.exit(m.amyUpdateRanges?.["@amykit/cli"] === "latest" ? 0 : 1)' "$work/lib/package.json"; then
+  install_registry_intent=0
+else
+  install_registry_intent=1
+fi
 
 # The stand-in registry: three versions of one workflow, packed as tarballs.
 registry="$work/registry"
@@ -123,6 +130,10 @@ for arg in "\$@"; do
   prev=\$arg
 done
 case "\$viewing" in
+  "@amykit/cli"*)
+    node -p "JSON.stringify(require('$work/lib/node_modules/@amykit/cli/package.json').version)"
+    exit 0
+    ;;
   "@acme/workflow-oncall"*)
     # The registry publishes one answer for the range; the scenario rewrites
     # it between updates, the way a real registry gains a version.
@@ -168,6 +179,10 @@ says() {
   # says <name> <haystack> <needle>
   case "$2" in *"$3"*) record "$1" 0 ;; *) record "$1" 1 ;; esac
 }
+
+# The install records a registry intent even though the dependency itself is a
+# local tarball, so self-update is not silently pinned forever.
+record update.the_installed_cli_keeps_a_registry_intent "$install_registry_intent"
 
 # 1. The machine two versions behind: the workflow at v1, one move driven.
 # The first install is by path — the form `amy add` takes — and what it

@@ -38,12 +38,19 @@ if (missing.length > 0) {
 }
 
 const dependencies = Object.fromEntries(install.map((name) => [name, `file:${packed.get(name)}`]));
+// A local tarball gets the first install onto a machine that has not yet seen
+// a registry release. Once installed, the CLI may move by its declared
+// registry intent; keep that intent out of `dependencies` so npm can still
+// bootstrap from the tarball.
+const amyUpdateRanges = Object.fromEntries(
+  install.filter((name) => name === "@amykit/cli").map((name) => [name, "latest"]),
+);
 const overrides = Object.fromEntries([...packed].map(([name, file]) => [name, `file:${file}`]));
 
 fs.mkdirSync(into, { recursive: true });
 fs.writeFileSync(
   path.join(into, "package.json"),
-  `${JSON.stringify({ name: "amy-install", private: true, dependencies, overrides }, null, 2)}\n`,
+  `${JSON.stringify({ name: "amy-install", private: true, dependencies, amyUpdateRanges, overrides }, null, 2)}\n`,
   "utf-8",
 );
 

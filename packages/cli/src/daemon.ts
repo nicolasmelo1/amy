@@ -34,6 +34,33 @@ export function clearDaemon(file: string): void {
 }
 
 /**
+ * Claims the short boundary where a loop becomes visible, or an update owns
+ * the machine. `open(..., "wx")` is atomic: a start cannot slip between an
+ * update's running check and its package move.
+ */
+export function claimDaemonBoundary(pidFile: string): (() => void) | undefined {
+  const lock = `${pidFile}.lock`;
+  fs.mkdirSync(path.dirname(lock), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const descriptor = fs.openSync(lock, "wx");
+      fs.writeFileSync(descriptor, `${process.pid}\n`, "utf-8");
+      fs.closeSync(descriptor);
+      return () => fs.rmSync(lock, { force: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const owner = Number(fs.readFileSync(lock, "utf-8").trim());
+      if (Number.isSafeInteger(owner) && !isAlive(owner)) {
+        fs.rmSync(lock, { force: true });
+        continue;
+      }
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Whether a process id belongs to something still running.
  *
  * Signal 0 checks for the process without touching it. A process somebody
