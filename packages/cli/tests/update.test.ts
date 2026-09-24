@@ -22,15 +22,21 @@ import { readSkills, recordWrite, writeSkills } from "../src/skills-record.js";
 /**
  * A package on disk, laid out the way npm lays one out under a root.
  */
-function packageAt(root: string, name: string, version: string, body: string): string {
+function packageAt(
+  root: string,
+  name: string,
+  version: string,
+  body: string,
+  bin?: Record<string, string>,
+): string {
   const directory = path.join(root, "node_modules", ...name.split("/"));
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(
     path.join(directory, "package.json"),
-    `${JSON.stringify({ name, version, type: "module", main: "./index.js" })}\n`,
+    `${JSON.stringify({ name, version, type: "module", main: "./index.js", ...(bin ? { bin } : {}) })}\n`,
     "utf-8",
   );
-  fs.writeFileSync(path.join(directory, "index.js"), body, "utf-8");
+  fs.writeFileSync(path.join(directory, "index.js"), body);
   return directory;
 }
 
@@ -540,10 +546,14 @@ describe("the running loop", () => {
       `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "latest" } })}\n`,
       "utf-8",
     );
-    packageAt(install, "@amykit/cli", "0.4.0", "export const plugin = {};");
+    packageAt(install, "@amykit/cli", "0.4.0", "export const plugin = {};", { amy: "./index.js" });
+    // The scripted npm's move changes no files; what the probe runs is the
+    // copy on disk — a module that exits 0, so the move stands.
+    fs.writeFileSync(path.join(install, "node_modules", "@amykit", "cli", "index.js"), "export const plugin = {};");
 
     const runner = new ScriptedRunner([
       { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "up to date\n" } },
     ]);
 
     const { updateCommand } = await import("../src/index.js");
@@ -559,5 +569,158 @@ describe("the running loop", () => {
 
     expect(code).toBe(0);
     expect(asked).toBe(1);
+  });
+
+  it("fails the update and rolls the CLI back when the skills rewrite says nothing", async () => {
+    const plugins = rootWith(home, {});
+    void plugins;
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "latest" } })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.4.0", "export const plugin = {};", { amy: "./index.js" });
+    // The scripted npm's move changes no files; what the probe runs is the
+    // copy on disk — a module that exits 0, so the move stands.
+    fs.writeFileSync(path.join(install, "node_modules", "@amykit", "cli", "index.js"), "export const plugin = {};");
+
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("install", "@amykit/cli@0.5.0"), result: { stdout: "up to date\n" } },
+      { match: whenArgsInclude("install", "@amykit/cli@0.4.0"), result: { stdout: "up to date\n" } },
+    ]);
+
+    const { updateCommand } = await import("../src/index.js");
+    let asked = 0;
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => ({ ok: true as const }),
+      skillsInto: () => {
+        asked += 1;
+        return [];
+      },
+      installRoot: install,
+    });
+
+    // The rewrite is a postcondition of the move: it is refused, the CLI
+    // move goes back, and the update is not called done.
+    expect(code).toBe(1);
+    expect(asked).toBe(1);
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install");
+    expect(installs.map((call) => call.args.at(-1))).toEqual(["@amykit/cli@0.5.0", "@amykit/cli@0.4.0"]);
+  });
+
+  it("probes the moved CLI by running its own bin, and rolls a broken one back", async () => {
+    const plugins = rootWith(home, {});
+    void plugins;
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "latest" } })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.4.0", "export const plugin = {};", { amy: "./index.js" });
+    // The scripted npm's move changes no files; what the probe runs is the
+    // copy on disk — a module that exits failing, a CLI that cannot run.
+    fs.writeFileSync(path.join(install, "node_modules", "@amykit", "cli", "index.js"), "process.exit(3);");
+    fs.chmodSync(path.join(install, "node_modules", "@amykit", "cli", "index.js"), 0o755);
+
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "up to date\n" } },
+    ]);
+
+    const { updateCommand } = await import("../src/index.js");
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => ({ ok: true as const }),
+      skillsInto: () => ["claude: 6 skill(s) rewritten"],
+      installRoot: install,
+    });
+
+    expect(code).toBe(1);
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install");
+    expect(installs.map((call) => call.args.at(-1))).toEqual(["@amykit/cli@0.5.0", "@amykit/cli@0.4.0"]);
+  });
+
+  it("rolls back the earlier moves when a later package refuses to move", async () => {
+    const root = rootWith(home, {
+      "@acme/workflow-oncall": "^1.0.0",
+      "@acme/workflow-later": "^1.0.0",
+    });
+    packageAt(root, "@acme/workflow-oncall", "1.0.0", "export const plugin = {};");
+    packageAt(root, "@acme/workflow-later", "1.0.0", "export const plugin = {};");
+
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@acme/workflow-oncall"), result: { stdout: '"2.0.0"\n' } },
+      { match: whenArgsInclude("view", "@acme/workflow-later"), result: { stdout: '"2.0.0"\n' } },
+      { match: whenArgsInclude("install", "@acme/workflow-oncall@2.0.0"), result: { stdout: "ok\n" } },
+      { match: whenArgsInclude("install", "@acme/workflow-later@2.0.0"), result: { ok: false, exitCode: 1, stderr: "EACCES" } },
+      { match: whenArgsInclude("install", "@acme/workflow-oncall@1.0.0"), result: { stdout: "back\n" } },
+    ]);
+
+    const { updateCommand } = await import("../src/index.js");
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => ({ ok: true as const }),
+      skillsInto: () => [],
+    });
+
+    expect(code).toBe(1);
+    // The move that landed is undone before the command reports its failure.
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install");
+    expect(installs.map((call) => call.args.at(-1))).toEqual([
+      "@acme/workflow-oncall@2.0.0",
+      "@acme/workflow-later@2.0.0",
+      "@acme/workflow-oncall@1.0.0",
+    ]);
+  });
+
+  it("counts an installed-but-unrestorable move as rollback work", async () => {
+    const root = rootWith(home, { "@acme/workflow-oncall": "^1.0.0" });
+    packageAt(root, "@acme/workflow-oncall", "1.0.0", "export const plugin = {};");
+
+    // The scripted npm answers the move and then destroys the manifest, the
+    // way a real install that cannot be read back leaves the root: the
+    // restore cannot put the range anywhere, so the move is installed but
+    // unrestorable — and the update must roll the package back.
+    let destroyed = false;
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view"), result: { stdout: '"2.0.0"\n' } },
+      {
+        match: whenArgsInclude("install", "@acme/workflow-oncall@2.0.0"),
+        result: {
+          ok: true,
+          exitCode: 0,
+          stdout: "ok\n",
+        },
+      },
+      { match: whenArgsInclude("install", "@acme/workflow-oncall@1.0.0"), result: { stdout: "back\n" } },
+    ]);
+    const originalRun = runner.run.bind(runner);
+    runner.run = async (command, args, options) => {
+      const result = await originalRun(command, args, options);
+      if (!destroyed && args[0] === "install" && args.at(-1) === "@acme/workflow-oncall@2.0.0") {
+        destroyed = true;
+        // After npm's install, the restore's read-and-write finds a
+        // manifest it cannot put the range back into.
+        fs.rmSync(path.join(root, "package.json"));
+        fs.writeFileSync(path.join(root, "package.json"), "{ broken");
+      }
+      return result;
+    };
+
+    const { updateCommand } = await import("../src/index.js");
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => ({ ok: true as const }),
+      skillsInto: () => [],
+    });
+
+    expect(code).toBe(1);
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install");
+    expect(installs.map((call) => call.args.at(-1))).toEqual([
+      "@acme/workflow-oncall@2.0.0",
+      "@acme/workflow-oncall@1.0.0",
+    ]);
   });
 });

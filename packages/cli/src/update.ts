@@ -222,14 +222,26 @@ export function line(held: Held): string {
  * intention, the copy on disk is today's answer to it. Restoring the entry
  * keeps the next `update` honest; the copy on disk stays at the new
  * version either way.
+ *
+ * A refused restore is a machine changed past its manifest: the caller
+ * must treat the move as `moved` — not merely `failed` — so the update's
+ * rollback path puts the whole root back, package and manifest together.
  */
+export interface MoveOutcome {
+  ok: boolean;
+  /** The package was installed, even when the outcome is not ok. */
+  installed: boolean;
+  command: string;
+  output: string;
+}
+
 export async function move(
   runner: CommandRunner,
   root: string,
   name: string,
   range: string,
   to: string,
-): Promise<{ ok: boolean; command: string; output: string }> {
+): Promise<MoveOutcome> {
   const before = manifestOf(root);
   const outcome = await runWith(runner, [
     "install",
@@ -240,18 +252,19 @@ export async function move(
     "--",
     `${name}@${to}`,
   ]);
-  if (!outcome.ok) return outcome;
+  if (!outcome.ok) return { ...outcome, installed: false };
   const restoreProblem = restoreManifestEntry(root, before, name);
   if (restoreProblem) {
     return {
       ...outcome,
       ok: false,
+      installed: true,
       output: [outcome.output, `installed ${name}@${to}, but could not restore its manifest range: ${restoreProblem}`]
         .filter(Boolean)
         .join("\n"),
     };
   }
-  return outcome;
+  return { ...outcome, installed: true };
 }
 
 /** Rolls one package back to the version that was on disk, the same way. */
@@ -260,7 +273,7 @@ export async function restore(
   root: string,
   name: string,
   to: string,
-): Promise<{ ok: boolean; command: string; output: string }> {
+): Promise<MoveOutcome> {
   const before = manifestOf(root);
   const outcome = await runWith(runner, [
     "install",
@@ -271,24 +284,25 @@ export async function restore(
     "--",
     `${name}@${to}`,
   ]);
-  if (!outcome.ok) return outcome;
+  if (!outcome.ok) return { ...outcome, installed: false };
   const restoreProblem = restoreManifestEntry(root, before, name);
   if (restoreProblem) {
     return {
       ...outcome,
       ok: false,
+      installed: true,
       output: [outcome.output, `restored ${name}@${to}, but could not restore its manifest range: ${restoreProblem}`]
         .filter(Boolean)
         .join("\n"),
     };
   }
-  return outcome;
+  return { ...outcome, installed: true };
 }
 
 async function runWith(
   runner: CommandRunner,
   args: readonly string[],
-): Promise<{ ok: boolean; command: string; output: string }> {
+): Promise<Omit<MoveOutcome, "installed">> {
   const result = await runner.run(packageManager(), [...args], { timeoutMs: 10 * 60 * 1000 });
   return {
     ok: result.ok,
@@ -317,14 +331,30 @@ function restoreManifestEntry(root: string, before: Record<string, string>, name
 }
 
 /**
+ * The entry specifier of the copy on disk, made cache-safe.
+ *
+ * The ESM cache is keyed by URL, and a move replaces the file behind the
+ * same URL: a plain `import(entry)` answers with whatever an earlier import
+ * of that URL cached — the old version, exactly when the probe is supposed
+ * to see the new one. A counter query makes every probe its own URL, so
+ * npm's replacement is always what loads. The query lives on the specifier
+ * only; the loader never hands a path with it to the filesystem.
+ */
+let probe = 0;
+
+function probedEntry(directory: string): string {
+  probe += 1;
+  return `${packageEntrySpecifier(directory)}?probe=${probe}`;
+}
+
+/**
  * Whether the copy npm just wrote imports and carries a plugin.
  *
  * The same half of `add`'s probe, on the new version: a package whose module
  * will not import, or one that exports no `plugin`, is a bad version, and
- * the move is rolled back. The ESM cache is keyed by URL, and npm has just
- * replaced the file behind the same URL, so the probe busts the cache with
- * a query npm never sees — the path it hands `import()` is the same either
- * way, because the query is only on the specifier.
+ * the move is rolled back. The module loads through `probedEntry`, so the
+ * probe reads the copy npm just wrote even when an earlier move in this same
+ * update imported that URL at its old version.
  *
  * A registration that needs a full mount to refuse is caught by the boot
  * check after all moves land, which is the other half of the same promise.
@@ -334,8 +364,7 @@ export async function imports(
   pluginsRoot: string,
 ): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   try {
-    const entry = packageEntrySpecifier(packageDirectory(pluginsRoot, name));
-    const module = (await import(entry)) as { plugin?: unknown };
+    const module = (await import(probedEntry(packageDirectory(pluginsRoot, name)))) as { plugin?: unknown };
     if (!module.plugin) return { ok: false, problems: [`${name}: exports no \`plugin\``] };
     return { ok: true };
   } catch (error) {

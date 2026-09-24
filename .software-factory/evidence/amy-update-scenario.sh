@@ -111,6 +111,30 @@ done
 # updates below, the way a real registry gains a version.
 printf '1.0.0' > "$work/registry-answer"
 
+# The registry's own newer CLI: the machine's CLI tarball, restamped at
+# 999.0.0 with a marker written into its skill, so the self-update section
+# proves the move replaced the binary and the skills follow the version.
+# Its dependencies resolve from the machine's own tree, which is what the
+# first install left there — the same ranges, already on disk.
+cli_registry="$work/cli-registry"
+mkdir -p "$cli_registry/contents"
+tar xzf "$work/lib/packages/amykit-cli-0.4.0.tgz" -C "$cli_registry/contents"
+node - "$cli_registry/contents/package" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+const root = process.argv[2];
+const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf-8"));
+manifest.version = "999.0.0";
+fs.writeFileSync(path.join(root, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+const skill = path.join(root, "skills", "amy", "SKILL.md");
+fs.writeFileSync(skill, fs.readFileSync(skill, "utf-8").replace("version: 1.0.0", "version: 999.0.0\nprovenance: replacement-cli-probe"));
+fs.writeFileSync(
+  path.join(root, "dist", "stamp.json"),
+  `${JSON.stringify({ version: "999.0.0", commit: "scenario", builtAt: "2026-09-24T00:00:00.000Z" })}\n`,
+);
+NODE
+tar czf "$cli_registry/amykit-cli-999.0.0.tgz" -C "$cli_registry/contents" package
+
 # amy keeps its state in one place per machine, so this run gets its own.
 export HOME="$work/home"
 cd "$work/home"
@@ -132,7 +156,10 @@ for arg in "\$@"; do
 done
 case "\$viewing" in
   "@amykit/cli"*)
-    node -p "JSON.stringify(require('$work/lib/node_modules/@amykit/cli/package.json').version)"
+    # The registry publishes a NEWER CLI than the one installed, so the
+    # machine's self-update actually moves it: the replacement binary, not
+    # the running one, answers the version and rewrites the skills.
+    printf '"999.0.0"'
     exit 0
     ;;
   "@acme/workflow-oncall"*)
@@ -146,6 +173,16 @@ esac
 args=""
 for arg in "\$@"; do
   case "\$arg" in
+    @amykit/cli@*)
+      # The version the install asks for decides the CLI tarball: 999.0.0
+      # is the registry's newer CLI, anything else is the machine's own.
+      wanted=\${arg#@amykit/cli@}
+      if [ "\$wanted" = "999.0.0" ]; then
+        args="\$args '$cli_registry/amykit-cli-999.0.0.tgz'"
+      else
+        args="\$args '$work/lib/packages/amykit-cli-'*'.tgz'"
+      fi
+      ;;
     @amykit/*)
       stem=\$(printf '%s' "\${arg#@amykit/}" | tr '/' '-')
       args="\$args '$work/lib/packages/amykit-\$stem-'*'.tgz'"
@@ -422,6 +459,28 @@ if [ -d "$HOME/.hermes/skills" ]; then
   record update.a_harness_never_written_to_is_not_written_to_now 1
 else
   record update.a_harness_never_written_to_is_not_written_to_now 0
+fi
+
+# 9. The CLI moves itself, the same way it moves a workflow. The registry
+# publishes a 999.0.0 the machine's manifest range now points at, so every
+# update moves the install root's copy alongside the workflow's: the NEW
+# binary answers for itself, and the skills it rewrites are its own, not
+# the old CLI's. The version before is what the install put there.
+cli_version_after=$(node -p "require('$work/lib/node_modules/@amykit/cli/package.json').version")
+if [ "$cli_version_after" = "999.0.0" ]; then
+  record update.the_cli_moves_itself 0
+else
+  record update.the_cli_moves_itself 1
+fi
+if node "$work/lib/node_modules/@amykit/cli/dist/index.js" --version 2>/dev/null | grep -q "999.0.0"; then
+  record update.a_moved_cli_still_runs 0
+else
+  record update.a_moved_cli_still_runs 1
+fi
+if grep -q "provenance: replacement-cli-probe" "$HOME/.claude/skills/amy/SKILL.md" 2>/dev/null; then
+  record update.a_moved_cli_rewrites_its_own_skills 0
+else
+  record update.a_moved_cli_rewrites_its_own_skills 1
 fi
 
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)

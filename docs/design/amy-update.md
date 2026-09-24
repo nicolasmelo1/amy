@@ -113,6 +113,11 @@ credential.
       (proof: assertion:update.invalid_auto_update_settings_refuse_before_work)
       (proof: assertion:update.a_daemon_updates_only_at_its_lifecycle_boundary)
       (proof: assertion:update.direct_daemon_uses_the_configured_schedule)
+- [x] The CLI moves itself the same way it moves a workflow, and the moved
+      CLI runs and rewrites its own skills
+      (proof: assertion:update.the_cli_moves_itself)
+      (proof: assertion:update.a_moved_cli_still_runs)
+      (proof: assertion:update.a_moved_cli_rewrites_its_own_skills)
 
 **Exit condition:** a machine two versions behind runs one command, ends
 up on the current one with its work untouched, and the skills in its

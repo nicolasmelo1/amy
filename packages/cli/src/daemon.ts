@@ -69,7 +69,17 @@ export function claimDaemonBoundary(pidFile: string): (() => void) | undefined {
       return () => fs.rmSync(lock, { force: true });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      const owner = Number(fs.readFileSync(lock, "utf-8").trim());
+      // The owner may release the lock between our refused open and this
+      // read: a disappearing lock is a claim that came free, not a crash,
+      // so it is retried like a stale claim is. Any other read error is
+      // ours, and says so.
+      let owner: number;
+      try {
+        owner = Number(fs.readFileSync(lock, "utf-8").trim());
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") throw readError;
+        continue;
+      }
       if (Number.isSafeInteger(owner) && !isAlive(owner)) {
         fs.rmSync(lock, { force: true });
         continue;

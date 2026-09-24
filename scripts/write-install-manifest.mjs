@@ -45,7 +45,15 @@ const dependencies = Object.fromEntries(install.map((name) => [name, `file:${pac
 const amyUpdateRanges = Object.fromEntries(
   install.filter((name) => name === "@amykit/cli").map((name) => [name, "latest"]),
 );
-const overrides = Object.fromEntries([...packed].map(([name, file]) => [name, `file:${file}`]));
+// The CLI itself is left out of the overrides: a direct-dependency override
+// pins `npm install @amykit/cli@<version>` back to the bootstrap tarball, so
+// the move the manifest's registry intent promises could never happen. Every
+// other `@amykit/*` stays an override, because the tarballs depend on each
+// other by version range and this repository's versions are not on a registry
+// yet — an override is the one thing npm applies to a transitive resolution.
+const overrides = Object.fromEntries(
+  [...packed].filter(([name]) => name !== "@amykit/cli").map(([name, file]) => [name, `file:${file}`]),
+);
 
 fs.mkdirSync(into, { recursive: true });
 fs.writeFileSync(

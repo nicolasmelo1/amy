@@ -1665,9 +1665,37 @@ export async function updateCommand(
     if (check) return reportOnly(moving);
     if (moving.length === 0) return nothingMoved(deps);
 
-    const movedList = await moveEach(runner, where.plugins, installRoot, moving);
+    return moveEverything(runner, where.plugins, installRoot, moving, deps);
+    } finally {
+      release();
+    }
+}
+
+/**
+ * Moves every package and settles the machine the moves leave behind.
+ *
+ * The boot check runs after the moves: an update that leaves a config that
+ * cannot boot has not worked, and everything that moved goes back. The
+ * skills rewrite comes after the boot check for the same reason — a rollback
+ * would otherwise leave skills describing a CLI the machine no longer runs,
+ * the exact failure this plan exists to end. The rewrite is a postcondition
+ * of a CLI move: a refusal fails the update and rolls the CLI move back.
+ */
+async function moveEverything(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moving: readonly Held[],
+    deps: MountProfiles & SkillsInto,
+): Promise<number> {
+    const movedList = await moveEach(runner, pluginsRoot, installRoot, moving);
     if (movedList.failed > 0) {
-      console.error(`\n${movedList.failed} package(s) refused to move; the versions that boot are still in place.`);
+      // A refusal partway through the list leaves the earlier moves in
+      // place: a machine of mixed versions is not the "versions that boot
+      // are still in place" the message promises, so everything that moved
+      // is put back before the command fails.
+      await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
+      console.error(`\n${movedList.failed} package(s) refused to move; every move is rolled back.`);
       return 1;
     }
 
@@ -1677,25 +1705,46 @@ export async function updateCommand(
     const booted = await deps.mountProfiles();
     if (!booted.ok) {
       reportUnbootable(booted.problems);
-      await rollBackAll(runner, where.plugins, installRoot, movedList.moved);
+      await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
       return 1;
     }
 
-    // The skills rewrite comes after the boot check, not before it: a
-    // rollback would otherwise leave skills describing a CLI the machine no
-    // longer runs — the exact failure this plan exists to end. The CLI
-    // itself moved, so the skills travel with it, into every harness they
-    // were written into before — the record under ~/.amy, not a guess from
-    // what is installed now.
     if (movedList.moved.some((one) => one.root === "install" && one.name === "@amykit/cli")) {
-      for (const said of deps.skillsInto()) console.log(said);
+      const rewrite = await rewriteSkillsOrRollBack(runner, pluginsRoot, installRoot, movedList.moved, deps);
+      if (rewrite !== undefined) return rewrite;
+      for (const line of rewriteSkillsSaid) console.log(line);
     }
 
     console.log(`\n${movedList.moved.length} package(s) moved; every configured profile mounts. Run \`amy doctor\`, then \`amy start\`.`);
     return 0;
-    } finally {
-      release();
-    }
+}
+
+/**
+ * Runs the skills rewrite after a CLI move, or rolls the whole move back.
+ *
+ * The CLI itself moved, so the skills travel with it, into every harness
+ * they were written into before — the record under ~/.amy, not a guess from
+ * what is installed now. The rewrite is a postcondition of the move, not
+ * decoration: a new CLI that cannot write its own skills leaves a machine
+ * whose skills lie about what is installed, so a refusal rolls the CLI move
+ * back and returns the update's exit status; success returns nothing, with
+ * the rewrite's lines in `rewriteSkillsSaid` for the caller to print.
+ */
+let rewriteSkillsSaid: string[] = [];
+
+async function rewriteSkillsOrRollBack(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moved: readonly Held[],
+    deps: SkillsInto,
+): Promise<number | undefined> {
+    const said = deps.skillsInto();
+    rewriteSkillsSaid = said;
+    if (said.length > 0) return undefined;
+    console.error("\nthe updated CLI could not rewrite its skills; rolling the CLI move back.");
+    await rollBackAll(runner, pluginsRoot, installRoot, moved);
+    return 1;
 }
 
 /**
@@ -1768,7 +1817,9 @@ type SkillsInto = Pick<UpdateDeps, "skillsInto">;
  *
  * One package at a time on purpose: a later package's move must not be
  * blocked by an earlier one's refusal, because the operator reads the whole
- * list once and decides once.
+ * list once and decides once. The command body rolls every earlier move
+ * back when the list ends with a refusal, so a refusal mid-list never
+ * leaves a mixed-version machine behind.
  */
 async function moveEach(
     runner: CommandRunner,
@@ -1786,15 +1837,29 @@ async function moveEach(
       if (!installed.ok) {
         console.error(`${installed.command} failed:`);
         console.error(installed.output || "it said nothing");
+        if (installed.installed) {
+          // npm replaced the copy even though the outcome failed — a
+          // manifest range that could not be put back is the shape this
+          // takes — so the machine is already changed past its manifest
+          // and the caller's rollback has to count this move.
+          moved.push(one);
+        }
         failed += 1;
         continue;
       }
 
-      // The import probe: the copy npm just wrote has to load. Within this
-      // one process the package is imported exactly once — here — so the
-      // boot check below reads the same new module from the ESM cache
-      // rather than a mix of the old file and the new one.
-      const probe = one.root === "plugins" ? await imports(one.name, pluginsRoot) : undefined;
+      // The import probe: the copy npm just wrote has to load. The probe
+      // imports through a counter query, so it reads the new files even
+      // when an earlier move in this update put that URL in the ESM cache.
+      //
+      // A moved CLI cannot be probed by import — mounting its module here
+      // would re-run this very program — so the NEW CLI answers for itself
+      // as its own process, the same way the boot check's mounts answer
+      // for the plugins: a CLI that will not run is a bad version, and the
+      // move is rolled back.
+      const probe = one.root === "plugins"
+        ? await imports(one.name, pluginsRoot)
+        : await cliProbe(root, one.name);
       if (probe && !probe.ok) {
         console.error(`${one.name} ${one.want} does not import:`);
         for (const problem of probe.problems) console.error(`  ${problem}`);
@@ -1808,6 +1873,50 @@ async function moveEach(
     }
 
     return { moved, failed };
+}
+
+/**
+ * Whether the CLI npm just wrote runs, asked of the new copy itself.
+ *
+ * The probe spawns the moved package's own bin with `--version`: the one
+ * question whose answer proves the new CLI runs, from the files npm wrote.
+ * The spawn is a child of this old process — the running module is never
+ * re-imported, so there is nothing to un-cache — and its nonzero exit, its
+ * error, or a bin whose manifest names nothing answer "the CLI is broken",
+ * which rolls the move back like any other bad version.
+ */
+async function cliProbe(root: string, name: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const bin = binOf(root, name);
+  if (!bin) return { ok: false, problems: [`${name}: its manifest names no bin`] };
+  const outcome = await new Promise<{ status: number | null; error?: Error }>((resolve) => {
+    const child = spawn(process.execPath, [bin, "--version"], { stdio: "ignore" });
+    child.once("error", (error) => resolve({ status: null, error }));
+    child.once("exit", (status) => resolve({ status }));
+  });
+  if (outcome.error) return { ok: false, problems: [`${name}: the new CLI could not be started — ${outcome.error.message}`] };
+  if (outcome.status !== 0) return { ok: false, problems: [`${name}: the new CLI exited with status ${outcome.status}`] };
+  return { ok: true };
+}
+
+/** The moved package's own bin file, by its manifest, or nothing. */
+function binOf(root: string, name: string): string | undefined {
+  try {
+    const directory = path.join(root, "node_modules", ...name.split("/"));
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as {
+      bin?: Record<string, string> | string;
+    };
+    // npm links a string bin under the package's own short name — the scope
+    // is stripped — so the key can be the full name, the short one, or, on
+    // a package with a single bin, the only entry there is.
+    const short = name.split("/").pop()!;
+    const map = typeof manifest.bin === "string" ? { [short]: manifest.bin } : manifest.bin;
+    if (!map) return undefined;
+    const relative = map[name] ?? map[short] ?? (Object.keys(map).length === 1 ? map[Object.keys(map)[0]!] : undefined);
+    if (typeof relative !== "string") return undefined;
+    return path.join(directory, relative);
+  } catch {
+    return undefined;
+  }
 }
 
 /** The boot refusal's own words, with the profile named on each line. */
