@@ -132,7 +132,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | :-- | :-- | :-- |
 | `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md` | 5 |
 | `amy-add-remove` | `packages/cli/src/index.ts`<br>`packages/cli/src/spec.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/remove.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/config.ts` | 5 |
-| `amy-update` | `packages/cli/src/update.ts`<br>`packages/cli/src/skills-record.ts`<br>`packages/cli/src/harnesses.ts` | 26 |
+| `amy-update` | `packages/cli/src/update.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/skills-record.ts`<br>`packages/cli/src/harnesses.ts` | 27 |
 | `bare-install` | `packages/cli/package.json`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/src/doctor.ts` | 12 |
 | `feature-grooming` | `packages/workflow-feature-grooming/src/**`<br>`packages/core/src/ports/BaseSource.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`plugins/linear/src/**`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/profiles.ts` | 2 |
 | `installed-binary` | `packages/cli/src/stamp.ts`<br>`packages/cli/src/home.ts`<br>`packages/core/src/build.ts`<br>`scripts/**` | 7 |
