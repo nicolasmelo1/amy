@@ -1,7 +1,7 @@
 {
-  "name": "@amykit/workflow-note-to-plan",
+  "name": "@amykit/workflow-testkit",
   "version": "0.4.0",
-  "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
+  "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nicolasmelo1/amy.git",
-    "directory": "packages/workflow-note-to-plan"
+    "directory": "packages/workflow-testkit"
   },
   "publishConfig": {
     "access": "public",
@@ -29,9 +29,5 @@
   ],
   "dependencies": {
     "@amykit/core": "^0.4.0"
-  },
-  "devDependencies": {
-    "@amykit/test-fixtures": "^0.1.0",
-    "@amykit/workflow-testkit": "^0.4.0"
   }
 }

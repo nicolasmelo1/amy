@@ -1,6 +1,8 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { localWorkflow, checkWorkflow, workflowSpecifier, workflowsDirectory, writeWorkflow } from "../src/workflow.js";
@@ -72,4 +74,54 @@ describe("a workflow of your own", () => {
       "oncall: plan emits `page`, but no runtime handler answers it",
     );
   });
+
+  it("writes a suite that passes on its first run", () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+
+    const run = suiteOf(directory);
+
+    expect(run.stdout).toMatch(/# pass 6\b/);
+    expect(run.status, run.stdout + run.stderr).toBe(0);
+  });
+
+  it("writes a suite that goes red, naming the state, when a state cannot be reached", () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+    const entry = path.join(directory, "index.js");
+    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
+      'states: ["received", "done"]',
+      'states: ["received", "done", "stranded"]',
+    ));
+
+    const run = suiteOf(directory);
+
+    expect(run.status).not.toBe(0);
+    expect(run.stdout).toContain("`stranded` is declared, and no world reaches it");
+  });
+
+  it("names the testkit it runs at this command's own version", () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+    const cli = JSON.parse(fs.readFileSync(path.join(here, "..", "package.json"), "utf-8")) as { version: string };
+
+    expect(JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8"))).toMatchObject({
+      scripts: { test: "node --test" },
+      devDependencies: { "@amykit/workflow-testkit": `^${cli.version}` },
+    });
+  });
 });
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Runs the scaffold's own `npm test`, the way its author would after
+ * `npm install`: the testkit is linked in as the built package, which is what
+ * a registry install would put there.
+ */
+function suiteOf(directory: string) {
+  const testkit = path.resolve(here, "../../workflow-testkit");
+  if (!fs.existsSync(path.join(testkit, "dist", "index.js"))) {
+    throw new Error("the testkit is not built: run `npm run build` before this test");
+  }
+  fs.mkdirSync(path.join(directory, "node_modules", "@amykit"), { recursive: true });
+  fs.symlinkSync(testkit, path.join(directory, "node_modules", "@amykit", "workflow-testkit"), "dir");
+  return spawnSync(process.execPath, ["--test"], { cwd: directory, encoding: "utf-8" });
+}

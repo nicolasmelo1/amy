@@ -224,6 +224,14 @@ it is the test that finds the bugs:
 - it settles instead of spinning — drive it past the end, assert nothing moves
 - a waiting state makes no move until the world does
 
+The scaffold's `index.test.js` already calls `conforms` from
+`@amykit/workflow-testkit`, and `npm test` in the workflow's directory runs it.
+It is the machine-shaped half nobody writes by hand: a state nothing leaves, an
+action with no working handler, a wait counted as a try, a decision made by
+`[].every(...)`, a giving-up state with no way out. Every state the interrogation
+adds needs a world that reaches it and a `meanwhile` that gets it out, or the
+suite goes red naming the state.
+
 Unit-test `plan()` directly for the branches: it is pure, so a table of
 `(record, observation) -> Plan` is the cheapest test you will write.
 

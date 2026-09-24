@@ -89,6 +89,9 @@
       "@amykit/workflow-feature-grooming": [
         "packages/workflow-feature-grooming/src/index.ts"
       ],
+      "@amykit/workflow-testkit": [
+        "packages/workflow-testkit/src/index.ts"
+      ],
       "@amykit/workflow-ticket-to-qa": [
         "packages/workflow-ticket-to-qa/src/index.ts"
       ]
