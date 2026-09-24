@@ -38,11 +38,12 @@ export async function conformance<R extends WorkRecord, O, P, W extends World<R>
   }
 
   const extraLooks = options.extraLooks ?? 10;
+  const spent = await ceilings(machine, walks, extraLooks);
   return distinct([
     ...walks.flatMap((w) => w.findings),
     ...reachability(machine, walks),
     ...handlers(machine, walks),
-    ...ceilings(machine, walks, extraLooks),
+    ...spent,
     ...folds(machine, walks),
     ...escalation(machine, walks, options.givesUp ?? []),
   ]).sort((a, b) => order(a.property) - order(b.property));

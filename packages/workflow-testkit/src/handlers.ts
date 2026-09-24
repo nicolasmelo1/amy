@@ -11,17 +11,19 @@ import { AnyWorkflow, Walk } from "./walk.js";
  * of the happy path, say — is exactly the one that throws in production.
  */
 export function handlers(workflow: AnyWorkflow, walks: readonly Walk[]): Finding[] {
-  const runtime = walks.find((walk) => walk.runtime)?.runtime;
-  if (!runtime) return [];
-
-  const handled = runtime.handlers();
+  const built = walks.filter((walk) => walk.runtime);
   const declared = new Set(workflow.usesActions);
-  const findings: Finding[] = workflow.usesActions
-    .filter((name) => typeof handled[name] !== "function")
-    .map((name) => ({
-      property: "handlers",
-      message: `\`${name}\` is declared in usesActions, and the runtime has no handler for it`,
-    }));
+  const findings: Finding[] = [];
+
+  // Every world builds its own runtime, and each is asked: a world whose
+  // runtime drops a handler, and never happens to plan that action, would
+  // otherwise pass on the strength of another world's.
+  for (const name of workflow.usesActions) {
+    const without = built.filter((walk) => typeof walk.runtime!.handlers()[name] !== "function");
+    if (without.length === 0) continue;
+    const whose = without.length === built.length ? "the runtime" : `the runtime in ${without.map((walk) => walk.world).join(", ")}`;
+    findings.push({ property: "handlers", message: `\`${name}\` is declared in usesActions, and ${whose} has no handler for it` });
+  }
 
   for (const walk of walks) {
     for (const look of walk.looks) {

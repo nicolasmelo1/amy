@@ -1,7 +1,7 @@
 import { Plan, WorkRecord, applyPlan } from "@amykit/core";
 import { Finding } from "./finding.js";
 import { describe, replay, sameMove } from "./plans.js";
-import { AnyWorkflow, Look, Walk } from "./walk.js";
+import { AnyWorkflow, Look, Walk, replayActions } from "./walk.js";
 
 /**
  * Waiting is not trying.
@@ -18,14 +18,23 @@ import { AnyWorkflow, Look, Walk } from "./walk.js";
  *   ceiling of the work that followed it. This is the one that escalated a
  *   ticket saying it had tried three times, having tried none.
  */
-export function ceilings(workflow: AnyWorkflow, walks: readonly Walk[], extraLooks: number): Finding[] {
-  return walks.flatMap((walk) => [
-    ...waitingStatesHold(workflow, walk, extraLooks),
-    ...holdsAreNotTries(workflow, walk, extraLooks),
-  ]);
+export async function ceilings(workflow: AnyWorkflow, walks: readonly Walk[], extraLooks: number): Promise<Finding[]> {
+  const findings: Finding[] = [];
+  for (const walk of walks) {
+    findings.push(...(await waitingStatesHold(workflow, walk, extraLooks)), ...holdsAreNotTries(workflow, walk, extraLooks));
+  }
+  return findings;
 }
 
-function waitingStatesHold(workflow: AnyWorkflow, walk: Walk, extraLooks: number): Finding[] {
+/**
+ * Holds a waiting state for more looks at the same observation.
+ *
+ * Each held look is folded the way the walk folds one: the wait's own
+ * actions are called and what they produced is applied, so a wait that
+ * records something on its way — the moment it started, say — is replayed
+ * as itself rather than as a bare count.
+ */
+async function waitingStatesHold(workflow: AnyWorkflow, walk: Walk, extraLooks: number): Promise<Finding[]> {
   const runtime = walk.runtime;
   if (!runtime) return [];
   const findings: Finding[] = [];
@@ -40,7 +49,12 @@ function waitingStatesHold(workflow: AnyWorkflow, walk: Walk, extraLooks: number
     let plan: Plan = look.plan;
     for (let count = 1; count <= extraLooks; count += 1) {
       const waited: Plan = plan;
-      const folded: WorkRecord | undefined = replay(() => runtime.apply(applyPlan(record, waited, look.at), waited, {}, look.observation, look.at));
+      const before: WorkRecord = record;
+      const outcomes = await replayActions(runtime, waited, before, look.observation);
+      if (!outcomes) break;
+      const folded: WorkRecord | undefined = replay(() =>
+        runtime.apply(applyPlan(before, waited, look.at), waited, outcomes, look.observation, look.at),
+      );
       if (!folded) break;
       record = folded;
       const next: Plan | undefined = replay(() => workflow.plan(folded, look.observation, runtime.policy));
@@ -71,6 +85,9 @@ function holdsAreNotTries(workflow: AnyWorkflow, walk: Walk, extraLooks: number)
       ...look.record,
       attempts: { ...look.record.attempts, [state]: (look.record.attempts[state] ?? 0) + extraLooks },
     };
+    // Compared as moves, not word for word: an escalation whose reason
+    // quotes the attempt count is the same decision with a different number
+    // in it, and the question here is only whether the decision changed.
     const instead = replay(() => workflow.plan(longer, look.observation, runtime.policy));
     if (!instead || sameMove(look.plan, instead)) continue;
     findings.push({

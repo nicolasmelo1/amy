@@ -80,7 +80,8 @@ describe("a workflow of your own", () => {
 
     const run = suiteOf(directory);
 
-    expect(run.stdout).toMatch(/# pass 6\b/);
+    // Either reporter: TAP writes `# pass 6`, the spec reporter `ℹ pass 6`.
+    expect(run.stdout).toMatch(/[#ℹ] pass 6\b/);
     expect(run.status, run.stdout + run.stderr).toBe(0);
   });
 

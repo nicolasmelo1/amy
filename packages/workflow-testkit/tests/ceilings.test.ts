@@ -97,4 +97,35 @@ describe("ceilings", () => {
       },
     ]);
   });
+
+  it("replays a wait's own actions when it holds the wait longer", async () => {
+    // The first wait asks, and records that it did; a wait that never asked is
+    // the one that gives up. Replaying the hold without the wait's actions
+    // would never record the question and call a correct workflow impatient.
+    const asking = workflowOf<{ answered: boolean }>({
+      states: ["asking", "escalated", "done"],
+      terminal: ["done"],
+      waiting: ["asking", "escalated"],
+      uses: ["ask", "escalate"],
+      plan: (record, observation) => {
+        if (record.state !== "asking") return record.state === "done" ? settled() : wait();
+        if (observation.answered) return advance("done");
+        if ((record as WorkRecord & { asked?: boolean }).asked) return wait();
+        if ((record.attempts.asking ?? 0) >= 2) return advance("escalated", "escalate");
+        return { kind: "wait", retryAfterMs: 60_000, why: "asking", effects: [{ type: "ask" }] };
+      },
+    });
+
+    const findings = await conformance(asking, {
+      runtime: () =>
+        runtimeOf<WorkRecord & { asked?: boolean }, { answered: boolean }>("asking", {
+          observe: () => ({ answered: false }),
+          handlers: { ask: async (_action, ctx) => { ctx.outcomes.asked = true; }, escalate: async () => {} },
+          apply: (record, outcomes) => (outcomes.asked ? { ...record, asked: true } : record),
+        }),
+      worlds: [{ name: "nobody answers yet" }],
+    });
+
+    expect(ceilingsOf(findings)).toEqual([]);
+  });
 });

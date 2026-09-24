@@ -191,6 +191,31 @@ async function run(
 }
 
 /**
+ * Calls a plan's actions again, for a probe that replays a look, and returns
+ * what they produced — or nothing, when one is missing or throws. The walk has
+ * already reported either of those on the look it really took.
+ */
+export async function replayActions(
+  runtime: AnyRuntime,
+  plan: Plan,
+  record: WorkRecord,
+  observation: unknown,
+): Promise<Record<string, unknown> | undefined> {
+  const outcomes: Record<string, unknown> = {};
+  const handlers = runtime.handlers();
+  for (const action of actionsOf(plan)) {
+    const handler = handlers[action.type];
+    if (!handler) return undefined;
+    try {
+      await handler(action, { record, observation, outcomes });
+    } catch {
+      return undefined;
+    }
+  }
+  return outcomes;
+}
+
+/**
  * The observation as it was when the look was taken, for the probes that
  * replay it.
  *

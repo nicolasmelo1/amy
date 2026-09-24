@@ -1,12 +1,7 @@
 import { Plan, WorkRecord } from "@amykit/core";
 import { Finding } from "./finding.js";
-import { describe, replay, sameMove } from "./plans.js";
+import { describe, replay, sameDecision } from "./plans.js";
 import { AnyWorkflow, Look, Walk } from "./walk.js";
-
-/** Past this many collections in one look, the rest are not emptied. */
-const MAX_VARIANTS = 64;
-/** How deep into the record and the observation a collection is looked for. */
-const MAX_DEPTH = 6;
 
 /**
  * Nothing is concluded from an empty collection.
@@ -35,7 +30,7 @@ export function folds(workflow: AnyWorkflow, walks: readonly Walk[]): Finding[] 
         const vacuous = decideWithEvery(true, decide);
         if (!vacuous.plan || !vacuous.asked) continue;
         const otherwise = decideWithEvery(false, decide);
-        if (!otherwise.plan || sameMove(vacuous.plan, otherwise.plan)) continue;
+        if (!otherwise.plan || sameDecision(vacuous.plan, otherwise.plan)) continue;
 
         const key = `${look.record.state}\u0000${variant.emptied}`;
         if (reported.has(key)) continue;
@@ -63,9 +58,12 @@ interface Variant {
 function variantsOf(look: Look): Variant[] {
   const variants: Variant[] = [{ record: look.record, observation: look.observation, emptied: "the collections as observed" }];
   const paths: string[][] = [];
-  collections({ record: look.record, observation: look.observation }, [], paths);
+  collections({ record: look.record, observation: look.observation }, [], paths, new WeakSet());
 
-  for (const path of paths.slice(0, MAX_VARIANTS)) {
+  // Every collection, however deep and however many: a cap here would be a
+  // collection the probe silently never emptied, and a green suite that
+  // did not look.
+  for (const path of paths) {
     const root = emptiedAt({ record: look.record, observation: look.observation }, path) as {
       record: WorkRecord;
       observation: unknown;
@@ -75,16 +73,23 @@ function variantsOf(look: Look): Variant[] {
   return variants;
 }
 
-/** Every non-empty array reachable through plain objects and arrays. */
-function collections(value: unknown, path: string[], out: string[][]): void {
-  if (path.length > MAX_DEPTH) return;
+/**
+ * Every non-empty array reachable through plain objects and arrays.
+ *
+ * Walked to the bottom, with a record of what has been entered so an
+ * observation that refers back to itself is visited once rather than forever.
+ */
+function collections(value: unknown, path: string[], out: string[][], entered: WeakSet<object>): void {
+  if (value === null || typeof value !== "object" || entered.has(value)) return;
   if (Array.isArray(value)) {
+    entered.add(value);
     if (value.length > 0 && path.length > 0) out.push(path);
-    value.forEach((item, index) => collections(item, [...path, String(index)], out));
+    value.forEach((item, index) => collections(item, [...path, String(index)], out, entered));
     return;
   }
   if (!isPlain(value)) return;
-  for (const [key, item] of Object.entries(value)) collections(item, [...path, key], out);
+  entered.add(value);
+  for (const [key, item] of Object.entries(value)) collections(item, [...path, key], out, entered);
 }
 
 function emptiedAt(value: unknown, path: readonly string[]): unknown {
@@ -102,17 +107,17 @@ function isPlain(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
-const every = Array.prototype.every;
-
 /**
  * Decides once with an empty `every` answering as told, and says whether any
  * `every` was asked of an empty array while deciding.
  *
  * The one place the kit reaches into the language: `plan` is synchronous and
- * pure, so for the length of one call nothing else can observe the swap, and
- * the original is back before the call returns or throws.
+ * pure, so for the length of one call nothing but `plan` runs, and whatever
+ * `every` was in place — the language's, or somebody else's patch — is read
+ * at the call and put back before it returns or throws.
  */
 function decideWithEvery(answer: boolean, decide: () => Plan): { plan: Plan | undefined; asked: boolean } {
+  const every = Array.prototype.every;
   let asked = false;
   const counted = function (this: unknown[], ...args: Parameters<typeof every>): boolean {
     if (this.length === 0) {

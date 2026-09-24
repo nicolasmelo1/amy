@@ -12,6 +12,32 @@ export function sameMove(a: Plan, b: Plan): boolean {
   return shape(a) === shape(b);
 }
 
+/**
+ * Two plans are the same decision when everything but the prose matches: the
+ * kind, the state, how long a wait holds, and every action with its payload.
+ *
+ * Stricter than `sameMove`, for a probe where a changed payload — the thread
+ * ids handed to the agent, the person work is handed to — is a changed
+ * decision in its own right.
+ */
+export function sameDecision(a: Plan, b: Plan): boolean {
+  return canonical(withoutWhy(a)) === canonical(withoutWhy(b));
+}
+
+function withoutWhy(plan: Plan): unknown {
+  const { why: _why, ...rest } = plan;
+  return rest;
+}
+
+/** JSON with object keys in a stable order, so two equal payloads print the same. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    item !== null && typeof item === "object" && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)))
+      : item,
+  );
+}
+
 function shape(plan: Plan): string {
   const to = plan.kind === "advance" ? plan.to : "";
   return `${plan.kind}:${to}:${actionsOf(plan).map((action) => action.type).join(",")}`;

@@ -88,4 +88,20 @@ describe("handlers", () => {
 
     expect(findings).toEqual([]);
   });
+
+  it("asks every world's runtime, not only the first one built", async () => {
+    const findings = await conformance(handingOff(["hand-off-to-qa"]), {
+      runtime: (world) =>
+        runtimeOf("approved", {
+          observe: () => ({}),
+          handlers: world.name === "a runtime that forgot it" ? {} : { "hand-off-to-qa": async () => {} },
+        }),
+      worlds: [{ name: "the happy path" }, { name: "a runtime that forgot it", start: (now) => ({ id: "x", state: "done", updatedAt: now.toISOString(), attempts: {}, history: [] }) }],
+    });
+
+    expect(findings).toContainEqual({
+      property: "handlers",
+      message: "`hand-off-to-qa` is declared in usesActions, and the runtime in a runtime that forgot it has no handler for it",
+    });
+  });
 });
