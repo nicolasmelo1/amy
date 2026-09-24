@@ -132,4 +132,56 @@ describe("folds", () => {
       Array.prototype.every = original;
     }
   });
+
+  it("empties an array under every name it is reachable by", async () => {
+    // The observation hands the same array out twice; the plan reads the
+    // second name. Emptying it only where it was first found would leave
+    // `all` full and the vacuous decision never compared.
+    type Aliased = { repos: { approved: boolean }[]; all: { approved: boolean }[] };
+    const aliased = workflowOf<Aliased>({
+      states: ["reviewing", "merged"],
+      terminal: ["merged"],
+      waiting: ["reviewing"],
+      plan: (record, o) => (record.state === "merged" ? settled() : o.all.every((r) => r.approved) ? advance("merged") : wait()),
+    });
+    const approved = { value: false };
+
+    const findings = await conformance(aliased, {
+      runtime: () =>
+        runtimeOf<WorkRecord, Aliased>("reviewing", {
+          observe: () => {
+            const repos = [{ approved: approved.value }];
+            return { repos, all: repos };
+          },
+        }),
+      worlds: [{ name: "aliased", meanwhile: [() => { approved.value = true; }] }],
+    });
+
+    expect(foldsOf(findings).map((finding) => finding.message)).toContainEqual(expect.stringContaining("with `observation.all` empty"));
+  });
+
+  it("stops at an observation that refers back to itself", async () => {
+    type Looped = { repos: { approved: boolean }[]; self?: unknown };
+    const looped = workflowOf<Looped>({
+      states: ["reviewing", "merged"],
+      terminal: ["merged"],
+      waiting: ["reviewing"],
+      plan: (record, o) => (record.state === "merged" ? settled() : o.repos.length > 0 && o.repos.every((r) => r.approved) ? advance("merged") : wait()),
+    });
+    const approved = { value: false };
+
+    const findings = await conformance(looped, {
+      runtime: () =>
+        runtimeOf<WorkRecord, Looped>("reviewing", {
+          observe: () => {
+            const observation: Looped = { repos: [{ approved: approved.value }] };
+            observation.self = observation;
+            return observation;
+          },
+        }),
+      worlds: [{ name: "looped", meanwhile: [() => { approved.value = true; }] }],
+    });
+
+    expect(foldsOf(findings)).toEqual([]);
+  });
 });

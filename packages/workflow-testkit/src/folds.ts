@@ -58,7 +58,7 @@ interface Variant {
 function variantsOf(look: Look): Variant[] {
   const variants: Variant[] = [{ record: look.record, observation: look.observation, emptied: "the collections as observed" }];
   const paths: string[][] = [];
-  collections({ record: look.record, observation: look.observation }, [], paths, new WeakSet());
+  collections({ record: look.record, observation: look.observation }, [], paths, new Set());
 
   // Every collection, however deep and however many: a cap here would be a
   // collection the probe silently never emptied, and a green suite that
@@ -74,22 +74,27 @@ function variantsOf(look: Look): Variant[] {
 }
 
 /**
- * Every non-empty array reachable through plain objects and arrays.
+ * Every non-empty array reachable through plain objects and arrays, by every
+ * path that reaches it.
  *
- * Walked to the bottom, with a record of what has been entered so an
- * observation that refers back to itself is visited once rather than forever.
+ * Only the chain being walked is remembered, and forgotten on the way back
+ * up: an observation that refers back to itself stops at the loop, while one
+ * array reachable as both `all` and `repos` is emptied under each name — the
+ * plan may read either.
  */
-function collections(value: unknown, path: string[], out: string[][], entered: WeakSet<object>): void {
-  if (value === null || typeof value !== "object" || entered.has(value)) return;
-  if (Array.isArray(value)) {
-    entered.add(value);
+function collections(value: unknown, path: string[], out: string[][], above: Set<object>): void {
+  if (value === null || typeof value !== "object" || above.has(value)) return;
+  const array = Array.isArray(value);
+  if (!array && !isPlain(value)) return;
+
+  above.add(value);
+  if (array) {
     if (value.length > 0 && path.length > 0) out.push(path);
-    value.forEach((item, index) => collections(item, [...path, String(index)], out, entered));
-    return;
+    value.forEach((item, index) => collections(item, [...path, String(index)], out, above));
+  } else {
+    for (const [key, item] of Object.entries(value)) collections(item, [...path, key], out, above);
   }
-  if (!isPlain(value)) return;
-  entered.add(value);
-  for (const [key, item] of Object.entries(value)) collections(item, [...path, key], out, entered);
+  above.delete(value);
 }
 
 function emptiedAt(value: unknown, path: readonly string[]): unknown {
