@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
 import type { TickResult } from "@amykit/plugin-serial-engine";
@@ -10,6 +10,7 @@ import { FileTasks } from "@amykit/plugin-file-tasks";
 import {
   BUDGET_WINDOWS,
   BriefStore,
+  CommandRunner,
   Engine,
   FileStopSwitch,
   Mounted,
@@ -76,13 +77,15 @@ import {
   workflowProfileName,
 } from "./add.js";
 import { clearDaemon, running, writeDaemon } from "./daemon.js";
-import { Harness as HarnessTarget, install, installedHarnesses } from "./harnesses.js";
+import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
+import { Held, held, imports, line, move, restore, roots } from "./update.js";
+import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
 // harness you are in, from wherever you happen to be standing.
@@ -1476,6 +1479,254 @@ program
     await removeCommand(home, spec);
   });
 
+/**
+ * `amy update`: move an install forward without leaving it half-moved.
+ *
+ * The two roots are read, every range in them is resolved again, and the
+ * packages that would move are named. `--check` stops there. Otherwise each
+ * one is installed, imported as a probe, and — when every configured profile
+ * mounts at the new version — declared done. A version that will not import
+ * or mount is rolled back to the version that did, which is knowable
+ * because the old one was resolvable a second ago. The loop is refused
+ * first: swapping a package under a running daemon is the one thing that
+ * turns a deterministic machine into a flaky one.
+ */
+program
+  .command("update")
+  .description("Move this install forward: both roots, refusing to leave the machine half-updated")
+  .option("--check", "name every package that would move, and to what, without moving anything")
+  .argument("[package]", "one package to update, by the name the root's manifest carries")
+  .action(async (pkg: string | undefined, options: { check?: boolean }) => {
+    process.exitCode = await updateCommand(home, runner, pkg, options.check === true, {
+      mountProfiles: assembleProfiles,
+      skillsInto: rewriteSkillsInto,
+    });
+  });
+
+/** The update's command body, kept apart from its declaration so a test can drive it. */
+export async function updateCommand(
+  home: string,
+  runner: CommandRunner,
+  pkg: string | undefined,
+  check: boolean,
+  deps: {
+    /** Whether every configured profile still boots, with the problems named. */
+    mountProfiles: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+    /** Rewrites the skills into the harnesses they were written into before. */
+    skillsInto: () => string[];
+    /** Where the install root is; the running CLI's own answer by default. */
+    installRoot?: string;
+  },
+): Promise<number> {
+    const refused = refuseWhileRunning(home);
+    if (refused !== undefined) return refused;
+
+    const where = roots(home);
+    const installRoot = deps.installRoot ?? where.install;
+    const everything = await held(runner, home, installRoot);
+
+    if (pkg !== undefined && !everything.some((held) => held.name === pkg)) {
+      console.error(`no package named ${pkg} in either root`);
+      return 1;
+    }
+
+    const moving = everything.filter((one) => (pkg === undefined || one.name === pkg) && one.want !== undefined && one.want !== one.have);
+
+    reportWhatIsHeld(everything, installRoot);
+
+    if (check) return reportOnly(moving);
+    if (moving.length === 0) return nothingMoved(deps);
+
+    const movedList = await moveEach(runner, where.plugins, installRoot, moving);
+    if (movedList.failed > 0) {
+      console.error(`\n${movedList.failed} package(s) refused to move; the versions that boot are still in place.`);
+      return 1;
+    }
+
+    // Every configured profile mounts before the update is called done: an
+    // update that leaves a config that cannot boot has not worked, and
+    // finding that out at the next tick means finding it out from the daemon.
+    const booted = await deps.mountProfiles();
+    if (!booted.ok) {
+      reportUnbootable(booted.problems);
+      await rollBackAll(runner, where.plugins, installRoot, movedList.moved);
+      return 1;
+    }
+
+    // The skills rewrite comes after the boot check, not before it: a
+    // rollback would otherwise leave skills describing a CLI the machine no
+    // longer runs — the exact failure this plan exists to end. The CLI
+    // itself moved, so the skills travel with it, into every harness they
+    // were written into before — the record under ~/.amy, not a guess from
+    // what is installed now.
+    if (movedList.moved.some((one) => one.root === "install" && one.name === "@amykit/cli")) {
+      for (const said of deps.skillsInto()) console.log(said);
+    }
+
+    console.log(`\n${movedList.moved.length} package(s) moved; every configured profile mounts. Run \`amy doctor\`, then \`amy start\`.`);
+    return 0;
+}
+
+/**
+ * The refusal that comes before anything is read, or nothing when it may run.
+ *
+ * Swapping a package under a running loop is the one thing that turns a
+ * deterministic machine into a flaky one, so it is the first question and
+ * it names the pid it is refusing to interrupt.
+ */
+function refuseWhileRunning(home: string): number | undefined {
+    const live = running(paths(home).pid);
+    if (!live) return undefined;
+    console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
+    return 1;
+}
+
+/** The one-line report of everything the two roots hold. */
+function reportWhatIsHeld(everything: readonly Held[], installRoot: string | undefined): void {
+    console.log(`${everything.length} package(s) in ${installRoot ? "both roots" : "the plugins root"}${installRoot ? "" : " (running from a checkout, so no CLI half to move)"}`);
+    for (const one of everything) console.log(`  ${line(one)}`);
+}
+
+/** `--check`'s whole answer: what would move, and nothing does. */
+function reportOnly(moving: readonly Held[]): number {
+    if (moving.length === 0) {
+      console.log("nothing to move");
+      return 0;
+    }
+    console.log(`\n${moving.length} package(s) would move. Run \`amy update\` to move them.`);
+    return 0;
+}
+
+/** The zero-move case, which still has to answer for a machine that will not boot. */
+async function nothingMoved(deps: MountProfiles & SkillsInto): Promise<number> {
+    // The boot check runs even when nothing moved: an update on a machine
+    // whose config already does not boot must say so, not report success
+    // over a config the next tick would refuse.
+    const booted = await deps.mountProfiles();
+    if (!booted.ok) {
+      reportUnbootable(booted.problems);
+      console.error("\nNothing moved; the config is what needs attention.");
+      return 1;
+    }
+    console.log("nothing to move");
+    return 0;
+}
+
+/** What the update depends on beyond the move itself, in one named shape. */
+interface UpdateDeps {
+    mountProfiles: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+    skillsInto: () => string[];
+}
+
+type MountProfiles = Pick<UpdateDeps, "mountProfiles">;
+type SkillsInto = Pick<UpdateDeps, "skillsInto">;
+
+/**
+ * Moves every package, probing each copy npm wrote, and counts the refusals.
+ *
+ * One package at a time on purpose: a later package's move must not be
+ * blocked by an earlier one's refusal, because the operator reads the whole
+ * list once and decides once.
+ */
+async function moveEach(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moving: readonly Held[],
+): Promise<{ moved: Held[]; failed: number }> {
+    const moved: Held[] = [];
+    let failed = 0;
+
+    for (const one of moving) {
+      console.log(`\nupdating ${one.name}: ${one.have} -> ${one.want}`);
+      const root = one.root === "plugins" ? pluginsRoot : installRoot!;
+      const installed = await move(runner, root, one.name, one.range, one.want!);
+      if (!installed.ok) {
+        console.error(`${installed.command} failed:`);
+        console.error(installed.output || "it said nothing");
+        failed += 1;
+        continue;
+      }
+
+      // The import probe: the copy npm just wrote has to load. Within this
+      // one process the package is imported exactly once — here — so the
+      // boot check below reads the same new module from the ESM cache
+      // rather than a mix of the old file and the new one.
+      const probe = one.root === "plugins" ? await imports(one.name, pluginsRoot) : undefined;
+      if (probe && !probe.ok) {
+        console.error(`${one.name} ${one.want} does not import:`);
+        for (const problem of probe.problems) console.error(`  ${problem}`);
+        const rolledBack = await restore(runner, pluginsRoot, one.name, one.have);
+        console.log(rolledBack.ok ? `rolled back to ${one.have}` : `rollback failed — restore by hand with ${rolledBack.command}`);
+        failed += 1;
+        continue;
+      }
+      console.log(`updated ${one.name}`);
+      moved.push(one);
+    }
+
+    return { moved, failed };
+}
+
+/** The boot refusal's own words, with the profile named on each line. */
+function reportUnbootable(problems: readonly string[]): void {
+    console.error("\nthe machine does not boot after the update:");
+    for (const problem of problems) console.error(`  ${problem}`);
+    console.error("\nRolling back every move to the versions that did boot.");
+}
+
+/** Rolls every moved package back to the version that was on disk. */
+async function rollBackAll(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moved: readonly Held[],
+): Promise<void> {
+    for (const one of moved) {
+      const root = one.root === "plugins" ? pluginsRoot : installRoot!;
+      const rolledBack = await restore(runner, root, one.name, one.have);
+      console.log(rolledBack.ok ? `rolled back ${one.name} to ${one.have}` : `rollback failed for ${one.name} — restore by hand with ${rolledBack.command}`);
+    }
+}
+
+/**
+ * Assembles every configured profile, and reports the mount's own refusals.
+ *
+ * All of them, not only the selected one, because `update` changes the
+ * packages under the whole machine: a profile the operator has not driven
+ * this week is still one the next tick may pick, and finding it broken three
+ * commands later is the failure this check exists to prevent.
+ */
+async function assembleProfiles(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const config = loadConfig(home);
+  const problems: string[] = [];
+  for (const profile of Object.values(profiles(config))) {
+    const booted = await assemble(profile);
+    if (!booted.ok) problems.push(...booted.problems.map((problem) => `${profile.name}: ${problem}`));
+  }
+  return problems.length > 0 ? { ok: false, problems } : { ok: true };
+}
+
+/** Rewrites the skills into the harnesses and directories the record names. */
+function rewriteSkillsInto(): string[] {
+  // The NEW CLI writes its own skills. The old process rewriting them would
+  // write the old bodies into the harnesses — the exact failure this
+  // command exists to end — so the new binary is spawned to do it, reading
+  // the same machine record under ~/.amy and its own shipped skills.
+  const result = spawnSync(process.execPath, [process.argv[1]!, "skills", "--recorded"], {
+    encoding: "utf-8",
+    env: process.env,
+  });
+  const lines = (result.stdout ?? "").split("\n").filter(Boolean);
+  if (result.status !== 0) {
+    const said = (result.stderr ?? "").split("\n").filter(Boolean);
+    console.error("the updated CLI could not rewrite its skills:");
+    for (const line of said.length > 0 ? said : ["it said nothing"]) console.error(`  ${line}`);
+    return [];
+  }
+  return lines;
+}
+
 pluginCommand
   .command("list")
   .description("The plugins this install mounts, and what they assembled into")
@@ -1564,12 +1815,27 @@ program
   .option("--all", "every harness found, without asking")
   .option("--harness <name>", "one harness by name, without asking")
   .option("--dir <path>", "a directory, for a harness this does not know")
-  .action((options: { all?: boolean; harness?: string; dir?: string }) => {
+  .option("--recorded", "rewrite into the harnesses `amy skills` wrote to before, and nothing else")
+  .action((options: { all?: boolean; harness?: string; dir?: string; recorded?: boolean }) => {
     const skills = shipped();
+
+    // The update's half: every harness the record names, and nothing else.
+    // A harness that is installed but was never written to is not written to
+    // now — writing skills into a harness somebody did not choose is a
+    // decision nobody made.
+    if (options.recorded) {
+      const wrote = writeSkills(home, install, () => skills, (name) =>
+        harnesses().find((harness) => harness.name === name)?.skills,
+      );
+      if (wrote.length === 0) console.log("nowhere recorded: run `amy skills` once, by hand, first.");
+      return;
+    }
+
     const found = installedHarnesses();
 
     if (options.dir) {
       wrote(install(options.dir, skills), options.dir);
+      recordWrite(home, { directory: options.dir });
       return;
     }
 
@@ -1592,7 +1858,9 @@ program
     }
 
     for (const harness of chosen) wrote(install(harness.skills, skills), harness.name);
+    for (const harness of chosen) recordWrite(home, { harness: harness.name });
     console.log(`\n${skills.length} skill(s): ${skills.map(([name]) => `/${name}`).join(", ")}`);
+    console.log("Recorded, so the next `amy update` rewrites them into the same places.");
 
     function wrote(files: string[], where: string): void {
       console.log(`${where}: ${files.length} skill(s)`);

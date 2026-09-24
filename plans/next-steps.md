@@ -73,7 +73,7 @@ cannot report the day it stops being any.
 
 **Delivered:** *Amy add and amy remove* now lives at `docs/design/amy-add-and-amy-remove.md`.
 
-| 1 | [`amy update`](amy-update.md) | A machine two versions behind runs one command, keeps its work, and its harness skills describe the CLI now installed |
+**Delivered:** *Amy update* now lives at `docs/design/amy-update.md`.
 
 **Delivered:** *A workflow is yours, not a package* now lives at `docs/design/a-workflow-is-yours-not-a-package.md`.
 

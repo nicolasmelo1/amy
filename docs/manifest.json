@@ -253,6 +253,11 @@
           "description": ""
         },
         {
+          "title": "Amy update",
+          "path": "/design/amy-update",
+          "description": ""
+        },
+        {
           "title": "An answer reaches the agent",
           "path": "/design/an-answer-reaches-the-agent",
           "description": ""
@@ -781,6 +786,11 @@
           "depth": 3,
           "title": "New amy add and amy remove commands: one argument — a package name, a URL, a git URL or a path — installs the package into ~/.amy/plugins, mounts it alone to decide whether it is a workflow or a plugin, writes the config entry (a profile for a workflow, the machine-wide extraPlugins: list for a plugin), and refuses what the machine would not survive instead of leaving a half-added entry behind. Plugins added this way join a profile without freezing its recommended set into the config.",
           "slug": "new-amy-add-and-amy-remove-commands-one-argument-a-package-name-a-url-a-git-url-or-a-path-installs-the-package-into-amyplugins-mounts-it-alone-to-decide-whether-it-is-a-workflow-or-a-plugin-writes-the-config-entry-a-profile-for-a-workflow-the-machine-wide-extraplugins-list-for-a-plugin-and-refuses-what-the-machine-would-not-survive-instead-of-leaving-a-half-added-entry-behind-plugins-added-this-way-join-a-profile-without-freezing-its-recommended-set-into-the-config"
+        },
+        {
+          "depth": 3,
+          "title": "New amy update command: moves a machine forward without leaving it half-updated — reads both roots (the plugins root and the one that resolved the CLI), re-resolves every registry range through npm, installs the exact version each range now points at, and keeps the manifest's ranges the way the operator wrote them. Refuses while the loop is running; a version that will not import or mount is rolled back to the one that did; a config that will not boot fails the update and rolls back every move; and when the CLI itself moves, its skills are rewritten into the harnesses they were written into before — through the new CLI, never the old process. amy skills now records where it wrote, and --recorded rewrites into exactly those places.",
+          "slug": "new-amy-update-command-moves-a-machine-forward-without-leaving-it-half-updated-reads-both-roots-the-plugins-root-and-the-one-that-resolved-the-cli-re-resolves-every-registry-range-through-npm-installs-the-exact-version-each-range-now-points-at-and-keeps-the-manifests-ranges-the-way-the-operator-wrote-them-refuses-while-the-loop-is-running-a-version-that-will-not-import-or-mount-is-rolled-back-to-the-one-that-did-a-config-that-will-not-boot-fails-the-update-and-rolls-back-every-move-and-when-the-cli-itself-moves-its-skills-are-rewritten-into-the-harnesses-they-were-written-into-before-through-the-new-cli-never-the-old-process-amy-skills-now-records-where-it-wrote-and---recorded-rewrites-into-exactly-those-places"
         },
         {
           "depth": 3,
@@ -1571,6 +1581,33 @@
       "file": "docs/design/amy-add-and-amy-remove.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/amy-add-and-amy-remove.md",
       "title": "Amy add and amy remove",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "The proof",
+          "slug": "the-proof"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/amy-update",
+      "file": "docs/design/amy-update.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/amy-update.md",
+      "title": "Amy update",
       "description": "",
       "group": "",
       "order": 999,
@@ -2759,6 +2796,11 @@
           "depth": 3,
           "title": "amy tick",
           "slug": "amy-tick"
+        },
+        {
+          "depth": 3,
+          "title": "amy update",
+          "slug": "amy-update"
         },
         {
           "depth": 3,
@@ -5171,6 +5213,10 @@
             {
               "flags": "--dir <path>",
               "description": "a directory, for a harness this does not know"
+            },
+            {
+              "flags": "--recorded",
+              "description": "rewrite into the harnesses `amy skills` wrote to before, and nothing else"
             }
           ],
           "isDefault": false
@@ -5224,6 +5270,26 @@
           "description": "Advance one piece of work by one move",
           "arguments": [],
           "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "update"
+          ],
+          "description": "Move this install forward: both roots, refusing to leave the machine half-updated",
+          "arguments": [
+            {
+              "name": "[package]",
+              "required": false,
+              "description": "one package to update, by the name the root's manifest carries"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--check",
+              "description": "name every package that would move, and to what, without moving anything"
+            }
+          ],
           "isDefault": false
         },
         {
@@ -6828,6 +6894,38 @@
         "scenario": ".software-factory/evidence/amy-add-remove-scenario.sh"
       },
       {
+        "name": "amy-update",
+        "activation": [
+          "packages/cli/src/update.ts",
+          "packages/cli/src/skills-record.ts",
+          "packages/cli/src/harnesses.ts"
+        ],
+        "evidence": ".software-factory/evidence/amy-update.json",
+        "plan": "docs/design/amy-update.md",
+        "assertions": [
+          "update.added_the_first_version",
+          "update.v1_finds_the_page",
+          "update.v1_moves_the_page",
+          "update.a_check_names_what_would_move",
+          "update.a_check_changes_nothing",
+          "update.the_version_moved",
+          "update.the_copy_on_disk_moved",
+          "update.the_state_survives_the_version",
+          "update.the_manifest_keeps_the_range",
+          "update.the_new_version_drives_the_work",
+          "update.the_rollback_names_the_reason",
+          "update.a_bad_version_is_rolled_back",
+          "update.the_machine_boots_after_the_update",
+          "update.a_config_that_stops_booting_fails_the_update",
+          "update.the_boot_refusal_rolls_the_move_back",
+          "update.an_update_refuses_while_the_loop_runs",
+          "update.skills_writes_are_recorded",
+          "update.the_skills_follow_the_version",
+          "update.a_harness_never_written_to_is_not_written_to_now"
+        ],
+        "scenario": ".software-factory/evidence/amy-update-scenario.sh"
+      },
+      {
         "name": "bare-install",
         "activation": [
           "packages/cli/package.json",
@@ -7461,6 +7559,18 @@
       {
         "id": "amy-add-and-amy-remove",
         "title": "New `amy add` and `amy remove` commands: one argument — a package name, a URL, a git URL or a path — installs the package into `~/.amy/plugins`, mounts it alone to decide whether it is a workflow or a plugin, writes the config entry (a profile for a workflow, the machine-wide `extraPlugins:` list for a plugin), and refuses what the machine would not survive instead of leaving a half-added entry behind. Plugins added this way join a profile without freezing its recommended set into the config.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "amy-update",
+        "title": "New `amy update` command: moves a machine forward without leaving it half-updated — reads both roots (the plugins root and the one that resolved the CLI), re-resolves every registry range through npm, installs the exact version each range now points at, and keeps the manifest's ranges the way the operator wrote them. Refuses while the loop is running; a version that will not import or mount is rolled back to the one that did; a config that will not boot fails the update and rolls back every move; and when the CLI itself moves, its skills are rewritten into the harnesses they were written into before — through the new CLI, never the old process. `amy skills` now records where it wrote, and `--recorded` rewrites into exactly those places.",
         "body": "",
         "bumps": [
           {

@@ -1,0 +1,14 @@
+{
+  "scenario": "amy-update",
+  "status": "passed",
+  "goal": "I want a machine two versions behind to run one command, end up on the current one with its work untouched, and the skills in its harnesses to describe the CLI that is now installed.",
+  "artifact": { "package": "@amykit/cli", "entry": "the installed amy command, run by node", "built_by": "scripts/install.sh" },
+  "observed": {
+    "assertions_run": 20,
+    "assertions_failed": 0,
+    "workflow_updated": "@acme/workflow-oncall",
+    "moved_from": "1.0.0",
+    "moved_to": "1.1.0"
+  },
+  "assertions": [{"type":"update.added_the_first_version","status":"passed"},{"type":"update.v1_finds_the_page","status":"passed"},{"type":"update.v1_moves_the_page","status":"passed"},{"type":"update.a_check_names_what_would_move","status":"passed"},{"type":"update.a_check_changes_nothing","status":"passed"},{"type":"update.the_version_moved","status":"passed"},{"type":"update.the_update_reports_the_move","status":"passed"},{"type":"update.the_copy_on_disk_moved","status":"passed"},{"type":"update.the_state_survives_the_version","status":"passed"},{"type":"update.the_manifest_keeps_the_range","status":"passed"},{"type":"update.the_new_version_drives_the_work","status":"passed"},{"type":"update.the_rollback_names_the_reason","status":"passed"},{"type":"update.a_bad_version_is_rolled_back","status":"passed"},{"type":"update.the_machine_boots_after_the_update","status":"passed"},{"type":"update.a_config_that_stops_booting_fails_the_update","status":"passed"},{"type":"update.the_boot_refusal_rolls_the_move_back","status":"passed"},{"type":"update.an_update_refuses_while_the_loop_runs","status":"passed"},{"type":"update.skills_writes_are_recorded","status":"passed"},{"type":"update.the_skills_follow_the_version","status":"passed"},{"type":"update.a_harness_never_written_to_is_not_written_to_now","status":"passed"}]
+}

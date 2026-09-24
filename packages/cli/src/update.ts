@@ -1,0 +1,307 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { CommandRunner } from "@amykit/core";
+import { packageEntrySpecifier } from "./spec.js";
+import { packageManager, shellCommand } from "./install.js";
+
+/**
+ * One package this machine's two roots hold, and what the range in them
+ * points at.
+ *
+ * The two roots are the plugins root — `<home>/plugins`, where the config's
+ * packages are installed — and the install root that resolved the CLI
+ * itself. The version installed is read off the copy on disk. The version
+ * the range points at is asked of the range, through npm, which is what
+ * makes an update an answer rather than a guess.
+ */
+export interface Held {
+  /** The package the root's manifest names. */
+  readonly name: string;
+  /** The spec in the root's manifest: the range this install pinned. */
+  readonly range: string;
+  /** Which of the two roots holds it. */
+  readonly root: "plugins" | "install";
+  /** The version on disk right now. */
+  readonly have: string;
+  /** What the range now points at; nothing when npm could not be asked. */
+  readonly want?: string;
+}
+
+/** What one root's manifest asks npm for, by direct package name. */
+export function manifestOf(root: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf-8")) as Record<
+      string,
+      unknown
+    >;
+    const dependencies = parsed.dependencies;
+    return typeof dependencies === "object" && dependencies !== null
+      ? { ...(dependencies as Record<string, string>) }
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** The version one root's copy of a package carries, or nothing when it is not there. */
+export function versionIn(root: string, name: string): string | undefined {
+  try {
+    const parsed = JSON.parse(
+      fs.readFileSync(path.join(root, "node_modules", ...name.split("/"), "package.json"), "utf-8"),
+    ) as { version?: string };
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Whether a manifest range can move at all.
+ *
+ * `file:` specs, URLs, git forms and paths are pins: what they name is one
+ * place on one machine, and what would move is whatever that place holds
+ * now, which no command can discover. A bare name or a semver range is a
+ * registry range, and `latest` is one too — an operator who wrote it wants
+ * the newest one npm finds. The tilde of `~2.1.0` is a range; only a tilde
+ * followed by a slash is a path into the home directory.
+ */
+export function isRange(range: string): boolean {
+  return (
+    !/^(file:|https?:|git|ssh:|github:|gitlab:|bitbucket:|gist:|\/|\.{0,2}\/|~\/|[A-Za-z]:[\\/])/.test(range) &&
+    !range.includes(" ")
+  );
+}
+
+/**
+ * The version a range points at, asked through npm.
+ *
+ * `npm view <name>@<range> version` is the question in npm's own words; its
+ * answer is the version that satisfies the range today. A machine with no
+ * network, or a range npm cannot read, gets an unset `want` rather than a
+ * guess, and `--check` reports it as unknown rather than as current.
+ */
+async function resolveTo(
+  runner: CommandRunner,
+  name: string,
+  range: string,
+): Promise<string | undefined> {
+  const result = await runner.run(packageManager(), ["view", `${name}@${range}`, "version", "--json"], {
+    timeoutMs: 60 * 1000,
+  });
+  if (!result.ok) return undefined;
+  return oneVersion(result.stdout);
+}
+
+/** The one version npm reported, when that is what it reported. */
+export function oneVersion(stdout: string): string | undefined {
+  try {
+    const parsed = JSON.parse(stdout) as unknown;
+    if (typeof parsed === "string") return parsed;
+    // A range that matches several answers with the list, oldest first; the
+    // newest one is what the range moves to.
+    if (Array.isArray(parsed)) {
+      const versions = parsed.filter((entry): entry is string => typeof entry === "string");
+      return versions[versions.length - 1];
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Every package this machine's two roots hold, with what the ranges in them
+ * now point at.
+ */
+export async function held(
+  runner: CommandRunner,
+  home: string,
+  installRoot?: string,
+): Promise<Held[]> {
+  const pluginsRoot = path.join(home, "plugins");
+  const found: Held[] = [];
+
+  for (const [name, range] of Object.entries(manifestOf(pluginsRoot))) {
+    const have = versionIn(pluginsRoot, name);
+    if (!have) continue;
+    found.push({
+      name,
+      range,
+      root: "plugins",
+      have,
+      want: isRange(range) ? await resolveTo(runner, name, range) : undefined,
+    });
+  }
+
+  if (installRoot) {
+    for (const [name, range] of Object.entries(manifestOf(installRoot))) {
+      const have = versionIn(installRoot, name);
+      if (!have) continue;
+      found.push({
+        name,
+        range,
+        root: "install",
+        have,
+        want: isRange(range) ? await resolveTo(runner, name, range) : undefined,
+      });
+    }
+  }
+
+  return found;
+}
+
+/**
+ * Where the plugins root and the install root are, for this running CLI.
+ *
+ * The plugins root is state, under amy's home. The install root is derived
+ * from where this module resolved from: an installed CLI sits at
+ * `<root>/node_modules/@amykit/cli/dist/`, so the walk up from this file is
+ * one level to `dist`, one to the package, one to the scope, one to
+ * `node_modules`, and one more to the root that holds it — and only when
+ * that last directory carries a manifest, which is what an install root is.
+ * A checkout (`packages/cli/dist/`) never matches, so `update` has no CLI
+ * half to move there and says so rather than running npm against a
+ * repository.
+ */
+export function roots(home: string, from: URL = new URL(import.meta.url)): {
+  plugins: string;
+  install?: string;
+} {
+  const plugins = path.join(home, "plugins");
+  const dist = path.dirname(fileURLToPath(from));
+  const packageDir = path.dirname(dist);
+  const candidate = path.dirname(path.dirname(path.dirname(packageDir)));
+
+  const installed = path.basename(path.dirname(path.dirname(packageDir))) === "node_modules" &&
+    fs.existsSync(path.join(candidate, "package.json"));
+
+  return installed ? { plugins, install: candidate } : { plugins };
+}
+
+/** One line of the report, `--check` and the move's own log the same. */
+export function line(held: Held): string {
+  const where = held.root === "plugins" ? "plugins" : "install";
+  if (!isRange(held.range)) return `${held.name}  ${held.have}  (${where}, pinned: ${held.range})`;
+  const wanted = held.want ?? "unknown";
+  return `${held.name}  ${held.have} -> ${wanted}  (${where}, ${held.range})`;
+}
+
+/**
+ * Moves one package to the exact version its range now points at, and puts
+ * the root's manifest back the way the operator wrote it.
+ *
+ * The install names the version, not the range: npm is free to answer a
+ * range with whatever already satisfies it, which on a machine whose
+ * lockfile still holds the old version is the old version — a no-op that
+ * reads as success. Naming the version is the one form that moves. The
+ * manifest entry is restored afterwards, because an install also rewrites
+ * it to the exact thing that was installed — and the root's manifest is
+ * the operator's record of *why* the package is there: the range is the
+ * intention, the copy on disk is today's answer to it. Restoring the entry
+ * keeps the next `update` honest; the copy on disk stays at the new
+ * version either way.
+ */
+export async function move(
+  runner: CommandRunner,
+  root: string,
+  name: string,
+  range: string,
+  to: string,
+): Promise<{ ok: boolean; command: string; output: string }> {
+  const before = manifestOf(root);
+  const outcome = await runWith(runner, [
+    "install",
+    "--prefix",
+    root,
+    "--no-audit",
+    "--no-fund",
+    "--",
+    `${name}@${to}`,
+  ]);
+  if (outcome.ok) restoreManifestEntry(root, before, name);
+  return outcome;
+}
+
+/** Rolls one package back to the version that was on disk, the same way. */
+export async function restore(
+  runner: CommandRunner,
+  root: string,
+  name: string,
+  to: string,
+): Promise<{ ok: boolean; command: string; output: string }> {
+  const before = manifestOf(root);
+  const outcome = await runWith(runner, [
+    "install",
+    "--prefix",
+    root,
+    "--no-audit",
+    "--no-fund",
+    "--",
+    `${name}@${to}`,
+  ]);
+  if (outcome.ok) restoreManifestEntry(root, before, name);
+  return outcome;
+}
+
+async function runWith(
+  runner: CommandRunner,
+  args: readonly string[],
+): Promise<{ ok: boolean; command: string; output: string }> {
+  const result = await runner.run(packageManager(), [...args], { timeoutMs: 10 * 60 * 1000 });
+  return {
+    ok: result.ok,
+    command: shellCommand(packageManager(), [...args]),
+    output: [result.stdout, result.stderr].filter(Boolean).join("\n").trim(),
+  };
+}
+
+/** Writes the manifest entry back to the spec it carried before the move. */
+function restoreManifestEntry(root: string, before: Record<string, string>, name: string): void {
+  const file = path.join(root, "package.json");
+  try {
+    const manifest = JSON.parse(fs.readFileSync(file, "utf-8")) as Record<string, unknown>;
+    const dependencies = manifest.dependencies;
+    if (typeof dependencies !== "object" || dependencies === null) return;
+    (dependencies as Record<string, string>)[name] = before[name] ?? "";
+    fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+  } catch {
+    // The manifest is a record, not a gate: an entry that cannot be written
+    // back leaves the install one version ahead of its record, which the
+    // next `update --check` names.
+  }
+}
+
+/**
+ * Whether the copy npm just wrote imports and carries a plugin.
+ *
+ * The same half of `add`'s probe, on the new version: a package whose module
+ * will not import, or one that exports no `plugin`, is a bad version, and
+ * the move is rolled back. The ESM cache is keyed by URL, and npm has just
+ * replaced the file behind the same URL, so the probe busts the cache with
+ * a query npm never sees — the path it hands `import()` is the same either
+ * way, because the query is only on the specifier.
+ *
+ * A registration that needs a full mount to refuse is caught by the boot
+ * check after all moves land, which is the other half of the same promise.
+ */
+export async function imports(
+  name: string,
+  pluginsRoot: string,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  try {
+    const entry = packageEntrySpecifier(packageDirectory(pluginsRoot, name));
+    const module = (await import(entry)) as { plugin?: unknown };
+    if (!module.plugin) return { ok: false, problems: [`${name}: exports no \`plugin\``] };
+    return { ok: true };
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    return { ok: false, problems: [`${name}: could not be imported — ${why}`] };
+  }
+}
+
+/** The directory one package occupies beneath a root, read off its name. */
+function packageDirectory(root: string, name: string): string {
+  const parts = name.startsWith("@") ? name.split("/", 2) : [name.split("/", 1)[0]!];
+  return path.join(root, "node_modules", ...parts);
+}
