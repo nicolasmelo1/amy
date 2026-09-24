@@ -104,6 +104,15 @@ credential.
 - [x] A harness that was never written to is not written to now
       (proof: assertion:update.a_harness_never_written_to_is_not_written_to_now)
       (proof: test:packages/cli/tests/update.test.ts)
+- [x] The installed CLI drives default, after, cadence, disabled, invalid and
+      daemon scheduling; a direct `daemon` follows the configured schedule too
+      (proof: assertion:update.default_auto_update_runs_before_a_workflow)
+      (proof: assertion:update.auto_update_can_run_after_a_workflow)
+      (proof: assertion:update.auto_update_respects_its_cadence)
+      (proof: assertion:update.auto_update_can_be_disabled)
+      (proof: assertion:update.invalid_auto_update_settings_refuse_before_work)
+      (proof: assertion:update.a_daemon_updates_only_at_its_lifecycle_boundary)
+      (proof: assertion:update.direct_daemon_uses_the_configured_schedule)
 
 **Exit condition:** a machine two versions behind runs one command, ends
 up on the current one with its work untouched, and the skills in its

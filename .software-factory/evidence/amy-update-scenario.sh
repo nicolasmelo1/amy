@@ -59,6 +59,7 @@ write_workflow() {
 {"name":"@acme/workflow-oncall","version":"$2","type":"module","main":"./index.js"}
 JSON
   cat > "$1/index.js" <<JS
+import { appendFileSync } from "node:fs";
 const workflow = {
   name: "oncall",
   states: ["paged", "acknowledged"],
@@ -69,7 +70,7 @@ const workflow = {
   usesObservers: [],
   plan: (record) =>
     record.state === "paged"
-      ? { kind: "advance", to: "acknowledged", effects: [], why: "the page was picked up at $2" }
+      ? (appendFileSync(process.env.HOME + "/.amy/lifecycle.log", "workflow\n"), { kind: "advance", to: "acknowledged", effects: [], why: "the page was picked up at $2" })
       : { kind: "settled", why: "the page was handled" },
 };
 
@@ -135,6 +136,7 @@ case "\$viewing" in
     exit 0
     ;;
   "@acme/workflow-oncall"*)
+    printf 'update\n' >> "$HOME/.amy/lifecycle.log"
     # The registry publishes one answer for the range; the scenario rewrites
     # it between updates, the way a real registry gains a version.
     printf '"%s"' "\$(cat "$work/registry-answer")"
@@ -202,9 +204,93 @@ mkdir -p .amy/pages
 echo "the disk filled up on node 3" > .amy/pages/PAGE-1.md
 discovered=$("$amy" --workflow oncall discover 2>&1 || echo "")
 says update.v1_finds_the_page "$discovered" "queued PAGE-1"
+# The config names no schedule at all.  Make this invocation its twentieth,
+# then read the stand-in's update call before the workflow's own durable log.
+mkdir -p .amy/workflows/oncall
+printf '{"runs": 19}\n' > .amy/workflows/oncall/auto-update.json
+: > "$work/npm.log"
+rm -f .amy/lifecycle.log
 first=$("$amy" --workflow oncall tick 2>&1 || echo "")
 says update.v1_moves_the_page "$first" "the page was picked up at 1.0.0"
+if [ "$(cat .amy/lifecycle.log)" = "update
+workflow" ]; then
+  record update.default_auto_update_runs_before_a_workflow 0
+else
+  record update.default_auto_update_runs_before_a_workflow 1
+fi
 record_before=$(cat .amy/oncall/records/PAGE-1.json)
+
+# The rest of the schedule modes use the same installed command and workflow.
+# A one-run after schedule proves ordering; a two-run schedule proves cadence
+# persists in the profile state rather than in this process.
+node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";const n=String.fromCharCode(10);const block="autoUpdate:"+n+"  enabled: true"+n+"  timing: after"+n+"  everyRuns: 1";const text=fs.readFileSync(f,"utf8");fs.writeFileSync(f,/autoUpdate:[^]*?everyRuns: [0-9]+/.test(text)?text.replace(/autoUpdate:[^]*?everyRuns: [0-9]+/,block):text+n+block+n);'
+: > "$work/npm.log"
+rm -f .amy/lifecycle.log
+rm -f .amy/pages/PAGE-1.md
+rm -rf .amy/oncall/queue
+mkdir -p .amy/oncall/queue
+echo "the disk filled up on node 5" > .amy/pages/PAGE-3.md
+"$amy" --workflow oncall discover >/dev/null
+"$amy" --workflow oncall tick >/dev/null 2>&1 || true
+if [ "$(cat .amy/lifecycle.log 2>/dev/null || true)" = "workflow
+update" ]; then
+  record update.auto_update_can_run_after_a_workflow 0
+else
+  record update.auto_update_can_run_after_a_workflow 1
+fi
+node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/everyRuns: 1/,"everyRuns: 2"));'
+printf '{"runs": 0}\n' > .amy/workflows/oncall/auto-update.json
+: > "$work/npm.log"
+"$amy" --workflow oncall run --max 1 >/dev/null 2>&1 || true
+first_cadence=$(wc -l < "$work/npm.log" | tr -d ' ')
+"$amy" --workflow oncall run --max 1 >/dev/null 2>&1 || true
+second_cadence=$(wc -l < "$work/npm.log" | tr -d ' ')
+if [ "$first_cadence" = "0" ] && [ "$second_cadence" -gt "0" ]; then record update.auto_update_respects_its_cadence 0; else record update.auto_update_respects_its_cadence 1; fi
+node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace("enabled: true","enabled: false"));'
+: > "$work/npm.log"
+"$amy" --workflow oncall run --max 1 >/dev/null 2>&1 || true
+if [ ! -s "$work/npm.log" ]; then record update.auto_update_can_be_disabled 0; else record update.auto_update_can_be_disabled 1; fi
+node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace("enabled: false","enabled: true").replace("timing: after","timing: during").replace("everyRuns: 2","everyRuns: 0"));'
+: > "$work/npm.log"
+invalid=$("$amy" --workflow oncall tick 2>&1 || echo "")
+if [ ! -s "$work/npm.log" ]; then says update.invalid_auto_update_settings_refuse_before_work "$invalid" '`autoUpdate.timing` must be `before` or `after`'; else record update.invalid_auto_update_settings_refuse_before_work 1; fi
+node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace("timing: during","timing: after").replace("everyRuns: 0","everyRuns: 1"));'
+
+# A started daemon has a detached reaper. It owns the marker after SIGTERM,
+# and invokes update only after the loop exits; direct `daemon` documents that
+# it is intentionally unscheduled rather than silently doing something else.
+rm -f .amy/lifecycle.log
+: > "$work/npm.log"
+started=$("$amy" --workflow oncall start --every 1 2>&1 || echo "")
+sleep 1
+if case "$started" in *"started oncall: pid"*) false ;; *) true ;; esac || grep -q '^update$' .amy/lifecycle.log 2>/dev/null; then
+  record update.a_daemon_updates_only_at_its_lifecycle_boundary 1
+else
+  "$amy" stop >/dev/null 2>&1 || true
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    grep -q '^update$' .amy/lifecycle.log 2>/dev/null && break
+    sleep 1
+  done
+  if grep -q '^update$' .amy/lifecycle.log 2>/dev/null && ! test -f .amy/daemon.pid; then
+    record update.a_daemon_updates_only_at_its_lifecycle_boundary 0
+  else
+    record update.a_daemon_updates_only_at_its_lifecycle_boundary 1
+  fi
+fi
+# A directly-driven daemon owns the same schedule. It has no daemon record, so
+# after timing runs only once its foreground loop has returned.
+rm -f .amy/lifecycle.log
+: > "$work/npm.log"
+"$amy" --workflow oncall daemon --every 1 > "$work/direct-daemon.log" 2>&1 &
+direct=$!
+sleep 1
+kill -TERM "$direct"
+wait "$direct" || true
+if grep -q '^update$' .amy/lifecycle.log 2>/dev/null; then
+  record update.direct_daemon_uses_the_configured_schedule 0
+else
+  record update.direct_daemon_uses_the_configured_schedule 1
+fi
 
 # 2. `--check` names what would move, and moves nothing. The registry has
 # gained 1.1.0, which the range the machine holds now points at.
@@ -240,7 +326,7 @@ fi
 # 4. The new version drives the work it finds, with its own reason. The
 # page PAGE-1 came from is removed first — one tick moves one item, and the
 # record is what the state assertion reads, not the file.
-rm .amy/pages/PAGE-1.md
+rm -f .amy/pages/PAGE-1.md
 echo "the disk filled up on node 4" > .amy/pages/PAGE-2.md
 discover_two=$("$amy" --workflow oncall discover 2>&1 || echo "")
 run_two=$("$amy" --workflow oncall run 2>&1 || echo "")

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claimDaemonBoundary, clearDaemon, isAlive, readDaemon, running, writeDaemon } from "../src/daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, isAlive, readDaemon, running, writeDaemon } from "../src/daemon.js";
 
 describe("the loop that is running", () => {
   let home: string;
@@ -56,9 +56,12 @@ describe("the loop that is running", () => {
     expect(fs.existsSync(file)).toBe(false);
   });
 
-  it("knows this process is alive and a made-up one is not", () => {
-    expect(isAlive(process.pid)).toBe(true);
-    expect(isAlive(0x7fffffff)).toBe(false);
+  it("lets one reaper claim an exited daemon exactly once", () => {
+    writeDaemon(file, record(0x7fffffff));
+
+    expect(claimExitedDaemon(file, 0x7fffffff)).toMatchObject({ workflow: "oncall" });
+    expect(claimExitedDaemon(file, 0x7fffffff)).toBeUndefined();
+    expect(fs.existsSync(file)).toBe(false);
   });
 
   it("makes startup and update mutually exclusive until the owner releases it", () => {
@@ -70,5 +73,10 @@ describe("the loop that is running", () => {
     const next = claimDaemonBoundary(file);
     expect(next).toBeTypeOf("function");
     next?.();
+  });
+
+  it("knows this process is alive and a made-up one is not", () => {
+    expect(isAlive(process.pid)).toBe(true);
+    expect(isAlive(0x7fffffff)).toBe(false);
   });
 });

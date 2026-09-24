@@ -42,6 +42,7 @@ import {
   AmyConfig,
   EXAMPLE_CONFIG,
   EXAMPLE_ROSTER,
+  configuredAutoUpdateProblems,
   confirmRoster,
   loadConfig,
   loadRoster,
@@ -76,7 +77,7 @@ import {
   workflowProfileConflict,
   workflowProfileName,
 } from "./add.js";
-import { claimDaemonBoundary, clearDaemon, running, writeDaemon } from "./daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
@@ -85,6 +86,7 @@ import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { Held, held, imports, isRange, line, move, restore, roots } from "./update.js";
+import { beginAutoUpdateInvocation, hasDaemonUpdate, markDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -164,6 +166,29 @@ async function assemble(
   return { ok: true, engine: mounted.engine, mounted };
 }
 
+/** Runs this executable's update command and returns its exact exit status. */
+function scheduledUpdate(): Promise<number> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [process.argv[1]!, "update"], {
+      stdio: "inherit",
+      env: process.env,
+    });
+    child.once("error", (error) => {
+      console.error(`could not start amy update: ${error.message}`);
+      resolve(1);
+    });
+    child.once("exit", (code) => resolve(code ?? 1));
+  });
+}
+
+/** Applies the persisted schedule around one foreground workflow invocation. */
+async function aroundWorkflow(profile: Profile, work: () => Promise<void>): Promise<void> {
+  const config = loadConfig(home);
+  const problems = configuredAutoUpdateProblems(config);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  await runWithAutoUpdate({ home, profile: profile.name, config, update: scheduledUpdate, work });
+}
+
 /**
  * Which workflow this invocation drives.
  *
@@ -181,7 +206,16 @@ function selected(config: AmyConfig = loadConfig(home)): Profile {
 
 /** Assembles, or prints why it could not and stops. */
 async function engineOrExit(): Promise<Engine> {
-  const outcome = await assemble(selected());
+  const config = loadConfig(home);
+  const scheduleProblems = configuredAutoUpdateProblems(config);
+  if (scheduleProblems.length > 0) {
+    console.error("amy could not start:");
+    for (const problem of scheduleProblems) console.error(`  ${problem}`);
+    process.exitCode = 1;
+    process.exit(1);
+  }
+
+  const outcome = await assemble(selected(config));
   if (outcome.ok) return outcome.engine;
 
   console.error("amy could not start:");
@@ -442,12 +476,45 @@ program
     console.log("released, the queue picks up where it left off");
   });
 
+/** Waits until the daemon is gone, so an after update never sees a live loop. */
+async function waitForDaemonExit(pid: number): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    try {
+      process.kill(pid, 0);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ESRCH") return;
+      throw error;
+    }
+    await sleep(50);
+  }
+  throw new Error(`daemon ${pid} did not exit after SIGTERM`);
+}
+
 program
   .command("start")
   .description("Start the loop in the background, and keep it running")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
-  .action((options: { every: string }) => {
+  .action(async (options: { every: string }) => {
     const place = paths(home);
+    const already = running(place.pid);
+    if (already) {
+      console.log(`already running: pid ${already.pid}, driving ${already.workflow}`);
+      return;
+    }
+
+    const config = loadConfig(home);
+    const problems = configuredAutoUpdateProblems(config);
+    if (problems.length > 0) throw new Error(problems.join("; "));
+    const profile = selected(config);
+    const schedule = beginAutoUpdateInvocation(home, profile.name, config);
+    if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
+      throw new Error("amy update failed");
+    }
+
+    // The claim spans only the moment the loop becomes visible: an update
+    // refused to move packages while a child was between its spawn and its
+    // pid record. A due before-update runs unclaimed above, because it is
+    // an `amy update` itself and owns the boundary inside its own process.
     const release = claimDaemonBoundary(place.pid);
     if (!release) {
       console.error("the loop is starting or amy update is running; try again when it finishes");
@@ -455,29 +522,36 @@ program
       return;
     }
     try {
-      const already = running(place.pid);
-      if (already) {
-        console.log(`already running: pid ${already.pid}, driving ${already.workflow}`);
+      const current = running(place.pid);
+      if (current) {
+        console.log(`already running: pid ${current.pid}, driving ${current.workflow}`);
         return;
       }
 
-      const profile = selected();
       // Detached, with its output on a file rather than this terminal: the
-      // point of starting it is that it outlives the session that started it,
-      // and a child holding this terminal's stdout would not.
+      // point of starting it is that it outlives the session that started it.
       const out = fs.openSync(path.join(place.base, "daemon.log"), "a");
       const child = spawn(
         process.execPath,
-        [process.argv[1]!, "--workflow", profile.name, "daemon", "--every", options.every],
+        [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
         { detached: true, stdio: ["ignore", out, out], env: process.env },
       );
       child.unref();
-
       writeDaemon(place.pid, {
         pid: child.pid ?? 0,
         workflow: profile.name,
         startedAt: new Date().toISOString(),
       });
+
+      if (schedule.due && schedule.timing === "after") {
+        markDaemonUpdate(home, profile.name);
+        const reaper = spawn(
+          process.execPath,
+          [process.argv[1]!, "after-daemon", String(child.pid), profile.name],
+          { detached: true, stdio: ["ignore", out, out], env: process.env },
+        );
+        reaper.unref();
+      }
 
       console.log(`started ${profile.name}: pid ${child.pid}`);
       console.log(`Watch it: tail -f ${path.join(place.base, "daemon.log")}`);
@@ -489,7 +563,7 @@ program
 program
   .command("stop")
   .description("Stop the background loop")
-  .action(() => {
+  .action(async () => {
     const place = paths(home);
     const record = running(place.pid);
     if (!record) {
@@ -503,47 +577,68 @@ program
     // operator does, and stopping should not leave the machine held.
     stopSwitch.request("stopped by hand");
     process.kill(record.pid, "SIGTERM");
+    await waitForDaemonExit(record.pid);
     stopSwitch.clear();
-    clearDaemon(place.pid);
-
+    // The detached reaper owns an after-timed update, including a crash or
+    // direct signal. Do not race it by consuming the marker here.
+    if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(place.pid);
     console.log(`stopped ${record.workflow}: pid ${record.pid}`);
+  });
+
+program
+  .command("after-daemon")
+  .description("Internal: update after a started daemon has exited")
+  .argument("<pid>")
+  .argument("<workflow>")
+  .action(async (pidText: string, workflow: string) => {
+    const pid = Number(pidText);
+    if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error(`invalid daemon pid ${pidText}`);
+    await waitForDaemonExit(pid);
+    if (!claimExitedDaemon(paths(home).pid, pid)) return;
+    if (takeDaemonUpdate(home, workflow) && await scheduledUpdate() !== 0) process.exitCode = 1;
   });
 
 program
   .command("daemon")
   .description("The loop itself, in the foreground. `amy start` runs this for you")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
-  .action(async (options: { every: string }) => {
-    const engine = await engineOrExit();
-    const idleMs = Math.max(1, Number(options.every)) * 1000;
-    let stopping = false;
+  .option("--scheduled", "internal: the parent start command already scheduled this lifecycle")
+  .action(async (options: { every: string; scheduled?: boolean }) => {
+    const profile = selected();
+    const drive = async () => {
+      const engine = await engineOrExit();
+      const idleMs = Math.max(1, Number(options.every)) * 1000;
+      let stopping = false;
 
-    for (const signal of ["SIGTERM", "SIGINT"] as const) {
-      process.on(signal, () => {
-        stopping = true;
-        runner.killAll();
-      });
-    }
-
-    console.log(`${new Date().toISOString()} loop up, looking every ${idleMs / 1000}s`);
-
-    while (!stopping) {
-      if (stopSwitch.isRequested()) {
-        await sleep(idleMs);
-        continue;
+      for (const signal of ["SIGTERM", "SIGINT"] as const) {
+        process.on(signal, () => {
+          stopping = true;
+          runner.killAll();
+        });
       }
 
-      // Discovery every pass, because work appears in the world rather than
-      // being handed over: a ticket moved into the working status while
-      // nothing was due is exactly what this loop exists to notice.
-      await engine.discover();
-      const result = (await engine.tick()) as TickResult;
-      report(result);
+      console.log(`${new Date().toISOString()} loop up, looking every ${idleMs / 1000}s`);
 
-      if (result.kind === "idle" || result.kind === "stopped") await sleep(idleMs);
-    }
+      while (!stopping) {
+        if (stopSwitch.isRequested()) {
+          await sleep(idleMs);
+          continue;
+        }
 
-    console.log(`${new Date().toISOString()} loop down`);
+        // Discovery every pass, because work appears in the world rather than
+        // being handed over: a ticket moved into the working status while
+        // nothing was due is exactly what this loop exists to notice.
+        await engine.discover();
+        const result = (await engine.tick()) as TickResult;
+        report(result);
+
+        if (result.kind === "idle" || result.kind === "stopped") await sleep(idleMs);
+      }
+
+      console.log(`${new Date().toISOString()} loop down`);
+    };
+    if (options.scheduled) await drive();
+    else await aroundWorkflow(profile, drive);
   });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -569,7 +664,10 @@ program
   .command("tick")
   .description("Advance one piece of work by one move")
   .action(async () => {
-    report((await (await engineOrExit()).tick()) as TickResult);
+    const profile = selected();
+    await aroundWorkflow(profile, async () => {
+      report((await (await engineOrExit()).tick()) as TickResult);
+    });
   });
 
 program
@@ -577,28 +675,31 @@ program
   .description("Keep advancing until nothing is due")
   .option("--max <n>", "stop after this many moves", "100")
   .action(async (options: { max: string }) => {
-    const engine = await engineOrExit();
-    const max = Number(options.max);
+    const profile = selected();
+    await aroundWorkflow(profile, async () => {
+      const engine = await engineOrExit();
+      const max = Number(options.max);
 
-    // Refusing the next tick is not stopping while an agent call is still
-    // running, so the watcher ends the children the moment the brake is
-    // pulled rather than at the next boundary.
-    const unwatch = stopSwitch.watch((reason) => {
-      const killed = runner.killAll();
-      console.error(`stopping: ${reason}${killed ? ` (ended ${killed} child process(es))` : ""}`);
-    });
+      // Refusing the next tick is not stopping while an agent call is still
+      // running, so the watcher ends the children the moment the brake is
+      // pulled rather than at the next boundary.
+      const unwatch = stopSwitch.watch((reason) => {
+        const killed = runner.killAll();
+        console.error(`stopping: ${reason}${killed ? ` (ended ${killed} child process(es))` : ""}`);
+      });
 
-    try {
-      for (let move = 0; move < max; move += 1) {
-        const result = (await engine.tick()) as TickResult;
-        report(result);
-        if (result.kind === "idle" || result.kind === "stopped") return;
+      try {
+        for (let move = 0; move < max; move += 1) {
+          const result = (await engine.tick()) as TickResult;
+          report(result);
+          if (result.kind === "idle" || result.kind === "stopped") return;
+        }
+
+        console.log(`stopped after ${max} moves`);
+      } finally {
+        unwatch();
       }
-
-      console.log(`stopped after ${max} moves`);
-    } finally {
-      unwatch();
-    }
+    });
   });
 
 program

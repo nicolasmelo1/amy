@@ -22,6 +22,8 @@ For what the two halves mean and why, see
 | `workflows` | `Record<string, WorkflowProfile>` | `{}` | The workflows this install can drive, by the name typed after `--workflow`. Merged over the shipped two, so naming one replaces it and naming a third adds it. |
 | `defaultWorkflow` | `string` | `""` | Which profile runs when nothing is named. Empty means the first. |
 | `extraPlugins` | `string[]` | `[]` | Plugins mounted under every profile, named here or added with `amy add`. A workflow's own plugins stay in its profile; this is the list for what somebody mounted on top, and it is kept apart so a profile left on the recommended set stays on it. |
+| `autoUpdate` | `AutoUpdateConfig` | `DEFAULT_AUTO_UPDATE` | One machine-wide cadence, persisted separately for every profile. |
+| `autoUpdateSource` | `unknown` |  | A scalar/null source value retained so malformed YAML cannot become valid. |
 | `repos` | `string[]` | `[]` |  |
 | `qaStatusName` | `string` | `"In QA"` |  |
 | `workingStatusName` | `string` | `"In Progress"` | The tracker status a ticket must be in to be picked up. |
@@ -105,6 +107,14 @@ and beats the machine-wide one.
 # recommended set stays on it and gains one, rather than having the whole
 # recommendation copied into the config behind your back.
 # extraPlugins: []
+
+# Keep the packages this machine mounts current around workflow invocations.
+# The count is kept per workflow profile under ~/.amy, so restarting does not
+# reset it. Set enabled false to leave updates entirely to the operator.
+autoUpdate:
+  enabled: true
+  timing: before
+  everyRuns: 20
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be

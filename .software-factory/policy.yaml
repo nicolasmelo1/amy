@@ -406,6 +406,13 @@ gates:
       - "update.skills_writes_are_recorded"
       - "update.the_skills_follow_the_version"
       - "update.a_harness_never_written_to_is_not_written_to_now"
+      - "update.default_auto_update_runs_before_a_workflow"
+      - "update.auto_update_can_run_after_a_workflow"
+      - "update.auto_update_respects_its_cadence"
+      - "update.auto_update_can_be_disabled"
+      - "update.invalid_auto_update_settings_refuse_before_work"
+      - "update.a_daemon_updates_only_at_its_lifecycle_boundary"
+      - "update.direct_daemon_uses_the_configured_schedule"
 
   feature-grooming:
     activation:

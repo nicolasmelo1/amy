@@ -33,6 +33,26 @@ export function clearDaemon(file: string): void {
   fs.rmSync(file, { force: true });
 }
 
+/** Claims a stopped daemon record without removing a newer loop's record. */
+export function claimExitedDaemon(file: string, pid: number): DaemonRecord | undefined {
+  const claim = `${file}.exited-${process.pid}`;
+  try {
+    fs.renameSync(file, claim);
+  } catch {
+    return undefined;
+  }
+
+  const record = readDaemon(claim);
+  if (!record || record.pid !== pid || isAlive(record.pid)) {
+    if (!fs.existsSync(file)) fs.renameSync(claim, file);
+    else fs.rmSync(claim, { force: true });
+    return undefined;
+  }
+
+  fs.rmSync(claim, { force: true });
+  return record;
+}
+
 /**
  * Claims the short boundary where a loop becomes visible, or an update owns
  * the machine. `open(..., "wx")` is atomic: a start cannot slip between an
