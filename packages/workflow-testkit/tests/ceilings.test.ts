@@ -128,4 +128,42 @@ describe("ceilings", () => {
 
     expect(ceilingsOf(findings)).toEqual([]);
   });
+
+  it("passes a waiting state that gives up on a deadline rather than on a count", async () => {
+    // Time is held still while the wait is held longer, so a deadline is never
+    // reached by the probe, and a correct timeout is not mistaken for a count.
+    const deadline = new Date("2026-09-03T13:00:00.000Z");
+    const patient = workflowOf<{ answered: boolean; now: Date }>({
+      states: ["asking", "escalated", "done"],
+      terminal: ["done"],
+      waiting: ["asking", "escalated"],
+      uses: ["escalate"],
+      plan: (record, observation) => {
+        if (record.state !== "asking") return record.state === "done" ? settled() : wait();
+        if (observation.answered) return advance("done");
+        return observation.now >= deadline ? advance("escalated", "escalate") : wait();
+      },
+    });
+    const answered = { value: false };
+
+    const findings = await conformance(patient, {
+      runtime: (world, now) =>
+        runtimeOf<WorkRecord, { answered: boolean; now: Date }>("asking", {
+          observe: () => ({ answered: world.name === "somebody answers" && answered.value, now: now() }),
+          handlers: { escalate: async () => {} },
+        }),
+      worlds: [
+        { name: "somebody answers", meanwhile: [() => { answered.value = true; }] },
+        { name: "nobody answers in time", meanwhile: Array.from({ length: 80 }, () => () => {}) },
+      ],
+    });
+
+    expect(ceilingsOf(findings)).toEqual([]);
+    // The deadline really was reached in the second world: `escalated` is
+    // arrived in, and only left unanswered because this sketch never answers it.
+    expect(findings).toContainEqual({
+      property: "reachability",
+      message: "nothing leaves `escalated`: every world that reaches it leaves the work there",
+    });
+  });
 });

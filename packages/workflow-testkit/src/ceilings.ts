@@ -17,6 +17,12 @@ import { AnyWorkflow, Look, Walk, replayActions } from "./walk.js";
  *   something else had the hold lasted longer: the hold was spent against the
  *   ceiling of the work that followed it. This is the one that escalated a
  *   ticket saying it had tried three times, having tried none.
+ *
+ * Both replay the same observation at the same instant on purpose. Holding
+ * time still is what separates counting from waiting: a state that gives up on
+ * a deadline keeps waiting here and passes, and only one that gives up because
+ * the count grew goes red. Moving the clock would let a legitimate timeout
+ * read as a wait counted as a try.
  */
 export async function ceilings(workflow: AnyWorkflow, walks: readonly Walk[], extraLooks: number): Promise<Finding[]> {
   const findings: Finding[] = [];
