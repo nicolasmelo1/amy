@@ -35,6 +35,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | Command | What it does |
 | :-- | :-- |
 | [`amy add`](#amy-add) | Add a workflow or a plugin: install it, mount it, and check the machine boots |
+| [`amy after-daemon`](#amy-after-daemon) | Internal: update after a started daemon has exited |
 | [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
 | [`amy btw`](#amy-btw) | Something to do, said in passing. Goes on the queue, never becomes a ticket |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
@@ -95,6 +96,19 @@ amy add <spec>
 | :-- | :-- | :-- |
 | `<spec>` | yes | a package name, a URL, a git URL, or a path |
 
+### `amy after-daemon`
+
+Internal: update after a started daemon has exited
+
+```sh
+amy after-daemon <pid> <workflow>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<pid>` | yes |  |
+| `<workflow>` | yes |  |
+
 ### `amy brief`
 
 The current statement of a feature, as the workflow keeps it
@@ -147,6 +161,7 @@ amy daemon [options]
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--every <seconds>` | `60` | how long to wait after finding nothing to do |
+| `--scheduled` |  | internal: the parent start command already scheduled this lifecycle |
 
 ### `amy discover`
 

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { checkoutFor, CommandRunner, ConfigSchema, validateConfig } from "@amykit/core";
-import { AmyConfig, Roster } from "./config.js";
+import { AmyConfig, Roster, configuredAutoUpdateProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
@@ -59,6 +59,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
   return [
     configFile(deps),
     ...configContents(deps),
+    autoUpdateSettings(deps.config),
     ...pluginSettings(deps),
     roster(deps),
     ...leftBehind(deps),
@@ -97,6 +98,15 @@ function configContents({ config }: DoctorDeps): Check[] {
  * a plugin this build does not have is not fine, because it is a setting
  * somebody wrote expecting it to do something.
  */
+function autoUpdateSettings(config: AmyConfig): Check {
+  const problems = configuredAutoUpdateProblems(config);
+  return {
+    label: "auto update settings",
+    ok: problems.length === 0,
+    detail: problems.join("; "),
+  };
+}
+
 function pluginSettings({ config, schemas }: DoctorDeps): Check[] {
   const checks: Check[] = [];
 

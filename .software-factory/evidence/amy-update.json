@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "amy-update",
-  "implementation_sha256": "ea33de21b1f621bc59d41fc8b3f1257e0687391503c59179b4b811338472b7a9",
+  "implementation_sha256": "adc5c6b05b823d5b87215f929fa1a2d3eb06e59a48fdd3a1b97446f4a10c142d",
   "runs": [
     {
       "scenario": "amy-update",
       "status": "passed",
       "actor": "Hermes Agent, updating a scratch machine two versions behind on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/amy-update-run.json",
-      "report_sha256": "91f0f1861bc052ba5054c5cf1432c346bfd9194c329db5eed53c5d2c5d6530d9",
+      "report_sha256": "e0812bf95a39a23f8e7387a0f72eb4c81afc285ab0bcf4df39e5c0579e6ae353",
       "required_assertions": [
         "update.added_the_first_version",
         "update.v1_moves_the_page",

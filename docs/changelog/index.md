@@ -58,6 +58,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### Schedule `amy update` around workflow invocations with a persisted per-profile cadence. The default updates before every twentieth invocation; operators can run after, disable it, and receive an early refusal for invalid schedule settings. Daemons update only before their child starts or after it exits.
+
+`minor` · `@amykit/cli`
+
+
+
 ### Plugins configured for an amy install now live in `~/.amy/plugins`: `amy init --install` installs them through that root rather than npm's global prefix, and mounting plus `amy plugin list` resolve from the same root.
 
 `minor` · `@amykit/cli`

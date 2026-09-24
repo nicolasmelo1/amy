@@ -6,6 +6,7 @@ import {
   DEFAULT_CONFIG,
   EXAMPLE_ROSTER,
   confirmRoster,
+  configuredAutoUpdateProblems,
   loadConfig,
   loadRoster,
   writeProfilePlugins,
@@ -36,6 +37,15 @@ describe("config", () => {
     expect(config.repos).toEqual(["a/b"]);
     expect(config.qaStatusName).toBe("In QA");
     expect(config.policy).toEqual(DEFAULT_CONFIG.policy);
+  });
+
+  it.each(["autoUpdate: null\n", "autoUpdate: every day\n"])("preserves malformed auto-update source %j", (text) => {
+    fs.writeFileSync(paths(root).config, text);
+
+    const config = loadConfig(root);
+
+    expect(config.autoUpdate).toEqual(DEFAULT_CONFIG.autoUpdate);
+    expect(configuredAutoUpdateProblems(config)).toEqual(["`autoUpdate` must be a mapping"]);
   });
 
   it("expands `~` in a per-repository checkout path", () => {
