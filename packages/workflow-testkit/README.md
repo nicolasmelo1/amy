@@ -15,7 +15,7 @@ other half is identical in every workflow anybody will write:
 | Property | What goes red |
 | :-- | :-- |
 | every state is reachable, and every state has a way out | a declared state no world reaches, one every world leaves the work in, a lifecycle that never comes to rest |
-| every action it plans has a handler that survives being called | an action declared with nothing behind it, planned without being declared, or throwing on the observation the runtime really built |
+| every action it plans has a handler that survives being called | a key in the runtime's `actions` with nothing behind it, a port-and-method whose port the world did not hand over, an action planned that the runtime never declared, or one throwing on the observation the runtime really built |
 | a wait does not spend the ceiling that decides when to give up | a waiting state that gives up after enough looks at an unchanged world, or a hold counted against the attempts of the work after it |
 | an empty collection concludes nothing | a decision that rests on `[].every(...)` being true |
 | giving up has a way out, and only one | a giving-up state that is terminal, or one left before the world moved |
@@ -32,6 +32,9 @@ import { workflow, runtime } from "./index.js";
 conforms(workflow, {
   runner: { describe, it },
   runtime: (world, now) => runtime(world.ports(now)),
+  // Only needed for an action declared as { port, method }: the fakes the
+  // host would otherwise hand over, by port kind.
+  ports: (world) => ({ tracker: world.tracker }),
   worlds: [aFreshTicket(), aTicketInReview(), aTicketNobodyTriaged()],
 });
 ```
@@ -58,7 +61,8 @@ interface World {
 ```
 
 The kit drives your runtime against it the way the engine does: observe, plan,
-call every action the plan carries, fold. The world moves only while the
+call every action the plan carries — a handler directly, a port-and-method on
+the port `ports` handed over — and fold, telling the fold which move it made. The world moves only while the
 machine waits, one `meanwhile` step each time, so a state that moves on
 without one having run moved on something that was already there.
 

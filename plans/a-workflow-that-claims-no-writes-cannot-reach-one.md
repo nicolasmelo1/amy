@@ -44,7 +44,7 @@ here.
 ## Why it ships beside the contract change
 
 This is a breaking change to what a workflow declares, and so is
-[the workflow contract changes once](the-workflow-contract-changes-once.md).
+[the workflow contract changes once](../docs/design/the-workflow-contract-changes-once.md).
 The reason that plan exists is that an author should migrate once. Both land
 in the same release, in adjacent pull requests, and the migration note covers
 both.
