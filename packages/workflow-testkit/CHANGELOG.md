@@ -1,9 +1,10 @@
-# @amykit/plugin-serial-engine
+# @amykit/workflow-testkit
 
 ## 0.5.0
 
 ### Minor Changes
 
+- f9cdd5e: `@amykit/workflow-testkit` is new: `conforms(workflow, { runner, runtime, worlds })` registers the machine-shaped suite every workflow needs and nobody writes — every state reached and left, every planned action handled and surviving the call, no wait counted as a try, no decision made by `[].every(...)`, and no giving-up state without an honest way out — as ordinary tests in whichever runner it is handed, driven against worlds the author supplies. `amy workflow new` now writes that suite beside the scaffold as `index.test.js`, with `npm test` and the kit as a dev dependency, and the scaffold's `index.js` exports its `workflow` and a `runtime()` factory beside the plugin.
 - 98cc10e: **Breaking for workflow authors — one migration for two changes.**
   
   An action is declared once. `WorkflowRuntime.handlers()` and `Workflow.usesActions` are replaced by `WorkflowRuntime.actions`: a map whose keys are the actions the plan may emit and whose values run them — a handler, or `{ port, method }` for a method its port marked with the new `acceptsAction`, which the host calls with the action and its context and whose answer lands in `outcomes` under the action's name. The mount refuses at boot, by name, a key with nothing behind it, a port nothing mounted, a method the port lacks, or one that takes its own arguments rather than an action; the engine refuses a plan carrying an undeclared action before any of its actions run. A package still carrying `usesActions` or `handlers()` is refused with the sentence that says what to change.
@@ -17,63 +18,3 @@
 - Updated dependencies [d490ceb]
 - Updated dependencies [98cc10e]
   - @amykit/core@0.5.0
-
-## 0.4.0
-
-### Patch Changes
-
-- 5b37451: The ports belong to the core.
-  
-  `Tracker`, `Agent`, `Gate`, `Ticket` and the outcome contracts they carry
-  moved from `@amykit/workflow-ticket-to-qa` to `@amykit/core`, beside
-  `CodeHost` and `Harness`, so a workflow nobody shipped declares every port
-  it needs by importing `@amykit/core` and no plugin in the install depends
-  on a workflow package to know what a tracker is. The workflow re-exports
-  every name for one minor version so nothing breaks on the way past, and
-  the tracker contract grows a declared write surface: reads
-  (`TrackerReads`) and writes (`TrackerWrites`) are separate interfaces a
-  mount can hand out separately, with `TRACKER_WRITE_CAPABILITIES` naming
-  what each core action resolves to.
-- Updated dependencies [c7a36eb]
-- Updated dependencies [2dc9117]
-- Updated dependencies [b3b7a07]
-- Updated dependencies [0ca2c1c]
-- Updated dependencies [c30789e]
-- Updated dependencies [fc6748a]
-- Updated dependencies [5b37451]
-- Updated dependencies [bfda1ac]
-- Updated dependencies [f1557f6]
-  - @amykit/core@0.4.0
-
-## 0.3.1
-
-### Patch Changes
-
-- Updated dependencies [4b54a6f]
-  - @amykit/core@0.3.1
-  - @amykit/workflow-ticket-to-qa@0.3.1
-
-## 0.3.0
-
-### Patch Changes
-
-- Updated dependencies [e603b3b]
-- Updated dependencies [7ec6c02]
-  - @amykit/core@0.3.0
-  - @amykit/workflow-ticket-to-qa@0.3.0
-
-## 0.2.0
-
-### Patch Changes
-
-- Updated dependencies [b53de08]
-- Updated dependencies [eb5214d]
-- Updated dependencies [f9944f6]
-- Updated dependencies [76692e1]
-- Updated dependencies [353d361]
-- Updated dependencies [2b6bde3]
-- Updated dependencies [a97c34d]
-- Updated dependencies [0b5e3d8]
-- Updated dependencies [616f7e6]
-  - @amykit/core@0.2.0
-  - @amykit/workflow-ticket-to-qa@0.2.0

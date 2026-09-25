@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-brief-store",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Briefs kept as one file per item.",
   "type": "module",
   "license": "MIT",
@@ -30,6 +30,6 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.4.0"
+    "@amykit/core": "^0.5.0"
   }
 }

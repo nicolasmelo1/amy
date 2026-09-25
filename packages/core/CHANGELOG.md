@@ -1,5 +1,21 @@
 # @amykit/core
 
+## 0.5.0
+
+### Minor Changes
+
+- 98cc10e: **Breaking for workflow authors — one migration for two changes.**
+  
+  An action is declared once. `WorkflowRuntime.handlers()` and `Workflow.usesActions` are replaced by `WorkflowRuntime.actions`: a map whose keys are the actions the plan may emit and whose values run them — a handler, or `{ port, method }` for a method its port marked with the new `acceptsAction`, which the host calls with the action and its context and whose answer lands in `outcomes` under the action's name. The mount refuses at boot, by name, a key with nothing behind it, a port nothing mounted, a method the port lacks, or one that takes its own arguments rather than an action; the engine refuses a plan carrying an undeclared action before any of its actions run. A package still carrying `usesActions` or `handlers()` is refused with the sentence that says what to change.
+  
+  `apply` is told the move: `apply(record, plan, outcomes, observation, now, moved)`, where `moved` is `{ from, to }` for an advance and `null` otherwise. `record` has already moved, so where the work came from is `moved.from`, never `record.state`. `movedBy`, `runAction`, `implementationOf`, `undeclaredIn`, `unrunnable`, `mountedActions` and `mountedRuntime` are exported from the core.
+  
+  `ticket-to-qa` now resumes an answered escalation in the state that raised it — implementing, the gate, an automated or human fix, or reviewer assignment — instead of always in `HUMAN_FIX`, and starts its attempt counters again when it does. `@amykit/workflow-testkit` takes a `ports` option for actions declared as a port and a method, and `amy workflow new` scaffolds the new shape.
+
+### Patch Changes
+
+- d490ceb: Preparing a branch no longer erases a commit the machine made and could not push. `Git.prepareBranch` used `checkout -B`, which reset an existing local branch onto the remote branch or the base, so a commit whose push had failed was gone at the next look with nothing to say it existed. A branch that does not exist locally is still created from the remote branch, or from the base when the remote has none. When the remote is ahead of the branch, it is fast-forwarded. When the branch holds commits the remote lacks, it is kept as it is. One that diverged from its remote is refused, and the error names the commits only the local side holds. `Git.commitAndPush` now also pushes such a commit when the tree is clean, and returns true when it does.
+
 ## 0.4.0
 
 ### Minor Changes
