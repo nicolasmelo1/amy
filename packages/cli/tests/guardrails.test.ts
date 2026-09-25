@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import YAML from "yaml";
 import { DEFAULT_CONFIG } from "../src/config.js";
@@ -54,5 +55,15 @@ describe("a workflow ships with its guardrails", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(factory, "..", "package.json"), "utf-8")) as { files: string[] };
 
     expect(manifest.files).toEqual(["dist"]);
+  });
+});
+
+describe("amy refuses the branch reset it ships a guardrail against", () => {
+  it("enforces on itself the same rule file every scaffold carries", () => {
+    const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+    const file = "branch-reset-loses-commits.yaml";
+
+    expect(fs.readFileSync(path.join(repo, ".software-factory", "rules", file), "utf-8"))
+      .toBe(fs.readFileSync(path.join(repo, "packages", "cli", "guardrails", "rules", file), "utf-8"));
   });
 });

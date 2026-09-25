@@ -1,0 +1,25 @@
+id: L6.BRANCH_RESET_LOSES_COMMITS
+layer: L6
+title: A branch is never reset with checkout -B
+severity: high
+statement: >-
+  A workflow never creates or moves a branch with `checkout -B`.
+why: >-
+  `-B` moves a branch that already exists, and says nothing about the tip it
+  moved away from. A workflow that commits and then fails to push leaves its
+  work at that tip, and the next `checkout -B` erases it with no record that
+  it existed. This reached a real board: a commit the machine made and could
+  not push was gone, and it came back only because somebody noticed.
+fix: >-
+  Create a branch with `checkout -b` and fail loudly when the name is taken.
+  Check out one that exists without `-B`, and move it with `merge --ff-only`,
+  which refuses to drop a commit, rather than resetting it. A line cannot
+  prove a tip is reachable, so there is no exemption to write on it.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.mts", "**/*.cts", "**/*.sh"]
+  forbidden:
+    - regex: '\bcheckout\b[^#\n]*["''\s]-B\b'
+      message: "checkout -B moves a branch that exists, and a commit that was never pushed goes with it. Create with -b; move an existing branch with merge --ff-only."

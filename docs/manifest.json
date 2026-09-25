@@ -3579,6 +3579,11 @@
         },
         {
           "depth": 3,
+          "title": "L6.BRANCH_RESET_LOSES_COMMITS",
+          "slug": "l6branchresetlosescommits"
+        },
+        {
+          "depth": 3,
           "title": "L6.DEAD_CODE_IS_DETECTED",
           "slug": "l6deadcodeisdetected"
         },
@@ -7664,6 +7669,21 @@
         "reason": ""
       },
       {
+        "id": "L6.BRANCH_RESET_LOSES_COMMITS",
+        "enabled": true,
+        "settings": {
+          "options": {
+            "exclude": [
+              "packages/cli/guardrails/mutations/**",
+              ".software-factory/evidence/workflow-new-scenario.sh",
+              "plugins/claude/tests/git.test.ts"
+            ]
+          }
+        },
+        "title": "scaffolded workflow ships with, here because the core drives git too.",
+        "reason": ""
+      },
+      {
         "id": "L6.DATA_RACES_ARE_DETECTED",
         "enabled": false,
         "settings": {},
@@ -7688,7 +7708,7 @@
         "id": "L6.FIXTURES_NAME_NOBODY_REAL",
         "enabled": true,
         "settings": {},
-        "title": "An address in a fixture belongs to nobody",
+        "title": "",
         "reason": ""
       },
       {
