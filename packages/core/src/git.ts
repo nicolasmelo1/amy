@@ -130,9 +130,10 @@ export class Git {
    * A local branch can hold a commit the remote never saw: the machine
    * committed and the push failed. Resetting it to the remote, or to the
    * base, erases that work with nothing to say it existed, so the branch only
-   * moves forward. One the target is ahead of fast-forwards; one ahead of the
-   * target is kept, and `commitAndPush` pushes what it holds; one diverged
-   * from its remote is refused, naming what only the local side holds.
+   * moves forward. When the target is ahead of it, the branch fast-forwards;
+   * when it is ahead of the target, it is kept, and `commitAndPush` pushes
+   * what it holds; when it has diverged from its remote, it is refused,
+   * naming what only the local side holds.
    */
   private async onBranch(cwd: string, repo: string, branch: string, flags: string[]): Promise<void> {
     await this.gitIn(cwd, "fetch", "origin", "--prune");
