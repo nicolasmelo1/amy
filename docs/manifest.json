@@ -308,6 +308,11 @@
           "description": ""
         },
         {
+          "title": "The guardrails ship with the workflow",
+          "path": "/design/the-guardrails-ship-with-the-workflow",
+          "description": ""
+        },
+        {
           "title": "The lifecycle is proven end to end",
           "path": "/design/the-lifecycle-is-proven-end-to-end",
           "description": ""
@@ -831,6 +836,11 @@
           "depth": 3,
           "title": "The config template and the /amy-workflow skill say that a workflow of your own lives in ~/.amy/workflows, instead of naming amy add, a command nothing ships, and telling a harness to install a package it does not need.",
           "slug": "the-config-template-and-the-amy-workflow-skill-say-that-a-workflow-of-your-own-lives-in-amyworkflows-instead-of-naming-amy-add-a-command-nothing-ships-and-telling-a-harness-to-install-a-package-it-does-not-need"
+        },
+        {
+          "depth": 3,
+          "title": "amy workflow new now writes a .software-factory/ beside the scaffold: three repo-local rules that sf check in the workflow's directory enforces — no checkout -B, which loses a commit that was never pushed; no fold reading .state off the record the engine already moved (TypeScript only, since sf does not parse JavaScript); and no .every( that does not say what an empty collection means — with one mutation fixture each, so sf verify there proves every rule still fires. amy does not install sf, and sf learns nothing about amy: they are ordinary local rules.",
+          "slug": "amy-workflow-new-now-writes-a-software-factory-beside-the-scaffold-three-repo-local-rules-that-sf-check-in-the-workflows-directory-enforces-no-checkout--b-which-loses-a-commit-that-was-never-pushed-no-fold-reading-state-off-the-record-the-engine-already-moved-typescript-only-since-sf-does-not-parse-javascript-and-no-every-that-does-not-say-what-an-empty-collection-means-with-one-mutation-fixture-each-so-sf-verify-there-proves-every-rule-still-fires-amy-does-not-install-sf-and-sf-learns-nothing-about-amy-they-are-ordinary-local-rules"
         },
         {
           "depth": 3,
@@ -2084,6 +2094,38 @@
           "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-guardrails-ship-with-the-workflow",
+      "file": "docs/design/the-guardrails-ship-with-the-workflow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-guardrails-ship-with-the-workflow.md",
+      "title": "The guardrails ship with the workflow",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "Why the rules live here and not in the catalog",
+          "slug": "why-the-rules-live-here-and-not-in-the-catalog"
+        },
+        {
+          "depth": 2,
+          "title": "What the rules cannot see",
+          "slug": "what-the-rules-cannot-see"
         },
         {
           "depth": 2,
@@ -7033,7 +7075,8 @@
           "packages/cli/src/loader.ts",
           "packages/cli/src/index.ts",
           "packages/cli/src/config.ts",
-          "packages/cli/skills/amy-workflow/SKILL.md"
+          "packages/cli/skills/amy-workflow/SKILL.md",
+          "packages/cli/guardrails/**"
         ],
         "evidence": ".software-factory/evidence/workflow-new.json",
         "plan": "docs/design/a-workflow-is-yours-not-a-package.md",
@@ -7042,7 +7085,12 @@
           "mine.a_directory_name_is_a_workflow",
           "mine.a_workflow_that_spins_is_refused",
           "mine.a_state_nothing_reaches_is_refused",
-          "mine.an_action_with_no_port_is_refused"
+          "mine.an_action_with_no_port_is_refused",
+          "guardrails.the_scaffold_passes_its_own_check",
+          "guardrails.every_guardrail_fires_on_its_fixture",
+          "guardrails.a_branch_reset_is_refused",
+          "guardrails.an_every_over_nothing_is_refused",
+          "guardrails.a_fold_reading_the_moved_state_is_refused"
         ],
         "scenario": ".software-factory/evidence/workflow-new-scenario.sh"
       },
@@ -7826,6 +7874,18 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "the-guardrails-ship-with-the-workflow",
+        "title": "`amy workflow new` now writes a `.software-factory/` beside the scaffold: three repo-local rules that `sf check` in the workflow's directory enforces — no `checkout -B`, which loses a commit that was never pushed; no fold reading `.state` off the record the engine already moved (TypeScript only, since `sf` does not parse JavaScript); and no `.every(` that does not say what an empty collection means — with one mutation fixture each, so `sf verify` there proves every rule still fires. amy does not install `sf`, and `sf` learns nothing about amy: they are ordinary local rules.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "the-workflow-contract-changes-once",

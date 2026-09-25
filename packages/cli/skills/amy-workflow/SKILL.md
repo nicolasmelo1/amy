@@ -250,6 +250,12 @@ action with no working handler, a wait counted as a try, a decision made by
 adds needs a world that reaches it and a `meanwhile` that gets it out, or the
 suite goes red naming the state.
 
+The scaffold also wrote `.software-factory/`: three rules `sf check` in that
+directory enforces, each a defect that reached a real board from a workflow —
+`checkout -B` losing a commit that was never pushed, a fold reading `.state` off
+a record the engine already moved, and a `.every(` that never said what empty
+means. They are ordinary repo-local rules, and `sf verify` proves each fires.
+
 Unit-test `plan()` directly for the branches: it is pure, so a table of
 `(record, observation) -> Plan` is the cheapest test you will write.
 

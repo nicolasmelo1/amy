@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "a-workflow-of-your-own",
-  "implementation_sha256": "084c4067a2340af4bbe5fe9f6f47c094f2e1d307bd154199a90497508cd7d299",
+  "implementation_sha256": "bcda6ee474aeb9a1b647134a58dc05f35bc423a502419a58c68c8cee81590b15",
   "runs": [
     {
       "scenario": "a-workflow-of-your-own",
       "status": "passed",
       "actor": "Hermes Agent, installing the command alone and writing a private workflow for Nicolas Melo",
       "report": ".software-factory/evidence/workflow-new-run.json",
-      "report_sha256": "4a9e623dc5af1936264e80b6dc49662b081e6ebb12e0ecad537a2d42df40a061",
+      "report_sha256": "5e325c7279264b83f0c480c1571137a38622212bfe68215d38d8b56af0887307",
       "required_assertions": []
     }
   ]

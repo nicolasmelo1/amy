@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { applyPlan, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 import { AmyConfig, writeWorkflowProfile } from "./config.js";
 
@@ -51,8 +51,43 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig): st
   }, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "index.js"), scaffold(name), "utf-8");
   fs.writeFileSync(path.join(directory, "index.test.js"), scaffoldSuite(), "utf-8");
+  writeGuardrails(directory);
   writeWorkflowProfile(home, name, name, config);
   return directory;
+}
+
+/** The rules every workflow needs and no author should have to rediscover, shipped with this command. */
+const GUARDRAILS = fileURLToPath(new URL("../guardrails/", import.meta.url));
+
+/**
+ * Gives a workflow its own `sf` policy: the guardrails as repo-local rules,
+ * and one fixture per rule that `sf verify` proves it fires on. Each fixture
+ * is a repository of its own, so it carries the one rule it trips.
+ */
+function writeGuardrails(directory: string): void {
+  const factory = path.join(directory, ".software-factory");
+  fs.cpSync(path.join(GUARDRAILS, "policy.yaml"), path.join(factory, "policy.yaml"));
+  fs.cpSync(path.join(GUARDRAILS, "rules"), path.join(factory, "rules"), { recursive: true });
+
+  for (const [id, file] of guardrailRules()) {
+    const fixture = path.join(factory, "mutations", id);
+    fs.cpSync(path.join(GUARDRAILS, "mutations", id), fixture, { recursive: true });
+    fs.cpSync(path.join(GUARDRAILS, "rules", file), path.join(fixture, ".software-factory", "rules", file));
+    fs.writeFileSync(path.join(fixture, ".software-factory", "policy.yaml"), fixturePolicy(id), "utf-8");
+  }
+}
+
+/** Each guardrail's id, beside the file that declares it. */
+export function guardrailRules(): Array<[id: string, file: string]> {
+  return fs.readdirSync(path.join(GUARDRAILS, "rules")).sort().map((file) => {
+    const id = /^id: (\S+)$/m.exec(fs.readFileSync(path.join(GUARDRAILS, "rules", file), "utf-8"))?.[1];
+    if (!id) throw new Error(`guardrail ${file} declares no id`);
+    return [id, file];
+  });
+}
+
+function fixturePolicy(id: string): string {
+  return `# Mutation fixture for ${id}. It is supposed to fail.\nversion: 1\nproject:\n  name: mutation-${id}\n  languages: [typescript]\ndocs:\n  scan: []\ngates: {}\nrules:\n  ${id}:\n    enabled: true\n`;
 }
 
 export async function checkWorkflow(

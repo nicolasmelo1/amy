@@ -3,9 +3,9 @@
   "files": {
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "ef3d2175b8b0be268e780511700afb153c5f31b3b15a542689336286b2236d22",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
-    "package.json": "c57628bdb2beb1060256c4bb7ac3dd96af99b61f1be6a16d4a19be588cde24e4",
+    "package.json": "c685a540972c4942b16859d4217422f7f1e1c0f80df281735c56143e3e32a4f9",
     "packages/agent-kit/package.json": "c3f9be70a3fd7bc8f59b369bb913e59cbe950eacd0c6956e072aa05a07c3eace",
-    "packages/cli/package.json": "0e22e8e231cc0d4ba3d283cb185fc7346a62473a3bd8541ecd4b605d9f119226",
+    "packages/cli/package.json": "7c3f857d604a2dd51d30016f9416038596f102fc6b4d01208f517025ffdea1d7",
     "packages/core/package.json": "629321a2ea178a69316ee615e228bc5267b2e7ee487dcb6e6b0cbf80ecbeb1a9",
     "packages/model-specs/package.json": "04a07e95b6f823a63a2dd70a1ecb62470d3b437871ddfcfe12fe590a7a7823fe",
     "packages/test-fixtures/package.json": "a00360b2d507eaca570ce1c14c8b46a4a21bba9b11dd57a0cb5bf4d6f8989065",

@@ -412,6 +412,13 @@ state with no honest way out — none of which is about your domain, and all of
 which reached a real board before there was a test for them. Add a world each
 time the workflow grows a state; see [Testing](testing.md#the-conformance-suite).
 
+The scaffold's `.software-factory/` is the static half: `sf check` in the
+workflow's directory refuses `checkout -B`, a fold that reads `.state` off the
+record it is handed, and a `.every(` that does not say what an empty collection
+means, at the first commit rather than the first world that replays it. Why
+each exists is in the rule; see
+[the guardrails ship with the workflow](../design/the-guardrails-ship-with-the-workflow.md).
+
 ## 9. Drive it
 
 ```yaml

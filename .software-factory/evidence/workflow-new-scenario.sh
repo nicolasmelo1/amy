@@ -46,6 +46,32 @@ cp "$entry.clean" "$entry"
 python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'effects: [], why: "the work was received"' 'effects: [{ type: "page" }], why: "the work was received"'
 if "$amy" workflow check oncall >/dev/null 2>&1; then missing=1; else missing=0; fi
 record mine.an_action_with_no_port_is_refused "$missing"
+cp "$entry.clean" "$entry"
+rm "$entry.clean"
+
+# The guardrails: the scaffold's own `sf` policy, run by the real binary.
+command -v sf >/dev/null || { echo "sf is not on PATH; scripts/setup-dev.sh installs the pinned one" >&2; exit 1; }
+workflow="$work/home/.amy/workflows/oncall"
+sf check --root "$workflow" >/dev/null 2>&1
+record guardrails.the_scaffold_passes_its_own_check "$?"
+
+sf verify --root "$workflow" >/dev/null 2>&1
+record guardrails.every_guardrail_fires_on_its_fixture "$?"
+
+refused() {
+  printf '%s\n' "$3" > "$workflow/$2"
+  if sf check --root "$workflow" --rule "$1" >/dev/null 2>&1; then outcome=1; else outcome=0; fi
+  rm "$workflow/$2"
+  return "$outcome"
+}
+refused L6.BRANCH_RESET_LOSES_COMMITS branch.js 'await git("checkout", "-B", branch, "origin/main");'
+record guardrails.a_branch_reset_is_refused "$?"
+
+refused L6.EMPTY_FOLD_AGREES_WITH_EVERYTHING approved.js 'export const approved = (approvals) => approvals.every((a) => a.approved);'
+record guardrails.an_every_over_nothing_is_refused "$?"
+
+refused L6.FOLD_READS_A_MOVED_RECORD fold.ts 'export const runtime = { apply: (record: { state: string }) => (record.state === "received" ? record : record) };'
+record guardrails.a_fold_reading_the_moved_state_is_refused "$?"
 
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
 total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)
@@ -55,7 +81,7 @@ cat > "$report" <<JSON
 {
   "scenario": "a-workflow-of-your-own",
   "status": "$status",
-  "goal": "I want to describe a private process and receive a workflow I own, not a package I must publish. Prove a bare installed command writes an unedited workflow under its state home, resolves its directory by name, checks its lifecycle, and refuses the failure shapes a workflow author otherwise only discovers at boot.",
+  "goal": "I want to describe a private process and receive a workflow I own, not a package I must publish. Prove a bare installed command writes an unedited workflow under its state home, resolves its directory by name, checks its lifecycle, refuses the failure shapes a workflow author otherwise only discovers at boot, and ships the guardrails that make its own sf check refuse the defects that reached a real board.",
   "artifact": { "package": "@amykit/cli", "entry": "amy workflow new and amy workflow check", "built_by": "scripts/install.sh" },
   "observed": { "assertions_run": $total, "assertions_failed": $failed },
   "assertions": [$(printf '%s' "$assertions" | sed 's/,$//')]

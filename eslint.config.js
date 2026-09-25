@@ -11,6 +11,8 @@ export default tseslint.config(
       // Deliberately broken repositories, one per rule. Linting them would
       // report the fixtures as defects.
       ".software-factory/mutations/**",
+      // The same, shipped: the fixtures `amy workflow new` writes beside a workflow.
+      "packages/cli/guardrails/mutations/**",
     ],
   },
   eslint.configs.recommended,

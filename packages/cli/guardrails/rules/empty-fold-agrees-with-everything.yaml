@@ -1,0 +1,26 @@
+id: L6.EMPTY_FOLD_AGREES_WITH_EVERYTHING
+layer: L6
+title: A workflow never asks .every of a collection it did not prove non-empty
+severity: high
+statement: >-
+  Every `.every(` in a workflow says, on the same line, what an empty
+  collection means: a `length` check beside it, or `Array.isArray` on a value
+  that may be missing.
+why: >-
+  `[].every(...)` is `true`. A decision folded over nothing agrees with
+  everything, so a ticket with no approvals reads as approved and the plan
+  advances on a decision the work never earned. The testkit's `folds` probe
+  finds this once a world replays it; this finds it at the first commit.
+fix: >-
+  Decide the empty case out loud, `items.length > 0 && items.every(...)`, or
+  fold with `some` or `filter` when "none of them" is the sentence you mean.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.mts", "**/*.cts"]
+  exclude: ["**/*.test.*", "**/tests/**"]
+  forbidden:
+    - regex: '\.every\('
+      unless: '\.length\b|Array\.isArray\('
+      message: "[].every(...) is true, so a fold over nothing agrees with everything. Say what an empty collection means on this line."
