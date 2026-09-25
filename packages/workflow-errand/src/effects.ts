@@ -14,9 +14,6 @@ export type Effect =
   | { type: "open-pull-request" }
   | { type: "announce"; text: string };
 
-/** Every action name this workflow can emit, as data the loader can check. */
-export const USES_ACTIONS = ["run-errand", "open-pull-request", "announce"] as const;
-
 export function act(why: string, ...effects: Effect[]): Plan {
   return { kind: "act", effects, why };
 }

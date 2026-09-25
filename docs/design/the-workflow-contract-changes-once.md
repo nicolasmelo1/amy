@@ -93,23 +93,86 @@ change they could have taken in the same sitting. The two halves are
 independent to read and identical in blast radius, which is the case the
 one-row rule is for.
 
+## What shipped
+
+**One declaration.** `WorkflowRuntime.handlers()` is gone and so is
+`Workflow.usesActions`; the runtime carries `actions`, a map from each action
+name to what runs it — an `ActionHandler`, or an `ActionSpec` (`{ port, method }`)
+the host calls with the action and its context, whose answer lands in
+`outcomes` under the action's name. Only a method its port marked with
+`acceptsAction` can be reached that way: every port method that existed before
+takes its own arguments — `check(repo, workId)`, `setStatus(id, status)` — and
+handed an action it would run on the wrong ones rather than fail, so the mount
+refuses a binding to an unmarked method. The keys live on the runtime rather than on
+the pure half because the value is the implementation, and the implementation
+is the runtime's. The mount reads them through `mountedActions`, the docs
+generator reads them from the contributed runtime, and nothing else lists them.
+The three workflows' `USES_ACTIONS` constants are deleted; each map stays
+exhaustive over its `Effect` union at compile time.
+
+`unmetNeeds` asks of every key, at boot: is there a handler, or a port and a
+method whose port is mounted and has that method? A handler still has to name
+an action the catalogue knows — the catalogue is what tells the budget which
+actions spend an agent and the tracker check which ones write — and a port and
+a method may run an uncatalogued action but not send a catalogued one to a
+different port. A package still on the old shape is named with its fix: a
+workflow that still carries `usesActions`, or a runtime that still has
+`handlers()`, is refused with the sentence that says what to change. So is a
+workflow that contributed no runtime, which the engine used to find out on its
+first tick.
+
+The dispatch is one function, `runAction`, used by the serial engine, the
+testkit's walk and the core's own tests, so "reachable by the engine's
+dispatch" is the same code path everywhere it is claimed.
+
+**The transition.** `apply` gains a sixth argument, `moved: { from, to } | null`,
+computed by the core's `movedBy(record, plan)` before the record is advanced.
+The engine, the testkit and `amy workflow check` all pass it.
+
+**The resume point, in the shipped workflow that needed it.** `ticket-to-qa`
+escalates from five states — `IMPLEMENTING`, `CHECKED`, `COPILOT_FIX`,
+`REVIEWER_ASSIGNED` and `HUMAN_FIX` — and every answer used to send the work to
+`HUMAN_FIX`, which is right for one of them. It now folds `resumeAt` from
+`moved.from` on the way into `ESCALATED`, goes back there when the owner
+answers, and forgets it on the way out. Leaving `ESCALATED` also starts every
+attempt counter again: the owner's answer is new information, and a state that
+gave up on its attempts would otherwise give up again on its first look back.
+A record escalated before this release has no `resumeAt` and resumes where it
+always did.
+
+## Where this fell short of the plan
+
+"A workflow whose plan emits an action it never declared is refused *at boot*"
+cannot be met as written. `plan()` is a function, and what it will emit is not
+knowable until it runs against a record and an observation; the mount has
+neither. What shipped is the nearest honest thing: the engine checks every
+action a plan carries *before the first of them runs*, so a plan with one
+undeclared action does nothing at all rather than half of what it said, and
+the testkit and `amy workflow check` report it before the workflow ships. The
+map's `Effect`-typed exhaustiveness makes it a compile error in a TypeScript
+workflow. The assertion keeps the plan's name and proves the refusal that
+exists.
+
 ## Acceptance criteria
 
-- [ ] A workflow declaring an action with no implementation is refused at boot,
+- [x] A workflow declaring an action with no implementation is refused at boot,
       naming the action
       (proof: assertion:mount.an_action_with_no_implementation_is_refused)
-- [ ] A workflow whose plan emits an action it never declared is refused at boot
+- [x] A workflow whose plan emits an action it never declared is refused before
+      any of that plan's actions run — at the first plan that carries it, not at
+      boot; see above
       (proof: assertion:mount.an_undeclared_action_is_refused)
-- [ ] Every declared action is reachable by the engine's dispatch, and a
+- [x] Every declared action is reachable by the engine's dispatch, and a
       port-and-method declaration is wired without the workflow writing a handler
       (proof: test:packages/core/tests/mount.test.ts)
-- [ ] `apply` receives the state the tick started in for an advance, and `null`
+- [x] `apply` receives the state the tick started in for an advance, and `null`
       for a plan that did not advance
       (proof: test:plugins/serial-engine/tests/Worker.test.ts)
-- [ ] A workflow reading the transition folds a resume point correctly across an
+- [x] A workflow reading the transition folds a resume point correctly across an
       escalation raised from every state that can raise one
-      (proof: assertion:escalating.remembers_the_state_it_interrupted)
-- [ ] Both shipped workflows drive a ticket end to end on the new shape, and
+      (proof: assertion:escalating.remembers_the_state_it_interrupted, and
+      test:packages/workflow-ticket-to-qa/tests/escalating.test.ts for all five)
+- [x] Both shipped workflows drive a ticket end to end on the new shape, and
       neither folds anything from `record.state`
       (proof: test:.software-factory/evidence/ticket-to-qa-scenario.sh)
 

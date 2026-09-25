@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { actionsOf, applyPlan, Plugin, PluginContext, Registry, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { applyPlan, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 import { AmyConfig, writeWorkflowProfile } from "./config.js";
 
 /** The directory where one machine keeps workflows that belong only to it. */
@@ -134,6 +134,8 @@ function context(
 }
 
 async function drive({ workflow, runtime, now }: RegisteredWorkflow): Promise<string[]> {
+  const unimplemented = unimplementedActions(workflow, runtime);
+  if (unimplemented.length > 0) return unimplemented;
   const created = recordFor(workflow, runtime, now);
   if (typeof created === "string") return [created];
   let record = created;
@@ -150,6 +152,19 @@ async function drive({ workflow, runtime, now }: RegisteredWorkflow): Promise<st
   return [...problems, ...completionProblems(workflow, record, reached)];
 }
 
+/** Declared actions with nothing behind them, which the mount would refuse at boot. */
+function unimplementedActions(workflow: Workflow, runtime: WorkflowRuntime): string[] {
+  if (Object.hasOwn(workflow, "usesActions")) {
+    return [`${workflow.name}: still declares \`usesActions\`; delete it and key each action in its runtime's \`actions\``];
+  }
+  if (runtime.actions === null || typeof runtime.actions !== "object") {
+    return [`${workflow.name}: its runtime declares no \`actions\` — one map from each action it emits to what runs it`];
+  }
+  return Object.entries(runtime.actions)
+    .filter(([, implementation]) => typeof implementation !== "function" && !isPortBinding(implementation))
+    .map(([name]) => `${workflow.name}: declares \`${name}\` with no implementation — give it a handler, or a port and a method`);
+}
+
 function recordFor(workflow: Workflow, runtime: WorkflowRuntime, now: () => Date): WorkRecord | string {
   try { return runtime.newRecord("workflow-check", now()); }
   catch (error) { return `${workflow.name}: newRecord failed — ${message(error)}`; }
@@ -159,14 +174,14 @@ async function moveOnce(workflow: Workflow, runtime: WorkflowRuntime, record: Wo
   try {
     const observation = await runtime.observe(record);
     const plan = workflow.plan(record, observation, runtime.policy);
-    const missing = actionsOf(plan).find((action) => !runtime.handlers()[action.type]);
-    if (missing) return `${workflow.name}: plan emits \`${missing.type}\`, but no runtime handler answers it`;
+    const [missing] = undeclaredIn(runtime, plan);
+    if (missing) return `${workflow.name}: plan emits \`${missing}\`, which its runtime never declared in \`actions\``;
     if (plan.kind === "settled") return { kind: "settled" };
     if (plan.kind === "wait") return waitingProblem(workflow, runtime, record);
     if (plan.kind === "act") return `${workflow.name}: did not settle; it kept acting in \`${record.state}\``;
     if (!workflow.states.includes(plan.to)) return `${workflow.name}: advances to undeclared state \`${plan.to}\``;
-    const moved = runtime.apply(applyPlan(record, plan, now()), plan, {}, observation, now());
-    return moved.state === plan.to ? { kind: "advance", record: moved } : `${workflow.name}: one look did not make the transition it claimed`;
+    const folded = runtime.apply(applyPlan(record, plan, now()), plan, {}, observation, now(), movedBy(record, plan));
+    return folded.state === plan.to ? { kind: "advance", record: folded } : `${workflow.name}: one look did not make the transition it claimed`;
   } catch (error) { return `${workflow.name}: could not plan \`${record.state}\` — ${message(error)}`; }
 }
 
@@ -197,7 +212,7 @@ function testkitVersion(): string {
 }
 
 function scaffold(name: string): string {
-  return `// This workflow belongs to this machine. Edit the states and the two halves below.\n// \`amy workflow check ${name}\` drives this file before it drives real work,\n// and \`npm test\` runs the machine's own suite over it.\n\nexport const workflow = {\n  name: ${JSON.stringify(name)},\n  states: ["received", "done"],\n  waitingStates: [],\n  initialState: "received",\n  terminalStates: ["done"],\n  usesActions: [],\n  usesObservers: [],\n  plan: (record) =>\n    record.state === "received"\n      ? { kind: "advance", to: "done", effects: [], why: "the work was received" }\n      : { kind: "settled", why: "the workflow is complete" },\n};\n\n// A function rather than an object, so the suite builds its own. When this\n// runtime needs a port, take it as an argument: the suite hands it a fake and\n// the plugin below hands it the mounted one.\nexport function runtime() {\n  return {\n    policy: {},\n    found: async () => ["example"],\n    newRecord: (id, now) => ({ id, state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }),\n    observe: async () => ({}),\n    handlers: () => ({}),\n    apply: (record) => record,\n  };\n}\n\nexport const plugin = {\n  name: ${JSON.stringify(`workflow-${name}`)},\n  version: "0.1.0",\n  register(registry) {\n    registry.workflow(workflow);\n    registry.contribute("workflow-runtime", workflow.name, runtime());\n  },\n};\n`;
+  return `// This workflow belongs to this machine. Edit the states and the two halves below.\n// \`amy workflow check ${name}\` drives this file before it drives real work,\n// and \`npm test\` runs the machine's own suite over it.\n\nexport const workflow = {\n  name: ${JSON.stringify(name)},\n  states: ["received", "done"],\n  waitingStates: [],\n  initialState: "received",\n  terminalStates: ["done"],\n  usesObservers: [],\n  plan: (record) =>\n    record.state === "received"\n      ? { kind: "advance", to: "done", effects: [], why: "the work was received" }\n      : { kind: "settled", why: "the workflow is complete" },\n};\n\n// A function rather than an object, so the suite builds its own. When this\n// runtime needs a port, take it as an argument: the suite hands it a fake and\n// the plugin below hands it the mounted one.\nexport function runtime() {\n  return {\n    policy: {},\n    found: async () => ["example"],\n    newRecord: (id, now) => ({ id, state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }),\n    observe: async () => ({}),\n    // Every action the plan may emit, keyed by name, and what runs it: a\n    // handler, or { port, method } for a mounted port the host calls.\n    actions: {},\n    // Called as (record, plan, outcomes, observation, now, moved). \`record\`\n    // has already moved: read where it came from in \`moved.from\`, never in\n    // \`record.state\`. \`moved\` is null when the plan did not advance.\n    apply: (record) => record,\n  };\n}\n\nexport const plugin = {\n  name: ${JSON.stringify(`workflow-${name}`)},\n  version: "0.1.0",\n  register(registry) {\n    registry.workflow(workflow);\n    registry.contribute("workflow-runtime", workflow.name, runtime());\n  },\n};\n`;
 }
 
 /**

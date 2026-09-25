@@ -10,7 +10,7 @@ export type { Observation, Policy } from "./observation.js";
 export { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./task-file.js";
 export { errandPrompt } from "./prompt.js";
 
-export { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
+export { act, advance, settled, wait } from "./effects.js";
 export type { Effect } from "./effects.js";
 
 export { applyErrandPlan, applyOutcomes } from "./outcomes.js";

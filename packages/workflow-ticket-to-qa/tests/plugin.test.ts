@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, dispatchesTo, mount } from "@amykit/core";
+import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, dispatchesTo, mount, mountedActions } from "@amykit/core";
 import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amykit/test-fixtures";
 import { WORKFLOW_DATA, plugin } from "../src/plugin.js";
 
@@ -49,7 +49,7 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     const runtime = outcome.mounted.contributions
       .get(WORKFLOW_RUNTIME)
       ?.get("ticket-to-qa") as WorkflowRuntime;
-    const handlers = runtime.handlers();
+    const handlers = runtime.actions;
 
     // The core's catalogue names the port, the runtime carries the handler,
     // and the two agree — so a mount that cannot run it is refused at boot by
@@ -62,16 +62,17 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     });
   });
 
-  it("brings a handler for every action the workflow says it emits", async () => {
+  it("brings a handler for every action it declares, the last step of the happy path included", async () => {
     const outcome = await mountWith([plugin, world]);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     const runtime = outcome.mounted.contributions
       .get(WORKFLOW_RUNTIME)
       ?.get("ticket-to-qa") as WorkflowRuntime;
-    const handled = Object.keys(runtime.handlers());
+    const declared = mountedActions(outcome.mounted, outcome.mounted.workflow!);
 
-    expect([...(outcome.mounted.workflow?.usesActions ?? [])].sort()).toEqual(handled.sort());
+    expect(declared).toContain("hand-off-to-qa");
+    expect(declared.filter((name) => typeof runtime.actions[name] !== "function")).toEqual([]);
   });
 
   // The point of doing this at boot: a machine missing a plugin finds out

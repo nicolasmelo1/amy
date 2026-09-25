@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { WorkflowRuntime } from "@amykit/core";
+import { Moved, Plan, WorkflowRuntime, WorkRecord, acceptsAction } from "@amykit/core";
 import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { DEFAULT_POLICY } from "@amykit/workflow-ticket-to-qa";
-import { USES_ACTIONS, newRecord } from "@amykit/workflow-ticket-to-qa";
+import { newRecord } from "@amykit/workflow-ticket-to-qa";
 import { HEAD, WORKDAY, botReview, pullRequest, thread, ticket,
   TicketWorkerOverrides,
 } from "@amykit/test-fixtures";
@@ -372,67 +372,102 @@ describe("Worker.discover", () => {
   });
 });
 
-describe("Worker.missingActions", () => {
+describe("Worker dispatch", () => {
   let root: string;
+  let queue: FileQueue;
+  let records: InMemoryStore;
 
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-actions-"));
+    queue = new FileQueue(path.join(root, "queue"));
+    records = new InMemoryStore();
   });
 
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: TicketWorkerOverrides = {}): Worker {
+  /**
+   * A runtime written out in full, because it is the extension point:
+   * driving a second workflow means handing the engine one of these, not
+   * forking it. Every fold it is asked for is kept, move included.
+   */
+  function thin(actions: WorkflowRuntime["actions"], folds: (Moved | null)[] = []): WorkflowRuntime {
+    return {
+      policy: {},
+      found: async () => [],
+      newRecord: (id, at) => ({ id, state: "NEW", updatedAt: at.toISOString(), attempts: {}, history: [] }),
+      observe: async () => ({}),
+      actions,
+      apply: (record, _plan, outcomes, _observation, _now, moved) => {
+        folds.push(moved);
+        return { ...record, outcomes } as WorkRecord;
+      },
+    };
+  }
+
+  function build(runtime: WorkflowRuntime, plan: (record: WorkRecord) => Plan, port?: (kind: string) => object | undefined): Worker {
+    queue.enqueue({ workId: "W-1", reason: "test" }, WORKDAY);
     return new Worker({
-      queue: new FileQueue(path.join(root, "queue")),
-      records: new InMemoryStore(),
-      ...ticketWorkerDeps({
-        now: () => WORKDAY,
-        ...overrides,
-      }),
+      queue,
+      records,
+      ...ticketWorkerDeps({ now: () => WORKDAY, plan: plan as never }),
+      runtime,
+      port,
     });
   }
 
-  it("finds nothing missing for the workflow it was built for", () => {
-    expect(build().missingActions([...USES_ACTIONS])).toEqual([]);
+  it("refuses a plan carrying an undeclared action before any of its actions run", async () => {
+    const ran: string[] = [];
+    const runtime = thin({ announce: async () => void ran.push("announce") });
+
+    const result = await build(runtime, () => ({
+      kind: "act",
+      why: "one declared, one not",
+      effects: [{ type: "announce" }, { type: "hand-off-to-qa" }],
+    })).tick();
+
+    expect(result).toMatchObject({ kind: "failed", state: "NEW" });
+    expect(result.kind === "failed" && result.error).toContain('"hand-off-to-qa"');
+    // Nothing half-done: the declared action ahead of it never ran.
+    expect(ran).toEqual([]);
   });
 
-  it("names an action nothing can run, rather than failing mid-ticket", () => {
-    // This is what the open action name costs, and where the cost is paid:
-    // at boot, by name, instead of halfway through somebody's ticket.
-    expect(build().missingActions(["check-web-browser"])).toEqual(["check-web-browser"]);
+  it("runs a port-and-method action on the mounted port and folds what it returned", async () => {
+    const forge = { merge: acceptsAction(vi.fn(async () => ({ merged: 42 }))) };
+    const runtime = thin({ merge: { port: "forge", method: "merge" } });
+
+    await build(runtime, () => ({ kind: "act", why: "merge it", effects: [{ type: "merge", pr: 42 }] }),
+      (kind) => (kind === "forge" ? forge : undefined)).tick();
+
+    expect(forge.merge).toHaveBeenCalledWith({ type: "merge", pr: 42 }, expect.objectContaining({ outcomes: expect.any(Object) }));
+    expect(records.load("W-1")).toMatchObject({ outcomes: { merge: { merged: 42 } } });
   });
 
-  // The other half of this question — whether the port an action dispatches
-  // to was mounted at all — is `unmetNeeds` in the core, which reads the
-  // mount. This engine cannot answer that any more, and that is the point: it
-  // does not hold the ports.
-  it("names what the runtime brought no handler for", () => {
-    // Written out in full because it is the extension point: driving a
-    // second workflow means handing the engine one of these, not forking it.
-    const thin: WorkflowRuntime = {
-      policy: {},
-      found: async () => [],
-      newRecord: (id, at) => ({
-        id,
-        state: "NEW",
-        updatedAt: at.toISOString(),
-        attempts: {},
-        history: [],
-      }),
-      observe: async () => ({}),
-      handlers: () => ({ triage: async () => {} }),
-      apply: (record) => record,
-    };
+  it("names the port a port-and-method action needed when nothing mounted it", async () => {
+    const runtime = thin({ merge: { port: "forge", method: "merge" } });
 
-    const worker = new Worker({
-      queue: new FileQueue(path.join(root, "queue")),
-      records: new InMemoryStore(),
-      ...ticketWorkerDeps({ now: () => WORKDAY }),
-      runtime: thin,
-    });
+    const result = await build(runtime, () => ({ kind: "act", why: "merge it", effects: [{ type: "merge" }] })).tick();
 
-    expect(worker.missingActions(["triage", "run-gate"])).toEqual(["run-gate"]);
+    expect(result.kind === "failed" && result.error).toBe("action `merge`: needs the `forge` port, which nothing mounted");
+  });
+
+  it("tells the fold the state the tick started in on an advance", async () => {
+    const folds: (Moved | null)[] = [];
+
+    await build(thin({}, folds), () => ({ kind: "advance", to: "DONE", why: "go", effects: [] })).tick();
+
+    expect(folds).toEqual([{ from: "NEW", to: "DONE" }]);
+    // The record the fold was handed had already moved, which is why it is told.
+    expect(records.load("W-1")?.state).toBe("DONE");
+  });
+
+  it("tells the fold nothing moved when the plan did not advance", async () => {
+    const folds: (Moved | null)[] = [];
+
+    await build(thin({}, folds), () => ({ kind: "act", why: "work", effects: [] })).tick();
+    await build(thin({}, folds), () => ({ kind: "wait", retryAfterMs: 0, why: "hold", effects: [] })).tick();
+
+    expect(folds).toEqual([null, null]);
   });
 });

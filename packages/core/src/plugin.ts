@@ -22,17 +22,16 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
   readonly initialState: string;
   readonly terminalStates: readonly string[];
   /**
-   * Declared as data so the loader can refuse a mount where an action has no
-   * port behind it, and so the capability surface can be measured without
-   * reading the logic.
+   * The actions are not declared here. They are the keys of the runtime's
+   * `actions`, where each one is declared and implemented at once — two
+   * lists of one fact were how an action came to pass the mount with nothing
+   * behind it.
    */
-  readonly usesActions: readonly string[];
   readonly usesObservers: readonly string[];
   /**
    * The tracker writes this workflow claims, by capability name.
    *
-   * Derived from the actions it declares rather than written by hand, so
-   * the claim cannot drift from the table it is checked against. A
+   * Written by hand and checked against the actions its runtime declares: a
    * workflow that declares no tracker-mutating action claims none and is
    * free to mount beside any tracker; one that declares a mutator without
    * claiming its capability is refused at boot, naming the action and the

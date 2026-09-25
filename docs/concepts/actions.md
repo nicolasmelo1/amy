@@ -62,21 +62,36 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 ## What a workflow declares
 
 ```ts
-export const USES_ACTIONS = ["triage", "implement", "run-gate", "announce"] as const;
+actions: {
+  "triage": async (action, ctx) => { /* ... */ },
+  "announce": async (action, ctx) => { /* ... */ },
+  "merge": { port: "forge", method: "merge" },
+}
 ```
 
-Declared as **data**, not inferred from the code, so the host can answer before
-touching any work whether every action the workflow can emit has something that
-runs it:
+One entry per action, on the workflow's runtime: the key is the name `plan()`
+emits, the value is what runs it — a handler the workflow wrote, or a port and a
+method the host calls with the action and its context — one its port marked with
+`acceptsAction`, because a method written for its own arguments would run on the
+wrong ones. Declaring and
+implementing are the same line, so they cannot disagree, and the host answers
+before touching any work whether every one of them can run:
 
 ```
 amy could not start:
-  action `escalate`: nothing defines it
+  action `hand-off-to-qa` is declared with no implementation — give it a handler, or a port and a method
   action `triage`: needs the `agent` port, which nothing mounted
+  action `check-plan`: `plan-check.check` takes its own arguments, not an action — write a handler that calls it, or mark it with `acceptsAction`
 ```
 
-An action name that nothing handles is a boot-time error, not a surprise halfway
-through somebody's ticket.
+A handler still runs an action the catalogue above names, because the
+catalogue is what tells the budget which actions spend an agent and the tracker
+check which ones write. A port and a method names its own port, so it may run
+an action nobody catalogued — but not one the catalogue sends to a different
+port.
+
+A plan that carries a name the map does not is refused by the engine before any
+of that plan's actions run, and by the testkit before it ships.
 
 ## The payload lives in the workflow
 
@@ -118,8 +133,9 @@ graduates by evidence.
 
 ## Actions do not decide anything
 
-An action is *described* by `plan()` and *executed* by the runtime's handler.
-The machine never performs one, and the handler never decides whether to.
+An action is *described* by `plan()` and *executed* by what the runtime declared
+for it. The machine never performs one, and the handler never decides whether
+to.
 
 That separation is why the whole lifecycle can be walked in a test with no I/O,
 and why a handler can be tested against a scripted world without a state machine

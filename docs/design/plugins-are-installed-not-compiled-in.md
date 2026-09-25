@@ -129,6 +129,13 @@ host that cannot resolve a plugin.
       (proof: assertion:plugins.a_global_install_is_not_needed)
 - [x] The installed listing reads the one plugins root rather than a parent
       walk (proof: assertion:plugins.the_listing_is_read_from_one_directory)
+- [x] A workflow from outside this repository that declares an action with
+      nothing behind it is refused at boot, naming the action, before its work
+      is touched — see [the workflow contract changes once](the-workflow-contract-changes-once.md)
+      (proof: assertion:mount.an_action_with_no_implementation_is_refused)
+- [x] Its plan carrying an action it never declared is refused before any of
+      that plan's actions run
+      (proof: assertion:mount.an_undeclared_action_is_refused)
 
 **Exit condition:** a second machine with node, `@amykit/cli` and only the
 plugins it needs runs work end to end, a workflow it wrote itself drives on

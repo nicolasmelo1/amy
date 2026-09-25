@@ -13,7 +13,6 @@ const workflow = {
   waitingStates: [],
   initialState: "paged",
   terminalStates: ["acknowledged"],
-  usesActions: [],
   usesObservers: [],
   plan: (record) =>
     record.state === "paged"
@@ -34,7 +33,7 @@ const runtime = (pages) => ({
     history: [],
   }),
   observe: async () => ({}),
-  handlers: () => ({}),
+  actions: {},
   apply: (record) => record,
 });
 

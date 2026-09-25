@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Plugin, PluginContext, Workflow } from "../src/plugin.js";
-import { HostServices, mount, unmetNeeds } from "../src/mount.js";
+import { HostServices, mount, mountedActions, unmetNeeds } from "../src/mount.js";
+import { ActionContext, WORKFLOW_RUNTIME, WorkflowRuntime } from "../src/runtime.js";
+import { acceptsAction, implementationOf, runAction, undeclaredIn } from "../src/dispatch.js";
 
 /** The services a host lends every plugin, with nothing that touches a machine. */
 const HOST: HostServices = {
@@ -19,7 +21,6 @@ const WORKFLOW: Workflow<never, never> = {
   waitingStates: [],
   initialState: "START",
   terminalStates: ["DONE"],
-  usesActions: ["triage"],
   usesObservers: ["ticket"],
   plan: () => ({ kind: "settled", why: "toy" }),
 };
@@ -212,9 +213,31 @@ describe("contributions", () => {
   });
 });
 
+/** A handler that does nothing, for a declaration whose behaviour is not the point. */
+const HANDLED = async (): Promise<void> => {};
+
+/** The toy workflow's runtime, declaring exactly the actions it is given. */
+function runtimeWith(actions: Record<string, unknown>): WorkflowRuntime {
+  return {
+    policy: {},
+    found: async () => [],
+    newRecord: (id, now) => ({ id, state: "START", updatedAt: now.toISOString(), attempts: {}, history: [] }),
+    observe: async () => ({}),
+    actions: actions as WorkflowRuntime["actions"],
+    apply: (record) => record,
+  };
+}
+
+/** The plugin that contributes it, the way a workflow package does. */
+function toyRuntime(actions: Record<string, unknown>): Plugin {
+  return plugin("@amykit/workflow-toy", {
+    register: (r) => r.contribute(WORKFLOW_RUNTIME, "toy", runtimeWith(actions)),
+  });
+}
+
 describe("unmetNeeds", () => {
-  async function mountedWith(plugins: Plugin[]) {
-    const outcome = await mount(plugins, {}, HOST);
+  async function mountedWith(plugins: Plugin[], actions: Record<string, unknown> = { triage: HANDLED }) {
+    const outcome = await mount([...plugins, toyRuntime(actions)], {}, HOST);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     return outcome.mounted;
   }
@@ -231,8 +254,8 @@ describe("unmetNeeds", () => {
   });
 
   it("names an action nothing defines at all", async () => {
-    const mounted = await mountedWith([]);
-    const workflow = { ...WORKFLOW, usesActions: ["check-web-browser"], usesObservers: [] };
+    const mounted = await mountedWith([], { "check-web-browser": HANDLED });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `check-web-browser`: nothing defines it",
@@ -250,10 +273,10 @@ describe("unmetNeeds", () => {
   it("refuses a workflow that mutates the tracker while claiming no capability", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
-    ]);
+    ], { "ask-question": HANDLED });
     // `ask-question` is a core tracker action, so it is defined and its port
     // is mounted; the refusal is the undeclared write alone.
-    const workflow = { ...WORKFLOW, usesActions: ["ask-question"], usesObservers: [] };
+    const workflow = { ...WORKFLOW, usesObservers: [] };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `ask-question` writes the tracker (`comment`), " +
@@ -264,10 +287,9 @@ describe("unmetNeeds", () => {
   it("accepts the claim a workflow makes for the writes it uses", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
-    ]);
+    ], { "ask-question": HANDLED });
     const workflow = {
       ...WORKFLOW,
-      usesActions: ["ask-question"],
       usesObservers: [],
       trackerWrites: ["comment"],
     };
@@ -278,10 +300,9 @@ describe("unmetNeeds", () => {
   it("refuses a claimed capability no mounted tracker could honour", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
-    ]);
+    ], { "ask-question": HANDLED });
     const workflow = {
       ...WORKFLOW,
-      usesActions: ["ask-question"],
       usesObservers: [],
       trackerWrites: ["delete-everything"],
     };
@@ -305,6 +326,160 @@ describe("unmetNeeds", () => {
     ]);
 
     expect(unmetNeeds(mounted, WORKFLOW)).toEqual([]);
+  });
+});
+
+describe("one declaration per action", () => {
+  async function mounted(plugins: Plugin[], actions: Record<string, unknown>) {
+    const outcome = await mount([...plugins, toyRuntime(actions)], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    return outcome.mounted;
+  }
+  const workflow = { ...WORKFLOW, usesObservers: [] };
+  const forge = (): Plugin =>
+    plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { merge: acceptsAction(async () => 7) }) });
+
+  it("refuses at boot an action declared with nothing behind it, naming it", async () => {
+    const host = await mounted([plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) })], {
+      "hand-off-to-qa": undefined,
+    });
+
+    expect(unmetNeeds(host, { ...workflow, trackerWrites: ["set-status"] })).toEqual([
+      "action `hand-off-to-qa` is declared with no implementation — give it a handler, or a port and a method",
+    ]);
+  });
+
+  it("refuses an implementation that is neither a handler nor a port and a method", async () => {
+    const host = await mounted([], { merge: { port: "forge" } });
+
+    expect(unmetNeeds(host, workflow)).toEqual([
+      "action `merge` is declared with no implementation — give it a handler, or a port and a method",
+    ]);
+  });
+
+  it("wires a port and a method without the workflow writing a handler", async () => {
+    const host = await mounted([forge()], { merge: { port: "forge", method: "merge" } });
+    expect(unmetNeeds(host, workflow)).toEqual([]);
+
+    const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
+    const context: ActionContext = { record: runtime.newRecord("t", HOST.now()), observation: {}, outcomes: {} };
+    await runAction(implementationOf(runtime, "merge"), { type: "merge" }, context, (kind) => host.ports.get(kind));
+
+    // What the port returned lands under the action's name, for `apply`.
+    expect(context.outcomes).toEqual({ merge: 7 });
+  });
+
+  it("reaches every declared action through the same dispatch the engine uses", async () => {
+    const calls: string[] = [];
+    const host = await mounted(
+      [
+        plugin("@amykit/plugin-forge", {
+          register: (r) => r.port("forge", { merge: acceptsAction(async () => calls.push("merge")) }),
+        }),
+        plugin("@amykit/plugin-agent", { register: (r) => r.port("agent", {}) }),
+      ],
+      { triage: async () => void calls.push("triage"), merge: { port: "forge", method: "merge" } },
+    );
+    expect(unmetNeeds(host, workflow)).toEqual([]);
+
+    const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
+    for (const name of mountedActions(host, workflow)) {
+      const context: ActionContext = { record: runtime.newRecord("t", HOST.now()), observation: {}, outcomes: {} };
+      await runAction(implementationOf(runtime, name), { type: name }, context, (kind) => host.ports.get(kind));
+    }
+
+    expect(calls.sort()).toEqual(["merge", "triage"]);
+  });
+
+  it("names a port-and-method whose port nothing mounted", async () => {
+    const host = await mounted([], { merge: { port: "forge", method: "merge" } });
+
+    expect(unmetNeeds(host, workflow)).toEqual([
+      "action `merge`: needs the `forge` port, which nothing mounted",
+    ]);
+  });
+
+  it("names a port-and-method whose port has no such method", async () => {
+    const host = await mounted([forge()], { merge: { port: "forge", method: "squash" } });
+
+    expect(unmetNeeds(host, workflow)).toEqual(["action `merge`: the `forge` port has no method `squash`"]);
+  });
+
+  it("refuses a port-and-method whose method takes its own arguments, not an action", async () => {
+    // The shape `plan-check` mounts: `check(repo, workId)`. Called with an
+    // action and a context it would run against the wrong repository rather
+    // than fail, so it is refused before anything calls it.
+    const host = await mounted(
+      [plugin("@amykit/plugin-plan-check", { register: (r) => r.port("plan-check", { check: async (_repo: string) => ({}) }) })],
+      { "check-plan": { port: "plan-check", method: "check" } },
+    );
+
+    expect(unmetNeeds(host, workflow)).toEqual([
+      "action `check-plan`: `plan-check.check` takes its own arguments, not an action — write a handler that calls it, or mark it with `acceptsAction`",
+    ]);
+  });
+
+  it("records a port-and-method that returned nothing, under its name", async () => {
+    const host = await mounted(
+      [plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { merge: acceptsAction(async () => undefined) }) })],
+      { merge: { port: "forge", method: "merge" } },
+    );
+    const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
+    const context: ActionContext = { record: runtime.newRecord("t", HOST.now()), observation: {}, outcomes: {} };
+
+    await runAction(implementationOf(runtime, "merge"), { type: "merge" }, context, (kind) => host.ports.get(kind));
+
+    expect(Object.hasOwn(context.outcomes, "merge")).toBe(true);
+  });
+
+  it("refuses a port-and-method that sends a catalogued action somewhere else", async () => {
+    const host = await mounted(
+      [plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { triage: acceptsAction(async () => {}) }) })],
+      { triage: { port: "forge", method: "triage" } },
+    );
+
+    expect(unmetNeeds(host, workflow)).toEqual([
+      "action `triage` is wired to the `forge` port, but the catalogue runs it on `agent`",
+    ]);
+  });
+
+  it("finds a plan's actions the runtime never declared", () => {
+    const runtime = runtimeWith({ triage: HANDLED });
+    const plan = { kind: "act" as const, why: "x", effects: [{ type: "triage" }, { type: "hand-off-to-qa" }] };
+
+    expect(undeclaredIn(runtime, plan)).toEqual(["hand-off-to-qa"]);
+    // Own keys only: a name every object inherits is not a declaration.
+    expect(undeclaredIn(runtime, { ...plan, effects: [{ type: "toString" }] })).toEqual(["toString"]);
+  });
+
+  it("names a workflow that contributed no runtime", async () => {
+    const outcome = await mount([], {}, HOST);
+    if (!outcome.ok) throw new Error("mount failed");
+
+    expect(unmetNeeds(outcome.mounted, workflow)).toEqual([
+      "the workflow `toy` contributed no runtime to `workflow-runtime`, so nothing can run its actions",
+    ]);
+  });
+
+  it("tells an author still on the old contract what to change", async () => {
+    const legacy = await mount(
+      [
+        plugin("@amykit/workflow-toy", {
+          register: (r) => {
+            const { actions: _actions, ...rest } = runtimeWith({});
+            r.contribute(WORKFLOW_RUNTIME, "toy", { ...rest, handlers: () => ({}) });
+          },
+        }),
+      ],
+      {},
+      HOST,
+    );
+    if (!legacy.ok) throw new Error("mount failed");
+
+    expect(unmetNeeds(legacy.mounted, { ...workflow, usesActions: [] } as Workflow<never, never>)).toEqual([
+      "the workflow `toy` still declares `usesActions`, which is now the keys of its runtime's `actions` — delete it and key each action there, beside what runs it",
+      "the workflow `toy` still has `handlers()`, which is now `actions`: one map whose keys are the actions it emits and whose values run them",
+    ]);
   });
 });
 

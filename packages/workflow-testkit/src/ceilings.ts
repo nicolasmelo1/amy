@@ -1,4 +1,4 @@
-import { Plan, WorkRecord, applyPlan } from "@amykit/core";
+import { Plan, WorkRecord, applyPlan, movedBy } from "@amykit/core";
 import { Finding } from "./finding.js";
 import { describe, replay, sameMove } from "./plans.js";
 import { AnyWorkflow, Look, Walk, replayActions } from "./walk.js";
@@ -56,10 +56,10 @@ async function waitingStatesHold(workflow: AnyWorkflow, walk: Walk, extraLooks: 
     for (let count = 1; count <= extraLooks; count += 1) {
       const waited: Plan = plan;
       const before: WorkRecord = record;
-      const outcomes = await replayActions(runtime, waited, before, look.observation);
+      const outcomes = await replayActions(runtime, waited, before, look.observation, walk.port);
       if (!outcomes) break;
       const folded: WorkRecord | undefined = replay(() =>
-        runtime.apply(applyPlan(before, waited, look.at), waited, outcomes, look.observation, look.at),
+        runtime.apply(applyPlan(before, waited, look.at), waited, outcomes, look.observation, look.at, movedBy(before, waited)),
       );
       if (!folded) break;
       record = folded;

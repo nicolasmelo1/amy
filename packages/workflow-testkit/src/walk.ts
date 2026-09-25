@@ -1,4 +1,16 @@
-import { Plan, Workflow, WorkflowRuntime, WorkRecord, actionsOf, applyPlan } from "@amykit/core";
+import {
+  Plan,
+  PortLookup,
+  Workflow,
+  WorkflowRuntime,
+  WorkRecord,
+  actionsOf,
+  applyPlan,
+  implementationOf,
+  movedBy,
+  runAction,
+  undeclaredIn,
+} from "@amykit/core";
 import { Finding, Property, message } from "./finding.js";
 import { Clock, World } from "./world.js";
 
@@ -21,6 +33,8 @@ export interface Walk {
   readonly world: string;
   /** The runtime this world was walked with, for the probes that replay a look. */
   readonly runtime: AnyRuntime | undefined;
+  /** The ports this world hands an action wired as a port and a method. */
+  readonly port: PortLookup;
   /** True when the record came from the runtime's own `newRecord`. */
   readonly fromTheStart: boolean;
   readonly looks: readonly Look[];
@@ -29,6 +43,7 @@ export interface Walk {
 
 export interface WalkOptions {
   readonly runtime: (world: World, now: () => Date) => AnyRuntime;
+  readonly ports: (world: World) => Readonly<Record<string, object>>;
   readonly maxLooks: number;
   readonly start: Date;
 }
@@ -50,8 +65,10 @@ export async function walk(workflow: AnyWorkflow, world: World, options: WalkOpt
   const fail = (property: Property, said: string): void => {
     findings.push({ property, message: `${world.name}: ${said}` });
   };
+  const ports = attempt(() => options.ports(world), (error) => fail("walk", `the ports could not be built — ${error}`)) ?? {};
+  const port: PortLookup = (kind) => (Object.hasOwn(ports, kind) ? ports[kind] : undefined);
   const done = (runtime: AnyRuntime | undefined, fromTheStart: boolean): Walk => ({
-    world: world.name, runtime, fromTheStart, looks, findings,
+    world: world.name, runtime, port, fromTheStart, looks, findings,
   });
 
   const runtime = attempt(() => options.runtime(world, clock.now), (error) => fail("walk", `the runtime could not be built — ${error}`));
@@ -67,7 +84,7 @@ export async function walk(workflow: AnyWorkflow, world: World, options: WalkOpt
     fail("reachability", `newRecord starts at \`${record.state}\`, not at the initial state \`${workflow.initialState}\``);
   }
 
-  await drive(workflow, runtime, record, { world, clock, looks, fail, maxLooks: options.maxLooks });
+  await drive(workflow, runtime, record, { world, clock, looks, fail, port, maxLooks: options.maxLooks });
   return done(runtime, fromTheStart);
 }
 
@@ -76,6 +93,7 @@ interface Drive {
   readonly clock: Clock;
   readonly looks: Look[];
   readonly fail: (property: Property, said: string) => void;
+  readonly port: PortLookup;
   readonly maxLooks: number;
 }
 
@@ -86,7 +104,7 @@ async function drive(workflow: AnyWorkflow, runtime: AnyRuntime, first: WorkReco
   let worldMoved = false;
 
   for (let count = 0; count < walk.maxLooks; count += 1) {
-    const look = await lookOnce(workflow, runtime, record, walk.clock, worldMoved, walk.fail);
+    const look = await lookOnce(workflow, runtime, record, { ...walk, worldMoved });
     if (!look) return;
     walk.looks.push(look.look);
     const plan = look.look.plan;
@@ -127,9 +145,7 @@ async function lookOnce(
   workflow: AnyWorkflow,
   runtime: AnyRuntime,
   record: WorkRecord,
-  clock: Clock,
-  worldMoved: boolean,
-  fail: (property: Property, said: string) => void,
+  { clock, worldMoved, fail, port }: Drive & { worldMoved: boolean },
 ): Promise<{ look: Look; next: WorkRecord } | undefined> {
   const at = clock.now();
   let observation: unknown;
@@ -152,12 +168,12 @@ async function lookOnce(
     return undefined;
   }
 
-  const outcomes = await run(runtime, look, observation, fail);
+  const outcomes = await run(runtime, look, observation, fail, port);
   if (!outcomes) return undefined;
   if (plan.kind === "settled") return { look, next: record };
 
   const next = attempt(
-    () => runtime.apply(applyPlan(record, plan, at), plan, outcomes, observation, at),
+    () => runtime.apply(applyPlan(record, plan, at), plan, outcomes, observation, at, movedBy(record, plan)),
     (error) => fail("walk", `folding a look in \`${record.state}\` threw — ${error}`),
   );
   return next ? { look, next } : undefined;
@@ -169,19 +185,22 @@ async function run(
   look: Look,
   observation: unknown,
   fail: (property: Property, said: string) => void,
+  port: PortLookup,
 ): Promise<Record<string, unknown> | undefined> {
   const outcomes: Record<string, unknown> = {};
-  const handlers = runtime.handlers();
   const state = look.record.state;
 
+  // The whole plan first, as the engine does, so an undeclared action is
+  // reported with nothing ahead of it already run.
+  const [undeclared] = undeclaredIn(runtime, look.plan);
+  if (undeclared) {
+    fail("handlers", `\`${state}\` plans \`${undeclared}\`, which the runtime never declares in its actions`);
+    return undefined;
+  }
+
   for (const action of actionsOf(look.plan)) {
-    const handler = handlers[action.type];
-    if (!handler) {
-      fail("handlers", `\`${state}\` plans \`${action.type}\`, and nothing in the runtime handles it`);
-      return undefined;
-    }
     try {
-      await handler(action, { record: look.record, observation, outcomes });
+      await runAction(implementationOf(runtime, action.type), action, { record: look.record, observation, outcomes }, port);
     } catch (error) {
       fail("handlers", `\`${action.type}\` threw when \`${state}\` called it — ${message(error)}`);
       return undefined;
@@ -200,14 +219,13 @@ export async function replayActions(
   plan: Plan,
   record: WorkRecord,
   observation: unknown,
+  port: PortLookup,
 ): Promise<Record<string, unknown> | undefined> {
   const outcomes: Record<string, unknown> = {};
-  const handlers = runtime.handlers();
+  if (undeclaredIn(runtime, plan).length > 0) return undefined;
   for (const action of actionsOf(plan)) {
-    const handler = handlers[action.type];
-    if (!handler) return undefined;
     try {
-      await handler(action, { record, observation, outcomes });
+      await runAction(implementationOf(runtime, action.type), action, { record, observation, outcomes }, port);
     } catch {
       return undefined;
     }

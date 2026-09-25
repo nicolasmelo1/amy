@@ -46,6 +46,23 @@ export type Plan =
   /** Terminal, do not queue anything else. */
   | { kind: "settled"; why: string };
 
+/**
+ * The move one look made, handed to the workflow's fold beside the record.
+ *
+ * The record the fold receives has already been advanced, so its `state` is
+ * where the work went, not where the look started — the obvious reading of it
+ * is the wrong one. This says both, and is `null` for a look that stayed put.
+ */
+export interface Moved {
+  readonly from: string;
+  readonly to: string;
+}
+
+/** What `plan` moved `record` by, read before the record is advanced. */
+export function movedBy(record: WorkRecord, plan: Plan): Moved | null {
+  return plan.kind === "advance" ? { from: record.state, to: plan.to } : null;
+}
+
 export function actionsOf(plan: Plan): readonly Action[] {
   switch (plan.kind) {
     case "act":

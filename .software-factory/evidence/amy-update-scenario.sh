@@ -66,7 +66,6 @@ const workflow = {
   waitingStates: [],
   initialState: "paged",
   terminalStates: ["acknowledged"],
-  usesActions: [],
   usesObservers: [],
   plan: (record) =>
     record.state === "paged"
@@ -88,7 +87,7 @@ export const plugin = {
       },
       newRecord: (id, now) => ({ id, state: "paged", updatedAt: now.toISOString(), attempts: {}, history: [] }),
       observe: async () => ({}),
-      handlers: () => ({}),
+      actions: {},
       apply: (record) => record,
     });
   },
@@ -198,9 +197,27 @@ for arg in "\$@"; do
       ;;
   esac
 done
+# The core every plugin imports is this checkout's, not the last one npm
+# would fetch from the registry: a plugin built against an export added since
+# would fail to import beside a published copy. Swapped in after npm has
+# written the root, so the root's own manifest still names only what the
+# command asked for.
+prefix=""
+previous=""
+for arg in "\$@"; do
+  if [ "\$previous" = "--prefix" ]; then prefix="\$arg"; fi
+  previous="\$arg"
+done
 # The artifact paths are made by this scenario, without spaces; eval expands
 # the tarball path only after the version above has become that path.
-eval "exec '$npm_real' \$args"
+status=0
+eval "'$npm_real' \$args" || status=\$?
+core="\$prefix/node_modules/@amykit/core"
+if [ "\$status" = 0 ] && [ -n "\$prefix" ] && [ -d "\$core" ]; then
+  rm -rf "\$core" && mkdir -p "\$core"
+  tar xzf $work/lib/packages/amykit-core-*.tgz -C "\$core" --strip-components=1
+fi
+exit "\$status"
 SH
 chmod +x "$work/bin/npm"
 export PATH="$work/bin:$PATH"

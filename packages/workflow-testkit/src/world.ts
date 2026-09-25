@@ -48,6 +48,13 @@ export interface ConformanceOptions<R extends WorkRecord, O, W extends World<R>>
   readonly runtime: (world: W, now: () => Date) => WorkflowRuntime<R, O>;
   readonly worlds: readonly W[];
   /**
+   * The ports an action declared as a port and a method is called on, by
+   * kind — the fakes a world carries, handed over the way the host hands
+   * over the mounted ones. Left out, no port is mounted, and an action wired
+   * that way is reported as having nothing behind it.
+   */
+  readonly ports?: (world: W) => Readonly<Record<string, object>>;
+  /**
    * States where the machine has given up and handed the work to a person.
    *
    * A state entered by an `escalate` action is one already, without being

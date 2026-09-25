@@ -157,6 +157,10 @@ drives, not a field existing somewhere in the middle.
 - [x] The owner's answer puts that comment back in front of the agent instead
       of leaving it parked
       (proof: assertion:lifecycle.the_owners_answer_reopens_the_judgement)
+- [x] The escalation remembers the state it interrupted, folded from the move
+      rather than from the record's state, and the answer sends the work back
+      there — see [the workflow contract changes once](the-workflow-contract-changes-once.md)
+      (proof: assertion:escalating.remembers_the_state_it_interrupted)
 - [x] The ticket ends up in the QA status, assigned to whoever the roster says
       owns QA
       (proof: assertion:lifecycle.the_ticket_lands_in_qa_owned_by_qa)

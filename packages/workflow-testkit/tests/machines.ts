@@ -1,4 +1,4 @@
-import { ActionHandler, Plan, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { ActionImplementation, Plan, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 
 /**
  * The smallest workflow a test can say something about.
@@ -11,7 +11,6 @@ export interface Machine<O> {
   states: string[];
   terminal: string[];
   waiting?: string[];
-  uses?: string[];
   plan(record: WorkRecord, observation: O): Plan;
 }
 
@@ -22,7 +21,6 @@ export function workflowOf<O>(machine: Machine<O>): Workflow<O, unknown> {
     waitingStates: machine.waiting ?? [],
     initialState: machine.states[0]!,
     terminalStates: machine.terminal,
-    usesActions: machine.uses ?? [],
     usesObservers: [],
     plan: (record, observation) => machine.plan(record, observation),
   };
@@ -30,7 +28,8 @@ export function workflowOf<O>(machine: Machine<O>): Workflow<O, unknown> {
 
 export interface RuntimeParts<R extends WorkRecord, O> {
   observe(record: R): O | Promise<O>;
-  handlers?: Record<string, ActionHandler<R, O>>;
+  /** Every action it declares, and what runs each one — missing ones included. */
+  actions?: Record<string, ActionImplementation<R, O> | undefined>;
   /** Folds what the handlers put in the outcomes bag onto the record. */
   apply?(record: R, outcomes: Record<string, unknown>): R;
 }
@@ -50,7 +49,7 @@ export function runtimeOf<R extends WorkRecord = WorkRecord, O = unknown>(
     found: async () => [],
     newRecord: (id, now) => ({ id, state: initial, updatedAt: now.toISOString(), attempts: {}, history: [] }) as unknown as R,
     observe: async (record) => parts.observe(record),
-    handlers: () => parts.handlers ?? {},
+    actions: (parts.actions ?? {}) as WorkflowRuntime<R, O>["actions"],
     apply: (record, _plan, outcomes) => parts.apply?.(record, outcomes) ?? record,
   };
 }

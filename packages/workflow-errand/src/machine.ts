@@ -1,5 +1,5 @@
 import { Plan, Workflow } from "@amykit/core";
-import { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
+import { act, advance, settled, wait } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { ErrandRecord, attemptsIn } from "./record.js";
 import { ERRAND_STATES, WAITING_STATES } from "./state.js";
@@ -119,7 +119,6 @@ export const errand: Workflow<Observation, Policy> = {
   waitingStates: WAITING_STATES,
   initialState: "QUEUED",
   terminalStates: ["DONE", "DECLINED"],
-  usesActions: USES_ACTIONS,
   usesObservers: [],
   plan: (record, observation, policy) => plan(record as ErrandRecord, observation, policy),
 };

@@ -3,6 +3,7 @@ import {
   CodeHost,
   ConfigSchema,
   Git,
+  Moved,
   Notifier,
   Plan,
   Plugin,
@@ -181,14 +182,17 @@ export const plugin: Plugin = {
       found: (): Promise<string[]> => lazily().found(),
       newRecord: (workId: string, now: Date): TicketRecord => lazily().newRecord(workId, now),
       observe: (record: TicketRecord): Promise<Observation> => lazily().observe(record),
-      handlers: () => lazily().handlers(),
+      get actions() {
+        return lazily().actions;
+      },
       apply: (
         record: TicketRecord,
         plan: Plan,
         outcomes: Record<string, unknown>,
         observation: Observation,
         now: Date,
-      ): TicketRecord => lazily().apply(record, plan, outcomes, observation, now),
+        moved: Moved | null,
+      ): TicketRecord => lazily().apply(record, plan, outcomes, observation, now, moved),
     } satisfies WorkflowRuntime<TicketRecord, Observation>);
   },
 

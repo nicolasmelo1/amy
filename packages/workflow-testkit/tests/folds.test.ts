@@ -81,7 +81,6 @@ describe("folds", () => {
     const telling = workflowOf<{ owners: { away: boolean }[] }>({
       states: ["telling", "done"],
       terminal: ["done"],
-      uses: ["announce"],
       plan: (record, observation) =>
         record.state === "done"
           ? settled()
@@ -89,7 +88,7 @@ describe("folds", () => {
     });
 
     const findings = await conformance(telling, {
-      runtime: () => runtimeOf<WorkRecord, { owners: { away: boolean }[] }>("telling", { observe: () => ({ owners: [{ away: false }] }), handlers: { announce: async () => {} } }),
+      runtime: () => runtimeOf<WorkRecord, { owners: { away: boolean }[] }>("telling", { observe: () => ({ owners: [{ away: false }] }), actions: { announce: async () => {} } }),
       worlds: [{ name: "an owner at their desk" }],
     });
 

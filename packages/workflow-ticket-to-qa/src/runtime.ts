@@ -18,7 +18,7 @@ import { Agent, Gate, Tracker, HarnessReply } from "@amykit/core";
 import type { AskContext, Git } from "@amykit/core";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
-import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
+import { EffectOutcomes, applyOutcomes, applyTransition } from "./outcomes.js";
 import { Roster } from "./roster.js";
 import { TicketRecord, newRecord } from "./record.js";
 import { Ticket, pullRequestTitle } from "./ticket.js";
@@ -364,19 +364,16 @@ export function ticketRuntime(
       };
     },
 
-    handlers() {
-      // The cast is the boundary. Inside this file the map is exhaustive over
-      // `Effect` and each handler takes exactly its own payload, which is
-      // what makes a new action fail to compile until something runs it. The
-      // engine cannot know that union, and only ever hands back an action it
-      // was given by the very plan that typed it.
-      return Object.fromEntries(
-        Object.entries(handlers).map(([name, handler]) => [
-          name,
-          handler as ActionHandler<TicketRecord, Observation>,
-        ]),
-      );
-    },
+    // The key is the declaration and the value what runs it. The cast is the
+    // boundary: the map is exhaustive over `Effect`, so a new action fails to
+    // compile until something runs it, and the engine only ever hands back an
+    // action it was given by the plan that typed it.
+    actions: Object.fromEntries(
+      Object.entries(handlers).map(([name, handler]) => [
+        name,
+        handler as ActionHandler<TicketRecord, Observation>,
+      ]),
+    ),
 
     /**
      * Only this workflow's own half of the fold.
@@ -387,7 +384,7 @@ export function ticketRuntime(
      * `applyTicketPlan` is still what a caller driving the machine *without*
      * an engine wants, which is why both exist.
      */
-    apply(current, _plan: Plan, outcomes, observation, now) {
+    apply(current, _plan: Plan, outcomes, observation, now, moved) {
       const folded = outcomes as EffectOutcomes;
 
       // The owner's answer to an escalation arrives as an observation rather
@@ -398,7 +395,7 @@ export function ticketRuntime(
           ? { ...folded, escalationResolvedAt: now.toISOString() }
           : folded;
 
-      return applyOutcomes(current, settled);
+      return applyTransition(applyOutcomes(current, settled), moved);
     },
   };
 }

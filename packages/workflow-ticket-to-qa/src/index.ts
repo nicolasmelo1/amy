@@ -26,10 +26,10 @@ export {
 export { isConfirmedFor, isWorkday, leastLoadedReviewer } from "./roster.js";
 export type { Roster, RosterMember } from "./roster.js";
 
-export { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
+export { act, advance, settled, wait } from "./effects.js";
 export type { Effect } from "./effects.js";
 
-export { applyOutcomes, applyTicketPlan } from "./outcomes.js";
+export { applyOutcomes, applyTicketPlan, applyTransition } from "./outcomes.js";
 export type { EffectOutcomes } from "./outcomes.js";
 
 export { plan, ticketToQa } from "./machine.js";

@@ -18,7 +18,6 @@ function implementing(countsTheHold: boolean) {
     states: ["implementing", "escalated", "done"],
     terminal: ["done"],
     waiting: ["escalated"],
-    uses: ["implement", "escalate"],
     plan: (record, observation) => {
       const current = record as Implementing;
       if (record.state === "escalated") return wait();
@@ -37,7 +36,7 @@ function aSharedCheckout() {
     runtime: () =>
       runtimeOf<Implementing, { checkoutHeld: boolean }>("implementing", {
         observe: () => ({ ...checkout }),
-        handlers: {
+        actions: {
           implement: async (_action, ctx) => {
             ctx.outcomes.implemented = true;
           },
@@ -75,7 +74,6 @@ describe("ceilings", () => {
       states: ["asking", "escalated", "done"],
       terminal: ["done"],
       waiting: ["asking", "escalated"],
-      uses: ["escalate"],
       plan: (record, observation) => {
         if (record.state !== "asking") return record.state === "done" ? settled() : wait();
         if (observation.answered) return advance("done");
@@ -84,7 +82,7 @@ describe("ceilings", () => {
     });
 
     const findings = await conformance(impatient, {
-      runtime: () => runtimeOf<WorkRecord, { answered: boolean }>("asking", { observe: () => ({ answered: false }), handlers: { escalate: async () => {} } }),
+      runtime: () => runtimeOf<WorkRecord, { answered: boolean }>("asking", { observe: () => ({ answered: false }), actions: { escalate: async () => {} } }),
       worlds: [{ name: "nobody answers" }],
     });
 
@@ -106,7 +104,6 @@ describe("ceilings", () => {
       states: ["asking", "escalated", "done"],
       terminal: ["done"],
       waiting: ["asking", "escalated"],
-      uses: ["ask", "escalate"],
       plan: (record, observation) => {
         if (record.state !== "asking") return record.state === "done" ? settled() : wait();
         if (observation.answered) return advance("done");
@@ -120,7 +117,7 @@ describe("ceilings", () => {
       runtime: () =>
         runtimeOf<WorkRecord & { asked?: boolean }, { answered: boolean }>("asking", {
           observe: () => ({ answered: false }),
-          handlers: { ask: async (_action, ctx) => { ctx.outcomes.asked = true; }, escalate: async () => {} },
+          actions: { ask: async (_action, ctx) => { ctx.outcomes.asked = true; }, escalate: async () => {} },
           apply: (record, outcomes) => (outcomes.asked ? { ...record, asked: true } : record),
         }),
       worlds: [{ name: "nobody answers yet" }],
@@ -137,7 +134,6 @@ describe("ceilings", () => {
       states: ["asking", "escalated", "done"],
       terminal: ["done"],
       waiting: ["asking", "escalated"],
-      uses: ["escalate"],
       plan: (record, observation) => {
         if (record.state !== "asking") return record.state === "done" ? settled() : wait();
         if (observation.answered) return advance("done");
@@ -150,7 +146,7 @@ describe("ceilings", () => {
       runtime: (world, now) =>
         runtimeOf<WorkRecord, { answered: boolean; now: Date }>("asking", {
           observe: () => ({ answered: world.name === "somebody answers" && answered.value, now: now() }),
-          handlers: { escalate: async () => {} },
+          actions: { escalate: async () => {} },
         }),
       worlds: [
         { name: "somebody answers", meanwhile: [() => { answered.value = true; }] },

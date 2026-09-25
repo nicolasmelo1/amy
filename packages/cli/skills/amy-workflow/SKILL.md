@@ -87,8 +87,9 @@ the frontier, not a checklist.
 4. **Which steps wait on somebody else?** A wait is not a failure — it is a
    state that makes no move until the world moves. These become
    `waitingStates`, and they are why the loop can be cheap.
-5. **What does each step actually do?** One handler per action. "An agent does
-   it" is one call to the `agent` port and four lines.
+5. **What does each step actually do?** One entry per action in the runtime's
+   `actions`: a handler, or `{ port, method }` when a mounted port already does
+   it. "An agent does it" is one call to the `agent` port and four lines.
 6. **What happens when a step fails, and how many times?** The ceiling.
 7. **Who gets told, and when?** Silence is a real answer for a workflow that
    only runs on your own machine.
@@ -137,6 +138,12 @@ The engine folds the state, the attempt count and the history through
 `applyPlan`. Your `apply()` folds the rest — it cannot fold what it does not
 understand, which is why it is yours.
 
+`apply(record, plan, outcomes, observation, now, moved)` is handed a record
+that has **already moved**: `record.state` is where the work is going. Where it
+came from is `moved.from`, and `moved` is `null` when the plan did not advance.
+Anything remembered about a transition — the state an escalation interrupted,
+say — is folded from `moved`, never from `record.state`.
+
 ## What a workflow declares
 
 ```js
@@ -146,7 +153,6 @@ const workflow = {
   waitingStates: [],
   initialState: "paged",
   terminalStates: ["acknowledged"],
-  usesActions: [],      // action names the plan may emit
   usesObservers: [],    // observation slices it reads
   plan: (record, observation, policy) => ({ ... }),
 };
@@ -161,8 +167,20 @@ export const plugin = {
 };
 ```
 
-`usesActions` is data so the mount can be refused when an action has no port
-behind it — at boot, by name, rather than at the first tick that needs it.
+The actions are not listed on the workflow. They are the keys of the
+runtime's `actions`, each beside what runs it:
+
+```js
+actions: {
+  "announce": async (action, ctx) => { /* a handler you wrote */ },
+  "page": { port: "pager", method: "page" },   // pager.page(action, ctx), if marked acceptsAction
+}
+```
+
+A port-and-method's answer lands in `outcomes` under the action's name. The
+mount refuses a key with nothing behind it, a port nothing mounted, a method
+the port lacks, or one its port did not mark with `acceptsAction` — at boot, by name, rather than at the first tick that needs it.
+A plan that emits a name the map lacks is refused before any of its actions run.
 
 The runtime contributes to `workflow-runtime` under the workflow's own name.
 A workflow that registers itself and contributes no runtime mounts and then

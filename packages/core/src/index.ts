@@ -1,11 +1,27 @@
 export { CORE_ACTIONS, dispatchesTo, isCoreAction } from "./actions.js";
 export type { ActionSpec, PortKind } from "./actions.js";
 
-export { actionsOf, applyPlan } from "./work.js";
-export type { Action, Plan, Transition, WorkRecord } from "./work.js";
+export { actionsOf, applyPlan, movedBy } from "./work.js";
+export type { Action, Moved, Plan, Transition, WorkRecord } from "./work.js";
 
 export { WORKFLOW_RUNTIME } from "./runtime.js";
-export type { ActionContext, ActionHandler, WorkflowRuntime } from "./runtime.js";
+export type {
+  ActionContext,
+  ActionHandler,
+  ActionImplementation,
+  WorkflowRuntime,
+} from "./runtime.js";
+
+export {
+  acceptsAction,
+  declaredActions,
+  implementationOf,
+  isPortBinding,
+  runAction,
+  undeclaredIn,
+  unrunnable,
+} from "./dispatch.js";
+export type { PortLookup } from "./dispatch.js";
 
 export type {
   Engine,
@@ -106,7 +122,7 @@ export type {
   TokenUsage,
 } from "./agent-run.js";
 
-export { mount, unmetNeeds } from "./mount.js";
+export { mount, mountedActions, mountedRuntime, unmetNeeds } from "./mount.js";
 export type { HostServices, Mounted, MountOutcome } from "./mount.js";
 export { validateConfig } from "./config-schema.js";
 export type { ConfigField, ConfigFieldType, ConfigResult, ConfigSchema } from "./config-schema.js";

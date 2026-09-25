@@ -16,7 +16,7 @@ about this codebase.
    ────────                            ───────────
    pure, synchronous                   async, touches the world
    says WHAT should happen             says HOW it is done
-   (record, observation, policy)       observe(), handlers(), apply()
+   (record, observation, policy)       observe(), actions, apply()
         → Plan
 ```
 
@@ -59,8 +59,8 @@ know:
 | `found()` | What work exists that is not on the queue yet |
 | `newRecord(workId, now)` | What a record looks like before anything has happened |
 | `observe(record)` | What the outside world looks like, for this record, right now |
-| `handlers()` | One function per action this workflow can emit |
-| `apply(record, plan, outcomes, observation, now)` | How what happened folds back into the record |
+| `actions` | Every action this workflow can emit, each beside what runs it |
+| `apply(record, plan, outcomes, observation, now, moved)` | How what happened folds back into the record |
 | `policy` | The numbers `plan()` is given — attempt ceilings, backoffs, how many open reviews one person may carry |
 
 `apply` is the subtle one. The engine has already folded the state, the attempt
@@ -69,6 +69,35 @@ does not know what a triage result or a gate result is. The **observation** is
 passed to it too, because not everything a record learns comes from an action —
 an answer somebody left on a ticket arrives as an observation, and a fold that
 could not see one would leave the record waiting on it forever.
+
+The **record** `apply` is handed has already moved: its `state` is where the
+work is going, not where the look started. Where it came from is `moved.from`,
+and `moved` is `null` when the plan did not advance. A fold that remembers where
+an escalation interrupted the work reads `moved`, never `record.state` — a guard
+written against `record.state` on a move into `ESCALATED` sees `ESCALATED` every
+time, and excludes every escalation there is.
+
+**`actions`** is one declaration per action: the key is the name the plan
+emits, the value is what runs it.
+
+```ts
+actions: {
+  "hand-off-to-qa": async (action, ctx) => { /* ... */ },
+  "merge": { port: "forge", method: "merge" },
+}
+```
+
+A value is a handler the workflow wrote, or a port and a method the host wires:
+it calls the method with the action and its context, and puts what comes back in
+`outcomes` under the action's name. Only a method its port marked with
+`acceptsAction` can be wired that way — a method written for its own arguments,
+`check(repo, workId)` say, would be handed an action where it expects a
+repository, so the mount refuses it and a handler calls it instead. Because the name and the implementation are
+the same entry, an action cannot be declared without something behind it, nor
+planned without being declared. The mount refuses at boot, by name, a key whose
+value is neither, a port nothing mounted, or a method the port does not have.
+The engine refuses a plan that carries a name the map does not, before any of
+that plan's actions run.
 
 ## The seven things a workflow declares
 
@@ -79,7 +108,6 @@ export const errand: Workflow<Observation, Policy> = {
   waitingStates: WAITING_STATES,
   initialState: "QUEUED",
   terminalStates: ["DONE", "DECLINED"],
-  usesActions: USES_ACTIONS,
   usesObservers: [],
   plan: (record, observation, policy) => plan(record as ErrandRecord, observation, policy),
 };
@@ -94,9 +122,12 @@ state cannot silently become a busy loop.
 
 **`terminalStates`** — where work stops being queued.
 
-**`usesActions`** and **`usesObservers`** — the workflow's *reach*, declared as
-data so the host can refuse a mount where an action has no port behind it. This
-is the surface something can measure without reading the logic.
+**`usesObservers`**, and the keys of the runtime's **`actions`** — the
+workflow's *reach*, which the host checks at boot: an observation nothing
+contributes, or an action with nothing behind it, refuses the mount by name.
+The actions are declared on the runtime rather than here because the
+declaration and the implementation are one entry; two lists of one fact is how
+an action once passed the mount with nothing behind it.
 
 **`plan`** — the pure function. The cast from the core's generic `WorkRecord` to
 the workflow's own type happens here and nowhere else: one boundary per
@@ -104,7 +135,7 @@ workflow.
 
 ## Effects are described, never performed
 
-The machine emits an effect; the runtime's handler performs it. Nothing about
+The machine emits an effect; what the runtime declared for it performs it. Nothing about
 that is a formality — it is what keeps "what was decided" and "what the world
 did" separable, and therefore separately testable.
 

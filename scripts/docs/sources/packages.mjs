@@ -116,13 +116,15 @@ async function introspect(dir, manifest, environment) {
   // `@amykit/workflow-feature-grooming` is named for the workflow it serves and
   // exports no machine at all — it mounts ports — and calling it a workflow
   // told every reader to name it under `workflows:`, where boot refuses it.
-  const shape = workflowShape(module);
+  const runtimes = new Map();
+  const registered = await registers(module.plugin, environment, runtimes);
+  const shape = workflowShape(module, runtimes);
 
   return {
     kind: shape.workflow ? "workflow" : "plugin",
     exports: Object.keys(module).sort(),
     settings: settingsOf(module.plugin),
-    ...(await registers(module.plugin, environment)),
+    ...registered,
     ...shape,
   };
 }
@@ -147,7 +149,7 @@ function settingsOf(plugin) {
  * what it is; `ready` is where it judges a configuration against the rest of
  * a real host, and there is no real host here.
  */
-async function registers(plugin, environment) {
+async function registers(plugin, environment, runtimes = new Map()) {
   const seen = {
     mounts: [],
     contributes: [],
@@ -172,7 +174,10 @@ async function registers(plugin, environment) {
       if (!seen.mounts.includes(spec.port)) seen.mounts.push(spec.port);
     },
     observer: (slice) => seen.observes.push(slice),
-    contribute: (collection, name) => seen.contributes.push({ collection, name }),
+    contribute: (collection, name, impl) => {
+      seen.contributes.push({ collection, name });
+      if (collection === "workflow-runtime") runtimes.set(name, impl);
+    },
   };
 
   const restore = placeholders(environment);
@@ -263,8 +268,13 @@ function sample(type) {
   }
 }
 
-/** A workflow package also exports its machine, which is where its shape is. */
-function workflowShape(module) {
+/**
+ * A workflow package also exports its machine, which is where its shape is.
+ *
+ * The actions are not on the machine: they are the keys of the runtime it
+ * contributed, where each one is declared beside what runs it.
+ */
+function workflowShape(module, runtimes) {
   const machine = Object.values(module).find(
     (value) =>
       value !== null &&
@@ -282,10 +292,19 @@ function workflowShape(module) {
       waitingStates: [...machine.waitingStates],
       terminalStates: [...machine.terminalStates],
       initialState: machine.initialState,
-      usesActions: [...machine.usesActions].sort(),
+      usesActions: actionsOf(runtimes.get(machine.name)),
       usesObservers: [...machine.usesObservers].sort(),
     },
   };
+}
+
+/** The actions a contributed runtime declares, sorted; none when it cannot say. */
+function actionsOf(runtime) {
+  try {
+    return Object.keys(runtime?.actions ?? {}).sort();
+  } catch {
+    return [];
+  }
 }
 
 function message(error) {

@@ -125,8 +125,6 @@ export type Effect =
   | { type: "draft-plan"; prompt: string }
   | { type: "announce"; text: string };
 
-export const USES_ACTIONS = ["draft-plan", "announce"] as const;
-
 export const act = (why: string, ...effects: Effect[]): Plan =>
   ({ kind: "act", effects, why });
 export const advance = (to: ReviewState, why: string, ...effects: Effect[]): Plan =>
@@ -142,8 +140,9 @@ dispatch to a generic `agent.ask()`, which is almost always what a new workflow
 wants. If nothing fits, register the action *and its port* from a plugin of
 yours.
 
-`USES_ACTIONS` is declared as data so the host can refuse a mount where one of
-them has no port behind it — at boot, naming the action.
+There is no list of the actions a workflow uses. They are the keys of the
+runtime's `actions` (step 6), each beside what runs it, so the host can refuse a
+mount where one of them has nothing behind it — at boot, naming the action.
 
 ## 4. The observation and the policy
 
@@ -252,7 +251,11 @@ export function reviewRuntime(deps: Deps): WorkflowRuntime<ReviewRecord, Observa
       inFlight: (await deps.inbox.awaitingApproval()).length,
     }),
 
-    handlers: () => ({
+    // The key is the declaration, the value what runs it. A value may also be
+    // `{ port, method }` for a method its port marked with `acceptsAction`: the
+    // host calls it with the action and its context, and its answer lands in
+    // `outcomes` under the action's name.
+    actions: {
       "draft-plan": (async (action, { outcomes }) => {
         const reply = await deps.agent.ask(action.prompt as string, deps.workspace);
         outcomes.draft = reply.text;
@@ -265,9 +268,9 @@ export function reviewRuntime(deps: Deps): WorkflowRuntime<ReviewRecord, Observa
           state: record.state,
         });
       }) as ActionHandler<ReviewRecord, Observation>,
-    }),
+    },
 
-    apply: (record, plan, outcomes, observation, now) => {
+    apply: (record, plan, outcomes, observation, now, moved) => {
       const next = { ...record, customer: observation.message.customer };
 
       if (typeof outcomes.draft === "string") {
@@ -281,7 +284,7 @@ export function reviewRuntime(deps: Deps): WorkflowRuntime<ReviewRecord, Observa
 }
 ```
 
-Three things about `apply` that catch everybody:
+Four things about `apply` that catch everybody:
 
 **Do not fold the state, the attempt count or the history.** The engine already
 did that through `applyPlan`. Doing it again is the defect the third workflow
@@ -294,6 +297,12 @@ could not see one would leave the record waiting on it forever.
 
 **`outcomes` is a bag you own at both ends.** Your handlers fill it and your
 `apply` reads it. The engine only carries it between the two.
+
+**`record` has already moved.** Its `state` is where the work is going. Where
+it came from is `moved.from` — `moved` is `null` when the plan did not advance.
+A resume point written as `if (plan.to === "ESCALATED" && record.state !==
+"ESCALATED")` is never written, because `record.state` is already `ESCALATED`
+on every move into it; `moved.from` is the state the escalation interrupted.
 
 ## 7. Wire it up as a plugin
 
@@ -328,9 +337,9 @@ export const plugin: Plugin = {
       found: () => lazily().found(),
       newRecord: (id, now) => lazily().newRecord(id, now),
       observe: (record) => lazily().observe(record),
-      handlers: () => lazily().handlers(),
-      apply: (record, plan, outcomes, observation, now) =>
-        lazily().apply(record, plan, outcomes, observation, now),
+      get actions() { return lazily().actions; },
+      apply: (record, plan, outcomes, observation, now, moved) =>
+        lazily().apply(record, plan, outcomes, observation, now, moved),
     } satisfies WorkflowRuntime<ReviewRecord, Observation>);
   },
 

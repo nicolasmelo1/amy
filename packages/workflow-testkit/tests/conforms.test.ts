@@ -18,11 +18,10 @@ function recordingRunner() {
   return { runner, suites, tests };
 }
 
-const received = (uses: string[] = []) =>
+const received = () =>
   workflowOf({
     states: ["received", "done"],
     terminal: ["done"],
-    uses,
     plan: (record) => (record.state === "received" ? advance("done") : settled()),
   });
 
@@ -56,14 +55,18 @@ describe("conforms", () => {
   it("goes red under the property that failed, with every finding in the message", async () => {
     const { runner, tests } = recordingRunner();
 
-    conforms(received(["page"]), { runner, runtime: () => runtimeOf("received", { observe: () => ({}) }), worlds: [{ name: "w" }] });
+    conforms(received(), {
+      runner,
+      runtime: () => runtimeOf("received", { observe: () => ({}), actions: { page: undefined } }),
+      worlds: [{ name: "w" }],
+    });
 
     const handlers = tests.find((test) => test.name === PROPERTIES.handlers)!;
     const error = await handlers.body().catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(ConformanceError);
     expect((error as Error).message).toBe(
       "every action it plans has a handler that survives being called, and it did not:\n" +
-        "  - `page` is declared in usesActions, and the runtime has no handler for it",
+        "  - action `page` is declared with no implementation — give it a handler, or a port and a method",
     );
     await expect(tests.find((test) => test.name === PROPERTIES.reachability)!.body()).resolves.toBeUndefined();
   });

@@ -178,9 +178,10 @@ retry as two. That is what a real second user is for.
 no thread is outstanding" is written directly instead of encoded in some
 condition language.
 
-What is declared as *data* is the workflow's **reach**: `usesActions` and
-`usesObservers`. That is what lets the host answer, before touching anything,
-whether every action the workflow can emit has something that runs it:
+What is declared as *data* is the workflow's **reach**: `usesObservers`, and the
+keys of its runtime's `actions`, where each action is declared beside what runs
+it. That is what lets the host answer, before touching anything, whether every
+action the workflow can emit has something that runs it:
 
 ```ts
 unmetNeeds(mounted, workflow)   // [] or the names that would fail

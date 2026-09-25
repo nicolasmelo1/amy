@@ -16,7 +16,7 @@ export {
 } from "./plan-file.js";
 export { draftPrompt } from "./prompt.js";
 
-export { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
+export { act, advance, settled, wait } from "./effects.js";
 export type { Effect } from "./effects.js";
 
 export { applyNotePlan, applyOutcomes } from "./outcomes.js";
