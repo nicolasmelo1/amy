@@ -59,6 +59,9 @@ describe("what a manifest range is", () => {
     expect(isRange("^1.0.0")).toBe(true);
     expect(isRange("latest")).toBe(true);
     expect(isRange("~2.1.0")).toBe(true);
+    expect(isRange("git")).toBe(true);
+    expect(isRange("gitlab-tool")).toBe(true);
+    expect(isRange(">=1.0.0 <2.0.0")).toBe(true);
 
     expect(isRange("file:../registry/workflow-oncall")).toBe(false);
     expect(isRange("https://example.test/workflow.tgz")).toBe(false);
@@ -66,6 +69,8 @@ describe("what a manifest range is", () => {
     expect(isRange("/absolute/path/to/pkg")).toBe(false);
     expect(isRange("./relative")).toBe(false);
     expect(isRange("~/home-relative")).toBe(false);
+    expect(isRange("~")).toBe(false);
+    expect(isRange("git+https://example.test/owner/repo.git")).toBe(false);
   });
 });
 
@@ -409,6 +414,33 @@ describe("the skills record", () => {
     expect(fs.existsSync(never)).toBe(false);
   });
 
+  it("restores every recorded target if a later skills write fails", () => {
+    const first = path.join(home, "first");
+    const second = path.join(home, "second");
+    fs.mkdirSync(first, { recursive: true });
+    fs.mkdirSync(second, { recursive: true });
+    recordWrite(home, { directory: first });
+    recordWrite(home, { directory: second });
+    fs.mkdirSync(path.join(first, "amy"), { recursive: true });
+    fs.writeFileSync(path.join(first, "amy", "SKILL.md"), "# old\n", "utf-8");
+
+    expect(() => writeSkills(
+      home,
+      (target, skills) => {
+        const file = path.join(target, skills[0]![0], "SKILL.md");
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, skills[0]![1], "utf-8");
+        if (target === second) throw new Error("disk full");
+        return [file];
+      },
+      () => [["amy", "# new\n"]],
+      () => undefined,
+    )).toThrow("disk full");
+
+    expect(fs.readFileSync(path.join(first, "amy", "SKILL.md"), "utf-8")).toBe("# old\n");
+    expect(fs.existsSync(path.join(second, "amy"))).toBe(false);
+  });
+
   it("skips a recorded directory that is gone, rather than recreating it", () => {
     recordWrite(home, { directory: path.join(home, "deleted") });
 
@@ -486,6 +518,17 @@ describe("the running loop", () => {
 
     expect(code).toBe(1);
     expect(runner.argvFor("npm").slice(0, 2)).toEqual(["view", "@acme/workflow-oncall@^1.0.0"]);
+  });
+
+  it("fails a hung module probe within its bounded deadline", async () => {
+    const root = rootWith(home, { "@acme/workflow-oncall": "^1.0.0" });
+    packageAt(root, "@acme/workflow-oncall", "1.0.0", "await new Promise(() => {}); export const plugin = {}; ");
+
+    const { moduleProbe } = await import("../src/index.js");
+    const outcome = await moduleProbe(root, "@acme/workflow-oncall", true, 25);
+
+    expect(outcome).toMatchObject({ ok: false });
+    if (!outcome.ok) expect(outcome.problems.join(" ")).toContain("timed out");
   });
 
   it("rolls back a version the profiles will not boot on", async () => {

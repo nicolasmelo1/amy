@@ -383,6 +383,9 @@ gates:
       - "packages/cli/src/index.ts"
       - "packages/cli/src/skills-record.ts"
       - "packages/cli/src/harnesses.ts"
+      - "packages/cli/src/auto-update.ts"
+      - "packages/cli/src/daemon.ts"
+      - "packages/cli/src/config.ts"
     evidence: ".software-factory/evidence/amy-update.json"
     plan: "docs/design/amy-update.md"
     required_assertions:

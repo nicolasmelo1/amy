@@ -68,7 +68,7 @@ export function writeSkills(
 ): string[] {
   const record = readSkills(home);
   const skills = shipped();
-  const wrote: string[] = [];
+  const targets: { label: string; into: string }[] = [];
 
   for (const harness of record.harnesses) {
     const into = harnessSkills(harness);
@@ -76,18 +76,41 @@ export function writeSkills(
       console.log(`${harness}: no longer a harness this amy knows, skipped`);
       continue;
     }
-    wrote.push(...install(into, skills));
-    console.log(`${harness}: ${skills.length} skill(s) rewritten`);
+    targets.push({ label: harness, into });
   }
-
   for (const directory of record.directories) {
     if (!fs.existsSync(directory)) {
       console.log(`${directory}: gone, skipped`);
       continue;
     }
-    wrote.push(...install(directory, skills));
-    console.log(`${directory}: ${skills.length} skill(s) rewritten`);
+    targets.push({ label: directory, into: directory });
   }
 
-  return wrote;
+  // The CLI is rolled back when this rewrite fails. Preserve every managed
+  // file first, so a failure on a later target cannot leave earlier harnesses
+  // describing the CLI version that did not survive.
+  const before = targets.flatMap(({ into }) => skills.map(([name]) => {
+    const directory = path.join(into, name);
+    const file = path.join(directory, "SKILL.md");
+    return { directory, file, directoryExisted: fs.existsSync(directory), body: fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : undefined };
+  }));
+  const wrote: string[] = [];
+  try {
+    for (const target of targets) {
+      wrote.push(...install(target.into, skills));
+      console.log(`${target.label}: ${skills.length} skill(s) rewritten`);
+    }
+    return wrote;
+  } catch (error) {
+    for (const saved of before.reverse()) {
+      if (saved.body !== undefined) {
+        fs.mkdirSync(saved.directory, { recursive: true });
+        fs.writeFileSync(saved.file, saved.body, "utf-8");
+      } else {
+        fs.rmSync(saved.file, { force: true });
+        if (!saved.directoryExisted) fs.rmSync(saved.directory, { recursive: true, force: true });
+      }
+    }
+    throw error;
+  }
 }

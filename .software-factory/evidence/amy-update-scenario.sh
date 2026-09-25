@@ -314,19 +314,24 @@ else
     record update.a_daemon_updates_only_at_its_lifecycle_boundary 1
   fi
 fi
-# A directly-driven daemon owns the same schedule. It has no daemon record, so
-# after timing runs only once its foreground loop has returned.
+# A directly-driven daemon owns the same schedule and becomes visible while it
+# runs, so update can never replace its files. After timing runs only after its
+# foreground loop has returned and its record is gone.
 rm -f .amy/lifecycle.log
 : > "$work/npm.log"
 "$amy" --workflow oncall daemon --every 1 > "$work/direct-daemon.log" 2>&1 &
 direct=$!
 sleep 1
-kill -TERM "$direct"
-wait "$direct" || true
-if grep -q '^update$' .amy/lifecycle.log 2>/dev/null; then
-  record update.direct_daemon_uses_the_configured_schedule 0
-else
+if ! test -f .amy/daemon.pid; then
   record update.direct_daemon_uses_the_configured_schedule 1
+else
+  kill -TERM "$direct"
+  wait "$direct" || true
+  if grep -q '^update$' .amy/lifecycle.log 2>/dev/null && ! test -f .amy/daemon.pid; then
+    record update.direct_daemon_uses_the_configured_schedule 0
+  else
+    record update.direct_daemon_uses_the_configured_schedule 1
+  fi
 fi
 
 # 2. `--check` names what would move, and moves nothing. The registry has

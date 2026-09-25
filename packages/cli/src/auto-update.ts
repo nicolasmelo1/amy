@@ -61,20 +61,24 @@ export function markDaemonUpdate(home: string, profile: string): void {
 
 /** Whether an exited daemon still has a reaper-owned update to run. */
 export function hasDaemonUpdate(home: string, profile: string): boolean {
-  return fs.existsSync(daemonUpdatePath(home, profile));
+  const file = daemonUpdatePath(home, profile);
+  return fs.existsSync(file) || fs.existsSync(`${file}.claimed`);
 }
 
-/** Takes a due after-timed daemon update exactly once. */
+/** Takes a due after-timed daemon update exactly once, retaining its claim while it runs. */
 export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
-  const claim = `${file}.claimed-${process.pid}`;
   try {
-    fs.renameSync(file, claim);
+    fs.renameSync(file, `${file}.claimed`);
+    return true;
   } catch {
     return false;
   }
-  fs.rmSync(claim, { force: true });
-  return true;
+}
+
+/** Releases the durable reaper claim only after the scheduled update settled. */
+export function finishDaemonUpdate(home: string, profile: string): void {
+  fs.rmSync(`${daemonUpdatePath(home, profile)}.claimed`, { force: true });
 }
 
 /**

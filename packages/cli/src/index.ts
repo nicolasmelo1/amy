@@ -77,7 +77,7 @@ import {
   workflowProfileConflict,
   workflowProfileName,
 } from "./add.js";
-import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, running, writeDaemon } from "./daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, running, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
@@ -85,8 +85,8 @@ import { paths, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
-import { Held, held, imports, isRange, line, move, restore, roots } from "./update.js";
-import { beginAutoUpdateInvocation, hasDaemonUpdate, markDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
+import { Held, held, isRange, line, move, restore, roots } from "./update.js";
+import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -506,6 +506,12 @@ program
     const problems = configuredAutoUpdateProblems(config);
     if (problems.length > 0) throw new Error(problems.join("; "));
     const profile = selected(config);
+    // A detached reaper still owns the dead record and its after-timed
+    // update. Starting another loop must not clear that record before the
+    // reaper can claim it, or silently lose the scheduled maintenance.
+    if (hasDaemonUpdate(home, profile.name)) {
+      throw new Error("the previous daemon is settling its scheduled update; try start again when it finishes");
+    }
     const schedule = beginAutoUpdateInvocation(home, profile.name, config);
     if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
       throw new Error("amy update failed");
@@ -595,7 +601,12 @@ program
     if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error(`invalid daemon pid ${pidText}`);
     await waitForDaemonExit(pid);
     if (!claimExitedDaemon(paths(home).pid, pid)) return;
-    if (takeDaemonUpdate(home, workflow) && await scheduledUpdate() !== 0) process.exitCode = 1;
+    if (!takeDaemonUpdate(home, workflow)) return;
+    try {
+      if (await scheduledUpdate() !== 0) process.exitCode = 1;
+    } finally {
+      finishDaemonUpdate(home, workflow);
+    }
   });
 
 program
@@ -638,8 +649,40 @@ program
       console.log(`${new Date().toISOString()} loop down`);
     };
     if (options.scheduled) await drive();
-    else await aroundWorkflow(profile, drive);
+    else await visibleForegroundDaemon(profile, drive);
   });
+
+/** Makes a directly invoked foreground daemon visible to concurrent update. */
+async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<void>): Promise<void> {
+  const config = loadConfig(home);
+  const problems = configuredAutoUpdateProblems(config);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  const schedule = beginAutoUpdateInvocation(home, profile.name, config);
+  // A before update settles before this foreground process becomes the daemon;
+  // an after update settles after its record is removed.
+  if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
+    throw new Error("amy update failed");
+  }
+  const file = paths(home).pid;
+  const release = claimDaemonBoundary(file);
+  if (!release) throw new Error("the loop is starting or amy update is running; try again when it finishes");
+  try {
+    const live = running(file);
+    if (live) throw new Error(`already running: pid ${live.pid}, driving ${live.workflow}`);
+    writeDaemon(file, { pid: process.pid, workflow: profile.name, startedAt: new Date().toISOString() });
+  } finally {
+    release();
+  }
+  try {
+    await drive();
+  } finally {
+    // Do not erase a record a later owner wrote after this process ended.
+    if (readDaemon(file)?.pid === process.pid) clearDaemon(file);
+  }
+  if (schedule.due && schedule.timing === "after" && await scheduledUpdate() !== 0) {
+    throw new Error("amy update failed");
+  }
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -1858,12 +1901,14 @@ async function moveEach(
       // for the plugins: a CLI that will not run is a bad version, and the
       // move is rolled back.
       const probe = one.root === "plugins"
-        ? await imports(one.name, pluginsRoot)
-        : await cliProbe(root, one.name);
-      if (probe && !probe.ok) {
+        ? await moduleProbe(root, one.name, true)
+        : one.name === "@amykit/cli"
+          ? await cliProbe(root, one.name)
+          : await moduleProbe(root, one.name, false);
+      if (!probe.ok) {
         console.error(`${one.name} ${one.want} does not import:`);
         for (const problem of probe.problems) console.error(`  ${problem}`);
-        const rolledBack = await restore(runner, pluginsRoot, one.name, one.have);
+        const rolledBack = await restore(runner, root, one.name, one.have);
         console.log(rolledBack.ok ? `rolled back to ${one.have}` : `rollback failed — restore by hand with ${rolledBack.command}`);
         failed += 1;
         continue;
@@ -1873,6 +1918,52 @@ async function moveEach(
     }
 
     return { moved, failed };
+}
+
+/** Runs a package import out of process, so a hung top-level await can be killed. */
+export async function moduleProbe(
+  root: string,
+  name: string,
+  needsPlugin: boolean,
+  timeoutMs = 10_000,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  let entry: string;
+  try {
+    entry = packageEntrySpecifier(path.join(root, "node_modules", ...name.split("/")));
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    return { ok: false, problems: [`${name}: could not resolve its entry — ${why}`] };
+  }
+  const source = needsPlugin
+    ? `const m = await import(${JSON.stringify(entry)}); if (!m.plugin) process.exit(2);`
+    : `await import(${JSON.stringify(entry)});`;
+  return spawnedProbe(name, ["--input-type=module", "--eval", source], timeoutMs);
+}
+
+/** A bounded child probe: a package that never settles is a failed update. */
+async function spawnedProbe(
+  name: string,
+  args: readonly string[],
+  timeoutMs: number,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const child = spawn(process.execPath, [...args], { stdio: "ignore" });
+    const finish = (result: { ok: true } | { ok: false; problems: string[] }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish({ ok: false, problems: [`${name}: probe timed out after ${timeoutMs}ms`] });
+    }, timeoutMs);
+    child.once("error", (error) => finish({ ok: false, problems: [`${name}: probe could not start — ${error.message}`] }));
+    child.once("exit", (status) => finish(
+      status === 0 ? { ok: true } : { ok: false, problems: [`${name}: probe exited with status ${status}`] },
+    ));
+  });
 }
 
 /**
@@ -1888,14 +1979,7 @@ async function moveEach(
 async function cliProbe(root: string, name: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const bin = binOf(root, name);
   if (!bin) return { ok: false, problems: [`${name}: its manifest names no bin`] };
-  const outcome = await new Promise<{ status: number | null; error?: Error }>((resolve) => {
-    const child = spawn(process.execPath, [bin, "--version"], { stdio: "ignore" });
-    child.once("error", (error) => resolve({ status: null, error }));
-    child.once("exit", (status) => resolve({ status }));
-  });
-  if (outcome.error) return { ok: false, problems: [`${name}: the new CLI could not be started — ${outcome.error.message}`] };
-  if (outcome.status !== 0) return { ok: false, problems: [`${name}: the new CLI exited with status ${outcome.status}`] };
-  return { ok: true };
+  return spawnedProbe(name, [bin, "--version"], 10_000);
 }
 
 /** The moved package's own bin file, by its manifest, or nothing. */

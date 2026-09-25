@@ -6,6 +6,8 @@ import { DEFAULT_CONFIG, type AmyConfig } from "../src/config.js";
 import {
   autoUpdatePath,
   beginAutoUpdateInvocation,
+  finishDaemonUpdate,
+  hasDaemonUpdate,
   markDaemonUpdate,
   runWithAutoUpdate,
   takeDaemonUpdate,
@@ -95,7 +97,12 @@ describe("runWithAutoUpdate", () => {
     expect(schedule).toEqual({ due: true, timing: "after" });
     markDaemonUpdate(root, "oncall");
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
+    // The claim stays visible while the detached reaper runs, so a new start
+    // cannot clear the dead daemon record and lose this due update.
+    expect(hasDaemonUpdate(root, "oncall")).toBe(true);
     expect(takeDaemonUpdate(root, "oncall")).toBe(false);
+    finishDaemonUpdate(root, "oncall");
+    expect(hasDaemonUpdate(root, "oncall")).toBe(false);
   });
 
   it("fails the workflow invocation when its scheduled update fails", async () => {

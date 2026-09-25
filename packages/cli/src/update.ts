@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CommandRunner } from "@amykit/core";
-import { packageEntrySpecifier } from "./spec.js";
 import { packageManager, shellCommand } from "./install.js";
 
 /**
@@ -89,7 +88,11 @@ export function versionIn(root: string, name: string): string | undefined {
  * whole, and the prefixes above already name every pin form.
  */
 export function isRange(range: string): boolean {
-  return !/^(file:|https?:|git|ssh:|github:|gitlab:|bitbucket:|gist:|\/|\.{0,2}\/|~\/|[A-Za-z]:[\\/])/.test(range);
+  return !(
+    /^(?:file:|https?:\/\/|git:\/\/|git\+(?:ssh|https?|file):\/\/|ssh:\/\/|github:|gitlab:|bitbucket:|gist:)/.test(range) ||
+    /^[^:/]+@[^:/]+:/.test(range) ||
+    /^(?:\/|\.{1,2}\/|~(?:\/|$)|[A-Za-z]:[\\/])/.test(range)
+  );
 }
 
 /**
@@ -329,51 +332,3 @@ function restoreManifestEntry(root: string, before: Record<string, string>, name
   }
 }
 
-/**
- * The entry specifier of the copy on disk, made cache-safe.
- *
- * The ESM cache is keyed by URL, and a move replaces the file behind the
- * same URL: a plain `import(entry)` answers with whatever an earlier import
- * of that URL cached — the old version, exactly when the probe is supposed
- * to see the new one. A counter query makes every probe its own URL, so
- * npm's replacement is always what loads. The query lives on the specifier
- * only; the loader never hands a path with it to the filesystem.
- */
-let probe = 0;
-
-function probedEntry(directory: string): string {
-  probe += 1;
-  return `${packageEntrySpecifier(directory)}?probe=${probe}`;
-}
-
-/**
- * Whether the copy npm just wrote imports and carries a plugin.
- *
- * The same half of `add`'s probe, on the new version: a package whose module
- * will not import, or one that exports no `plugin`, is a bad version, and
- * the move is rolled back. The module loads through `probedEntry`, so the
- * probe reads the copy npm just wrote even when an earlier move in this same
- * update imported that URL at its old version.
- *
- * A registration that needs a full mount to refuse is caught by the boot
- * check after all moves land, which is the other half of the same promise.
- */
-export async function imports(
-  name: string,
-  pluginsRoot: string,
-): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  try {
-    const module = (await import(probedEntry(packageDirectory(pluginsRoot, name)))) as { plugin?: unknown };
-    if (!module.plugin) return { ok: false, problems: [`${name}: exports no \`plugin\``] };
-    return { ok: true };
-  } catch (error) {
-    const why = error instanceof Error ? error.message : String(error);
-    return { ok: false, problems: [`${name}: could not be imported — ${why}`] };
-  }
-}
-
-/** The directory one package occupies beneath a root, read off its name. */
-function packageDirectory(root: string, name: string): string {
-  const parts = name.startsWith("@") ? name.split("/", 2) : [name.split("/", 1)[0]!];
-  return path.join(root, "node_modules", ...parts);
-}
