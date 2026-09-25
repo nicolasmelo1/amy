@@ -9,6 +9,8 @@ import {
   Registry,
   Workflow,
 } from "./plugin.js";
+import { declaredActions, isPortBinding, unrunnable } from "./dispatch.js";
+import { WORKFLOW_RUNTIME, WorkflowRuntime } from "./runtime.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { Queue } from "./ports/Queue.js";
@@ -216,6 +218,32 @@ function registrarFor(plugin: Plugin, mounted: Mounted, problems: string[]): Reg
 }
 
 /**
+ * The runtime the mounted workflow contributed, looked up by the workflow's
+ * own name the way an engine looks it up.
+ */
+export function mountedRuntime(
+  mounted: Mounted,
+  workflow: Workflow<never, never>,
+): WorkflowRuntime | undefined {
+  return mounted.contributions.get(WORKFLOW_RUNTIME)?.get(workflow.name) as
+    | WorkflowRuntime
+    | undefined;
+}
+
+/**
+ * The actions a mounted workflow declares: its runtime's keys, or none when
+ * the runtime is missing or cannot be read.
+ */
+export function mountedActions(mounted: Mounted, workflow: Workflow<never, never>): string[] {
+  try {
+    const runtime = mountedRuntime(mounted, workflow);
+    return runtime?.actions ? declaredActions(runtime) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * What a mounted host cannot give the workflow it was asked to drive.
  *
  * This is where the price of an open action name gets paid: at boot, naming
@@ -223,39 +251,15 @@ function registrarFor(plugin: Plugin, mounted: Mounted, problems: string[]): Reg
  */
 export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): string[] {
   const unmet: string[] = [];
+  const actions = declaredOn(mounted, workflow, unmet);
 
-  for (const action of workflow.usesActions) {
-    const spec = mounted.actions.get(action);
-    if (!spec) {
-      unmet.push(`action \`${action}\`: nothing defines it`);
-      continue;
+  if (actions !== null) {
+    const port = (kind: PortKind): object | undefined => mounted.ports.get(kind);
+    for (const [action, implementation] of Object.entries(actions)) {
+      const problem = unrunnable(action, implementation, port) ?? catalogued(mounted, action, implementation);
+      if (problem) unmet.push(problem);
     }
-    if (!mounted.ports.has(spec.port)) {
-      unmet.push(`action \`${action}\`: needs the \`${spec.port}\` port, which nothing mounted`);
-    }
-  }
-
-  // The declaration rule: a workflow's claimed tracker writes are the only
-  // surface its runtime may reach. The claim is written by hand, never
-  // derived, so a workflow that declares a tracker-mutating action while
-  // claiming none is refused here, at boot, naming the action and the
-  // capability — the one place every install is checked, before any tracker
-  // call log records a write.
-  const claimed = new Set(workflow.trackerWrites ?? []);
-  for (const capability of claimed) {
-    if (!TRACKER_WRITE_CAPABILITIES.includes(capability as TrackerWriteCapability)) {
-      unmet.push(
-        `the workflow claims the tracker write \`${capability}\`, which is not one a mounted tracker could honour — \`comment\`, \`set-status\`, \`assign\` or \`create-follow-up\``,
-      );
-    }
-  }
-  for (const action of workflow.usesActions) {
-    const capability = trackerWriteFor(action);
-    if (capability === undefined || claimed.has(capability)) continue;
-    unmet.push(
-      `action \`${action}\` writes the tracker (\`${capability}\`), ` +
-        `but the workflow does not claim that capability — add \`${capability}\` to its \`trackerWrites\``,
-    );
+    unmet.push(...unclaimedWrites(workflow, Object.keys(actions)));
   }
 
   for (const slice of workflow.usesObservers) {
@@ -265,4 +269,101 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
   }
 
   return unmet;
+}
+
+/**
+ * The declaration rule: a workflow's claimed tracker writes are the only
+ * surface its runtime may reach. The claim is written by hand, never derived,
+ * so a declared tracker-mutating action it does not claim is refused at boot,
+ * naming the action and the capability, before any tracker call log records
+ * a write.
+ */
+function unclaimedWrites(workflow: Workflow<never, never>, actions: readonly string[]): string[] {
+  const unmet: string[] = [];
+  const claimed = new Set(workflow.trackerWrites ?? []);
+  for (const capability of claimed) {
+    if (!TRACKER_WRITE_CAPABILITIES.includes(capability as TrackerWriteCapability)) {
+      unmet.push(
+        `the workflow claims the tracker write \`${capability}\`, which is not one a mounted tracker could honour — \`comment\`, \`set-status\`, \`assign\` or \`create-follow-up\``,
+      );
+    }
+  }
+  for (const action of actions) {
+    const capability = trackerWriteFor(action);
+    if (capability === undefined || claimed.has(capability)) continue;
+    unmet.push(
+      `action \`${action}\` writes the tracker (\`${capability}\`), ` +
+        `but the workflow does not claim that capability — add \`${capability}\` to its \`trackerWrites\``,
+    );
+  }
+  return unmet;
+}
+
+/**
+ * The runtime's action map, or `null` with the reason pushed when there is
+ * none to read.
+ *
+ * A package still written against the old contract is named with its fix,
+ * because a boot that refused it any other way would read as a missing port.
+ */
+function declaredOn(
+  mounted: Mounted,
+  workflow: Workflow<never, never>,
+  unmet: string[],
+): Readonly<Record<string, unknown>> | null {
+  if (Object.hasOwn(workflow, "usesActions")) {
+    unmet.push(
+      `the workflow \`${workflow.name}\` still declares \`usesActions\`, which is now the keys of its runtime's \`actions\` — delete it and key each action there, beside what runs it`,
+    );
+  }
+
+  const runtime = mountedRuntime(mounted, workflow);
+  if (!runtime) {
+    unmet.push(
+      `the workflow \`${workflow.name}\` contributed no runtime to \`${WORKFLOW_RUNTIME}\`, so nothing can run its actions`,
+    );
+    return null;
+  }
+
+  let actions: unknown;
+  try {
+    actions = runtime.actions;
+  } catch (error) {
+    unmet.push(
+      `the workflow \`${workflow.name}\`: its actions could not be read — ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
+  }
+
+  if (actions === null || typeof actions !== "object") {
+    const legacy = typeof (runtime as { handlers?: unknown }).handlers === "function";
+    unmet.push(
+      legacy
+        ? `the workflow \`${workflow.name}\` still has \`handlers()\`, which is now \`actions\`: one map whose keys are the actions it emits and whose values run them`
+        : `the workflow \`${workflow.name}\` declares no \`actions\` on its runtime`,
+    );
+    return null;
+  }
+  return unmet.length > 0 ? null : (actions as Readonly<Record<string, unknown>>);
+}
+
+/**
+ * Whether the catalogue agrees with how an action is implemented.
+ *
+ * A handler runs an action the catalogue names, because the catalogue is
+ * what tells the budget which actions spend an agent and the tracker check
+ * which ones write. A port and a method names its own port, so it may run an
+ * action nobody catalogued — but not one the catalogue sends elsewhere.
+ */
+function catalogued(mounted: Mounted, action: string, implementation: unknown): string | null {
+  const spec = mounted.actions.get(action);
+  if (isPortBinding(implementation)) {
+    if (!spec || spec.port === implementation.port) return null;
+    return `action \`${action}\` is wired to the \`${implementation.port}\` port, but the catalogue runs it on \`${spec.port}\``;
+  }
+  if (!spec) return `action \`${action}\`: nothing defines it`;
+  if (!mounted.ports.has(spec.port)) {
+    return `action \`${action}\`: needs the \`${spec.port}\` port, which nothing mounted`;
+  }
+  return null;
 }

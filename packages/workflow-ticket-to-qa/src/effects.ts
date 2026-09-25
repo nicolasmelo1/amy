@@ -25,23 +25,6 @@ export type Effect =
   | { type: "hand-off-to-qa"; tracker: string }
   | { type: "announce"; text: string };
 
-/** Every action name this workflow can emit, as data the loader can check. */
-export const USES_ACTIONS = [
-  "triage",
-  "ask-question",
-  "implement",
-  "run-gate",
-  "self-review",
-  "open-pull-request",
-  "resolve-review-thread",
-  "address-threads",
-  "assign-reviewer",
-  "request-rereview",
-  "escalate",
-  "hand-off-to-qa",
-  "announce",
-] as const;
-
 export function act(why: string, ...effects: Effect[]): Plan {
   return { kind: "act", effects, why };
 }

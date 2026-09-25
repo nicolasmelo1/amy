@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, Mounted, Plugin, mount } from "@amykit/core";
+import { CommandRunner, Mounted, Plugin, mount, mountedActions } from "@amykit/core";
 import { classify } from "./spec.js";
 import { packageManager, shellCommand } from "./install.js";
 
@@ -237,7 +237,7 @@ export async function whatBoots(
  * the moment somebody can still change their mind.
  */
 export function unmetAction(mounted: Mounted, unmet: readonly string[]): string {
-  const actions = mounted.workflow?.usesActions ?? [];
+  const actions = mounted.workflow ? mountedActions(mounted, mounted.workflow) : [];
   const named = unmet.find((problem) => actions.some((action) => problem.includes(`\`${action}\``)));
   return named ?? unmet[0] ?? "nothing is missing";
 }

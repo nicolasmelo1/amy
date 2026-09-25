@@ -368,7 +368,7 @@ function lifecycle() {
       const result = amy(root, ["tick"]);
       const after = stateOf(root);
 
-      world.trail.push({ before, after, said: result.out, code: result.code });
+      world.trail.push({ before, after, resumeAt: recordOf(root)?.resumeAt, said: result.out, code: result.code });
       if (result.code !== 0) throw new Error(`amy tick exited ${result.code}: ${result.out}`);
       if (after === "DONE" && result.out.includes("nothing due")) break;
 
@@ -817,6 +817,14 @@ function assertionsFor(first, second) {
     [
       "lifecycle.a_disagreement_goes_to_the_owner_as_a_follow_up",
       Boolean(followUp) && first.record.escalation?.followUpTicketId === followUp?.identifier,
+    ],
+    [
+      // Folded from the move rather than from the record's state, which is
+      // already ESCALATED by the time the fold sees it — and the answer sends
+      // the work back to the state that raised the escalation, then forgets it.
+      "escalating.remembers_the_state_it_interrupted",
+      first.trail.some((look) => look.before === "HUMAN_FIX" && look.after === "ESCALATED" && look.resumeAt === "HUMAN_FIX") &&
+        first.trail.some((look) => look.before === "ESCALATED" && look.after === "HUMAN_FIX" && look.resumeAt === undefined),
     ],
     [
       "lifecycle.the_owners_answer_reopens_the_judgement",

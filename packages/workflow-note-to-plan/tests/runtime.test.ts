@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   ActionContext,
+  ActionHandler,
   AgentRun,
   AskContext,
   CodeHost,
@@ -18,6 +19,11 @@ import { PlanState } from "../src/state.js";
 import { Note, Notes } from "../src/ports/Notes.js";
 import { PlanCheck } from "../src/ports/PlanCheck.js";
 import { planRuntime } from "../src/runtime.js";
+
+/** The handler this runtime declared for one action, as the handler it is. */
+function handler(runtime: ReturnType<typeof planRuntime>, name: string): ActionHandler<PlanRecord, Observation> {
+  return runtime.actions[name] as ActionHandler<PlanRecord, Observation>;
+}
 
 const NOW = new Date("2026-09-04T20:00:00.000Z");
 
@@ -212,7 +218,7 @@ describe("drafting", () => {
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["draft-plan"]!({ type: "draft-plan" }, ctx);
+    await handler(runtime, "draft-plan")({ type: "draft-plan" }, ctx);
 
     expect(asked).toHaveLength(1);
   });
@@ -223,7 +229,7 @@ describe("drafting", () => {
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["draft-plan"]!({ type: "draft-plan" }, ctx);
+    await handler(runtime, "draft-plan")({ type: "draft-plan" }, ctx);
 
     expect(asked[0]?.context).toEqual({ workId: "note-1", step: "draft-plan" });
     expect(asked[0]?.prompt).toContain("the gate output is truncated");
@@ -236,7 +242,7 @@ describe("drafting", () => {
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["draft-plan"]!({ type: "draft-plan" }, ctx);
+    await handler(runtime, "draft-plan")({ type: "draft-plan" }, ctx);
 
     expect(asked[0]?.cwd).toBe("/checkouts/widgets");
   });
@@ -247,7 +253,7 @@ describe("drafting", () => {
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["draft-plan"]!(
+    await handler(runtime, "draft-plan")(
       { type: "draft-plan", finding: "L4.PLAN_DECLARES_EXIT_CONDITION" },
       ctx,
     );
@@ -265,7 +271,7 @@ describe("drafting", () => {
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["draft-plan"]!({ type: "draft-plan" }, ctx);
+    await handler(runtime, "draft-plan")({ type: "draft-plan" }, ctx);
 
     expect(runner.callsTo("git").map((call) => call.args.join(" "))).toContain(
       "checkout -B amy/plan-the-gate-output-is-truncated-before-the-agent origin/main",
@@ -283,7 +289,7 @@ describe("drafting", () => {
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["draft-plan"]!({ type: "draft-plan" }, ctx);
+    await handler(runtime, "draft-plan")({ type: "draft-plan" }, ctx);
 
     expect(ctx.outcomes.draft).toMatchObject({ ok: false });
   });
@@ -295,7 +301,7 @@ describe("drafting", () => {
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["draft-plan"]!({ type: "draft-plan" }, ctx);
+    await handler(runtime, "draft-plan")({ type: "draft-plan" }, ctx);
 
     expect(ctx.outcomes.draft).toMatchObject({ ok: false });
     expect(runner.callsTo("git").map((c) => c.args[0])).not.toContain("push");
@@ -309,7 +315,7 @@ describe("checking", () => {
     const current = record("CHECKED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["check-plan"]!({ type: "check-plan" }, ctx);
+    await handler(runtime, "check-plan")({ type: "check-plan" }, ctx);
 
     expect(check.check).toHaveBeenCalledWith("acme/widgets", "note-1");
   });
@@ -322,7 +328,7 @@ describe("checking", () => {
     const current = record("CHECKED");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["check-plan"]!({ type: "check-plan" }, ctx);
+    await handler(runtime, "check-plan")({ type: "check-plan" }, ctx);
 
     expect(ctx.outcomes.check).toEqual({
       ok: false,
@@ -339,7 +345,7 @@ describe("opening the pull request", () => {
     const current = record("PR_OPEN");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["open-pull-request"]!({ type: "open-pull-request" }, ctx);
+    await handler(runtime, "open-pull-request")({ type: "open-pull-request" }, ctx);
 
     expect(host.openPullRequest).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -355,7 +361,7 @@ describe("opening the pull request", () => {
     const current = record("PR_OPEN");
     const ctx = context(current, await observed(runtime, current));
 
-    await runtime.handlers()["open-pull-request"]!({ type: "open-pull-request" }, ctx);
+    await handler(runtime, "open-pull-request")({ type: "open-pull-request" }, ctx);
 
     const request = vi.mocked(host.openPullRequest).mock.calls[0]![0];
     expect(request.body).toContain("the gate output is truncated");
@@ -375,6 +381,7 @@ describe("folding what happened back in", () => {
       {},
       observation,
       NOW,
+      { from: "NOTED", to: "DRAFTED" },
     );
 
     expect(next.repo).toBe("acme/widgets");
@@ -392,6 +399,7 @@ describe("folding what happened back in", () => {
       { check: { ok: false, output: "red", at: "now" } },
       observation,
       NOW,
+      null,
     );
 
     expect(next.lastCheck).toEqual({ ok: false, output: "red", at: "now" });

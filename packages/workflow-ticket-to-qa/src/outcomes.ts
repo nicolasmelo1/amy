@@ -1,4 +1,4 @@
-import { Plan, applyPlan } from "@amykit/core";
+import { Moved, Plan, applyPlan, movedBy } from "@amykit/core";
 import {
   AttemptOutcome,
   Escalation,
@@ -6,6 +6,7 @@ import {
   TicketRecord,
   TriageOutcome,
 } from "./record.js";
+import { TicketState } from "./state.js";
 
 /**
  * What executing a plan's actions produced.
@@ -65,6 +66,30 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   return next;
 }
 
+/**
+ * Remembers the state an escalation interrupted, and forgets it on the way
+ * back out.
+ *
+ * Read from the move, because the record handed to a fold has already made
+ * it: its `state` is `ESCALATED` on every advance into it, and a guard written
+ * against `state` excludes every escalation there is.
+ *
+ * Leaving `ESCALATED` also starts every retry budget again. The owner's
+ * answer is new information, and a state that gave up on its attempts would
+ * otherwise give up again on its very first look back.
+ */
+export function applyTransition(record: TicketRecord, moved: Moved | null): TicketRecord {
+  if (!moved) return record;
+  if (moved.to === "ESCALATED" && moved.from !== "ESCALATED") {
+    return { ...record, resumeAt: moved.from as TicketState };
+  }
+  if (moved.from === "ESCALATED") {
+    const { resumeAt: _resumed, ...rest } = record;
+    return { ...rest, attempts: {} };
+  }
+  return record;
+}
+
 /** Replace a judgement by thread id, preserving unrelated prior verdicts. */
 function mergeVerdicts(record: TicketRecord, verdicts: ThreadVerdict[] | undefined): void {
   for (const verdict of verdicts ?? []) {
@@ -87,5 +112,8 @@ export function applyTicketPlan(
   outcomes: EffectOutcomes,
   now: Date,
 ): TicketRecord {
-  return applyOutcomes(applyPlan(record, plan, now), outcomes);
+  return applyTransition(
+    applyOutcomes(applyPlan(record, plan, now), outcomes),
+    movedBy(record, plan),
+  );
 }

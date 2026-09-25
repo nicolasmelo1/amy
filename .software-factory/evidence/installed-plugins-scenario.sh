@@ -90,9 +90,27 @@ for arg in "\$@"; do
       ;;
   esac
 done
+# The core every plugin imports is this checkout's, not the last one npm
+# would fetch from the registry: a plugin built against an export added since
+# would fail to import beside a published copy. Swapped in after npm has
+# written the root, so the root's own manifest still names only what the
+# command asked for.
+prefix=""
+previous=""
+for arg in "\$@"; do
+  if [ "\$previous" = "--prefix" ]; then prefix="\$arg"; fi
+  previous="\$arg"
+done
 # The artifact paths are made by this scenario, without spaces; eval expands
 # the tarball glob only after the package name above has become that path.
-eval "exec '$npm_real' \$args"
+status=0
+eval "'$npm_real' \$args" || status=\$?
+core="\$prefix/node_modules/@amykit/core"
+if [ "\$status" = 0 ] && [ -n "\$prefix" ] && [ -d "\$core" ]; then
+  rm -rf "\$core" && mkdir -p "\$core"
+  tar xzf $work/lib/packages/amykit-core-*.tgz -C "\$core" --strip-components=1
+fi
+exit "\$status"
 SH
 chmod +x "$work/bin/npm"
 export PATH="$work/bin:$PATH"
@@ -190,7 +208,45 @@ uninstalled=$("$amy" --workflow absent tick 2>&1 || echo "")
 says plugins.a_shipped_workflow_nobody_installed_is_refused_by_name \
   "$uninstalled" "there is no \`absent\` workflow"
 
-# 7. And so is a plugin, with what was installed instead.
+# 7. The workflow's actions are one declaration: the key names the action and
+# the value runs it. A key with nothing behind it is refused at boot, by name,
+# before the work it would have reached is touched.
+index="$plugins/node_modules/@acme/workflow-oncall/index.js"
+cp "$index" "$work/oncall.js"
+edit() {
+  # edit <file> <from> <to>
+  python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); t=p.read_text(); assert sys.argv[2] in t; p.write_text(t.replace(sys.argv[2], sys.argv[3]))' "$@"
+}
+echo "the pager rang twice" > .amy/pages/PAGE-2.txt
+edit "$index" 'actions: {},' 'actions: { announce: undefined },'
+unimplemented=$("$amy" tick 2>&1 || echo "")
+case "$unimplemented" in
+  *'action `announce` is declared with no implementation'*)
+    test ! -e .amy/oncall/records/PAGE-2.json && record mount.an_action_with_no_implementation_is_refused 0 ||
+      record mount.an_action_with_no_implementation_is_refused 1 ;;
+  *) record mount.an_action_with_no_implementation_is_refused 1 ;;
+esac
+
+# A plan that carries an action the workflow never declared is refused
+# before any of that plan's actions run: the declared one ahead of it never
+# announces, and the page is never saved as having moved.
+cp "$work/oncall.js" "$index"
+edit "$index" 'actions: {},' 'actions: { announce: async () => fs.writeFileSync(path.join(process.env.HOME, "announced"), "yes") },'
+edit "$index" 'effects: [], why: "the page was picked up"' 'effects: [{ type: "announce" }, { type: "page" }], why: "the page was picked up"'
+"$amy" discover >/dev/null 2>&1 || true
+undeclared="$("$amy" tick 2>&1 || true) $("$amy" tick 2>&1 || true)"
+case "$undeclared" in
+  *'"page", which the workflow never declared in its actions'*)
+    if [ ! -e "$work/home/announced" ] && [ ! -e .amy/oncall/records/PAGE-2.json ]; then
+      record mount.an_undeclared_action_is_refused 0
+    else
+      record mount.an_undeclared_action_is_refused 1
+    fi ;;
+  *) record mount.an_undeclared_action_is_refused 1 ;;
+esac
+cp "$work/oncall.js" "$index"
+
+# 8. And so is a plugin, with what was installed instead.
 sed -i.bak 's|      - "@acme/workflow-oncall"|      - "@acme/workflow-oncall"\
       - "@acme/plugin-nowhere"|' .amy/config.yaml
 before=$(cat .amy/oncall/records/PAGE-1.json)

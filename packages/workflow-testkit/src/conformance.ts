@@ -31,6 +31,7 @@ export async function conformance<R extends WorkRecord, O, P, W extends World<R>
     walks.push(
       await walk(machine, world, {
         runtime: (w, now) => options.runtime(w as W, now) as unknown as AnyRuntime,
+        ports: (w) => options.ports?.(w as W) ?? {},
         maxLooks: options.maxLooks ?? 200,
         start: options.start ?? THURSDAY_NOON,
       }),

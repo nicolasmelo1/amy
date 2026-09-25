@@ -153,6 +153,11 @@ gates:
       - "packages/cli/src/slices.ts"
       - "scripts/install.sh"
       - "scripts/write-install-manifest.mjs"
+      # The two refusals below are the mount's and the engine's, so a change
+      # to either is a change to what this gate last proved.
+      - "packages/core/src/mount.ts"
+      - "packages/core/src/dispatch.ts"
+      - "plugins/serial-engine/src/Worker.ts"
     evidence: ".software-factory/evidence/installed-plugins.json"
     plan: "docs/design/plugins-are-installed-not-compiled-in.md"
     required_assertions:
@@ -171,6 +176,8 @@ gates:
       - "plugins.resolve_from_amys_own_root"
       - "plugins.a_global_install_is_not_needed"
       - "plugins.the_listing_is_read_from_one_directory"
+      - "mount.an_action_with_no_implementation_is_refused"
+      - "mount.an_undeclared_action_is_refused"
 
   # The last large package without a gate, and the one that decides whether a
   # ticket gets lost. What it exists to handle is a bad day, and what carries
@@ -243,6 +250,7 @@ gates:
       - "brief.self_review_is_a_declared_agent_step"
       - "brief.show_reads_the_port_without_exposing_its_directory"
       - "lifecycle.only_the_working_status_is_picked_up"
+      - "escalating.remembers_the_state_it_interrupted"
       - "lifecycle.triage.reads_a_body_the_tracker_supplied"
       - "lifecycle.triage.reads_the_label_the_tracker_supplied"
       - "lifecycle.a_blocking_question_is_asked_on_the_ticket"

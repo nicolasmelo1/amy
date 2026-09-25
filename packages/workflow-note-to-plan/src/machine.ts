@@ -1,5 +1,5 @@
 import { Plan, Workflow } from "@amykit/core";
-import { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
+import { act, advance, settled, wait } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { PlanRecord, attemptsIn } from "./record.js";
 import { PLAN_STATES, WAITING_STATES } from "./state.js";
@@ -161,7 +161,6 @@ export const noteToPlan: Workflow<Observation, Policy> = {
   waitingStates: WAITING_STATES,
   initialState: "NOTED",
   terminalStates: ["DONE", "DECLINED"],
-  usesActions: USES_ACTIONS,
   // Empty for the same reason the ticket workflow's is: the observation is
   // assembled from the ports its own actions already require, so there is no
   // separate slice for a plugin to contribute.

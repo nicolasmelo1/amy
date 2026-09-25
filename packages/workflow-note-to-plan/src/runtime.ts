@@ -224,17 +224,16 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, 
       };
     },
 
-    handlers() {
-      // The cast is the boundary. Inside this file the map is exhaustive over
-      // `Effect` and each handler takes exactly its own payload, which is what
-      // makes a new action fail to compile until something runs it.
-      return Object.fromEntries(
-        Object.entries(handlers).map(([name, handler]) => [
-          name,
-          handler as ActionHandler<PlanRecord, Observation>,
-        ]),
-      );
-    },
+    // The key is the declaration and the value what runs it. The cast is the
+    // boundary: the map is exhaustive over `Effect`, so a new action fails to
+    // compile until something runs it, and the engine only ever hands back an
+    // action it was given by the plan that typed it.
+    actions: Object.fromEntries(
+      Object.entries(handlers).map(([name, handler]) => [
+        name,
+        handler as ActionHandler<PlanRecord, Observation>,
+      ]),
+    ),
 
     /**
      * Only this workflow's own half of the fold: the engine has already put

@@ -62,7 +62,7 @@ describe("a workflow of your own", () => {
     );
   });
 
-  it("refuses an action no runtime handler answers", async () => {
+  it("refuses an action the plan emits and the runtime never declared", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.js");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
@@ -71,8 +71,28 @@ describe("a workflow of your own", () => {
     ));
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toContain(
-      "oncall: plan emits `page`, but no runtime handler answers it",
+      "oncall: plan emits `page`, which its runtime never declared in `actions`",
     );
+  });
+
+  it("refuses an action declared with nothing behind it, before driving anything", async () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+    const entry = path.join(directory, "index.js");
+    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("actions: {},", "actions: { page: undefined },"));
+
+    await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([
+      "oncall: declares `page` with no implementation — give it a handler, or a port and a method",
+    ]);
+  });
+
+  it("tells a workflow still declaring usesActions what to change", async () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+    const entry = path.join(directory, "index.js");
+    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("usesObservers: [],", "usesActions: [],\n  usesObservers: [],"));
+
+    await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([
+      "oncall: still declares `usesActions`; delete it and key each action in its runtime's `actions`",
+    ]);
   });
 
   it("writes a suite that passes on its first run", () => {

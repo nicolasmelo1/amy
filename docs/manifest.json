@@ -333,6 +333,11 @@
           "description": ""
         },
         {
+          "title": "The workflow contract changes once",
+          "path": "/design/the-workflow-contract-changes-once",
+          "description": ""
+        },
+        {
           "title": "The worktree is the workplace",
           "path": "/design/the-worktree-is-the-workplace",
           "description": ""
@@ -826,6 +831,11 @@
           "depth": 3,
           "title": "The config template and the /amy-workflow skill say that a workflow of your own lives in ~/.amy/workflows, instead of naming amy add, a command nothing ships, and telling a harness to install a package it does not need.",
           "slug": "the-config-template-and-the-amy-workflow-skill-say-that-a-workflow-of-your-own-lives-in-amyworkflows-instead-of-naming-amy-add-a-command-nothing-ships-and-telling-a-harness-to-install-a-package-it-does-not-need"
+        },
+        {
+          "depth": 3,
+          "title": "**Breaking for workflow authors — one migration for two changes.**",
+          "slug": "breaking-for-workflow-authors-one-migration-for-two-changes"
         },
         {
           "depth": 2,
@@ -2249,6 +2259,48 @@
           "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-workflow-contract-changes-once",
+      "file": "docs/design/the-workflow-contract-changes-once.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-workflow-contract-changes-once.md",
+      "title": "The workflow contract changes once",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "An action can be declared and not exist",
+          "slug": "an-action-can-be-declared-and-not-exist"
+        },
+        {
+          "depth": 2,
+          "title": "The fold is not told what moved",
+          "slug": "the-fold-is-not-told-what-moved"
+        },
+        {
+          "depth": 2,
+          "title": "Why one row",
+          "slug": "why-one-row"
+        },
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "Where this fell short of the plan",
+          "slug": "where-this-fell-short-of-the-plan"
         },
         {
           "depth": 2,
@@ -7135,7 +7187,10 @@
           "packages/cli/src/paths.ts",
           "packages/cli/src/slices.ts",
           "scripts/install.sh",
-          "scripts/write-install-manifest.mjs"
+          "scripts/write-install-manifest.mjs",
+          "packages/core/src/mount.ts",
+          "packages/core/src/dispatch.ts",
+          "plugins/serial-engine/src/Worker.ts"
         ],
         "evidence": ".software-factory/evidence/installed-plugins.json",
         "plan": "docs/design/plugins-are-installed-not-compiled-in.md",
@@ -7154,7 +7209,9 @@
           "plugins.the_listing_tells_installed_from_mounted",
           "plugins.resolve_from_amys_own_root",
           "plugins.a_global_install_is_not_needed",
-          "plugins.the_listing_is_read_from_one_directory"
+          "plugins.the_listing_is_read_from_one_directory",
+          "mount.an_action_with_no_implementation_is_refused",
+          "mount.an_undeclared_action_is_refused"
         ],
         "scenario": ".software-factory/evidence/installed-plugins-scenario.sh"
       },
@@ -7306,6 +7363,7 @@
           "brief.self_review_is_a_declared_agent_step",
           "brief.show_reads_the_port_without_exposing_its_directory",
           "lifecycle.only_the_working_status_is_picked_up",
+          "escalating.remembers_the_state_it_interrupted",
           "lifecycle.triage.reads_a_body_the_tracker_supplied",
           "lifecycle.triage.reads_the_label_the_tracker_supplied",
           "lifecycle.a_blocking_question_is_asked_on_the_ticket",
@@ -7768,6 +7826,42 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "the-workflow-contract-changes-once",
+        "title": "**Breaking for workflow authors — one migration for two changes.**",
+        "body": "An action is declared once. `WorkflowRuntime.handlers()` and `Workflow.usesActions` are replaced by `WorkflowRuntime.actions`: a map whose keys are the actions the plan may emit and whose values run them — a handler, or `{ port, method }`, which the host calls with the action and its context and whose answer lands in `outcomes` under the action's name. The mount refuses at boot, by name, a key with nothing behind it, a port nothing mounted, or a method the port lacks; the engine refuses a plan carrying an undeclared action before any of its actions run. A package still carrying `usesActions` or `handlers()` is refused with the sentence that says what to change.\n\n`apply` is told the move: `apply(record, plan, outcomes, observation, now, moved)`, where `moved` is `{ from, to }` for an advance and `null` otherwise. `record` has already moved, so where the work came from is `moved.from`, never `record.state`. `movedBy`, `runAction`, `implementationOf`, `undeclaredIn`, `unrunnable`, `mountedActions` and `mountedRuntime` are exported from the core.\n\n`ticket-to-qa` now resumes an answered escalation in the state that raised it — implementing, the gate, an automated or human fix, or reviewer assignment — instead of always in `HUMAN_FIX`, and starts its attempt counters again when it does. `@amykit/workflow-testkit` takes a `ports` option for actions declared as a port and a method, and `amy workflow new` scaffolds the new shape.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-testkit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       }
     ],
     "changelogs": [

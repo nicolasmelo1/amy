@@ -12,12 +12,17 @@ import {
   QueueItem,
   StopSwitch,
   Store,
+  PortLookup,
   WorkRecord,
   Workflow,
   WorkflowRuntime,
   actionsOf,
   applyPlan,
   dispatchesTo,
+  implementationOf,
+  movedBy,
+  runAction,
+  undeclaredIn,
 } from "@amykit/core";
 
 export interface WorkerConfig {
@@ -46,6 +51,12 @@ export interface WorkerDeps {
    * mean.
    */
   runtime: WorkflowRuntime;
+  /**
+   * The mounted ports, for an action the runtime declared as a port and a
+   * method rather than as a handler. Optional, so an engine whose workflow
+   * wrote every handler itself still runs.
+   */
+  port?: PortLookup;
   /** Core's own port, and the only one left here: a failure has to be sayable. */
   notifier: Notifier;
   now: () => Date;
@@ -192,18 +203,20 @@ export class Worker {
       return parked;
     }
 
-    const outcomes = await this.execute(observation, record, actions);
+    const outcomes = await this.execute(observation, record, decision);
 
     // The core folds the state, the attempt count and the history; the
     // runtime folds what only it can read. Two calls rather than one because
     // the second cannot be written without knowing the domain, and this
-    // engine is the half that does not.
+    // engine is the half that does not. The move is handed over as well,
+    // because the record the runtime gets has already made it.
     const next = this.deps.runtime.apply(
       applyPlan(record, decision, now),
       decision,
       outcomes,
       observation,
       now,
+      movedBy(record, decision),
     );
     this.deps.records.save(next);
 
@@ -387,34 +400,28 @@ export class Worker {
     );
   }
 
-  /**
-   * Actions the workflow says it emits that nothing here could run.
-   *
-   * The port half of this question is `unmetNeeds` in the core, which reads
-   * the mount. This is the other half: whether the runtime brought a handler
-   * for each name. Asked before any work is touched rather than discovered
-   * halfway through a piece of it.
-   */
-  missingActions(usesActions: readonly string[]): string[] {
-    const handlers = this.deps.runtime.handlers();
-    return usesActions.filter((name) => !handlers[name]);
-  }
-
   private async execute(
     observation: unknown,
     record: WorkRecord,
-    actions: readonly Action[],
+    plan: Plan,
   ): Promise<Record<string, unknown>> {
     const outcomes: Record<string, unknown> = {};
     const ctx: ActionContext = { record, observation, outcomes };
-    const handlers = this.deps.runtime.handlers();
+    const runtime = this.deps.runtime;
+    const port = this.deps.port ?? ((): undefined => undefined);
 
-    for (const action of actions) {
-      const handler = handlers[action.type];
-      if (!handler) {
-        throw new Error(`no handler is mounted for the action "${action.type}"`);
-      }
+    // Asked of the whole plan before its first action runs, so a plan that
+    // carries something the workflow never declared is refused with nothing
+    // half-done behind it rather than after the actions ahead of it.
+    const undeclared = undeclaredIn(runtime, plan);
+    if (undeclared.length > 0) {
+      throw new Error(
+        `the plan in ${record.state} carries ${undeclared.map((name) => `"${name}"`).join(", ")}, ` +
+          `which the workflow never declared in its actions`,
+      );
+    }
 
+    for (const action of actionsOf(plan)) {
       // Between actions as well as between ticks, because a plan can carry
       // several and a stop should not have to wait for the last one.
       if (this.deps.stop?.isRequested()) {
@@ -428,7 +435,7 @@ export class Worker {
 
       this.record("action.started", { workId: record.id, detail: { action: action.type } });
       try {
-        await handler(action, ctx);
+        await runAction(implementationOf(runtime, action.type), action, ctx, port);
         this.record("action.finished", { workId: record.id, detail: { action: action.type } });
       } catch (error) {
         this.record("action.failed", {

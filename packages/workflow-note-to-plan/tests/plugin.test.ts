@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, mount, unmetNeeds } from "@amykit/core";
+import { HostServices, Plugin, WORKFLOW_RUNTIME, mount, mountedActions, unmetNeeds } from "@amykit/core";
 import { plugin as noteToPlan } from "../src/plugin.js";
 
 const host: HostServices = {
@@ -103,7 +103,7 @@ describe("what the workflow says it needs", () => {
     const outcome = await assemble();
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
-    expect(outcome.mounted.workflow!.usesActions).toEqual([
+    expect(mountedActions(outcome.mounted, outcome.mounted.workflow!)).toEqual([
       "draft-plan",
       "check-plan",
       "open-pull-request",

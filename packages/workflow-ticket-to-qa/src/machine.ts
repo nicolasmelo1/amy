@@ -1,6 +1,6 @@
 import { Observation, Policy } from "./observation.js";
 import { Plan, PullRequestView, ReviewThread, Workflow } from "@amykit/core";
-import { USES_ACTIONS, act, advance, settled, wait } from "./effects.js";
+import { act, advance, settled, wait } from "./effects.js";
 import {
   TicketRecord,
   attemptsIn,
@@ -49,7 +49,7 @@ export function plan(record: TicketRecord, obs: Observation, policy: Policy): Pl
     case "HUMAN_FIX":
       return planHumanFix(record, obs, policy);
     case "ESCALATED":
-      return planEscalated(obs, policy);
+      return planEscalated(record, obs, policy);
     case "RE_REVIEW":
       return planReReview(record);
     case "APPROVED":
@@ -548,9 +548,16 @@ function planHumanFix(record: TicketRecord, obs: Observation, policy: Policy): P
   return advance("RE_REVIEW", "every comment was addressed");
 }
 
-function planEscalated(obs: Observation, policy: Policy): Plan {
+/**
+ * Back to where the escalation interrupted the work, once the owner answers.
+ *
+ * A record escalated before the resume point was remembered has none, and
+ * goes where every escalation used to: the comments, judged again.
+ */
+function planEscalated(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   if (obs.escalationAnswered) {
-    return advance("HUMAN_FIX", "the owner answered, the comments can be judged again");
+    const back = record.resumeAt ?? "HUMAN_FIX";
+    return advance(back, `the owner answered, back to ${back} where the escalation stopped it`);
   }
   return wait(policy.pollBackoffMs, "waiting for the owner to settle a disagreement");
 }
@@ -621,7 +628,6 @@ export const ticketToQa: Workflow<Observation, Policy> = {
   waitingStates: WAITING_STATES,
   initialState: "DISCOVERED",
   terminalStates: ["DONE"],
-  usesActions: USES_ACTIONS,
   // Claimed rather than derived, because the claim is the contract: what this
   // workflow may do to a ticket is written here, reviewed here, and refused
   // here when a mount gives it less than a runtime reach for. `ask-question`

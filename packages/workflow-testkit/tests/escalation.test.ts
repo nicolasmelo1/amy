@@ -17,7 +17,6 @@ function givingUp(terminal: boolean) {
     states: ["working", "escalated", "done"],
     terminal: terminal ? ["done", "escalated"] : ["done"],
     waiting: ["escalated"],
-    uses: ["escalate"],
     plan: (record, observation) => {
       if (record.state === "working") return advance("escalated", "escalate");
       if (record.state === "escalated") {
@@ -46,7 +45,7 @@ function anOwner(readsTheDate: boolean) {
         observe: (record) => ({
           answered: readsTheDate ? replies.some((at) => record.askedAt !== undefined && at > record.askedAt) : replies.length > 0,
         }),
-        handlers: {
+        actions: {
           escalate: async (_action, ctx) => {
             ctx.outcomes.askedAt = now().toISOString();
           },

@@ -44,6 +44,14 @@ export interface TicketRecord extends WorkRecord {
   /** Threads already judged, so the same comment is never worked twice. */
   judged: ThreadVerdict[];
   escalation?: Escalation;
+  /**
+   * The state an escalation interrupted, so the owner's answer sends the work
+   * back there rather than to wherever the machine happens to resume.
+   *
+   * Folded from the transition, never from `state`: by the time the fold
+   * runs, `state` is already `ESCALATED` on every move into it.
+   */
+  resumeAt?: TicketState;
 }
 
 export function newRecord(id: string, now: Date): TicketRecord {

@@ -34,7 +34,6 @@ const halfAWorkflow: Plugin = {
       waitingStates: [],
       initialState: "NEW",
       terminalStates: [],
-      usesActions: [],
       usesObservers: [],
       plan: () => ({ kind: "settled", why: "nothing to do" }),
     }),
@@ -62,7 +61,7 @@ const stubWorkflow: Plugin = {
         history: [],
       }),
       observe: async () => ({}),
-      handlers: () => ({}),
+      actions: {},
       apply: (record: WorkRecord) => record,
     } satisfies WorkflowRuntime);
   },
