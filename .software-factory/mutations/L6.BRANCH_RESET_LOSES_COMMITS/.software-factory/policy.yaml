@@ -1,0 +1,11 @@
+# Mutation fixture for L6.BRANCH_RESET_LOSES_COMMITS. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L6.BRANCH_RESET_LOSES_COMMITS
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L6.BRANCH_RESET_LOSES_COMMITS:
+    enabled: true

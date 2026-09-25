@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**41 rules shipped**, 33 enabled here, 8 switched off, 33 carrying a mutation fixture, 2 violations frozen.
+**42 rules shipped**, 34 enabled here, 8 switched off, 34 carrying a mutation fixture, 2 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -25,7 +25,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
 | **L4** | Cadence | docs, plans and rules stay attached | 8 | 7 |
 | **L5** | Meta | the guardrail is proven to fire | 2 | 2 |
-| **L6** | Hazard | the defect classes this repository hunts | 10 | 7 |
+| **L6** | Hazard | the defect classes this repository hunts | 11 | 8 |
 
 <!-- sf:end layer-index -->
 
@@ -302,6 +302,16 @@ A rule that is switched on must be configured to look at something: a lock rule 
 **Fix.** Give the rule something to look at, or switch it off in policy and say why in the rules document. Disabled and documented is honest; enabled and inert is a rule that lies about its own coverage. A rule whose `when` went false is the one case with nothing to configure: repoint it at the version this repository installs, or remove it along with the version it described.
 
 ## L6 — Hazard: the defect classes this repository hunts
+
+### L6.BRANCH_RESET_LOSES_COMMITS
+
+**A branch is never reset with checkout -B**
+
+A workflow never creates or moves a branch with `checkout -B`.
+
+**Why.** `-B` moves a branch that already exists, and says nothing about the tip it moved away from. A workflow that commits and then fails to push leaves its work at that tip, and the next `checkout -B` erases it with no record that it existed. This reached a real board: a commit the machine made and could not push was gone, and it came back only because somebody noticed.
+
+**Fix.** Create a branch with `checkout -b` and fail loudly when the name is taken. Check out one that exists without `-B`, and move it with `merge --ff-only`, which refuses to drop a commit, rather than resetting it. A line cannot prove a tip is reachable, so there is no exemption to write on it.
 
 ### L6.DEAD_CODE_IS_DETECTED
 

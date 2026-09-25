@@ -567,6 +567,18 @@ rules:
   L6.INSECURE_PATTERNS_ARE_SCANNED:
     enabled: true
   # L6 — An address in a fixture belongs to nobody
+  # L6 — A branch is never reset with checkout -B. The same rule every
+  # scaffolded workflow ships with, here because the core drives git too.
+  L6.BRANCH_RESET_LOSES_COMMITS:
+    enabled: true
+    options:
+      # Each of these spells the defect on purpose: the fixture the scaffold
+      # ships, the scenario that plants it to watch it refused, and the test
+      # asserting the core never issues it.
+      exclude:
+        - "packages/cli/guardrails/mutations/**"
+        - ".software-factory/evidence/workflow-new-scenario.sh"
+        - "plugins/claude/tests/git.test.ts"
   L6.FIXTURES_NAME_NOBODY_REAL:
     enabled: true
   # L6 — Nothing blocks while a lock is held

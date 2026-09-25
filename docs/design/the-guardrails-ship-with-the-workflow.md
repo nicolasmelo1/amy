@@ -69,10 +69,12 @@ fold; it did not make reading it right, so the rule stays.
 
 ## amy's own core
 
-amy's own `packages/core/src/git.ts` prepares a branch with `checkout -B`. The
-rules are not enabled on this repository, because they are written for a
-workflow, and changing how the core prepares a branch is its own piece of work,
-with its own pull request. Turning the branch-reset rule on here waits for it.
+amy's own `packages/core/src/git.ts` prepared a branch with `checkout -B`, the
+defect the first rule is about. The core no longer does, and this repository
+enables the branch-reset rule from the same file every scaffold ships, so the
+core cannot go back to it. A test holds the two copies byte-identical. The
+other two rules stay off here: they are about a workflow's fold, and the core
+is not one.
 
 ## Acceptance criteria
 

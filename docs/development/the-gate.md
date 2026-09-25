@@ -57,9 +57,10 @@ held to a gate that is proven to work.
 | `L4.RULE_PROSE_NAMES_A_REAL_COMMAND` | Every command a rule's prose quotes is one this `sf` accepts |
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |
+| `L6.BRANCH_RESET_LOSES_COMMITS` | scaffolded workflow ships with, here because the core drives git too. |
 | `L6.DEAD_CODE_IS_DETECTED` | Something detects code nothing reaches |
 | `L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED` | Something audits dependencies for known vulnerabilities |
-| `L6.FIXTURES_NAME_NOBODY_REAL` | An address in a fixture belongs to nobody |
+| `L6.FIXTURES_NAME_NOBODY_REAL` |  |
 | `L6.INSECURE_PATTERNS_ARE_SCANNED` | Something scans the code for known-insecure patterns |
 | `L6.PERFORMANCE_REGRESSION_IS_GUARDED` | Something would notice the code getting slower |
 | `L6.SECRETS_ARE_SCANNED` | Something scans for committed secrets |
