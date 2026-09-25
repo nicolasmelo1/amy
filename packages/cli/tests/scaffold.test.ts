@@ -129,6 +129,15 @@ describe("a workflow of your own", () => {
     });
   });
 
+  it("names the core as a dependency, since the declarations it publishes import it", () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+    const cli = JSON.parse(fs.readFileSync(path.join(here, "..", "package.json"), "utf-8")) as { version: string };
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as { dependencies: object; devDependencies: object };
+
+    expect(manifest.dependencies).toEqual({ "@amykit/core": `^${cli.version}` });
+    expect(manifest.devDependencies).not.toHaveProperty("@amykit/core");
+  });
+
   it("writes TypeScript that typechecks against the core it plugs into", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
 

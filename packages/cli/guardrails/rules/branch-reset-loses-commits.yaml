@@ -3,8 +3,7 @@ layer: L6
 title: A branch is never reset with checkout -B
 severity: high
 statement: >-
-  A workflow creates or moves a branch with `checkout -B` only on a line that
-  proves the commit at its tip lives somewhere else.
+  A workflow never creates or moves a branch with `checkout -B`.
 why: >-
   `-B` moves a branch that already exists, and says nothing about the tip it
   moved away from. A workflow that commits and then fails to push leaves its
@@ -13,8 +12,9 @@ why: >-
   not push was gone, and it came back only because somebody noticed.
 fix: >-
   Create a branch with `checkout -b` and fail loudly when the name is taken.
-  Move one that exists only after proving its tip is reachable elsewhere, with
-  `git merge-base --is-ancestor` or `git rev-parse --verify` on the same line.
+  Check out one that exists without `-B`, and move it with `merge --ff-only`,
+  which refuses to drop a commit, rather than resetting it. A line cannot
+  prove a tip is reachable, so there is no exemption to write on it.
 ratchet: allowlist
 check:
   kind: text_pattern
@@ -22,5 +22,4 @@ defaults:
   scope: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.mts", "**/*.cts", "**/*.sh"]
   forbidden:
     - regex: '\bcheckout\b[^#\n]*["''\s]-B\b'
-      unless: 'is-ancestor|rev-parse --verify'
-      message: "checkout -B moves a branch that exists, and a commit that was never pushed goes with it. Create with -b, or prove the tip is reachable on the same line."
+      message: "checkout -B moves a branch that exists, and a commit that was never pushed goes with it. Create with -b; move an existing branch with merge --ff-only."

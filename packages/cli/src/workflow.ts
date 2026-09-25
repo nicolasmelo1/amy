@@ -58,11 +58,10 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig): st
     types: "./dist/index.d.ts",
     files: ["dist"],
     scripts: { build: "tsc", typecheck: "tsc --noEmit", test: "node --test", prepack: "npm run build" },
-    devDependencies: {
-      "@amykit/core": `^${testkitVersion()}`,
-      [TESTKIT]: `^${testkitVersion()}`,
-      typescript: TYPESCRIPT,
-    },
+    // A dependency, not a dev one: the published `dist/index.d.ts` imports
+    // its types, as every shipped workflow package does.
+    dependencies: { "@amykit/core": `^${groupVersion()}` },
+    devDependencies: { [TESTKIT]: `^${groupVersion()}`, typescript: TYPESCRIPT },
   }, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "tsconfig.json"), JSON.stringify(SCAFFOLD_TSCONFIG, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "index.ts"), scaffold(name), "utf-8");
@@ -279,7 +278,12 @@ const SCAFFOLD_TSCONFIG = {
   include: ["index.ts"],
 };
 
-function testkitVersion(): string {
+/**
+ * This command's version, which is every `@amykit` package's version: they
+ * move as one fixed group (`.changeset/config.json`), so the core and the
+ * testkit a scaffold names always exist at it.
+ */
+function groupVersion(): string {
   const manifest = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf-8")) as { version: string };
   return manifest.version;
 }

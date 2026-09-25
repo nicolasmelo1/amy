@@ -4,8 +4,7 @@ title: A workflow never asks .every of a collection it did not prove non-empty
 severity: high
 statement: >-
   Every `.every(` in a workflow says, on the same line, what an empty
-  collection means: a `length` check beside it, or `Array.isArray` on a value
-  that may be missing.
+  collection means, with a `length` check beside it.
 why: >-
   `[].every(...)` is `true`. A decision folded over nothing agrees with
   everything, so a ticket with no approvals reads as approved and the plan
@@ -22,5 +21,5 @@ defaults:
   exclude: ["**/*.test.*", "**/tests/**"]
   forbidden:
     - regex: '\.every\('
-      unless: '\.length\b|Array\.isArray\('
+      unless: '\.length\b'
       message: "[].every(...) is true, so a fold over nothing agrees with everything. Say what an empty collection means on this line."

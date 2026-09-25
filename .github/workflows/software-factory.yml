@@ -139,6 +139,21 @@ jobs:
           bun-version: latest
       - run: npm ci
       - run: npm run build
+      # The workflow-new scenario runs `sf` over the scaffold it writes: the
+      # guardrails a workflow ships with are only proven by the real binary.
+      # Prebuilt and digest-checked, for the reasons the release job gives.
+      - name: Install sf
+        env:
+          SF_VERSION: v0.4.1
+        run: |
+          base="https://github.com/nicolasmelo1/software-factory/releases/download/$SF_VERSION"
+          work=$(mktemp -d)
+          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu" -o "$work/sf"
+          curl -fsSL "$base/sf-x86_64-unknown-linux-gnu.sha256" -o "$work/sf.sha256"
+          (cd "$work" && printf '%s  sf\n' "$(cut -d' ' -f1 sf.sha256)" | sha256sum -c -)
+          chmod +x "$work/sf" && sudo mv "$work/sf" /usr/local/bin/sf
+          rm -rf "$work"
+          sf --version
       # No git identity step: the scenario's repositories carry their own,
       # set per checkout, because the run also moves HOME out from under the
       # program on purpose and a global identity would not be there.
