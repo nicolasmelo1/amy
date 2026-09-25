@@ -274,7 +274,7 @@ describe("drafting", () => {
     await handler(runtime, "draft-plan")({ type: "draft-plan" }, ctx);
 
     expect(runner.callsTo("git").map((call) => call.args.join(" "))).toContain(
-      "checkout -B amy/plan-the-gate-output-is-truncated-before-the-agent origin/main",
+      "checkout -b amy/plan-the-gate-output-is-truncated-before-the-agent origin/main",
     );
   });
 

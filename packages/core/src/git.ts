@@ -112,43 +112,60 @@ export class Git {
    * With a worktree port behind it, the branch is prepared inside the item's
    * own tree and never touches the standing checkout: acquiring the tree
    * makes no move at all, and `--ignore-other-worktrees` is what lets a
-   * branch that exists because another item carried it be cut again here
+   * branch that exists because another item carried it be checked out here
    * without the second tree refusing or the first tree losing its place.
    */
   async prepareBranch(repo: string, branch: string, workId?: string): Promise<void> {
     if (this.worktrees && workId !== undefined) {
       const tree = await this.worktrees.acquire(workId, repo);
-      await this.gitIn(tree, "fetch", "origin", "--prune");
+      await this.onBranch(tree, repo, branch, ["--ignore-other-worktrees"]);
+      return;
+    }
+    await this.onBranch(this.pathFor(repo), repo, branch, []);
+  }
 
-      const existsRemotely = await this.runner.run(
-        "git",
-        ["rev-parse", "--verify", `refs/remotes/origin/${branch}`],
-        { cwd: tree },
+  /**
+   * Gets onto `branch` in `cwd` without ever discarding a commit on it.
+   *
+   * A local branch can hold a commit the remote never saw: the machine
+   * committed and the push failed. Resetting it to the remote, or to the
+   * base, erases that work with nothing to say it existed, so the branch only
+   * moves forward. One the target is ahead of fast-forwards; one ahead of the
+   * target is kept, and `commitAndPush` pushes what it holds; one diverged
+   * from its remote is refused, naming what only the local side holds.
+   */
+  private async onBranch(cwd: string, repo: string, branch: string, flags: string[]): Promise<void> {
+    await this.gitIn(cwd, "fetch", "origin", "--prune");
+
+    const remote = `refs/remotes/origin/${branch}`;
+    const local = `refs/heads/${branch}`;
+    const onRemote = await this.succeeds(cwd, "rev-parse", "--verify", remote);
+    const target = onRemote ? `origin/${branch}` : `origin/${baseBranchFor(this.layout, repo)}`;
+
+    if (!(await this.succeeds(cwd, "rev-parse", "--verify", local))) {
+      await this.gitIn(cwd, "checkout", "-b", branch, target, ...flags);
+      return;
+    }
+
+    if (await this.succeeds(cwd, "merge-base", "--is-ancestor", local, target)) {
+      await this.gitIn(cwd, "checkout", branch, ...flags);
+      await this.gitIn(cwd, "merge", "--ff-only", target);
+      return;
+    }
+
+    if (onRemote && !(await this.succeeds(cwd, "merge-base", "--is-ancestor", remote, local))) {
+      const unpushed = await this.gitIn(cwd, "log", "--oneline", `${target}..${local}`);
+      throw new Error(
+        `${branch} has diverged from ${target} in ${cwd}; refusing to reset it and lose what only the local branch holds:\n${unpushed.stdout.trim()}`,
       );
-
-      if (existsRemotely.ok) {
-        await this.gitIn(tree, "checkout", "-B", branch, `origin/${branch}`, "--ignore-other-worktrees");
-        return;
-      }
-
-      await this.gitIn(tree, "checkout", "-B", branch, `origin/${baseBranchFor(this.layout, repo)}`, "--ignore-other-worktrees");
-      return;
     }
 
-    await this.git(repo, "fetch", "origin", "--prune");
+    await this.gitIn(cwd, "checkout", branch, ...flags);
+  }
 
-    const existsRemotely = await this.runner.run(
-      "git",
-      ["rev-parse", "--verify", `refs/remotes/origin/${branch}`],
-      { cwd: this.pathFor(repo) },
-    );
-
-    if (existsRemotely.ok) {
-      await this.git(repo, "checkout", "-B", branch, `origin/${branch}`);
-      return;
-    }
-
-    await this.git(repo, "checkout", "-B", branch, `origin/${baseBranchFor(this.layout, repo)}`);
+  /** Whether git answered yes, for the commands whose exit code is the answer. */
+  private async succeeds(cwd: string, ...args: string[]): Promise<boolean> {
+    return (await this.runner.run("git", args, { cwd })).ok;
   }
 
   async headSha(repo: string): Promise<string> {
@@ -163,9 +180,11 @@ export class Git {
   /**
    * Commits and pushes whatever the agent left behind.
    *
-   * Returns false when there was nothing to commit, which is a real outcome
-   * rather than a failure: an agent asked to address a comment may correctly
-   * decide the code already says what it should.
+   * Returns false when there was nothing to commit and nothing to push, which
+   * is a real outcome rather than a failure: an agent asked to address a
+   * comment may correctly decide the code already says what it should. A
+   * commit an earlier push never delivered is something to push, so a clean
+   * tree still pushes it, and that counts.
    */
   async commitAndPush(
     repo: string,
@@ -177,6 +196,11 @@ export class Git {
     if (await this.hasChangesIn(cwd)) {
       await this.gitIn(cwd, "add", "-A");
       await this.gitIn(cwd, "commit", "-m", message);
+      await this.gitIn(cwd, "push", "--set-upstream", "origin", branch);
+      return true;
+    }
+    const unpushed = await this.gitIn(cwd, "rev-list", "--count", "HEAD", "--not", "--remotes=origin");
+    if (Number(unpushed.stdout.trim()) > 0) {
       await this.gitIn(cwd, "push", "--set-upstream", "origin", branch);
       return true;
     }
