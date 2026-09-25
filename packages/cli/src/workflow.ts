@@ -14,12 +14,15 @@ export function workflowsDirectory(home: string): string {
  *
  * Scoped names remain package names: `@acme/oncall` is how an owner shares a
  * workflow later, while `oncall` stays a directory they can edit in place.
+ * `index.ts` is what the scaffold writes and Node runs unbuilt; `index.js` is
+ * what a workflow written before that, or by hand, still has.
  */
 export function localWorkflow(home: string, spec: string): string | undefined {
   if (!isLocalName(spec)) return undefined;
 
-  const entry = path.join(workflowsDirectory(home), spec, "index.js");
-  return fs.existsSync(entry) ? pathToFileURL(entry).href : undefined;
+  const directory = path.join(workflowsDirectory(home), spec);
+  const entry = ["index.ts", "index.js"].map((file) => path.join(directory, file)).find((file) => fs.existsSync(file));
+  return entry ? pathToFileURL(entry).href : undefined;
 }
 
 /** Makes an import specifier prefer this machine's workflow directory. */
@@ -27,7 +30,14 @@ export function workflowSpecifier(home: string, spec: string): string {
   return localWorkflow(home, spec) ?? spec;
 }
 
-/** Writes the smallest complete workflow: a package that runs before editing. */
+/**
+ * Writes the smallest complete workflow: a package that runs before editing.
+ *
+ * TypeScript, because a workflow is typed against the core it plugs into and
+ * `sf` reads the shape of TypeScript and not of JavaScript. Node strips the
+ * types and runs it from this directory as it is; it refuses TypeScript under
+ * `node_modules`, so what is published is what `npm run build` compiles.
+ */
 export function writeWorkflow(home: string, name: string, config: AmyConfig): string {
   if (!isLocalName(name)) {
     throw new Error("a workflow name is one directory name: letters, numbers, hyphens and underscores");
@@ -44,13 +54,19 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig): st
     version: "0.1.0",
     private: true,
     type: "module",
-    main: "./index.js",
-    files: ["index.js"],
-    scripts: { test: "node --test" },
-    devDependencies: { [TESTKIT]: `^${testkitVersion()}` },
+    main: "./dist/index.js",
+    types: "./dist/index.d.ts",
+    files: ["dist"],
+    scripts: { build: "tsc", typecheck: "tsc --noEmit", test: "node --test", prepack: "npm run build" },
+    devDependencies: {
+      "@amykit/core": `^${testkitVersion()}`,
+      [TESTKIT]: `^${testkitVersion()}`,
+      typescript: TYPESCRIPT,
+    },
   }, null, 2) + "\n", "utf-8");
-  fs.writeFileSync(path.join(directory, "index.js"), scaffold(name), "utf-8");
-  fs.writeFileSync(path.join(directory, "index.test.js"), scaffoldSuite(), "utf-8");
+  fs.writeFileSync(path.join(directory, "tsconfig.json"), JSON.stringify(SCAFFOLD_TSCONFIG, null, 2) + "\n", "utf-8");
+  fs.writeFileSync(path.join(directory, "index.ts"), scaffold(name), "utf-8");
+  fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuite(), "utf-8");
   writeGuardrails(directory);
   writeWorkflowProfile(home, name, name, config);
   return directory;
@@ -134,7 +150,10 @@ async function importedPlugin(spec: string, resolve: (spec: string) => string): 
     const loaded = (await import(resolve(spec))) as { plugin?: Plugin };
     return loaded.plugin ?? `${spec}: imported, but exports no \`plugin\``;
   } catch (error) {
-    return `${spec}: could not be imported — ${message(error)}`;
+    const unbuilt = (error as { code?: unknown }).code === "ERR_UNKNOWN_FILE_EXTENSION"
+      ? "; this Node cannot run TypeScript unbuilt, which takes 22.18 or later"
+      : "";
+    return `${spec}: could not be imported — ${message(error)}${unbuilt}`;
   }
 }
 
@@ -241,13 +260,78 @@ function message(error: unknown): string {
 /** The kit the scaffold's own suite runs, which moves in the same version group as this command. */
 const TESTKIT = "@amykit/workflow-testkit";
 
+/** The first TypeScript with `erasableSyntaxOnly`, which holds the scaffold to what Node can strip. */
+const TYPESCRIPT = "^5.8.0";
+
+/** Compiles `index.ts` alone for publishing; the suite imports it by its `.ts` name and is never built. */
+const SCAFFOLD_TSCONFIG = {
+  compilerOptions: {
+    target: "ES2022",
+    module: "NodeNext",
+    moduleResolution: "NodeNext",
+    strict: true,
+    erasableSyntaxOnly: true,
+    verbatimModuleSyntax: true,
+    declaration: true,
+    outDir: "dist",
+    skipLibCheck: true,
+  },
+  include: ["index.ts"],
+};
+
 function testkitVersion(): string {
   const manifest = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf-8")) as { version: string };
   return manifest.version;
 }
 
 function scaffold(name: string): string {
-  return `// This workflow belongs to this machine. Edit the states and the two halves below.\n// \`amy workflow check ${name}\` drives this file before it drives real work,\n// and \`npm test\` runs the machine's own suite over it.\n\nexport const workflow = {\n  name: ${JSON.stringify(name)},\n  states: ["received", "done"],\n  waitingStates: [],\n  initialState: "received",\n  terminalStates: ["done"],\n  usesObservers: [],\n  plan: (record) =>\n    record.state === "received"\n      ? { kind: "advance", to: "done", effects: [], why: "the work was received" }\n      : { kind: "settled", why: "the workflow is complete" },\n};\n\n// A function rather than an object, so the suite builds its own. When this\n// runtime needs a port, take it as an argument: the suite hands it a fake and\n// the plugin below hands it the mounted one.\nexport function runtime() {\n  return {\n    policy: {},\n    found: async () => ["example"],\n    newRecord: (id, now) => ({ id, state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }),\n    observe: async () => ({}),\n    // Every action the plan may emit, keyed by name, and what runs it: a\n    // handler, or { port, method } for a mounted port the host calls.\n    actions: {},\n    // Called as (record, plan, outcomes, observation, now, moved). \`record\`\n    // has already moved: read where it came from in \`moved.from\`, never in\n    // \`record.state\`. \`moved\` is null when the plan did not advance.\n    apply: (record) => record,\n  };\n}\n\nexport const plugin = {\n  name: ${JSON.stringify(`workflow-${name}`)},\n  version: "0.1.0",\n  register(registry) {\n    registry.workflow(workflow);\n    registry.contribute("workflow-runtime", workflow.name, runtime());\n  },\n};\n`;
+  return `// This workflow belongs to this machine. Edit the states and the two halves below.
+// \`amy workflow check ${name}\` drives this file before it drives real work,
+// and \`npm test\` runs the machine's own suite over it. Node runs it as it is;
+// \`npm run build\` compiles it for publishing.
+import type { Plugin, WorkRecord, Workflow, WorkflowRuntime } from "@amykit/core";
+
+export const workflow: Workflow = {
+  name: ${JSON.stringify(name)},
+  states: ["received", "done"],
+  waitingStates: [],
+  initialState: "received",
+  terminalStates: ["done"],
+  usesObservers: [],
+  plan: (record) =>
+    record.state === "received"
+      ? { kind: "advance", to: "done", effects: [], why: "the work was received" }
+      : { kind: "settled", why: "the workflow is complete" },
+};
+
+// A function rather than an object, so the suite builds its own. When this
+// runtime needs a port, take it as an argument: the suite hands it a fake and
+// the plugin below hands it the mounted one.
+export function runtime(): WorkflowRuntime {
+  return {
+    policy: {},
+    found: async () => ["example"],
+    newRecord: (id, now): WorkRecord => ({ id, state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }),
+    observe: async () => ({}),
+    // Every action the plan may emit, keyed by name, and what runs it: a
+    // handler, or { port, method } for a mounted port the host calls.
+    actions: {},
+    // Called as (record, plan, outcomes, observation, now, moved). \`record\`
+    // has already moved: read where it came from in \`moved.from\`, never in
+    // \`record.state\`. \`moved\` is null when the plan did not advance.
+    apply: (record) => record,
+  };
+}
+
+export const plugin: Plugin = {
+  name: ${JSON.stringify(`workflow-${name}`)},
+  version: "0.1.0",
+  register(registry) {
+    registry.workflow(workflow);
+    registry.contribute("workflow-runtime", workflow.name, runtime());
+  },
+};
+`;
 }
 
 /**
@@ -258,5 +342,16 @@ function scaffold(name: string): string {
  * workflow can be in, and adding one is how a new state gets proven.
  */
 function scaffoldSuite(): string {
-  return `import { describe, it } from "node:test";\nimport { conforms } from "${TESTKIT}";\nimport { runtime, workflow } from "./index.js";\n\n// Each world is a situation this workflow can be in. Give one a \`meanwhile\`\n// for what the outside world does while the workflow waits.\nconforms(workflow, {\n  runner: { describe, it },\n  runtime: () => runtime(),\n  worlds: [{ name: "a piece of work arrives" }],\n});\n`;
+  return `import { describe, it } from "node:test";
+import { conforms } from "${TESTKIT}";
+import { runtime, workflow } from "./index.ts";
+
+// Each world is a situation this workflow can be in. Give one a \`meanwhile\`
+// for what the outside world does while the workflow waits.
+conforms(workflow, {
+  runner: { describe, it },
+  runtime: () => runtime(),
+  worlds: [{ name: "a piece of work arrives" }],
+});
+`;
 }

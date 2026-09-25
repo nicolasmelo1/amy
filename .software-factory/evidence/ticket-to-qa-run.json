@@ -59,15 +59,15 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at ecfeba4 and left one comment",
-      "the automated reviewer looked at 4f82b38 and had nothing to say",
+      "the automated reviewer looked at 45b4147 and left one comment",
+      "the automated reviewer looked at 90e2775 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 4f82b38",
+      "ada asked for changes on 90e2775",
       "the owner settled the disagreement on the ticket",
-      "ada approved e7c95c4",
-      "the automated reviewer looked at e7c95c4 and had nothing to say",
-      "the automated reviewer looked at 0cb4712 and had nothing to say",
-      "ada approved 0cb4712"
+      "ada approved 8e8a154",
+      "the automated reviewer looked at 8e8a154 and had nothing to say",
+      "the automated reviewer looked at 600ff8f and had nothing to say",
+      "ada approved 600ff8f"
     ],
     "agent_calls": [
       "triage",
@@ -94,7 +94,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-25T22:38:09.785Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-25T22:38:09.629Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-09-25T22:49:00.568Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-09-25T22:49:00.405Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
     "second_run_transitions": 21

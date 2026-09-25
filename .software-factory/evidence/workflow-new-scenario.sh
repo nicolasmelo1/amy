@@ -24,14 +24,22 @@ record() {
 "$amy" workflow check oncall >/dev/null 2>&1
 record mine.the_scaffold_runs_before_it_is_edited "$?"
 
-test -f "$work/home/.amy/workflows/oncall/index.js" && \
+test -f "$work/home/.amy/workflows/oncall/index.ts" && \
   grep -q 'workflow: oncall' "$work/home/.amy/config.yaml"
 record mine.a_directory_name_is_a_workflow "$?"
 
-(cd "$work/home/.amy/workflows/oncall" && npm pack --dry-run >/dev/null 2>&1)
+# What `npm install` would put there: the core it is typed against and the
+# compiler `prepack` runs, so the pack below is the JavaScript that ships.
+modules="$work/home/.amy/workflows/oncall/node_modules"
+mkdir -p "$modules/@amykit"
+ln -s "$repo/packages/core" "$modules/@amykit/core"
+ln -s "$repo/node_modules/typescript" "$modules/typescript"
+mkdir -p "$modules/.bin" && ln -s ../typescript/bin/tsc "$modules/.bin/tsc"
+(cd "$work/home/.amy/workflows/oncall" && npm pack --dry-run 2>&1 | grep -q 'dist/index.js')
 record mine.the_scaffold_is_a_publishable_package "$?"
+rm -rf "$work/home/.amy/workflows/oncall/dist"
 
-entry="$work/home/.amy/workflows/oncall/index.js"
+entry="$work/home/.amy/workflows/oncall/index.ts"
 cp "$entry" "$entry.clean"
 python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" '{ kind: "advance", to: "done", effects: [], why: "the work was received" }' '{ kind: "act", effects: [], why: "it keeps trying" }'
 if "$amy" workflow check oncall >/dev/null 2>&1; then spinning=1; else spinning=0; fi
@@ -70,8 +78,12 @@ record guardrails.a_branch_reset_is_refused "$?"
 refused L6.EMPTY_FOLD_AGREES_WITH_EVERYTHING approved.js 'export const approved = (approvals) => approvals.every((a) => a.approved);'
 record guardrails.an_every_over_nothing_is_refused "$?"
 
-refused L6.FOLD_READS_A_MOVED_RECORD fold.ts 'export const runtime = { apply: (record: { state: string }) => (record.state === "received" ? record : record) };'
-record guardrails.a_fold_reading_the_moved_state_is_refused "$?"
+# The scaffold's own fold, now that it is TypeScript `sf` can read.
+cp "$entry" "$entry.clean"
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'apply: (record) => record,' 'apply: (record) => (record.state === "received" ? { ...record, paged: true } : record),'
+if sf check --root "$workflow" --rule L6.FOLD_READS_A_MOVED_RECORD >/dev/null 2>&1; then fold=1; else fold=0; fi
+record guardrails.a_fold_reading_the_moved_state_is_refused "$fold"
+mv "$entry.clean" "$entry"
 
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
 total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)

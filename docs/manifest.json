@@ -839,8 +839,8 @@
         },
         {
           "depth": 3,
-          "title": "amy workflow new now writes a .software-factory/ beside the scaffold: three repo-local rules that sf check in the workflow's directory enforces — no checkout -B, which loses a commit that was never pushed; no fold reading .state off the record the engine already moved (TypeScript only, since sf does not parse JavaScript); and no .every( that does not say what an empty collection means — with one mutation fixture each, so sf verify there proves every rule still fires. amy does not install sf, and sf learns nothing about amy: they are ordinary local rules.",
-          "slug": "amy-workflow-new-now-writes-a-software-factory-beside-the-scaffold-three-repo-local-rules-that-sf-check-in-the-workflows-directory-enforces-no-checkout--b-which-loses-a-commit-that-was-never-pushed-no-fold-reading-state-off-the-record-the-engine-already-moved-typescript-only-since-sf-does-not-parse-javascript-and-no-every-that-does-not-say-what-an-empty-collection-means-with-one-mutation-fixture-each-so-sf-verify-there-proves-every-rule-still-fires-amy-does-not-install-sf-and-sf-learns-nothing-about-amy-they-are-ordinary-local-rules"
+          "title": "amy workflow new now writes TypeScript: index.ts typed against @amykit/core, run unbuilt by Node 22.18 or later from ~/.amy/workflows, with a tsconfig.json and build/typecheck scripts that compile dist/ for publishing, since Node refuses TypeScript under node_modules; the suite is index.test.ts. A local workflow that is still index.js keeps resolving. It also writes a .software-factory/ beside the scaffold: three repo-local rules that sf check in the workflow's directory enforces — no checkout -B, which loses a commit that was never pushed; no fold reading .state off the record the engine already moved; and no .every( that does not say what an empty collection means — with one mutation fixture each, so sf verify there proves every rule still fires. amy does not install sf, and sf learns nothing about amy: they are ordinary local rules.",
+          "slug": "amy-workflow-new-now-writes-typescript-indexts-typed-against-amykitcore-run-unbuilt-by-node-2218-or-later-from-amyworkflows-with-a-tsconfigjson-and-buildtypecheck-scripts-that-compile-dist-for-publishing-since-node-refuses-typescript-under-nodemodules-the-suite-is-indextestts-a-local-workflow-that-is-still-indexjs-keeps-resolving-it-also-writes-a-software-factory-beside-the-scaffold-three-repo-local-rules-that-sf-check-in-the-workflows-directory-enforces-no-checkout--b-which-loses-a-commit-that-was-never-pushed-no-fold-reading-state-off-the-record-the-engine-already-moved-and-no-every-that-does-not-say-what-an-empty-collection-means-with-one-mutation-fixture-each-so-sf-verify-there-proves-every-rule-still-fires-amy-does-not-install-sf-and-sf-learns-nothing-about-amy-they-are-ordinary-local-rules"
         },
         {
           "depth": 3,
@@ -2124,8 +2124,13 @@
         },
         {
           "depth": 2,
-          "title": "What the rules cannot see",
-          "slug": "what-the-rules-cannot-see"
+          "title": "The scaffold is TypeScript",
+          "slug": "the-scaffold-is-typescript"
+        },
+        {
+          "depth": 2,
+          "title": "amy's own core",
+          "slug": "amys-own-core"
         },
         {
           "depth": 2,
@@ -7877,7 +7882,7 @@
       },
       {
         "id": "the-guardrails-ship-with-the-workflow",
-        "title": "`amy workflow new` now writes a `.software-factory/` beside the scaffold: three repo-local rules that `sf check` in the workflow's directory enforces — no `checkout -B`, which loses a commit that was never pushed; no fold reading `.state` off the record the engine already moved (TypeScript only, since `sf` does not parse JavaScript); and no `.every(` that does not say what an empty collection means — with one mutation fixture each, so `sf verify` there proves every rule still fires. amy does not install `sf`, and `sf` learns nothing about amy: they are ordinary local rules.",
+        "title": "`amy workflow new` now writes TypeScript: `index.ts` typed against `@amykit/core`, run unbuilt by Node 22.18 or later from `~/.amy/workflows`, with a `tsconfig.json` and `build`/`typecheck` scripts that compile `dist/` for publishing, since Node refuses TypeScript under `node_modules`; the suite is `index.test.ts`. A local workflow that is still `index.js` keeps resolving. It also writes a `.software-factory/` beside the scaffold: three repo-local rules that `sf check` in the workflow's directory enforces — no `checkout -B`, which loses a commit that was never pushed; no fold reading `.state` off the record the engine already moved; and no `.every(` that does not say what an empty collection means — with one mutation fixture each, so `sf verify` there proves every rule still fires. amy does not install `sf`, and `sf` learns nothing about amy: they are ordinary local rules.",
         "body": "",
         "bumps": [
           {

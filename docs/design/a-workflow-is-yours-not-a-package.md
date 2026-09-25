@@ -83,7 +83,7 @@ teaches the boot refusal instead of the shape.
       (proof: assertion:guardrails.a_branch_reset_is_refused)
 - [x] It refuses a `.every(` that does not say what empty means
       (proof: assertion:guardrails.an_every_over_nothing_is_refused)
-- [x] It refuses a TypeScript fold that reads the moved record's state
+- [x] It refuses a fold that reads the moved record's state
       (proof: assertion:guardrails.a_fold_reading_the_moved_state_is_refused)
 
 **Exit condition:** somebody who has never published anything describes their

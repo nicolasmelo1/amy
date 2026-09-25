@@ -34,8 +34,13 @@ npm package from the moment it is written — it is written `private`, so sharin
 it later is a scoped name, dropping that flag and `npm publish` in the same
 directory, rather than a restructuring.
 
-What it writes is one `index.js` holding both halves. Everything below is the
-same seven things with the types kept and the files split — what that directory
+What it writes is one `index.ts` holding both halves, typed against
+`@amykit/core`. Node strips the types and runs it from that directory as it is,
+which takes Node 22.18 or later; `npm run typecheck` is `tsc` holding it to the
+core's contract. Node refuses TypeScript under `node_modules`, so what `npm
+publish` or `amy add <path>` takes is what `npm run build` compiles into `dist/`,
+and `prepack` runs that for you. Everything below is the
+same seven things with the files split — what that directory
 looks like once the process is real enough to be worth the structure. Read it as
 what to change, not as a file to start from empty.
 
@@ -404,7 +409,7 @@ answers, a state the walkthrough never reaches, and a run that does not settle
 in a terminal state. It needs no test runner, which is the point — it is what to
 run while editing. The tests above are what survives the editing.
 
-The scaffold's `index.test.js` is the rest: `conforms` from
+The scaffold's `index.test.ts` is the rest: `conforms` from
 `@amykit/workflow-testkit`, which walks your runtime through the worlds you
 give it and fails a state nothing leaves, an action with nothing behind it, a
 wait counted as a try, a decision made by an empty `every`, and a giving-up

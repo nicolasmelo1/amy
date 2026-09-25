@@ -52,20 +52,27 @@ amy does not install `sf` either. A workflow runs without it; the guardrails
 are what its `sf check` enforces once its author runs one, the same way the
 note-to-plan workflow's check is a command in the config and not a dependency.
 
-## What the rules cannot see
+## The scaffold is TypeScript
 
 `sf` parses TypeScript and not JavaScript, so the fold rule, which reads the
-shape of the code rather than a line of it, only sees a workflow once it is
-`.ts`. The scaffold is `index.js`, and its `apply` says in a comment to read
-`moved.from`, which [the workflow contract changes once](the-workflow-contract-changes-once.md)
+shape of the code rather than a line of it, would never have seen a scaffold
+written as `index.js`. The scaffold is `index.ts`, typed against
+`@amykit/core`, and Node runs it unbuilt from `~/.amy/workflows`. Node refuses
+TypeScript under `node_modules`, so the package publishes `dist/`, which
+`npm run build` compiles and `prepack` runs. A workflow that was already
+`index.js` still resolves; the fold rule does not see it.
+
+The scaffold's `apply` says in a comment to read `moved.from`, which
+[the workflow contract changes once](the-workflow-contract-changes-once.md)
 now hands it. That removed the reason anybody had to read `record.state` in a
-fold; it did not make reading it right, so the rule stays. The other two are
-line patterns and see both.
+fold; it did not make reading it right, so the rule stays.
+
+## amy's own core
 
 amy's own `packages/core/src/git.ts` prepares a branch with `checkout -B`. The
 rules are not enabled on this repository, because they are written for a
-workflow, and turning the branch-reset rule on here is a change to how the core
-prepares a branch. That is its own piece of work.
+workflow, and changing how the core prepares a branch is its own piece of work,
+with its own pull request. Turning the branch-reset rule on here waits for it.
 
 ## Acceptance criteria
 
@@ -75,8 +82,8 @@ prepares a branch. That is its own piece of work.
       (proof: test:packages/cli/tests/guardrails.test.ts)
 - [x] A workflow that runs `checkout -B` is refused by `sf check`
       (proof: assertion:guardrails.a_branch_reset_is_refused)
-- [x] A workflow whose fold reads `record.state` is refused, once it is
-      TypeScript; see above
+- [x] A workflow whose fold reads `record.state` is refused, the scaffold's own
+      `apply` included
       (proof: assertion:guardrails.a_fold_reading_the_moved_state_is_refused)
 - [x] A workflow that calls `.every(` without saying what empty means is refused
       (proof: assertion:guardrails.an_every_over_nothing_is_refused)
