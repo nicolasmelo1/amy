@@ -99,7 +99,11 @@ one-row rule is for.
 `Workflow.usesActions`; the runtime carries `actions`, a map from each action
 name to what runs it — an `ActionHandler`, or an `ActionSpec` (`{ port, method }`)
 the host calls with the action and its context, whose answer lands in
-`outcomes` under the action's name. The keys live on the runtime rather than on
+`outcomes` under the action's name. Only a method its port marked with
+`acceptsAction` can be reached that way: every port method that existed before
+takes its own arguments — `check(repo, workId)`, `setStatus(id, status)` — and
+handed an action it would run on the wrong ones rather than fail, so the mount
+refuses a binding to an unmarked method. The keys live on the runtime rather than on
 the pure half because the value is the implementation, and the implementation
 is the runtime's. The mount reads them through `mountedActions`, the docs
 generator reads them from the contributed runtime, and nothing else lists them.

@@ -71,7 +71,9 @@ actions: {
 
 One entry per action, on the workflow's runtime: the key is the name `plan()`
 emits, the value is what runs it — a handler the workflow wrote, or a port and a
-method the host calls with the action and its context. Declaring and
+method the host calls with the action and its context — one its port marked with
+`acceptsAction`, because a method written for its own arguments would run on the
+wrong ones. Declaring and
 implementing are the same line, so they cannot disagree, and the host answers
 before touching any work whether every one of them can run:
 
@@ -79,7 +81,7 @@ before touching any work whether every one of them can run:
 amy could not start:
   action `hand-off-to-qa` is declared with no implementation — give it a handler, or a port and a method
   action `triage`: needs the `agent` port, which nothing mounted
-  action `merge`: the `forge` port has no method `merge`
+  action `check-plan`: `plan-check.check` takes its own arguments, not an action — write a handler that calls it, or mark it with `acceptsAction`
 ```
 
 A handler still runs an action the catalogue above names, because the

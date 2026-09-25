@@ -1,4 +1,4 @@
-import { WorkRecord } from "@amykit/core";
+import { WorkRecord, acceptsAction } from "@amykit/core";
 import { describe, expect, it } from "vitest";
 import { conformance } from "../src/index.js";
 import { advance, runtimeOf, settled, workflowOf } from "./machines.js";
@@ -40,6 +40,27 @@ describe("handlers", () => {
       property: "handlers",
       message: "the happy path: `approved` plans `hand-off-to-qa`, which the runtime never declares in its actions",
     });
+  });
+
+  it("reports an undeclared action before running the declared one ahead of it", async () => {
+    const ran: string[] = [];
+    const findings = await conformance(
+      workflowOf({
+        states: ["approved", "done"],
+        terminal: ["done"],
+        plan: (record) => (record.state === "approved" ? advance("done", "announce", "hand-off-to-qa") : settled()),
+      }),
+      {
+        runtime: () => runtimeOf("approved", { observe: () => ({}), actions: { announce: async () => void ran.push("announce") } }),
+        worlds: [{ name: "the happy path" }],
+      },
+    );
+
+    expect(findings).toContainEqual({
+      property: "handlers",
+      message: "the happy path: `approved` plans `hand-off-to-qa`, which the runtime never declares in its actions",
+    });
+    expect(ran).toEqual([]);
   });
 
   it("fails a handler that throws on the observation the runtime really built", async () => {
@@ -84,7 +105,7 @@ describe("handlers", () => {
     const findings = await conformance(handingOff, {
       runtime: () =>
         runtimeOf("approved", { observe: () => ({}), actions: { "hand-off-to-qa": { port: "tracker", method: "setStatus" } } }),
-      ports: () => ({ tracker: { setStatus: async (action: unknown) => void calls.push(action) } }),
+      ports: () => ({ tracker: { setStatus: acceptsAction(async (action) => void calls.push(action)) } }),
       worlds: [{ name: "the happy path" }],
     });
 

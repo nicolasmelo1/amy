@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Plugin, PluginContext, Workflow } from "../src/plugin.js";
 import { HostServices, mount, mountedActions, unmetNeeds } from "../src/mount.js";
 import { ActionContext, WORKFLOW_RUNTIME, WorkflowRuntime } from "../src/runtime.js";
-import { implementationOf, runAction, undeclaredIn } from "../src/dispatch.js";
+import { acceptsAction, implementationOf, runAction, undeclaredIn } from "../src/dispatch.js";
 
 /** The services a host lends every plugin, with nothing that touches a machine. */
 const HOST: HostServices = {
@@ -337,7 +337,7 @@ describe("one declaration per action", () => {
   }
   const workflow = { ...WORKFLOW, usesObservers: [] };
   const forge = (): Plugin =>
-    plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { merge: async () => 7 }) });
+    plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { merge: acceptsAction(async () => 7) }) });
 
   it("refuses at boot an action declared with nothing behind it, naming it", async () => {
     const host = await mounted([plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) })], {
@@ -374,7 +374,7 @@ describe("one declaration per action", () => {
     const host = await mounted(
       [
         plugin("@amykit/plugin-forge", {
-          register: (r) => r.port("forge", { merge: async () => calls.push("merge") }),
+          register: (r) => r.port("forge", { merge: acceptsAction(async () => calls.push("merge")) }),
         }),
         plugin("@amykit/plugin-agent", { register: (r) => r.port("agent", {}) }),
       ],
@@ -405,9 +405,36 @@ describe("one declaration per action", () => {
     expect(unmetNeeds(host, workflow)).toEqual(["action `merge`: the `forge` port has no method `squash`"]);
   });
 
+  it("refuses a port-and-method whose method takes its own arguments, not an action", async () => {
+    // The shape `plan-check` mounts: `check(repo, workId)`. Called with an
+    // action and a context it would run against the wrong repository rather
+    // than fail, so it is refused before anything calls it.
+    const host = await mounted(
+      [plugin("@amykit/plugin-plan-check", { register: (r) => r.port("plan-check", { check: async (_repo: string) => ({}) }) })],
+      { "check-plan": { port: "plan-check", method: "check" } },
+    );
+
+    expect(unmetNeeds(host, workflow)).toEqual([
+      "action `check-plan`: `plan-check.check` takes its own arguments, not an action — write a handler that calls it, or mark it with `acceptsAction`",
+    ]);
+  });
+
+  it("records a port-and-method that returned nothing, under its name", async () => {
+    const host = await mounted(
+      [plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { merge: acceptsAction(async () => undefined) }) })],
+      { merge: { port: "forge", method: "merge" } },
+    );
+    const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
+    const context: ActionContext = { record: runtime.newRecord("t", HOST.now()), observation: {}, outcomes: {} };
+
+    await runAction(implementationOf(runtime, "merge"), { type: "merge" }, context, (kind) => host.ports.get(kind));
+
+    expect(Object.hasOwn(context.outcomes, "merge")).toBe(true);
+  });
+
   it("refuses a port-and-method that sends a catalogued action somewhere else", async () => {
     const host = await mounted(
-      [plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { triage: async () => {} }) })],
+      [plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { triage: acceptsAction(async () => {}) }) })],
       { triage: { port: "forge", method: "triage" } },
     );
 

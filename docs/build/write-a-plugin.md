@@ -199,11 +199,13 @@ registry.action("page-oncall", { port: "pager", method: "page" }, new PagerDutyP
 The pair is inseparable on purpose. An action nobody can execute is a promise
 the machine cannot keep.
 
-A workflow that emits it still declares it, in its runtime's `actions`. When the
-port's method takes the action and its context, that declaration can be the
-port and the method themselves — `"page-oncall": { port: "pager", method: "page" }`
-— and the host calls it with no handler written; what it returns lands in
-`outcomes` under the action's name.
+A workflow that emits it still declares it, in its runtime's `actions`. If the
+port's method takes the action and its context and says so —
+`page: acceptsAction(async (action, context) => …)` — that declaration can be
+the port and the method themselves, `"page-oncall": { port: "pager", method: "page" }`,
+and the host calls it with no handler written; what it returns lands in
+`outcomes` under the action's name. A method that takes its own arguments is
+refused there at boot, because it would run on the wrong ones.
 
 ### Contribute an observation
 

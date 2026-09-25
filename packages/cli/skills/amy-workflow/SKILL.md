@@ -173,13 +173,13 @@ runtime's `actions`, each beside what runs it:
 ```js
 actions: {
   "announce": async (action, ctx) => { /* a handler you wrote */ },
-  "page": { port: "pager", method: "page" },   // the host calls pager.page(action, ctx)
+  "page": { port: "pager", method: "page" },   // pager.page(action, ctx), if marked acceptsAction
 }
 ```
 
 A port-and-method's answer lands in `outcomes` under the action's name. The
-mount refuses a key with nothing behind it, a port nothing mounted, or a method
-the port lacks — at boot, by name, rather than at the first tick that needs it.
+mount refuses a key with nothing behind it, a port nothing mounted, a method
+the port lacks, or one its port did not mark with `acceptsAction` — at boot, by name, rather than at the first tick that needs it.
 A plan that emits a name the map lacks is refused before any of its actions run.
 
 The runtime contributes to `workflow-runtime` under the workflow's own name.

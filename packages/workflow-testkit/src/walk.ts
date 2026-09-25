@@ -9,6 +9,7 @@ import {
   implementationOf,
   movedBy,
   runAction,
+  undeclaredIn,
 } from "@amykit/core";
 import { Finding, Property, message } from "./finding.js";
 import { Clock, World } from "./world.js";
@@ -189,11 +190,15 @@ async function run(
   const outcomes: Record<string, unknown> = {};
   const state = look.record.state;
 
+  // The whole plan first, as the engine does, so an undeclared action is
+  // reported with nothing ahead of it already run.
+  const [undeclared] = undeclaredIn(runtime, look.plan);
+  if (undeclared) {
+    fail("handlers", `\`${state}\` plans \`${undeclared}\`, which the runtime never declares in its actions`);
+    return undefined;
+  }
+
   for (const action of actionsOf(look.plan)) {
-    if (!Object.hasOwn(runtime.actions, action.type)) {
-      fail("handlers", `\`${state}\` plans \`${action.type}\`, which the runtime never declares in its actions`);
-      return undefined;
-    }
     try {
       await runAction(implementationOf(runtime, action.type), action, { record: look.record, observation, outcomes }, port);
     } catch (error) {
@@ -217,8 +222,8 @@ export async function replayActions(
   port: PortLookup,
 ): Promise<Record<string, unknown> | undefined> {
   const outcomes: Record<string, unknown> = {};
+  if (undeclaredIn(runtime, plan).length > 0) return undefined;
   for (const action of actionsOf(plan)) {
-    if (!Object.hasOwn(runtime.actions, action.type)) return undefined;
     try {
       await runAction(implementationOf(runtime, action.type), action, { record, observation, outcomes }, port);
     } catch {

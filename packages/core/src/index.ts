@@ -13,6 +13,7 @@ export type {
 } from "./runtime.js";
 
 export {
+  acceptsAction,
   declaredActions,
   implementationOf,
   isPortBinding,

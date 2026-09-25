@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Moved, Plan, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { Moved, Plan, WorkflowRuntime, WorkRecord, acceptsAction } from "@amykit/core";
 import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { DEFAULT_POLICY } from "@amykit/workflow-ticket-to-qa";
@@ -434,7 +434,7 @@ describe("Worker dispatch", () => {
   });
 
   it("runs a port-and-method action on the mounted port and folds what it returned", async () => {
-    const forge = { merge: vi.fn(async () => ({ merged: 42 })) };
+    const forge = { merge: acceptsAction(vi.fn(async () => ({ merged: 42 }))) };
     const runtime = thin({ merge: { port: "forge", method: "merge" } });
 
     await build(runtime, () => ({ kind: "act", why: "merge it", effects: [{ type: "merge", pr: 42 }] }),

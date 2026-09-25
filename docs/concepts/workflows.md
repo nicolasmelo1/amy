@@ -89,7 +89,10 @@ actions: {
 
 A value is a handler the workflow wrote, or a port and a method the host wires:
 it calls the method with the action and its context, and puts what comes back in
-`outcomes` under the action's name. Because the name and the implementation are
+`outcomes` under the action's name. Only a method its port marked with
+`acceptsAction` can be wired that way — a method written for its own arguments,
+`check(repo, workId)` say, would be handed an action where it expects a
+repository, so the mount refuses it and a handler calls it instead. Because the name and the implementation are
 the same entry, an action cannot be declared without something behind it, nor
 planned without being declared. The mount refuses at boot, by name, a key whose
 value is neither, a port nothing mounted, or a method the port does not have.

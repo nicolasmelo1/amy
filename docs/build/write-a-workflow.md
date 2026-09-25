@@ -252,8 +252,9 @@ export function reviewRuntime(deps: Deps): WorkflowRuntime<ReviewRecord, Observa
     }),
 
     // The key is the declaration, the value what runs it. A value may also be
-    // `{ port, method }`, which the host calls with the action and its context
-    // and whose answer lands in `outcomes` under the action's name.
+    // `{ port, method }` for a method its port marked with `acceptsAction`: the
+    // host calls it with the action and its context, and its answer lands in
+    // `outcomes` under the action's name.
     actions: {
       "draft-plan": (async (action, { outcomes }) => {
         const reply = await deps.agent.ask(action.prompt as string, deps.workspace);

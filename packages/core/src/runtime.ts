@@ -34,8 +34,9 @@ export type ActionHandler<R extends WorkRecord = WorkRecord, O = unknown> = (
  * a method the host calls for it.
  *
  * A port-and-method is called with the action and its context, and whatever
- * it returns is written to `outcomes` under the action's name. A port whose
- * method wants anything else is reached through a handler instead.
+ * it returns is written to `outcomes` under the action's name. Only a method
+ * marked with `acceptsAction` can be reached this way; one that wants its own
+ * arguments is reached through a handler instead.
  */
 export type ActionImplementation<R extends WorkRecord = WorkRecord, O = unknown> =
   | ActionHandler<R, O>

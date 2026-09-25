@@ -5,6 +5,27 @@ import { Action, Plan, actionsOf } from "./work.js";
 /** A mounted port, looked up by kind when an action needs it. */
 export type PortLookup = (kind: PortKind) => object | undefined;
 
+/** Marks a port method as taking `(action, context)`, set by `acceptsAction`. */
+const ACCEPTS_ACTION = Symbol.for("amykit.acceptsAction");
+
+/**
+ * Marks a port method as one the host may call with `(action, context)`.
+ *
+ * A port method written for its own callers — `check(repo, workId)`, say —
+ * would be handed an action where it expects a repository, and run wrong
+ * rather than fail. So a port-and-method declaration only reaches a method
+ * that opted in, and the mount refuses one that did not.
+ */
+export function acceptsAction<F extends (action: Action, context: ActionContext) => unknown>(method: F): F {
+  Object.defineProperty(method, ACCEPTS_ACTION, { value: true });
+  return method;
+}
+
+/** Whether a port method opted in to being called with an action. */
+function takesAnAction(method: unknown): boolean {
+  return typeof method === "function" && (method as unknown as Record<symbol, unknown>)[ACCEPTS_ACTION] === true;
+}
+
 /** Whether an implementation is a port and a method rather than a handler. */
 export function isPortBinding(implementation: unknown): implementation is ActionSpec {
   if (implementation === null || typeof implementation !== "object") return false;
@@ -53,8 +74,15 @@ export function unrunnable(name: string, implementation: unknown, port: PortLook
   if (!target) {
     return `action \`${name}\`: needs the \`${implementation.port}\` port, which nothing mounted`;
   }
-  if (typeof (target as Record<string, unknown>)[implementation.method] !== "function") {
+  const method = (target as Record<string, unknown>)[implementation.method];
+  if (typeof method !== "function") {
     return `action \`${name}\`: the \`${implementation.port}\` port has no method \`${implementation.method}\``;
+  }
+  if (!takesAnAction(method)) {
+    return (
+      `action \`${name}\`: \`${implementation.port}.${implementation.method}\` takes its own arguments, not an action — ` +
+      `write a handler that calls it, or mark it with \`acceptsAction\``
+    );
   }
   return null;
 }
@@ -63,8 +91,8 @@ export function unrunnable(name: string, implementation: unknown, port: PortLook
  * Runs one action through whatever the runtime declared for it.
  *
  * A port-and-method is called with the action and its context, and what it
- * returns lands in `outcomes` under the action's name — the one shape the
- * host can wire without the workflow writing a line.
+ * returns — `undefined` included — lands in `outcomes` under the action's
+ * name: the one shape the host can wire without the workflow writing a line.
  */
 export async function runAction(
   implementation: ActionImplementation | undefined,
@@ -83,6 +111,5 @@ export async function runAction(
   }
 
   const target = port(implementation.port) as Record<string, (...args: unknown[]) => unknown>;
-  const result = await target[implementation.method]!(action, context);
-  if (result !== undefined) context.outcomes[action.type] = result;
+  context.outcomes[action.type] = await target[implementation.method]!(action, context);
 }
