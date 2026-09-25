@@ -130,7 +130,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 
 | Gate | What expires it | Assertions |
 | :-- | :-- | :-- |
-| `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md` | 5 |
+| `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md`<br>`packages/cli/guardrails/**` | 10 |
 | `amy-add-remove` | `packages/cli/src/index.ts`<br>`packages/cli/src/spec.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/remove.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/config.ts` | 5 |
 | `amy-update` | `packages/cli/src/update.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/skills-record.ts`<br>`packages/cli/src/harnesses.ts`<br>`packages/cli/src/auto-update.ts`<br>`packages/cli/src/daemon.ts`<br>`packages/cli/src/config.ts` | 30 |
 | `bare-install` | `packages/cli/package.json`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/src/doctor.ts` | 12 |

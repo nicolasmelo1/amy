@@ -1,0 +1,19 @@
+# The guardrails `amy workflow new` writes beside every workflow. Each rule
+# is a defect that reached a real board from a workflow, and `sf check` in
+# this directory refuses it before it reaches another. `sf verify` proves
+# each one still fires on the fixture under `mutations/`.
+version: 1
+project:
+  name: workflow
+  languages: [typescript]
+  exclude: ["node_modules/**"]
+docs:
+  scan: []
+gates: {}
+rules:
+  L6.BRANCH_RESET_LOSES_COMMITS:
+    enabled: true
+  L6.EMPTY_FOLD_AGREES_WITH_EVERYTHING:
+    enabled: true
+  L6.FOLD_READS_A_MOVED_RECORD:
+    enabled: true

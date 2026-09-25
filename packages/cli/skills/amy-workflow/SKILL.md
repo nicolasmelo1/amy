@@ -27,8 +27,11 @@ amy workflow new oncall
 amy workflow check oncall
 ```
 
-The new command writes `~/.amy/workflows/oncall`: a complete npm package with
-its states, pure `plan()`, runtime, and the runtime contribution amy needs.
+The new command writes `~/.amy/workflows/oncall`: a complete npm package in
+TypeScript with its states, pure `plan()`, runtime, and the runtime contribution
+amy needs. Node runs `index.ts` from there unbuilt (22.18 or later), and
+`npm run build` compiles `dist/` for anything that installs it into
+`node_modules`, where Node will not run TypeScript.
 `check` drives that lifecycle against its stub world before it touches real
 work. When the process becomes useful to more than one machine, give it a
 scoped name, drop the `private` flag the scaffold wrote, and `npm publish` in
@@ -242,13 +245,19 @@ it is the test that finds the bugs:
 - it settles instead of spinning — drive it past the end, assert nothing moves
 - a waiting state makes no move until the world does
 
-The scaffold's `index.test.js` already calls `conforms` from
+The scaffold's `index.test.ts` already calls `conforms` from
 `@amykit/workflow-testkit`, and `npm test` in the workflow's directory runs it.
 It is the machine-shaped half nobody writes by hand: a state nothing leaves, an
 action with no working handler, a wait counted as a try, a decision made by
 `[].every(...)`, a giving-up state with no way out. Every state the interrogation
 adds needs a world that reaches it and a `meanwhile` that gets it out, or the
 suite goes red naming the state.
+
+The scaffold also wrote `.software-factory/`: three rules `sf check` in that
+directory enforces, each a defect that reached a real board from a workflow —
+`checkout -B` losing a commit that was never pushed, a fold reading `.state` off
+a record the engine already moved, and a `.every(` that never said what empty
+means. They are ordinary repo-local rules, and `sf verify` proves each fires.
 
 Unit-test `plan()` directly for the branches: it is pure, so a table of
 `(record, observation) -> Plan` is the cheapest test you will write.

@@ -346,6 +346,7 @@ gates:
       - "packages/cli/src/index.ts"
       - "packages/cli/src/config.ts"
       - "packages/cli/skills/amy-workflow/SKILL.md"
+      - "packages/cli/guardrails/**"
     evidence: ".software-factory/evidence/workflow-new.json"
     plan: "docs/design/a-workflow-is-yours-not-a-package.md"
     required_assertions:
@@ -354,6 +355,11 @@ gates:
       - "mine.a_workflow_that_spins_is_refused"
       - "mine.a_state_nothing_reaches_is_refused"
       - "mine.an_action_with_no_port_is_refused"
+      - "guardrails.the_scaffold_passes_its_own_check"
+      - "guardrails.every_guardrail_fires_on_its_fixture"
+      - "guardrails.a_branch_reset_is_refused"
+      - "guardrails.an_every_over_nothing_is_refused"
+      - "guardrails.a_fold_reading_the_moved_state_is_refused"
 
   # One CLI adds or removes a mounted package; these are the paths that make
   # that promise true, so changing one expires the proof.

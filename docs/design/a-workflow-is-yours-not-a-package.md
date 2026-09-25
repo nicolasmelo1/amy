@@ -74,6 +74,17 @@ teaches the boot refusal instead of the shape.
       (proof: test:packages/cli/tests/loader.test.ts)
 - [ ] `/amy-workflow` writes a directory by default and names publishing as a
       later choice (proof: unspecified:the skill is prose, and only a reader checks it)
+- [x] The scaffold's own `sf check` is green before it is edited — see
+      [the guardrails ship with the workflow](the-guardrails-ship-with-the-workflow.md)
+      (proof: assertion:guardrails.the_scaffold_passes_its_own_check)
+- [x] Each guardrail it ships fires on its fixture
+      (proof: assertion:guardrails.every_guardrail_fires_on_its_fixture)
+- [x] Its `sf check` refuses `checkout -B`
+      (proof: assertion:guardrails.a_branch_reset_is_refused)
+- [x] It refuses a `.every(` that does not say what empty means
+      (proof: assertion:guardrails.an_every_over_nothing_is_refused)
+- [x] It refuses a fold that reads the moved record's state
+      (proof: assertion:guardrails.a_fold_reading_the_moved_state_is_refused)
 
 **Exit condition:** somebody who has never published anything describes their
 process to `/amy-workflow`, and ends with a workflow in `~/.amy/workflows`

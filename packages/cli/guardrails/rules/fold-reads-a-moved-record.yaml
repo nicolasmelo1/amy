@@ -1,0 +1,36 @@
+id: L6.FOLD_READS_A_MOVED_RECORD
+layer: L6
+title: A fold never reads the state off the record it is handed
+severity: high
+statement: >-
+  Inside a workflow's `apply`, or a function whose name starts with `apply` or
+  `fold`, nothing reads `.state` to decide anything.
+why: >-
+  The engine advances the record before `apply` sees it, so `record.state` is
+  where the work went, not where the look started. A branch on it silently
+  never matches the state its author named, and nothing fails. This reached a
+  real board. `moved.from` is the state the look started in, and `plan()` is
+  handed the record before it moved, so a read there is correct. `sf` parses
+  TypeScript and not JavaScript, so this sees a workflow once it is `.ts`.
+fix: >-
+  Read where the work came from in `moved.from` and where it went in
+  `moved.to`; `moved` is null when the plan did not advance. Decide what ran
+  from `outcomes`.
+ratchet: allowlist
+check:
+  kind: nested
+  languages:
+    typescript:
+      outer: |
+        [
+          (function_declaration name: (identifier) @fn (#match? @fn "^(apply|fold)") (#not-match? @fn "^applyPlan$"))
+          (method_definition name: (property_identifier) @fn (#match? @fn "^(apply|fold)"))
+          (pair key: (property_identifier) @fn (#match? @fn "^(apply|fold)") value: [(arrow_function) (function_expression)])
+        ] @target
+      inner: |
+        (member_expression
+          property: (property_identifier) @prop
+          (#eq? @prop "state")) @inner
+defaults:
+  scope: ["**/*.ts", "**/*.mts", "**/*.cts"]
+  exclude: ["**/*.test.*", "**/tests/**"]

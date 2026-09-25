@@ -1,8 +1,8 @@
 {
   "scenario": "a-workflow-of-your-own",
   "status": "passed",
-  "goal": "I want to describe a private process and receive a workflow I own, not a package I must publish. Prove a bare installed command writes an unedited workflow under its state home, resolves its directory by name, checks its lifecycle, and refuses the failure shapes a workflow author otherwise only discovers at boot.",
+  "goal": "I want to describe a private process and receive a workflow I own, not a package I must publish. Prove a bare installed command writes an unedited workflow under its state home, resolves its directory by name, checks its lifecycle, refuses the failure shapes a workflow author otherwise only discovers at boot, and ships the guardrails that make its own sf check refuse the defects that reached a real board.",
   "artifact": { "package": "@amykit/cli", "entry": "amy workflow new and amy workflow check", "built_by": "scripts/install.sh" },
-  "observed": { "assertions_run": 6, "assertions_failed": 0 },
-  "assertions": [{"type":"mine.the_scaffold_runs_before_it_is_edited","status":"passed"},{"type":"mine.a_directory_name_is_a_workflow","status":"passed"},{"type":"mine.the_scaffold_is_a_publishable_package","status":"passed"},{"type":"mine.a_workflow_that_spins_is_refused","status":"passed"},{"type":"mine.a_state_nothing_reaches_is_refused","status":"passed"},{"type":"mine.an_action_with_no_port_is_refused","status":"passed"}]
+  "observed": { "assertions_run": 11, "assertions_failed": 0 },
+  "assertions": [{"type":"mine.the_scaffold_runs_before_it_is_edited","status":"passed"},{"type":"mine.a_directory_name_is_a_workflow","status":"passed"},{"type":"mine.the_scaffold_is_a_publishable_package","status":"passed"},{"type":"mine.a_workflow_that_spins_is_refused","status":"passed"},{"type":"mine.a_state_nothing_reaches_is_refused","status":"passed"},{"type":"mine.an_action_with_no_port_is_refused","status":"passed"},{"type":"guardrails.the_scaffold_passes_its_own_check","status":"passed"},{"type":"guardrails.every_guardrail_fires_on_its_fixture","status":"passed"},{"type":"guardrails.a_branch_reset_is_refused","status":"passed"},{"type":"guardrails.an_every_over_nothing_is_refused","status":"passed"},{"type":"guardrails.a_fold_reading_the_moved_state_is_refused","status":"passed"}]
 }
