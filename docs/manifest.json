@@ -243,6 +243,11 @@
           "description": ""
         },
         {
+          "title": "A testkit proves the machine",
+          "path": "/design/a-testkit-proves-the-machine",
+          "description": ""
+        },
+        {
           "title": "A workflow is yours, not a package",
           "path": "/design/a-workflow-is-yours-not-a-package",
           "description": ""
@@ -486,6 +491,11 @@
           "depth": 2,
           "title": "The walkthrough test",
           "slug": "the-walkthrough-test"
+        },
+        {
+          "depth": 2,
+          "title": "The conformance suite",
+          "slug": "the-conformance-suite"
         },
         {
           "depth": 2,
@@ -776,6 +786,11 @@
           "depth": 3,
           "title": "classify turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before amy add, amy remove and amy update arrive.",
           "slug": "classify-turns-a-plugin-spec-into-what-npm-installs-and-what-the-config-names-a-name-a-range-a-git-url-a-tarball-or-a-path-in-one-place-before-amy-add-amy-remove-and-amy-update-arrive"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/workflow-testkit is new: conforms(workflow, { runner, runtime, worlds }) registers the machine-shaped suite every workflow needs and nobody writes — every state reached and left, every planned action handled and surviving the call, no wait counted as a try, no decision made by [].every(...), and no giving-up state without an honest way out — as ordinary tests in whichever runner it is handed, driven against worlds the author supplies. amy workflow new now writes that suite beside the scaffold as index.test.js, with npm test and the kit as a dev dependency, and the scaffold's index.js exports its workflow and a runtime() factory beside the plugin.",
+          "slug": "amykitworkflow-testkit-is-new-conformsworkflow-runner-runtime-worlds-registers-the-machine-shaped-suite-every-workflow-needs-and-nobody-writes-every-state-reached-and-left-every-planned-action-handled-and-surviving-the-call-no-wait-counted-as-a-try-no-decision-made-by-every-and-no-giving-up-state-without-an-honest-way-out-as-ordinary-tests-in-whichever-runner-it-is-handed-driven-against-worlds-the-author-supplies-amy-workflow-new-now-writes-that-suite-beside-the-scaffold-as-indextestjs-with-npm-test-and-the-kit-as-a-dev-dependency-and-the-scaffolds-indexjs-exports-its-workflow-and-a-runtime-factory-beside-the-plugin"
         },
         {
           "depth": 3,
@@ -1547,6 +1562,33 @@
       "order": 999,
       "generated": false,
       "headings": [
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-testkit-proves-the-machine",
+      "file": "docs/design/a-testkit-proves-the-machine.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-testkit-proves-the-machine.md",
+      "title": "A testkit proves the machine",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What it would have caught",
+          "slug": "what-it-would-have-caught"
+        },
         {
           "depth": 2,
           "title": "What shipped",
@@ -6756,6 +6798,20 @@
         "environment": []
       },
       {
+        "name": "@amykit/workflow-testkit",
+        "version": "0.4.0",
+        "kind": "library",
+        "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
+        "directory": "packages/workflow-testkit",
+        "npm": "https://www.npmjs.com/package/@amykit/workflow-testkit",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-testkit",
+        "readme": "packages/workflow-testkit/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
         "name": "@amykit/workflow-ticket-to-qa",
         "version": "0.4.0",
         "kind": "workflow",
@@ -7608,6 +7664,22 @@
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-testkit-proves-the-machine",
+        "title": "`@amykit/workflow-testkit` is new: `conforms(workflow, { runner, runtime, worlds })` registers the machine-shaped suite every workflow needs and nobody writes — every state reached and left, every planned action handled and surviving the call, no wait counted as a try, no decision made by `[].every(...)`, and no giving-up state without an honest way out — as ordinary tests in whichever runner it is handed, driven against worlds the author supplies. `amy workflow new` now writes that suite beside the scaffold as `index.test.js`, with `npm test` and the kit as a dev dependency, and the scaffold's `index.js` exports its `workflow` and a `runtime()` factory beside the plugin.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-testkit",
             "level": "minor"
           }
         ],

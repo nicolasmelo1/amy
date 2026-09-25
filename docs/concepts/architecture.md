@@ -81,6 +81,7 @@ packages/
 ├── workflow-errand      Something said in passing becomes work: capture it, do it, say what happened.
 ├── workflow-feature-grooming Feature grooming against read-only base-branch source snapshots.
 ├── workflow-note-to-plan The note-to-plan workflow: friction becomes a plan in the repository it is about.
+├── workflow-testkit     The tests every workflow needs and nobody writes, driven against a world its author supplies.
 └── workflow-ticket-to-qa The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
 
 plugins/
@@ -125,6 +126,7 @@ this repository.
 | `@amykit/workflow-errand` | workflow | `@amykit/core` |
 | `@amykit/workflow-feature-grooming` | plugin | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
+| `@amykit/workflow-testkit` | library | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/core` |
 | `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-claude` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |

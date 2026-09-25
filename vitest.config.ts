@@ -36,6 +36,7 @@ export default defineConfig({
       "@amykit/core": resolve(here, "packages/core/src/index.ts"),
       "@amykit/workflow-ticket-to-qa": resolve(here, "packages/workflow-ticket-to-qa/src/index.ts"),
       "@amykit/workflow-note-to-plan": resolve(here, "packages/workflow-note-to-plan/src/index.ts"),
+      "@amykit/workflow-testkit": resolve(here, "packages/workflow-testkit/src/index.ts"),
       "@amykit/model-specs": resolve(here, "packages/model-specs/src/index.ts"),
       "@amykit/plugin-file-queue": resolve(here, "plugins/file-queue/src/index.ts"),
       "@amykit/plugin-file-worktree": resolve(here, "plugins/file-worktree/src/index.ts"),

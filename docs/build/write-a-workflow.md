@@ -24,6 +24,7 @@ page is what it writes.
 ```sh
 amy workflow new review      # ~/.amy/workflows/review, and the profile naming it
 amy workflow check review    # drives its lifecycle against a stub world
+cd ~/.amy/workflows/review && npm install && npm test   # the machine's own suite
 ```
 
 `new` writes a workflow that already moves a piece of work — the states, a pure
@@ -393,6 +394,14 @@ that moved before the world did, an action the plan emits that no handler
 answers, a state the walkthrough never reaches, and a run that does not settle
 in a terminal state. It needs no test runner, which is the point — it is what to
 run while editing. The tests above are what survives the editing.
+
+The scaffold's `index.test.js` is the rest: `conforms` from
+`@amykit/workflow-testkit`, which walks your runtime through the worlds you
+give it and fails a state nothing leaves, an action with nothing behind it, a
+wait counted as a try, a decision made by an empty `every`, and a giving-up
+state with no honest way out — none of which is about your domain, and all of
+which reached a real board before there was a test for them. Add a world each
+time the workflow grows a state; see [Testing](testing.md#the-conformance-suite).
 
 ## 9. Drive it
 

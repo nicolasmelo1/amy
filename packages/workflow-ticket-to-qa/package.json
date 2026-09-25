@@ -34,6 +34,7 @@
     "@amykit/plugin-file-queue": "^0.4.0",
     "@amykit/plugin-file-store": "^0.4.0",
     "@amykit/plugin-serial-engine": "^0.4.0",
-    "@amykit/test-fixtures": "^0.1.0"
+    "@amykit/test-fixtures": "^0.1.0",
+    "@amykit/workflow-testkit": "^0.4.0"
   }
 }

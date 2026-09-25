@@ -46,8 +46,11 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig): st
     type: "module",
     main: "./index.js",
     files: ["index.js"],
+    scripts: { test: "node --test" },
+    devDependencies: { [TESTKIT]: `^${testkitVersion()}` },
   }, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "index.js"), scaffold(name), "utf-8");
+  fs.writeFileSync(path.join(directory, "index.test.js"), scaffoldSuite(), "utf-8");
   writeWorkflowProfile(home, name, name, config);
   return directory;
 }
@@ -185,6 +188,25 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** The kit the scaffold's own suite runs, which moves in the same version group as this command. */
+const TESTKIT = "@amykit/workflow-testkit";
+
+function testkitVersion(): string {
+  const manifest = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf-8")) as { version: string };
+  return manifest.version;
+}
+
 function scaffold(name: string): string {
-  return `// This workflow belongs to this machine. Edit the states and the two halves below.\n// \`amy workflow check ${name}\` drives this file before it drives real work.\n\nconst workflow = {\n  name: ${JSON.stringify(name)},\n  states: ["received", "done"],\n  waitingStates: [],\n  initialState: "received",\n  terminalStates: ["done"],\n  usesActions: [],\n  usesObservers: [],\n  plan: (record) =>\n    record.state === "received"\n      ? { kind: "advance", to: "done", effects: [], why: "the work was received" }\n      : { kind: "settled", why: "the workflow is complete" },\n};\n\nconst runtime = {\n  policy: {},\n  found: async () => ["example"],\n  newRecord: (id, now) => ({ id, state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }),\n  observe: async () => ({}),\n  handlers: () => ({}),\n  apply: (record) => record,\n};\n\nexport const plugin = {\n  name: ${JSON.stringify(`workflow-${name}`)},\n  version: "0.1.0",\n  register(registry) {\n    registry.workflow(workflow);\n    registry.contribute("workflow-runtime", workflow.name, runtime);\n  },\n};\n`;
+  return `// This workflow belongs to this machine. Edit the states and the two halves below.\n// \`amy workflow check ${name}\` drives this file before it drives real work,\n// and \`npm test\` runs the machine's own suite over it.\n\nexport const workflow = {\n  name: ${JSON.stringify(name)},\n  states: ["received", "done"],\n  waitingStates: [],\n  initialState: "received",\n  terminalStates: ["done"],\n  usesActions: [],\n  usesObservers: [],\n  plan: (record) =>\n    record.state === "received"\n      ? { kind: "advance", to: "done", effects: [], why: "the work was received" }\n      : { kind: "settled", why: "the workflow is complete" },\n};\n\n// A function rather than an object, so the suite builds its own. When this\n// runtime needs a port, take it as an argument: the suite hands it a fake and\n// the plugin below hands it the mounted one.\nexport function runtime() {\n  return {\n    policy: {},\n    found: async () => ["example"],\n    newRecord: (id, now) => ({ id, state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }),\n    observe: async () => ({}),\n    handlers: () => ({}),\n    apply: (record) => record,\n  };\n}\n\nexport const plugin = {\n  name: ${JSON.stringify(`workflow-${name}`)},\n  version: "0.1.0",\n  register(registry) {\n    registry.workflow(workflow);\n    registry.contribute("workflow-runtime", workflow.name, runtime());\n  },\n};\n`;
+}
+
+/**
+ * The suite every workflow needs and nobody writes, from its first commit.
+ *
+ * `node:test` because it is the runner a machine with node already has; the
+ * kit takes whichever runner it is handed. A world is one situation the
+ * workflow can be in, and adding one is how a new state gets proven.
+ */
+function scaffoldSuite(): string {
+  return `import { describe, it } from "node:test";\nimport { conforms } from "${TESTKIT}";\nimport { runtime, workflow } from "./index.js";\n\n// Each world is a situation this workflow can be in. Give one a \`meanwhile\`\n// for what the outside world does while the workflow waits.\nconforms(workflow, {\n  runner: { describe, it },\n  runtime: () => runtime(),\n  worlds: [{ name: "a piece of work arrives" }],\n});\n`;
 }
