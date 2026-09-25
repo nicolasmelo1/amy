@@ -306,6 +306,19 @@ describe("diagnose", () => {
     expect(check?.detail).toContain("`target` is required");
   });
 
+  it("fails invalid auto-update settings before a workflow is assembled", async () => {
+    const config = {
+      ...DEFAULT_CONFIG,
+      autoUpdate: { enabled: true, timing: "during" as "before", everyRuns: 0 },
+    };
+
+    const checks = await diagnose(deps({ config }));
+
+    expect(labelled(checks, "auto update settings")).toMatchObject({ ok: false });
+    expect(labelled(checks, "auto update settings")?.detail).toContain("timing");
+    expect(labelled(checks, "auto update settings")?.detail).toContain("everyRuns");
+  });
+
   it("fails a slice for a plugin nothing mounted", async () => {
     // A setting written for a plugin nobody installed is a setting that will
     // never do anything, which is worth saying out loud.

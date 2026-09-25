@@ -33,6 +33,72 @@ export function clearDaemon(file: string): void {
   fs.rmSync(file, { force: true });
 }
 
+/** Claims a stopped daemon record without removing a newer loop's record. */
+export function claimExitedDaemon(file: string, pid: number): DaemonRecord | undefined {
+  const claim = `${file}.exited-${process.pid}`;
+  try {
+    fs.renameSync(file, claim);
+  } catch {
+    return undefined;
+  }
+
+  const record = readDaemon(claim);
+  if (!record || record.pid !== pid || isAlive(record.pid)) {
+    if (!fs.existsSync(file)) fs.renameSync(claim, file);
+    else fs.rmSync(claim, { force: true });
+    return undefined;
+  }
+
+  fs.rmSync(claim, { force: true });
+  return record;
+}
+
+/**
+ * Claims the short boundary where a loop becomes visible, or an update owns
+ * the machine. `open(..., "wx")` is atomic: a start cannot slip between an
+ * update's running check and its package move. The owner is written before
+ * the descriptor closes, so a file that exists is a file with an owner: a
+ * crash in that window leaves nothing on disk, because the write and the
+ * existence share the one syscall pair nobody else can see between.
+ */
+export function claimDaemonBoundary(pidFile: string): (() => void) | undefined {
+  const lock = `${pidFile}.lock`;
+  fs.mkdirSync(path.dirname(lock), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let descriptor: number | undefined;
+    try {
+      descriptor = fs.openSync(lock, "wx");
+      fs.writeFileSync(descriptor, `${process.pid}\n`, "utf-8");
+      fs.closeSync(descriptor);
+      return () => fs.rmSync(lock, { force: true });
+    } catch (error) {
+      if (descriptor !== undefined) {
+        try { fs.closeSync(descriptor); } catch { /* already closed */ }
+      }
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      // The owner may release the lock between our refused open and this
+      // read: a disappearing lock is a claim that came free, not a crash,
+      // so it is retried like a stale claim is. Any other read error is
+      // ours, and says so.
+      let owner: number;
+      try {
+        owner = Number(fs.readFileSync(lock, "utf-8").trim());
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") throw readError;
+        continue;
+      }
+      // A pid of 0 is a malformed record, not an owner: kill(0, 0) asks
+      // about the process group and would report a live lock nobody owns.
+      if ((!Number.isSafeInteger(owner) || owner <= 0 || !isAlive(owner))) {
+        fs.rmSync(lock, { force: true });
+        continue;
+      }
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Whether a process id belongs to something still running.
  *

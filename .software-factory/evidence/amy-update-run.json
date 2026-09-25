@@ -1,0 +1,14 @@
+{
+  "scenario": "amy-update",
+  "status": "passed",
+  "goal": "I want a machine two versions behind to run one command, end up on the current one with its work untouched, and the skills in its harnesses to describe the CLI that is now installed.",
+  "artifact": { "package": "@amykit/cli", "entry": "the installed amy command, run by node", "built_by": "scripts/install.sh" },
+  "observed": {
+    "assertions_run": 31,
+    "assertions_failed": 0,
+    "workflow_updated": "@acme/workflow-oncall",
+    "moved_from": "1.0.0",
+    "moved_to": "1.1.0"
+  },
+  "assertions": [{"type":"update.the_installed_cli_keeps_a_registry_intent","status":"passed"},{"type":"update.added_the_first_version","status":"passed"},{"type":"update.v1_finds_the_page","status":"passed"},{"type":"update.v1_moves_the_page","status":"passed"},{"type":"update.default_auto_update_runs_before_a_workflow","status":"passed"},{"type":"update.auto_update_can_run_after_a_workflow","status":"passed"},{"type":"update.auto_update_respects_its_cadence","status":"passed"},{"type":"update.auto_update_can_be_disabled","status":"passed"},{"type":"update.invalid_auto_update_settings_refuse_before_work","status":"passed"},{"type":"update.a_daemon_updates_only_at_its_lifecycle_boundary","status":"passed"},{"type":"update.direct_daemon_uses_the_configured_schedule","status":"passed"},{"type":"update.a_check_names_what_would_move","status":"passed"},{"type":"update.a_check_changes_nothing","status":"passed"},{"type":"update.the_version_moved","status":"passed"},{"type":"update.the_update_reports_the_move","status":"passed"},{"type":"update.the_copy_on_disk_moved","status":"passed"},{"type":"update.the_state_survives_the_version","status":"passed"},{"type":"update.the_manifest_keeps_the_range","status":"passed"},{"type":"update.the_new_version_drives_the_work","status":"passed"},{"type":"update.the_rollback_names_the_reason","status":"passed"},{"type":"update.a_bad_version_is_rolled_back","status":"passed"},{"type":"update.the_machine_boots_after_the_update","status":"passed"},{"type":"update.a_config_that_stops_booting_fails_the_update","status":"passed"},{"type":"update.the_boot_refusal_rolls_the_move_back","status":"passed"},{"type":"update.an_update_refuses_while_the_loop_runs","status":"passed"},{"type":"update.skills_writes_are_recorded","status":"passed"},{"type":"update.the_skills_follow_the_version","status":"passed"},{"type":"update.a_harness_never_written_to_is_not_written_to_now","status":"passed"},{"type":"update.the_cli_moves_itself","status":"passed"},{"type":"update.a_moved_cli_still_runs","status":"passed"},{"type":"update.a_moved_cli_rewrites_its_own_skills","status":"passed"}]
+}

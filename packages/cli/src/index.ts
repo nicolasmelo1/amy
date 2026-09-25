@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
 import type { TickResult } from "@amykit/plugin-serial-engine";
@@ -10,6 +10,7 @@ import { FileTasks } from "@amykit/plugin-file-tasks";
 import {
   BUDGET_WINDOWS,
   BriefStore,
+  CommandRunner,
   Engine,
   FileStopSwitch,
   Mounted,
@@ -41,6 +42,7 @@ import {
   AmyConfig,
   EXAMPLE_CONFIG,
   EXAMPLE_ROSTER,
+  configuredAutoUpdateProblems,
   confirmRoster,
   loadConfig,
   loadRoster,
@@ -75,14 +77,17 @@ import {
   workflowProfileConflict,
   workflowProfileName,
 } from "./add.js";
-import { clearDaemon, running, writeDaemon } from "./daemon.js";
-import { Harness as HarnessTarget, install, installedHarnesses } from "./harnesses.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, running, writeDaemon } from "./daemon.js";
+import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
+import { Held, held, isRange, line, move, restore, roots } from "./update.js";
+import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
+import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
 // harness you are in, from wherever you happen to be standing.
@@ -161,6 +166,29 @@ async function assemble(
   return { ok: true, engine: mounted.engine, mounted };
 }
 
+/** Runs this executable's update command and returns its exact exit status. */
+function scheduledUpdate(): Promise<number> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [process.argv[1]!, "update"], {
+      stdio: "inherit",
+      env: process.env,
+    });
+    child.once("error", (error) => {
+      console.error(`could not start amy update: ${error.message}`);
+      resolve(1);
+    });
+    child.once("exit", (code) => resolve(code ?? 1));
+  });
+}
+
+/** Applies the persisted schedule around one foreground workflow invocation. */
+async function aroundWorkflow(profile: Profile, work: () => Promise<void>): Promise<void> {
+  const config = loadConfig(home);
+  const problems = configuredAutoUpdateProblems(config);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  await runWithAutoUpdate({ home, profile: profile.name, config, update: scheduledUpdate, work });
+}
+
 /**
  * Which workflow this invocation drives.
  *
@@ -178,7 +206,16 @@ function selected(config: AmyConfig = loadConfig(home)): Profile {
 
 /** Assembles, or prints why it could not and stops. */
 async function engineOrExit(): Promise<Engine> {
-  const outcome = await assemble(selected());
+  const config = loadConfig(home);
+  const scheduleProblems = configuredAutoUpdateProblems(config);
+  if (scheduleProblems.length > 0) {
+    console.error("amy could not start:");
+    for (const problem of scheduleProblems) console.error(`  ${problem}`);
+    process.exitCode = 1;
+    process.exit(1);
+  }
+
+  const outcome = await assemble(selected(config));
   if (outcome.ok) return outcome.engine;
 
   console.error("amy could not start:");
@@ -439,11 +476,25 @@ program
     console.log("released, the queue picks up where it left off");
   });
 
+/** Waits until the daemon is gone, so an after update never sees a live loop. */
+async function waitForDaemonExit(pid: number): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    try {
+      process.kill(pid, 0);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ESRCH") return;
+      throw error;
+    }
+    await sleep(50);
+  }
+  throw new Error(`daemon ${pid} did not exit after SIGTERM`);
+}
+
 program
   .command("start")
   .description("Start the loop in the background, and keep it running")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
-  .action((options: { every: string }) => {
+  .action(async (options: { every: string }) => {
     const place = paths(home);
     const already = running(place.pid);
     if (already) {
@@ -451,32 +502,74 @@ program
       return;
     }
 
-    const profile = selected();
-    // Detached, with its output on a file rather than this terminal: the
-    // point of starting it is that it outlives the session that started it,
-    // and a child holding this terminal's stdout would not.
-    const out = fs.openSync(path.join(place.base, "daemon.log"), "a");
-    const child = spawn(
-      process.execPath,
-      [process.argv[1]!, "--workflow", profile.name, "daemon", "--every", options.every],
-      { detached: true, stdio: ["ignore", out, out], env: process.env },
-    );
-    child.unref();
+    const config = loadConfig(home);
+    const problems = configuredAutoUpdateProblems(config);
+    if (problems.length > 0) throw new Error(problems.join("; "));
+    const profile = selected(config);
+    // A detached reaper still owns the dead record and its after-timed
+    // update. Starting another loop must not clear that record before the
+    // reaper can claim it, or silently lose the scheduled maintenance.
+    if (hasDaemonUpdate(home, profile.name)) {
+      throw new Error("the previous daemon is settling its scheduled update; try start again when it finishes");
+    }
+    const schedule = beginAutoUpdateInvocation(home, profile.name, config);
+    if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
+      throw new Error("amy update failed");
+    }
 
-    writeDaemon(place.pid, {
-      pid: child.pid ?? 0,
-      workflow: profile.name,
-      startedAt: new Date().toISOString(),
-    });
+    // The claim spans only the moment the loop becomes visible: an update
+    // refused to move packages while a child was between its spawn and its
+    // pid record. A due before-update runs unclaimed above, because it is
+    // an `amy update` itself and owns the boundary inside its own process.
+    const release = claimDaemonBoundary(place.pid);
+    if (!release) {
+      console.error("the loop is starting or amy update is running; try again when it finishes");
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const current = running(place.pid);
+      if (current) {
+        console.log(`already running: pid ${current.pid}, driving ${current.workflow}`);
+        return;
+      }
 
-    console.log(`started ${profile.name}: pid ${child.pid}`);
-    console.log(`Watch it: tail -f ${path.join(place.base, "daemon.log")}`);
+      // Detached, with its output on a file rather than this terminal: the
+      // point of starting it is that it outlives the session that started it.
+      const out = fs.openSync(path.join(place.base, "daemon.log"), "a");
+      const child = spawn(
+        process.execPath,
+        [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
+        { detached: true, stdio: ["ignore", out, out], env: process.env },
+      );
+      child.unref();
+      writeDaemon(place.pid, {
+        pid: child.pid ?? 0,
+        workflow: profile.name,
+        startedAt: new Date().toISOString(),
+      });
+
+      if (schedule.due && schedule.timing === "after") {
+        markDaemonUpdate(home, profile.name);
+        const reaper = spawn(
+          process.execPath,
+          [process.argv[1]!, "after-daemon", String(child.pid), profile.name],
+          { detached: true, stdio: ["ignore", out, out], env: process.env },
+        );
+        reaper.unref();
+      }
+
+      console.log(`started ${profile.name}: pid ${child.pid}`);
+      console.log(`Watch it: tail -f ${path.join(place.base, "daemon.log")}`);
+    } finally {
+      release();
+    }
   });
 
 program
   .command("stop")
   .description("Stop the background loop")
-  .action(() => {
+  .action(async () => {
     const place = paths(home);
     const record = running(place.pid);
     if (!record) {
@@ -490,48 +583,106 @@ program
     // operator does, and stopping should not leave the machine held.
     stopSwitch.request("stopped by hand");
     process.kill(record.pid, "SIGTERM");
+    await waitForDaemonExit(record.pid);
     stopSwitch.clear();
-    clearDaemon(place.pid);
-
+    // The detached reaper owns an after-timed update, including a crash or
+    // direct signal. Do not race it by consuming the marker here.
+    if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(place.pid);
     console.log(`stopped ${record.workflow}: pid ${record.pid}`);
+  });
+
+program
+  .command("after-daemon")
+  .description("Internal: update after a started daemon has exited")
+  .argument("<pid>")
+  .argument("<workflow>")
+  .action(async (pidText: string, workflow: string) => {
+    const pid = Number(pidText);
+    if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error(`invalid daemon pid ${pidText}`);
+    await waitForDaemonExit(pid);
+    if (!claimExitedDaemon(paths(home).pid, pid)) return;
+    if (!takeDaemonUpdate(home, workflow)) return;
+    try {
+      if (await scheduledUpdate() !== 0) process.exitCode = 1;
+    } finally {
+      finishDaemonUpdate(home, workflow);
+    }
   });
 
 program
   .command("daemon")
   .description("The loop itself, in the foreground. `amy start` runs this for you")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
-  .action(async (options: { every: string }) => {
-    const engine = await engineOrExit();
-    const idleMs = Math.max(1, Number(options.every)) * 1000;
-    let stopping = false;
+  .option("--scheduled", "internal: the parent start command already scheduled this lifecycle")
+  .action(async (options: { every: string; scheduled?: boolean }) => {
+    const profile = selected();
+    const drive = async () => {
+      const engine = await engineOrExit();
+      const idleMs = Math.max(1, Number(options.every)) * 1000;
+      let stopping = false;
 
-    for (const signal of ["SIGTERM", "SIGINT"] as const) {
-      process.on(signal, () => {
-        stopping = true;
-        runner.killAll();
-      });
-    }
-
-    console.log(`${new Date().toISOString()} loop up, looking every ${idleMs / 1000}s`);
-
-    while (!stopping) {
-      if (stopSwitch.isRequested()) {
-        await sleep(idleMs);
-        continue;
+      for (const signal of ["SIGTERM", "SIGINT"] as const) {
+        process.on(signal, () => {
+          stopping = true;
+          runner.killAll();
+        });
       }
 
-      // Discovery every pass, because work appears in the world rather than
-      // being handed over: a ticket moved into the working status while
-      // nothing was due is exactly what this loop exists to notice.
-      await engine.discover();
-      const result = (await engine.tick()) as TickResult;
-      report(result);
+      console.log(`${new Date().toISOString()} loop up, looking every ${idleMs / 1000}s`);
 
-      if (result.kind === "idle" || result.kind === "stopped") await sleep(idleMs);
-    }
+      while (!stopping) {
+        if (stopSwitch.isRequested()) {
+          await sleep(idleMs);
+          continue;
+        }
 
-    console.log(`${new Date().toISOString()} loop down`);
+        // Discovery every pass, because work appears in the world rather than
+        // being handed over: a ticket moved into the working status while
+        // nothing was due is exactly what this loop exists to notice.
+        await engine.discover();
+        const result = (await engine.tick()) as TickResult;
+        report(result);
+
+        if (result.kind === "idle" || result.kind === "stopped") await sleep(idleMs);
+      }
+
+      console.log(`${new Date().toISOString()} loop down`);
+    };
+    if (options.scheduled) await drive();
+    else await visibleForegroundDaemon(profile, drive);
   });
+
+/** Makes a directly invoked foreground daemon visible to concurrent update. */
+async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<void>): Promise<void> {
+  const config = loadConfig(home);
+  const problems = configuredAutoUpdateProblems(config);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  const schedule = beginAutoUpdateInvocation(home, profile.name, config);
+  // A before update settles before this foreground process becomes the daemon;
+  // an after update settles after its record is removed.
+  if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
+    throw new Error("amy update failed");
+  }
+  const file = paths(home).pid;
+  const release = claimDaemonBoundary(file);
+  if (!release) throw new Error("the loop is starting or amy update is running; try again when it finishes");
+  try {
+    const live = running(file);
+    if (live) throw new Error(`already running: pid ${live.pid}, driving ${live.workflow}`);
+    writeDaemon(file, { pid: process.pid, workflow: profile.name, startedAt: new Date().toISOString() });
+  } finally {
+    release();
+  }
+  try {
+    await drive();
+  } finally {
+    // Do not erase a record a later owner wrote after this process ended.
+    if (readDaemon(file)?.pid === process.pid) clearDaemon(file);
+  }
+  if (schedule.due && schedule.timing === "after" && await scheduledUpdate() !== 0) {
+    throw new Error("amy update failed");
+  }
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -556,7 +707,10 @@ program
   .command("tick")
   .description("Advance one piece of work by one move")
   .action(async () => {
-    report((await (await engineOrExit()).tick()) as TickResult);
+    const profile = selected();
+    await aroundWorkflow(profile, async () => {
+      report((await (await engineOrExit()).tick()) as TickResult);
+    });
   });
 
 program
@@ -564,28 +718,31 @@ program
   .description("Keep advancing until nothing is due")
   .option("--max <n>", "stop after this many moves", "100")
   .action(async (options: { max: string }) => {
-    const engine = await engineOrExit();
-    const max = Number(options.max);
+    const profile = selected();
+    await aroundWorkflow(profile, async () => {
+      const engine = await engineOrExit();
+      const max = Number(options.max);
 
-    // Refusing the next tick is not stopping while an agent call is still
-    // running, so the watcher ends the children the moment the brake is
-    // pulled rather than at the next boundary.
-    const unwatch = stopSwitch.watch((reason) => {
-      const killed = runner.killAll();
-      console.error(`stopping: ${reason}${killed ? ` (ended ${killed} child process(es))` : ""}`);
-    });
+      // Refusing the next tick is not stopping while an agent call is still
+      // running, so the watcher ends the children the moment the brake is
+      // pulled rather than at the next boundary.
+      const unwatch = stopSwitch.watch((reason) => {
+        const killed = runner.killAll();
+        console.error(`stopping: ${reason}${killed ? ` (ended ${killed} child process(es))` : ""}`);
+      });
 
-    try {
-      for (let move = 0; move < max; move += 1) {
-        const result = (await engine.tick()) as TickResult;
-        report(result);
-        if (result.kind === "idle" || result.kind === "stopped") return;
+      try {
+        for (let move = 0; move < max; move += 1) {
+          const result = (await engine.tick()) as TickResult;
+          report(result);
+          if (result.kind === "idle" || result.kind === "stopped") return;
+        }
+
+        console.log(`stopped after ${max} moves`);
+      } finally {
+        unwatch();
       }
-
-      console.log(`stopped after ${max} moves`);
-    } finally {
-      unwatch();
-    }
+    });
   });
 
 program
@@ -1476,6 +1633,435 @@ program
     await removeCommand(home, spec);
   });
 
+/**
+ * `amy update`: move an install forward without leaving it half-moved.
+ *
+ * The two roots are read, every range in them is resolved again, and the
+ * packages that would move are named. `--check` stops there. Otherwise each
+ * one is installed, imported as a probe, and — when every configured profile
+ * mounts at the new version — declared done. A version that will not import
+ * or mount is rolled back to the version that did, which is knowable
+ * because the old one was resolvable a second ago. The loop is refused
+ * first: swapping a package under a running daemon is the one thing that
+ * turns a deterministic machine into a flaky one.
+ */
+program
+  .command("update")
+  .description("Move this install forward: both roots, refusing to leave the machine half-updated")
+  .option("--check", "name every package that would move, and to what, without moving anything")
+  .argument("[package]", "one package to update, by the name the root's manifest carries")
+  .action(async (pkg: string | undefined, options: { check?: boolean }) => {
+    try {
+      process.exitCode = await updateCommand(home, runner, pkg, options.check === true, {
+        mountProfiles: assembleProfiles,
+        skillsInto: rewriteSkillsInto,
+      });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
+
+/** Claims package mutation before inspecting the daemon state. */
+function updateBoundary(home: string): () => void {
+  const release = claimDaemonBoundary(paths(home).pid);
+  if (release) return release;
+  throw new Error("the loop is starting or amy update is already running; try again when it finishes");
+}
+
+/** The update's command body, kept apart from its declaration so a test can drive it. */
+export async function updateCommand(
+  home: string,
+  runner: CommandRunner,
+  pkg: string | undefined,
+  check: boolean,
+  deps: {
+    /** Whether every configured profile still boots, with the problems named. */
+    mountProfiles: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+    /** Rewrites the skills into the harnesses they were written into before. */
+    skillsInto: () => string[];
+    /** Where the install root is; the running CLI's own answer by default. */
+    installRoot?: string;
+  },
+): Promise<number> {
+    const release = updateBoundary(home);
+    try {
+    const refused = refuseWhileRunning(home);
+    if (refused !== undefined) return refused;
+
+    const where = roots(home);
+    const installRoot = deps.installRoot ?? where.install;
+    const everything = await held(runner, home, installRoot);
+
+    if (pkg !== undefined && !everything.some((held) => held.name === pkg)) {
+      console.error(`no package named ${pkg} in either root`);
+      return 1;
+    }
+
+    const moving = everything.filter((one) => (pkg === undefined || one.name === pkg) && one.want !== undefined && one.want !== one.have);
+
+    reportWhatIsHeld(everything, installRoot);
+
+    const unresolvedFailure = reportUnresolved(everything, pkg);
+    if (unresolvedFailure !== undefined) return unresolvedFailure;
+
+    if (check) return reportOnly(moving);
+    if (moving.length === 0) return nothingMoved(deps);
+
+    return moveEverything(runner, where.plugins, installRoot, moving, deps);
+    } finally {
+      release();
+    }
+}
+
+/**
+ * Moves every package and settles the machine the moves leave behind.
+ *
+ * The boot check runs after the moves: an update that leaves a config that
+ * cannot boot has not worked, and everything that moved goes back. The
+ * skills rewrite comes after the boot check for the same reason — a rollback
+ * would otherwise leave skills describing a CLI the machine no longer runs,
+ * the exact failure this plan exists to end. The rewrite is a postcondition
+ * of a CLI move: a refusal fails the update and rolls the CLI move back.
+ */
+async function moveEverything(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moving: readonly Held[],
+    deps: MountProfiles & SkillsInto,
+): Promise<number> {
+    const movedList = await moveEach(runner, pluginsRoot, installRoot, moving);
+    if (movedList.failed > 0) {
+      // A refusal partway through the list leaves the earlier moves in
+      // place: a machine of mixed versions is not the "versions that boot
+      // are still in place" the message promises, so everything that moved
+      // is put back before the command fails.
+      await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
+      console.error(`\n${movedList.failed} package(s) refused to move; every move is rolled back.`);
+      return 1;
+    }
+
+    // Every configured profile mounts before the update is called done: an
+    // update that leaves a config that cannot boot has not worked, and
+    // finding that out at the next tick means finding it out from the daemon.
+    const booted = await deps.mountProfiles();
+    if (!booted.ok) {
+      reportUnbootable(booted.problems);
+      await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
+      return 1;
+    }
+
+    if (movedList.moved.some((one) => one.root === "install" && one.name === "@amykit/cli")) {
+      const rewrite = await rewriteSkillsOrRollBack(runner, pluginsRoot, installRoot, movedList.moved, deps);
+      if (rewrite !== undefined) return rewrite;
+      for (const line of rewriteSkillsSaid) console.log(line);
+    }
+
+    console.log(`\n${movedList.moved.length} package(s) moved; every configured profile mounts. Run \`amy doctor\`, then \`amy start\`.`);
+    return 0;
+}
+
+/**
+ * Runs the skills rewrite after a CLI move, or rolls the whole move back.
+ *
+ * The CLI itself moved, so the skills travel with it, into every harness
+ * they were written into before — the record under ~/.amy, not a guess from
+ * what is installed now. The rewrite is a postcondition of the move, not
+ * decoration: a new CLI that cannot write its own skills leaves a machine
+ * whose skills lie about what is installed, so a refusal rolls the CLI move
+ * back and returns the update's exit status; success returns nothing, with
+ * the rewrite's lines in `rewriteSkillsSaid` for the caller to print.
+ */
+let rewriteSkillsSaid: string[] = [];
+
+async function rewriteSkillsOrRollBack(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moved: readonly Held[],
+    deps: SkillsInto,
+): Promise<number | undefined> {
+    const said = deps.skillsInto();
+    rewriteSkillsSaid = said;
+    if (said.length > 0) return undefined;
+    console.error("\nthe updated CLI could not rewrite its skills; rolling the CLI move back.");
+    await rollBackAll(runner, pluginsRoot, installRoot, moved);
+    return 1;
+}
+
+/**
+ * The refusal that comes before anything is read, or nothing when it may run.
+ *
+ * Swapping a package under a running loop is the one thing that turns a
+ * deterministic machine into a flaky one, so it is the first question and
+ * it names the pid it is refusing to interrupt.
+ */
+function refuseWhileRunning(home: string): number | undefined {
+    const live = running(paths(home).pid);
+    if (!live) return undefined;
+    console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
+    return 1;
+}
+
+/** The one-line report of everything the two roots hold. */
+function reportWhatIsHeld(everything: readonly Held[], installRoot: string | undefined): void {
+    console.log(`${everything.length} package(s) in ${installRoot ? "both roots" : "the plugins root"}${installRoot ? "" : " (running from a checkout, so no CLI half to move)"}`);
+    for (const one of everything) console.log(`  ${line(one)}`);
+}
+
+/** Refuses an update whose registry target could not be resolved. */
+function reportUnresolved(everything: readonly Held[], pkg: string | undefined): number | undefined {
+    const unresolved = everything.filter(
+      (one) => (pkg === undefined || one.name === pkg) && isRange(one.range) && one.want === undefined,
+    );
+    if (unresolved.length === 0) return undefined;
+    console.error(`\ncould not resolve ${unresolved.length} package(s) from the registry; nothing moved:`);
+    for (const one of unresolved) console.error(`  ${one.name} (${one.range})`);
+    return 1;
+}
+
+/** `--check`'s whole answer: what would move, and nothing does. */
+function reportOnly(moving: readonly Held[]): number {
+    if (moving.length === 0) {
+      console.log("nothing to move");
+      return 0;
+    }
+    console.log(`\n${moving.length} package(s) would move. Run \`amy update\` to move them.`);
+    return 0;
+}
+
+/** The zero-move case, which still has to answer for a machine that will not boot. */
+async function nothingMoved(deps: MountProfiles & SkillsInto): Promise<number> {
+    // The boot check runs even when nothing moved: an update on a machine
+    // whose config already does not boot must say so, not report success
+    // over a config the next tick would refuse.
+    const booted = await deps.mountProfiles();
+    if (!booted.ok) {
+      reportUnbootable(booted.problems);
+      console.error("\nNothing moved; the config is what needs attention.");
+      return 1;
+    }
+    console.log("nothing to move");
+    return 0;
+}
+
+/** What the update depends on beyond the move itself, in one named shape. */
+interface UpdateDeps {
+    mountProfiles: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+    skillsInto: () => string[];
+}
+
+type MountProfiles = Pick<UpdateDeps, "mountProfiles">;
+type SkillsInto = Pick<UpdateDeps, "skillsInto">;
+
+/**
+ * Moves every package, probing each copy npm wrote, and counts the refusals.
+ *
+ * One package at a time on purpose: a later package's move must not be
+ * blocked by an earlier one's refusal, because the operator reads the whole
+ * list once and decides once. The command body rolls every earlier move
+ * back when the list ends with a refusal, so a refusal mid-list never
+ * leaves a mixed-version machine behind.
+ */
+async function moveEach(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moving: readonly Held[],
+): Promise<{ moved: Held[]; failed: number }> {
+    const moved: Held[] = [];
+    let failed = 0;
+
+    for (const one of moving) {
+      console.log(`\nupdating ${one.name}: ${one.have} -> ${one.want}`);
+      const root = one.root === "plugins" ? pluginsRoot : installRoot!;
+      const installed = await move(runner, root, one.name, one.range, one.want!);
+      if (!installed.ok) {
+        console.error(`${installed.command} failed:`);
+        console.error(installed.output || "it said nothing");
+        if (installed.installed) {
+          // npm replaced the copy even though the outcome failed — a
+          // manifest range that could not be put back is the shape this
+          // takes — so the machine is already changed past its manifest
+          // and the caller's rollback has to count this move.
+          moved.push(one);
+        }
+        failed += 1;
+        continue;
+      }
+
+      // The import probe: the copy npm just wrote has to load. The probe
+      // imports through a counter query, so it reads the new files even
+      // when an earlier move in this update put that URL in the ESM cache.
+      //
+      // A moved CLI cannot be probed by import — mounting its module here
+      // would re-run this very program — so the NEW CLI answers for itself
+      // as its own process, the same way the boot check's mounts answer
+      // for the plugins: a CLI that will not run is a bad version, and the
+      // move is rolled back.
+      const probe = one.root === "plugins"
+        ? await moduleProbe(root, one.name, true)
+        : one.name === "@amykit/cli"
+          ? await cliProbe(root, one.name)
+          : await moduleProbe(root, one.name, false);
+      if (!probe.ok) {
+        console.error(`${one.name} ${one.want} does not import:`);
+        for (const problem of probe.problems) console.error(`  ${problem}`);
+        const rolledBack = await restore(runner, root, one.name, one.have);
+        console.log(rolledBack.ok ? `rolled back to ${one.have}` : `rollback failed — restore by hand with ${rolledBack.command}`);
+        failed += 1;
+        continue;
+      }
+      console.log(`updated ${one.name}`);
+      moved.push(one);
+    }
+
+    return { moved, failed };
+}
+
+/** Runs a package import out of process, so a hung top-level await can be killed. */
+export async function moduleProbe(
+  root: string,
+  name: string,
+  needsPlugin: boolean,
+  timeoutMs = 10_000,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  let entry: string;
+  try {
+    entry = packageEntrySpecifier(path.join(root, "node_modules", ...name.split("/")));
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    return { ok: false, problems: [`${name}: could not resolve its entry — ${why}`] };
+  }
+  const source = needsPlugin
+    ? `const m = await import(${JSON.stringify(entry)}); if (!m.plugin) process.exit(2);`
+    : `await import(${JSON.stringify(entry)});`;
+  return spawnedProbe(name, ["--input-type=module", "--eval", source], timeoutMs);
+}
+
+/** A bounded child probe: a package that never settles is a failed update. */
+async function spawnedProbe(
+  name: string,
+  args: readonly string[],
+  timeoutMs: number,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const child = spawn(process.execPath, [...args], { stdio: "ignore" });
+    const finish = (result: { ok: true } | { ok: false; problems: string[] }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish({ ok: false, problems: [`${name}: probe timed out after ${timeoutMs}ms`] });
+    }, timeoutMs);
+    child.once("error", (error) => finish({ ok: false, problems: [`${name}: probe could not start — ${error.message}`] }));
+    child.once("exit", (status) => finish(
+      status === 0 ? { ok: true } : { ok: false, problems: [`${name}: probe exited with status ${status}`] },
+    ));
+  });
+}
+
+/**
+ * Whether the CLI npm just wrote runs, asked of the new copy itself.
+ *
+ * The probe spawns the moved package's own bin with `--version`: the one
+ * question whose answer proves the new CLI runs, from the files npm wrote.
+ * The spawn is a child of this old process — the running module is never
+ * re-imported, so there is nothing to un-cache — and its nonzero exit, its
+ * error, or a bin whose manifest names nothing answer "the CLI is broken",
+ * which rolls the move back like any other bad version.
+ */
+async function cliProbe(root: string, name: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const bin = binOf(root, name);
+  if (!bin) return { ok: false, problems: [`${name}: its manifest names no bin`] };
+  return spawnedProbe(name, [bin, "--version"], 10_000);
+}
+
+/** The moved package's own bin file, by its manifest, or nothing. */
+function binOf(root: string, name: string): string | undefined {
+  try {
+    const directory = path.join(root, "node_modules", ...name.split("/"));
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as {
+      bin?: Record<string, string> | string;
+    };
+    // npm links a string bin under the package's own short name — the scope
+    // is stripped — so the key can be the full name, the short one, or, on
+    // a package with a single bin, the only entry there is.
+    const short = name.split("/").pop()!;
+    const map = typeof manifest.bin === "string" ? { [short]: manifest.bin } : manifest.bin;
+    if (!map) return undefined;
+    const relative = map[name] ?? map[short] ?? (Object.keys(map).length === 1 ? map[Object.keys(map)[0]!] : undefined);
+    if (typeof relative !== "string") return undefined;
+    return path.join(directory, relative);
+  } catch {
+    return undefined;
+  }
+}
+
+/** The boot refusal's own words, with the profile named on each line. */
+function reportUnbootable(problems: readonly string[]): void {
+    console.error("\nthe machine does not boot after the update:");
+    for (const problem of problems) console.error(`  ${problem}`);
+    console.error("\nRolling back every move to the versions that did boot.");
+}
+
+/** Rolls every moved package back to the version that was on disk. */
+async function rollBackAll(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: string | undefined,
+    moved: readonly Held[],
+): Promise<void> {
+    for (const one of moved) {
+      const root = one.root === "plugins" ? pluginsRoot : installRoot!;
+      const rolledBack = await restore(runner, root, one.name, one.have);
+      console.log(rolledBack.ok ? `rolled back ${one.name} to ${one.have}` : `rollback failed for ${one.name} — restore by hand with ${rolledBack.command}`);
+    }
+}
+
+/**
+ * Assembles every configured profile, and reports the mount's own refusals.
+ *
+ * All of them, not only the selected one, because `update` changes the
+ * packages under the whole machine: a profile the operator has not driven
+ * this week is still one the next tick may pick, and finding it broken three
+ * commands later is the failure this check exists to prevent.
+ */
+async function assembleProfiles(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const config = loadConfig(home);
+  const problems: string[] = [];
+  for (const profile of Object.values(profiles(config))) {
+    const booted = await assemble(profile);
+    if (!booted.ok) problems.push(...booted.problems.map((problem) => `${profile.name}: ${problem}`));
+  }
+  return problems.length > 0 ? { ok: false, problems } : { ok: true };
+}
+
+/** Rewrites the skills into the harnesses and directories the record names. */
+function rewriteSkillsInto(): string[] {
+  // The NEW CLI writes its own skills. The old process rewriting them would
+  // write the old bodies into the harnesses — the exact failure this
+  // command exists to end — so the new binary is spawned to do it, reading
+  // the same machine record under ~/.amy and its own shipped skills.
+  const result = spawnSync(process.execPath, [process.argv[1]!, "skills", "--recorded"], {
+    encoding: "utf-8",
+    env: process.env,
+  });
+  const lines = (result.stdout ?? "").split("\n").filter(Boolean);
+  if (result.status !== 0) {
+    const said = (result.stderr ?? "").split("\n").filter(Boolean);
+    console.error("the updated CLI could not rewrite its skills:");
+    for (const line of said.length > 0 ? said : ["it said nothing"]) console.error(`  ${line}`);
+    return [];
+  }
+  return lines;
+}
+
 pluginCommand
   .command("list")
   .description("The plugins this install mounts, and what they assembled into")
@@ -1564,12 +2150,32 @@ program
   .option("--all", "every harness found, without asking")
   .option("--harness <name>", "one harness by name, without asking")
   .option("--dir <path>", "a directory, for a harness this does not know")
-  .action((options: { all?: boolean; harness?: string; dir?: string }) => {
+  .option("--recorded", "rewrite into the harnesses `amy skills` wrote to before, and nothing else")
+  .action((options: { all?: boolean; harness?: string; dir?: string; recorded?: boolean }) => {
     const skills = shipped();
+
+    // The update's half: every harness the record names, and nothing else.
+    // A harness that is installed but was never written to is not written to
+    // now — writing skills into a harness somebody did not choose is a
+    // decision nobody made.
+    if (options.recorded) {
+      const wrote = writeSkills(home, install, () => skills, (name) =>
+        harnesses().find((harness) => harness.name === name)?.skills,
+      );
+      if (wrote.length === 0) console.log("nowhere recorded: run `amy skills` once, by hand, first.");
+      return;
+    }
+
     const found = installedHarnesses();
 
     if (options.dir) {
-      wrote(install(options.dir, skills), options.dir);
+      // Resolved once, before both the install and the record: a relative
+      // `--dir` recorded as typed would later be interpreted by `amy update`
+      // against whatever directory it runs from, rewriting a directory the
+      // operator never named.
+      const directory = path.resolve(options.dir);
+      wrote(install(directory, skills), directory);
+      recordWrite(home, { directory });
       return;
     }
 
@@ -1592,7 +2198,9 @@ program
     }
 
     for (const harness of chosen) wrote(install(harness.skills, skills), harness.name);
+    for (const harness of chosen) recordWrite(home, { harness: harness.name });
     console.log(`\n${skills.length} skill(s): ${skills.map(([name]) => `/${name}`).join(", ")}`);
+    console.log("Recorded, so the next `amy update` rewrites them into the same places.");
 
     function wrote(files: string[], where: string): void {
       console.log(`${where}: ${files.length} skill(s)`);

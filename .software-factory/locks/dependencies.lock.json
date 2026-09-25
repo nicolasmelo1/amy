@@ -3,7 +3,7 @@
   "files": {
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "ef3d2175b8b0be268e780511700afb153c5f31b3b15a542689336286b2236d22",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
-    "package.json": "4cab4b47173d62ae833a2dfe2580bfb5ecfb6e8f9544924ff783d296897dad50",
+    "package.json": "c57628bdb2beb1060256c4bb7ac3dd96af99b61f1be6a16d4a19be588cde24e4",
     "packages/agent-kit/package.json": "c3f9be70a3fd7bc8f59b369bb913e59cbe950eacd0c6956e072aa05a07c3eace",
     "packages/cli/package.json": "0e22e8e231cc0d4ba3d283cb185fc7346a62473a3bd8541ecd4b605d9f119226",
     "packages/core/package.json": "629321a2ea178a69316ee615e228bc5267b2e7ee487dcb6e6b0cbf80ecbeb1a9",

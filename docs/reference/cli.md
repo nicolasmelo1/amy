@@ -35,6 +35,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | Command | What it does |
 | :-- | :-- |
 | [`amy add`](#amy-add) | Add a workflow or a plugin: install it, mount it, and check the machine boots |
+| [`amy after-daemon`](#amy-after-daemon) | Internal: update after a started daemon has exited |
 | [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
 | [`amy btw`](#amy-btw) | Something to do, said in passing. Goes on the queue, never becomes a ticket |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
@@ -66,6 +67,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy status`](#amy-status) | Show where every piece of work stands and what the queue holds |
 | [`amy stop`](#amy-stop) | Stop the background loop |
 | [`amy tick`](#amy-tick) | Advance one piece of work by one move |
+| [`amy update`](#amy-update) | Move this install forward: both roots, refusing to leave the machine half-updated |
 | [`amy workflow`](#amy-workflow) | What this install can drive, and what it keeps |
 | [`amy workflow check`](#amy-workflow-check) | Drive a workflow's lifecycle against its stub world |
 | [`amy workflow list`](#amy-workflow-list) | Every workflow this install can drive |
@@ -93,6 +95,19 @@ amy add <spec>
 | Argument | Required | What it is |
 | :-- | :-- | :-- |
 | `<spec>` | yes | a package name, a URL, a git URL, or a path |
+
+### `amy after-daemon`
+
+Internal: update after a started daemon has exited
+
+```sh
+amy after-daemon <pid> <workflow>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<pid>` | yes |  |
+| `<workflow>` | yes |  |
 
 ### `amy brief`
 
@@ -146,6 +161,7 @@ amy daemon [options]
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--every <seconds>` | `60` | how long to wait after finding nothing to do |
+| `--scheduled` |  | internal: the parent start command already scheduled this lifecycle |
 
 ### `amy discover`
 
@@ -382,6 +398,7 @@ amy skills [options]
 | `--all` |  | every harness found, without asking |
 | `--harness <name>` |  | one harness by name, without asking |
 | `--dir <path>` |  | a directory, for a harness this does not know |
+| `--recorded` |  | rewrite into the harnesses `amy skills` wrote to before, and nothing else |
 
 ### `amy start`
 
@@ -423,6 +440,22 @@ Advance one piece of work by one move
 ```sh
 amy tick
 ```
+
+### `amy update`
+
+Move this install forward: both roots, refusing to leave the machine half-updated
+
+```sh
+amy update [options] [package]
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `[package]` | no | one package to update, by the name the root's manifest carries |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--check` |  | name every package that would move, and to what, without moving anything |
 
 ### `amy workflow`
 

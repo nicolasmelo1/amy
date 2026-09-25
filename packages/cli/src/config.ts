@@ -67,6 +67,41 @@ interface NotifyConfig {
   inbox: boolean;
 }
 
+/** When the machine refreshes its installed packages around workflow work. */
+interface AutoUpdateConfig {
+  enabled: boolean;
+  timing: "before" | "after";
+  everyRuns: number;
+}
+
+const DEFAULT_AUTO_UPDATE: AutoUpdateConfig = {
+  enabled: true,
+  timing: "before",
+  everyRuns: 20,
+};
+
+/** The host-owned schedule is checked before any workflow is allowed to run. */
+function autoUpdateProblems(value: unknown): string[] {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return ["`autoUpdate` must be a mapping"];
+  }
+  const schedule = value as Partial<AutoUpdateConfig>;
+  const problems: string[] = [];
+  if (typeof schedule.enabled !== "boolean") problems.push("`autoUpdate.enabled` must be true or false");
+  if (schedule.timing !== "before" && schedule.timing !== "after") {
+    problems.push("`autoUpdate.timing` must be `before` or `after`");
+  }
+  if (!Number.isSafeInteger(schedule.everyRuns) || (schedule.everyRuns ?? 0) <= 0) {
+    problems.push("`autoUpdate.everyRuns` must be a positive integer");
+  }
+  return problems;
+}
+
+/** Validates the words the operator wrote, before the safe runtime defaults. */
+export function configuredAutoUpdateProblems(config: AmyConfig): string[] {
+  return autoUpdateProblems(config.autoUpdateSource === undefined ? config.autoUpdate : config.autoUpdateSource);
+}
+
 /**
  * The lifecycle ceilings, named here rather than imported from a workflow.
  *
@@ -132,6 +167,10 @@ export interface AmyConfig {
    * profile left on the recommended set stays on it.
    */
   extraPlugins: string[];
+  /** One machine-wide cadence, persisted separately for every profile. */
+  autoUpdate: AutoUpdateConfig;
+  /** A scalar/null source value retained so malformed YAML cannot become valid. */
+  autoUpdateSource?: unknown;
 
   repos: string[];
   qaStatusName: string;
@@ -235,6 +274,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   workflows: {},
   defaultWorkflow: "",
   extraPlugins: [],
+  autoUpdate: DEFAULT_AUTO_UPDATE,
   repos: [],
   qaStatusName: "In QA",
   workingStatusName: "In Progress",
@@ -315,11 +355,28 @@ export function loadConfig(root: string): AmyConfig {
  * expanded here and substituted there would make the boot check prove a config
  * no install has.
  */
+function autoUpdateFrom(parsed: Partial<AmyConfig>): Pick<AmyConfig, "autoUpdate" | "autoUpdateSource"> {
+  const rawAutoUpdate = Object.hasOwn(parsed, "autoUpdate") ? parsed.autoUpdate : undefined;
+  // Only a plain object is a mapping an operator wrote: an array is an
+  // object at runtime but not a mapping, so it stays the malformed source
+  // the validator refuses, instead of being silently replaced by defaults.
+  const autoUpdate = typeof rawAutoUpdate === "object" && rawAutoUpdate !== null && !Array.isArray(rawAutoUpdate)
+    ? { ...DEFAULT_AUTO_UPDATE, ...(rawAutoUpdate as Partial<AutoUpdateConfig>) }
+    : DEFAULT_AUTO_UPDATE;
+  const autoUpdateSource = rawAutoUpdate === null || (rawAutoUpdate !== undefined && typeof rawAutoUpdate !== "object")
+    ? { autoUpdateSource: rawAutoUpdate }
+    : Array.isArray(rawAutoUpdate)
+      ? { autoUpdateSource: rawAutoUpdate }
+      : {};
+  return { autoUpdate, ...autoUpdateSource };
+}
+
 function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
     ...mountingFrom(parsed),
+    ...autoUpdateFrom(parsed),
     policy: { ...DEFAULT_POLICY, ...(parsed.policy ?? {}) },
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
     skills: parsed.skills ?? {},
@@ -448,6 +505,14 @@ export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name 
 # recommended set stays on it and gains one, rather than having the whole
 # recommendation copied into the config behind your back.
 # extraPlugins: []
+
+# Keep the packages this machine mounts current around workflow invocations.
+# The count is kept per workflow profile under ~/.amy, so restarting does not
+# reset it. Set enabled false to leave updates entirely to the operator.
+autoUpdate:
+  enabled: true
+  timing: before
+  everyRuns: 20
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be
