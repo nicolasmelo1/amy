@@ -1,6 +1,6 @@
 {
   "name": "@amykit/cli",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "The amy command line: one install per machine, reached from any harness.",
   "type": "module",
   "license": "MIT",
@@ -37,21 +37,21 @@
     "guardrails"
   ],
   "dependencies": {
-    "@amykit/core": "^0.4.0",
-    "@amykit/model-specs": "^0.4.0",
-    "@amykit/plugin-file-log": "^0.4.0",
-    "@amykit/plugin-file-notes": "^0.4.0",
-    "@amykit/plugin-file-queue": "^0.4.0",
-    "@amykit/plugin-file-store": "^0.4.0",
-    "@amykit/plugin-file-tasks": "^0.4.0",
-    "@amykit/plugin-file-worktree": "^0.4.0",
+    "@amykit/core": "^0.5.0",
+    "@amykit/model-specs": "^0.5.0",
+    "@amykit/plugin-file-log": "^0.5.0",
+    "@amykit/plugin-file-notes": "^0.5.0",
+    "@amykit/plugin-file-queue": "^0.5.0",
+    "@amykit/plugin-file-store": "^0.5.0",
+    "@amykit/plugin-file-tasks": "^0.5.0",
+    "@amykit/plugin-file-worktree": "^0.5.0",
     "commander": "^14.0.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@amykit/plugin-serial-engine": "^0.4.0",
+    "@amykit/plugin-serial-engine": "^0.5.0",
     "@amykit/test-fixtures": "^0.1.0",
-    "@amykit/workflow-errand": "^0.4.0",
-    "@amykit/workflow-note-to-plan": "^0.4.0"
+    "@amykit/workflow-errand": "^0.5.0",
+    "@amykit/workflow-note-to-plan": "^0.5.0"
   }
 }
