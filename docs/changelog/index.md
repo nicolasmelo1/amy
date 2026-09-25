@@ -58,6 +58,18 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### New `amy update` command: moves a machine forward without leaving it half-updated — reads both roots (the plugins root and the one that resolved the CLI), re-resolves every registry range through npm, installs the exact version each range now points at, and keeps the manifest's ranges the way the operator wrote them. Refuses while the loop is running; a version that will not import or mount is rolled back to the one that did; a config that will not boot fails the update and rolls back every move; and when the CLI itself moves, its skills are rewritten into the harnesses they were written into before — through the new CLI, never the old process. `amy skills` now records where it wrote, and `--recorded` rewrites into exactly those places.
+
+`minor` · `@amykit/cli`
+
+
+
+### Schedule `amy update` around workflow invocations with a persisted per-profile cadence. The default updates before every twentieth invocation; operators can run after, disable it, and receive an early refusal for invalid schedule settings. Daemons update only before their child starts or after it exits.
+
+`minor` · `@amykit/cli`
+
+
+
 ### Plugins configured for an amy install now live in `~/.amy/plugins`: `amy init --install` installs them through that root rather than npm's global prefix, and mounting plus `amy plugin list` resolve from the same root.
 
 `minor` · `@amykit/cli`

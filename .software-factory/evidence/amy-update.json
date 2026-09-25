@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "gate": "amy-update",
+  "implementation_sha256": "a0e4890468dd34e2352fb6114091489f900afc4ffb9f1b6f1ab5434be8db4533",
+  "runs": [
+    {
+      "scenario": "amy-update",
+      "status": "passed",
+      "actor": "Hermes Agent, updating a scratch machine two versions behind on macOS for Nicolas Melo",
+      "report": ".software-factory/evidence/amy-update-run.json",
+      "report_sha256": "e02855361cc3c8963f9cdcac9340d82ee3474a0f38f7dc7dd1033d00025c5b92",
+      "required_assertions": [
+        "update.added_the_first_version",
+        "update.v1_moves_the_page",
+        "update.a_check_names_what_would_move",
+        "update.a_check_changes_nothing",
+        "update.the_version_moved",
+        "update.the_copy_on_disk_moved",
+        "update.the_state_survives_the_version",
+        "update.the_manifest_keeps_the_range",
+        "update.the_new_version_drives_the_work",
+        "update.the_rollback_names_the_reason",
+        "update.a_bad_version_is_rolled_back",
+        "update.the_machine_boots_after_the_update",
+        "update.a_config_that_stops_booting_fails_the_update",
+        "update.the_boot_refusal_rolls_the_move_back",
+        "update.an_update_refuses_while_the_loop_runs",
+        "update.skills_writes_are_recorded",
+        "update.the_skills_follow_the_version",
+        "update.a_harness_never_written_to_is_not_written_to_now"
+      ]
+    }
+  ]
+}

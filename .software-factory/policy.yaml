@@ -366,6 +366,60 @@ gates:
       - "add.removing_keeps_the_state"
       - "add.a_removal_that_would_not_boot_is_refused"
 
+  # One command moves the machine forward, and the machine it leaves behind
+  # is whole: the version that moved is the one driving the work, the records
+  # and queue and log are untouched, a version that will not mount is rolled
+  # back to the one that did, a config that will not boot fails the update
+  # rather than succeeding over it, and the skills in the harnesses describe
+  # the CLI that is now installed rather than the one that was.
+  #
+  # The activation is the update's own body, the skills record it reads and
+  # the harness table it rewrites into — the three places the claim rests
+  # on. The scenario drives the installed command, so a change to any of
+  # them means the last run proved a machine that no longer exists.
+  amy-update:
+    activation:
+      - "packages/cli/src/update.ts"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/skills-record.ts"
+      - "packages/cli/src/harnesses.ts"
+      - "packages/cli/src/auto-update.ts"
+      - "packages/cli/src/daemon.ts"
+      - "packages/cli/src/config.ts"
+    evidence: ".software-factory/evidence/amy-update.json"
+    plan: "docs/design/amy-update.md"
+    required_assertions:
+      - "update.added_the_first_version"
+      - "update.the_installed_cli_keeps_a_registry_intent"
+      - "update.v1_finds_the_page"
+      - "update.v1_moves_the_page"
+      - "update.a_check_names_what_would_move"
+      - "update.a_check_changes_nothing"
+      - "update.the_version_moved"
+      - "update.the_copy_on_disk_moved"
+      - "update.the_state_survives_the_version"
+      - "update.the_manifest_keeps_the_range"
+      - "update.the_new_version_drives_the_work"
+      - "update.the_rollback_names_the_reason"
+      - "update.a_bad_version_is_rolled_back"
+      - "update.the_machine_boots_after_the_update"
+      - "update.a_config_that_stops_booting_fails_the_update"
+      - "update.the_boot_refusal_rolls_the_move_back"
+      - "update.an_update_refuses_while_the_loop_runs"
+      - "update.skills_writes_are_recorded"
+      - "update.the_skills_follow_the_version"
+      - "update.a_harness_never_written_to_is_not_written_to_now"
+      - "update.the_cli_moves_itself"
+      - "update.a_moved_cli_still_runs"
+      - "update.a_moved_cli_rewrites_its_own_skills"
+      - "update.default_auto_update_runs_before_a_workflow"
+      - "update.auto_update_can_run_after_a_workflow"
+      - "update.auto_update_respects_its_cadence"
+      - "update.auto_update_can_be_disabled"
+      - "update.invalid_auto_update_settings_refuse_before_work"
+      - "update.a_daemon_updates_only_at_its_lifecycle_boundary"
+      - "update.direct_daemon_uses_the_configured_schedule"
+
   feature-grooming:
     activation:
       - "packages/workflow-feature-grooming/src/**"
