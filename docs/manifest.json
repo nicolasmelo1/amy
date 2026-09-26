@@ -253,6 +253,11 @@
           "description": ""
         },
         {
+          "title": "A workflow that claims no writes cannot reach one",
+          "path": "/design/a-workflow-that-claims-no-writes-cannot-reach-one",
+          "description": ""
+        },
+        {
           "title": "Amy add and amy remove",
           "path": "/design/amy-add-and-amy-remove",
           "description": ""
@@ -826,6 +831,11 @@
           "depth": 3,
           "title": "amy doctor and amy plugin list resolve a workflow of your own the same way mounting does, so amy plugin list no longer reports a directory written by amy workflow new as FAIL, and doctor validates its settings against the schema it declares.",
           "slug": "amy-doctor-and-amy-plugin-list-resolve-a-workflow-of-your-own-the-same-way-mounting-does-so-amy-plugin-list-no-longer-reports-a-directory-written-by-amy-workflow-new-as-fail-and-doctor-validates-its-settings-against-the-schema-it-declares"
+        },
+        {
+          "depth": 3,
+          "title": "A workflow now declares the code-host writes it may make, and the mount gives its runtime capability-limited tracker and code-host ports. amy doctor reports the selected workflow's external write surface, including tracker/code-host read-only installs.",
+          "slug": "a-workflow-now-declares-the-code-host-writes-it-may-make-and-the-mount-gives-its-runtime-capability-limited-tracker-and-code-host-ports-amy-doctor-reports-the-selected-workflows-external-write-surface-including-trackercode-host-read-only-installs"
         },
         {
           "depth": 3,
@@ -1661,6 +1671,23 @@
           "title": "The gate",
           "slug": "the-gate"
         },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-that-claims-no-writes-cannot-reach-one",
+      "file": "docs/design/a-workflow-that-claims-no-writes-cannot-reach-one.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-that-claims-no-writes-cannot-reach-one.md",
+      "title": "A workflow that claims no writes cannot reach one",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
         {
           "depth": 2,
           "title": "Acceptance criteria",
@@ -7925,6 +7952,38 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "a-workflow-that-claims-no-writes-cannot-reach-one",
+        "title": "A workflow now declares the code-host writes it may make, and the mount gives its runtime capability-limited tracker and code-host ports. `amy doctor` reports the selected workflow's external write surface, including tracker/code-host read-only installs.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "amy-add-and-amy-remove",

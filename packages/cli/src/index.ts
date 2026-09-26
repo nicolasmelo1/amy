@@ -394,8 +394,14 @@ program
  * does not depend on a workflow is still checked, and the missing workflow is
  * reported in the selection's own words instead of ending the command before
  * anything was said.
+ *
+ * It assembles only once so checks and the final report describe one machine.
  */
 async function doctorReport(config: AmyConfig, profile: Profile, problem?: string): Promise<void> {
+  const assembled = problem
+    ? { ok: false as const, problems: [problem] }
+    : await assemble(profile);
+  const mounted = assembled.ok ? assembled.mounted : undefined;
   const loaded = problem
     ? { plugins: [], problems: [] }
     : await loadMountable(pluginList(config, profile));
@@ -411,14 +417,11 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     schemas: Object.fromEntries(
       loaded.plugins.flatMap((plugin) => (plugin.configSchema ? [[plugin.name, plugin.configSchema]] : [])),
     ),
+    workflow: mounted?.workflow,
     // Mounted, then asked: whether a notification target is reachable is
     // the channel's own knowledge, and a mount that did not happen is its
     // own answer to report.
-    notifyPort: problem
-      ? undefined
-      : await assemble(profile).then((outcome) =>
-          outcome.ok ? outcome.mounted.ports.get("notify") : undefined,
-        ),
+    notifyPort: mounted?.ports.get("notify"),
   });
 
   for (const check of checks) {
@@ -432,7 +435,6 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
 
   // Asked last, because a mount problem is usually a consequence of one of
   // the checks above rather than a separate fault.
-  const assembled = problem ? { ok: false as const, problems: [problem] } : await assemble(profile);
   if (!assembled.ok) {
     for (const p of assembled.problems) console.log(`FAIL ${p}`);
   } else {

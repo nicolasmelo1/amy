@@ -71,6 +71,27 @@ describe("diagnose", () => {
     };
   }
 
+  it("reports an install that claims no tracker or code-host writes as read-only", async () => {
+    const checks = await diagnose(deps({
+      workflow: {
+        name: "read-only",
+        states: [],
+        waitingStates: [],
+        initialState: "",
+        terminalStates: [],
+        usesObservers: [],
+        trackerWrites: [],
+        codeHostWrites: [],
+        plan: () => ({ kind: "settled", why: "test" }),
+      },
+    }));
+
+    expect(labelled(checks, "workflow write surface")).toMatchObject({
+      ok: true,
+      detail: "read-only: it cannot write the tracker or code host",
+    });
+  });
+
   it("fails when there is no config file", async () => {
     const checks = await diagnose(deps());
 

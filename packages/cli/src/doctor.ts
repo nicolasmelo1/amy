@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { checkoutFor, CommandRunner, ConfigSchema, validateConfig } from "@amykit/core";
+import { checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConfig } from "@amykit/core";
 import { AmyConfig, Roster, configuredAutoUpdateProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
@@ -45,6 +45,8 @@ export interface DoctorDeps {
    * was mounted, which is its own answer.
    */
   notifyPort?: object;
+  /** The selected workflow's declared external-write surface, if it mounted. */
+  workflow?: Workflow;
 }
 
 /**
@@ -61,6 +63,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     ...configContents(deps),
     autoUpdateSettings(deps.config),
     ...pluginSettings(deps),
+    workflowWrites(deps.workflow),
     roster(deps),
     ...leftBehind(deps),
     apiKey(deps),
@@ -89,6 +92,19 @@ function configContents({ config }: DoctorDeps): Check[] {
       ok: config.notify.inbox || Boolean(config.notify.hermes),
     },
   ];
+}
+
+function workflowWrites(workflow: Workflow | undefined): Check {
+  if (!workflow) return { label: "workflow write surface", ok: true, detail: "no workflow assembled" };
+  const tracker = workflow.trackerWrites ?? [];
+  const codeHost = workflow.codeHostWrites ?? [];
+  return {
+    label: "workflow write surface",
+    ok: true,
+    detail: tracker.length === 0 && codeHost.length === 0
+      ? "read-only: it cannot write the tracker or code host"
+      : `tracker: ${tracker.join(", ") || "none"}; code host: ${codeHost.join(", ") || "none"}`,
+  };
 }
 
 /**

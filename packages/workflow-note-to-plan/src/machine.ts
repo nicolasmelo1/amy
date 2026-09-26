@@ -164,6 +164,7 @@ export const noteToPlan: Workflow<Observation, Policy> = {
   // Empty for the same reason the ticket workflow's is: the observation is
   // assembled from the ports its own actions already require, so there is no
   // separate slice for a plugin to contribute.
+  codeHostWrites: ["open-pull-request"],
   usesObservers: [],
   plan: (record, observation, policy) => plan(record as PlanRecord, observation, policy),
 };

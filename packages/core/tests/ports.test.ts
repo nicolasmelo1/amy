@@ -74,7 +74,7 @@ describe("the ports belong to the core", () => {
     // A capability outside the table cannot be declared, and a declaration
     // outside the table cannot be checked.
     expect(trackerCapabilitiesFor(["ask-question"])).toEqual(["comment"]);
-    expect(trackerCapabilitiesFor(["hand-off-to-qa"])).toEqual(["set-status"]);
+    expect(trackerCapabilitiesFor(["hand-off-to-qa"])).toEqual(["set-status", "assign"]);
     expect(trackerCapabilitiesFor(["escalate"])).toEqual(["create-follow-up"]);
     expect(trackerCapabilitiesFor(["triage", "implement"])).toEqual([]);
     expect(capabilities).toContain("comment");
