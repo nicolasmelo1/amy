@@ -341,6 +341,22 @@ describe("contributions", () => {
     expect(comments).toBe(0);
   });
 
+  it("snapshots write declarations when the workflow mounts", async () => {
+    let context: PluginContext | undefined;
+    const declaration = { ...WORKFLOW, trackerWrites: [] as string[] };
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow(declaration); context = ctx; },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+    declaration.trackerWrites.push("comment");
+
+    await expect((context!.port("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
   it("classifies an implicitly mounted code-host alias from its reader contract", async () => {
     let context: PluginContext | undefined;
     let merges = 0;
@@ -767,6 +783,21 @@ describe("unmetNeeds", () => {
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `plugin-comment` writes the tracker (`comment`), " +
         "but the workflow does not claim that capability — add `comment` to its `trackerWrites`",
+    ]);
+  });
+
+  it("refuses an action-mounted writer with no mutable core contract", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-unknown-writer", {
+        register: (r) => r.action("plugin-mutate", { port: "forge", method: "mutate" }, {
+          mutate: acceptsAction(async () => {}),
+        }),
+      }),
+    ], { "plugin-mutate": { port: "forge", method: "mutate" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `forge.mutate`"),
     ]);
   });
 

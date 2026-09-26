@@ -75,7 +75,7 @@ export async function mount(
 
   const registered: { plugin: Plugin; ctx: PluginContext }[] = [];
   const workflowFor = new WeakMap<PluginContext, Workflow<never, never>>();
-  const mutablePortKinds = new WeakMap<object, "tracker" | "code-host">();
+  const mutablePortKinds = new WeakMap<object, MutablePortKind>();
 
   for (const plugin of plugins) {
     const settings = configFor(plugin.name, plugin.configSchema, config[plugin.name], problems);
@@ -161,7 +161,7 @@ function contextFor(
   mounted: Mounted,
   host: HostServices,
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
-  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
+  mutablePortKinds: WeakMap<object, MutablePortKind>,
   registrationComplete: Promise<void>,
 ): PluginContext {
   const ctx: PluginContext = {
@@ -205,12 +205,18 @@ function narrowedPort(
   port: object | undefined,
   kind: PortKind,
   workflowFor: () => Workflow<never, never> | undefined,
-  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
+  mutablePortKinds: WeakMap<object, MutablePortKind>,
   registrationComplete: Promise<void>,
 ): object | undefined {
   if (!port) return port;
   const scopedKind = mutablePortKind(port, kind, mutablePortKinds);
   if (!scopedKind) return port;
+  // A dispatched action whose mutable contract is unknown cannot be handed
+  // whole to a workflow. Boot names it; this empty view is defence in depth.
+  if (scopedKind === "unknown") return new Proxy(Object.create(null), {
+    getPrototypeOf: () => null,
+    get: () => undefined,
+  });
   const methods = scopedKind === "tracker" ? TRACKER_WRITE_FOR_METHOD : CODE_HOST_WRITE_FOR_METHOD;
   const capabilities = () => {
     const workflow = workflowFor();
@@ -364,8 +370,8 @@ function deferredDescriptor(
 function mutablePortKind(
   port: object,
   requested: PortKind,
-  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
-): "tracker" | "code-host" | undefined {
+  mutablePortKinds: WeakMap<object, MutablePortKind>,
+): MutablePortKind | undefined {
   if (requested === "tracker" || requested === "code-host") return requested;
   return mutablePortKinds.get(port);
 }
@@ -376,7 +382,7 @@ function registrarFor(
   problems: string[],
   ctx: PluginContext,
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
-  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
+  mutablePortKinds: WeakMap<object, MutablePortKind>,
 ): Registry {
   const claim = <T>(what: string, held: T | undefined, incoming: T): T => {
     if (held !== undefined) {
@@ -399,8 +405,9 @@ function registrarFor(
       mounted.engine = claim("the engine", mounted.engine, impl);
     },
     workflow: (impl) => {
-      mounted.workflow = claim("a workflow", mounted.workflow, impl);
-      if (mounted.workflow === impl) workflowFor.set(ctx, impl);
+      const snapshot = snapshotWorkflow(impl);
+      mounted.workflow = claim("a workflow", mounted.workflow, snapshot);
+      if (mounted.workflow === snapshot) workflowFor.set(ctx, snapshot);
     },
     port: (kind, impl) => {
       if (mounted.ports.has(kind)) {
@@ -453,10 +460,15 @@ function registrarFor(
 function mutablePortKindForAction(
   spec: ActionSpec,
   port?: object,
-  mutablePortKinds?: WeakMap<object, "tracker" | "code-host">,
-): "tracker" | "code-host" | undefined {
+  mutablePortKinds?: WeakMap<object, MutablePortKind>,
+): MutablePortKind | undefined {
   const known = port && mutablePortKinds?.get(port);
   if (known) return known;
+  return inferredMutablePortKind(spec, port);
+}
+
+/** Infer a core contract only after preserving a mounted adapter's identity. */
+function inferredMutablePortKind(spec: ActionSpec, port?: object): MutablePortKind | undefined {
   if (spec.port === "tracker" || TRACKER_WRITE_FOR_METHOD[spec.method]) return "tracker";
   if (spec.port === "code-host" || CODE_HOST_WRITE_FOR_METHOD[spec.method]) return "code-host";
   if (port && isCodeHostPort(port)) return "code-host";
@@ -465,17 +477,35 @@ function mutablePortKindForAction(
   // fail closed instead of returning that adapter whole to a workflow.
   if (isTrackerActionAlias(port)) return "tracker";
   if (port && isTrackerPort(port)) return "tracker";
+  if (port && acceptsActionMethod(port, spec.method)) return "unknown";
   return undefined;
 }
 
 function mutablePortKindForPort(
   kind: PortKind,
   port: object,
-  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
-): "tracker" | "code-host" | undefined {
+  mutablePortKinds: WeakMap<object, MutablePortKind>,
+): MutablePortKind | undefined {
   return mutablePortKind(port, kind, mutablePortKinds)
     ?? (isCodeHostPort(port) ? "code-host" : undefined)
     ?? (isTrackerPort(port) ? "tracker" : undefined);
+}
+
+type MutablePortKind = "tracker" | "code-host" | "unknown";
+
+/** Preserve the boot-validated writes if a plugin mutates its declaration later. */
+function snapshotWorkflow(workflow: Workflow<never, never>): Workflow<never, never> {
+  return Object.freeze({
+    ...workflow,
+    trackerWrites: Object.freeze([...(workflow.trackerWrites ?? [])]),
+    codeHostWrites: Object.freeze([...(workflow.codeHostWrites ?? [])]),
+  });
+}
+
+/** An opt-in dispatch method means this otherwise unknown port is a boundary. */
+function acceptsActionMethod(port: object, method: string): boolean {
+  const value = Reflect.get(port, method);
+  return typeof value === "function" && (value as Record<symbol, unknown>)[Symbol.for("amykit.acceptsAction")] === true;
 }
 
 function isCodeHostPort(port: object): boolean {
@@ -537,6 +567,7 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
     }
     unmet.push(...unclaimedWrites(mounted, workflow, actions));
     unmet.push(...misboundWrites(mounted, actions));
+    unmet.push(...unclassifiableActionBindings(mounted, actions));
   }
 
   for (const slice of workflow.usesObservers) {
@@ -630,7 +661,7 @@ function writeFor(
 }
 
 /** Resolve a binding by its mounted target, not by a method another port owns. */
-function bindingPortKind(mounted: Mounted, binding: ActionSpec): "tracker" | "code-host" | undefined {
+function bindingPortKind(mounted: Mounted, binding: ActionSpec): MutablePortKind | undefined {
   if (binding.port === "tracker" || binding.port === "code-host") return binding.port;
   const adapter = mounted.ports.get(binding.port);
   if (!adapter) return undefined;
@@ -639,7 +670,7 @@ function bindingPortKind(mounted: Mounted, binding: ActionSpec): "tracker" | "co
   }
   if (TRACKER_WRITE_FOR_METHOD[binding.method]) return "tracker";
   if (CODE_HOST_WRITE_FOR_METHOD[binding.method]) return "code-host";
-  return undefined;
+  return acceptsActionMethod(adapter, binding.method) ? "unknown" : undefined;
 }
 
 /** A known writer from one mutable contract may not be wired to the other. */
@@ -659,6 +690,21 @@ function misboundWrites(mounted: Mounted, actions: Readonly<Record<string, unkno
           `a write only the ${kind === "tracker" ? "code-host" : "tracker"} contract defines`,
       );
     }
+  }
+  return problems;
+}
+
+/** Reject dispatched writers that cannot be placed behind a declared core port. */
+function unclassifiableActionBindings(mounted: Mounted, actions: Readonly<Record<string, unknown>>): string[] {
+  const problems: string[] = [];
+  for (const [action, implementation] of Object.entries(actions)) {
+    if (!isPortBinding(implementation) || !mounted.actions.has(action)) continue;
+    if (catalogued(mounted, action, implementation) !== null) continue;
+    if (bindingPortKind(mounted, implementation) !== "unknown") continue;
+    problems.push(
+      `action \`${action}\` binds unrecognised mutable port \`${implementation.port}.${implementation.method}\`; ` +
+      "give it a tracker or code-host contract method before a workflow may dispatch it",
+    );
   }
   return problems;
 }
