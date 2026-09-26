@@ -27,7 +27,7 @@
     "releases": "https://api.github.com/repos/cli/cli/releases",
     "reference": {
       "file": "gh-reference.md",
-      "sha256": "82076987db1a2a2698e71689128e70f9478cb658bc6c03c5ff7aeee65505e1f4"
+      "sha256": "68d0dec24718e9b60469d5c1f8a95d2c88b8e3171f34b8f478afd3dea2eab51b"
     },
     "prJsonFields": {
       "file": "gh-pr-json-fields.txt",

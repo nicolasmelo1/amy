@@ -86,7 +86,8 @@ function assetName(version) {
 /**
  * What one gh release prints, from that release's binary: downloaded,
  * checked against the release's published checksums, and run in a scratch
- * directory with a scratch config, so nothing on this machine answers for it.
+ * directory with a scratch home, so nothing on this machine — no extension,
+ * no config, no token — answers for it.
  */
 async function ghContract(version) {
   const published = await release(`tags/v${version}`);
@@ -116,7 +117,19 @@ async function ghContract(version) {
         return execFileSync(binary, args, {
           cwd: scratch,
           encoding: "utf8",
-          env: { ...process.env, GH_CONFIG_DIR: scratch, GH_NO_UPDATE_NOTIFIER: "1" },
+          // Nothing of this machine's: gh reads extensions from its data
+          // directory, not its config one, and an extension installed here
+          // printed itself into the reference as if it were gh's own.
+          env: {
+            PATH: process.env.PATH,
+            HOME: scratch,
+            GH_CONFIG_DIR: path.join(scratch, "config"),
+            XDG_CONFIG_HOME: path.join(scratch, "config"),
+            XDG_DATA_HOME: path.join(scratch, "data"),
+            XDG_STATE_HOME: path.join(scratch, "state"),
+            XDG_CACHE_HOME: path.join(scratch, "cache"),
+            GH_NO_UPDATE_NOTIFIER: "1",
+          },
           stdio: ["ignore", "pipe", "pipe"],
         });
       } catch (error) {

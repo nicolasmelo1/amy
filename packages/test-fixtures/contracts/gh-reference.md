@@ -2189,10 +2189,6 @@ Aliases
 
 gh ssh-key ls
 
-## gh stack
-
-Extension stack
-
 ## gh status [flags]
 
 Print information about relevant issues, pull requests, and notifications across repositories
