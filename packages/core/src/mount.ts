@@ -268,6 +268,12 @@ function narrowedPort(
             throw new Error(`the workflow cannot call the ${scopedKind} write \`${capability}\` (${property}) before registration`);
           };
         }
+        // Contract readers do not expand a workflow's authority, and a
+        // registering plugin may need one to decide which workflow to expose.
+        // Do not defer them behind registration completion: an async register
+        // that awaits a reader before declaring would otherwise deadlock boot.
+        const reader = registrationReader(initial, property, reads, port);
+        if (reader) return reader;
         // A workflow may retain an adapter-owned client or runner before it
         // declares its surface just as easily as it may retain a method. Keep
         // objects deferred too: provider composition remains live until this
@@ -309,6 +315,17 @@ function narrowedPort(
   // so the alias keeps the mutable kind when another workflow asks for it.
   mutablePortKinds.set(view, scopedKind);
   return view;
+}
+
+/** Invoke contract readers during registration without exposing other adapter methods. */
+function registrationReader(
+  value: unknown,
+  property: string,
+  reads: ReadonlySet<string>,
+  receiver: object,
+): (() => unknown) | undefined {
+  if (typeof value !== "function" || !reads.has(property)) return undefined;
+  return value.bind(receiver);
 }
 
 function deferredPortValue(

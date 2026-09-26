@@ -358,6 +358,21 @@ describe("contributions", () => {
     expect(comments).toBe(0);
   });
 
+  it("allows an async workflow to await a contract reader before registering", async () => {
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: async (r, ctx) => {
+        const tracker = ctx.port("tracker") as { get(id: string): Promise<{ id: string }> };
+        await expect(tracker.get("amy-96")).resolves.toEqual({ id: "amy-96" });
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { get: async (id: string) => ({ id }) }),
+    });
+
+    await expect(mount([tracker, workflow], {}, HOST)).resolves.toMatchObject({ ok: true });
+  });
+
   it("snapshots write declarations when the workflow mounts", async () => {
     let context: PluginContext | undefined;
     const declaration = { ...WORKFLOW, trackerWrites: [] as string[] };
