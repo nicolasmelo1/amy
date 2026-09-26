@@ -485,6 +485,23 @@ describe("contributions", () => {
     expect(merges).toBe(0);
   });
 
+  it("does not expose an unrecognised mutator mounted only under a consumer alias", async () => {
+    let context: PluginContext | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: [], codeHostWrites: [] }); context = ctx; },
+    });
+    const forge = plugin("@amykit/plugin-forge", {
+      register: (r) => r.port("forge", { mutate: async () => { mutations += 1; } }),
+    });
+
+    await mount([forge, workflow], {}, HOST);
+
+    const port = context!.port("forge") as { mutate?: () => Promise<void> };
+    expect(port.mutate).toBeUndefined();
+    expect(mutations).toBe(0);
+  });
+
   it("does not expose helpers on a read-only tracker adapter", async () => {
     let context: PluginContext | undefined;
     const workflow = plugin("@amykit/workflow-toy", {

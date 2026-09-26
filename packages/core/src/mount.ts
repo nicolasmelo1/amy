@@ -492,8 +492,11 @@ function mutablePortKindForAction(
   mutablePortKinds?: WeakMap<object, MutablePortKind>,
 ): MutablePortKind | undefined {
   const known = port && mutablePortKinds?.get(port);
-  if (known) return known;
-  return inferredMutablePortKind(spec, port);
+  // An alias mounted before its action is conservatively unknown. Its declared
+  // binding may subsequently identify a concrete tracker/code-host contract;
+  // retain an established concrete identity, but refine that provisional one.
+  if (known && known !== "unknown") return known;
+  return inferredMutablePortKind(spec, port) ?? known;
 }
 
 /** Infer a core contract only after preserving a mounted adapter's identity. */
@@ -517,7 +520,13 @@ function mutablePortKindForPort(
 ): MutablePortKind | undefined {
   return mutablePortKind(port, kind, mutablePortKinds)
     ?? (isCodeHostPort(port) ? "code-host" : undefined)
-    ?? (isTrackerPort(port) ? "tracker" : undefined);
+    ?? (isTrackerPort(port) ? "tracker" : undefined)
+    // A consumer-named adapter may expose a mutator the core contracts do not
+    // yet name. Its method cannot be safely handed whole to a workflow merely
+    // because no action happens to bind it. This deliberately does not treat
+    // every provider seam as mutable: workflow ports such as notes and tasks
+    // expose their independent read contracts through the same registry.
+    ?? (hasUnknownMutableMethod(port) ? "unknown" : undefined);
 }
 
 type MutablePortKind = "tracker" | "code-host" | "unknown";
@@ -545,6 +554,15 @@ function isCodeHostPort(port: object): boolean {
 function isTrackerPort(port: object): boolean {
   return Object.keys(TRACKER_WRITE_FOR_METHOD)
     .some((method) => typeof Reflect.get(port, method) === "function");
+}
+
+/** Detect an explicitly mutating alias method outside the two core contracts. */
+function hasUnknownMutableMethod(port: object): boolean {
+  for (let current: object | null = port; current && current !== Object.prototype; current = Object.getPrototypeOf(current)) {
+    const descriptor = Reflect.getOwnPropertyDescriptor(current, "mutate");
+    if (typeof descriptor?.value === "function" || descriptor?.get !== undefined || descriptor?.set !== undefined) return true;
+  }
+  return false;
 }
 
 /** An action binding turns an otherwise ambiguous `get` alias into a mutable boundary. */
