@@ -256,6 +256,18 @@ function narrowedPort(
       // and must still become attenuated once it claims a workflow.
       if (!workflowFor()) {
         const initial = Reflect.get(port, property);
+        const capability = methods[property];
+        // Do not make a pre-declaration write wait for registration. An async
+        // plugin may await this call before it declares its workflow; waiting
+        // for the registration promise there would make boot wait on itself.
+        // A provider can still compose read and non-contract seams during
+        // registration, but a mutable contract call is never valid in that
+        // window and fails closed immediately.
+        if (capability) {
+          return async (): Promise<never> => {
+            throw new Error(`the workflow cannot call the ${scopedKind} write \`${capability}\` (${property}) before registration`);
+          };
+        }
         // A workflow may retain an adapter-owned client or runner before it
         // declares its surface just as easily as it may retain a method. Keep
         // objects deferred too: provider composition remains live until this

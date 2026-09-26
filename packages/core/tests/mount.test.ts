@@ -341,6 +341,23 @@ describe("contributions", () => {
     expect(comments).toBe(0);
   });
 
+  it("rejects an awaited pre-registration writer without deadlocking boot", async () => {
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: async (r, ctx) => {
+        const comment = (ctx.port("tracker") as { comment(): Promise<void> }).comment;
+        await expect(comment()).rejects.toThrow("before registration");
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await expect(mount([tracker, workflow], {}, HOST)).resolves.toMatchObject({ ok: true });
+    expect(comments).toBe(0);
+  });
+
   it("snapshots write declarations when the workflow mounts", async () => {
     let context: PluginContext | undefined;
     const declaration = { ...WORKFLOW, trackerWrites: [] as string[] };
