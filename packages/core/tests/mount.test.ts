@@ -833,6 +833,19 @@ describe("unmetNeeds", () => {
     ]);
   });
 
+  it("refuses a runtime-only binding to an unrecognised mutable alias", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-unknown-writer", {
+        register: (r) => r.port("forge", { mutate: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-mutate": { port: "forge", method: "mutate" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `forge.mutate`"),
+    ]);
+  });
+
   it("refuses a claimed capability no mounted code host could honour", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("agent", {}) }),

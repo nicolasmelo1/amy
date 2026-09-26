@@ -727,7 +727,7 @@ function misboundWrites(mounted: Mounted, actions: Readonly<Record<string, unkno
 function unclassifiableActionBindings(mounted: Mounted, actions: Readonly<Record<string, unknown>>): string[] {
   const problems: string[] = [];
   for (const [action, implementation] of Object.entries(actions)) {
-    if (!isPortBinding(implementation) || !mounted.actions.has(action)) continue;
+    if (!isPortBinding(implementation)) continue;
     if (catalogued(mounted, action, implementation) !== null) continue;
     if (bindingPortKind(mounted, implementation) !== "unknown") continue;
     problems.push(
