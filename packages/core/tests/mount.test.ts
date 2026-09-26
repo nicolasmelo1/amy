@@ -291,6 +291,35 @@ describe("contributions", () => {
     expect(mutations).toBe(0);
   });
 
+  it("does not expose a mutable prototype or invoke a writer while a workflow registers", async () => {
+    let retainedPrototype: object | null | undefined;
+    let earlyWrite: Promise<unknown> | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        const port = ctx.port("tracker") as { comment(): Promise<void> };
+        retainedPrototype = Object.getPrototypeOf(port);
+        earlyWrite = port.comment();
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => {
+        class Adapter {
+          async helper(): Promise<void> { comments += 1; }
+          async comment(): Promise<void> { comments += 1; }
+        }
+        r.port("tracker", new Adapter());
+      },
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    expect(retainedPrototype).toBeNull();
+    await expect(earlyWrite).rejects.toThrow("comment");
+    expect(comments).toBe(0);
+  });
+
   it("classifies an implicitly mounted code-host alias from its reader contract", async () => {
     let context: PluginContext | undefined;
     let merges = 0;

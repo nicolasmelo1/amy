@@ -224,7 +224,10 @@ function narrowedPort(
       return deferredDescriptor(descriptor, workflowFor, port, property);
     },
     getPrototypeOf() {
-      return workflowFor() ? null : Reflect.getPrototypeOf(port);
+      // A prototype is adapter-owned state too. In particular, handing it out
+      // while a workflow is registering lets that workflow retain prototype
+      // helpers or accessors after its declaration closes the port.
+      return null;
     },
     get(_target, property) {
       if (typeof property !== "string") return undefined;
@@ -240,13 +243,18 @@ function narrowedPort(
         // context registers a workflow, but a retained internal object becomes
         // opaque when that declaration takes effect.
         if (typeof initial !== "function") return deferredPortValue(initial, workflowFor);
-        return (...args: unknown[]) => {
+        return (...args: unknown[]) => Promise.resolve().then(() => {
+          // Let a synchronous registration finish before deciding whether this
+          // is a provider call or a workflow's retained callable. This keeps
+          // provider composition live, while a workflow that declares itself
+          // immediately after taking the callable cannot cause a write in the
+          // registration window.
           const value = workflowFor()
             ? Reflect.get(view, property)
             : initial;
           if (typeof value !== "function") return value;
           return value.apply(workflowFor() ? undefined : port, args);
-        };
+        });
       }
       const capability = methods[property];
       if (!reads.has(property) && !capability) return undefined;
@@ -299,7 +307,7 @@ function deferredPortValue(
         : deferredDescriptor(Reflect.getOwnPropertyDescriptor(value, property), workflowFor, value, property);
     },
     getPrototypeOf() {
-      return workflowFor() ? null : Reflect.getPrototypeOf(value);
+      return null;
     },
   });
 }
