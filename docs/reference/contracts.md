@@ -143,7 +143,7 @@ Declared in `packages/core/src/ports/Budget.ts`.
 
 ### `CodeHost`
 
-The forge: a repository, a branch, a pull request and a login.
+
 
 Declared in `packages/core/src/ports/CodeHost.ts`.
 
