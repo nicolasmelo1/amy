@@ -863,6 +863,19 @@ describe("unmetNeeds", () => {
     ]);
   });
 
+  it("refuses a runtime-only unknown method bound directly to the tracker", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-tracker", {
+        register: (r) => r.port("tracker", { mutate: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-mutate": { port: "tracker", method: "mutate" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `tracker.mutate`"),
+    ]);
+  });
+
   it("refuses at boot a runtime-only writer through a consumer-named alias", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-code-host", {

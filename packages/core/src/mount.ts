@@ -739,19 +739,33 @@ function misboundWrites(mounted: Mounted, actions: Readonly<Record<string, unkno
   return problems;
 }
 
-/** Reject dispatched writers that cannot be placed behind a declared core port. */
+/** Reject dispatched methods that cannot be represented by their core port view. */
 function unclassifiableActionBindings(mounted: Mounted, actions: Readonly<Record<string, unknown>>): string[] {
   const problems: string[] = [];
   for (const [action, implementation] of Object.entries(actions)) {
     if (!isPortBinding(implementation)) continue;
     if (catalogued(mounted, action, implementation) !== null) continue;
-    if (bindingPortKind(mounted, implementation) !== "unknown") continue;
+    const kind = bindingPortKind(mounted, implementation);
+    // A method belonging to the opposite contract receives the more precise
+    // misboundWrites diagnostic below. Every other unknown method would be
+    // hidden by the workflow's closed concrete-port view after boot.
+    if (kind !== "unknown" && (kind === undefined || contractMethod(kind, implementation.method) || foreignWrite(kind, implementation.method))) continue;
     problems.push(
       `action \`${action}\` binds unrecognised mutable port \`${implementation.port}.${implementation.method}\`; ` +
       "give it a tracker or code-host contract method before a workflow may dispatch it",
     );
   }
   return problems;
+}
+
+function contractMethod(kind: Exclude<MutablePortKind, "unknown">, method: string): boolean {
+  return kind === "tracker"
+    ? TRACKER_READ_METHODS.has(method) || Boolean(TRACKER_WRITE_FOR_METHOD[method])
+    : CODE_HOST_READ_METHODS.has(method) || Boolean(CODE_HOST_WRITE_FOR_METHOD[method]);
+}
+
+function foreignWrite(kind: Exclude<MutablePortKind, "unknown">, method: string): boolean {
+  return kind === "tracker" ? Boolean(CODE_HOST_WRITE_FOR_METHOD[method]) : Boolean(TRACKER_WRITE_FOR_METHOD[method]);
 }
 
 function describeCapabilities(capabilities: readonly string[]): string {
