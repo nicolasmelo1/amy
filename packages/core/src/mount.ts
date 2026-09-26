@@ -476,7 +476,7 @@ function unclaimed(
   return unmet;
 }
 
-/** A bound plugin action names its write by port method; handlers use the core catalogue. */
+/** A bound action names its write by its actual port method; handlers use the core catalogue. */
 function writeFor(
   port: PortKind,
   action: string,
@@ -487,12 +487,9 @@ function writeFor(
 ): readonly string[] {
   if (isPortBinding(implementation)) {
     if (!pluginBound) return [];
-    // Core actions retain the catalogue's explicit port contract; an alias of
-    // a core action is still just a missing port, not a new write surface.
-    if (CORE_ACTIONS[action]) return CORE_ACTIONS[action]?.port === port ? coreWritesFor(action) : [];
-    // Consumer-named aliases (such as `feature` or `forge`) still bind the
-    // same mutable contract. The method table, not the alias spelling,
-    // identifies which declaration it needs.
+    // A port binding is executable as written, even when its action name is a
+    // core name. The method table, not that name or a consumer-facing alias,
+    // identifies the declaration it needs.
     const capability = writeForMethod[implementation.method];
     return capability ? [capability] : [];
   }

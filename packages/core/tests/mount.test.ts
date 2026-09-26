@@ -542,6 +542,23 @@ describe("unmetNeeds", () => {
     ]);
   });
 
+  it("validates a core-named port binding by its actual method", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-code-host", {
+        register: (r) => {
+          r.port("code-host", { merge: acceptsAction(async () => {}) });
+          r.action("open-pull-request", { port: "code-host", method: "merge" }, {});
+        },
+      }),
+    ], { "open-pull-request": { port: "code-host", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["open-pull-request"] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `open-pull-request` writes the code-host (`merge`), " +
+        "but the workflow does not claim that capability — add `merge` to its `codeHostWrites`",
+    ]);
+  });
+
   it("refuses at boot a plugin-bound writer through a consumer-named alias", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-tracker", {
