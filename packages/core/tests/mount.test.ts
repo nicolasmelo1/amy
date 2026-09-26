@@ -236,6 +236,48 @@ describe("contributions", () => {
     expect(comments).toBe(0);
   });
 
+  it("does not let a workflow retain an adapter-owned object before declaring itself", async () => {
+    let retained: { mutate(): Promise<void> } | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        retained = (ctx.port("tracker") as { client: { mutate(): Promise<void> } }).client;
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { client: { mutate: async () => { mutations += 1; } } }),
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    expect(retained).toBeDefined();
+    expect((retained as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+    expect(mutations).toBe(0);
+  });
+
+  it("classifies an implicitly mounted code-host alias from its reader contract", async () => {
+    let context: PluginContext | undefined;
+    let merges = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, codeHostWrites: [] });
+        context = ctx;
+      },
+    });
+    const action = plugin("@amykit/plugin-forge-action", {
+      register: (r) => r.action("find", { port: "forge", method: "findPullRequest" }, {
+        findPullRequest: async () => null,
+        merge: async () => { merges += 1; },
+      }),
+    });
+
+    await mount([action, workflow], {}, HOST);
+
+    await expect((context!.workflowPort!("forge") as { merge(): Promise<void> }).merge()).rejects.toThrow("merge");
+    expect(merges).toBe(0);
+  });
+
   it("hands a workflow only the code-host writes it claimed", async () => {
     let context: PluginContext | undefined;
     let opened = 0;

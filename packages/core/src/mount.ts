@@ -228,7 +228,12 @@ function narrowedPort(
       // and must still become attenuated once it claims a workflow.
       if (!workflowFor()) {
         const initial = Reflect.get(port, property);
-        if (typeof initial !== "function") return initial;
+        // A workflow may retain an adapter-owned client or runner before it
+        // declares its surface just as easily as it may retain a method. Keep
+        // objects deferred too: provider composition remains live until this
+        // context registers a workflow, but a retained internal object becomes
+        // opaque when that declaration takes effect.
+        if (typeof initial !== "function") return deferredPortValue(initial, workflowFor);
         return (...args: unknown[]) => {
           const value = workflowFor()
             ? Reflect.get(view, property)
@@ -262,6 +267,24 @@ function narrowedPort(
   // so the alias keeps the mutable kind when another workflow asks for it.
   mutablePortKinds.set(view, scopedKind);
   return view;
+}
+
+function deferredPortValue(value: unknown, workflowFor: () => Workflow<never, never> | undefined): unknown {
+  if (!value || typeof value !== "object") return value;
+  return new Proxy(Object.create(null), {
+    get(_target, property) {
+      return workflowFor() ? undefined : deferredPortValue(Reflect.get(value, property), workflowFor);
+    },
+    ownKeys() {
+      return workflowFor() ? [] : Reflect.ownKeys(value);
+    },
+    getOwnPropertyDescriptor(_target, property) {
+      return workflowFor() ? undefined : Reflect.getOwnPropertyDescriptor(value, property);
+    },
+    getPrototypeOf() {
+      return workflowFor() ? null : Reflect.getPrototypeOf(value);
+    },
+  });
 }
 
 /**
@@ -324,13 +347,13 @@ function registrarFor(
         return;
       }
       mounted.actions.set(name, spec);
-      const kind = mutablePortKindForAction(spec);
       if (!mounted.ports.has(spec.port)) {
         mounted.ports.set(spec.port, port);
       }
       // An action can bind a mutable method to an existing consumer-named
       // alias. Classify that already-mounted adapter as well as a new one.
       const adapter = mounted.ports.get(spec.port);
+      const kind = mutablePortKindForAction(spec, adapter, mutablePortKinds);
       if (kind && adapter) mutablePortKinds.set(adapter, kind);
     },
     contribute: (collection, name, impl) => {
@@ -357,10 +380,27 @@ function registrarFor(
  * Classify a declared mutable method at that point so the engine's workflow
  * view cannot receive the newly mounted adapter whole.
  */
-function mutablePortKindForAction(spec: ActionSpec): "tracker" | "code-host" | undefined {
+function mutablePortKindForAction(
+  spec: ActionSpec,
+  port?: object,
+  mutablePortKinds?: WeakMap<object, "tracker" | "code-host">,
+): "tracker" | "code-host" | undefined {
   if (spec.port === "tracker" || TRACKER_WRITE_FOR_METHOD[spec.method]) return "tracker";
   if (spec.port === "code-host" || CODE_HOST_WRITE_FOR_METHOD[spec.method]) return "code-host";
+  if (port && mutablePortKinds?.get(port)) return mutablePortKinds.get(port);
+  if (port && isCodeHostPort(port)) return "code-host";
+  if (port && isTrackerPort(port)) return "tracker";
   return undefined;
+}
+
+function isCodeHostPort(port: object): boolean {
+  return [...CODE_HOST_READ_METHODS, ...Object.keys(CODE_HOST_WRITE_FOR_METHOD)]
+    .some((method) => typeof Reflect.get(port, method) === "function");
+}
+
+function isTrackerPort(port: object): boolean {
+  return [...TRACKER_READ_METHODS, ...Object.keys(TRACKER_WRITE_FOR_METHOD)]
+    .some((method) => typeof Reflect.get(port, method) === "function");
 }
 
 /**
