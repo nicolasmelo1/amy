@@ -87,6 +87,7 @@ export {
   pullRequestTitle,
   trackerCapabilitiesFor,
   trackerWriteFor,
+  trackerWritesFor,
 } from "./ports/Ticketing.js";
 export type {
   BriefId,

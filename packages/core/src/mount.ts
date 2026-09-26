@@ -23,7 +23,7 @@ import {
 import {
   TRACKER_WRITE_CAPABILITIES,
   TRACKER_WRITE_FOR_METHOD,
-  trackerWriteFor,
+  trackerWritesFor,
 } from "./ports/Ticketing.js";
 
 /** The few services the host lends every plugin. */
@@ -210,7 +210,7 @@ function narrowedPort(
   // Do not proxy the adapter itself: its prototype and own properties would
   // otherwise remain discoverable through reflection. The workflow gets a
   // blank object carrying only contract readers and the writers it claimed.
-  return new Proxy(Object.create(null), {
+  const view = new Proxy(Object.create(null), {
     ownKeys() {
       return workflowFor() ? [] : Reflect.ownKeys(port);
     },
@@ -223,11 +223,19 @@ function narrowedPort(
     get(_target, property) {
       if (typeof property !== "string") return undefined;
       // Provider plugins may compose an independent seam before they register
-      // a workflow. Keep that seam whole, but resolve it on each property read:
-      // a cached view becomes closed as soon as its plugin claims a workflow.
+      // a workflow. Resolve a callable when it is invoked rather than handing
+      // out a bound adapter method: a workflow may cache it before registering
+      // and must still become attenuated once it claims a workflow.
       if (!workflowFor()) {
-        const value = Reflect.get(port, property);
-        return typeof value === "function" ? value.bind(port) : value;
+        const initial = Reflect.get(port, property);
+        if (typeof initial !== "function") return initial;
+        return (...args: unknown[]) => {
+          const value = workflowFor()
+            ? Reflect.get(view, property)
+            : initial;
+          if (typeof value !== "function") return value;
+          return value.apply(workflowFor() ? undefined : port, args);
+        };
       }
       const capability = methods[property];
       if (!reads.has(property) && !capability) return undefined;
@@ -249,6 +257,11 @@ function narrowedPort(
       };
     },
   });
+  // A provider can re-export this deferred view under a consumer-facing alias
+  // before it registers its workflow. Record the contract on the view itself
+  // so the alias keeps the mutable kind when another workflow asks for it.
+  mutablePortKinds.set(view, scopedKind);
+  return view;
 }
 
 /**
@@ -418,7 +431,7 @@ function unclaimedWrites(mounted: Mounted, workflow: Workflow<never, never>, act
       workflow.trackerWrites ?? [],
       TRACKER_WRITE_CAPABILITIES,
       actions,
-      (action, implementation) => writeFor("tracker", action, implementation, trackerWriteFor, TRACKER_WRITE_FOR_METHOD, mounted.actions.has(action)),
+      (action, implementation) => writeFor("tracker", action, implementation, trackerWritesFor, TRACKER_WRITE_FOR_METHOD, mounted.actions.has(action)),
       "trackerWrites",
     ),
     ...unclaimed(
@@ -426,7 +439,10 @@ function unclaimedWrites(mounted: Mounted, workflow: Workflow<never, never>, act
       workflow.codeHostWrites ?? [],
       CODE_HOST_WRITE_CAPABILITIES,
       actions,
-      (action, implementation) => writeFor("code-host", action, implementation, codeHostWriteFor, CODE_HOST_WRITE_FOR_METHOD, mounted.actions.has(action)),
+      (action, implementation) => writeFor("code-host", action, implementation, (name) => {
+        const capability = codeHostWriteFor(name);
+        return capability ? [capability] : [];
+      }, CODE_HOST_WRITE_FOR_METHOD, mounted.actions.has(action)),
       "codeHostWrites",
     ),
   ];
@@ -437,7 +453,7 @@ function unclaimed(
   declarations: readonly string[],
   supported: readonly string[],
   actions: Readonly<Record<string, unknown>>,
-  capabilityFor: (action: string, implementation: unknown) => string | undefined,
+  capabilitiesFor: (action: string, implementation: unknown) => readonly string[],
   field: string,
 ): string[] {
   const unmet: string[] = [];
@@ -449,12 +465,13 @@ function unclaimed(
     );
   }
   for (const [action, implementation] of Object.entries(actions)) {
-    const capability = capabilityFor(action, implementation);
-    if (capability === undefined || claimed.has(capability)) continue;
-    unmet.push(
-      `action \`${action}\` writes the ${port} (\`${capability}\`), ` +
-        `but the workflow does not claim that capability — add \`${capability}\` to its \`${field}\``,
-    );
+    for (const capability of capabilitiesFor(action, implementation)) {
+      if (claimed.has(capability)) continue;
+      unmet.push(
+        `action \`${action}\` writes the ${port} (\`${capability}\`), ` +
+          `but the workflow does not claim that capability — add \`${capability}\` to its \`${field}\``,
+      );
+    }
   }
   return unmet;
 }
@@ -464,21 +481,22 @@ function writeFor(
   port: PortKind,
   action: string,
   implementation: unknown,
-  coreWriteFor: (action: string) => string | undefined,
+  coreWritesFor: (action: string) => readonly string[],
   writeForMethod: Readonly<Record<string, string>>,
   pluginBound: boolean,
-): string | undefined {
+): readonly string[] {
   if (isPortBinding(implementation)) {
-    if (!pluginBound) return undefined;
+    if (!pluginBound) return [];
     // Core actions retain the catalogue's explicit port contract; an alias of
     // a core action is still just a missing port, not a new write surface.
-    if (CORE_ACTIONS[action]) return CORE_ACTIONS[action]?.port === port ? coreWriteFor(action) : undefined;
+    if (CORE_ACTIONS[action]) return CORE_ACTIONS[action]?.port === port ? coreWritesFor(action) : [];
     // Consumer-named aliases (such as `feature` or `forge`) still bind the
     // same mutable contract. The method table, not the alias spelling,
     // identifies which declaration it needs.
-    return writeForMethod[implementation.method];
+    const capability = writeForMethod[implementation.method];
+    return capability ? [capability] : [];
   }
-  return CORE_ACTIONS[action]?.port === port ? coreWriteFor(action) : undefined;
+  return CORE_ACTIONS[action]?.port === port ? coreWritesFor(action) : [];
 }
 
 function describeCapabilities(capabilities: readonly string[]): string {

@@ -325,12 +325,20 @@ export type TrackerWriteCapability = (typeof TRACKER_WRITE_CAPABILITIES)[number]
  * The tracker action a core action resolves to, so a mount can ask whether a
  * declared action mutates without learning what any action means.
  *
- * Derived from `CORE_ACTIONS` at read time rather than restated, so a new
- * tracker action added to the catalogue is covered by the same declaration
- * rule without anybody remembering to extend a second list.
+ * Derived from `CORE_ACTIONS` at read time except where an action's handler
+ * makes additional mutations beyond its dispatch method.
  */
+export function trackerWritesFor(action: string): TrackerWriteCapability[] {
+  // The hand-off handler changes both status and assignee. Its catalogue entry
+  // names the dispatch method, while this table names every external mutation
+  // the action performs so boot can reject an incomplete declaration.
+  if (action === "hand-off-to-qa") return ["set-status", "assign"];
+  const capability = TRACKER_WRITE_FOR_METHOD[CORE_ACTIONS[action]?.method ?? ""];
+  return capability ? [capability] : [];
+}
+
 export function trackerWriteFor(action: string): TrackerWriteCapability | undefined {
-  return TRACKER_WRITE_FOR_METHOD[CORE_ACTIONS[action]?.method ?? ""];
+  return trackerWritesFor(action)[0];
 }
 
 export const TRACKER_WRITE_FOR_METHOD: Readonly<Record<string, TrackerWriteCapability>> = {
@@ -349,6 +357,6 @@ export const TRACKER_WRITE_FOR_METHOD: Readonly<Record<string, TrackerWriteCapab
  */
 export function trackerCapabilitiesFor(usesActions: readonly string[]): TrackerWriteCapability[] {
   return TRACKER_WRITE_CAPABILITIES.filter((capability) =>
-    usesActions.some((action) => trackerWriteFor(action) === capability),
+    usesActions.some((action) => trackerWritesFor(action).includes(capability)),
   );
 }

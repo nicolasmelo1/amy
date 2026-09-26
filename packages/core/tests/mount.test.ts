@@ -214,10 +214,12 @@ describe("contributions", () => {
   it("hands a workflow only the tracker writes it claimed", async () => {
     let context: PluginContext | undefined;
     let cached: object | undefined;
+    let cachedComment: (() => Promise<void>) | undefined;
     let comments = 0;
     const workflow = plugin("@amykit/workflow-toy", {
       register: (r, ctx) => {
         cached = ctx.port("tracker");
+        cachedComment = (cached as { comment(): Promise<void> }).comment;
         r.workflow({ ...WORKFLOW, trackerWrites: [] });
         context = ctx;
       },
@@ -230,6 +232,7 @@ describe("contributions", () => {
 
     await expect((context!.port("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
     await expect((cached as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+    await expect(cachedComment!()).rejects.toThrow("comment");
     expect(comments).toBe(0);
   });
 
@@ -328,6 +331,26 @@ describe("contributions", () => {
     await mount([workflow, tracker], {}, HOST);
 
     await expect((context!.port("feature") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("preserves a mutable kind when a provider re-exports its deferred alias", async () => {
+    let context: PluginContext | undefined;
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { throw new Error("called"); } }),
+    });
+    const composer = plugin("@amykit/plugin-composer", {
+      register: (r, ctx) => r.port("grooming-tracker", ctx.port("tracker")!),
+    });
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+
+    await mount([tracker, composer, workflow], {}, HOST);
+
+    await expect((context!.port("grooming-tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
   });
 
   it("leaves an independent feature seam available to the plugin that composes it", async () => {
@@ -481,6 +504,18 @@ describe("unmetNeeds", () => {
     ]);
   });
 
+  it("refuses every tracker mutation a core action performs", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
+    ], { "hand-off-to-qa": HANDLED });
+    const workflow = { ...WORKFLOW, usesObservers: [], trackerWrites: ["set-status"] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `hand-off-to-qa` writes the tracker (`assign`), " +
+        "but the workflow does not claim that capability — add `assign` to its `trackerWrites`",
+    ]);
+  });
+
   it("refuses a workflow that mutates the code host while claiming no capability", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("code-host", {}) }),
@@ -592,6 +627,8 @@ describe("one declaration per action", () => {
 
     expect(unmetNeeds(host, { ...workflow, trackerWrites: ["set-status"] })).toEqual([
       "action `hand-off-to-qa` is declared with no implementation — give it a handler, or a port and a method",
+      "action `hand-off-to-qa` writes the tracker (`assign`), " +
+        "but the workflow does not claim that capability — add `assign` to its `trackerWrites`",
     ]);
   });
 
