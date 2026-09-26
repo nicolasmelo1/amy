@@ -81,7 +81,9 @@ export async function mount(
     const settings = configFor(plugin.name, plugin.configSchema, config[plugin.name], problems);
     if (settings === null) continue;
 
-    const ctx = contextFor(settings, mounted, host, workflowFor, mutablePortKinds);
+    let finishRegistration!: () => void;
+    const registrationComplete = new Promise<void>((resolve) => { finishRegistration = resolve; });
+    const ctx = contextFor(settings, mounted, host, workflowFor, mutablePortKinds, registrationComplete);
 
     try {
       await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor, mutablePortKinds), ctx);
@@ -92,6 +94,11 @@ export async function mount(
         `${plugin.name}: failed to mount — ${error instanceof Error ? error.message : String(error)}`,
       );
       continue;
+    } finally {
+      // A mutable port acquired before a workflow declares itself must not
+      // decide it is a provider call merely because registration awaited.
+      // Deferred wrappers decide only once this plugin's registration ends.
+      finishRegistration();
     }
 
     mounted.plugins.push({ name: plugin.name, version: plugin.version });
@@ -155,6 +162,7 @@ function contextFor(
   host: HostServices,
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
   mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
+  registrationComplete: Promise<void>,
 ): PluginContext {
   const ctx: PluginContext = {
     config,
@@ -167,8 +175,12 @@ function contextFor(
     // retain this view while it registers; it must never retain the raw port.
     // Other plugins also compose independent contracts (for example the
     // feature-grooming seam); engines use `workflowPort` for selected actions.
-    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => workflowFor.get(ctx), mutablePortKinds),
-    workflowPort: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => mounted.workflow, mutablePortKinds),
+    port: (kind) => narrowedPort(
+      mounted.ports.get(kind), kind, () => workflowFor.get(ctx), mutablePortKinds, registrationComplete,
+    ),
+    workflowPort: (kind) => narrowedPort(
+      mounted.ports.get(kind), kind, () => mounted.workflow, mutablePortKinds, registrationComplete,
+    ),
     workflow: () => mounted.workflow,
   };
   return ctx;
@@ -194,6 +206,7 @@ function narrowedPort(
   kind: PortKind,
   workflowFor: () => Workflow<never, never> | undefined,
   mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
+  registrationComplete: Promise<void>,
 ): object | undefined {
   if (!port) return port;
   const scopedKind = mutablePortKind(port, kind, mutablePortKinds);
@@ -221,7 +234,7 @@ function narrowedPort(
       // declares itself. Never hand its raw value or accessor out through a
       // descriptor: a retained getter can otherwise disclose an adapter-owned
       // client after the workflow becomes attenuated.
-      return deferredDescriptor(descriptor, workflowFor, port, property);
+      return deferredDescriptor(descriptor, workflowFor, port, property, registrationComplete);
     },
     getPrototypeOf() {
       // A prototype is adapter-owned state too. In particular, handing it out
@@ -242,13 +255,11 @@ function narrowedPort(
         // objects deferred too: provider composition remains live until this
         // context registers a workflow, but a retained internal object becomes
         // opaque when that declaration takes effect.
-        if (typeof initial !== "function") return deferredPortValue(initial, workflowFor);
-        return (...args: unknown[]) => Promise.resolve().then(() => {
-          // Let a synchronous registration finish before deciding whether this
-          // is a provider call or a workflow's retained callable. This keeps
-          // provider composition live, while a workflow that declares itself
-          // immediately after taking the callable cannot cause a write in the
-          // registration window.
+        if (typeof initial !== "function") return deferredPortValue(initial, workflowFor, undefined, registrationComplete);
+        return (...args: unknown[]) => registrationComplete.then(() => {
+          // An async workflow can await before declaring itself. Decide only
+          // after registration completes, when it either has a declaration or
+          // is known to be an independent provider context.
           const value = workflowFor()
             ? Reflect.get(view, property)
             : initial;
@@ -286,17 +297,20 @@ function deferredPortValue(
   value: unknown,
   workflowFor: () => Workflow<never, never> | undefined,
   receiver?: object,
+  registrationComplete?: Promise<void>,
 ): unknown {
   if (typeof value === "function") {
-    return (...args: unknown[]) => {
+    return (...args: unknown[]) => (registrationComplete ?? Promise.resolve()).then(() => {
       if (workflowFor()) return undefined;
       return value.apply(receiver, args);
-    };
+    });
   }
   if (!value || typeof value !== "object") return value;
   return new Proxy(Object.create(null), {
     get(_target, property) {
-      return workflowFor() ? undefined : deferredPortValue(Reflect.get(value, property), workflowFor, value);
+      return workflowFor()
+        ? undefined
+        : deferredPortValue(Reflect.get(value, property), workflowFor, value, registrationComplete);
     },
     ownKeys() {
       return workflowFor() ? [] : Reflect.ownKeys(value);
@@ -304,7 +318,9 @@ function deferredPortValue(
     getOwnPropertyDescriptor(_target, property) {
       return workflowFor()
         ? undefined
-        : deferredDescriptor(Reflect.getOwnPropertyDescriptor(value, property), workflowFor, value, property);
+        : deferredDescriptor(
+          Reflect.getOwnPropertyDescriptor(value, property), workflowFor, value, property, registrationComplete,
+        );
     },
     getPrototypeOf() {
       return null;
@@ -318,6 +334,7 @@ function deferredDescriptor(
   workflowFor: () => Workflow<never, never> | undefined,
   receiver: object,
   property: PropertyKey,
+  registrationComplete?: Promise<void>,
 ): PropertyDescriptor | undefined {
   if (!descriptor) return undefined;
   // The proxy target owns no properties, so its reported descriptors must be
@@ -327,13 +344,15 @@ function deferredDescriptor(
       configurable: true,
       enumerable: descriptor.enumerable ?? false,
       writable: false,
-      value: deferredPortValue(descriptor.value, workflowFor, receiver),
+      value: deferredPortValue(descriptor.value, workflowFor, receiver, registrationComplete),
     };
   }
   return {
     configurable: true,
     enumerable: descriptor.enumerable ?? false,
-    get: () => deferredPortValue(Reflect.get(receiver, property, receiver), workflowFor, receiver),
+    get: () => deferredPortValue(
+      Reflect.get(receiver, property, receiver), workflowFor, receiver, registrationComplete,
+    ),
   };
 }
 

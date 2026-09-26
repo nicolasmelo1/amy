@@ -320,6 +320,27 @@ describe("contributions", () => {
     expect(comments).toBe(0);
   });
 
+  it("keeps a cached writer inert while an async workflow registers", async () => {
+    let deferredWrite: Promise<void> | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: async (r, ctx) => {
+        const comment = (ctx.port("tracker") as { comment(): Promise<void> }).comment;
+        await Promise.resolve();
+        deferredWrite = comment();
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    await expect(deferredWrite).rejects.toThrow("comment");
+    expect(comments).toBe(0);
+  });
+
   it("classifies an implicitly mounted code-host alias from its reader contract", async () => {
     let context: PluginContext | undefined;
     let merges = 0;
