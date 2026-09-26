@@ -165,9 +165,9 @@ function contextFor(
     contributions: (collection) => mounted.contributions.get(collection) ?? new Map(),
     // This remains deferred until a workflow registers. A workflow plugin can
     // retain this view while it registers; it must never retain the raw port.
-    // An action plugin executes for the selected workflow too, so its captured
-    // port needs that workflow's declarations when it has none of its own.
-    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => workflowFor.get(ctx) ?? mounted.workflow, mutablePortKinds),
+    // Other plugins also compose independent contracts (for example the
+    // feature-grooming seam); engines use `workflowPort` for selected actions.
+    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => workflowFor.get(ctx), mutablePortKinds),
     workflowPort: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => mounted.workflow, mutablePortKinds),
     workflow: () => mounted.workflow,
   };
@@ -298,7 +298,11 @@ function registrarFor(
         return;
       }
       mounted.actions.set(name, spec);
-      if (!mounted.ports.has(spec.port)) mounted.ports.set(spec.port, port);
+      if (!mounted.ports.has(spec.port)) {
+        mounted.ports.set(spec.port, port);
+        const kind = mutablePortKindForAction(spec);
+        if (kind) mutablePortKinds.set(port, kind);
+      }
     },
     contribute: (collection, name, impl) => {
       const existing = mounted.contributions.get(collection) ?? new Map<string, object>();
@@ -317,6 +321,17 @@ function registrarFor(
       mounted.observers.set(slice, source);
     },
   };
+}
+
+/**
+ * An action may introduce its port, including an alias such as `feature`.
+ * Classify a declared mutable method at that point so the engine's workflow
+ * view cannot receive the newly mounted adapter whole.
+ */
+function mutablePortKindForAction(spec: ActionSpec): "tracker" | "code-host" | undefined {
+  if (spec.port === "tracker" || TRACKER_WRITE_FOR_METHOD[spec.method]) return "tracker";
+  if (spec.port === "code-host" || CODE_HOST_WRITE_FOR_METHOD[spec.method]) return "code-host";
+  return undefined;
 }
 
 /**

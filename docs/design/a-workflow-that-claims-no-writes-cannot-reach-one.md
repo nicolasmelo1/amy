@@ -8,7 +8,9 @@ against action bindings at boot in the same way as tracker declarations.
 
 The mount also makes the declaration true at runtime. The context belonging to
 the plugin that registered a workflow and the serial engine's workflow dispatch
-view receive allow-listed tracker and code-host ports. Contract readers are
+view receive allow-listed tracker and code-host ports. Other plugins retain
+their independent provider seams; engines never dispatch workflow actions
+through those contexts. Contract readers are
 passed through, an unclaimed writer rejects before the underlying adapter is
 called, naming the capability and method, and adapter internals are absent from
 the view. The mounted ports remain whole for adapters.

@@ -313,19 +313,36 @@ describe("contributions", () => {
     await expect((context!.port("feature") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
   });
 
-  it("gives an action plugin the selected workflow's claimed port view", async () => {
+  it("leaves an independent feature seam available to the plugin that composes it", async () => {
     let captured: object | undefined;
     let comments = 0;
-    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] }) });
-    const action = plugin("@amykit/plugin-action", { register: (_r, ctx) => { captured = ctx.port("tracker"); } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: [] }) });
+    const action = plugin("@amykit/plugin-feature-grooming", { register: (_r, ctx) => { captured = ctx.port("feature"); } });
     const tracker = plugin("@amykit/plugin-tracker", {
-      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+      register: (r) => {
+        const adapter = { createGroomedWork: async () => { comments += 1; } };
+        r.port("tracker", adapter);
+        r.port("feature", adapter);
+      },
     });
 
     await mount([workflow, tracker, action], {}, HOST);
 
-    await (captured as { comment(): Promise<void> }).comment();
+    await (captured as { createGroomedWork(): Promise<void> }).createGroomedWork();
     expect(comments).toBe(1);
+  });
+
+  it("attenuates a mutable adapter implicitly mounted by an action alias", async () => {
+    let engineContext: PluginContext | undefined;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: [] }) });
+    const action = plugin("@amykit/plugin-action", {
+      register: (r) => r.action("plugin-comment", { port: "feature", method: "comment" }, { comment: async () => {} }),
+    });
+
+    await mount([engine, workflow, action], {}, HOST);
+
+    await expect((engineContext!.workflowPort!("feature") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
   });
 
   it("gives the serial engine the workflow's narrowed port rather than its own full context", async () => {
