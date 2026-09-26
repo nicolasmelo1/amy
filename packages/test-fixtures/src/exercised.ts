@@ -27,19 +27,31 @@ export function publicMethodsOf(source: string, className: string): string[] {
 /**
  * The public methods of `className` that no test source calls.
  *
- * A call is `.<method>(` in a test source — the shape every adapter test
- * already takes, `host.reviewLoad(...)`. A method named in a string or a
- * comment and never called does not count, which is the point: something has
- * to run it.
+ * A call is a call expression on a property of that name in a parsed test
+ * source — `host.reviewLoad(...)`, the shape every adapter test takes. A
+ * method named in a string or a comment and never called does not count,
+ * which is the point: something has to run it.
  */
 export function unexercisedMethods(
   source: string,
   className: string,
   testSources: readonly string[],
 ): string[] {
-  return publicMethodsOf(source, className).filter(
-    (method) => !testSources.some((test) => test.includes(`.${method}(`)),
-  );
+  const called = new Set(testSources.flatMap(calledProperties));
+  return publicMethodsOf(source, className).filter((method) => !called.has(method));
+}
+
+function calledProperties(source: string): string[] {
+  const file = ts.createSourceFile("test.ts", source, ts.ScriptTarget.Latest, true);
+  const names: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+      names.push(node.expression.name.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return names;
 }
 
 /**

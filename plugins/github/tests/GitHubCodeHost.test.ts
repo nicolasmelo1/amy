@@ -744,6 +744,29 @@ describe("GitHubCodeHost.submitReview", () => {
     expect(argv).toContain("body=the mapping holds");
   });
 
+  // The port speaks the state a review is read as; the REST API takes its
+  // own verbs, and answers 422 to the past tense.
+  it.each([
+    ["APPROVED", "APPROVE"],
+    ["CHANGES_REQUESTED", "REQUEST_CHANGES"],
+    ["COMMENTED", "COMMENT"],
+  ] as const)("submits %s as the event %s", async (state, event) => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await host.submitReview("Northwind/northwind-backend", 4926, { state, body: "b" });
+
+    expect(runner.argvFor("gh")).toContain(`event=${event}`);
+  });
+
+  it("refuses to submit a dismissal, which is done to a review and never submitted as one", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await expect(
+      host.submitReview("Northwind/northwind-backend", 4926, { state: "DISMISSED", body: "" }),
+    ).rejects.toThrow(/cannot be submitted as DISMISSED/);
+    expect(runner.calls).toHaveLength(0);
+  });
+
   it("sends the empty body rather than leaving it to the API's default", async () => {
     const { runner, host } = hostFor(REAL_RESPONSE);
 

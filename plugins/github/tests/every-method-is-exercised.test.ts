@@ -39,6 +39,14 @@ describe("GitHubCodeHost: no method ships unproven", () => {
     expect(unexercisedMethods(SOURCE, "GitHubCodeHost", withoutReviewLoad)).toEqual(["reviewLoad"]);
   });
 
+  it("does not count a method only named in a comment or a string as exercised", () => {
+    const onlyNamed = TESTS.map((test) => test.replaceAll(".reviewLoad(", ".somethingElse(")).concat(
+      `// host.reviewLoad(["a/b"]) is what this would call\nconst text = "host.reviewLoad(";`,
+    );
+
+    expect(unexercisedMethods(SOURCE, "GitHubCodeHost", onlyNamed)).toEqual(["reviewLoad"]);
+  });
+
   it("turns red, naming the method, when a method arrives with nothing calling it", () => {
     const withNewMethod = SOURCE.replace(
       /^export class GitHubCodeHost implements CodeHost \{\n/m,

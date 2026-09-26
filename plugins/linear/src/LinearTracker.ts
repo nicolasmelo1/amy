@@ -290,7 +290,8 @@ export class LinearTracker implements Tracker, FeatureTracker {
    *
    * `issue(id:)` is `Issue!` in Linear's schema, so a missing one never
    * answers `null`: it answers the error `Entity not found: Issue`. That one
-   * error is the answer "gone"; every other error is a failure and stays one.
+   * error, alone and exactly, is the answer "gone"; every other error — a
+   * not-found about some other entity included — is a failure and stays one.
    */
   private async findIssue(id: string, operation = "Issue"): Promise<IssueNode | null> {
     try {
@@ -300,7 +301,7 @@ export class LinearTracker implements Tracker, FeatureTracker {
       );
       return data.issue;
     } catch (error) {
-      if (error instanceof Error && error.message.includes("Entity not found")) return null;
+      if (error instanceof Error && error.message === "Entity not found: Issue") return null;
       throw error;
     }
   }
