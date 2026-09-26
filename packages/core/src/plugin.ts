@@ -38,6 +38,13 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * capability, before any tracker call log records a write.
    */
   readonly trackerWrites?: readonly string[];
+  /**
+   * The forge writes this workflow claims, by capability name.
+   *
+   * Like tracker writes, this is a hand-written permission boundary: the host
+   * gives this workflow a port whose unclaimed mutations refuse at the call.
+   */
+  readonly codeHostWrites?: readonly string[];
 
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
 }
@@ -89,6 +96,13 @@ export interface PluginContext {
   contributions(collection: string): ReadonlyMap<string, object>;
   /** A mounted port, read when asked. */
   port(kind: PortKind): object | undefined;
+  /**
+   * A mounted port as the selected workflow may use it.
+   *
+   * Engines use this rather than their plugin context's ordinary `port`: an
+   * engine is infrastructure, but it dispatches the workflow's actions.
+   */
+  workflowPort?(kind: PortKind): object | undefined;
   /**
    * The mounted workflow, read when asked.
    *

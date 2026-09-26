@@ -1,3 +1,5 @@
+import { CORE_ACTIONS } from "../actions.js";
+
 export type ReviewState = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED";
 
 export type ReviewDecision = "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | null;
@@ -148,6 +150,18 @@ export interface OpenPullRequestRequest {
   body: string;
 }
 
+/** The capability names a workflow may claim before it mutates the forge. */
+export const CODE_HOST_WRITE_CAPABILITIES = [
+  "open-pull-request",
+  "request-review",
+  "resolve-thread",
+  "merge",
+  "submit-review",
+  "create-issue",
+] as const;
+
+export type CodeHostWriteCapability = (typeof CODE_HOST_WRITE_CAPABILITIES)[number];
+
 /**
  * The forge: a repository, a branch, a pull request and a login.
  *
@@ -275,4 +289,20 @@ export interface CodeHost {
   commitStatuses(repo: string, sha: string): Promise<
     { context: string; state: "passing" | "failing" | "running" }[]
   >;
+}
+
+/** The declaration capability for each mutating forge method. */
+export const CODE_HOST_WRITE_FOR_METHOD: Readonly<Record<string, CodeHostWriteCapability>> = {
+  openPullRequest: "open-pull-request",
+  requestReview: "request-review",
+  resolveReviewThread: "resolve-thread",
+  unresolveReviewThread: "resolve-thread",
+  merge: "merge",
+  submitReview: "submit-review",
+  createIssue: "create-issue",
+};
+
+/** The declaration capability an action needs when it dispatches to the forge. */
+export function codeHostWriteFor(action: string): CodeHostWriteCapability | undefined {
+  return CODE_HOST_WRITE_FOR_METHOD[CORE_ACTIONS[action]?.method ?? ""];
 }

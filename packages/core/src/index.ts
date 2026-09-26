@@ -47,6 +47,7 @@ export type {
   ChecksState,
   ChecksView,
   CodeHost,
+  CodeHostWriteCapability,
   MergeState,
   OpenPullRequestRequest,
   PullRequestView,
@@ -55,6 +56,11 @@ export type {
   ReviewState,
   ReviewSubmission,
   ReviewThread,
+} from "./ports/CodeHost.js";
+export {
+  CODE_HOST_WRITE_CAPABILITIES,
+  CODE_HOST_WRITE_FOR_METHOD,
+  codeHostWriteFor,
 } from "./ports/CodeHost.js";
 export type {
   Agent,
@@ -77,9 +83,11 @@ export type {
 } from "./ports/Ticketing.js";
 export {
   TRACKER_WRITE_CAPABILITIES,
+  TRACKER_WRITE_FOR_METHOD,
   pullRequestTitle,
   trackerCapabilitiesFor,
   trackerWriteFor,
+  trackerWritesFor,
 } from "./ports/Ticketing.js";
 export type {
   BriefId,

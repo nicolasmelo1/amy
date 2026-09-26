@@ -211,6 +211,494 @@ describe("contributions", () => {
 
     expect(found).toEqual({ id: 1 });
   });
+  it("hands a workflow only the tracker writes it claimed", async () => {
+    let context: PluginContext | undefined;
+    let cached: object | undefined;
+    let cachedComment: (() => Promise<void>) | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        cached = ctx.port("tracker");
+        cachedComment = (cached as { comment(): Promise<void> }).comment;
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    await expect((context!.port("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+    await expect((cached as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+    await expect(cachedComment!()).rejects.toThrow("comment");
+    expect(comments).toBe(0);
+  });
+
+  it("lets a cached writer use the capability its workflow declares", async () => {
+    let cachedComment: (() => Promise<void>) | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        cachedComment = (ctx.port("tracker") as { comment(): Promise<void> }).comment;
+        r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    await expect(cachedComment!()).resolves.toBeUndefined();
+    expect(comments).toBe(1);
+  });
+
+  it("does not let a workflow retain an adapter-owned object before declaring itself", async () => {
+    let retained: { mutate(): Promise<void> } | undefined;
+    let described: { mutate?: () => Promise<void> } | undefined;
+    let cachedMutate: (() => Promise<void>) | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        const port = ctx.port("tracker") as { client: { mutate(): Promise<void> } };
+        retained = port.client;
+        described = Object.getOwnPropertyDescriptor(port, "client")?.value as typeof described;
+        cachedMutate = port.client.mutate;
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { client: { mutate: async () => { mutations += 1; } } }),
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    expect(retained).toBeDefined();
+    expect((retained as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+    expect(described?.mutate).toBeUndefined();
+    expect(await cachedMutate!()).toBeUndefined();
+    expect(mutations).toBe(0);
+  });
+
+  it("does not let a workflow retain an adapter object through an accessor descriptor", async () => {
+    let retainedGetter: (() => { mutate(): Promise<void> }) | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        const port = ctx.port("tracker")!;
+        retainedGetter = Object.getOwnPropertyDescriptor(port, "client")?.get as typeof retainedGetter;
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => {
+        const adapter = {} as { readonly client: { mutate(): Promise<void> } };
+        Object.defineProperty(adapter, "client", {
+          configurable: false,
+          get: () => ({ mutate: async () => { mutations += 1; } }),
+        });
+        r.port("tracker", adapter);
+      },
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    expect(retainedGetter).toBeDefined();
+    expect((retainedGetter!() as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+    expect(mutations).toBe(0);
+  });
+
+  it("does not expose a mutable prototype or invoke a writer while a workflow registers", async () => {
+    let retainedPrototype: object | null | undefined;
+    let earlyWrite: Promise<unknown> | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        const port = ctx.port("tracker") as { comment(): Promise<void> };
+        retainedPrototype = Object.getPrototypeOf(port);
+        earlyWrite = port.comment();
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => {
+        class Adapter {
+          async helper(): Promise<void> { comments += 1; }
+          async comment(): Promise<void> { comments += 1; }
+        }
+        r.port("tracker", new Adapter());
+      },
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    expect(retainedPrototype).toBeNull();
+    await expect(earlyWrite).rejects.toThrow("comment");
+    expect(comments).toBe(0);
+  });
+
+  it("keeps a cached writer inert while an async workflow registers", async () => {
+    let deferredWrite: Promise<void> | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: async (r, ctx) => {
+        const comment = (ctx.port("tracker") as { comment(): Promise<void> }).comment;
+        await Promise.resolve();
+        deferredWrite = comment();
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    await expect(deferredWrite).rejects.toThrow("comment");
+    expect(comments).toBe(0);
+  });
+
+  it("rejects an awaited pre-registration writer without deadlocking boot", async () => {
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: async (r, ctx) => {
+        const comment = (ctx.port("tracker") as { comment(): Promise<void> }).comment;
+        await expect(comment()).rejects.toThrow("before registration");
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await expect(mount([tracker, workflow], {}, HOST)).resolves.toMatchObject({ ok: true });
+    expect(comments).toBe(0);
+  });
+
+  it("allows an async workflow to await a contract reader before registering", async () => {
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: async (r, ctx) => {
+        const tracker = ctx.port("tracker") as { get(id: string): Promise<{ id: string }> };
+        await expect(tracker.get("amy-96")).resolves.toEqual({ id: "amy-96" });
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { get: async (id: string) => ({ id }) }),
+    });
+
+    await expect(mount([tracker, workflow], {}, HOST)).resolves.toMatchObject({ ok: true });
+  });
+
+  it("snapshots write declarations when the workflow mounts", async () => {
+    let context: PluginContext | undefined;
+    const declaration = { ...WORKFLOW, trackerWrites: [] as string[] };
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow(declaration); context = ctx; },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+    declaration.trackerWrites.push("comment");
+
+    await expect((context!.port("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("classifies an implicitly mounted code-host alias from its reader contract", async () => {
+    let context: PluginContext | undefined;
+    let merges = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, codeHostWrites: [] });
+        context = ctx;
+      },
+    });
+    const action = plugin("@amykit/plugin-forge-action", {
+      register: (r) => r.action("find", { port: "forge", method: "findPullRequest" }, {
+        findPullRequest: async () => null,
+        merge: async () => { merges += 1; },
+      }),
+    });
+
+    await mount([action, workflow], {}, HOST);
+
+    await expect((context!.workflowPort!("forge") as { merge(): Promise<void> }).merge()).rejects.toThrow("merge");
+    expect(merges).toBe(0);
+  });
+
+  it("hands a workflow only the code-host writes it claimed", async () => {
+    let context: PluginContext | undefined;
+    let opened = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, codeHostWrites: [] });
+        context = ctx;
+      },
+    });
+    const host = plugin("@amykit/plugin-code-host", {
+      register: (r) => r.port("code-host", { openPullRequest: async () => { opened += 1; } }),
+    });
+
+    await mount([workflow, host], {}, HOST);
+
+    await expect((context!.port("code-host") as { openPullRequest(): Promise<void> }).openPullRequest()).rejects.toThrow("open-pull-request");
+    expect(opened).toBe(0);
+  });
+
+  it("does not expose adapter internals through a workflow's narrowed port", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, codeHostWrites: [] });
+        context = ctx;
+      },
+    });
+    const host = plugin("@amykit/plugin-code-host", {
+      register: (r) => r.port("code-host", { findPullRequest: async () => null, gh: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, host], {}, HOST);
+
+    const port = context!.port("code-host") as { findPullRequest(): Promise<null>; gh?: () => Promise<void> };
+    await expect(port.findPullRequest()).resolves.toBeNull();
+    expect(port.gh).toBeUndefined();
+    expect(Object.getPrototypeOf(port)).toBeNull();
+  });
+
+  it("copies only the public action marker onto workflow-visible methods", async () => {
+    let context: PluginContext | undefined;
+    const privateMarker = Symbol("private");
+    const method = Object.assign(async () => undefined, {
+      [Symbol.for("amykit.acceptsAction")]: true,
+      [privateMarker]: { mutate: async () => { throw new Error("called"); } },
+    });
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] }); context = ctx; },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", { register: (r) => r.port("tracker", { comment: method }) });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    const comment = (context!.port("tracker") as { comment: (() => Promise<void>) & Record<symbol, unknown> }).comment;
+    expect(comment[Symbol.for("amykit.acceptsAction")]).toBe(true);
+    expect(Object.getOwnPropertySymbols(comment)).not.toContain(privateMarker);
+  });
+
+  it("attenuates a full mutable contract mounted only under a consumer alias", async () => {
+    let context: PluginContext | undefined;
+    let merges = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, codeHostWrites: [] }); context = ctx; },
+    });
+    const forge = plugin("@amykit/plugin-forge", {
+      register: (r) => r.port("forge", { findPullRequest: async () => null, merge: async () => { merges += 1; } }),
+    });
+
+    await mount([forge, workflow], {}, HOST);
+
+    await expect((context!.port("forge") as { merge(): Promise<void> }).merge()).rejects.toThrow("merge");
+    expect(merges).toBe(0);
+  });
+
+  it("does not expose an unrecognised mutator mounted only under a consumer alias", async () => {
+    let context: PluginContext | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: [], codeHostWrites: [] }); context = ctx; },
+    });
+    const forge = plugin("@amykit/plugin-forge", {
+      register: (r) => r.port("forge", { mutate: async () => { mutations += 1; } }),
+    });
+
+    await mount([forge, workflow], {}, HOST);
+
+    const port = context!.port("forge") as { mutate?: () => Promise<void> };
+    expect(port.mutate).toBeUndefined();
+    expect(mutations).toBe(0);
+  });
+
+  it("does not expose helpers on a read-only tracker adapter", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { get: async () => null, mutate: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+
+    const port = context!.port("tracker") as { get(): Promise<null>; mutate?: () => Promise<void> };
+    await expect(port.get()).resolves.toBeNull();
+    expect(port.mutate).toBeUndefined();
+    expect(Object.getPrototypeOf(port)).toBeNull();
+  });
+
+  it("does not expose an unrecognised mutator on a workflow tracker port", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { mutate: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+
+    expect((context!.port("tracker") as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+  });
+
+  it("attenuates an unrecognised mutator mounted only under a tracker-shaped alias", async () => {
+    let context: PluginContext | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: [] }); context = ctx; },
+    });
+    const feature = plugin("@amykit/plugin-feature", {
+      register: (r) => {
+        const adapter = { get: async () => null, mutate: async () => { mutations += 1; } };
+        r.port("feature", adapter);
+        r.action("feature-mutate", { port: "feature", method: "mutate" }, adapter);
+      },
+    });
+
+    await mount([workflow, feature], {}, HOST);
+
+    const port = context!.workflowPort!("feature") as { get(): Promise<null>; mutate?: () => Promise<void> };
+    await expect(port.get()).resolves.toBeNull();
+    expect(port.mutate).toBeUndefined();
+    expect(mutations).toBe(0);
+  });
+
+  it("attenuates a mutable tracker mounted under a read-seam alias", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => {
+        const adapter = { get: async () => null, comment: async () => { throw new Error("called"); } };
+        r.port("tracker", adapter);
+        r.port("feature", adapter);
+      },
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+
+    await expect((context!.port("feature") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("preserves a mutable kind when a provider re-exports its deferred alias", async () => {
+    let context: PluginContext | undefined;
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { throw new Error("called"); } }),
+    });
+    const composer = plugin("@amykit/plugin-composer", {
+      register: (r, ctx) => r.port("grooming-tracker", ctx.port("tracker")!),
+    });
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+
+    await mount([tracker, composer, workflow], {}, HOST);
+
+    await expect((context!.port("grooming-tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("leaves an independent feature seam available to the plugin that composes it", async () => {
+    let captured: object | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: [] }) });
+    const action = plugin("@amykit/plugin-feature-grooming", { register: (_r, ctx) => { captured = ctx.port("feature"); } });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => {
+        const adapter = { createGroomedWork: async () => { comments += 1; } };
+        r.port("tracker", adapter);
+        r.port("feature", adapter);
+      },
+    });
+
+    await mount([workflow, tracker, action], {}, HOST);
+
+    await (captured as { createGroomedWork(): Promise<void> }).createGroomedWork();
+    expect(comments).toBe(1);
+  });
+
+  it("attenuates a mutable adapter implicitly mounted by an action alias", async () => {
+    let engineContext: PluginContext | undefined;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: [] }) });
+    const action = plugin("@amykit/plugin-action", {
+      register: (r) => r.action("plugin-comment", { port: "feature", method: "comment" }, { comment: async () => {} }),
+    });
+
+    await mount([engine, workflow, action], {}, HOST);
+
+    await expect((engineContext!.workflowPort!("feature") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("attenuates an existing adapter when an action binds it through an alias", async () => {
+    let engineContext: PluginContext | undefined;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, codeHostWrites: [] }) });
+    const host = plugin("@amykit/plugin-code-host", {
+      register: (r) => r.port("forge", { merge: async () => { throw new Error("called"); } }),
+    });
+    const action = plugin("@amykit/plugin-action", {
+      register: (r) => r.action("plugin-merge", { port: "forge", method: "merge" }, {}),
+    });
+
+    await mount([engine, workflow, host, action], {}, HOST);
+
+    await expect((engineContext!.workflowPort!("forge") as { merge(): Promise<void> }).merge()).rejects.toThrow("merge");
+  });
+
+  it("gives the serial engine the workflow's narrowed port rather than its own full context", async () => {
+    let engineContext: PluginContext | undefined;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: [] }) });
+    const tracker = plugin("@amykit/plugin-tracker", { register: (r) => r.port("tracker", { comment: async () => {} }) });
+
+    await mount([engine, workflow, tracker], {}, HOST);
+
+    await expect((engineContext!.workflowPort!("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("keeps acceptsAction markers when the engine reaches a claimed writer", async () => {
+    let engineContext: PluginContext | undefined;
+    let calls = 0;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] }) });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: acceptsAction(async () => { calls += 1; }) }),
+    });
+
+    await mount([engine, workflow, tracker], {}, HOST);
+    const context: ActionContext = {
+      record: { id: "t", state: "START", updatedAt: "", attempts: {}, history: [] },
+      observation: {},
+      outcomes: {},
+    };
+    await runAction({ port: "tracker", method: "comment" }, { type: "ask-question" }, context, engineContext!.workflowPort!);
+
+    expect(calls).toBe(1);
+  });
 });
 
 /** A handler that does nothing, for a declaration whose behaviour is not the point. */
@@ -284,6 +772,152 @@ describe("unmetNeeds", () => {
     ]);
   });
 
+  it("refuses every tracker mutation a core action performs", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
+    ], { "hand-off-to-qa": HANDLED });
+    const workflow = { ...WORKFLOW, usesObservers: [], trackerWrites: ["set-status"] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `hand-off-to-qa` writes the tracker (`assign`), " +
+        "but the workflow does not claim that capability — add `assign` to its `trackerWrites`",
+    ]);
+  });
+
+  it("refuses a workflow that mutates the code host while claiming no capability", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("code-host", {}) }),
+    ], { "open-pull-request": HANDLED });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `open-pull-request` writes the code-host (`open-pull-request`), " +
+        "but the workflow does not claim that capability — add `open-pull-request` to its `codeHostWrites`",
+    ]);
+  });
+
+  it("refuses at boot a plugin-bound code-host writer the workflow did not claim", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-code-host", {
+        register: (r) => r.action("plugin-merge", { port: "code-host", method: "merge" }, { merge: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-merge": { port: "code-host", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `plugin-merge` writes the code-host (`merge`), " +
+        "but the workflow does not claim that capability — add `merge` to its `codeHostWrites`",
+    ]);
+  });
+
+  it("validates a core-named port binding by its actual method", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-code-host", {
+        register: (r) => {
+          r.port("code-host", { merge: acceptsAction(async () => {}) });
+          r.action("open-pull-request", { port: "code-host", method: "merge" }, {});
+        },
+      }),
+    ], { "open-pull-request": { port: "code-host", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["open-pull-request"] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `open-pull-request` writes the code-host (`merge`), " +
+        "but the workflow does not claim that capability — add `merge` to its `codeHostWrites`",
+    ]);
+  });
+
+  it("refuses a code-host writer bound to the tracker rather than accepting its foreign claim", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-tracker", {
+        register: (r) => r.action("plugin-merge", { port: "tracker", method: "merge" }, { merge: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-merge": { port: "tracker", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["merge"] };
+
+    expect(unmetNeeds(mounted, workflow)).toContain(
+      "action `plugin-merge` binds the tracker port to `merge`, a write only the code-host contract defines",
+    );
+  });
+
+  it("refuses at boot a plugin-bound writer through a consumer-named alias", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-tracker", {
+        register: (r) => r.action("plugin-comment", { port: "feature", method: "comment" }, { comment: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-comment": { port: "feature", method: "comment" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `plugin-comment` writes the tracker (`comment`), " +
+        "but the workflow does not claim that capability — add `comment` to its `trackerWrites`",
+    ]);
+  });
+
+  it("refuses an action-mounted writer with no mutable core contract", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-unknown-writer", {
+        register: (r) => r.action("plugin-mutate", { port: "forge", method: "mutate" }, {
+          mutate: acceptsAction(async () => {}),
+        }),
+      }),
+    ], { "plugin-mutate": { port: "forge", method: "mutate" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `forge.mutate`"),
+    ]);
+  });
+
+  it("refuses a runtime-only binding to an unrecognised mutable alias", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-unknown-writer", {
+        register: (r) => r.port("forge", { mutate: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-mutate": { port: "forge", method: "mutate" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `forge.mutate`"),
+    ]);
+  });
+
+  it("refuses a runtime-only unknown method bound directly to the tracker", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-tracker", {
+        register: (r) => r.port("tracker", { mutate: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-mutate": { port: "tracker", method: "mutate" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `tracker.mutate`"),
+    ]);
+  });
+
+  it("refuses at boot a runtime-only writer through a consumer-named alias", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-code-host", {
+        register: (r) => r.port("forge", { merge: acceptsAction(async () => {}) }),
+      }),
+    ], { merge: { port: "forge", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `merge` writes the code-host (`merge`), " +
+        "but the workflow does not claim that capability — add `merge` to its `codeHostWrites`",
+    ]);
+  });
+
+  it("refuses a claimed capability no mounted code host could honour", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("agent", {}) }),
+    ], { triage: HANDLED });
+    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["delete-everything"] };
+
+    expect(unmetNeeds(mounted, workflow)[0]).toContain("the workflow claims the code-host write `delete-everything`");
+  });
+
   it("accepts the claim a workflow makes for the writes it uses", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
@@ -346,6 +980,8 @@ describe("one declaration per action", () => {
 
     expect(unmetNeeds(host, { ...workflow, trackerWrites: ["set-status"] })).toEqual([
       "action `hand-off-to-qa` is declared with no implementation — give it a handler, or a port and a method",
+      "action `hand-off-to-qa` writes the tracker (`assign`), " +
+        "but the workflow does not claim that capability — add `assign` to its `trackerWrites`",
     ]);
   });
 
@@ -359,7 +995,7 @@ describe("one declaration per action", () => {
 
   it("wires a port and a method without the workflow writing a handler", async () => {
     const host = await mounted([forge()], { merge: { port: "forge", method: "merge" } });
-    expect(unmetNeeds(host, workflow)).toEqual([]);
+    expect(unmetNeeds(host, { ...workflow, codeHostWrites: ["merge"] })).toEqual([]);
 
     const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
     const context: ActionContext = { record: runtime.newRecord("t", HOST.now()), observation: {}, outcomes: {} };
@@ -380,7 +1016,7 @@ describe("one declaration per action", () => {
       ],
       { triage: async () => void calls.push("triage"), merge: { port: "forge", method: "merge" } },
     );
-    expect(unmetNeeds(host, workflow)).toEqual([]);
+    expect(unmetNeeds(host, { ...workflow, codeHostWrites: ["merge"] })).toEqual([]);
 
     const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
     for (const name of mountedActions(host, workflow)) {
