@@ -134,8 +134,10 @@ install cannot run without.
 
 The walk is one helper in `@amykit/test-fixtures` — `publicMethodsOf` reads
 the class body from the adapter's source, `unexercisedMethods` answers which
-of them no `.method(` call in the plugin's tests reaches — so a third plugin
-mounts it in a dozen lines.
+of them no call in the plugin's tests reaches. A call counts when the type
+checker resolves it to that method declaration on that class — a namesake on
+some other object, or the name in a comment or a string, does not — so a
+third plugin mounts it in a dozen lines.
 
 ## The gate
 

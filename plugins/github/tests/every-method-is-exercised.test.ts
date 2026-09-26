@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
-import { publicMethodsOf, testSourcesIn, unexercisedMethods } from "@amykit/test-fixtures";
+import { publicMethodsOf, testFilesIn, unexercisedMethods } from "@amykit/test-fixtures";
 
 /**
  * Every method the forge adapter offers is run by something in this suite.
@@ -13,8 +13,19 @@ import { publicMethodsOf, testSourcesIn, unexercisedMethods } from "@amykit/test
  * a new one reaches this test red until something calls it.
  */
 const here = dirname(fileURLToPath(import.meta.url));
-const SOURCE = readFileSync(join(here, "../src/GitHubCodeHost.ts"), "utf8");
-const TESTS = testSourcesIn(here, ["every-method-is-exercised.test.ts"]);
+const ADAPTER = join(here, "../src/GitHubCodeHost.ts");
+const SOURCE = readFileSync(ADAPTER, "utf8");
+const QUESTION = {
+  adapter: ADAPTER,
+  className: "GitHubCodeHost",
+  tests: testFilesIn(here, ["every-method-is-exercised.test.ts"]),
+  tsconfig: join(here, "../../../tsconfig.tests.json"),
+};
+const inTests = (edit: (text: string) => string) => (file: string, text: string) =>
+  file.endsWith(".test.ts") ? edit(text) : text;
+
+// A typed program over the suite is seconds, not milliseconds.
+const TYPED = { timeout: 60_000 };
 
 describe("GitHubCodeHost: no method ships unproven", () => {
   it("reads the methods from the adapter's own source", () => {
@@ -27,32 +38,39 @@ describe("GitHubCodeHost: no method ships unproven", () => {
     expect(methods).not.toContain("constructor");
   });
 
-  it("finds every method called by some test", () => {
-    expect(unexercisedMethods(SOURCE, "GitHubCodeHost", TESTS)).toEqual([]);
+  it("finds every method called by some test", TYPED, () => {
+    expect(unexercisedMethods(QUESTION)).toEqual([]);
   });
 
   // The property the guardrail exists for: take a method's tests away and
   // the guardrail names it.
-  it("turns red, naming the method, when that method's only tests are removed", () => {
-    const withoutReviewLoad = TESTS.map((test) => test.replaceAll(".reviewLoad(", ".somethingElse("));
+  it("turns red, naming the method, when that method's only tests are removed", TYPED, () => {
+    const rewrite = inTests((text) => text.replaceAll(".reviewLoad(", ".somethingElse("));
 
-    expect(unexercisedMethods(SOURCE, "GitHubCodeHost", withoutReviewLoad)).toEqual(["reviewLoad"]);
+    expect(unexercisedMethods({ ...QUESTION, rewrite })).toEqual(["reviewLoad"]);
   });
 
-  it("does not count a method only named in a comment or a string as exercised", () => {
-    const onlyNamed = TESTS.map((test) => test.replaceAll(".reviewLoad(", ".somethingElse(")).concat(
-      `// host.reviewLoad(["a/b"]) is what this would call\nconst text = "host.reviewLoad(";`,
+  it("does not count the name in a comment, a string, or on some other object", TYPED, () => {
+    const rewrite = inTests(
+      (text) =>
+        `${text.replaceAll(".reviewLoad(", ".somethingElse(")}\n` +
+        `// host.reviewLoad(["a/b"]) is what this would call\n` +
+        `export const named = "host.reviewLoad(";\n` +
+        `export const other = { reviewLoad: (repos: string[]) => repos.length }.reviewLoad(["a/b"]);\n`,
     );
 
-    expect(unexercisedMethods(SOURCE, "GitHubCodeHost", onlyNamed)).toEqual(["reviewLoad"]);
+    expect(unexercisedMethods({ ...QUESTION, rewrite })).toEqual(["reviewLoad"]);
   });
 
-  it("turns red, naming the method, when a method arrives with nothing calling it", () => {
-    const withNewMethod = SOURCE.replace(
-      /^export class GitHubCodeHost implements CodeHost \{\n/m,
-      (opening) => `${opening}  async closePullRequest(repo: string, number: number): Promise<void> {}\n`,
-    );
+  it("turns red, naming the method, when a method arrives with nothing calling it", TYPED, () => {
+    const rewrite = (file: string, text: string) =>
+      file === QUESTION.adapter
+        ? text.replace(
+            /^export class GitHubCodeHost implements CodeHost \{\n/m,
+            (opening) => `${opening}  async closePullRequest(_repo: string, _number: number): Promise<void> {}\n`,
+          )
+        : text;
 
-    expect(unexercisedMethods(withNewMethod, "GitHubCodeHost", TESTS)).toEqual(["closePullRequest"]);
+    expect(unexercisedMethods({ ...QUESTION, rewrite })).toEqual(["closePullRequest"]);
   });
 });
