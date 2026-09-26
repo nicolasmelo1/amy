@@ -20,6 +20,7 @@ const REAL_RESPONSE = {
         nodes: [
           {
             number: 4926,
+            url: "https://github.example.test/Northwind/northwind-backend/pull/4926",
             isDraft: false,
             reviewDecision: "CHANGES_REQUESTED",
             headRefOid: HEAD,
@@ -69,7 +70,7 @@ const REAL_RESPONSE = {
                   isOutdated: true,
                   comments: {
                     nodes: [
-                      { author: { login: "copilot-pull-request-reviewer" }, body: "the active mapping" },
+                      { author: { login: "copilot-pull-request-reviewer" }, body: "the active mapping", createdAt: "2026-08-20T12:00:00Z" },
                     ],
                   },
                 },
@@ -78,7 +79,7 @@ const REAL_RESPONSE = {
                   isResolved: false,
                   isOutdated: true,
                   comments: {
-                    nodes: [{ author: { login: "edsger" }, body: "I need a little more context" }],
+                    nodes: [{ author: { login: "edsger" }, body: "I need a little more context", createdAt: "2026-08-20T12:00:00Z" }],
                   },
                 },
                 {
@@ -87,7 +88,7 @@ const REAL_RESPONSE = {
                   isOutdated: false,
                   comments: {
                     nodes: [
-                      { author: { login: "copilot-pull-request-reviewer" }, body: "external_invoice_id is free-form" },
+                      { author: { login: "copilot-pull-request-reviewer" }, body: "external_invoice_id is free-form", createdAt: "2026-08-20T12:00:00Z" },
                     ],
                   },
                 },
@@ -129,9 +130,11 @@ const REAL_RESPONSE = {
 };
 
 function hostFor(response: unknown, extra: { match: (c: string, a: readonly string[]) => boolean; result: Record<string, unknown> }[] = []) {
+  // The specific scripts first: the runner answers with the first one that
+  // matches, and a catch-all placed ahead of them would answer for them.
   const runner = new ScriptedRunner([
-    { match: whenArgsInclude("graphql"), result: { stdout: JSON.stringify(response) } },
     ...(extra as never[]),
+    { match: whenArgsInclude("graphql"), result: { stdout: JSON.stringify(response) } },
   ]);
   return { runner, host: new GitHubCodeHost(runner) };
 }
@@ -537,11 +540,9 @@ describe("GitHubCodeHost: what the forge says about the branch", () => {
   // as a crash takes the tick down and the ticket with it, which is a worse
   // answer than the true one.
   it("reports no checks where the forge did not answer with a head commit", async () => {
-    const node = REAL_RESPONSE.data.repository.pullRequests.nodes[0];
-    const { commits: _dropped, ...withoutCommits } = node as typeof node & { commits: unknown };
-    const { host } = hostFor({
-      data: { repository: { pullRequests: { nodes: [withoutCommits] } } },
-    });
+    // `commits` is always in a GraphQL answer that selected it; a pull
+    // request with no head commit answers it with no nodes.
+    const { host } = hostFor(withNode({ commits: { nodes: [] } }));
 
     expect((await host.findPullRequest("Northwind/northwind-backend", "b"))?.checks).toBeNull();
   });
@@ -738,8 +739,32 @@ describe("GitHubCodeHost.submitReview", () => {
     expect(argv).toContain("--method");
     expect(argv).toContain("POST");
     expect(argv).toContain("/repos/Northwind/northwind-backend/pulls/4926/reviews");
-    expect(argv).toContain("event=APPROVED");
+    // The REST API's word for it, not the state the review is read back as.
+    expect(argv).toContain("event=APPROVE");
     expect(argv).toContain("body=the mapping holds");
+  });
+
+  // The port speaks the state a review is read as; the REST API takes its
+  // own verbs, and answers 422 to the past tense.
+  it.each([
+    ["APPROVED", "APPROVE"],
+    ["CHANGES_REQUESTED", "REQUEST_CHANGES"],
+    ["COMMENTED", "COMMENT"],
+  ] as const)("submits %s as the event %s", async (state, event) => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await host.submitReview("Northwind/northwind-backend", 4926, { state, body: "b" });
+
+    expect(runner.argvFor("gh")).toContain(`event=${event}`);
+  });
+
+  it("refuses to submit a dismissal, which is done to a review and never submitted as one", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await expect(
+      host.submitReview("Northwind/northwind-backend", 4926, { state: "DISMISSED", body: "" }),
+    ).rejects.toThrow(/cannot be submitted as DISMISSED/);
+    expect(runner.calls).toHaveLength(0);
   });
 
   it("sends the empty body rather than leaving it to the API's default", async () => {
@@ -948,5 +973,69 @@ describe("GitHubCodeHost: the view carries what a merge decision needs", () => {
     const pr = await host.findPullRequest("Northwind/northwind-backend", "b");
 
     expect(pr).toMatchObject({ merged: false, base: "main" });
+  });
+});
+
+/**
+ * The fields one `gh api graphql` call claims, in order: the document as
+ * `-f query=`, and every variable as `-f`/`-F <name>=`. `gh` refuses a field
+ * claimed twice before GitHub is reached, so a collision is visible in the
+ * argv alone.
+ */
+function fieldsClaimed(argv: readonly string[]): string[] {
+  const fields: string[] = [];
+  for (let i = 0; i < argv.length - 1; i += 1) {
+    if (argv[i] === "-f" || argv[i] === "-F") fields.push(argv[i + 1]!.split("=")[0]!);
+  }
+  return fields;
+}
+
+describe("GitHubCodeHost: a GraphQL call never claims the document's own field twice", () => {
+  const GRAPHQL_READS: [string, (host: GitHubCodeHost) => Promise<unknown>][] = [
+    ["findPullRequest", (host) => host.findPullRequest("Northwind/northwind-backend", "ada/proj-1239")],
+    ["pullRequest", (host) => host.pullRequest("Northwind/northwind-backend", 4926)],
+    ["reviewsRequestedOf", (host) => host.reviewsRequestedOf("edsger", ["Northwind/northwind-backend"])],
+    ["changesRequestedOf", (host) => host.changesRequestedOf("edsger", ["Northwind/northwind-backend"])],
+    ["resolveReviewThread", (host) => host.resolveReviewThread("T_open_bot")],
+    ["unresolveReviewThread", (host) => host.unresolveReviewThread("T_open_bot")],
+  ];
+
+  it.each(GRAPHQL_READS)("%s sends no variable named like the document field", async (_name, call) => {
+    // The specific answers come first: the runner answers with the first
+    // script that matches, and every one of these calls says "graphql".
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("pullRequest(number"), result: { stdout: JSON.stringify(BY_NUMBER_RESPONSE) } },
+      { match: whenArgsInclude("pullRequests(headRefName"), result: { stdout: JSON.stringify(REAL_RESPONSE) } },
+      {
+        match: whenArgsInclude("mutation Thread", "unresolveReviewThread"),
+        result: { stdout: JSON.stringify({ data: { unresolveReviewThread: { thread: { id: "T_open_bot", isResolved: false } } } }) },
+      },
+      {
+        match: whenArgsInclude("mutation Thread"),
+        result: { stdout: JSON.stringify({ data: { resolveReviewThread: { thread: { id: "T_open_bot", isResolved: true } } } }) },
+      },
+      { match: whenArgsInclude("graphql"), result: { stdout: JSON.stringify(SEARCH_RESPONSE) } },
+    ]);
+    const host = new GitHubCodeHost(runner);
+
+    await call(host);
+
+    const graphqlCalls = runner.callsTo("gh").filter((c) => c.args[1] === "graphql");
+    expect(graphqlCalls.length).toBeGreaterThan(0);
+    for (const { args } of graphqlCalls) {
+      const fields = fieldsClaimed(args);
+      expect(fields.filter((field) => field === "query")).toEqual(["query"]);
+      expect(new Set(fields).size).toBe(fields.length);
+    }
+  });
+
+  it("names the search as its own variable, not as the document's field", async () => {
+    const { runner, host } = hostFor(SEARCH_RESPONSE);
+
+    await host.reviewsRequestedOf("edsger", ["Northwind/northwind-backend"]);
+
+    const argv = runner.argvFor("gh");
+    expect(argv).not.toContainEqual(expect.stringMatching(/^query=is:pr/));
+    expect(argv).toContainEqual(expect.stringMatching(/^search=is:pr is:open review-requested:edsger/));
   });
 });

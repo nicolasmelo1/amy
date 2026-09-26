@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "ticket-to-qa",
-  "implementation_sha256": "95e0d184fe34f635c8f20e4c604b320738b45c210cf70d7f548da846aefa3ef6",
+  "implementation_sha256": "a7c4cdf9b6d8a56e470456ac01519cfc8445dcae59ed1418644d5fc52f98a7e5",
   "runs": [
     {
       "scenario": "ticket-to-qa",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable through one ticket against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/ticket-to-qa-run.json",
-      "report_sha256": "21e35c9370eda0c7a5e0cb9d54e3625367cdf2b17fbb72838f2ef85ae6be98d9",
+      "report_sha256": "b61c07257192b809f278ac1ee02e7363615e94f6d1a35b57bc3c6688d2c10512",
       "required_assertions": []
     }
   ]

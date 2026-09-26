@@ -88,6 +88,14 @@ jobs:
       # The terms are digests in scripts/private-terms.json, never words, so
       # the list of what is being kept out is not itself published here.
       - run: npm run check:private
+      # The scripted doubles are held to vendored copies of the official
+      # contracts — gh's own reference, GitHub's GraphQL schema and REST
+      # description, Linear's schema. A copy its publisher no longer serves is
+      # a suite proving the adapters against last month's world, so it is red
+      # here until `npm run contracts:update` and the suite against the new one.
+      - run: npm run check:contracts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # A change to a published package without a changeset is a release that
       # would leave the version standing still. `--since` scopes it to what
       # this pull request adds, so a branch is judged on its own diff.
