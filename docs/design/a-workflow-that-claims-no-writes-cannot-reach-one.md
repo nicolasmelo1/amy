@@ -7,11 +7,11 @@ submitting a review and creating an issue. The code-host declaration is checked
 against action bindings at boot in the same way as tracker declarations.
 
 The mount also makes the declaration true at runtime. The context belonging to
-the plugin that registered a workflow receives proxies for its tracker and
-code-host ports. Reads are passed through, and an unclaimed writer rejects
-before the underlying adapter is called, naming the capability and method. The
-mounted ports remain whole for adapters and the serial engine; only a workflow
-runtime's captured view is narrowed.
+the plugin that registered a workflow and the serial engine's workflow dispatch
+view receive allow-listed tracker and code-host ports. Contract readers are
+passed through, an unclaimed writer rejects before the underlying adapter is
+called, naming the capability and method, and adapter internals are absent from
+the view. The mounted ports remain whole for adapters.
 
 `ticket-to-qa` now declares the tracker assignment it already performs and its
 code-host writes. `note-to-plan` and `errand` declare their pull-request write.
@@ -26,6 +26,9 @@ this boundary.
       (proof: test:packages/core/tests/mount.test.ts)
 - [x] A workflow claiming no code-host writes whose own handler calls a
       code-host write fails before the backing adapter is called
+      (proof: test:packages/core/tests/mount.test.ts)
+- [x] A port-and-method action dispatched by the serial engine uses the same
+      workflow-scoped view, and adapter-private methods are unavailable
       (proof: test:packages/core/tests/mount.test.ts)
 - [x] An action needing a code-host write the workflow did not claim is
       refused at boot, naming both

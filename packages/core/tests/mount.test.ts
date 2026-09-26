@@ -248,6 +248,37 @@ describe("contributions", () => {
     await expect((context!.port("code-host") as { openPullRequest(): Promise<void> }).openPullRequest()).rejects.toThrow("open-pull-request");
     expect(opened).toBe(0);
   });
+
+  it("does not expose adapter internals through a workflow's narrowed port", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, codeHostWrites: [] });
+        context = ctx;
+      },
+    });
+    const host = plugin("@amykit/plugin-code-host", {
+      register: (r) => r.port("code-host", { findPullRequest: async () => null, gh: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, host], {}, HOST);
+
+    const port = context!.port("code-host") as { findPullRequest(): Promise<null>; gh?: () => Promise<void> };
+    await expect(port.findPullRequest()).resolves.toBeNull();
+    expect(port.gh).toBeUndefined();
+    expect(Object.getPrototypeOf(port)).toBeNull();
+  });
+
+  it("gives the serial engine the workflow's narrowed port rather than its own full context", async () => {
+    let engineContext: PluginContext | undefined;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: [] }) });
+    const tracker = plugin("@amykit/plugin-tracker", { register: (r) => r.port("tracker", { comment: async () => {} }) });
+
+    await mount([engine, workflow, tracker], {}, HOST);
+
+    await expect((engineContext!.workflowPort!("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
 });
 
 /** A handler that does nothing, for a declaration whose behaviour is not the point. */

@@ -162,6 +162,7 @@ function contextFor(
     paths: host.paths,
     contributions: (collection) => mounted.contributions.get(collection) ?? new Map(),
     port: (kind) => narrowedPort(mounted.ports.get(kind), kind, workflowFor.get(ctx)),
+    workflowPort: (kind) => narrowedPort(mounted.ports.get(kind), kind, mounted.workflow),
     workflow: () => mounted.workflow,
   };
   return ctx;
@@ -169,9 +170,19 @@ function contextFor(
 
 /**
  * A workflow receives a private view of its mutable external ports. The mounted
- * port remains whole for adapters and the engine; only the context that
- * registered the workflow is attenuated, before its runtime captures it.
+ * port remains whole for adapters. A workflow's own context and an engine's
+ * workflow dispatch view are attenuated before either can invoke an action.
  */
+const TRACKER_READ_METHODS = new Set(["inProgress", "get", "comments", "hasReplyAfter"]);
+const CODE_HOST_READ_METHODS = new Set([
+  "findPullRequest",
+  "reviewLoad",
+  "reviewsRequestedOf",
+  "changesRequestedOf",
+  "pullRequest",
+  "commitStatuses",
+]);
+
 function narrowedPort(port: object | undefined, kind: PortKind, workflow: Workflow<never, never> | undefined): object | undefined {
   if (!port || !workflow) return port;
   const capabilities = kind === "tracker"
@@ -182,12 +193,18 @@ function narrowedPort(port: object | undefined, kind: PortKind, workflow: Workfl
   const methods = kind === "tracker" ? TRACKER_WRITE_FOR_METHOD : kind === "code-host" ? CODE_HOST_WRITE_FOR_METHOD : undefined;
   if (!capabilities || !methods) return port;
 
-  return new Proxy(port, {
-    get(target, property, receiver) {
-      const value = Reflect.get(target, property, receiver);
-      if (typeof property !== "string" || typeof value !== "function") return value;
+  const reads = kind === "tracker" ? TRACKER_READ_METHODS : CODE_HOST_READ_METHODS;
+  // Do not proxy the adapter itself: its prototype and own properties would
+  // otherwise remain discoverable through reflection. The workflow gets a
+  // blank object carrying only contract readers and the writers it claimed.
+  return new Proxy(Object.create(null), {
+    get(_target, property) {
+      if (typeof property !== "string") return undefined;
       const capability = methods[property];
-      if (!capability || capabilities.has(capability)) return value.bind(target);
+      if (!reads.has(property) && !capability) return undefined;
+      const value = Reflect.get(port, property);
+      if (typeof value !== "function") return undefined;
+      if (!capability || capabilities.has(capability)) return value.bind(port);
       return async (): Promise<never> => {
         throw new Error(`the workflow does not claim the ${kind} write \`${capability}\` (${property})`);
       };

@@ -4216,7 +4216,7 @@
       {
         "interface": "CodeHost",
         "file": "packages/core/src/ports/CodeHost.ts",
-        "doc": "",
+        "doc": "The forge: a repository, a branch, a pull request and a login.",
         "methods": [
           {
             "name": "findPullRequest",

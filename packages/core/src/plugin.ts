@@ -97,6 +97,13 @@ export interface PluginContext {
   /** A mounted port, read when asked. */
   port(kind: PortKind): object | undefined;
   /**
+   * A mounted port as the selected workflow may use it.
+   *
+   * Engines use this rather than their plugin context's ordinary `port`: an
+   * engine is infrastructure, but it dispatches the workflow's actions.
+   */
+  workflowPort?(kind: PortKind): object | undefined;
+  /**
    * The mounted workflow, read when asked.
    *
    * Live for the same reason the two above are: an engine is mounted by a

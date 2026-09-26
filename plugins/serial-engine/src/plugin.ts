@@ -55,7 +55,7 @@ function build(ctx: PluginContext): Worker {
     notifier: required<Notifier>(ctx, "notifier"),
     // For an action the workflow wired as a port and a method: the engine
     // calls it, so the engine is what has to reach the port.
-    port: (kind) => ctx.port(kind),
+    port: (kind) => (ctx.workflowPort ?? ctx.port)(kind),
     now: ctx.now,
     log: ctx.log,
     // Optional: an install that set no ceiling mounts no budget, and this

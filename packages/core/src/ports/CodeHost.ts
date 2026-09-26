@@ -150,14 +150,7 @@ export interface OpenPullRequestRequest {
   body: string;
 }
 
-/**
- * The forge: a repository, a branch, a pull request and a login.
- *
- * Not one method here mentions a ticket, a plan or anything else a workflow
- * might be about, which is why it lives in the core rather than in the first
- * workflow that happened to need it. Two workflows mount one adapter behind
- * it instead of one adapter each.
- */
+/** The capability names a workflow may claim before it mutates the forge. */
 export const CODE_HOST_WRITE_CAPABILITIES = [
   "open-pull-request",
   "request-review",
@@ -169,6 +162,14 @@ export const CODE_HOST_WRITE_CAPABILITIES = [
 
 export type CodeHostWriteCapability = (typeof CODE_HOST_WRITE_CAPABILITIES)[number];
 
+/**
+ * The forge: a repository, a branch, a pull request and a login.
+ *
+ * Not one method here mentions a ticket, a plan or anything else a workflow
+ * might be about, which is why it lives in the core rather than in the first
+ * workflow that happened to need it. Two workflows mount one adapter behind
+ * it instead of one adapter each.
+ */
 export interface CodeHost {
   findPullRequest(repo: string, branch: string): Promise<PullRequestView | null>;
 
