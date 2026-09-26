@@ -292,6 +292,23 @@ describe("contributions", () => {
     expect(Object.getPrototypeOf(port)).toBeNull();
   });
 
+  it("does not expose an unrecognised mutator on a workflow tracker port", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { mutate: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+
+    expect((context!.port("tracker") as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+  });
+
   it("attenuates a mutable tracker mounted under a read-seam alias", async () => {
     let context: PluginContext | undefined;
     const workflow = plugin("@amykit/workflow-toy", {
@@ -343,6 +360,22 @@ describe("contributions", () => {
     await mount([engine, workflow, action], {}, HOST);
 
     await expect((engineContext!.workflowPort!("feature") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("attenuates an existing adapter when an action binds it through an alias", async () => {
+    let engineContext: PluginContext | undefined;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, codeHostWrites: [] }) });
+    const host = plugin("@amykit/plugin-code-host", {
+      register: (r) => r.port("forge", { merge: async () => { throw new Error("called"); } }),
+    });
+    const action = plugin("@amykit/plugin-action", {
+      register: (r) => r.action("plugin-merge", { port: "forge", method: "merge" }, {}),
+    });
+
+    await mount([engine, workflow, host, action], {}, HOST);
+
+    await expect((engineContext!.workflowPort!("forge") as { merge(): Promise<void> }).merge()).rejects.toThrow("merge");
   });
 
   it("gives the serial engine the workflow's narrowed port rather than its own full context", async () => {
@@ -471,6 +504,20 @@ describe("unmetNeeds", () => {
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `plugin-merge` writes the code-host (`merge`), " +
         "but the workflow does not claim that capability — add `merge` to its `codeHostWrites`",
+    ]);
+  });
+
+  it("refuses at boot a plugin-bound writer through a consumer-named alias", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-tracker", {
+        register: (r) => r.action("plugin-comment", { port: "feature", method: "comment" }, { comment: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-comment": { port: "feature", method: "comment" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `plugin-comment` writes the tracker (`comment`), " +
+        "but the workflow does not claim that capability — add `comment` to its `trackerWrites`",
     ]);
   });
 

@@ -199,9 +199,6 @@ function narrowedPort(
   const scopedKind = mutablePortKind(port, kind, mutablePortKinds);
   if (!scopedKind) return port;
   const methods = scopedKind === "tracker" ? TRACKER_WRITE_FOR_METHOD : CODE_HOST_WRITE_FOR_METHOD;
-  if (scopedKind === "tracker" && ![...TRACKER_READ_METHODS, ...Object.keys(methods)].some((method) => typeof Reflect.get(port, method) === "function")) {
-    return port;
-  }
   const capabilities = () => {
     const workflow = workflowFor();
     return scopedKind === "tracker"
@@ -214,8 +211,24 @@ function narrowedPort(
   // otherwise remain discoverable through reflection. The workflow gets a
   // blank object carrying only contract readers and the writers it claimed.
   return new Proxy(Object.create(null), {
+    ownKeys() {
+      return workflowFor() ? [] : Reflect.ownKeys(port);
+    },
+    getOwnPropertyDescriptor(_target, property) {
+      return workflowFor() ? undefined : Reflect.getOwnPropertyDescriptor(port, property);
+    },
+    getPrototypeOf() {
+      return workflowFor() ? null : Reflect.getPrototypeOf(port);
+    },
     get(_target, property) {
       if (typeof property !== "string") return undefined;
+      // Provider plugins may compose an independent seam before they register
+      // a workflow. Keep that seam whole, but resolve it on each property read:
+      // a cached view becomes closed as soon as its plugin claims a workflow.
+      if (!workflowFor()) {
+        const value = Reflect.get(port, property);
+        return typeof value === "function" ? value.bind(port) : value;
+      }
       const capability = methods[property];
       if (!reads.has(property) && !capability) return undefined;
       const value = Reflect.get(port, property);
@@ -298,11 +311,14 @@ function registrarFor(
         return;
       }
       mounted.actions.set(name, spec);
+      const kind = mutablePortKindForAction(spec);
       if (!mounted.ports.has(spec.port)) {
         mounted.ports.set(spec.port, port);
-        const kind = mutablePortKindForAction(spec);
-        if (kind) mutablePortKinds.set(port, kind);
       }
+      // An action can bind a mutable method to an existing consumer-named
+      // alias. Classify that already-mounted adapter as well as a new one.
+      const adapter = mounted.ports.get(spec.port);
+      if (kind && adapter) mutablePortKinds.set(adapter, kind);
     },
     contribute: (collection, name, impl) => {
       const existing = mounted.contributions.get(collection) ?? new Map<string, object>();
@@ -376,7 +392,7 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
       const problem = unrunnable(action, implementation, port) ?? catalogued(mounted, action, implementation);
       if (problem) unmet.push(problem);
     }
-    unmet.push(...unclaimedWrites(workflow, actions));
+    unmet.push(...unclaimedWrites(mounted, workflow, actions));
   }
 
   for (const slice of workflow.usesObservers) {
@@ -395,14 +411,14 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
  * naming the action and the capability, before any tracker call log records
  * a write.
  */
-function unclaimedWrites(workflow: Workflow<never, never>, actions: Readonly<Record<string, unknown>>): string[] {
+function unclaimedWrites(mounted: Mounted, workflow: Workflow<never, never>, actions: Readonly<Record<string, unknown>>): string[] {
   return [
     ...unclaimed(
       "tracker",
       workflow.trackerWrites ?? [],
       TRACKER_WRITE_CAPABILITIES,
       actions,
-      (action, implementation) => writeFor("tracker", action, implementation, trackerWriteFor, TRACKER_WRITE_FOR_METHOD),
+      (action, implementation) => writeFor("tracker", action, implementation, trackerWriteFor, TRACKER_WRITE_FOR_METHOD, mounted.actions.has(action)),
       "trackerWrites",
     ),
     ...unclaimed(
@@ -410,7 +426,7 @@ function unclaimedWrites(workflow: Workflow<never, never>, actions: Readonly<Rec
       workflow.codeHostWrites ?? [],
       CODE_HOST_WRITE_CAPABILITIES,
       actions,
-      (action, implementation) => writeFor("code-host", action, implementation, codeHostWriteFor, CODE_HOST_WRITE_FOR_METHOD),
+      (action, implementation) => writeFor("code-host", action, implementation, codeHostWriteFor, CODE_HOST_WRITE_FOR_METHOD, mounted.actions.has(action)),
       "codeHostWrites",
     ),
   ];
@@ -450,9 +466,17 @@ function writeFor(
   implementation: unknown,
   coreWriteFor: (action: string) => string | undefined,
   writeForMethod: Readonly<Record<string, string>>,
+  pluginBound: boolean,
 ): string | undefined {
   if (isPortBinding(implementation)) {
-    return implementation.port === port ? writeForMethod[implementation.method] : undefined;
+    if (!pluginBound) return undefined;
+    // Core actions retain the catalogue's explicit port contract; an alias of
+    // a core action is still just a missing port, not a new write surface.
+    if (CORE_ACTIONS[action]) return CORE_ACTIONS[action]?.port === port ? coreWriteFor(action) : undefined;
+    // Consumer-named aliases (such as `feature` or `forge`) still bind the
+    // same mutable contract. The method table, not the alias spelling,
+    // identifies which declaration it needs.
+    return writeForMethod[implementation.method];
   }
   return CORE_ACTIONS[action]?.port === port ? coreWriteFor(action) : undefined;
 }
