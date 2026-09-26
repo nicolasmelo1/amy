@@ -49,6 +49,6 @@ export default tseslint.config(
   // rather than excluded: they are the code that proves the product works.
   {
     files: [".software-factory/evidence/**/*.mjs", "scripts/**/*.mjs"],
-    languageOptions: { globals: { process: "readonly", console: "readonly" } },
+    languageOptions: { globals: { process: "readonly", console: "readonly", fetch: "readonly" } },
   },
 );

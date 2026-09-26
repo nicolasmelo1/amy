@@ -49,7 +49,7 @@ interface Reply { at: string; author: string; text: string; files: string[] }
 
 ## Ordering
 
-After [no port method ships unproven](no-port-method-ships-unproven.md): this
+After [no port method ships unproven](../docs/design/no-port-method-ships-unproven.md): this
 is a new port, and its methods should have to get past that guardrail on
 arrival rather than be its next counterexample.
 

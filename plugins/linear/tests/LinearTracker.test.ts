@@ -219,10 +219,24 @@ describe("LinearTracker.get", () => {
     );
   });
 
+  // `issue(id:)` is `Issue!` in Linear's schema, so a gone ticket is never
+  // `null`: it is the not-found error, which is the answer "nothing".
   it("returns nothing for a ticket that is gone", async () => {
-    const client = new ScriptedGraphQL([{ contains: "query Issue", data: { issue: null } }]);
+    const client = new ScriptedGraphQL([{ contains: "query Issue", errors: [{ message: "Entity not found: Issue" }] }]);
 
     await expect(new LinearTracker(client, config).get("PROJ-9999")).resolves.toBeNull();
+  });
+
+  it("does not read a not-found about some other entity as a gone ticket", async () => {
+    const client = new ScriptedGraphQL([{ contains: "query Issue", errors: [{ message: "Entity not found: Team" }] }]);
+
+    await expect(new LinearTracker(client, config).get("PROJ-9999")).rejects.toThrow(/Entity not found: Team/);
+  });
+
+  it("does not read any other failure as a gone ticket", async () => {
+    const client = new ScriptedGraphQL([{ contains: "query Issue", errors: [{ message: "Rate limit exceeded" }] }]);
+
+    await expect(new LinearTracker(client, config).get("PROJ-9999")).rejects.toThrow(/Rate limit exceeded/);
   });
 });
 

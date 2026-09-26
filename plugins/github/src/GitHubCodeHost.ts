@@ -128,9 +128,14 @@ query PullRequestByNumber($owner: String!, $name: String!, $number: Int!) {
 
 ${PULL_REQUEST_FIELDS}`;
 
+/**
+ * The variable is `$search` and not `$query`: the document itself travels as
+ * the field `query`, so a variable of the same name is the field claimed
+ * twice, and `gh` refuses the call before GitHub ever sees it.
+ */
 const REVIEW_REQUESTS_QUERY = `
-query ReviewRequests($query: String!) {
-  search(query: $query, type: ISSUE, first: 50) {
+query ReviewRequests($search: String!) {
+  search(query: $search, type: ISSUE, first: 50) {
     nodes {
       ... on PullRequest {
         number
@@ -323,7 +328,7 @@ export class GitHubCodeHost implements CodeHost {
       "POST",
       `/repos/${repo}/pulls/${number}/reviews`,
       "-f",
-      `event=${review.state}`,
+      `event=${reviewEvent(review.state)}`,
       // Sent explicitly so an empty body is a decision rather than an omission.
       "-f",
       `body=${review.body}`,
@@ -436,7 +441,7 @@ export class GitHubCodeHost implements CodeHost {
     const scope = repos.map((repo) => `repo:${repo}`).join(" ");
     const data = await this.graphql<{ search: { nodes: RawReviewRequest[] } }>(
       REVIEW_REQUESTS_QUERY,
-      { query: `is:pr is:open review-requested:${login} ${scope}` },
+      { search: `is:pr is:open review-requested:${login} ${scope}` },
     );
 
     return data.search.nodes.flatMap<ReviewRequest>((node) => {
@@ -467,7 +472,7 @@ export class GitHubCodeHost implements CodeHost {
     const scope = repos.map((repo) => `repo:${repo}`).join(" ");
     const data = await this.graphql<{ search: { nodes: RawReviewRequest[] } }>(
       REVIEW_REQUESTS_QUERY,
-      { query: `is:pr is:open reviewed-by:${login} ${scope}` },
+      { search: `is:pr is:open reviewed-by:${login} ${scope}` },
     );
 
     const requested = data.search.nodes.flatMap<ReviewRequest>((node) => {
@@ -548,6 +553,25 @@ const REVIEW_STATES: readonly ReviewState[] = [
   "COMMENTED",
   "DISMISSED",
 ];
+
+/**
+ * The state a review is *read* as is not the word it is *submitted* with:
+ * the REST API takes `APPROVE`, `REQUEST_CHANGES` and `COMMENT`, and answers
+ * 422 to the past tense the port speaks. A dismissal is something done to a
+ * review that exists, never a review one submits.
+ */
+function reviewEvent(state: ReviewState): "APPROVE" | "REQUEST_CHANGES" | "COMMENT" {
+  switch (state) {
+    case "APPROVED":
+      return "APPROVE";
+    case "CHANGES_REQUESTED":
+      return "REQUEST_CHANGES";
+    case "COMMENTED":
+      return "COMMENT";
+    default:
+      throw new Error(`a review cannot be submitted as ${state}`);
+  }
+}
 
 function toView(node: RawPullRequest): PullRequestView {
   return {
