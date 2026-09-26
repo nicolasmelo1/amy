@@ -693,6 +693,19 @@ describe("unmetNeeds", () => {
     ]);
   });
 
+  it("refuses a code-host writer bound to the tracker rather than accepting its foreign claim", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-tracker", {
+        register: (r) => r.action("plugin-merge", { port: "tracker", method: "merge" }, { merge: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-merge": { port: "tracker", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["merge"] };
+
+    expect(unmetNeeds(mounted, workflow)).toContain(
+      "action `plugin-merge` binds the tracker port to `merge`, a write only the code-host contract defines",
+    );
+  });
+
   it("refuses at boot a plugin-bound writer through a consumer-named alias", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-tracker", {

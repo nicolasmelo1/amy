@@ -509,6 +509,7 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
       if (problem) unmet.push(problem);
     }
     unmet.push(...unclaimedWrites(mounted, workflow, actions));
+    unmet.push(...misboundWrites(mounted, actions));
   }
 
   for (const slice of workflow.usesObservers) {
@@ -534,7 +535,7 @@ function unclaimedWrites(mounted: Mounted, workflow: Workflow<never, never>, act
       workflow.trackerWrites ?? [],
       TRACKER_WRITE_CAPABILITIES,
       actions,
-      (action, implementation) => writeFor("tracker", action, implementation, trackerWritesFor, TRACKER_WRITE_FOR_METHOD, mounted.actions.has(action)),
+      (action, implementation) => writeFor(mounted, "tracker", action, implementation, trackerWritesFor, TRACKER_WRITE_FOR_METHOD, mounted.actions.has(action)),
       "trackerWrites",
     ),
     ...unclaimed(
@@ -542,7 +543,7 @@ function unclaimedWrites(mounted: Mounted, workflow: Workflow<never, never>, act
       workflow.codeHostWrites ?? [],
       CODE_HOST_WRITE_CAPABILITIES,
       actions,
-      (action, implementation) => writeFor("code-host", action, implementation, (name) => {
+      (action, implementation) => writeFor(mounted, "code-host", action, implementation, (name) => {
         const capability = codeHostWriteFor(name);
         return capability ? [capability] : [];
       }, CODE_HOST_WRITE_FOR_METHOD, mounted.actions.has(action)),
@@ -581,6 +582,7 @@ function unclaimed(
 
 /** A bound action names its write by its actual port method; handlers use the core catalogue. */
 function writeFor(
+  mounted: Mounted,
   port: PortKind,
   action: string,
   implementation: unknown,
@@ -593,10 +595,45 @@ function writeFor(
     // A port binding is executable as written, even when its action name is a
     // core name. The method table, not that name or a consumer-facing alias,
     // identifies the declaration it needs.
+    if (bindingPortKind(mounted, implementation) !== port) return [];
     const capability = writeForMethod[implementation.method];
     return capability ? [capability] : [];
   }
   return CORE_ACTIONS[action]?.port === port ? coreWritesFor(action) : [];
+}
+
+/** Resolve a binding by its mounted target, not by a method another port owns. */
+function bindingPortKind(mounted: Mounted, binding: ActionSpec): "tracker" | "code-host" | undefined {
+  if (binding.port === "tracker" || binding.port === "code-host") return binding.port;
+  const adapter = mounted.ports.get(binding.port);
+  if (!adapter) return undefined;
+  for (const kind of ["tracker", "code-host"] as const) {
+    if (mounted.ports.get(kind) === adapter) return kind;
+  }
+  if (TRACKER_WRITE_FOR_METHOD[binding.method]) return "tracker";
+  if (CODE_HOST_WRITE_FOR_METHOD[binding.method]) return "code-host";
+  return undefined;
+}
+
+/** A known writer from one mutable contract may not be wired to the other. */
+function misboundWrites(mounted: Mounted, actions: Readonly<Record<string, unknown>>): string[] {
+  const problems: string[] = [];
+  for (const [action, implementation] of Object.entries(actions)) {
+    if (!isPortBinding(implementation) || !mounted.actions.has(action)) continue;
+    const kind = bindingPortKind(mounted, implementation);
+    const opposite = kind === "tracker"
+      ? CODE_HOST_WRITE_FOR_METHOD[implementation.method]
+      : kind === "code-host"
+        ? TRACKER_WRITE_FOR_METHOD[implementation.method]
+        : undefined;
+    if (opposite) {
+      problems.push(
+        `action \`${action}\` binds the ${kind} port to \`${implementation.method}\`, ` +
+          `a write only the ${kind === "tracker" ? "code-host" : "tracker"} contract defines`,
+      );
+    }
+  }
+  return problems;
 }
 
 function describeCapabilities(capabilities: readonly string[]): string {

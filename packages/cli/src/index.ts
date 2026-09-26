@@ -397,14 +397,11 @@ program
  *
  * It assembles only once so checks and the final report describe one machine.
  */
-async function mountedForDoctor(profile: Profile, problem: string | undefined): Promise<Mounted | undefined> {
-  if (problem) return undefined;
-  const outcome = await assemble(profile);
-  return outcome.ok ? outcome.mounted : undefined;
-}
-
 async function doctorReport(config: AmyConfig, profile: Profile, problem?: string): Promise<void> {
-  const mounted = await mountedForDoctor(profile, problem);
+  const assembled = problem
+    ? { ok: false as const, problems: [problem] }
+    : await assemble(profile);
+  const mounted = assembled.ok ? assembled.mounted : undefined;
   const loaded = problem
     ? { plugins: [], problems: [] }
     : await loadMountable(pluginList(config, profile));
@@ -438,7 +435,6 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
 
   // Asked last, because a mount problem is usually a consequence of one of
   // the checks above rather than a separate fault.
-  const assembled = problem ? { ok: false as const, problems: [problem] } : await assemble(profile);
   if (!assembled.ok) {
     for (const p of assembled.problems) console.log(`FAIL ${p}`);
   } else {
