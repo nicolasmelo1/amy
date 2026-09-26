@@ -75,15 +75,16 @@ export async function mount(
 
   const registered: { plugin: Plugin; ctx: PluginContext }[] = [];
   const workflowFor = new WeakMap<PluginContext, Workflow<never, never>>();
+  const mutablePortKinds = new WeakMap<object, "tracker" | "code-host">();
 
   for (const plugin of plugins) {
     const settings = configFor(plugin.name, plugin.configSchema, config[plugin.name], problems);
     if (settings === null) continue;
 
-    const ctx = contextFor(settings, mounted, host, workflowFor);
+    const ctx = contextFor(settings, mounted, host, workflowFor, mutablePortKinds);
 
     try {
-      await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor), ctx);
+      await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor, mutablePortKinds), ctx);
     } catch (error) {
       // A plugin that cannot set itself up is a problem with a name, not an
       // unhandled throw that takes the whole boot down anonymously.
@@ -153,6 +154,7 @@ function contextFor(
   mounted: Mounted,
   host: HostServices,
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
+  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
 ): PluginContext {
   const ctx: PluginContext = {
     config,
@@ -163,8 +165,10 @@ function contextFor(
     contributions: (collection) => mounted.contributions.get(collection) ?? new Map(),
     // This remains deferred until a workflow registers. A workflow plugin can
     // retain this view while it registers; it must never retain the raw port.
-    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => workflowFor.get(ctx)),
-    workflowPort: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => mounted.workflow),
+    // An action plugin executes for the selected workflow too, so its captured
+    // port needs that workflow's declarations when it has none of its own.
+    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => workflowFor.get(ctx) ?? mounted.workflow, mutablePortKinds),
+    workflowPort: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => mounted.workflow, mutablePortKinds),
     workflow: () => mounted.workflow,
   };
   return ctx;
@@ -189,25 +193,23 @@ function narrowedPort(
   port: object | undefined,
   kind: PortKind,
   workflowFor: () => Workflow<never, never> | undefined,
+  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
 ): object | undefined {
   if (!port) return port;
-  const methods = kind === "tracker" ? TRACKER_WRITE_FOR_METHOD : kind === "code-host" ? CODE_HOST_WRITE_FOR_METHOD : undefined;
-  if (!methods) return port;
-  // A tracker-shaped data object with no tracker-contract method carries no
-  // capability to attenuate; preserve its identity for plugins that use it as
-  // data. A read-only tracker is still a tracker: it receives the closed view
-  // so adapter helpers remain unreachable. Code hosts always receive a closed
-  // view because adapters can have private mutation helpers outside the public
-  // method table.
-  if (kind === "tracker" && ![...TRACKER_READ_METHODS, ...Object.keys(methods)].some((method) => typeof Reflect.get(port, method) === "function")) return port;
+  const scopedKind = mutablePortKind(port, kind, mutablePortKinds);
+  if (!scopedKind) return port;
+  const methods = scopedKind === "tracker" ? TRACKER_WRITE_FOR_METHOD : CODE_HOST_WRITE_FOR_METHOD;
+  if (scopedKind === "tracker" && ![...TRACKER_READ_METHODS, ...Object.keys(methods)].some((method) => typeof Reflect.get(port, method) === "function")) {
+    return port;
+  }
   const capabilities = () => {
     const workflow = workflowFor();
-    return kind === "tracker"
+    return scopedKind === "tracker"
       ? new Set(workflow?.trackerWrites ?? [])
       : new Set(workflow?.codeHostWrites ?? []);
   };
 
-  const reads = kind === "tracker" ? TRACKER_READ_METHODS : CODE_HOST_READ_METHODS;
+  const reads = scopedKind === "tracker" ? TRACKER_READ_METHODS : CODE_HOST_READ_METHODS;
   // Do not proxy the adapter itself: its prototype and own properties would
   // otherwise remain discoverable through reflection. The workflow gets a
   // blank object carrying only contract readers and the writers it claimed.
@@ -230,10 +232,24 @@ function narrowedPort(
         return bound;
       }
       return async (): Promise<never> => {
-        throw new Error(`the workflow does not claim the ${kind} write \`${capability}\` (${property})`);
+        throw new Error(`the workflow does not claim the ${scopedKind} write \`${capability}\` (${property})`);
       };
     },
   });
+}
+
+/**
+ * Ports are intentionally named by their consumer, so one mutable adapter may
+ * also be mounted as a read seam such as `feature`. Preserve the mutable
+ * contract recorded when the adapter was first mounted.
+ */
+function mutablePortKind(
+  port: object,
+  requested: PortKind,
+  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
+): "tracker" | "code-host" | undefined {
+  if (requested === "tracker" || requested === "code-host") return requested;
+  return mutablePortKinds.get(port);
 }
 
 function registrarFor(
@@ -242,6 +258,7 @@ function registrarFor(
   problems: string[],
   ctx: PluginContext,
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
+  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
 ): Registry {
   const claim = <T>(what: string, held: T | undefined, incoming: T): T => {
     if (held !== undefined) {
@@ -273,6 +290,7 @@ function registrarFor(
         return;
       }
       mounted.ports.set(kind, impl);
+      if (kind === "tracker" || kind === "code-host") mutablePortKinds.set(impl, kind);
     },
     action: (name, spec, port) => {
       if (mounted.actions.has(name) && !mounted.ports.has(spec.port)) {

@@ -292,6 +292,42 @@ describe("contributions", () => {
     expect(Object.getPrototypeOf(port)).toBeNull();
   });
 
+  it("attenuates a mutable tracker mounted under a read-seam alias", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => {
+        const adapter = { get: async () => null, comment: async () => { throw new Error("called"); } };
+        r.port("tracker", adapter);
+        r.port("feature", adapter);
+      },
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+
+    await expect((context!.port("feature") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("gives an action plugin the selected workflow's claimed port view", async () => {
+    let captured: object | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] }) });
+    const action = plugin("@amykit/plugin-action", { register: (_r, ctx) => { captured = ctx.port("tracker"); } });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await mount([workflow, tracker, action], {}, HOST);
+
+    await (captured as { comment(): Promise<void> }).comment();
+    expect(comments).toBe(1);
+  });
+
   it("gives the serial engine the workflow's narrowed port rather than its own full context", async () => {
     let engineContext: PluginContext | undefined;
     const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });

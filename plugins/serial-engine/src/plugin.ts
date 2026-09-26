@@ -46,6 +46,9 @@ function build(ctx: PluginContext): Worker {
   // mean anything, and saying so beats reporting a missing queue to somebody
   // whose real problem is a half-mounted workflow.
   const runtime = runtimeFor(ctx, workflow);
+  if (!ctx.workflowPort) {
+    throw new Error("the serial engine needs a core with workflow-scoped ports; upgrade @amykit/core");
+  }
 
   return new Worker({
     queue: required<Queue>(ctx, "queue"),
@@ -55,7 +58,7 @@ function build(ctx: PluginContext): Worker {
     notifier: required<Notifier>(ctx, "notifier"),
     // For an action the workflow wired as a port and a method: the engine
     // calls it, so the engine is what has to reach the port.
-    port: (kind) => (ctx.workflowPort ?? ctx.port)(kind),
+    port: (kind) => ctx.workflowPort!(kind),
     now: ctx.now,
     log: ctx.log,
     // Optional: an install that set no ceiling mounts no budget, and this

@@ -7898,6 +7898,10 @@
             "level": "minor"
           },
           {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "patch"
+          },
+          {
             "package": "@amykit/workflow-errand",
             "level": "patch"
           },
