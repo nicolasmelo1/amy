@@ -218,10 +218,10 @@ function narrowedPort(
       if (workflowFor()) return undefined;
       const descriptor = Reflect.getOwnPropertyDescriptor(port, property);
       // Reflection is another way to retain a property before the workflow
-      // declares itself. Never hand its raw value out through a descriptor.
-      return descriptor && "value" in descriptor
-        ? { ...descriptor, value: deferredPortValue(descriptor.value, workflowFor, port) }
-        : descriptor;
+      // declares itself. Never hand its raw value or accessor out through a
+      // descriptor: a retained getter can otherwise disclose an adapter-owned
+      // client after the workflow becomes attenuated.
+      return deferredDescriptor(descriptor, workflowFor, port, property);
     },
     getPrototypeOf() {
       return workflowFor() ? null : Reflect.getPrototypeOf(port);
@@ -294,12 +294,39 @@ function deferredPortValue(
       return workflowFor() ? [] : Reflect.ownKeys(value);
     },
     getOwnPropertyDescriptor(_target, property) {
-      return workflowFor() ? undefined : Reflect.getOwnPropertyDescriptor(value, property);
+      return workflowFor()
+        ? undefined
+        : deferredDescriptor(Reflect.getOwnPropertyDescriptor(value, property), workflowFor, value, property);
     },
     getPrototypeOf() {
       return workflowFor() ? null : Reflect.getPrototypeOf(value);
     },
   });
+}
+
+/** Rebuild reflection descriptors so neither values nor accessors retain raw adapter state. */
+function deferredDescriptor(
+  descriptor: PropertyDescriptor | undefined,
+  workflowFor: () => Workflow<never, never> | undefined,
+  receiver: object,
+  property: PropertyKey,
+): PropertyDescriptor | undefined {
+  if (!descriptor) return undefined;
+  // The proxy target owns no properties, so its reported descriptors must be
+  // configurable regardless of the adapter's implementation detail.
+  if ("value" in descriptor) {
+    return {
+      configurable: true,
+      enumerable: descriptor.enumerable ?? false,
+      writable: false,
+      value: deferredPortValue(descriptor.value, workflowFor, receiver),
+    };
+  }
+  return {
+    configurable: true,
+    enumerable: descriptor.enumerable ?? false,
+    get: () => deferredPortValue(Reflect.get(receiver, property, receiver), workflowFor, receiver),
+  };
 }
 
 /**
@@ -406,6 +433,10 @@ function mutablePortKindForAction(
   if (spec.port === "tracker" || TRACKER_WRITE_FOR_METHOD[spec.method]) return "tracker";
   if (spec.port === "code-host" || CODE_HOST_WRITE_FOR_METHOD[spec.method]) return "code-host";
   if (port && isCodeHostPort(port)) return "code-host";
+  // A consumer-named tracker alias can bind a new mutator before the core
+  // table learns its method name. The binding makes this a mutable boundary;
+  // fail closed instead of returning that adapter whole to a workflow.
+  if (isTrackerActionAlias(port)) return "tracker";
   if (port && isTrackerPort(port)) return "tracker";
   return undefined;
 }
@@ -426,11 +457,13 @@ function isCodeHostPort(port: object): boolean {
 }
 
 function isTrackerPort(port: object): boolean {
-  // `get` is shared by independent seams such as notes and tasks. Unlike the
-  // forge's named reader contract, tracker readers alone cannot identify an
-  // alias safely; a mutable tracker alias always exposes a writer.
   return Object.keys(TRACKER_WRITE_FOR_METHOD)
     .some((method) => typeof Reflect.get(port, method) === "function");
+}
+
+/** An action binding turns an otherwise ambiguous `get` alias into a mutable boundary. */
+function isTrackerActionAlias(port: object | undefined): boolean {
+  return Boolean(port && typeof Reflect.get(port, "get") === "function");
 }
 
 /**

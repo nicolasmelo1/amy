@@ -263,6 +263,34 @@ describe("contributions", () => {
     expect(mutations).toBe(0);
   });
 
+  it("does not let a workflow retain an adapter object through an accessor descriptor", async () => {
+    let retainedGetter: (() => { mutate(): Promise<void> }) | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        const port = ctx.port("tracker")!;
+        retainedGetter = Object.getOwnPropertyDescriptor(port, "client")?.get as typeof retainedGetter;
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => {
+        const adapter = {} as { readonly client: { mutate(): Promise<void> } };
+        Object.defineProperty(adapter, "client", {
+          configurable: false,
+          get: () => ({ mutate: async () => { mutations += 1; } }),
+        });
+        r.port("tracker", adapter);
+      },
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    expect(retainedGetter).toBeDefined();
+    expect((retainedGetter!() as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+    expect(mutations).toBe(0);
+  });
+
   it("classifies an implicitly mounted code-host alias from its reader contract", async () => {
     let context: PluginContext | undefined;
     let merges = 0;
@@ -394,6 +422,28 @@ describe("contributions", () => {
     await mount([workflow, tracker], {}, HOST);
 
     expect((context!.port("tracker") as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+  });
+
+  it("attenuates an unrecognised mutator mounted only under a tracker-shaped alias", async () => {
+    let context: PluginContext | undefined;
+    let mutations = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: [] }); context = ctx; },
+    });
+    const feature = plugin("@amykit/plugin-feature", {
+      register: (r) => {
+        const adapter = { get: async () => null, mutate: async () => { mutations += 1; } };
+        r.port("feature", adapter);
+        r.action("feature-mutate", { port: "feature", method: "mutate" }, adapter);
+      },
+    });
+
+    await mount([workflow, feature], {}, HOST);
+
+    const port = context!.workflowPort!("feature") as { get(): Promise<null>; mutate?: () => Promise<void> };
+    await expect(port.get()).resolves.toBeNull();
+    expect(port.mutate).toBeUndefined();
+    expect(mutations).toBe(0);
   });
 
   it("attenuates a mutable tracker mounted under a read-seam alias", async () => {
