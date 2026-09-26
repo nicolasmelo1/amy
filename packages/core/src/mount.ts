@@ -193,11 +193,13 @@ function narrowedPort(
   if (!port) return port;
   const methods = kind === "tracker" ? TRACKER_WRITE_FOR_METHOD : kind === "code-host" ? CODE_HOST_WRITE_FOR_METHOD : undefined;
   if (!methods) return port;
-  // A tracker-shaped data object with no tracker method carries no capability
-  // to attenuate; preserve its identity for plugins that use it as data. Code
-  // hosts always receive a closed view because adapters can have private
-  // mutation helpers outside the public method table.
-  if (kind === "tracker" && !Object.keys(methods).some((method) => typeof Reflect.get(port, method) === "function")) return port;
+  // A tracker-shaped data object with no tracker-contract method carries no
+  // capability to attenuate; preserve its identity for plugins that use it as
+  // data. A read-only tracker is still a tracker: it receives the closed view
+  // so adapter helpers remain unreachable. Code hosts always receive a closed
+  // view because adapters can have private mutation helpers outside the public
+  // method table.
+  if (kind === "tracker" && ![...TRACKER_READ_METHODS, ...Object.keys(methods)].some((method) => typeof Reflect.get(port, method) === "function")) return port;
   const capabilities = () => {
     const workflow = workflowFor();
     return kind === "tracker"
@@ -341,7 +343,7 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
       const problem = unrunnable(action, implementation, port) ?? catalogued(mounted, action, implementation);
       if (problem) unmet.push(problem);
     }
-    unmet.push(...unclaimedWrites(workflow, Object.keys(actions)));
+    unmet.push(...unclaimedWrites(workflow, actions));
   }
 
   for (const slice of workflow.usesObservers) {
@@ -360,14 +362,14 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
  * naming the action and the capability, before any tracker call log records
  * a write.
  */
-function unclaimedWrites(workflow: Workflow<never, never>, actions: readonly string[]): string[] {
+function unclaimedWrites(workflow: Workflow<never, never>, actions: Readonly<Record<string, unknown>>): string[] {
   return [
     ...unclaimed(
       "tracker",
       workflow.trackerWrites ?? [],
       TRACKER_WRITE_CAPABILITIES,
       actions,
-      trackerWriteFor,
+      (action, implementation) => writeFor("tracker", action, implementation, trackerWriteFor, TRACKER_WRITE_FOR_METHOD),
       "trackerWrites",
     ),
     ...unclaimed(
@@ -375,7 +377,7 @@ function unclaimedWrites(workflow: Workflow<never, never>, actions: readonly str
       workflow.codeHostWrites ?? [],
       CODE_HOST_WRITE_CAPABILITIES,
       actions,
-      codeHostWriteFor,
+      (action, implementation) => writeFor("code-host", action, implementation, codeHostWriteFor, CODE_HOST_WRITE_FOR_METHOD),
       "codeHostWrites",
     ),
   ];
@@ -385,8 +387,8 @@ function unclaimed(
   port: string,
   declarations: readonly string[],
   supported: readonly string[],
-  actions: readonly string[],
-  capabilityFor: (action: string) => string | undefined,
+  actions: Readonly<Record<string, unknown>>,
+  capabilityFor: (action: string, implementation: unknown) => string | undefined,
   field: string,
 ): string[] {
   const unmet: string[] = [];
@@ -397,8 +399,8 @@ function unclaimed(
       `the workflow claims the ${port} write \`${capability}\`, which is not one a mounted ${port} could honour — ${describeCapabilities(supported)}`,
     );
   }
-  for (const action of actions) {
-    const capability = capabilityFor(action);
+  for (const [action, implementation] of Object.entries(actions)) {
+    const capability = capabilityFor(action, implementation);
     if (capability === undefined || claimed.has(capability)) continue;
     unmet.push(
       `action \`${action}\` writes the ${port} (\`${capability}\`), ` +
@@ -406,6 +408,20 @@ function unclaimed(
     );
   }
   return unmet;
+}
+
+/** A bound plugin action names its write by port method; handlers use the core catalogue. */
+function writeFor(
+  port: PortKind,
+  action: string,
+  implementation: unknown,
+  coreWriteFor: (action: string) => string | undefined,
+  writeForMethod: Readonly<Record<string, string>>,
+): string | undefined {
+  if (isPortBinding(implementation)) {
+    return implementation.port === port ? writeForMethod[implementation.method] : undefined;
+  }
+  return CORE_ACTIONS[action]?.port === port ? coreWriteFor(action) : undefined;
 }
 
 function describeCapabilities(capabilities: readonly string[]): string {

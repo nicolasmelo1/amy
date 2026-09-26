@@ -272,6 +272,26 @@ describe("contributions", () => {
     expect(Object.getPrototypeOf(port)).toBeNull();
   });
 
+  it("does not expose helpers on a read-only tracker adapter", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { get: async () => null, mutate: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+
+    const port = context!.port("tracker") as { get(): Promise<null>; mutate?: () => Promise<void> };
+    await expect(port.get()).resolves.toBeNull();
+    expect(port.mutate).toBeUndefined();
+    expect(Object.getPrototypeOf(port)).toBeNull();
+  });
+
   it("gives the serial engine the workflow's narrowed port rather than its own full context", async () => {
     let engineContext: PluginContext | undefined;
     const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
@@ -384,6 +404,20 @@ describe("unmetNeeds", () => {
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `open-pull-request` writes the code-host (`open-pull-request`), " +
         "but the workflow does not claim that capability — add `open-pull-request` to its `codeHostWrites`",
+    ]);
+  });
+
+  it("refuses at boot a plugin-bound code-host writer the workflow did not claim", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-code-host", {
+        register: (r) => r.action("plugin-merge", { port: "code-host", method: "merge" }, { merge: acceptsAction(async () => {}) }),
+      }),
+    ], { "plugin-merge": { port: "code-host", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `plugin-merge` writes the code-host (`merge`), " +
+        "but the workflow does not claim that capability — add `merge` to its `codeHostWrites`",
     ]);
   });
 
