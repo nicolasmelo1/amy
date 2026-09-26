@@ -238,10 +238,15 @@ describe("contributions", () => {
 
   it("does not let a workflow retain an adapter-owned object before declaring itself", async () => {
     let retained: { mutate(): Promise<void> } | undefined;
+    let described: { mutate?: () => Promise<void> } | undefined;
+    let cachedMutate: (() => Promise<void>) | undefined;
     let mutations = 0;
     const workflow = plugin("@amykit/workflow-toy", {
       register: (r, ctx) => {
-        retained = (ctx.port("tracker") as { client: { mutate(): Promise<void> } }).client;
+        const port = ctx.port("tracker") as { client: { mutate(): Promise<void> } };
+        retained = port.client;
+        described = Object.getOwnPropertyDescriptor(port, "client")?.value as typeof described;
+        cachedMutate = port.client.mutate;
         r.workflow({ ...WORKFLOW, trackerWrites: [] });
       },
     });
@@ -253,6 +258,8 @@ describe("contributions", () => {
 
     expect(retained).toBeDefined();
     expect((retained as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
+    expect(described?.mutate).toBeUndefined();
+    expect(await cachedMutate!()).toBeUndefined();
     expect(mutations).toBe(0);
   });
 
@@ -315,6 +322,41 @@ describe("contributions", () => {
     await expect(port.findPullRequest()).resolves.toBeNull();
     expect(port.gh).toBeUndefined();
     expect(Object.getPrototypeOf(port)).toBeNull();
+  });
+
+  it("copies only the public action marker onto workflow-visible methods", async () => {
+    let context: PluginContext | undefined;
+    const privateMarker = Symbol("private");
+    const method = Object.assign(async () => undefined, {
+      [Symbol.for("amykit.acceptsAction")]: true,
+      [privateMarker]: { mutate: async () => { throw new Error("called"); } },
+    });
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] }); context = ctx; },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", { register: (r) => r.port("tracker", { comment: method }) });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    const comment = (context!.port("tracker") as { comment: (() => Promise<void>) & Record<symbol, unknown> }).comment;
+    expect(comment[Symbol.for("amykit.acceptsAction")]).toBe(true);
+    expect(Object.getOwnPropertySymbols(comment)).not.toContain(privateMarker);
+  });
+
+  it("attenuates a full mutable contract mounted only under a consumer alias", async () => {
+    let context: PluginContext | undefined;
+    let merges = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, codeHostWrites: [] }); context = ctx; },
+    });
+    const forge = plugin("@amykit/plugin-forge", {
+      register: (r) => r.port("forge", { findPullRequest: async () => null, merge: async () => { merges += 1; } }),
+    });
+
+    await mount([forge, workflow], {}, HOST);
+
+    await expect((context!.port("forge") as { merge(): Promise<void> }).merge()).rejects.toThrow("merge");
+    expect(merges).toBe(0);
   });
 
   it("does not expose helpers on a read-only tracker adapter", async () => {

@@ -215,7 +215,13 @@ function narrowedPort(
       return workflowFor() ? [] : Reflect.ownKeys(port);
     },
     getOwnPropertyDescriptor(_target, property) {
-      return workflowFor() ? undefined : Reflect.getOwnPropertyDescriptor(port, property);
+      if (workflowFor()) return undefined;
+      const descriptor = Reflect.getOwnPropertyDescriptor(port, property);
+      // Reflection is another way to retain a property before the workflow
+      // declares itself. Never hand its raw value out through a descriptor.
+      return descriptor && "value" in descriptor
+        ? { ...descriptor, value: deferredPortValue(descriptor.value, workflowFor, port) }
+        : descriptor;
     },
     getPrototypeOf() {
       return workflowFor() ? null : Reflect.getPrototypeOf(port);
@@ -249,12 +255,11 @@ function narrowedPort(
       if (!capability || capabilities().has(capability)) {
         const bound = value.bind(port);
         // `acceptsAction` is an opt-in marker on a callable. Binding changes
-        // its receiver but does not copy that marker, so retain symbols from
-        // the public contract without exposing the adapter instance.
-        for (const symbol of Object.getOwnPropertySymbols(value)) {
-          const descriptor = Object.getOwnPropertyDescriptor(value, symbol);
-          if (descriptor) Object.defineProperty(bound, symbol, descriptor);
-        }
+        // its receiver but does not copy the one public dispatch marker. Do
+        // not copy arbitrary symbols: those may point back into an adapter.
+        const acceptsAction = Symbol.for("amykit.acceptsAction");
+        const descriptor = Object.getOwnPropertyDescriptor(value, acceptsAction);
+        if (descriptor) Object.defineProperty(bound, acceptsAction, descriptor);
         return bound;
       }
       return async (): Promise<never> => {
@@ -269,11 +274,21 @@ function narrowedPort(
   return view;
 }
 
-function deferredPortValue(value: unknown, workflowFor: () => Workflow<never, never> | undefined): unknown {
+function deferredPortValue(
+  value: unknown,
+  workflowFor: () => Workflow<never, never> | undefined,
+  receiver?: object,
+): unknown {
+  if (typeof value === "function") {
+    return (...args: unknown[]) => {
+      if (workflowFor()) return undefined;
+      return value.apply(receiver, args);
+    };
+  }
   if (!value || typeof value !== "object") return value;
   return new Proxy(Object.create(null), {
     get(_target, property) {
-      return workflowFor() ? undefined : deferredPortValue(Reflect.get(value, property), workflowFor);
+      return workflowFor() ? undefined : deferredPortValue(Reflect.get(value, property), workflowFor, value);
     },
     ownKeys() {
       return workflowFor() ? [] : Reflect.ownKeys(value);
@@ -339,7 +354,8 @@ function registrarFor(
         return;
       }
       mounted.ports.set(kind, impl);
-      if (kind === "tracker" || kind === "code-host") mutablePortKinds.set(impl, kind);
+      const mutableKind = mutablePortKindForPort(kind, impl, mutablePortKinds);
+      if (mutableKind) mutablePortKinds.set(impl, mutableKind);
     },
     action: (name, spec, port) => {
       if (mounted.actions.has(name) && !mounted.ports.has(spec.port)) {
@@ -385,12 +401,23 @@ function mutablePortKindForAction(
   port?: object,
   mutablePortKinds?: WeakMap<object, "tracker" | "code-host">,
 ): "tracker" | "code-host" | undefined {
+  const known = port && mutablePortKinds?.get(port);
+  if (known) return known;
   if (spec.port === "tracker" || TRACKER_WRITE_FOR_METHOD[spec.method]) return "tracker";
   if (spec.port === "code-host" || CODE_HOST_WRITE_FOR_METHOD[spec.method]) return "code-host";
-  if (port && mutablePortKinds?.get(port)) return mutablePortKinds.get(port);
   if (port && isCodeHostPort(port)) return "code-host";
   if (port && isTrackerPort(port)) return "tracker";
   return undefined;
+}
+
+function mutablePortKindForPort(
+  kind: PortKind,
+  port: object,
+  mutablePortKinds: WeakMap<object, "tracker" | "code-host">,
+): "tracker" | "code-host" | undefined {
+  return mutablePortKind(port, kind, mutablePortKinds)
+    ?? (isCodeHostPort(port) ? "code-host" : undefined)
+    ?? (isTrackerPort(port) ? "tracker" : undefined);
 }
 
 function isCodeHostPort(port: object): boolean {
@@ -399,7 +426,10 @@ function isCodeHostPort(port: object): boolean {
 }
 
 function isTrackerPort(port: object): boolean {
-  return [...TRACKER_READ_METHODS, ...Object.keys(TRACKER_WRITE_FOR_METHOD)]
+  // `get` is shared by independent seams such as notes and tasks. Unlike the
+  // forge's named reader contract, tracker readers alone cannot identify an
+  // alias safely; a mutable tracker alias always exposes a writer.
+  return Object.keys(TRACKER_WRITE_FOR_METHOD)
     .some((method) => typeof Reflect.get(port, method) === "function");
 }
 
