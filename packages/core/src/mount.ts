@@ -622,7 +622,7 @@ function unclaimedWrites(mounted: Mounted, workflow: Workflow<never, never>, act
       workflow.trackerWrites ?? [],
       TRACKER_WRITE_CAPABILITIES,
       actions,
-      (action, implementation) => writeFor(mounted, "tracker", action, implementation, trackerWritesFor, TRACKER_WRITE_FOR_METHOD, mounted.actions.has(action)),
+      (action, implementation) => writeFor(mounted, "tracker", action, implementation, trackerWritesFor, TRACKER_WRITE_FOR_METHOD),
       "trackerWrites",
     ),
     ...unclaimed(
@@ -633,7 +633,7 @@ function unclaimedWrites(mounted: Mounted, workflow: Workflow<never, never>, act
       (action, implementation) => writeFor(mounted, "code-host", action, implementation, (name) => {
         const capability = codeHostWriteFor(name);
         return capability ? [capability] : [];
-      }, CODE_HOST_WRITE_FOR_METHOD, mounted.actions.has(action)),
+      }, CODE_HOST_WRITE_FOR_METHOD),
       "codeHostWrites",
     ),
   ];
@@ -675,10 +675,8 @@ function writeFor(
   implementation: unknown,
   coreWritesFor: (action: string) => readonly string[],
   writeForMethod: Readonly<Record<string, string>>,
-  pluginBound: boolean,
 ): readonly string[] {
   if (isPortBinding(implementation)) {
-    if (!pluginBound) return [];
     // A port binding is executable as written, even when its action name is a
     // core name. The method table, not that name or a consumer-facing alias,
     // identifies the declaration it needs.

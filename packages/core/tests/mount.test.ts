@@ -846,6 +846,20 @@ describe("unmetNeeds", () => {
     ]);
   });
 
+  it("refuses at boot a runtime-only writer through a consumer-named alias", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-code-host", {
+        register: (r) => r.port("forge", { merge: acceptsAction(async () => {}) }),
+      }),
+    ], { merge: { port: "forge", method: "merge" } });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `merge` writes the code-host (`merge`), " +
+        "but the workflow does not claim that capability — add `merge` to its `codeHostWrites`",
+    ]);
+  });
+
   it("refuses a claimed capability no mounted code host could honour", async () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("agent", {}) }),
@@ -932,7 +946,7 @@ describe("one declaration per action", () => {
 
   it("wires a port and a method without the workflow writing a handler", async () => {
     const host = await mounted([forge()], { merge: { port: "forge", method: "merge" } });
-    expect(unmetNeeds(host, workflow)).toEqual([]);
+    expect(unmetNeeds(host, { ...workflow, codeHostWrites: ["merge"] })).toEqual([]);
 
     const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
     const context: ActionContext = { record: runtime.newRecord("t", HOST.now()), observation: {}, outcomes: {} };
@@ -953,7 +967,7 @@ describe("one declaration per action", () => {
       ],
       { triage: async () => void calls.push("triage"), merge: { port: "forge", method: "merge" } },
     );
-    expect(unmetNeeds(host, workflow)).toEqual([]);
+    expect(unmetNeeds(host, { ...workflow, codeHostWrites: ["merge"] })).toEqual([]);
 
     const runtime = host.contributions.get(WORKFLOW_RUNTIME)!.get("toy") as WorkflowRuntime;
     for (const name of mountedActions(host, workflow)) {
