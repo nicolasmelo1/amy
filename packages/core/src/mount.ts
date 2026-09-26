@@ -16,8 +16,13 @@ import { EventLog } from "./ports/EventLog.js";
 import { Queue } from "./ports/Queue.js";
 import { Store } from "./ports/Store.js";
 import {
+  CODE_HOST_WRITE_CAPABILITIES,
+  CODE_HOST_WRITE_FOR_METHOD,
+  codeHostWriteFor,
+} from "./ports/CodeHost.js";
+import {
   TRACKER_WRITE_CAPABILITIES,
-  TrackerWriteCapability,
+  TRACKER_WRITE_FOR_METHOD,
   trackerWriteFor,
 } from "./ports/Ticketing.js";
 
@@ -69,15 +74,16 @@ export async function mount(
   };
 
   const registered: { plugin: Plugin; ctx: PluginContext }[] = [];
+  const workflowFor = new WeakMap<PluginContext, Workflow<never, never>>();
 
   for (const plugin of plugins) {
     const settings = configFor(plugin.name, plugin.configSchema, config[plugin.name], problems);
     if (settings === null) continue;
 
-    const ctx = contextFor(settings, mounted, host);
+    const ctx = contextFor(settings, mounted, host, workflowFor);
 
     try {
-      await plugin.register(registrarFor(plugin, mounted, problems), ctx);
+      await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor), ctx);
     } catch (error) {
       // A plugin that cannot set itself up is a problem with a name, not an
       // unhandled throw that takes the whole boot down anonymously.
@@ -146,20 +152,56 @@ function contextFor(
   config: Record<string, unknown>,
   mounted: Mounted,
   host: HostServices,
+  workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
 ): PluginContext {
-  return {
+  const ctx: PluginContext = {
     config,
     runner: host.runner,
     now: host.now,
     log: host.log,
     paths: host.paths,
     contributions: (collection) => mounted.contributions.get(collection) ?? new Map(),
-    port: (kind) => mounted.ports.get(kind),
+    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, workflowFor.get(ctx)),
     workflow: () => mounted.workflow,
   };
+  return ctx;
 }
 
-function registrarFor(plugin: Plugin, mounted: Mounted, problems: string[]): Registry {
+/**
+ * A workflow receives a private view of its mutable external ports. The mounted
+ * port remains whole for adapters and the engine; only the context that
+ * registered the workflow is attenuated, before its runtime captures it.
+ */
+function narrowedPort(port: object | undefined, kind: PortKind, workflow: Workflow<never, never> | undefined): object | undefined {
+  if (!port || !workflow) return port;
+  const capabilities = kind === "tracker"
+    ? new Set(workflow.trackerWrites ?? [])
+    : kind === "code-host"
+      ? new Set(workflow.codeHostWrites ?? [])
+      : undefined;
+  const methods = kind === "tracker" ? TRACKER_WRITE_FOR_METHOD : kind === "code-host" ? CODE_HOST_WRITE_FOR_METHOD : undefined;
+  if (!capabilities || !methods) return port;
+
+  return new Proxy(port, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (typeof property !== "string" || typeof value !== "function") return value;
+      const capability = methods[property];
+      if (!capability || capabilities.has(capability)) return value.bind(target);
+      return async (): Promise<never> => {
+        throw new Error(`the workflow does not claim the ${kind} write \`${capability}\` (${property})`);
+      };
+    },
+  });
+}
+
+function registrarFor(
+  plugin: Plugin,
+  mounted: Mounted,
+  problems: string[],
+  ctx: PluginContext,
+  workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
+): Registry {
   const claim = <T>(what: string, held: T | undefined, incoming: T): T => {
     if (held !== undefined) {
       problems.push(`${plugin.name}: ${what} is already mounted by another plugin`);
@@ -182,6 +224,7 @@ function registrarFor(plugin: Plugin, mounted: Mounted, problems: string[]): Reg
     },
     workflow: (impl) => {
       mounted.workflow = claim("a workflow", mounted.workflow, impl);
+      if (mounted.workflow === impl) workflowFor.set(ctx, impl);
     },
     port: (kind, impl) => {
       if (mounted.ports.has(kind)) {
@@ -279,24 +322,56 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
  * a write.
  */
 function unclaimedWrites(workflow: Workflow<never, never>, actions: readonly string[]): string[] {
+  return [
+    ...unclaimed(
+      "tracker",
+      workflow.trackerWrites ?? [],
+      TRACKER_WRITE_CAPABILITIES,
+      actions,
+      trackerWriteFor,
+      "trackerWrites",
+    ),
+    ...unclaimed(
+      "code-host",
+      workflow.codeHostWrites ?? [],
+      CODE_HOST_WRITE_CAPABILITIES,
+      actions,
+      codeHostWriteFor,
+      "codeHostWrites",
+    ),
+  ];
+}
+
+function unclaimed(
+  port: string,
+  declarations: readonly string[],
+  supported: readonly string[],
+  actions: readonly string[],
+  capabilityFor: (action: string) => string | undefined,
+  field: string,
+): string[] {
   const unmet: string[] = [];
-  const claimed = new Set(workflow.trackerWrites ?? []);
+  const claimed = new Set(declarations);
   for (const capability of claimed) {
-    if (!TRACKER_WRITE_CAPABILITIES.includes(capability as TrackerWriteCapability)) {
-      unmet.push(
-        `the workflow claims the tracker write \`${capability}\`, which is not one a mounted tracker could honour — \`comment\`, \`set-status\`, \`assign\` or \`create-follow-up\``,
-      );
-    }
+    if (supported.includes(capability)) continue;
+    unmet.push(
+      `the workflow claims the ${port} write \`${capability}\`, which is not one a mounted ${port} could honour — ${describeCapabilities(supported)}`,
+    );
   }
   for (const action of actions) {
-    const capability = trackerWriteFor(action);
+    const capability = capabilityFor(action);
     if (capability === undefined || claimed.has(capability)) continue;
     unmet.push(
-      `action \`${action}\` writes the tracker (\`${capability}\`), ` +
-        `but the workflow does not claim that capability — add \`${capability}\` to its \`trackerWrites\``,
+      `action \`${action}\` writes the ${port} (\`${capability}\`), ` +
+        `but the workflow does not claim that capability — add \`${capability}\` to its \`${field}\``,
     );
   }
   return unmet;
+}
+
+function describeCapabilities(capabilities: readonly string[]): string {
+  const names = capabilities.map((capability) => `\`${capability}\``);
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;
 }
 
 /**

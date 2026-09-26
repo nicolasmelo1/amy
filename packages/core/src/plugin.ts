@@ -38,6 +38,13 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * capability, before any tracker call log records a write.
    */
   readonly trackerWrites?: readonly string[];
+  /**
+   * The forge writes this workflow claims, by capability name.
+   *
+   * Like tracker writes, this is a hand-written permission boundary: the host
+   * gives this workflow a port whose unclaimed mutations refuse at the call.
+   */
+  readonly codeHostWrites?: readonly string[];
 
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
 }

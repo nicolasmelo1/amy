@@ -1,3 +1,4 @@
+import { CORE_ACTIONS } from "../actions.js";
 import { AgentResult } from "../agent-run.js";
 import { ReviewThread } from "./CodeHost.js";
 
@@ -329,22 +330,10 @@ export type TrackerWriteCapability = (typeof TRACKER_WRITE_CAPABILITIES)[number]
  * rule without anybody remembering to extend a second list.
  */
 export function trackerWriteFor(action: string): TrackerWriteCapability | undefined {
-  const method = CORE_ACTION_METHODS[action];
-  return method === undefined ? undefined : METHOD_CAPABILITIES[method];
+  return TRACKER_WRITE_FOR_METHOD[CORE_ACTIONS[action]?.method ?? ""];
 }
 
-/**
- * The core action table, mirrored by name so this module does not import
- * the module that imports it. Kept in step by a test that derives both
- * sides from the artifacts and refuses a disagreement.
- */
-const CORE_ACTION_METHODS: Readonly<Record<string, string>> = {
-  "ask-question": "comment",
-  escalate: "createFollowUp",
-  "hand-off-to-qa": "setStatus",
-};
-
-const METHOD_CAPABILITIES: Readonly<Record<string, TrackerWriteCapability>> = {
+export const TRACKER_WRITE_FOR_METHOD: Readonly<Record<string, TrackerWriteCapability>> = {
   comment: "comment",
   createFollowUp: "create-follow-up",
   setStatus: "set-status",

@@ -211,6 +211,43 @@ describe("contributions", () => {
 
     expect(found).toEqual({ id: 1 });
   });
+  it("hands a workflow only the tracker writes it claimed", async () => {
+    let context: PluginContext | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        context = ctx;
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await mount([workflow, tracker], {}, HOST);
+
+    await expect((context!.port("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+    expect(comments).toBe(0);
+  });
+
+  it("hands a workflow only the code-host writes it claimed", async () => {
+    let context: PluginContext | undefined;
+    let opened = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, codeHostWrites: [] });
+        context = ctx;
+      },
+    });
+    const host = plugin("@amykit/plugin-code-host", {
+      register: (r) => r.port("code-host", { openPullRequest: async () => { opened += 1; } }),
+    });
+
+    await mount([workflow, host], {}, HOST);
+
+    await expect((context!.port("code-host") as { openPullRequest(): Promise<void> }).openPullRequest()).rejects.toThrow("open-pull-request");
+    expect(opened).toBe(0);
+  });
 });
 
 /** A handler that does nothing, for a declaration whose behaviour is not the point. */
@@ -282,6 +319,27 @@ describe("unmetNeeds", () => {
       "action `ask-question` writes the tracker (`comment`), " +
         "but the workflow does not claim that capability — add `comment` to its `trackerWrites`",
     ]);
+  });
+
+  it("refuses a workflow that mutates the code host while claiming no capability", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("code-host", {}) }),
+    ], { "open-pull-request": HANDLED });
+    const workflow = { ...WORKFLOW, usesObservers: [] };
+
+    expect(unmetNeeds(mounted, workflow)).toEqual([
+      "action `open-pull-request` writes the code-host (`open-pull-request`), " +
+        "but the workflow does not claim that capability — add `open-pull-request` to its `codeHostWrites`",
+    ]);
+  });
+
+  it("refuses a claimed capability no mounted code host could honour", async () => {
+    const mounted = await mountedWith([
+      plugin("@amykit/plugin-a", { register: (r) => r.port("agent", {}) }),
+    ], { triage: HANDLED });
+    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["delete-everything"] };
+
+    expect(unmetNeeds(mounted, workflow)[0]).toContain("the workflow claims the code-host write `delete-everything`");
   });
 
   it("accepts the claim a workflow makes for the writes it uses", async () => {
