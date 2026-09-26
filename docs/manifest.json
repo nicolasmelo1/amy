@@ -288,6 +288,11 @@
           "description": ""
         },
         {
+          "title": "No port method ships unproven",
+          "path": "/design/no-port-method-ships-unproven",
+          "description": ""
+        },
+        {
           "title": "Nothing is installed by default",
           "path": "/design/nothing-is-installed-by-default",
           "description": ""
@@ -794,6 +799,11 @@
         },
         {
           "depth": 3,
+          "title": "A ticket or feature that is not in Linear answers null again instead of throwing. issue(id:) is non-null in Linear's schema, so a missing issue never came back as null: it came back as the error Entity not found: Issue, and get and getFeature threw it. That one error now reads as \"gone\"; every other error is still a failure.",
+          "slug": "a-ticket-or-feature-that-is-not-in-linear-answers-null-again-instead-of-throwing-issueid-is-non-null-in-linears-schema-so-a-missing-issue-never-came-back-as-null-it-came-back-as-the-error-entity-not-found-issue-and-get-and-getfeature-threw-it-that-one-error-now-reads-as-gone-every-other-error-is-still-a-failure"
+        },
+        {
+          "depth": 3,
           "title": "findPrivateReferences reads a tree against a policy of hashed terms, so the repository gate can refuse a private name — standing alone or glued into a longer identifier — without the list of forbidden names being published alongside the check that hides them.",
           "slug": "findprivatereferences-reads-a-tree-against-a-policy-of-hashed-terms-so-the-repository-gate-can-refuse-a-private-name-standing-alone-or-glued-into-a-longer-identifier-without-the-list-of-forbidden-names-being-published-alongside-the-check-that-hides-them"
         },
@@ -831,6 +841,11 @@
           "depth": 3,
           "title": "Schedule amy update around workflow invocations with a persisted per-profile cadence. The default updates before every twentieth invocation; operators can run after, disable it, and receive an early refusal for invalid schedule settings. Daemons update only before their child starts or after it exits.",
           "slug": "schedule-amy-update-around-workflow-invocations-with-a-persisted-per-profile-cadence-the-default-updates-before-every-twentieth-invocation-operators-can-run-after-disable-it-and-receive-an-early-refusal-for-invalid-schedule-settings-daemons-update-only-before-their-child-starts-or-after-it-exits"
+        },
+        {
+          "depth": 3,
+          "title": "reviewsRequestedOf and changesRequestedOf work. Their GraphQL document named its variable $query, and the document itself travels to gh as the field query, so every call claimed that field twice and gh refused it before GitHub was reached: unexpected override existing field under \"query\". The variable is $search now.",
+          "slug": "reviewsrequestedof-and-changesrequestedof-work-their-graphql-document-named-its-variable-query-and-the-document-itself-travels-to-gh-as-the-field-query-so-every-call-claimed-that-field-twice-and-gh-refused-it-before-github-was-reached-unexpected-override-existing-field-under-query-the-variable-is-search-now"
         },
         {
           "depth": 3,
@@ -1869,6 +1884,48 @@
           "depth": 2,
           "title": "Running it more than once is the point",
           "slug": "running-it-more-than-once-is-the-point"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/no-port-method-ships-unproven",
+      "file": "docs/design/no-port-method-ships-unproven.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/no-port-method-ships-unproven.md",
+      "title": "No port method ships unproven",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The part worth more than the fix",
+          "slug": "the-part-worth-more-than-the-fix"
+        },
+        {
+          "depth": 2,
+          "title": "What the guardrail found on arrival, and what it cannot see",
+          "slug": "what-the-guardrail-found-on-arrival-and-what-it-cannot-see"
+        },
+        {
+          "depth": 2,
+          "title": "The doubles answer to the published contracts",
+          "slug": "the-doubles-answer-to-the-published-contracts"
+        },
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
         },
         {
           "depth": 2,
@@ -7794,6 +7851,18 @@
         "level": "patch"
       },
       {
+        "id": "a-gone-ticket-answers-nothing",
+        "title": "A ticket or feature that is not in Linear answers `null` again instead of throwing. `issue(id:)` is non-null in Linear's schema, so a missing issue never came back as `null`: it came back as the error `Entity not found: Issue`, and `get` and `getFeature` threw it. That one error now reads as \"gone\"; every other error is still a failure.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
         "id": "a-private-name-does-not-reach-a-public-repository",
         "title": "`findPrivateReferences` reads a tree against a policy of hashed terms, so the repository gate can refuse a private name — standing alone or glued into a longer identifier — without the list of forbidden names being published alongside the check that hides them.",
         "body": "",
@@ -7892,6 +7961,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "no-port-method-ships-unproven",
+        "title": "`reviewsRequestedOf` and `changesRequestedOf` work. Their GraphQL document named its variable `$query`, and the document itself travels to `gh` as the field `query`, so every call claimed that field twice and `gh` refused it before GitHub was reached: `unexpected override existing field under \"query\"`. The variable is `$search` now.",
+        "body": "`submitReview` works. It sent the state a review is read as (`event=APPROVED`), and the REST API takes `APPROVE`, `REQUEST_CHANGES` and `COMMENT`. The state is mapped to the event now, and `DISMISSED`, which is not a review anyone submits, is refused.",
+        "bumps": [
+          {
+            "package": "@amykit/plugin-github",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "plugins-live-in-amy-home",

@@ -28,6 +28,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### A ticket or feature that is not in Linear answers `null` again instead of throwing. `issue(id:)` is non-null in Linear's schema, so a missing issue never came back as `null`: it came back as the error `Entity not found: Issue`, and `get` and `getFeature` threw it. That one error now reads as "gone"; every other error is still a failure.
+
+`patch` · `@amykit/plugin-linear`
+
+
+
 ### `findPrivateReferences` reads a tree against a policy of hashed terms, so the repository gate can refuse a private name — standing alone or glued into a longer identifier — without the list of forbidden names being published alongside the check that hides them.
 
 `patch` · `@amykit/cli`
@@ -75,6 +81,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 `minor` · `@amykit/cli`
 
 
+
+### `reviewsRequestedOf` and `changesRequestedOf` work. Their GraphQL document named its variable `$query`, and the document itself travels to `gh` as the field `query`, so every call claimed that field twice and `gh` refused it before GitHub was reached: `unexpected override existing field under "query"`. The variable is `$search` now.
+
+`patch` · `@amykit/plugin-github`
+
+`submitReview` works. It sent the state a review is read as (`event=APPROVED`), and the REST API takes `APPROVE`, `REQUEST_CHANGES` and `COMMENT`. The state is mapped to the event now, and `DISMISSED`, which is not a review anyone submits, is refused.
 
 ### Plugins configured for an amy install now live in `~/.amy/plugins`: `amy init --install` installs them through that root rather than npm's global prefix, and mounting plus `amy plugin list` resolve from the same root.
 

@@ -23,7 +23,8 @@ plans already in the order: `resolveThread` by
 delivered](the-threads-close-when-they-are-answered.md),
 `reviewsRequestedOf` (which was broken, and found because this workflow was
 its first consumer) by
-[no port method ships unproven](../../plans/no-port-method-ships-unproven.md), and
+[no port method ships unproven, now
+delivered](no-port-method-ships-unproven.md), and
 `mergedAndBase` by the view growth below. The rest:
 
 | the workflow needed | why the port did not have it |
@@ -88,7 +89,7 @@ by state.
 What stays in the workflow is policy: which review state to submit, whose
 thread to close, what counts as a freeze. With the port grown, those are
 decisions over port answers rather than a second `gh` — and
-[no port method ships unproven](../../plans/no-port-method-ships-unproven.md) is what
+[no port method ships unproven](no-port-method-ships-unproven.md) is what
 keeps each new method honest on arrival.
 
 ## The gate

@@ -66,12 +66,8 @@ export class LinearTracker implements Tracker, FeatureTracker {
   }
 
   async get(ticketId: string): Promise<Ticket | null> {
-    const data = await this.client.request<{ issue: IssueNode | null }>(
-      `query Issue($id: String!) { issue(id: $id) { ${ISSUE_FIELDS} } }`,
-      { id: ticketId },
-    );
-
-    return data.issue ? this.toTicket(data.issue) : null;
+    const issue = await this.findIssue(ticketId);
+    return issue ? this.toTicket(issue) : null;
   }
 
   async features(): Promise<Feature[]> {
@@ -82,11 +78,8 @@ export class LinearTracker implements Tracker, FeatureTracker {
   }
 
   async getFeature(id: string): Promise<Feature | null> {
-    const data = await this.client.request<{ issue: IssueNode | null }>(
-      `query Feature($id: String!) { issue(id: $id) { ${ISSUE_FIELDS} } }`,
-      { id },
-    );
-    return data.issue?.labels?.nodes.some((label) => label.name === "Feature") ? this.toFeature(data.issue) : null;
+    const issue = await this.findIssue(id, "Feature");
+    return issue?.labels?.nodes.some((label) => label.name === "Feature") ? this.toFeature(issue) : null;
   }
 
   async groomedWork(featureId: string, groomedBy: string): Promise<GroomedWork[]> {
@@ -284,16 +277,32 @@ export class LinearTracker implements Tracker, FeatureTracker {
   }
 
   private async requireIssue(ticketId: string): Promise<IssueNode> {
-    const data = await this.client.request<{ issue: IssueNode | null }>(
-      `query Issue($id: String!) { issue(id: $id) { ${ISSUE_FIELDS} } }`,
-      { id: ticketId },
-    );
-
-    if (!data.issue) {
+    const issue = await this.findIssue(ticketId);
+    if (!issue) {
       throw new Error(`${ticketId} is not in Linear`);
     }
 
-    return data.issue;
+    return issue;
+  }
+
+  /**
+   * One issue, or nothing where there is none.
+   *
+   * `issue(id:)` is `Issue!` in Linear's schema, so a missing one never
+   * answers `null`: it answers the error `Entity not found: Issue`. That one
+   * error is the answer "gone"; every other error is a failure and stays one.
+   */
+  private async findIssue(id: string, operation = "Issue"): Promise<IssueNode | null> {
+    try {
+      const data = await this.client.request<{ issue: IssueNode }>(
+        `query ${operation}($id: String!) { issue(id: $id) { ${ISSUE_FIELDS} } }`,
+        { id },
+      );
+      return data.issue;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Entity not found")) return null;
+      throw error;
+    }
   }
 
   private async viewer(): Promise<string> {
