@@ -236,6 +236,25 @@ describe("contributions", () => {
     expect(comments).toBe(0);
   });
 
+  it("lets a cached writer use the capability its workflow declares", async () => {
+    let cachedComment: (() => Promise<void>) | undefined;
+    let comments = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        cachedComment = (ctx.port("tracker") as { comment(): Promise<void> }).comment;
+        r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] });
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
+    });
+
+    await mount([tracker, workflow], {}, HOST);
+
+    await expect(cachedComment!()).resolves.toBeUndefined();
+    expect(comments).toBe(1);
+  });
+
   it("does not let a workflow retain an adapter-owned object before declaring itself", async () => {
     let retained: { mutate(): Promise<void> } | undefined;
     let described: { mutate?: () => Promise<void> } | undefined;

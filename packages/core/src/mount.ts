@@ -264,7 +264,15 @@ function narrowedPort(
         // registration, but a mutable contract call is never valid in that
         // window and fails closed immediately.
         if (capability) {
-          return async (): Promise<never> => {
+          return async (...args: unknown[]): Promise<unknown> => {
+            // A callable acquired before declaration must not retain the
+            // pre-declaration rejection forever. If it is invoked after this
+            // context declares its workflow, resolve it through the same
+            // allow-listed view as a freshly acquired callable.
+            if (workflowFor()) {
+              const narrowed = Reflect.get(view, property);
+              return typeof narrowed === "function" ? narrowed(...args) : undefined;
+            }
             throw new Error(`the workflow cannot call the ${scopedKind} write \`${capability}\` (${property}) before registration`);
           };
         }
