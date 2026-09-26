@@ -631,8 +631,8 @@ export const ticketToQa: Workflow<Observation, Policy> = {
   // Claimed rather than derived, because the claim is the contract: what this
   // workflow may do to a ticket is written here, reviewed here, and refused
   // here when a mount gives it less than a runtime reach for. `ask-question`
-  // comments, `escalate` files a follow-up, `hand-off-to-qa` sets the status;
-  // nothing here assigns a ticket to a person, and now nothing could.
+  // comments, `escalate` files a follow-up, and `hand-off-to-qa` sets the
+  // status and assigns the QA owner; each write is declared here.
   trackerWrites: ["comment", "set-status", "assign", "create-follow-up"],
   codeHostWrites: ["open-pull-request", "request-review", "resolve-thread"],
   // Empty, and honestly so. This workflow's engine assembles the observation

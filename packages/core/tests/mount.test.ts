@@ -213,9 +213,11 @@ describe("contributions", () => {
   });
   it("hands a workflow only the tracker writes it claimed", async () => {
     let context: PluginContext | undefined;
+    let cached: object | undefined;
     let comments = 0;
     const workflow = plugin("@amykit/workflow-toy", {
       register: (r, ctx) => {
+        cached = ctx.port("tracker");
         r.workflow({ ...WORKFLOW, trackerWrites: [] });
         context = ctx;
       },
@@ -224,9 +226,10 @@ describe("contributions", () => {
       register: (r) => r.port("tracker", { comment: async () => { comments += 1; } }),
     });
 
-    await mount([workflow, tracker], {}, HOST);
+    await mount([tracker, workflow], {}, HOST);
 
     await expect((context!.port("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+    await expect((cached as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
     expect(comments).toBe(0);
   });
 
@@ -278,6 +281,26 @@ describe("contributions", () => {
     await mount([engine, workflow, tracker], {}, HOST);
 
     await expect((engineContext!.workflowPort!("tracker") as { comment(): Promise<void> }).comment()).rejects.toThrow("comment");
+  });
+
+  it("keeps acceptsAction markers when the engine reaches a claimed writer", async () => {
+    let engineContext: PluginContext | undefined;
+    let calls = 0;
+    const engine = plugin("@amykit/plugin-engine", { register: (_r, ctx) => { engineContext = ctx; } });
+    const workflow = plugin("@amykit/workflow-toy", { register: (r) => r.workflow({ ...WORKFLOW, trackerWrites: ["comment"] }) });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", { comment: acceptsAction(async () => { calls += 1; }) }),
+    });
+
+    await mount([engine, workflow, tracker], {}, HOST);
+    const context: ActionContext = {
+      record: { id: "t", state: "START", updatedAt: "", attempts: {}, history: [] },
+      observation: {},
+      outcomes: {},
+    };
+    await runAction({ port: "tracker", method: "comment" }, { type: "ask-question" }, context, engineContext!.workflowPort!);
+
+    expect(calls).toBe(1);
   });
 });
 

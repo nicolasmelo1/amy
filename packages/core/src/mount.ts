@@ -161,8 +161,10 @@ function contextFor(
     log: host.log,
     paths: host.paths,
     contributions: (collection) => mounted.contributions.get(collection) ?? new Map(),
-    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, workflowFor.get(ctx)),
-    workflowPort: (kind) => narrowedPort(mounted.ports.get(kind), kind, mounted.workflow),
+    // This remains deferred until a workflow registers. A workflow plugin can
+    // retain this view while it registers; it must never retain the raw port.
+    port: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => workflowFor.get(ctx)),
+    workflowPort: (kind) => narrowedPort(mounted.ports.get(kind), kind, () => mounted.workflow),
     workflow: () => mounted.workflow,
   };
   return ctx;
@@ -183,15 +185,25 @@ const CODE_HOST_READ_METHODS = new Set([
   "commitStatuses",
 ]);
 
-function narrowedPort(port: object | undefined, kind: PortKind, workflow: Workflow<never, never> | undefined): object | undefined {
-  if (!port || !workflow) return port;
-  const capabilities = kind === "tracker"
-    ? new Set(workflow.trackerWrites ?? [])
-    : kind === "code-host"
-      ? new Set(workflow.codeHostWrites ?? [])
-      : undefined;
+function narrowedPort(
+  port: object | undefined,
+  kind: PortKind,
+  workflowFor: () => Workflow<never, never> | undefined,
+): object | undefined {
+  if (!port) return port;
   const methods = kind === "tracker" ? TRACKER_WRITE_FOR_METHOD : kind === "code-host" ? CODE_HOST_WRITE_FOR_METHOD : undefined;
-  if (!capabilities || !methods) return port;
+  if (!methods) return port;
+  // A tracker-shaped data object with no tracker method carries no capability
+  // to attenuate; preserve its identity for plugins that use it as data. Code
+  // hosts always receive a closed view because adapters can have private
+  // mutation helpers outside the public method table.
+  if (kind === "tracker" && !Object.keys(methods).some((method) => typeof Reflect.get(port, method) === "function")) return port;
+  const capabilities = () => {
+    const workflow = workflowFor();
+    return kind === "tracker"
+      ? new Set(workflow?.trackerWrites ?? [])
+      : new Set(workflow?.codeHostWrites ?? []);
+  };
 
   const reads = kind === "tracker" ? TRACKER_READ_METHODS : CODE_HOST_READ_METHODS;
   // Do not proxy the adapter itself: its prototype and own properties would
@@ -204,7 +216,17 @@ function narrowedPort(port: object | undefined, kind: PortKind, workflow: Workfl
       if (!reads.has(property) && !capability) return undefined;
       const value = Reflect.get(port, property);
       if (typeof value !== "function") return undefined;
-      if (!capability || capabilities.has(capability)) return value.bind(port);
+      if (!capability || capabilities().has(capability)) {
+        const bound = value.bind(port);
+        // `acceptsAction` is an opt-in marker on a callable. Binding changes
+        // its receiver but does not copy that marker, so retain symbols from
+        // the public contract without exposing the adapter instance.
+        for (const symbol of Object.getOwnPropertySymbols(value)) {
+          const descriptor = Object.getOwnPropertyDescriptor(value, symbol);
+          if (descriptor) Object.defineProperty(bound, symbol, descriptor);
+        }
+        return bound;
+      }
       return async (): Promise<never> => {
         throw new Error(`the workflow does not claim the ${kind} write \`${capability}\` (${property})`);
       };
