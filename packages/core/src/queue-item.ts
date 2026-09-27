@@ -8,6 +8,8 @@ export interface QueueItem {
   attempt: number;
   /** Why this item exists, for reading the log later. */
   reason: string;
+  /** Consecutive no-evidence attempts, durable across worker processes. */
+  progress?: Record<string, { count: number; detail: string }>;
 }
 
 export function isReady(item: QueueItem, now: Date): boolean {

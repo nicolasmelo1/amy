@@ -94,6 +94,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 `submitReview` works. It sent the state a review is read as (`event=APPROVED`), and the REST API takes `APPROVE`, `REQUEST_CHANGES` and `COMMENT`. The state is mapped to the event now, and `DISMISSED`, which is not a review anyone submits, is refused.
 
+### Park an opted-in workflow before it spends another agent run with no new evidence.
+
+`minor` · `@amykit/agent-kit`, `@amykit/cli`, `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/plugin-serial-engine`, `@amykit/workflow-ticket-to-qa`
+
+
+
 ### Plugins configured for an amy install now live in `~/.amy/plugins`: `amy init --install` installs them through that root rather than npm's global prefix, and mounting plus `amy plugin list` resolve from the same root.
 
 `minor` · `@amykit/cli`

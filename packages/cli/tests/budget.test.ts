@@ -110,4 +110,13 @@ describe("budgetLines", () => {
     expect(perFiveHours(lines)[0]).toContain("$0.00 of $20.00");
     expect(lines.join("\n")).toContain("$5.00 of $150.00");
   });
+
+  it("reads prevented starts from progress events in the log", () => {
+    const lines = budgetLines([
+      { at: NOW.toISOString(), kind: "progress.parked", detail: { key: "implementation" } },
+      { at: new Date(NOW.getTime() - 6 * 60 * 60_000).toISOString(), kind: "progress.parked", detail: { key: "old" } },
+    ] as Event[], limits(), NOW);
+
+    expect(lines.join("\n")).toContain("1 prevented start(s)");
+  });
 });

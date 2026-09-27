@@ -83,6 +83,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     // function reads.
     "@amykit/workflow-ticket-to-qa": {
       repos: config.repos,
+      ...ticketBudgetSlice(config),
       // Both halves of the layout, named the way the workflow's own schema
       // does: the branch a repository without a mapping is cut from, and the
       // map that names one. Derived here so no workflow package carries a
@@ -135,6 +136,10 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function ticketBudgetSlice(config: AmyConfig): { budget: Record<string, unknown> } {
+  return { budget: config.agent.budget ?? {} };
 }
 
 /**

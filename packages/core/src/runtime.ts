@@ -1,6 +1,12 @@
 import { ActionSpec } from "./actions.js";
 import { Action, Moved, Plan, WorkRecord } from "./work.js";
 
+/** The evidence policy an opting-in workflow asks the engine to enforce. */
+export interface ProgressPolicy {
+  maxUnchanged: number;
+  handoff: "park";
+}
+
 /**
  * The collection a workflow contributes its runtime to.
  *
@@ -64,6 +70,8 @@ export interface WorkflowRuntime<R extends WorkRecord = WorkRecord, O = unknown>
    * opinion about all three.
    */
   readonly policy: unknown;
+  /** Opt-in evidence accounting; omitted means the workflow behaves as before. */
+  readonly progress?: ProgressPolicy;
   /** Work that exists and is not on the queue yet, by id. */
   found(): Promise<string[]>;
   /** The record a work id starts with, before anything has happened to it. */

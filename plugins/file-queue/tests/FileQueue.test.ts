@@ -183,6 +183,19 @@ describe("FileQueue", () => {
     expect(claimed?.attempt).toBe(2);
   });
 
+  it("clears a progress ceiling when an operator promotes the held look", () => {
+    queue.enqueue({
+      workId: "PROJ-1239",
+      reason: "waiting on new evidence",
+      delayMs: 5 * MINUTE,
+      progress: { "IMPLEMENTING:implementation": { count: 2, detail: "nothing changed" } },
+    }, NOW);
+
+    queue.promote("PROJ-1239", NOW);
+
+    expect(queue.claim(NOW)?.progress).toBeUndefined();
+  });
+
   // The one that catches a promotion written in place. An item's id begins
   // with the instant it becomes due and `claim` sorts by it, so moving
   // `notBefore` alone would leave this one ordered by the ten minutes it no

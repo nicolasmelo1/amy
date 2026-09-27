@@ -5,6 +5,7 @@ import {
   Git,
   Moved,
   Notifier,
+  parseBudget,
   Plan,
   Plugin,
   PluginContext,
@@ -81,6 +82,11 @@ export const configSchema: ConfigSchema = {
       "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default",
     default: {},
   },
+  budget: {
+    type: "record",
+    description: "agent budget, including an optional progress block that stops repeated no-evidence runs",
+    default: {},
+  },
 };
 
 /**
@@ -145,6 +151,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
       repos: ctx.config.repos as string[],
       qaStatusName: ctx.config.qaStatusName as string,
     },
+    progress: progressPolicy(ctx),
     policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
   });
 
@@ -178,6 +185,9 @@ export const plugin: Plugin = {
     registry.contribute(WORKFLOW_RUNTIME, ticketToQa.name, {
       get policy(): unknown {
         return lazily().policy;
+      },
+      get progress() {
+        return lazily().progress;
       },
       found: (): Promise<string[]> => lazily().found(),
       newRecord: (workId: string, now: Date): TicketRecord => lazily().newRecord(workId, now),
@@ -220,4 +230,10 @@ function provided<T>(ctx: PluginContext, name: string): T | undefined {
   const entry = ctx.contributions(WORKFLOW_DATA).get(name);
   if (!entry) return undefined;
   return (entry as Provider<T>).read();
+}
+
+function progressPolicy(ctx: PluginContext) {
+  const parsed = parseBudget(ctx.config.budget);
+  if (!parsed.ok) throw new Error(parsed.problems.join("; "));
+  return parsed.limits.progress;
 }

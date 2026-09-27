@@ -8,6 +8,7 @@ import {
   EventLog,
   Notifier,
   Plan,
+  Progress,
   Queue,
   QueueItem,
   StopSwitch,
@@ -20,6 +21,7 @@ import {
   applyPlan,
   dispatchesTo,
   implementationOf,
+  isPortBinding,
   movedBy,
   runAction,
   undeclaredIn,
@@ -185,31 +187,17 @@ export class Worker {
 
     const actions = actionsOf(decision);
 
-    const parked = this.parked(record, actions, now);
+    const parked = this.parked(record, actions, now) ?? this.progressParked(item, record, actions);
     if (parked) {
-      this.deps.queue.enqueue(
-        {
-          workId: item.workId,
-          reason: parked.reason,
-          delayMs: parked.retryAfterMs,
-          // Carried, not dropped. Without it the queue writes 0, and a park
-          // would hand back a retry budget the failures had already spent.
-          attempt: item.attempt,
-        },
-        now,
-      );
-      this.deps.queue.complete(item);
-      this.maybePrune(now);
+      this.park(item, parked, now);
       return parked;
     }
 
     const outcomes = await this.execute(observation, record, decision);
-
-    // The core folds the state, the attempt count and the history; the
-    // runtime folds what only it can read. Two calls rather than one because
-    // the second cannot be written without knowing the domain, and this
-    // engine is the half that does not. The move is handed over as well,
-    // because the record the runtime gets has already made it.
+    const progress = this.progressAfter(item, record, decision, actions, outcomes);
+    // The core folds state, attempts and history; the runtime folds the domain.
+    // An action can park itself, so save its fold before returning. A manual
+    // release must not replay stale state or bypass its attempt ceiling.
     const next = this.deps.runtime.apply(
       applyPlan(record, decision, now),
       decision,
@@ -219,12 +207,22 @@ export class Worker {
       movedBy(record, decision),
     );
     this.deps.records.save(next);
+    if (progress.parked) {
+      this.park({ ...item, progress: progress.next }, progress.parked, now);
+      return progress.parked;
+    }
 
+    // The core folds the state, the attempt count and the history; the
+    // runtime folds what only it can read. Two calls rather than one because
+    // the second cannot be written without knowing the domain, and this
+    // engine is the half that does not. The move is handed over as well,
+    // because the record the runtime gets has already made it.
     this.deps.queue.enqueue(
       {
         workId: item.workId,
         reason: decision.why,
         delayMs: decision.kind === "wait" ? decision.retryAfterMs : 0,
+        progress: progress.next,
       },
       now,
     );
@@ -263,9 +261,7 @@ export class Worker {
   private parked(record: WorkRecord, actions: readonly Action[], now: Date): Parked | null {
     if (!this.deps.budget) return null;
 
-    const spending = actions
-      .filter((action) => dispatchesTo(action.type, "agent"))
-      .map((action) => action.type);
+    const spending = this.agentActions(actions).map((action) => action.type);
     if (spending.length === 0) return null;
 
     const decision = this.deps.budget.mayStart(now);
@@ -292,6 +288,90 @@ export class Worker {
       reason: decision.reason,
       retryAfterMs: decision.retryAfterMs,
     };
+  }
+
+  private progressParked(
+    item: QueueItem,
+    record: WorkRecord,
+    actions: readonly Action[],
+    state = record.state,
+  ): Parked | null {
+    const policy = this.deps.runtime.progress;
+    const spending = this.agentActions(actions);
+    if (!policy || spending.length === 0) return null;
+    const current = item.progress ?? {};
+    const prefix = `${state}:`;
+    const blocked = Object.entries(current).find(([key, value]) =>
+      key.startsWith(prefix) && value.count >= policy.maxUnchanged,
+    );
+    if (!blocked) return null;
+
+    const [stored, value] = blocked;
+    const key = stored.slice(prefix.length);
+    const pending = spending.map((action) => action.type);
+    const reason = `another agent run in ${state} would add no evidence for ${key}: ${value.detail}`;
+    this.record("progress.parked", {
+      workId: record.id,
+      state,
+      detail: { key, detail: value.detail, maxUnchanged: policy.maxUnchanged, pending },
+    });
+    return { kind: "parked", workId: record.id, state, reason, retryAfterMs: this.deps.config.retryDelayMs };
+  }
+
+  private progressAfter(
+    item: QueueItem,
+    record: WorkRecord,
+    decision: Plan,
+    actions: readonly Action[],
+    outcomes: Record<string, unknown>,
+  ): { next: Record<string, { count: number; detail: string }> | undefined; parked?: Parked } {
+    const policy = this.deps.runtime.progress;
+    if (!policy || this.agentActions(actions).length === 0) return { next: item.progress };
+    const signals = progressSignals(outcomes);
+    if (signals.length === 0) return { next: item.progress };
+
+    const next = { ...(item.progress ?? {}) };
+    const state = movedBy(record, decision)?.to ?? record.state;
+    for (const signal of signals) {
+      if (signal.kind === "advanced") {
+        // The signal came from the state this look started in. Clearing only
+        // the destination would resurrect an old ceiling if work later
+        // returns here; clear the destination too in case it already held one.
+        delete next[progressKey(record.state, signal.key)];
+        delete next[progressKey(state, signal.key)];
+        continue;
+      }
+      if (signal.kind === "unchanged") {
+        const key = progressKey(state, signal.key);
+        const previous = next[key]?.count ?? 0;
+        next[key] = { count: previous + 1, detail: signal.detail };
+        continue;
+      }
+      next[progressKey(state, "handoff")] = { count: policy.maxUnchanged, detail: signal.detail };
+      return { next, parked: this.progressParked({ ...item, progress: next }, record, actions, state)! };
+    }
+    return { next: Object.keys(next).length > 0 ? next : undefined };
+  }
+
+  /** Core actions have a stable dispatch table; custom actions name their port in the runtime. */
+  private agentActions(actions: readonly Action[]): Action[] {
+    return actions.filter((action) => {
+      if (dispatchesTo(action.type, "agent")) return true;
+      const implementation = implementationOf(this.deps.runtime, action.type);
+      return isPortBinding(implementation) && implementation.port === "agent";
+    });
+  }
+
+  private park(item: QueueItem, parked: Parked, now: Date): void {
+    this.deps.queue.enqueue({
+      workId: item.workId,
+      reason: parked.reason,
+      delayMs: parked.retryAfterMs,
+      attempt: item.attempt,
+      progress: item.progress,
+    }, now);
+    this.deps.queue.complete(item);
+    this.maybePrune(now);
   }
 
   private async recordFailure(
@@ -324,6 +404,10 @@ export class Worker {
           reason: `retrying after an error: ${message}`,
           delayMs: this.deps.config.retryDelayMs,
           attempt,
+          // A failure retries the same look, not a fresh one. Retain the
+          // no-evidence streak so a transient dependency failure cannot
+          // spend an extra agent run past the configured ceiling.
+          progress: item.progress,
         },
         now,
       );
@@ -522,11 +606,33 @@ export class Worker {
     return { kind: "stopped", reason };
   }
 
-  /**
-   * Finished queue items are only useful for reading the log afterwards, so
-   * they are swept on the way past rather than accumulating forever.
-   */
+  /** Finished items are swept on the way past rather than accumulating forever. */
   private maybePrune(now: Date): void {
     this.deps.queue.prune(this.deps.config.retentionDays, now);
   }
 }
+
+function progressKey(state: string, key: string): string {
+  return `${state}:${key}`;
+}
+
+function isProgress(value: unknown): value is Progress {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  if (candidate.kind === "advanced") return typeof candidate.key === "string";
+  if (candidate.kind === "unchanged") {
+    return typeof candidate.key === "string" && typeof candidate.detail === "string";
+  }
+  return candidate.kind === "handoff" && typeof candidate.detail === "string";
+}
+
+/** Supports generic runtimes while reading the progress field of the ticket contract. */
+function progressSignals(outcomes: Record<string, unknown>): Progress[] {
+  return Object.values(outcomes).flatMap((outcome) => {
+    if (isProgress(outcome)) return [outcome];
+    if (!outcome || typeof outcome !== "object") return [];
+    const progress = (outcome as Record<string, unknown>).progress;
+    return isProgress(progress) ? [progress] : [];
+  });
+}
+

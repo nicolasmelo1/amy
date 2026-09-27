@@ -27,6 +27,7 @@ Every line also carries `at`, `kind` and `build`. See
 | `agent.run` | An agent ran: which harness, which model, what it cost. | `workId`, `state` |
 | `budget.parked` | Work was parked because a budget window is nearly spent. | `workId`, `state` |
 | `notify.failed` | An announcement could not be delivered, and what it said. | `workId`, `state` |
+| `progress.parked` | Work was parked because another agent run would add no evidence. | `workId`, `state` |
 | `run.claimed` | The engine took an item off the queue, and why it was there. | `workId` |
 | `run.idle` | Nothing was due, so the engine did nothing. | _nothing beyond `at` and `kind`_ |
 | `stop.enforced` | The engine obeyed the handbrake, and what it did not start. | _nothing beyond `at` and `kind`_ |
@@ -106,6 +107,15 @@ Every line also carries `at`, `kind` and `build`. See
 | :-- | :-- |
 | `error` | `string` |
 | `text` | `string` |
+
+**`progress.parked`**
+
+| Field | Type |
+| :-- | :-- |
+| `key` | `string` |
+| `detail` | `string` |
+| `maxUnchanged` | `number` |
+| `pending` | `array` |
 
 **`run.claimed`**
 

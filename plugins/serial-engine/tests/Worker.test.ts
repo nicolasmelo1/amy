@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Moved, Plan, WorkflowRuntime, WorkRecord, acceptsAction } from "@amykit/core";
+import { EnqueueRequest, Moved, Plan, WorkflowRuntime, WorkRecord, acceptsAction } from "@amykit/core";
 import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { DEFAULT_POLICY } from "@amykit/workflow-ticket-to-qa";
@@ -406,8 +406,13 @@ describe("Worker dispatch", () => {
     };
   }
 
-  function build(runtime: WorkflowRuntime, plan: (record: WorkRecord) => Plan, port?: (kind: string) => object | undefined): Worker {
-    queue.enqueue({ workId: "W-1", reason: "test" }, WORKDAY);
+  function build(
+    runtime: WorkflowRuntime,
+    plan: (record: WorkRecord) => Plan,
+    port?: (kind: string) => object | undefined,
+    initial: Partial<EnqueueRequest> = {},
+  ): Worker {
+    queue.enqueue({ workId: "W-1", reason: "test", ...initial }, WORKDAY);
     return new Worker({
       queue,
       records,
@@ -469,5 +474,153 @@ describe("Worker dispatch", () => {
     await build(thin({}, folds), () => ({ kind: "wait", retryAfterMs: 0, why: "hold", effects: [] })).tick();
 
     expect(folds).toEqual([null, null]);
+  });
+
+  it("parks before the next agent run after the configured unchanged evidence ceiling", async () => {
+    let runs = 0;
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          runs += 1;
+          context.outcomes.implementation = {
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "unchanged", key: "implementation", detail: "the checkout did not change" },
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const worker = build(runtime, () => ({
+      kind: "act",
+      why: "implement it",
+      effects: [{ type: "implement" }],
+    }));
+
+    await worker.tick();
+    await worker.tick();
+    const parked = await worker.tick();
+
+    expect(runs).toBe(2);
+    expect(parked).toMatchObject({ kind: "parked", reason: expect.stringContaining("checkout did not change") });
+    expect(queue.pending()[0]?.attempt).toBe(0);
+  });
+
+  it("parks custom actions that the runtime binds to the agent after unchanged evidence", async () => {
+    let runs = 0;
+    const runtime: WorkflowRuntime = {
+      ...thin({ "custom-agent": { port: "agent", method: "ask" } }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const agent = {
+      ask: acceptsAction(async () => {
+        runs += 1;
+        return { progress: { kind: "unchanged", key: "custom-agent", detail: "the brief did not change" } };
+      }),
+    };
+    const worker = build(
+      runtime,
+      () => ({ kind: "act", why: "ask the custom agent", effects: [{ type: "custom-agent" }] }),
+      (kind) => (kind === "agent" ? agent : undefined),
+    );
+
+    await worker.tick();
+    await worker.tick();
+    const parked = await worker.tick();
+
+    expect(runs).toBe(2);
+    expect(parked).toMatchObject({ kind: "parked", reason: expect.stringContaining("brief did not change") });
+  });
+
+  it("folds and saves an action that parks itself before handing work off", async () => {
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          context.outcomes.implementation = {
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "handoff", detail: "a person must choose the migration" },
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const worker = build(runtime, () => ({
+      kind: "act",
+      why: "implement it",
+      effects: [{ type: "implement" }],
+    }));
+
+    await expect(worker.tick()).resolves.toMatchObject({ kind: "parked" });
+
+    expect(records.load("W-1")).toMatchObject({
+      attempts: { NEW: 1 },
+      outcomes: { implementation: { progress: { kind: "handoff" } } },
+    });
+    expect(queue.pending()[0]?.progress).toMatchObject({
+      "NEW:handoff": { count: 2, detail: "a person must choose the migration" },
+    });
+  });
+
+  it("parks a handoff under the state that the completed plan resumes", async () => {
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          context.outcomes.implementation = {
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "handoff", detail: "a person must choose the migration" },
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const worker = build(runtime, () => ({
+      kind: "advance",
+      to: "ESCALATED",
+      why: "handoff to the owner",
+      effects: [{ type: "implement" }],
+    }));
+
+    await expect(worker.tick()).resolves.toMatchObject({ kind: "parked", state: "ESCALATED" });
+
+    expect(records.load("W-1")?.state).toBe("ESCALATED");
+    expect(queue.pending()[0]?.progress).toMatchObject({
+      "ESCALATED:handoff": { count: 2, detail: "a person must choose the migration" },
+    });
+  });
+
+  it("clears source and destination streaks when advancing evidence moves work", async () => {
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          context.outcomes.implementation = {
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "advanced", key: "implementation" },
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+
+    await build(
+      runtime,
+      () => ({ kind: "advance", to: "DONE", why: "evidence moved it", effects: [{ type: "implement" }] }),
+      undefined,
+      {
+        progress: {
+          "NEW:implementation": { count: 1, detail: "the checkout did not change" },
+          "DONE:implementation": { count: 2, detail: "old target evidence" },
+        },
+      },
+    ).tick();
+
+    expect(records.load("W-1")?.state).toBe("DONE");
+    expect(queue.pending()[0]?.progress).toBeUndefined();
   });
 });

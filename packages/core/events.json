@@ -176,6 +176,19 @@
         "pending": "array"
       }
     },
+    "progress.parked": {
+      "says": "Work was parked because another agent run would add no evidence.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "key": "string",
+        "detail": "string",
+        "maxUnchanged": "number",
+        "pending": "array"
+      }
+    },
     "notify.failed": {
       "says": "An announcement could not be delivered, and what it said.",
       "requires": [

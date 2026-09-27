@@ -64,4 +64,19 @@ describe("parseBudget", () => {
       limits: { perWeek: { tokens: 0 } },
     });
   });
+
+  it("reads opt-in evidence progress and refuses an unknown handoff", () => {
+    expect(parseBudget({ progress: { maxUnchanged: 3, handoff: "park" } })).toMatchObject({
+      ok: true,
+      limits: { progress: { maxUnchanged: 3, handoff: "park" } },
+    });
+    expect(problemsOf({ progress: { handoff: "retry" } }).join("\n")).toContain("budget.progress.handoff");
+  });
+
+  it("refuses explicit null progress values instead of applying defaults", () => {
+    const problems = problemsOf({ progress: { maxUnchanged: null, handoff: null } });
+
+    expect(problems).toContain("`budget.progress.maxUnchanged` must be a positive integer");
+    expect(problems).toContain("`budget.progress.handoff` must be `park`");
+  });
 });

@@ -121,6 +121,21 @@ describe("a dependency that goes down and comes back", () => {
     expect(queue.pending()[0]?.attempt).toBe(0);
   });
 
+  it("carries the no-evidence streak across a failure retry", async () => {
+    queue.enqueue({
+      workId: "PROJ-1239",
+      reason: "implementation had no effect",
+      progress: { "DISCOVERED:implementation": { count: 1, detail: "the checkout did not change" } },
+    }, clock);
+
+    await build({ tracker: down() }).tick();
+
+    expect(queue.pending()[0]).toMatchObject({
+      attempt: 1,
+      progress: { "DISCOVERED:implementation": { count: 1, detail: "the checkout did not change" } },
+    });
+  });
+
   it("says nothing about recovery when nothing had failed", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 

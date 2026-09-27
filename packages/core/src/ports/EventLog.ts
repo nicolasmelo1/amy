@@ -24,6 +24,8 @@ export type EventKind =
   | "stop.enforced"
   /** Work was parked because a budget window is nearly spent. */
   | "budget.parked"
+  /** Work was parked because another agent run would add no evidence. */
+  | "progress.parked"
   /** An announcement never reached anybody, and what it was going to say. */
   | "notify.failed"
   /** A worktree was removed, and why it was safe to remove. */
@@ -60,6 +62,7 @@ export const EVENT_KINDS: Readonly<Record<EventKind, string>> = {
   "stop.requested": "the operator pulled the handbrake",
   "stop.enforced": "the engine obeyed the handbrake",
   "budget.parked": "work was parked against a budget window",
+  "progress.parked": "work was parked because another run would add no evidence",
   "notify.failed": "an announcement never reached anybody",
   "worktree.removed": "a worktree was removed, and why it was safe to",
   "worktree.retained": "a worktree removal was refused, and why",

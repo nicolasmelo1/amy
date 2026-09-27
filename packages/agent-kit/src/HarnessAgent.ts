@@ -165,12 +165,21 @@ export class HarnessAgent implements Agent {
           ok: false,
           output: `the agent finished without changing any file\n\n${reply.run.output}`,
           at,
+          progress: { kind: "unchanged", key: "implementation", detail: "the agent finished without changing any file" },
         },
         run: { ...reply.run, outcome: "failed" },
       };
     }
 
-    return { value: { ok: true, output: reply.run.output, at }, run: reply.run };
+    return {
+      value: {
+        ok: true,
+        output: reply.run.output,
+        at,
+        progress: { kind: "advanced", key: "implementation" },
+      },
+      run: reply.run,
+    };
   }
 
   async addressThreads(
