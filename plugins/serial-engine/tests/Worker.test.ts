@@ -507,6 +507,32 @@ describe("Worker dispatch", () => {
     expect(queue.pending()[0]?.attempt).toBe(0);
   });
 
+  it("parks custom actions that the runtime binds to the agent after unchanged evidence", async () => {
+    let runs = 0;
+    const runtime: WorkflowRuntime = {
+      ...thin({ "custom-agent": { port: "agent", method: "ask" } }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const agent = {
+      ask: acceptsAction(async () => {
+        runs += 1;
+        return { progress: { kind: "unchanged", key: "custom-agent", detail: "the brief did not change" } };
+      }),
+    };
+    const worker = build(
+      runtime,
+      () => ({ kind: "act", why: "ask the custom agent", effects: [{ type: "custom-agent" }] }),
+      (kind) => (kind === "agent" ? agent : undefined),
+    );
+
+    await worker.tick();
+    await worker.tick();
+    const parked = await worker.tick();
+
+    expect(runs).toBe(2);
+    expect(parked).toMatchObject({ kind: "parked", reason: expect.stringContaining("brief did not change") });
+  });
+
   it("folds and saves an action that parks itself before handing work off", async () => {
     const runtime: WorkflowRuntime = {
       ...thin({

@@ -21,6 +21,7 @@ import {
   applyPlan,
   dispatchesTo,
   implementationOf,
+  isPortBinding,
   movedBy,
   runAction,
   undeclaredIn,
@@ -260,9 +261,7 @@ export class Worker {
   private parked(record: WorkRecord, actions: readonly Action[], now: Date): Parked | null {
     if (!this.deps.budget) return null;
 
-    const spending = actions
-      .filter((action) => dispatchesTo(action.type, "agent"))
-      .map((action) => action.type);
+    const spending = this.agentActions(actions).map((action) => action.type);
     if (spending.length === 0) return null;
 
     const decision = this.deps.budget.mayStart(now);
@@ -298,7 +297,8 @@ export class Worker {
     state = record.state,
   ): Parked | null {
     const policy = this.deps.runtime.progress;
-    if (!policy || !actions.some((action) => dispatchesTo(action.type, "agent"))) return null;
+    const spending = this.agentActions(actions);
+    if (!policy || spending.length === 0) return null;
     const current = item.progress ?? {};
     const prefix = `${state}:`;
     const blocked = Object.entries(current).find(([key, value]) =>
@@ -308,7 +308,7 @@ export class Worker {
 
     const [stored, value] = blocked;
     const key = stored.slice(prefix.length);
-    const pending = actions.filter((action) => dispatchesTo(action.type, "agent")).map((action) => action.type);
+    const pending = spending.map((action) => action.type);
     const reason = `another agent run in ${state} would add no evidence for ${key}: ${value.detail}`;
     this.record("progress.parked", {
       workId: record.id,
@@ -326,7 +326,7 @@ export class Worker {
     outcomes: Record<string, unknown>,
   ): { next: Record<string, { count: number; detail: string }> | undefined; parked?: Parked } {
     const policy = this.deps.runtime.progress;
-    if (!policy || !actions.some((action) => dispatchesTo(action.type, "agent"))) return { next: item.progress };
+    if (!policy || this.agentActions(actions).length === 0) return { next: item.progress };
     const signals = progressSignals(outcomes);
     if (signals.length === 0) return { next: item.progress };
 
@@ -351,6 +351,15 @@ export class Worker {
       return { next, parked: this.progressParked({ ...item, progress: next }, record, actions, state)! };
     }
     return { next: Object.keys(next).length > 0 ? next : undefined };
+  }
+
+  /** Core actions have a stable dispatch table; custom actions name their port in the runtime. */
+  private agentActions(actions: readonly Action[]): Action[] {
+    return actions.filter((action) => {
+      if (dispatchesTo(action.type, "agent")) return true;
+      const implementation = implementationOf(this.deps.runtime, action.type);
+      return isPortBinding(implementation) && implementation.port === "agent";
+    });
   }
 
   private park(item: QueueItem, parked: Parked, now: Date): void {
