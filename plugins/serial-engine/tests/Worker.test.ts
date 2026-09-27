@@ -478,9 +478,10 @@ describe("Worker dispatch", () => {
         implement: async (_action, context) => {
           runs += 1;
           context.outcomes.implementation = {
-            kind: "unchanged",
-            key: "implementation",
-            detail: "the checkout did not change",
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "unchanged", key: "implementation", detail: "the checkout did not change" },
           };
         },
       }),
@@ -506,8 +507,10 @@ describe("Worker dispatch", () => {
       ...thin({
         implement: async (_action, context) => {
           context.outcomes.implementation = {
-            kind: "handoff",
-            detail: "a person must choose the migration",
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "handoff", detail: "a person must choose the migration" },
           };
         },
       }),
@@ -523,10 +526,39 @@ describe("Worker dispatch", () => {
 
     expect(records.load("W-1")).toMatchObject({
       attempts: { NEW: 1 },
-      outcomes: { implementation: { kind: "handoff" } },
+      outcomes: { implementation: { progress: { kind: "handoff" } } },
     });
     expect(queue.pending()[0]?.progress).toMatchObject({
       "NEW:handoff": { count: 2, detail: "a person must choose the migration" },
+    });
+  });
+
+  it("parks a handoff under the state that the completed plan resumes", async () => {
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          context.outcomes.implementation = {
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "handoff", detail: "a person must choose the migration" },
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const worker = build(runtime, () => ({
+      kind: "advance",
+      to: "ESCALATED",
+      why: "handoff to the owner",
+      effects: [{ type: "implement" }],
+    }));
+
+    await expect(worker.tick()).resolves.toMatchObject({ kind: "parked", state: "ESCALATED" });
+
+    expect(records.load("W-1")?.state).toBe("ESCALATED");
+    expect(queue.pending()[0]?.progress).toMatchObject({
+      "ESCALATED:handoff": { count: 2, detail: "a person must choose the migration" },
     });
   });
 });

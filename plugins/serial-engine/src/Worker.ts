@@ -193,7 +193,7 @@ export class Worker {
     }
 
     const outcomes = await this.execute(observation, record, decision);
-    const progress = this.progressAfter(item, record, actions, outcomes);
+    const progress = this.progressAfter(item, record, decision, actions, outcomes);
     // The core folds state, attempts and history; the runtime folds the domain.
     // An action can park itself, so save its fold before returning. A manual
     // release must not replay stale state or bypass its attempt ceiling.
@@ -291,11 +291,16 @@ export class Worker {
     };
   }
 
-  private progressParked(item: QueueItem, record: WorkRecord, actions: readonly Action[]): Parked | null {
+  private progressParked(
+    item: QueueItem,
+    record: WorkRecord,
+    actions: readonly Action[],
+    state = record.state,
+  ): Parked | null {
     const policy = this.deps.runtime.progress;
     if (!policy || !actions.some((action) => dispatchesTo(action.type, "agent"))) return null;
     const current = item.progress ?? {};
-    const prefix = `${record.state}:`;
+    const prefix = `${state}:`;
     const blocked = Object.entries(current).find(([key, value]) =>
       key.startsWith(prefix) && value.count >= policy.maxUnchanged,
     );
@@ -304,40 +309,42 @@ export class Worker {
     const [stored, value] = blocked;
     const key = stored.slice(prefix.length);
     const pending = actions.filter((action) => dispatchesTo(action.type, "agent")).map((action) => action.type);
-    const reason = `another agent run in ${record.state} would add no evidence for ${key}: ${value.detail}`;
+    const reason = `another agent run in ${state} would add no evidence for ${key}: ${value.detail}`;
     this.record("progress.parked", {
       workId: record.id,
-      state: record.state,
+      state,
       detail: { key, detail: value.detail, maxUnchanged: policy.maxUnchanged, pending },
     });
-    return { kind: "parked", workId: record.id, state: record.state, reason, retryAfterMs: this.deps.config.retryDelayMs };
+    return { kind: "parked", workId: record.id, state, reason, retryAfterMs: this.deps.config.retryDelayMs };
   }
 
   private progressAfter(
     item: QueueItem,
     record: WorkRecord,
+    decision: Plan,
     actions: readonly Action[],
     outcomes: Record<string, unknown>,
   ): { next: Record<string, { count: number; detail: string }> | undefined; parked?: Parked } {
     const policy = this.deps.runtime.progress;
     if (!policy || !actions.some((action) => dispatchesTo(action.type, "agent"))) return { next: item.progress };
-    const signals = Object.values(outcomes).filter(isProgress);
+    const signals = progressSignals(outcomes);
     if (signals.length === 0) return { next: item.progress };
 
     const next = { ...(item.progress ?? {}) };
+    const state = movedBy(record, decision)?.to ?? record.state;
     for (const signal of signals) {
       if (signal.kind === "advanced") {
-        delete next[progressKey(record.state, signal.key)];
+        delete next[progressKey(state, signal.key)];
         continue;
       }
       if (signal.kind === "unchanged") {
-        const key = progressKey(record.state, signal.key);
+        const key = progressKey(state, signal.key);
         const previous = next[key]?.count ?? 0;
         next[key] = { count: previous + 1, detail: signal.detail };
         continue;
       }
-      next[progressKey(record.state, "handoff")] = { count: policy.maxUnchanged, detail: signal.detail };
-      return { next, parked: this.progressParked({ ...item, progress: next }, record, actions)! };
+      next[progressKey(state, "handoff")] = { count: policy.maxUnchanged, detail: signal.detail };
+      return { next, parked: this.progressParked({ ...item, progress: next }, record, actions, state)! };
     }
     return { next: Object.keys(next).length > 0 ? next : undefined };
   }
@@ -600,5 +607,15 @@ function isProgress(value: unknown): value is Progress {
     return typeof candidate.key === "string" && typeof candidate.detail === "string";
   }
   return candidate.kind === "handoff" && typeof candidate.detail === "string";
+}
+
+/** Supports generic runtimes while reading the progress field of the ticket contract. */
+function progressSignals(outcomes: Record<string, unknown>): Progress[] {
+  return Object.values(outcomes).flatMap((outcome) => {
+    if (isProgress(outcome)) return [outcome];
+    if (!outcome || typeof outcome !== "object") return [];
+    const progress = (outcome as Record<string, unknown>).progress;
+    return isProgress(progress) ? [progress] : [];
+  });
 }
 
