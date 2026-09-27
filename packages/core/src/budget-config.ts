@@ -111,11 +111,11 @@ function progressIn(
     problems.push("`budget.progress` must be a mapping");
     return undefined;
   }
-  const max = given.maxUnchanged ?? 2;
+  const max = given.maxUnchanged === undefined ? 2 : given.maxUnchanged;
   if (!validProgressMax(max)) {
     problems.push("`budget.progress.maxUnchanged` must be a positive integer");
   }
-  const handoff = given.handoff ?? "park";
+  const handoff = given.handoff === undefined ? "park" : given.handoff;
   if (!isPark(handoff)) problems.push("`budget.progress.handoff` must be `park`");
   progressFieldProblems(given, problems);
   return validProgressMax(max) && isPark(handoff)

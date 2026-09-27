@@ -72,4 +72,11 @@ describe("parseBudget", () => {
     });
     expect(problemsOf({ progress: { handoff: "retry" } }).join("\n")).toContain("budget.progress.handoff");
   });
+
+  it("refuses explicit null progress values instead of applying defaults", () => {
+    const problems = problemsOf({ progress: { maxUnchanged: null, handoff: null } });
+
+    expect(problems).toContain("`budget.progress.maxUnchanged` must be a positive integer");
+    expect(problems).toContain("`budget.progress.handoff` must be `park`");
+  });
 });

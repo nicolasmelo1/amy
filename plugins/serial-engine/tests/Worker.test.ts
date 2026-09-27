@@ -500,4 +500,33 @@ describe("Worker dispatch", () => {
     expect(parked).toMatchObject({ kind: "parked", reason: expect.stringContaining("checkout did not change") });
     expect(queue.pending()[0]?.attempt).toBe(0);
   });
+
+  it("folds and saves an action that parks itself before handing work off", async () => {
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          context.outcomes.implementation = {
+            kind: "handoff",
+            detail: "a person must choose the migration",
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const worker = build(runtime, () => ({
+      kind: "act",
+      why: "implement it",
+      effects: [{ type: "implement" }],
+    }));
+
+    await expect(worker.tick()).resolves.toMatchObject({ kind: "parked" });
+
+    expect(records.load("W-1")).toMatchObject({
+      attempts: { NEW: 1 },
+      outcomes: { implementation: { kind: "handoff" } },
+    });
+    expect(queue.pending()[0]?.progress).toMatchObject({
+      "NEW:handoff": { count: 2, detail: "a person must choose the migration" },
+    });
+  });
 });

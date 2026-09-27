@@ -194,6 +194,18 @@ export class Worker {
 
     const outcomes = await this.execute(observation, record, decision);
     const progress = this.progressAfter(item, record, actions, outcomes);
+    // The core folds state, attempts and history; the runtime folds the domain.
+    // An action can park itself, so save its fold before returning. A manual
+    // release must not replay stale state or bypass its attempt ceiling.
+    const next = this.deps.runtime.apply(
+      applyPlan(record, decision, now),
+      decision,
+      outcomes,
+      observation,
+      now,
+      movedBy(record, decision),
+    );
+    this.deps.records.save(next);
     if (progress.parked) {
       this.park({ ...item, progress: progress.next }, progress.parked, now);
       return progress.parked;
@@ -204,16 +216,6 @@ export class Worker {
     // the second cannot be written without knowing the domain, and this
     // engine is the half that does not. The move is handed over as well,
     // because the record the runtime gets has already made it.
-    const next = this.deps.runtime.apply(
-      applyPlan(record, decision, now),
-      decision,
-      outcomes,
-      observation,
-      now,
-      movedBy(record, decision),
-    );
-    this.deps.records.save(next);
-
     this.deps.queue.enqueue(
       {
         workId: item.workId,
