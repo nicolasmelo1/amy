@@ -528,7 +528,9 @@ describe("the running loop", () => {
     const outcome = await moduleProbe(root, "@acme/workflow-oncall", true, 25);
 
     expect(outcome).toMatchObject({ ok: false });
-    if (!outcome.ok) expect(outcome.problems.join(" ")).toContain("timed out");
+    // Node exits with status 13 for an unsettled top-level await on some
+    // platforms before our timer fires; either result is a bounded refusal.
+    if (!outcome.ok) expect(outcome.problems.join(" ")).toMatch(/timed out|status 13/);
   });
 
   it("rolls back a version the profiles will not boot on", async () => {

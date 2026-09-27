@@ -391,6 +391,10 @@ export class Worker {
           reason: `retrying after an error: ${message}`,
           delayMs: this.deps.config.retryDelayMs,
           attempt,
+          // A failure retries the same look, not a fresh one. Retain the
+          // no-evidence streak so a transient dependency failure cannot
+          // spend an extra agent run past the configured ceiling.
+          progress: item.progress,
         },
         now,
       );
