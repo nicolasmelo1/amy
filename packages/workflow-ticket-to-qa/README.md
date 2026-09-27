@@ -53,6 +53,7 @@ It emits `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `esca
 plugins:
   "@amykit/workflow-ticket-to-qa":
     baseBranch: {}
+    budget: {}
     defaultBranch: "main"
     policy: {}
     qaStatusName: <string>
@@ -62,6 +63,7 @@ plugins:
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
+| `budget` | `record` | no | `{}` | agent budget, including an optional progress block that stops repeated no-evidence runs |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `policy` | `record` | no | `{}` | maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default |
 | `qaStatusName` | `string` | **yes** |  | the status a ticket moves to when it is handed to QA |

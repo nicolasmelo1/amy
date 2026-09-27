@@ -6,6 +6,7 @@ export interface EnqueueRequest {
   /** Milliseconds to hold the item back. Zero means the next look is immediate. */
   delayMs?: number;
   attempt?: number;
+  progress?: Record<string, { count: number; detail: string }>;
 }
 
 export interface Queue {

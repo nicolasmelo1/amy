@@ -8,6 +8,7 @@ import {
   EventLog,
   Notifier,
   Plan,
+  Progress,
   Queue,
   QueueItem,
   StopSwitch,
@@ -185,25 +186,18 @@ export class Worker {
 
     const actions = actionsOf(decision);
 
-    const parked = this.parked(record, actions, now);
+    const parked = this.parked(record, actions, now) ?? this.progressParked(item, record, actions);
     if (parked) {
-      this.deps.queue.enqueue(
-        {
-          workId: item.workId,
-          reason: parked.reason,
-          delayMs: parked.retryAfterMs,
-          // Carried, not dropped. Without it the queue writes 0, and a park
-          // would hand back a retry budget the failures had already spent.
-          attempt: item.attempt,
-        },
-        now,
-      );
-      this.deps.queue.complete(item);
-      this.maybePrune(now);
+      this.park(item, parked, now);
       return parked;
     }
 
     const outcomes = await this.execute(observation, record, decision);
+    const progress = this.progressAfter(item, record, actions, outcomes);
+    if (progress.parked) {
+      this.park({ ...item, progress: progress.next }, progress.parked, now);
+      return progress.parked;
+    }
 
     // The core folds the state, the attempt count and the history; the
     // runtime folds what only it can read. Two calls rather than one because
@@ -225,6 +219,7 @@ export class Worker {
         workId: item.workId,
         reason: decision.why,
         delayMs: decision.kind === "wait" ? decision.retryAfterMs : 0,
+        progress: progress.next,
       },
       now,
     );
@@ -292,6 +287,69 @@ export class Worker {
       reason: decision.reason,
       retryAfterMs: decision.retryAfterMs,
     };
+  }
+
+  private progressParked(item: QueueItem, record: WorkRecord, actions: readonly Action[]): Parked | null {
+    const policy = this.deps.runtime.progress;
+    if (!policy || !actions.some((action) => dispatchesTo(action.type, "agent"))) return null;
+    const current = item.progress ?? {};
+    const prefix = `${record.state}:`;
+    const blocked = Object.entries(current).find(([key, value]) =>
+      key.startsWith(prefix) && value.count >= policy.maxUnchanged,
+    );
+    if (!blocked) return null;
+
+    const [stored, value] = blocked;
+    const key = stored.slice(prefix.length);
+    const pending = actions.filter((action) => dispatchesTo(action.type, "agent")).map((action) => action.type);
+    const reason = `another agent run in ${record.state} would add no evidence for ${key}: ${value.detail}`;
+    this.record("progress.parked", {
+      workId: record.id,
+      state: record.state,
+      detail: { key, detail: value.detail, maxUnchanged: policy.maxUnchanged, pending },
+    });
+    return { kind: "parked", workId: record.id, state: record.state, reason, retryAfterMs: this.deps.config.retryDelayMs };
+  }
+
+  private progressAfter(
+    item: QueueItem,
+    record: WorkRecord,
+    actions: readonly Action[],
+    outcomes: Record<string, unknown>,
+  ): { next: Record<string, { count: number; detail: string }> | undefined; parked?: Parked } {
+    const policy = this.deps.runtime.progress;
+    if (!policy || !actions.some((action) => dispatchesTo(action.type, "agent"))) return { next: item.progress };
+    const signals = Object.values(outcomes).filter(isProgress);
+    if (signals.length === 0) return { next: item.progress };
+
+    const next = { ...(item.progress ?? {}) };
+    for (const signal of signals) {
+      if (signal.kind === "advanced") {
+        delete next[progressKey(record.state, signal.key)];
+        continue;
+      }
+      if (signal.kind === "unchanged") {
+        const key = progressKey(record.state, signal.key);
+        const previous = next[key]?.count ?? 0;
+        next[key] = { count: previous + 1, detail: signal.detail };
+        continue;
+      }
+      next[progressKey(record.state, "handoff")] = { count: policy.maxUnchanged, detail: signal.detail };
+      return { next, parked: this.progressParked({ ...item, progress: next }, record, actions)! };
+    }
+    return { next: Object.keys(next).length > 0 ? next : undefined };
+  }
+
+  private park(item: QueueItem, parked: Parked, now: Date): void {
+    this.deps.queue.enqueue({
+      workId: item.workId,
+      reason: parked.reason,
+      delayMs: parked.retryAfterMs,
+      attempt: item.attempt,
+      progress: item.progress,
+    }, now);
+    this.deps.queue.complete(item);
+    this.maybePrune(now);
   }
 
   private async recordFailure(
@@ -522,11 +580,23 @@ export class Worker {
     return { kind: "stopped", reason };
   }
 
-  /**
-   * Finished queue items are only useful for reading the log afterwards, so
-   * they are swept on the way past rather than accumulating forever.
-   */
+  /** Finished items are swept on the way past rather than accumulating forever. */
   private maybePrune(now: Date): void {
     this.deps.queue.prune(this.deps.config.retentionDays, now);
   }
 }
+
+function progressKey(state: string, key: string): string {
+  return `${state}:${key}`;
+}
+
+function isProgress(value: unknown): value is Progress {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  if (candidate.kind === "advanced") return typeof candidate.key === "string";
+  if (candidate.kind === "unchanged") {
+    return typeof candidate.key === "string" && typeof candidate.detail === "string";
+  }
+  return candidate.kind === "handoff" && typeof candidate.detail === "string";
+}
+

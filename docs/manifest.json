@@ -859,6 +859,11 @@
         },
         {
           "depth": 3,
+          "title": "Park an opted-in workflow before it spends another agent run with no new evidence.",
+          "slug": "park-an-opted-in-workflow-before-it-spends-another-agent-run-with-no-new-evidence"
+        },
+        {
+          "depth": 3,
           "title": "Plugins configured for an amy install now live in ~/.amy/plugins: amy init --install installs them through that root rather than npm's global prefix, and mounting plus amy plugin list resolve from the same root.",
           "slug": "plugins-configured-for-an-amy-install-now-live-in-amyplugins-amy-init---install-installs-them-through-that-root-rather-than-npms-global-prefix-and-mounting-plus-amy-plugin-list-resolve-from-the-same-root"
         },
@@ -4887,6 +4892,33 @@
         "summary": "an announcement never reached anybody"
       },
       {
+        "kind": "progress.parked",
+        "says": "Work was parked because another agent run would add no evidence.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "key",
+            "type": "string"
+          },
+          {
+            "field": "detail",
+            "type": "string"
+          },
+          {
+            "field": "maxUnchanged",
+            "type": "number"
+          },
+          {
+            "field": "pending",
+            "type": "array"
+          }
+        ],
+        "summary": "work was parked because another run would add no evidence"
+      },
+      {
         "kind": "run.claimed",
         "says": "The engine took an item off the queue, and why it was there.",
         "requires": [
@@ -7029,6 +7061,13 @@
             "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
+            "name": "budget",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "agent budget, including an optional progress block that stops repeated no-evidence runs"
+          },
+          {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
@@ -8032,6 +8071,38 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "no-retry-is-free",
+        "title": "Park an opted-in workflow before it spends another agent run with no new evidence.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-queue",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "plugins-live-in-amy-home",

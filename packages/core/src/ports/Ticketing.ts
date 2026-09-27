@@ -19,12 +19,20 @@ export interface TriageOutcome {
   askedQuestions: string[];
 }
 
+/** What a run learned about whether another run could add evidence. */
+export type Progress =
+  | { kind: "advanced"; key: string }
+  | { kind: "unchanged"; key: string; detail: string }
+  | { kind: "handoff"; detail: string };
+
 /** What one attempt to write the change produced, gate included. */
 export interface AttemptOutcome {
   ok: boolean;
   /** Whatever the agent or the gate said, verbatim, for the next prompt. */
   output: string;
   at: string;
+  /** Absent keeps older agents and workflows behaving exactly as they did. */
+  progress?: Progress;
 }
 
 /** What one judged review comment concluded. */

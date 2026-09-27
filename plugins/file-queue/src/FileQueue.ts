@@ -39,6 +39,7 @@ export class FileQueue implements Queue {
       notBefore: notBefore.toISOString(),
       attempt: request.attempt ?? 0,
       reason: request.reason,
+      ...(request.progress ? { progress: request.progress } : {}),
     };
 
     this.write(READY, item);
@@ -83,7 +84,7 @@ export class FileQueue implements Queue {
       // behind everything queued after it, so the thing brought forward would
       // be the last one looked at.
       fs.rmSync(this.file(READY, item));
-      this.enqueue({ workId, reason: item.reason, attempt: item.attempt }, now);
+      this.enqueue({ workId, reason: item.reason, attempt: item.attempt, progress: item.progress }, now);
       moved += 1;
     }
 

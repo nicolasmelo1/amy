@@ -64,4 +64,12 @@ describe("parseBudget", () => {
       limits: { perWeek: { tokens: 0 } },
     });
   });
+
+  it("reads opt-in evidence progress and refuses an unknown handoff", () => {
+    expect(parseBudget({ progress: { maxUnchanged: 3, handoff: "park" } })).toMatchObject({
+      ok: true,
+      limits: { progress: { maxUnchanged: 3, handoff: "park" } },
+    });
+    expect(problemsOf({ progress: { handoff: "retry" } }).join("\n")).toContain("budget.progress.handoff");
+  });
 });

@@ -5,6 +5,7 @@ export { actionsOf, applyPlan, movedBy } from "./work.js";
 export type { Action, Moved, Plan, Transition, WorkRecord } from "./work.js";
 
 export { WORKFLOW_RUNTIME } from "./runtime.js";
+export type { ProgressPolicy } from "./runtime.js";
 export type {
   ActionContext,
   ActionHandler,
@@ -65,6 +66,7 @@ export {
 export type {
   Agent,
   AttemptOutcome,
+  Progress,
   Comment,
   Feature,
   FeatureTracker,

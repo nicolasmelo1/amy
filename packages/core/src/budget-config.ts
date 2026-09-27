@@ -34,8 +34,11 @@ export function parseBudget(value: unknown): BudgetResult {
     if (ceiling) limits[window] = ceiling;
   }
 
+  const progress = progressIn(value, problems);
+  if (progress) limits.progress = progress;
+
   for (const field of Object.keys(value)) {
-    if (field !== "stopAt" && !WINDOWS.includes(field as (typeof WINDOWS)[number])) {
+    if (field !== "stopAt" && field !== "progress" && !WINDOWS.includes(field as (typeof WINDOWS)[number])) {
       problems.push(`\`budget.${field}\` is not a window this plugin meters: ${WINDOWS.join(", ")}`);
     }
   }
@@ -96,6 +99,44 @@ function windowIn(window: string, given: unknown, problems: string[]): WindowLim
   }
 
   return Object.keys(ceiling).length > 0 ? ceiling : null;
+}
+
+function progressIn(
+  value: Record<string, unknown>,
+  problems: string[],
+): { maxUnchanged: number; handoff: "park" } | undefined {
+  const given = value.progress;
+  if (given === undefined) return undefined;
+  if (!isRecord(given)) {
+    problems.push("`budget.progress` must be a mapping");
+    return undefined;
+  }
+  const max = given.maxUnchanged ?? 2;
+  if (!validProgressMax(max)) {
+    problems.push("`budget.progress.maxUnchanged` must be a positive integer");
+  }
+  const handoff = given.handoff ?? "park";
+  if (!isPark(handoff)) problems.push("`budget.progress.handoff` must be `park`");
+  progressFieldProblems(given, problems);
+  return validProgressMax(max) && isPark(handoff)
+    ? { maxUnchanged: max, handoff }
+    : undefined;
+}
+
+function validProgressMax(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1;
+}
+
+function isPark(value: unknown): value is "park" {
+  return value === "park";
+}
+
+function progressFieldProblems(value: Record<string, unknown>, problems: string[]): void {
+  for (const field of Object.keys(value)) {
+    if (field !== "maxUnchanged" && field !== "handoff") {
+      problems.push(`\`budget.progress.${field}\` is not a progress setting: maxUnchanged, handoff`);
+    }
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -32,6 +32,10 @@ export function budgetLines(
         `${against(spend.tokens, ceiling?.tokens, "tokens")}  ` +
         `${against(spend.costUsd, ceiling?.costUsd, "USD")}`,
     );
+    const prevented = events.filter((event) =>
+      event.kind === "progress.parked" && new Date(event.at).getTime() >= since.getTime(),
+    ).length;
+    lines.push(`${" ".repeat(14)} ${prevented} prevented start(s) from no new evidence`);
 
     const caveat = unpricedNote(spend, ceiling?.costUsd);
     if (caveat) lines.push(`${" ".repeat(14)} ${caveat}`);

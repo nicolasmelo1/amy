@@ -17,6 +17,8 @@ export interface BudgetLimits {
   perWeek?: WindowLimit;
   /** The fraction of a ceiling at which new work stops being started. */
   stopAt: number;
+  /** Present only when an operator enabled evidence-progress parking. */
+  progress?: { maxUnchanged: number; handoff: "park" };
 }
 
 export type BudgetMeasure = "tokens" | "costUsd";

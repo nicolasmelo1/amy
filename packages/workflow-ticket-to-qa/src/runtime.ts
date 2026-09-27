@@ -13,6 +13,7 @@ import {
   RepoLayout,
   renderBrief,
   WorkflowRuntime,
+  ProgressPolicy,
 } from "@amykit/core";
 import { Agent, Gate, Tracker, HarnessReply } from "@amykit/core";
 import type { AskContext, Git } from "@amykit/core";
@@ -49,6 +50,8 @@ export interface TicketRuntimeDeps {
   now: () => Date;
   config: TicketRuntimeConfig;
   policy: Policy;
+  /** Evidence-progress policy, when this install opted in. */
+  progress?: ProgressPolicy;
   /** The checkout half of the ports, for the self-review's working tree. */
   git: Git;
   /**
@@ -328,6 +331,7 @@ export function ticketRuntime(
 
   return {
     policy: deps.policy,
+    progress: deps.progress,
 
     async found() {
       return (await deps.tracker.inProgress()).map((ticket) => ticket.id);

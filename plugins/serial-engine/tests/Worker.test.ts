@@ -470,4 +470,34 @@ describe("Worker dispatch", () => {
 
     expect(folds).toEqual([null, null]);
   });
+
+  it("parks before the next agent run after the configured unchanged evidence ceiling", async () => {
+    let runs = 0;
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          runs += 1;
+          context.outcomes.implementation = {
+            kind: "unchanged",
+            key: "implementation",
+            detail: "the checkout did not change",
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+    const worker = build(runtime, () => ({
+      kind: "act",
+      why: "implement it",
+      effects: [{ type: "implement" }],
+    }));
+
+    await worker.tick();
+    await worker.tick();
+    const parked = await worker.tick();
+
+    expect(runs).toBe(2);
+    expect(parked).toMatchObject({ kind: "parked", reason: expect.stringContaining("checkout did not change") });
+    expect(queue.pending()[0]?.attempt).toBe(0);
+  });
 });

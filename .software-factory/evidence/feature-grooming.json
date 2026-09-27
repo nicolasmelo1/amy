@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "feature-grooming",
-  "implementation_sha256": "7558ee23d27adde52b9797ef913604082853daa46dd338d8bdc995db7d0698ac",
+  "implementation_sha256": "66eb1ea15ff72fb6aa80e79628f80bad52c93fe172213566e62b73921c620c44",
   "runs": [
     {
       "scenario": "feature-grooming",
