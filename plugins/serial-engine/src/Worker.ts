@@ -334,6 +334,10 @@ export class Worker {
     const state = movedBy(record, decision)?.to ?? record.state;
     for (const signal of signals) {
       if (signal.kind === "advanced") {
+        // The signal came from the state this look started in. Clearing only
+        // the destination would resurrect an old ceiling if work later
+        // returns here; clear the destination too in case it already held one.
+        delete next[progressKey(record.state, signal.key)];
         delete next[progressKey(state, signal.key)];
         continue;
       }

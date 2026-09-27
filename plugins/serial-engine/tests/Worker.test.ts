@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Moved, Plan, WorkflowRuntime, WorkRecord, acceptsAction } from "@amykit/core";
+import { EnqueueRequest, Moved, Plan, WorkflowRuntime, WorkRecord, acceptsAction } from "@amykit/core";
 import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { DEFAULT_POLICY } from "@amykit/workflow-ticket-to-qa";
@@ -406,8 +406,13 @@ describe("Worker dispatch", () => {
     };
   }
 
-  function build(runtime: WorkflowRuntime, plan: (record: WorkRecord) => Plan, port?: (kind: string) => object | undefined): Worker {
-    queue.enqueue({ workId: "W-1", reason: "test" }, WORKDAY);
+  function build(
+    runtime: WorkflowRuntime,
+    plan: (record: WorkRecord) => Plan,
+    port?: (kind: string) => object | undefined,
+    initial: Partial<EnqueueRequest> = {},
+  ): Worker {
+    queue.enqueue({ workId: "W-1", reason: "test", ...initial }, WORKDAY);
     return new Worker({
       queue,
       records,
@@ -560,5 +565,36 @@ describe("Worker dispatch", () => {
     expect(queue.pending()[0]?.progress).toMatchObject({
       "ESCALATED:handoff": { count: 2, detail: "a person must choose the migration" },
     });
+  });
+
+  it("clears source and destination streaks when advancing evidence moves work", async () => {
+    const runtime: WorkflowRuntime = {
+      ...thin({
+        implement: async (_action, context) => {
+          context.outcomes.implementation = {
+            ok: true,
+            output: "",
+            at: WORKDAY.toISOString(),
+            progress: { kind: "advanced", key: "implementation" },
+          };
+        },
+      }),
+      progress: { maxUnchanged: 2, handoff: "park" },
+    };
+
+    await build(
+      runtime,
+      () => ({ kind: "advance", to: "DONE", why: "evidence moved it", effects: [{ type: "implement" }] }),
+      undefined,
+      {
+        progress: {
+          "NEW:implementation": { count: 1, detail: "the checkout did not change" },
+          "DONE:implementation": { count: 2, detail: "old target evidence" },
+        },
+      },
+    ).tick();
+
+    expect(records.load("W-1")?.state).toBe("DONE");
+    expect(queue.pending()[0]?.progress).toBeUndefined();
   });
 });
