@@ -29,10 +29,10 @@ withdrawn*, because the second adds methods and a view to one port and every
 one of them should have to get past the first on arrival.
 
 **From that workflow's day on real tickets.** *No retry is free*, now
-delivered at `docs/design/no-retry-is-free.md`, made the engine refuse a retry
-that adds no evidence before another agent starts. It followed the worktree
-work: a workflow should not learn to count no-evidence retries against a tree
-two tickets can still contend for.
+delivered at `docs/design/no-retry-is-free.md`, made opted-in workflows refuse
+a retry that adds no evidence before another agent starts. It followed the
+worktree work: a workflow should not learn to count no-evidence retries
+against a tree two tickets can still contend for.
 
 **From a third day, driving real reviews.** *A review thread can be replied to*
 is the write the code host never had. *A strong model reads the review first*
