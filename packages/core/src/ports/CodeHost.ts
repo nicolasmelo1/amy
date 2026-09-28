@@ -150,6 +150,21 @@ export interface OpenPullRequestRequest {
   body: string;
 }
 
+/**
+ * The one parent a stacked pull request needs before it can choose its base.
+ *
+ * A forge that has no such pull request says so explicitly. The branches are
+ * absent in that one case because inventing names for a missing parent is the
+ * guess a workflow is here to avoid.
+ */
+export type PullRequestAncestry =
+  | {
+      state: "open" | "merged" | "closed-unmerged";
+      headBranch: string;
+      baseBranch: string;
+    }
+  | { state: "absent" };
+
 /** The capability names a workflow may claim before it mutates the forge. */
 export const CODE_HOST_WRITE_CAPABILITIES = [
   "open-pull-request",
@@ -172,6 +187,14 @@ export type CodeHostWriteCapability = (typeof CODE_HOST_WRITE_CAPABILITIES)[numb
  */
 export interface CodeHost {
   findPullRequest(repo: string, branch: string): Promise<PullRequestView | null>;
+
+  /**
+   * The forge facts a stacked child needs to choose its base.
+   *
+   * The workflow decides what to do with each state; it never learns the
+   * query or the vocabulary of the forge that answered it.
+   */
+  pullRequestAncestry(repo: string, number: number): Promise<PullRequestAncestry | null>;
 
   openPullRequest(request: OpenPullRequestRequest): Promise<number>;
 

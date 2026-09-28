@@ -61,6 +61,7 @@ export function fakeTracker(overrides: Partial<Tracker> = {}): Tracker {
 export function fakeHost(pr: PullRequestView | null = null, overrides: Partial<CodeHost> = {}): CodeHost {
   return {
     findPullRequest: vi.fn<CodeHost["findPullRequest"]>().mockResolvedValue(pr),
+    pullRequestAncestry: vi.fn<CodeHost["pullRequestAncestry"]>().mockResolvedValue(null),
     pullRequest: vi.fn<CodeHost["pullRequest"]>().mockResolvedValue(pr),
     openPullRequest: vi.fn<CodeHost["openPullRequest"]>().mockResolvedValue(4940),
     requestReview: vi.fn<CodeHost["requestReview"]>().mockResolvedValue(undefined),

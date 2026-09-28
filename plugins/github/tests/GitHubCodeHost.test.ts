@@ -702,6 +702,34 @@ describe("GitHubCodeHost.pullRequest", () => {
   });
 });
 
+describe("GitHubCodeHost.pullRequestAncestry", () => {
+  it.each([
+    ["OPEN", "open"],
+    ["MERGED", "merged"],
+    ["CLOSED", "closed-unmerged"],
+  ] as const)("maps a %s parent without making a workflow name GitHub", async (state, expected) => {
+    const response = {
+      data: { repository: { pullRequest: { state, headRefName: "ada/parent", baseRefName: "main" } } },
+    };
+    const { runner, host } = hostFor(response);
+
+    await expect(host.pullRequestAncestry("Northwind/northwind-backend", 4926)).resolves.toEqual({
+      state: expected,
+      headBranch: "ada/parent",
+      baseBranch: "main",
+    });
+    expect(runner.argvFor("gh").join(" ")).toContain("pullRequest(number: $number)");
+  });
+
+  it("says absent instead of guessing a base", async () => {
+    const { host } = hostFor({ data: { repository: { pullRequest: null } } });
+
+    await expect(host.pullRequestAncestry("Northwind/northwind-backend", 4926)).resolves.toEqual({
+      state: "absent",
+    });
+  });
+});
+
 describe("GitHubCodeHost.merge", () => {
   it("merges by the method the caller named", async () => {
     const { runner, host } = hostFor(REAL_RESPONSE);

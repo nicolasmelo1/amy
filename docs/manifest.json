@@ -243,6 +243,11 @@
           "description": ""
         },
         {
+          "title": "A stack knows its parent",
+          "path": "/design/a-stack-knows-its-parent",
+          "description": ""
+        },
+        {
           "title": "A testkit proves the machine",
           "path": "/design/a-testkit-proves-the-machine",
           "description": ""
@@ -821,6 +826,11 @@
           "depth": 3,
           "title": "classify turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before amy add, amy remove and amy update arrive.",
           "slug": "classify-turns-a-plugin-spec-into-what-npm-installs-and-what-the-config-names-a-name-a-range-a-git-url-a-tarball-or-a-path-in-one-place-before-amy-add-amy-remove-and-amy-update-arrive"
+        },
+        {
+          "depth": 3,
+          "title": "Let workflows resolve the base of a stacked pull request through the code-host port.",
+          "slug": "let-workflows-resolve-the-base-of-a-stacked-pull-request-through-the-code-host-port"
         },
         {
           "depth": 3,
@@ -1627,6 +1637,23 @@
           "title": "What shipped",
           "slug": "what-shipped"
         },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-stack-knows-its-parent",
+      "file": "docs/design/a-stack-knows-its-parent.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-stack-knows-its-parent.md",
+      "title": "A stack knows its parent",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
         {
           "depth": 2,
           "title": "Acceptance criteria",
@@ -4311,6 +4338,11 @@
             "name": "findPullRequest",
             "signature": "findPullRequest(repo: string, branch: string): Promise<PullRequestView | null>",
             "doc": ""
+          },
+          {
+            "name": "pullRequestAncestry",
+            "signature": "pullRequestAncestry(repo: string, number: number): Promise<PullRequestAncestry | null>",
+            "doc": "The forge facts a stacked child needs to choose its base."
           },
           {
             "name": "openPullRequest",
@@ -7525,6 +7557,21 @@
         "scenario": ".software-factory/evidence/plugin-file-queue-scenario.sh"
       },
       {
+        "name": "plugin-github",
+        "activation": [
+          "plugins/github/src/**"
+        ],
+        "evidence": ".software-factory/evidence/plugin-github.json",
+        "plan": "docs/design/a-stack-knows-its-parent.md",
+        "assertions": [
+          "stack.a_pull_request_opens_on_the_parent_head_while_it_is_open",
+          "stack.a_merged_parent_answers_its_recorded_base",
+          "stack.an_absent_parent_or_one_closed_unmerged_waits",
+          "stack.no_workflow_learns_the_word_github"
+        ],
+        "scenario": ".software-factory/evidence/plugin-github-scenario.sh"
+      },
+      {
         "name": "plugin-serial-engine",
         "activation": [
           "plugins/serial-engine/src/**",
@@ -7974,6 +8021,22 @@
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-stack-knows-its-parent",
+        "title": "Let workflows resolve the base of a stacked pull request through the code-host port.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-github",
             "level": "minor"
           }
         ],

@@ -51,6 +51,7 @@ export type {
   CodeHostWriteCapability,
   MergeState,
   OpenPullRequestRequest,
+  PullRequestAncestry,
   PullRequestView,
   ReviewDecision,
   ReviewRequest,
