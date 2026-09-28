@@ -251,7 +251,8 @@ export class GitHubCodeHost implements CodeHost {
     const raw = await this.graphql<{
       repository: { pullRequest: RawPullRequestAncestry | null } | null;
     }>(PULL_REQUEST_ANCESTRY_QUERY, { owner, name, number: String(number) });
-    const parent = raw.repository?.pullRequest;
+    if (!raw.repository) return null;
+    const parent = raw.repository.pullRequest;
     if (!parent) return { state: "absent" };
 
     return {

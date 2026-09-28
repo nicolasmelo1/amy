@@ -728,6 +728,12 @@ describe("GitHubCodeHost.pullRequestAncestry", () => {
       state: "absent",
     });
   });
+
+  it("leaves an unknown repository unavailable instead of calling it absent", async () => {
+    const { host } = hostFor({ data: { repository: null } });
+
+    await expect(host.pullRequestAncestry("Northwind/northwind-backend", 4926)).resolves.toBeNull();
+  });
 });
 
 describe("GitHubCodeHost.merge", () => {

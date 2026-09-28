@@ -46,7 +46,7 @@ const workflowSources = fs.readdirSync(path.join(repo, "packages"), { withFileTy
     .filter((file) => typeof file === "string" && file.endsWith(".ts"))
     .map((file) => path.join(repo, "packages", entry.name, "src", file)))
   .map((file) => fs.readFileSync(file, "utf8"));
-record("stack.no_workflow_learns_the_word_github", workflowSources.every((source) => !source.includes("GitHub")));
+record("stack.no_workflow_learns_the_word_github", workflowSources.every((source) => !source.toLowerCase().includes("github")));
 const failed = assertions.filter((assertion) => assertion.status !== "passed");
 fs.writeFileSync(report, `${JSON.stringify({ scenario: "plugin-github", status: failed.length === 0 ? "passed" : "failed", goal: "Prove the built GitHub adapter gives stacked work an explicit parent base without teaching a workflow its forge.", artifact: { package: "@amykit/plugin-github", entry: "dist/index.js" }, observed: { assertions_run: assertions.length, assertions_failed: failed.length, node: process.version }, assertions }, null, 2)}\n`);
 console.log(`${assertions.length - failed.length}/${assertions.length} assertions passed`);

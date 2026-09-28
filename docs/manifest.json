@@ -7559,7 +7559,8 @@
       {
         "name": "plugin-github",
         "activation": [
-          "plugins/github/src/**"
+          "plugins/github/src/**",
+          "packages/workflow-*/src/**"
         ],
         "evidence": ".software-factory/evidence/plugin-github.json",
         "plan": "docs/design/a-stack-knows-its-parent.md",
