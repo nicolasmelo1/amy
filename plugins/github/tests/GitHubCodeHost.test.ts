@@ -704,12 +704,12 @@ describe("GitHubCodeHost.pullRequest", () => {
 
 describe("GitHubCodeHost.pullRequestAncestry", () => {
   it.each([
-    ["OPEN", "open"],
-    ["MERGED", "merged"],
-    ["CLOSED", "closed-unmerged"],
-  ] as const)("maps a %s parent without making a workflow name GitHub", async (state, expected) => {
+    ["OPEN", false, "open"],
+    ["CLOSED", true, "merged"],
+    ["CLOSED", false, "closed-unmerged"],
+  ] as const)("maps a %s parent with merged=%s without making a workflow name GitHub", async (state, merged, expected) => {
     const response = {
-      data: { repository: { pullRequest: { state, headRefName: "ada/parent", baseRefName: "main" } } },
+      data: { repository: { pullRequest: { state, merged, headRefName: "ada/parent", baseRefName: "main" } } },
     };
     const { runner, host } = hostFor(response);
 

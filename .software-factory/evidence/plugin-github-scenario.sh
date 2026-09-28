@@ -16,7 +16,7 @@ const { GitHubCodeHost } = await import(dist);
 const assertions = [];
 const record = (type, ok) => assertions.push({ type, status: ok ? "passed" : "failed" });
 const calls = [];
-let parent = { state: "OPEN", headRefName: "ada/parent", baseRefName: "main" };
+let parent = { state: "OPEN", merged: false, headRefName: "ada/parent", baseRefName: "main" };
 const runner = {
   async run(_command, args) {
     calls.push(args);
@@ -33,10 +33,10 @@ const runner = {
 const host = new GitHubCodeHost(runner);
 await host.openPullRequest({ repo: "acme/widgets", branch: "ada/child", title: "child", base: "ada/parent", body: "" });
 record("stack.a_pull_request_opens_on_the_parent_head_while_it_is_open", calls.at(-1)?.includes("base=ada/parent") === true);
-record("stack.a_merged_parent_answers_its_recorded_base", (await host.pullRequestAncestry("acme/widgets", 90)).state === "open");
-parent = { state: "MERGED", headRefName: "ada/parent", baseRefName: "main" };
+record("stack.a_pull_request_opens_on_the_parent_head_while_it_is_open", (await host.pullRequestAncestry("acme/widgets", 90)).state === "open");
+parent = { state: "CLOSED", merged: true, headRefName: "ada/parent", baseRefName: "main" };
 record("stack.a_merged_parent_answers_its_recorded_base", JSON.stringify(await host.pullRequestAncestry("acme/widgets", 90)) === JSON.stringify({ state: "merged", headBranch: "ada/parent", baseBranch: "main" }));
-parent = { state: "CLOSED", headRefName: "ada/parent", baseRefName: "main" };
+parent = { state: "CLOSED", merged: false, headRefName: "ada/parent", baseRefName: "main" };
 record("stack.an_absent_parent_or_one_closed_unmerged_waits", (await host.pullRequestAncestry("acme/widgets", 90)).state === "closed-unmerged");
 parent = null;
 record("stack.an_absent_parent_or_one_closed_unmerged_waits", (await host.pullRequestAncestry("acme/widgets", 90)).state === "absent");

@@ -17,7 +17,7 @@
       "status": "passed"
     },
     {
-      "type": "stack.a_merged_parent_answers_its_recorded_base",
+      "type": "stack.a_pull_request_opens_on_the_parent_head_while_it_is_open",
       "status": "passed"
     },
     {

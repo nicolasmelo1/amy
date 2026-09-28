@@ -135,6 +135,7 @@ query PullRequestAncestry($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
       state
+      merged
       headRefName
       baseRefName
     }
@@ -212,6 +213,7 @@ interface RawPullRequest {
 
 interface RawPullRequestAncestry {
   state: string;
+  merged: boolean;
   headRefName: string;
   baseRefName: string;
 }
@@ -253,7 +255,7 @@ export class GitHubCodeHost implements CodeHost {
     if (!parent) return { state: "absent" };
 
     return {
-      state: parent.state === "OPEN" ? "open" : parent.state === "MERGED" ? "merged" : "closed-unmerged",
+      state: parent.state === "OPEN" ? "open" : parent.merged ? "merged" : "closed-unmerged",
       headBranch: parent.headRefName,
       baseBranch: parent.baseRefName,
     };

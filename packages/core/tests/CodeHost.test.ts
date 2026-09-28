@@ -13,11 +13,9 @@ describe("CodeHost stack facts", () => {
     expect(request.base).toBeUndefined();
   });
 
-  it("lets an implementor that cannot answer ancestry return null", async () => {
-    const host = {
-      pullRequestAncestry: async () => null,
-    } as Pick<CodeHost, "pullRequestAncestry">;
+  it("does not require existing implementors to expose ancestry", () => {
+    const host: Pick<CodeHost, "pullRequestAncestry"> = {};
 
-    await expect(host.pullRequestAncestry("acme/widgets", 1)).resolves.toBeNull();
+    expect(host.pullRequestAncestry).toBeUndefined();
   });
 });

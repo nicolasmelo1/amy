@@ -194,7 +194,7 @@ export interface CodeHost {
    * The workflow decides what to do with each state; it never learns the
    * query or the vocabulary of the forge that answered it.
    */
-  pullRequestAncestry(repo: string, number: number): Promise<PullRequestAncestry | null>;
+  pullRequestAncestry?(repo: string, number: number): Promise<PullRequestAncestry | null>;
 
   openPullRequest(request: OpenPullRequestRequest): Promise<number>;
 
