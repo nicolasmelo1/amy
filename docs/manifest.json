@@ -1669,6 +1669,11 @@
         },
         {
           "depth": 2,
+          "title": "What it keeps, and how it goes away",
+          "slug": "what-it-keeps-and-how-it-goes-away"
+        },
+        {
+          "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
         },
@@ -7088,10 +7093,31 @@
             "description": "the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name"
           },
           {
+            "name": "defaultRetryAfterSeconds",
+            "type": "number",
+            "required": false,
+            "default": 60,
+            "description": "how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins"
+          },
+          {
+            "name": "maxRateLimitRetries",
+            "type": "number",
+            "required": false,
+            "default": 5,
+            "description": "how many times a call Slack rate limits (HTTP 429) is waited out and tried again before it fails"
+          },
+          {
             "name": "operator",
             "type": "string",
             "required": true,
             "description": "the user id, such as U0XXXXXXX, whose replies are answers; everybody else's are ignored"
+          },
+          {
+            "name": "retentionDays",
+            "type": "number",
+            "required": false,
+            "default": 30,
+            "description": "days a downloaded file or a thread's memory stays unused before it is pruned, 0 to keep everything. A pruned file is fetched again when its reply is read; a pruned thread means the next question opens a new one"
           },
           {
             "name": "token",

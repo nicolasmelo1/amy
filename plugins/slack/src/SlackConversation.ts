@@ -16,6 +16,12 @@ export interface SlackConversationOptions {
   lockWaitMs?: number;
   /** The largest attachment downloaded; a larger one is named in the reply instead. */
   maxFileBytes?: number;
+  /**
+   * Days a downloaded file or a thread's memory stays unused before it is
+   * pruned; `0` keeps everything.
+   */
+  retentionDays?: number;
+  now?: () => Date;
 }
 
 /** What `amy doctor` prints for this plugin, one line per question. */
@@ -55,6 +61,14 @@ interface SlackMessage {
 /** Large enough for any screenshot, small enough that a daemon never holds a video. */
 const DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024;
 
+/** Long enough for an operator's holiday, short enough that screenshots do not pile up. */
+export const DEFAULT_RETENTION_DAYS = 30;
+
+/** Pruning walks the state directory, so it happens at most this often. */
+const PRUNE_EVERY_MS = 60 * 60 * 1000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** What marks a root as amy's, and whose work it opened. */
 const ROOT_EVENT = "amy_work_thread";
 
@@ -63,6 +77,7 @@ export class SlackConversation implements Conversation {
   private readonly filesDirectory: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   private botUser?: Promise<string>;
+  private prunedAt = Number.NEGATIVE_INFINITY;
 
   constructor(
     private readonly api: SlackApi,
@@ -73,6 +88,7 @@ export class SlackConversation implements Conversation {
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
+    this.pruneNowAndThen();
     const known = this.threads.known(workId, this.options.channel);
     if (known) return Promise.resolve({ id: known });
 
@@ -101,6 +117,7 @@ export class SlackConversation implements Conversation {
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
     const after = Date.parse(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
+    this.pruneNowAndThen();
     const bot = await this.botUserId();
 
     const answers: Reply[] = [];
@@ -108,7 +125,7 @@ export class SlackConversation implements Conversation {
       if (!this.isOperatorAnswer(message, thread.id, bot)) continue;
       const at = tsToMs(message.ts!);
       if (at <= after) continue;
-      const { paths, skipped } = await this.downloadAll(message.files ?? []);
+      const { paths, skipped } = await this.downloadAll(thread.id, message.files ?? []);
       answers.push({
         at: new Date(at).toISOString(),
         author: message.user!,
@@ -135,6 +152,51 @@ export class SlackConversation implements Conversation {
       return checks.concat(await this.channelChecks(scopes));
     } catch (error) {
       return [{ label: "slack token", ok: false, detail: messageOf(error) }];
+    }
+  }
+
+  /**
+   * Forgets one piece of work: its thread's memory and every file downloaded
+   * from it. The thread stays in Slack; the next `open` starts a new one.
+   */
+  forget(workId: string): void {
+    const ts = this.threads.forget(workId);
+    if (ts) fs.rmSync(this.threadFiles(ts), { recursive: true, force: true });
+  }
+
+  /**
+   * Removes what nobody used within the retention: a downloaded file, which
+   * the next read of its reply fetches again, and a thread's memory, whose
+   * files go with it. Returns how many of each went.
+   */
+  prune(now: Date = this.clock()): { threads: number; files: number } {
+    const days = this.options.retentionDays ?? DEFAULT_RETENTION_DAYS;
+    if (days <= 0) return { threads: 0, files: 0 };
+    const cutoff = now.getTime() - days * DAY_MS;
+
+    const threads = this.threads.prune(cutoff);
+    for (const ts of threads) fs.rmSync(this.threadFiles(ts), { recursive: true, force: true });
+    return { threads: threads.length, files: pruneFiles(this.filesDirectory, cutoff) };
+  }
+
+  private clock(): Date {
+    return this.options.now?.() ?? new Date();
+  }
+
+  /** Where one thread's downloads live, so forgetting it takes them too. */
+  private threadFiles(ts: string): string {
+    return path.join(this.filesDirectory, safeName(ts));
+  }
+
+  /** Throttled, and never the reason a call fails: pruning is housekeeping. */
+  private pruneNowAndThen(): void {
+    const now = this.clock();
+    if (now.getTime() - this.prunedAt < PRUNE_EVERY_MS) return;
+    this.prunedAt = now.getTime();
+    try {
+      this.prune(now);
+    } catch {
+      // A file another process removed first, or one still being written.
     }
   }
 
@@ -245,7 +307,7 @@ export class SlackConversation implements Conversation {
    * fetch — declared so by Slack, or found so while it arrived — so the
    * reader knows a file was there rather than never seeing it.
    */
-  private async downloadAll(files: readonly SlackFile[]): Promise<{ paths: string[]; skipped: string[] }> {
+  private async downloadAll(threadTs: string, files: readonly SlackFile[]): Promise<{ paths: string[]; skipped: string[] }> {
     const limit = this.options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
     const paths: string[] = [];
     const skipped: string[] = [];
@@ -259,7 +321,7 @@ export class SlackConversation implements Conversation {
         continue;
       }
       try {
-        paths.push(await this.download(file.id, name, url, limit));
+        paths.push(await this.download(path.join(this.threadFiles(threadTs), safeName(file.id), safeName(name)), url, limit));
       } catch (error) {
         if (!(error instanceof TooLarge)) throw error;
         skipped.push(tooLarge);
@@ -268,9 +330,13 @@ export class SlackConversation implements Conversation {
     return { paths, skipped };
   }
 
-  private async download(id: string, name: string, url: string, limit: number): Promise<string> {
-    const target = path.join(this.filesDirectory, safeName(id), safeName(name));
-    if (fs.existsSync(target)) return target;
+  private async download(target: string, url: string, limit: number): Promise<string> {
+    if (fs.existsSync(target)) {
+      // Read again, so kept: retention counts from the last use.
+      const now = new Date();
+      fs.utimesSync(target, now, now);
+      return target;
+    }
     const bytes = await this.api.download(url, limit);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     // Staged and renamed, so a path that exists is always a whole file.
@@ -283,6 +349,23 @@ export class SlackConversation implements Conversation {
     }
     return target;
   }
+}
+
+/** Removes files older than `cutoff`, then the directories they leave empty. */
+function pruneFiles(directory: string, cutoff: number): number {
+  if (!fs.existsSync(directory)) return 0;
+  let removed = 0;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      removed += pruneFiles(full, cutoff);
+      if (fs.readdirSync(full).length === 0) fs.rmdirSync(full);
+    } else if (fs.statSync(full).mtimeMs < cutoff) {
+      fs.rmSync(full, { force: true });
+      removed += 1;
+    }
+  }
+  return removed;
 }
 
 /** Slack's `ts` is seconds with a microsecond fraction. */

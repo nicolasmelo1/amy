@@ -317,7 +317,8 @@ describe("recovering from a failed call", () => {
 
     const [reply] = await slack.replies({ id: "1790000000.000100" }, "2026-09-21T00:00:00.000Z");
     expect(new Uint8Array(fs.readFileSync(reply!.files[0]!))).toEqual(picture);
-    expect(fs.readdirSync(path.join(directory, "files", "F0SHOT"))).toEqual(["shot.png"]);
+    // Under the thread it came from, so forgetting the thread takes it too.
+    expect(fs.readdirSync(path.join(directory, "files", "1790000000.000100", "F0SHOT"))).toEqual(["shot.png"]);
   });
 
   it("names a picture larger than the limit instead of downloading it, when Slack says how large it is", async () => {
@@ -374,7 +375,7 @@ describe("recovering from a failed call", () => {
 
     expect(reply!.files).toEqual([]);
     expect(reply!.text).toBe("[small.png was not downloaded: it is larger than 4 bytes]");
-    expect(fs.existsSync(path.join(directory, "files", "F0LIE"))).toBe(false);
+    expect(fs.existsSync(path.join(directory, "files", "1790000000.000100", "F0LIE"))).toBe(false);
   });
 
   it("names the scope Slack said was missing", async () => {

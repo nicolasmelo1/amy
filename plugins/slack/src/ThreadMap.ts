@@ -48,10 +48,49 @@ export class ThreadMap {
     this.pollMs = options.pollMs ?? 100;
   }
 
-  /** The thread this work already has in `channel`, if it has one. */
+  /**
+   * The thread this work already has in `channel`, if it has one.
+   *
+   * Asking counts as using it, which is what keeps a thread still being read
+   * out of the next prune.
+   */
   known(workId: string, channel: string): string | undefined {
-    const current = this.current(workId)?.entry;
-    return current?.channel === channel ? current.ts : undefined;
+    const current = this.current(workId);
+    const ts = current?.entry.channel === channel ? current.entry.ts : undefined;
+    if (ts) touch(this.file(workId, current!.n));
+    return ts;
+  }
+
+  /**
+   * Forgets one work item's thread, returning the root it had, if any.
+   *
+   * The thread stays in Slack; only this machine's memory of it goes, so the
+   * next `open` for the same work starts a new one.
+   */
+  forget(workId: string): string | undefined {
+    const ts = this.current(workId)?.entry.ts;
+    fs.rmSync(this.directoryOf(workId), { recursive: true, force: true });
+    return ts;
+  }
+
+  /**
+   * Forgets every settled thread nobody used since `cutoffMs`, returning the
+   * roots it forgot. An attempt still posting is never pruned while its owner
+   * is alive, however old.
+   */
+  prune(cutoffMs: number): string[] {
+    if (!fs.existsSync(this.root)) return [];
+    const forgotten: string[] = [];
+    for (const name of fs.readdirSync(this.root)) {
+      const workId = Buffer.from(name, "base64url").toString();
+      const current = this.current(workId);
+      if (!current) continue;
+      if (current.entry.owner && isAlive(pidOf(current.entry.owner))) continue;
+      if (fs.statSync(this.file(workId, current.n)).mtimeMs >= cutoffMs) continue;
+      this.forget(workId);
+      if (current.entry.ts) forgotten.push(current.entry.ts);
+    }
+    return forgotten;
   }
 
   /** The work's thread in `channel`, posting its root through `start` only if nobody has. */
@@ -148,6 +187,15 @@ export class ThreadMap {
 
   private staged(workId: string): string {
     return path.join(this.directoryOf(workId), `.${randomUUID()}.tmp`);
+  }
+}
+
+function touch(file: string): void {
+  const now = new Date();
+  try {
+    fs.utimesSync(file, now, now);
+  } catch {
+    // Superseded or forgotten between the read and the touch: nothing to keep.
   }
 }
 

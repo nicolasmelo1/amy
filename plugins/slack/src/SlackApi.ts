@@ -82,13 +82,17 @@ export interface SlackApiOptions {
   sleep?: (ms: number) => Promise<void>;
   /** How many times a `429` is waited out before the call fails. */
   maxRateLimitRetries?: number;
+  /** How long a `429` that names no `Retry-After` is waited out. */
+  defaultRetryAfterSeconds?: number;
 }
 
 /**
  * Slack's answer when it waits without saying for how long: the one-a-minute
  * limit on `conversations.replies` is the one this plugin is likeliest to hit.
  */
-const DEFAULT_RETRY_AFTER_S = 60;
+export const DEFAULT_RETRY_AFTER_S = 60;
+
+export const DEFAULT_RATE_LIMIT_RETRIES = 5;
 
 /**
  * The Web API, and only the Web API.
@@ -100,6 +104,7 @@ export class SlackApi {
   private readonly transport: HttpTransport;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly maxRetries: number;
+  private readonly defaultRetryAfterS: number;
 
   constructor(
     private readonly token: string,
@@ -107,7 +112,8 @@ export class SlackApi {
   ) {
     this.transport = options.transport ?? fetchTransport;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-    this.maxRetries = options.maxRateLimitRetries ?? 5;
+    this.maxRetries = options.maxRateLimitRetries ?? DEFAULT_RATE_LIMIT_RETRIES;
+    this.defaultRetryAfterS = options.defaultRetryAfterSeconds ?? DEFAULT_RETRY_AFTER_S;
   }
 
   /** Calls a method form-encoded, which every method accepts, and refuses `ok: false`. */
@@ -160,14 +166,14 @@ export class SlackApi {
       if (attempt >= this.maxRetries) {
         throw new Error(`slack kept rate limiting ${request.url} after ${attempt + 1} tries`);
       }
-      await this.sleep(retryAfterMs(response.headers["retry-after"]));
+      await this.sleep(retryAfterMs(response.headers["retry-after"], this.defaultRetryAfterS));
     }
   }
 }
 
-function retryAfterMs(header: string | undefined): number {
+function retryAfterMs(header: string | undefined, fallbackS: number): number {
   const seconds = header?.trim() ? Number(header) : Number.NaN;
-  return (Number.isFinite(seconds) && seconds >= 0 ? seconds : DEFAULT_RETRY_AFTER_S) * 1000;
+  return (Number.isFinite(seconds) && seconds >= 0 ? seconds : fallbackS) * 1000;
 }
 
 function isSlackHost(hostname: string): boolean {

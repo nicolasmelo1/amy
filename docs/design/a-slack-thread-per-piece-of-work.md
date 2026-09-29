@@ -23,8 +23,9 @@ the thread.
   customer-built apps keep Tier 3
   ([changelog](https://docs.slack.dev/changelog/2025/06/03/rate-limits-clarity/)).
   A `429` waits the `Retry-After` it carries, in seconds
-  ([rate limits](https://docs.slack.dev/apis/web-api/rate-limits)), or a
-  minute when it carries none, and gives up naming the URL after five.
+  ([rate limits](https://docs.slack.dev/apis/web-api/rate-limits)), or
+  `defaultRetryAfterSeconds` (60) when it carries none, and gives up naming
+  the URL after `maxRateLimitRetries` (5) retries; `0` fails on the first.
 - **Files.** Reply attachments are fetched from `url_private_download` with the
   bot token (`files:read`) into `<state>/slack/files/<file id>/`, and their
   paths returned on the `Reply`. The token is only ever sent to an `https`
@@ -53,6 +54,9 @@ plugins:
     channel: C0XXXXXXX            # an id, not a name
     token: env:SLACK_BOT_TOKEN    # or file:<path>#<KEY> — never inline
     operator: U0XXXXXXX           # the only user whose replies are answers
+    maxRateLimitRetries: 5        # 429s waited out before a call fails
+    defaultRetryAfterSeconds: 60  # the wait when a 429 names none
+    retentionDays: 30             # unused files and thread memory, then pruned; 0 keeps all
 ```
 
 The channel and the operator are refused at mount unless they look like ids,
@@ -83,6 +87,25 @@ exists is a whole file. An attachment over 25 MB is not downloaded: one Slack
 declares that large is skipped unread, and one that proves that large while it
 arrives is refused as the bytes are counted, so the daemon never holds it. The
 reply names each skipped file in its text.
+
+## What it keeps, and how it goes away
+
+Everything lives under `<state>/slack/`: `threads/<work id>/` for each work
+item's thread and `files/<thread ts>/<file id>/<name>` for what was downloaded
+from it, so a thread's files sit under it.
+
+- **Retention.** A downloaded file or a thread's memory nobody used within
+  `retentionDays` is pruned. Using counts: reading a reply again, or opening
+  the thread, keeps it. The plugin prunes on its own while it is used, at most
+  once an hour, and a prune never fails a call. An attempt whose owner is
+  still posting is never pruned, however old.
+- **One piece of work.** `forget(workId)` removes that thread's memory and
+  every file downloaded from it, for whatever retires work by command.
+- **By hand.** Any of `files/` can be deleted at any time: a missing file is
+  downloaded again the next time its reply is read. Deleting a work item's
+  directory under `threads/`, or pruning it, only forgets the thread on this
+  machine — it stays in Slack, and the next question for that work opens a new
+  one.
 
 The app is created from a manifest carrying exactly these scopes:
 
@@ -129,6 +152,12 @@ the guardrail the other two carry.
 - [x] An attachment over the limit is named in the reply and never held in
       memory, whether or not it declared its size
       (proof: test:plugins/slack/tests/fetchTransport.test.ts)
+- [x] What nobody used within the retention is pruned on its own, a thread
+      still in use and an attempt still posting are not, and one piece of
+      work can be forgotten with its files
+      (proof: test:plugins/slack/tests/SlackConversation.retention.test.ts)
+- [x] How often and how long a `429` is waited out are settings
+      (proof: test:plugins/slack/tests/plugin.test.ts)
 - [x] A reply with an image is returned with a readable local path
       (proof: test:plugins/slack/tests/SlackConversation.test.ts)
 - [x] Replies from anyone but the operator, and the bot's own, are never
