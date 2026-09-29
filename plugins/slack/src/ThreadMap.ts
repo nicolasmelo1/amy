@@ -29,8 +29,11 @@ export interface ThreadMapOptions {
   onDisplaced?: (ts: string) => void;
 }
 
-/** What `start` is told: when an earlier attempt that may have posted began. */
-export type StartRoot = (recoverSince: number | undefined) => Promise<string>;
+/**
+ * What `start` is told: when an earlier attempt that may have posted began.
+ * It answers the root, and whether it posted it or found one already there.
+ */
+export type StartRoot = (recoverSince: number | undefined) => Promise<{ ts: string; posted: boolean }>;
 
 /** Takes back a root this process posted after somebody else's replaced its claim. */
 export type DiscardRoot = (ts: string) => Promise<void>;
@@ -90,6 +93,9 @@ export class ThreadMap {
     const ts = inChannel(current, channel)?.ts;
     if (!ts) return undefined;
     touch(this.file(workId, current!.n));
+    // Numbers come back after a forget, so the same number is not the same
+    // claim: it has to still carry the same root, and still be the newest.
+    if (this.read(workId, current!.n)?.entry.ts !== ts) return undefined;
     if (Math.max(0, ...this.generations(workId)) !== current!.n) return undefined;
     this.workOf.set(ts, workId);
     return ts;
@@ -144,6 +150,13 @@ export class ThreadMap {
   async open(workId: string, channel: string, start: StartRoot, discard: DiscardRoot = async () => {}): Promise<string> {
     requireId(workId);
     const deadline = Date.now() + this.maxWaitMs;
+    // A root this process posted after losing its claim, taken back only once
+    // the winner's is known — and only if the winner did not settle on it.
+    let posted: string | undefined;
+    const settle = async (ts: string): Promise<string> => {
+      if (posted && posted !== ts) await discard(posted);
+      return ts;
+    };
     for (;;) {
       const top = this.current(workId);
       if (this.mustWaitOn(top)) {
@@ -158,10 +171,11 @@ export class ThreadMap {
       if (entry?.ts) {
         if (top!.n !== settled!.n && !this.resettle(workId, top!.n + 1, channel, entry.ts)) continue;
         this.workOf.set(entry.ts, workId);
-        return entry.ts;
+        return settle(entry.ts);
       }
-      const ts = await this.attempt(workId, channel, (top?.n ?? 0) + 1, entry?.pendingSince, start, discard);
-      if (ts !== undefined) return ts;
+      const outcome = await this.attempt(workId, channel, (top?.n ?? 0) + 1, entry?.pendingSince, start);
+      if (outcome?.won) return settle(outcome.ts);
+      if (outcome?.posted) posted = outcome.ts;
     }
   }
 
@@ -183,7 +197,8 @@ export class ThreadMap {
 
   /**
    * One attempt at generation `next`: undefined when somebody else won the
-   * number, the root's `ts` when this one posted or recovered it.
+   * number; otherwise the root it posted or recovered, and whether its claim
+   * was still its own when the answer came back.
    */
   private async attempt(
     workId: string,
@@ -191,8 +206,7 @@ export class ThreadMap {
     next: number,
     recoverSince: number | undefined,
     start: StartRoot,
-    discard: DiscardRoot,
-  ): Promise<string | undefined> {
+  ): Promise<{ ts: string; posted: boolean; won: boolean } | undefined> {
     // Once, before the post: a failure reported later must not move it.
     const pendingSince = recoverSince ?? Date.now();
     const owner = `${process.pid}:${randomUUID()}`;
@@ -201,8 +215,9 @@ export class ThreadMap {
     const renew = setInterval(() => touch(this.file(workId, next)), Math.max(1, Math.floor(this.leaseMs / 4)));
     renew.unref();
     let ts: string;
+    let posted: boolean;
     try {
-      ts = await start(recoverSince);
+      ({ ts, posted } = await start(recoverSince));
     } catch (error) {
       // Released, not removed: Slack may have taken the root before the
       // call failed, and the next attempt recovers from this instant.
@@ -213,10 +228,10 @@ export class ThreadMap {
     }
     if (Math.max(0, ...this.generations(workId)) > next) {
       // Paused past its lease and taken over: the claim is not ours any more,
-      // so the root is not published or returned. It is taken back from Slack,
-      // and the open goes on to read whatever the newer claim settles on.
-      await discard(ts);
-      return undefined;
+      // so the root is not published. The open reads what the newer claim
+      // settles on, and takes this root back only if it posted it and the
+      // winner did not recover that very root.
+      return { ts, posted, won: false };
     }
     this.replace(workId, next, { channel, ts });
     const displaced = this.rootsBelow(workId, next).filter((older) => older !== ts);
@@ -226,7 +241,7 @@ export class ThreadMap {
       this.onDisplaced(older);
     }
     this.workOf.set(ts, workId);
-    return ts;
+    return { ts, posted, won: true };
   }
 
   /**

@@ -281,13 +281,13 @@ export class SlackConversation implements Conversation {
     const channel = this.options.channel;
     const ts = await this.threads.open(workId, channel, async (recoverSince) => {
       const recovered = recoverSince === undefined ? undefined : await this.findRoot(workId, recoverSince);
-      if (recovered) return recovered;
+      if (recovered) return { ts: recovered, posted: false };
       const { body } = await this.api.call("chat.postMessage", {
         channel,
         text: title,
         metadata: JSON.stringify({ event_type: ROOT_EVENT, event_payload: { work_id: workId } }),
       });
-      return String(body.ts);
+      return { ts: String(body.ts), posted: true };
     }, async (superseded) => {
       // Best effort: a root that cannot be deleted is a stray message in the
       // channel, never a second thread this machine remembers.

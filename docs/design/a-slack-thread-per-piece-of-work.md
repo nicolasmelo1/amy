@@ -81,8 +81,10 @@ the next number first:
   while it works, so a claim whose lease ran out is dead even when some other
   process now has its pid. An owner paused past its lease and taken over may
   still have reached Slack; when it resumes and finds a newer generation, it
-  neither publishes nor returns its root — it deletes it (`chat.delete`, which
-  `chat:write` allows for the bot's own messages) and adopts the newer thread.
+  neither publishes nor returns its root. It waits for what the newer claim
+  settles on and adopts it, then deletes its own root (`chat.delete`, which
+  `chat:write` allows for the bot's own messages) only if it posted that root
+  itself and the winner did not recover that very one.
   A post already sent cannot be prevented from here; one thread remembered,
   and at most a stray message removed, is what can be kept.
 - **Forgetting.** A forget or a prune leaves a tombstone as the next number,
@@ -98,7 +100,9 @@ the next number first:
   dead tombstone instead of posting a second root, and a retried forget
   finishes the job.
 
-Opening one work item never rewrites another's file, and a thread remembered
+Generation numbers come back after a forget, so a look that reads a
+thread checks the same generation still carries the same root, not only the
+same number. Opening one work item never rewrites another's file, and a thread remembered
 for another channel starts a new generation. An empty work id is refused: it
 would name every thread.
 

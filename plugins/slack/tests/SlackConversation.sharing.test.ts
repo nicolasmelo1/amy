@@ -280,6 +280,95 @@ describe("an owner paused past its lease and taken over", () => {
   });
 });
 
+describe("a superseded owner whose root the winner recovered", () => {
+  it("does not delete a root the winner settled on, whether it posted it late or recovered it too", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const calls: HttpRequest[] = [];
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        calls.push(request);
+        if (methodOf(request) === "chat.postMessage") await slow;
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+      },
+    });
+    const late = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
+
+    const opening = late.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Slack took the post; its answer is late. The taker recovered that root.
+    writeGeneration("ENG-1", 2, { channel: CHANNEL, ts: "1790000001.000100" });
+    release();
+
+    expect(await opening).toEqual({ id: "1790000001.000100" });
+    expect(calls.map(methodOf)).not.toContain("chat.delete");
+  });
+});
+
+describe("a superseded owner that only recovered a root", () => {
+  it("never deletes a root it did not post, even when the winner settled on another", async () => {
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, pendingSince: 1790000000000, owner: `${DEAD}:gone` });
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const calls: HttpRequest[] = [];
+    const answer = (value: unknown) => ({ status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify(value)) });
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        calls.push(request);
+        switch (methodOf(request)) {
+          case "auth.test":
+            return answer({ ok: true, user_id: BOT });
+          case "conversations.history":
+            await slow;
+            return answer({
+              ok: true,
+              has_more: false,
+              messages: [{ ts: "1790000001.000100", user: BOT, text: "ENG-1", metadata: { event_type: "amy_work_thread", event_payload: { work_id: "ENG-1" } } }],
+            });
+          default:
+            return answer({ ok: true });
+        }
+      },
+    });
+    const recovering = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
+
+    const opening = recovering.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    writeGeneration("ENG-1", 3, { channel: CHANNEL, ts: "1790000003.000100" });
+    release();
+
+    expect(await opening).toEqual({ id: "1790000003.000100" });
+    expect(calls.map(methodOf)).not.toContain("chat.delete");
+  });
+});
+
+describe("a generation number reused after a forget", () => {
+  it("is not taken for the forgotten thread by a look that started before the forget", () => {
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000001.000100" });
+    const slack = slackAt(directory, () => { throw new Error("nothing is posted"); });
+    // Between the look and the touch: forgotten, and a fresh open claims 1 again.
+    const utimes = fs.utimesSync;
+    const spy = vi.spyOn(fs, "utimesSync").mockImplementationOnce((file, atime, mtime) => {
+      fs.rmSync(chainOf("ENG-1"), { recursive: true, force: true });
+      writeGeneration("ENG-1", 1, { channel: CHANNEL, pendingSince: Date.now(), owner: `${process.pid}:fresh` });
+      utimes(file, atime, mtime);
+    });
+
+    let opened: Promise<unknown>;
+    try {
+      opened = slack.open("ENG-1", "ENG-1");
+    } finally {
+      spy.mockRestore();
+    }
+    // Not the forgotten root: it waits for the fresh claim instead.
+    const settledLater = new Promise((resolve) => setTimeout(resolve, 50)).then(() =>
+      writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000009.000100" }));
+    return Promise.all([opened, settledLater]).then(([thread]) => {
+      expect(thread).toEqual({ id: "1790000009.000100" });
+    });
+  });
+});
+
 describe("a forget racing an open", () => {
   it("backs off, removing only its tombstone, when the thread was used after it looked", () => {
     writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000001.000100" });
