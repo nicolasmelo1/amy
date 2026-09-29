@@ -150,33 +150,75 @@ export class ThreadMap {
   async open(workId: string, channel: string, start: StartRoot, discard: DiscardRoot = async () => {}): Promise<string> {
     requireId(workId);
     const deadline = Date.now() + this.maxWaitMs;
-    // A root this process posted after losing its claim, taken back only once
-    // the winner's is known — and only if the winner did not settle on it.
-    let posted: string | undefined;
-    const settle = async (ts: string): Promise<string> => {
-      if (posted && posted !== ts) await discard(posted);
-      return ts;
-    };
+    // What this open has lost so far: the claim, to tell a winner from a
+    // forget, and a root it posted after losing it, taken back only once the
+    // winner's is known — and only if the winner did not settle on it.
+    const lost: Lost = {};
     for (;;) {
-      const top = this.current(workId);
-      if (this.mustWaitOn(top)) {
+      const step = await this.step(workId, channel, start, lost);
+      if (step.kind === "wait") {
         if (Date.now() >= deadline) throw new Error(`another amy is still working on the thread for ${workId}`);
         await new Promise((resolve) => setTimeout(resolve, this.pollMs));
         continue;
       }
-      // Under a tombstone whose owner died mid-forget, the thread it covered
-      // is still the thread: adopted, not replaced by a second root.
-      const settled = this.settled(workId);
-      const entry = inChannel(settled, channel);
-      if (entry?.ts) {
-        if (top!.n !== settled!.n && !this.resettle(workId, top!.n + 1, channel, entry.ts)) continue;
-        this.workOf.set(entry.ts, workId);
-        return settle(entry.ts);
+      if (step.kind === "again") continue;
+      if (lost.posted && lost.posted !== step.ts) await discard(lost.posted);
+      if (step.kind === "forgotten") {
+        throw new Error(`the thread for ${workId} was forgotten while it was being opened`);
       }
-      const outcome = await this.attempt(workId, channel, (top?.n ?? 0) + 1, entry?.pendingSince, start);
-      if (outcome?.won) return settle(outcome.ts);
-      if (outcome?.posted) posted = outcome.ts;
+      return step.ts;
     }
+  }
+
+  /** One look at the chain, and what the open does next because of it. */
+  private async step(workId: string, channel: string, start: StartRoot, lost: Lost): Promise<Step> {
+    const top = this.current(workId);
+    // Forgotten while this open's post was out: nobody asked for a thread
+    // after that, so none is started — the late root is taken back.
+    if (lost.claim !== undefined && this.forgottenSince(workId, lost.claim, top)) return { kind: "forgotten" };
+    if (this.mustWaitOn(top)) return { kind: "wait" };
+
+    // Under a tombstone whose owner died mid-forget, the thread it covered
+    // is still the thread: adopted, not replaced by a second root.
+    const settled = this.settled(workId);
+    const entry = inChannel(settled, channel);
+    if (entry?.ts) {
+      if (top!.n !== settled!.n && !this.resettle(workId, top!.n + 1, channel, entry.ts)) return { kind: "again" };
+      this.workOf.set(entry.ts, workId);
+      return { kind: "thread", ts: entry.ts };
+    }
+
+    const claim = (top?.n ?? 0) + 1;
+    const outcome = await this.attempt(workId, channel, claim, entry?.pendingSince, start);
+    if (outcome?.won) return { kind: "thread", ts: outcome.ts };
+    if (outcome) lost.claim = claim;
+    if (outcome?.posted) lost.posted = outcome.ts;
+    return { kind: "again" };
+  }
+
+  /**
+   * Whether a released tombstone now stands above the claim this open lost,
+   * with no thread settled above that claim: a forget, not a winner.
+   */
+  private forgottenSince(workId: string, lostClaim: number, top: Generation | undefined): boolean {
+    if (!top?.entry.tombstone || this.isLive(top) || top.n <= lostClaim) return false;
+    const settled = this.settled(workId);
+    return !settled || settled.n < lostClaim;
+  }
+
+  /**
+   * Creates `n` exclusively and keeps it only if it is then the newest.
+   *
+   * Compaction frees numbers under a settled result, so an owner stalled past
+   * its lease can still win an exclusive create of its number after a taker
+   * published above it and cleared its claim. That create can only succeed
+   * once the taker's result exists, so the check after it always sees it.
+   */
+  private publish(workId: string, n: number, entry: ThreadEntry): boolean {
+    if (!this.create(workId, n, entry)) return false;
+    if (Math.max(0, ...this.generations(workId)) === n) return true;
+    fs.rmSync(this.file(workId, n), { force: true });
+    return false;
   }
 
   /** Writes a known root again above a dead tombstone, clearing what is under it. */
@@ -222,7 +264,7 @@ export class ThreadMap {
       // Released as the next generation, not removed: Slack may have taken
       // the root before the call failed, and the next attempt recovers from
       // this instant. If the number is gone, somebody already moved on.
-      this.create(workId, next + 1, { channel, pendingSince });
+      this.publish(workId, next + 1, { channel, pendingSince });
       throw error;
     } finally {
       clearInterval(renew);
@@ -233,7 +275,7 @@ export class ThreadMap {
     // what the newer claim settles on, and takes this root back only if it
     // posted it and the winner did not recover that very root.
     const result = next + 1;
-    if (!this.create(workId, result, { channel, ts })) return { ts, posted, won: false };
+    if (!this.publish(workId, result, { channel, ts })) return { ts, posted, won: false };
     const displaced = this.rootsBelow(workId, result).filter((older) => older !== ts);
     this.removeBelow(workId, result);
     for (const older of displaced) {
@@ -389,6 +431,18 @@ export class ThreadMap {
     return path.join(this.directoryOf(workId), `${n}.json`);
   }
 }
+
+/** What an open lost along the way. */
+interface Lost {
+  claim?: number;
+  posted?: string;
+}
+
+type Step =
+  | { kind: "thread"; ts: string }
+  | { kind: "wait" }
+  | { kind: "again" }
+  | { kind: "forgotten"; ts?: undefined };
 
 /** The generation's entry when it is a thread in `channel`, not a tombstone. */
 function inChannel(current: Generation | undefined, channel: string): ThreadEntry | undefined {

@@ -323,6 +323,61 @@ describe("a post that outlives its claim, a forget and a new open", () => {
   });
 });
 
+describe("a stalled owner whose number compaction freed", () => {
+  it("does not publish below a taker that settled and compacted first", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const calls: HttpRequest[] = [];
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        calls.push(request);
+        if (methodOf(request) === "chat.postMessage") await slow;
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+      },
+    });
+    const stalled = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
+
+    const opening = stalled.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // A taker claimed 2, published 3, and compaction removed 1 and 2: the
+    // stalled owner's result number is free again.
+    fs.rmSync(path.join(chainOf("ENG-1"), "1.json"));
+    writeGeneration("ENG-1", 3, { channel: CHANNEL, ts: "1790000003.000100" });
+    release();
+
+    expect(await opening).toEqual({ id: "1790000003.000100" });
+    expect(fs.readdirSync(chainOf("ENG-1"))).toEqual(["3.json"]);
+    expect(calls.filter((call) => methodOf(call) === "chat.delete").map(argsOf)).toEqual([{ channel: CHANNEL, ts: "1790000001.000100" }]);
+  });
+});
+
+describe("a post whose claim was forgotten, with no open after it", () => {
+  it("rejects the open and takes its late root back, instead of posting another", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const calls: HttpRequest[] = [];
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        calls.push(request);
+        if (methodOf(request) === "chat.postMessage") await slow;
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+      },
+    });
+    const late = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
+
+    const opening = late.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Its lease ran out and a forget retired the claim, leaving its floor.
+    fs.rmSync(path.join(chainOf("ENG-1"), "1.json"));
+    writeGeneration("ENG-1", 2, { tombstone: true });
+    release();
+
+    await expect(opening).rejects.toThrow(/forgotten while it was being opened/);
+    expect(calls.filter((call) => methodOf(call) === "chat.postMessage")).toHaveLength(1);
+    expect(calls.filter((call) => methodOf(call) === "chat.delete").map(argsOf)).toEqual([{ channel: CHANNEL, ts: "1790000001.000100" }]);
+  });
+});
+
 describe("a superseded owner whose root the winner recovered", () => {
   it("does not delete a root the winner settled on, whether it posted it late or recovered it too", async () => {
     let release!: () => void;

@@ -75,8 +75,12 @@ the next number first:
 
 - **Posting a root.** Whoever wins the claim posts it and publishes its `ts`
   as the *next* generation, created exclusively — never written over its
-  claim. If anybody took that number first, the claim was lost while the post
-  was out, and the owner goes the superseded way below. Everybody else waits
+  claim — and kept only if it is then the newest, because compaction frees the
+  numbers under a settled result and a stalled owner could otherwise win its
+  number again below a newer thread. If either check fails, the claim was lost
+  while the post was out, and the owner goes the superseded way below; if what
+  took it was a forget, with no thread settled since, the open is rejected and
+  its late root taken back instead of posting another. Everybody else waits
   while that owner holds its claim, then reads it.
 - **Taking over.** An owner that died is taken over by creating the next
   number. A claim is held by lease: the owner renews its generation's mtime
