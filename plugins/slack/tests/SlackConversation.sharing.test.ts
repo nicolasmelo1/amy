@@ -34,6 +34,19 @@ function argsOf(request: HttpRequest): Record<string, string> {
   return Object.fromEntries(new URLSearchParams(request.body ?? ""));
 }
 
+/** Where one work item's generations live, the way the plugin lays them out. */
+function chainOf(workId: string): string {
+  return path.join(directory, "threads", Buffer.from(workId).toString("base64url"));
+}
+
+function writeGeneration(workId: string, n: number, entry: Record<string, unknown>): void {
+  fs.mkdirSync(chainOf(workId), { recursive: true });
+  fs.writeFileSync(path.join(chainOf(workId), `${n}.json`), JSON.stringify(entry));
+}
+
+/** A pid nothing on this machine runs. */
+const DEAD = 2147483646;
+
 let directory: string;
 
 beforeEach(() => {
@@ -64,7 +77,7 @@ describe("two processes sharing the thread map", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("keeps both entries when two of them open different work at once", async () => {
+  it("keeps both threads when two of them open different work at once", async () => {
     let roots = 0;
     const handler: Handler = async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -72,70 +85,97 @@ describe("two processes sharing the thread map", () => {
       return { ok: true, ts: `1790000000.00000${roots}` };
     };
 
-    await Promise.all([
+    const [one, two] = await Promise.all([
       slackAt(directory, handler).open("ENG-1", "ENG-1"),
       slackAt(directory, handler).open("ENG-2", "ENG-2"),
     ]);
 
-    const map = JSON.parse(fs.readFileSync(path.join(directory, "threads.json"), "utf8")) as Record<string, unknown>;
-    expect(Object.keys(map).sort()).toEqual(["ENG-1", "ENG-2"]);
-  });
-
-  it("takes over a lock left by a process that is gone", async () => {
-    fs.writeFileSync(path.join(directory, "threads.lock"), "2147483646");
-
-    const opened = await slackAt(directory, () => ({ ok: true, ts: "1790000000.000001" })).open("ENG-1", "ENG-1");
-
-    expect(opened).toEqual({ id: "1790000000.000001" });
-    expect(fs.existsSync(path.join(directory, "threads.lock"))).toBe(false);
+    const restarted = slackAt(directory, () => { throw new Error("nothing should be posted"); });
+    expect(await restarted.open("ENG-1", "ENG-1")).toEqual(one);
+    expect(await restarted.open("ENG-2", "ENG-2")).toEqual(two);
   });
 });
 
-describe("the lock a dead process left", () => {
-  it("is broken once when several waiters saw the same dead holder, and never the lock that replaced it", async () => {
-    const lock = path.join(directory, "threads.lock");
-    fs.writeFileSync(lock, "2147483646:dead");
-    const inside: number[] = [];
-    let concurrent = 0;
-    let most = 0;
-    const handler: Handler = async () => {
-      concurrent += 1;
-      most = Math.max(most, concurrent);
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      concurrent -= 1;
-      inside.push(1);
-      return { ok: true, ts: `1790000000.00000${inside.length}` };
+describe("an owner that died while posting", () => {
+  it("is taken over by exactly one of several waiters, and the others adopt its thread", async () => {
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, pendingSince: 1790000000000, owner: `${DEAD}:gone` });
+    let posted = 0;
+    const handler: Handler = async (request) => {
+      switch (methodOf(request)) {
+        case "auth.test":
+          return { ok: true, user_id: BOT };
+        case "conversations.history":
+          return { ok: true, messages: [], has_more: false };
+        default:
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          posted += 1;
+          return { ok: true, ts: "1790000009.000100" };
+      }
     };
 
-    await Promise.all(["ENG-1", "ENG-2", "ENG-3"].map((id) => slackAt(directory, handler).open(id, id)));
+    const opened = await Promise.all([1, 2, 3].map(() => slackAt(directory, handler).open("ENG-1", "ENG-1")));
 
-    expect(most).toBe(1);
-    expect(inside).toHaveLength(3);
-    expect(fs.readdirSync(directory).sort()).toEqual(["threads.json"]);
+    expect(posted).toBe(1);
+    expect(new Set(opened.map((thread) => thread.id))).toEqual(new Set(["1790000009.000100"]));
+    // Settled: the dead attempt is gone and nothing staged is left behind.
+    expect(fs.readdirSync(chainOf("ENG-1"))).toEqual(["2.json"]);
   });
 
-  it("releases only a lock that is still its own", async () => {
-    const lock = path.join(directory, "threads.lock");
-    const slack = slackAt(directory, () => {
-      // Somebody else's lock appears while this holder is inside.
-      fs.writeFileSync(lock, `${process.pid}:somebody-else`);
-      return { ok: true, ts: "1790000000.000001" };
+  it("loses the takeover to a process that created the same generation first, and waits for its thread", async () => {
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, pendingSince: 1790000000000, owner: `${DEAD}:gone` });
+    // Another process wins generation 2 between this one reading the chain
+    // and linking its own.
+    const link = fs.linkSync;
+    const spy = vi.spyOn(fs, "linkSync").mockImplementationOnce((from, to) => {
+      writeGeneration("ENG-1", 2, { channel: CHANNEL, pendingSince: 1790000000000, owner: `${process.pid}:elsewhere` });
+      link(from, to);
     });
+    const slack = slackAt(directory, () => { throw new Error("the winner posts, not this one"); });
 
-    await slack.open("ENG-1", "ENG-1");
+    try {
+      const waiting = slack.open("ENG-1", "ENG-1");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      writeGeneration("ENG-1", 2, { channel: CHANNEL, ts: "1790000002.000100" });
 
-    expect(fs.readFileSync(lock, "utf8")).toBe(`${process.pid}:somebody-else`);
+      expect(await waiting).toEqual({ id: "1790000002.000100" });
+    } finally {
+      spy.mockRestore();
+    }
   });
 
-  it("clears a breaker whose own process died, so the dead lock can still be broken", async () => {
-    fs.writeFileSync(path.join(directory, "threads.lock"), "2147483646:dead");
-    const { createHash } = await import("node:crypto");
-    const digest = createHash("sha256").update("2147483646:dead").digest("hex").slice(0, 16);
-    fs.writeFileSync(path.join(directory, `threads.lock.${digest}.break`), "2147483645");
+  it("is waited for, not taken over, while it is alive", async () => {
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, pendingSince: 1790000000000, owner: `${process.pid}:posting` });
+    const slack = slackAt(directory, () => { throw new Error("a live owner's attempt must not be repeated"); });
 
-    const opened = await slackAt(directory, () => ({ ok: true, ts: "1790000000.000001" })).open("ENG-1", "ENG-1");
+    const waiting = slack.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000001.000100" });
 
-    expect(opened).toEqual({ id: "1790000000.000001" });
+    expect(await waiting).toEqual({ id: "1790000001.000100" });
+  });
+
+  it("leaves its attempt released, not removed, when Slack refuses, so the next one recovers", async () => {
+    const calls: HttpRequest[] = [];
+    let first = true;
+    const handler: Handler = (request) => {
+      switch (methodOf(request)) {
+        case "chat.postMessage":
+          if (first) {
+            first = false;
+            return { ok: false, error: "fatal_error" };
+          }
+          return { ok: true, ts: "1790000009.000100" };
+        case "auth.test":
+          return { ok: true, user_id: BOT };
+        default:
+          return { ok: true, messages: [], has_more: false };
+      }
+    };
+    const slack = slackAt(directory, handler, calls);
+
+    await expect(slack.open("ENG-1", "ENG-1")).rejects.toThrow(/fatal_error/);
+    expect(await slack.open("ENG-1", "ENG-1")).toEqual({ id: "1790000009.000100" });
+    expect(calls.map(methodOf)).toEqual(["chat.postMessage", "auth.test", "conversations.history", "chat.postMessage"]);
   });
 });
 
@@ -143,7 +183,7 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
   const pendingSince = 1790000000000;
 
   beforeEach(() => {
-    fs.writeFileSync(path.join(directory, "threads.json"), JSON.stringify({ "ENG-1": { channel: CHANNEL, pendingSince } }));
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, pendingSince, owner: `${DEAD}:gone` });
   });
 
   it("adopts the root it finds for this work instead of posting a second, by work id and not by title", async () => {
@@ -278,6 +318,63 @@ describe("recovering from a failed call", () => {
     const [reply] = await slack.replies({ id: "1790000000.000100" }, "2026-09-21T00:00:00.000Z");
     expect(new Uint8Array(fs.readFileSync(reply!.files[0]!))).toEqual(picture);
     expect(fs.readdirSync(path.join(directory, "files", "F0SHOT"))).toEqual(["shot.png"]);
+  });
+
+  it("names a picture larger than the limit instead of downloading it, when Slack says how large it is", async () => {
+    const calls: HttpRequest[] = [];
+    const handler: Handler = (request) => {
+      if (methodOf(request) === "auth.test") return { ok: true, user_id: BOT };
+      return {
+        ok: true,
+        messages: [{
+          ts: "1790000100.000100",
+          user: OPERATOR,
+          text: "the recording",
+          files: [{ id: "F0BIG", name: "screen.mov", size: 26 * 1024 * 1024, url_private: "https://files.slack.com/files-pri/T0/F0BIG/screen.mov" }],
+        }],
+        has_more: false,
+      };
+    };
+
+    const [reply] = await slackAt(directory, handler, calls).replies({ id: "1790000000.000100" }, "2026-09-21T00:00:00.000Z");
+
+    expect(reply!.files).toEqual([]);
+    expect(reply!.text).toBe(`the recording\n[screen.mov was not downloaded: it is larger than ${25 * 1024 * 1024} bytes]`);
+    expect(calls.some((call) => call.url.startsWith("https://files.slack.com/"))).toBe(false);
+  });
+
+  it("stops reading a download that turns out larger than the limit, whatever it declared", async () => {
+    const handler: Handler = (request) => {
+      if (request.url.startsWith("https://files.slack.com/")) {
+        expect(request.maxBytes).toBe(4);
+        return new Uint8Array(5);
+      }
+      if (methodOf(request) === "auth.test") return { ok: true, user_id: BOT };
+      return {
+        ok: true,
+        messages: [{
+          ts: "1790000100.000100",
+          user: OPERATOR,
+          text: "",
+          files: [{ id: "F0LIE", name: "small.png", size: 1, url_private: "https://files.slack.com/files-pri/T0/F0LIE/small.png" }],
+        }],
+        has_more: false,
+      };
+    };
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        const answer = await handler(request);
+        const body = answer instanceof Uint8Array ? answer : new TextEncoder().encode(JSON.stringify(answer));
+        return { status: 200, headers: {}, body };
+      },
+    });
+    const slack = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory, maxFileBytes: 4 });
+
+    const [reply] = await slack.replies({ id: "1790000000.000100" }, "2026-09-21T00:00:00.000Z");
+
+    expect(reply!.files).toEqual([]);
+    expect(reply!.text).toBe("[small.png was not downloaded: it is larger than 4 bytes]");
+    expect(fs.existsSync(path.join(directory, "files", "F0LIE"))).toBe(false);
   });
 
   it("names the scope Slack said was missing", async () => {

@@ -1,94 +1,120 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
 /**
- * A work item's thread: its root `ts` once Slack answered, or the instant a
- * root was about to be posted, so a crash between the two can be recovered.
+ * One attempt at a work item's thread: its root `ts` once Slack answered, or
+ * the owner still posting it and the instant the first attempt began, so a
+ * crash between Slack taking a root and this file learning it is recoverable.
  */
 export interface ThreadEntry {
   channel: string;
   ts?: string;
+  /** When the first attempt of this chain was about to post. */
   pendingSince?: number;
+  /** `<pid>:<uuid>` of the attempt still posting; absent once released. */
+  owner?: string;
 }
 
 export interface ThreadMapOptions {
-  /** How long to wait for another process's lock before failing. */
+  /** How long to wait for a live owner to finish before failing. */
   maxWaitMs?: number;
   pollMs?: number;
 }
 
+/** What `start` is told: when an earlier attempt that may have posted began. */
+export type StartRoot = (recoverSince: number | undefined) => Promise<string>;
+
 /**
  * `workId → thread` on disk, shared by every process that mounts the plugin.
  *
- * The state directory is machine-wide, so two workflows' daemons read and
- * write the same map. Reading is free; opening a thread happens under a lock
- * file holding the owner's pid and a claim for this one acquisition, so no
- * two processes post a root for one work item and no write loses another's
- * entry.
+ * The state directory is machine-wide, so several daemons use it at once.
+ * Each work item is a chain of numbered generations, `threads/<id>/<n>.json`,
+ * and a generation is created exclusively — written aside and linked into
+ * place — so exactly one process wins each number. Taking over from an owner
+ * that died is creating the next number, so no claim is ever removed while
+ * somebody may hold it, and one work item's file is never rewritten by the
+ * opening of another.
  */
 export class ThreadMap {
-  private readonly file: string;
-  private readonly lockFile: string;
+  private readonly root: string;
   private readonly maxWaitMs: number;
   private readonly pollMs: number;
 
-  constructor(
-    private readonly directory: string,
-    options: ThreadMapOptions = {},
-  ) {
-    this.file = path.join(directory, "threads.json");
-    this.lockFile = path.join(directory, "threads.lock");
-    // A holder may be waiting out Slack's one-a-minute limit several times.
+  constructor(directory: string, options: ThreadMapOptions = {}) {
+    this.root = path.join(directory, "threads");
+    // An owner may be waiting out Slack's one-a-minute limit several times.
     this.maxWaitMs = options.maxWaitMs ?? 10 * 60_000;
     this.pollMs = options.pollMs ?? 100;
   }
 
-  get(workId: string): ThreadEntry | undefined {
-    return this.read()[workId];
+  /** The thread this work already has in `channel`, if it has one. */
+  known(workId: string, channel: string): string | undefined {
+    const current = this.current(workId)?.entry;
+    return current?.channel === channel ? current.ts : undefined;
   }
 
-  /** Only under `withLock`. Written whole and renamed into place. */
-  set(workId: string, entry: ThreadEntry): void {
-    const threads = { ...this.read(), [workId]: entry };
-    const partial = `${this.file}.${process.pid}.tmp`;
-    fs.writeFileSync(partial, JSON.stringify(threads, null, 2));
-    fs.renameSync(partial, this.file);
-  }
-
-  async withLock<T>(work: () => Promise<T>): Promise<T> {
-    const claim = await this.acquire();
-    try {
-      return await work();
-    } finally {
-      // Only our own: a live holder's lock is never broken, so a lock that
-      // still reads our claim is still ours.
-      if (this.readLock() === claim) fs.rmSync(this.lockFile, { force: true });
-    }
-  }
-
-  private async acquire(): Promise<string> {
-    fs.mkdirSync(this.directory, { recursive: true });
-    const claim = `${process.pid}:${randomUUID()}`;
+  /** The work's thread in `channel`, posting its root through `start` only if nobody has. */
+  async open(workId: string, channel: string, start: StartRoot): Promise<string> {
     const deadline = Date.now() + this.maxWaitMs;
     for (;;) {
-      if (this.publish(claim)) return claim;
-      const held = this.readLock();
-      if (held !== undefined && !isAlive(pidOf(held)) && this.breakStale(held)) continue;
-      if (Date.now() >= deadline) throw new Error(`${this.lockFile} is still held; another amy is opening a thread`);
-      await new Promise((resolve) => setTimeout(resolve, this.pollMs));
+      const current = this.current(workId);
+      const entry = current?.entry.channel === channel ? current.entry : undefined;
+      if (entry?.ts) return entry.ts;
+
+      if (entry?.owner && isAlive(pidOf(entry.owner))) {
+        if (Date.now() >= deadline) throw new Error(`another amy is still opening the thread for ${workId}`);
+        await new Promise((resolve) => setTimeout(resolve, this.pollMs));
+        continue;
+      }
+
+      const next = (current?.n ?? 0) + 1;
+      const recoverSince = entry?.pendingSince;
+      const owner = `${process.pid}:${randomUUID()}`;
+      if (!this.create(workId, next, { channel, pendingSince: recoverSince ?? Date.now(), owner })) continue;
+
+      let ts: string;
+      try {
+        ts = await start(recoverSince);
+      } catch (error) {
+        // Released, not removed: Slack may have taken the root before the
+        // call failed, and the next attempt recovers from this instant.
+        this.replace(workId, next, { channel, pendingSince: recoverSince ?? Date.now() });
+        throw error;
+      }
+      this.replace(workId, next, { channel, ts });
+      this.forgetBefore(workId, next);
+      return ts;
     }
   }
 
-  /**
-   * Written aside and linked into place, which fails if a lock exists: the
-   * lock file never exists without the claim that owns it.
-   */
-  private publish(claim: string): boolean {
-    const staged = `${this.lockFile}.${randomUUID()}.tmp`;
-    fs.writeFileSync(staged, claim);
+  private current(workId: string): { n: number; entry: ThreadEntry } | undefined {
+    const n = Math.max(0, ...this.generations(workId));
+    if (n === 0) return undefined;
     try {
-      fs.linkSync(staged, this.lockFile);
+      return { n, entry: JSON.parse(fs.readFileSync(this.file(workId, n), "utf8")) as ThreadEntry };
+    } catch {
+      // Removed by the owner that superseded it between the listing and the read.
+      return this.current(workId);
+    }
+  }
+
+  private generations(workId: string): number[] {
+    const directory = this.directoryOf(workId);
+    if (!fs.existsSync(directory)) return [];
+    return fs.readdirSync(directory)
+      .map((name) => /^(\d+)\.json$/.exec(name)?.[1])
+      .filter((n): n is string => n !== undefined)
+      .map(Number);
+  }
+
+  /** Exclusive: false when somebody else already holds this number. */
+  private create(workId: string, n: number, entry: ThreadEntry): boolean {
+    fs.mkdirSync(this.directoryOf(workId), { recursive: true });
+    const staged = this.staged(workId);
+    fs.writeFileSync(staged, JSON.stringify(entry));
+    try {
+      fs.linkSync(staged, this.file(workId, n));
       return true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
@@ -98,56 +124,35 @@ export class ThreadMap {
     }
   }
 
-  /**
-   * One breaker per dead claim. Every waiter that saw the same dead holder
-   * races for the breaker named after it; the winner removes the lock only
-   * if it still carries that claim, and a loser removes nothing — so a lock
-   * somebody took after the dead one is never the one removed.
-   */
-  private breakStale(claim: string): boolean {
-    const breaker = `${this.lockFile}.${createHash("sha256").update(claim).digest("hex").slice(0, 16)}.break`;
-    try {
-      fs.writeFileSync(breaker, String(process.pid), { flag: "wx" });
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      // A breaker whose own process died mid-break would hold this lock
-      // forever; clearing it lets the next waiter try.
-      if (!isAlive(pidOf(readOrEmpty(breaker)))) fs.rmSync(breaker, { force: true });
-      return false;
-    }
-    try {
-      if (this.readLock() === claim) fs.rmSync(this.lockFile, { force: true });
-    } finally {
-      fs.rmSync(breaker, { force: true });
-    }
-    return true;
+  /** Only by the generation's owner, whole and renamed into place. */
+  private replace(workId: string, n: number, entry: ThreadEntry): void {
+    const staged = this.staged(workId);
+    fs.writeFileSync(staged, JSON.stringify(entry));
+    fs.renameSync(staged, this.file(workId, n));
   }
 
-  private readLock(): string | undefined {
-    try {
-      return fs.readFileSync(this.lockFile, "utf8");
-    } catch {
-      return undefined;
+  /** Older generations are settled history once a root is known. */
+  private forgetBefore(workId: string, n: number): void {
+    for (const older of this.generations(workId)) {
+      if (older < n) fs.rmSync(this.file(workId, older), { force: true });
     }
   }
 
+  private directoryOf(workId: string): string {
+    return path.join(this.root, Buffer.from(workId).toString("base64url"));
+  }
 
-  private read(): Record<string, ThreadEntry> {
-    if (!fs.existsSync(this.file)) return {};
-    return JSON.parse(fs.readFileSync(this.file, "utf8")) as Record<string, ThreadEntry>;
+  private file(workId: string, n: number): string {
+    return path.join(this.directoryOf(workId), `${n}.json`);
+  }
+
+  private staged(workId: string): string {
+    return path.join(this.directoryOf(workId), `.${randomUUID()}.tmp`);
   }
 }
 
-function readOrEmpty(file: string): string {
-  try {
-    return fs.readFileSync(file, "utf8");
-  } catch {
-    return "";
-  }
-}
-
-function pidOf(claim: string): number {
-  return Number(claim.split(":")[0]);
+function pidOf(owner: string): number {
+  return Number(owner.split(":")[0]);
 }
 
 function isAlive(pid: number): boolean {

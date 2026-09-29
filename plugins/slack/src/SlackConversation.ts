@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Conversation, Reply, ThreadRef } from "@amykit/core";
-import { SlackApi } from "./SlackApi.js";
+import { SlackApi, TooLarge } from "./SlackApi.js";
 import { ThreadMap } from "./ThreadMap.js";
 
 export interface SlackConversationOptions {
@@ -14,6 +14,8 @@ export interface SlackConversationOptions {
   directory: string;
   /** How long to wait for another process opening a thread. */
   lockWaitMs?: number;
+  /** The largest attachment downloaded; a larger one is named in the reply instead. */
+  maxFileBytes?: number;
 }
 
 /** What `amy doctor` prints for this plugin, one line per question. */
@@ -26,6 +28,7 @@ export interface SlackCheck {
 interface SlackFile {
   id?: string;
   name?: string;
+  size?: number;
   url_private?: string;
   url_private_download?: string;
 }
@@ -49,6 +52,9 @@ interface SlackMessage {
  * accepted just before a crash is found again in the channel's history
  * rather than posted twice.
  */
+/** Large enough for any screenshot, small enough that a daemon never holds a video. */
+const DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024;
+
 /** What marks a root as amy's, and whose work it opened. */
 const ROOT_EVENT = "amy_work_thread";
 
@@ -67,8 +73,8 @@ export class SlackConversation implements Conversation {
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
-    const remembered = this.threads.get(workId);
-    if (remembered?.channel === this.options.channel && remembered.ts) return Promise.resolve({ id: remembered.ts });
+    const known = this.threads.known(workId, this.options.channel);
+    if (known) return Promise.resolve({ id: known });
 
     // Two looks at the same work in one process must not open two threads.
     const pending = this.opening.get(workId);
@@ -102,11 +108,12 @@ export class SlackConversation implements Conversation {
       if (!this.isOperatorAnswer(message, thread.id, bot)) continue;
       const at = tsToMs(message.ts!);
       if (at <= after) continue;
+      const { paths, skipped } = await this.downloadAll(message.files ?? []);
       answers.push({
         at: new Date(at).toISOString(),
         author: message.user!,
-        text: message.text ?? "",
-        files: await this.downloadAll(message.files ?? []),
+        text: [message.text ?? "", ...skipped].filter(Boolean).join("\n"),
+        files: paths,
       });
     }
     return answers.sort((a, b) => a.at.localeCompare(b.at));
@@ -157,33 +164,22 @@ export class SlackConversation implements Conversation {
   }
 
   /**
-   * Under the lock, the map is read again: another process may have opened
-   * the thread while this one waited.
+   * Exactly one process posts a root per attempt; an attempt that follows
+   * one that may have reached Slack looks for that root before posting.
    */
-  private startThread(workId: string, title: string): Promise<ThreadRef> {
+  private async startThread(workId: string, title: string): Promise<ThreadRef> {
     const channel = this.options.channel;
-    return this.threads.withLock(async () => {
-      const entry = this.threads.get(workId);
-      if (entry?.channel === channel && entry.ts) return { id: entry.ts };
-
-      const recovered = entry?.channel === channel && entry.pendingSince !== undefined
-        ? await this.findRoot(workId, entry.pendingSince)
-        : undefined;
-      if (recovered) {
-        this.threads.set(workId, { channel, ts: recovered });
-        return { id: recovered };
-      }
-
-      this.threads.set(workId, { channel, pendingSince: Date.now() });
+    const ts = await this.threads.open(workId, channel, async (recoverSince) => {
+      const recovered = recoverSince === undefined ? undefined : await this.findRoot(workId, recoverSince);
+      if (recovered) return recovered;
       const { body } = await this.api.call("chat.postMessage", {
         channel,
         text: title,
         metadata: JSON.stringify({ event_type: ROOT_EVENT, event_payload: { work_id: workId } }),
       });
-      const ts = String(body.ts);
-      this.threads.set(workId, { channel, ts });
-      return { id: ts };
+      return String(body.ts);
     });
+    return { id: ts };
   }
 
   /**
@@ -244,20 +240,38 @@ export class SlackConversation implements Conversation {
     return this.botUser;
   }
 
-  private async downloadAll(files: readonly SlackFile[]): Promise<string[]> {
+  /**
+   * The attachments as local paths, and a line naming each one too large to
+   * fetch — declared so by Slack, or found so while it arrived — so the
+   * reader knows a file was there rather than never seeing it.
+   */
+  private async downloadAll(files: readonly SlackFile[]): Promise<{ paths: string[]; skipped: string[] }> {
+    const limit = this.options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
     const paths: string[] = [];
+    const skipped: string[] = [];
     for (const file of files) {
       const url = file.url_private_download ?? file.url_private;
       if (!file.id || !url) continue;
-      paths.push(await this.download(file.id, file.name ?? file.id, url));
+      const name = file.name ?? file.id;
+      const tooLarge = `[${name} was not downloaded: it is larger than ${limit} bytes]`;
+      if ((file.size ?? 0) > limit) {
+        skipped.push(tooLarge);
+        continue;
+      }
+      try {
+        paths.push(await this.download(file.id, name, url, limit));
+      } catch (error) {
+        if (!(error instanceof TooLarge)) throw error;
+        skipped.push(tooLarge);
+      }
     }
-    return paths;
+    return { paths, skipped };
   }
 
-  private async download(id: string, name: string, url: string): Promise<string> {
+  private async download(id: string, name: string, url: string, limit: number): Promise<string> {
     const target = path.join(this.filesDirectory, safeName(id), safeName(name));
     if (fs.existsSync(target)) return target;
-    const bytes = await this.api.download(url);
+    const bytes = await this.api.download(url, limit);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     // Staged and renamed, so a path that exists is always a whole file.
     const partial = `${target}.${randomUUID()}.partial`;

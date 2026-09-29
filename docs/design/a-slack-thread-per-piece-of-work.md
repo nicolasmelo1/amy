@@ -56,28 +56,33 @@ plugins:
 ```
 
 The channel and the operator are refused at mount unless they look like ids,
-and the token unless it says where it lives. The thread for a work item is
-remembered in the state directory (`slack/threads.json`, `workId → thread_ts`),
-written whole and renamed into place, so it survives restarts; a thread
-remembered for another channel is not reused.
+and the token unless it says where it lives.
 
-The state directory is machine-wide, so every daemon that mounts the plugin
-shares that map. Opening a thread happens under `slack/threads.lock`, which
-is linked into place already carrying the owner's pid and a claim for that one
-acquisition, and is released only while it still carries that claim. A lock
-whose owner is gone is broken by whichever waiter wins the breaker named after
-its claim, and only if it still carries it, so a lock somebody took after the
-dead one is never removed. Under the lock the map is read again, so a second
-process adopts the thread the first one opened and no write loses another's
-entry. Every root carries its work id in Slack's
+The thread for a work item is remembered in the state directory, which is
+machine-wide, so every daemon that mounts the plugin shares it. Each work item
+is a chain of numbered generations, `slack/threads/<work id>/<n>.json`, each
+created exclusively — written aside and linked into place — so exactly one
+process wins each number. Whoever wins posts the root and writes its `ts`
+into its own generation; everybody else waits while that owner is alive and
+then reads it. An owner that died is taken over by creating the next number,
+so no claim is ever removed while somebody may hold it, and opening one work
+item never rewrites another's file. A thread remembered for another channel
+starts a new generation.
+
+Every root carries its work id in Slack's
 [message metadata](https://docs.slack.dev/messaging/message-metadata)
-(`amy_work_thread`). Before posting a root the map records when it was about
-to, and a crash between Slack taking the root and the map remembering it is
-recovered from `conversations.history` with `include_all_metadata`: the bot's
-own root carrying this work id is adopted instead of posting a second — by
-id, not title, because two items can share a title and a title can change.
-Downloaded files are staged and renamed, so a path that exists is a whole
-file.
+(`amy_work_thread`), and a generation records when the first attempt of its
+chain was about to post. An attempt that follows one which may have reached
+Slack — its owner died, or the call failed — reads `conversations.history`
+with `include_all_metadata` since then and adopts the bot's own root carrying
+this work id instead of posting a second: by id, not title, because two items
+can share a title and a title can change.
+
+Downloaded files are staged under a random name and renamed, so a path that
+exists is a whole file. An attachment over 25 MB is not downloaded: one Slack
+declares that large is skipped unread, and one that proves that large while it
+arrives is refused as the bytes are counted, so the daemon never holds it. The
+reply names each skipped file in its text.
 
 The app is created from a manifest carrying exactly these scopes:
 
@@ -121,6 +126,9 @@ the guardrail the other two carry.
 - [x] Two processes sharing the state directory open one thread for one work
       item, and a root Slack took before a crash is adopted rather than posted
       again (proof: test:plugins/slack/tests/SlackConversation.sharing.test.ts)
+- [x] An attachment over the limit is named in the reply and never held in
+      memory, whether or not it declared its size
+      (proof: test:plugins/slack/tests/fetchTransport.test.ts)
 - [x] A reply with an image is returned with a readable local path
       (proof: test:plugins/slack/tests/SlackConversation.test.ts)
 - [x] Replies from anyone but the operator, and the bot's own, are never

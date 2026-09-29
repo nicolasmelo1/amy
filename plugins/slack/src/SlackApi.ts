@@ -4,6 +4,8 @@ export interface HttpRequest {
   method: "GET" | "POST";
   headers: Record<string, string>;
   body?: string;
+  /** Refuse the answer once its body passes this many bytes, while it arrives. */
+  maxBytes?: number;
 }
 
 export interface HttpResponse {
@@ -15,6 +17,13 @@ export interface HttpResponse {
 
 export type HttpTransport = (request: HttpRequest) => Promise<HttpResponse>;
 
+/** An answer larger than the request allowed, refused before it was held whole. */
+export class TooLarge extends Error {
+  constructor(readonly limit: number) {
+    super(`the answer is larger than ${limit} bytes`);
+  }
+}
+
 export const fetchTransport: HttpTransport = async (request) => {
   const response = await fetch(request.url, {
     method: request.method,
@@ -25,8 +34,40 @@ export const fetchTransport: HttpTransport = async (request) => {
   response.headers.forEach((value, name) => {
     headers[name.toLowerCase()] = value;
   });
-  return { status: response.status, headers, body: new Uint8Array(await response.arrayBuffer()) };
+  return { status: response.status, headers, body: await readBody(response, request.maxBytes) };
 };
+
+/**
+ * The body, counted as it arrives: a declared length over the limit is
+ * refused unread, and a missing or wrong one is caught by the count.
+ */
+async function readBody(response: Response, maxBytes: number | undefined): Promise<Uint8Array> {
+  if (maxBytes === undefined || !response.body) return new Uint8Array(await response.arrayBuffer());
+  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) {
+    await response.body.cancel();
+    throw new TooLarge(maxBytes);
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new TooLarge(maxBytes);
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
 
 export const SLACK_API = "https://slack.com/api";
 
@@ -100,13 +141,15 @@ export class SlackApi {
    * Only ever to Slack's own hosts over https: the URL comes out of a message,
    * and the token must not follow one anywhere else.
    */
-  async download(url: string): Promise<Uint8Array> {
+  async download(url: string, maxBytes?: number): Promise<Uint8Array> {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:" || !isSlackHost(parsed.hostname)) {
       throw new Error(`refusing to send the slack token to ${parsed.origin}`);
     }
-    const response = await this.send({ url, method: "GET", headers: { Authorization: `Bearer ${this.token}` } });
+    const response = await this.send({ url, method: "GET", headers: { Authorization: `Bearer ${this.token}` }, maxBytes });
     if (response.status !== 200) throw new Error(`slack file ${parsed.pathname} answered HTTP ${response.status}`);
+    // Checked again here for a transport that does not honour the limit.
+    if (maxBytes !== undefined && response.body.byteLength > maxBytes) throw new TooLarge(maxBytes);
     return response.body;
   }
 
