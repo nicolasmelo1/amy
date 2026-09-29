@@ -88,6 +88,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### Let a workflow ask and hear an operator in a work-scoped conversation instead of the tracker.
+
+`minor` · `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/plugin-notify-inbox`, `@amykit/workflow-ticket-to-qa`
+
+
+
 ### Schedule `amy update` around workflow invocations with a persisted per-profile cadence. The default updates before every twentieth invocation; operators can run after, disable it, and receive an early refusal for invalid schedule settings. Daemons update only before their child starts or after it exits.
 
 `minor` · `@amykit/cli`

@@ -5,6 +5,8 @@ import {
   baseBranchFor,
   BriefStore,
   CodeHost,
+  Comment,
+  Conversation,
   Event,
   EventKind,
   EventLog,
@@ -33,6 +35,8 @@ export interface TicketRuntimeConfig {
 
 export interface TicketRuntimeDeps {
   tracker: Tracker;
+  /** Where this workflow asks and hears the operator, when an install mounted it. */
+  conversation?: Conversation;
   host: CodeHost;
   /**
    * The relay's port, at both of its levels: the ticket-shaped half this
@@ -197,10 +201,15 @@ export function ticketRuntime(
     },
 
     "ask-question": async (effect, ctx) => {
-      await deps.tracker.comment(
-        ctx.observation.ticket.id,
-        effect.questions.map((question) => `- ${question}`).join("\n"),
-      );
+      if (deps.conversation) {
+        const thread = await deps.conversation.open(ctx.record.id, ctx.observation.ticket.title);
+        await deps.conversation.post(thread, { text: effect.questions.map((question) => `- ${question}`).join("\n") });
+      } else {
+        await deps.tracker.comment(
+          ctx.observation.ticket.id,
+          effect.questions.map((question) => `- ${question}`).join("\n"),
+        );
+      }
       await announce(`${ctx.record.id} needs an answer before I can start.`, ctx);
 
       // The same question, appended to the brief it is about, with this
@@ -352,6 +361,9 @@ export function ticketRuntime(
 
       const awaitingAnswer = current.state === "CLARIFYING" && Boolean(current.triage);
       const awaitingOwner = current.escalation && !current.escalation.resolvedAt;
+      const conversation = deps.conversation && (awaitingAnswer || awaitingOwner)
+        ? await repliesFor(deps.conversation, current.id, ticket.title, awaitingAnswer ? current.triage!.at : current.escalation!.askedAt)
+        : [];
 
       return {
         ticket,
@@ -359,10 +371,14 @@ export function ticketRuntime(
         reviewLoad,
         roster: deps.roster(),
         conversation: awaitingAnswer
-          ? await deps.tracker.comments(ticket.id, current.triage!.at)
+          ? deps.conversation
+            ? conversation
+            : await deps.tracker.comments(ticket.id, current.triage!.at)
           : [],
         escalationAnswered: awaitingOwner
-          ? await deps.tracker.hasReplyAfter(ticket.id, current.escalation!.askedAt)
+          ? deps.conversation
+            ? conversation.length > 0
+            : await deps.tracker.hasReplyAfter(ticket.id, current.escalation!.askedAt)
           : false,
         now: deps.now(),
       };
@@ -404,10 +420,19 @@ export function ticketRuntime(
   };
 }
 
+function repliesFor(conversation: Conversation, workId: string, title: string, since: string): Promise<Comment[]> {
+  return conversation.open(workId, title).then((thread) => conversation.replies(thread, since)).then((replies) =>
+    replies.map((reply) => ({
+      author: reply.author,
+      body: [reply.text, ...reply.files.map((file) => `Attachment: ${file}`)].filter(Boolean).join("\n"),
+      at: reply.at,
+      fromAmy: false,
+    })),
+  );
+}
+
 /**
  * Fails an action whose agent run did not complete.
- *
- * By the time this is reached, a relay has already tried every harness and
  * model it was given, so there is nowhere left to go and the action has to
  * fail rather than store an answer nobody gave.
  *

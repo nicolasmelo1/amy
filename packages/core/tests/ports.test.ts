@@ -3,6 +3,7 @@ import {
   Agent,
   AttemptOutcome,
   Comment,
+  Conversation,
   FollowUpRequest,
   Gate,
   Ticket,
@@ -57,6 +58,11 @@ describe("the ports belong to the core", () => {
     expect(verdict).toBeNull();
     expect(aComment).toBeNull();
     expect(aFollowUp).toBeNull();
+  });
+
+  it("exports the conversation contract a workflow and adapter share", () => {
+    const conversation: Conversation = null as unknown as Conversation;
+    expect(conversation).toBeNull();
   });
 
   it("spells a pull request title the convention's way", () => {

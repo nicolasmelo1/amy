@@ -185,6 +185,18 @@ Declared in `packages/core/src/ports/Commands.ts`.
 | `run(name: string, args?: readonly string[], options?: { cwd?: string }): Promise<CommandOutcome>` |  |
 | `available(): readonly string[]` | What the config allows, for a refusal that names the alternatives. |
 
+### `Conversation`
+
+Where an operator and one piece of work talk without using the tracker.
+
+Declared in `packages/core/src/ports/Conversation.ts`.
+
+| Method | What it does |
+| :-- | :-- |
+| `open(workId: string, title: string): Promise<ThreadRef>` | Opens the work's remembered thread, creating it only on first use. |
+| `post(thread: ThreadRef, message: { text: string; files?: string[] }): Promise<string>` |  |
+| `replies(thread: ThreadRef, since: string): Promise<Reply[]>` | Replies after `since`, oldest first. Files are readable local paths. |
+
 ### `EventLog`
 
 The append-only record of everything that happened.

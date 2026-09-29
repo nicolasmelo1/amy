@@ -2,6 +2,7 @@ import {
   BriefStore,
   CodeHost,
   ConfigSchema,
+  Conversation,
   Git,
   Moved,
   Notifier,
@@ -104,6 +105,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
 
   const built = ticketRuntime({
     tracker: required<Tracker>(ctx, "tracker"),
+    conversation: ctx.port("conversation") as Conversation | undefined,
     host: required<CodeHost>(ctx, "code-host"),
     // Both halves of the relay's one port: the ticket-shaped methods this
     // workflow's prompts were written for, and the `ask` the self-review

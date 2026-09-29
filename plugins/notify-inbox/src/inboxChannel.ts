@@ -39,7 +39,7 @@ export function inboxChannel(directory: string, runner: CommandRunner): Channel 
           announcement.text,
           ``,
           `---`,
-          `Answer on the ticket, then delete this file.`,
+          `Answer in the conversation this question opened, then delete this file.`,
           ``,
         ].join("\n"),
         "utf-8",

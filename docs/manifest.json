@@ -273,6 +273,11 @@
           "description": ""
         },
         {
+          "title": "An answer arrives where the question was asked",
+          "path": "/design/an-answer-arrives-where-the-question-was-asked",
+          "description": ""
+        },
+        {
           "title": "An answer reaches the agent",
           "path": "/design/an-answer-reaches-the-agent",
           "description": ""
@@ -864,6 +869,11 @@
         },
         {
           "depth": 3,
+          "title": "Let a workflow ask and hear an operator in a work-scoped conversation instead of the tracker.",
+          "slug": "let-a-workflow-ask-and-hear-an-operator-in-a-work-scoped-conversation-instead-of-the-tracker"
+        },
+        {
+          "depth": 3,
           "title": "Schedule amy update around workflow invocations with a persisted per-profile cadence. The default updates before every twentieth invocation; operators can run after, disable it, and receive an early refusal for invalid schedule settings. Daemons update only before their child starts or after it exits.",
           "slug": "schedule-amy-update-around-workflow-invocations-with-a-persisted-per-profile-cadence-the-default-updates-before-every-twentieth-invocation-operators-can-run-after-disable-it-and-receive-an-early-refusal-for-invalid-schedule-settings-daemons-update-only-before-their-child-starts-or-after-it-exits"
         },
@@ -1280,6 +1290,11 @@
           "depth": 3,
           "title": "Commands",
           "slug": "commands"
+        },
+        {
+          "depth": 3,
+          "title": "Conversation",
+          "slug": "conversation"
         },
         {
           "depth": 3,
@@ -1778,6 +1793,28 @@
           "depth": 2,
           "title": "The proof",
           "slug": "the-proof"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/an-answer-arrives-where-the-question-was-asked",
+      "file": "docs/design/an-answer-arrives-where-the-question-was-asked.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/an-answer-arrives-where-the-question-was-asked.md",
+      "title": "An answer arrives where the question was asked",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
         },
         {
           "depth": 2,
@@ -3289,6 +3326,11 @@
         },
         {
           "depth": 3,
+          "title": "Conversation",
+          "slug": "conversation"
+        },
+        {
+          "depth": 3,
           "title": "EventLog",
           "slug": "eventlog"
         },
@@ -4432,6 +4474,28 @@
             "name": "available",
             "signature": "available(): readonly string[]",
             "doc": "What the config allows, for a refusal that names the alternatives."
+          }
+        ]
+      },
+      {
+        "interface": "Conversation",
+        "file": "packages/core/src/ports/Conversation.ts",
+        "doc": "Where an operator and one piece of work talk without using the tracker.",
+        "methods": [
+          {
+            "name": "open",
+            "signature": "open(workId: string, title: string): Promise<ThreadRef>",
+            "doc": "Opens the work's remembered thread, creating it only on first use."
+          },
+          {
+            "name": "post",
+            "signature": "post(thread: ThreadRef, message: { text: string; files?: string[] }): Promise<string>",
+            "doc": ""
+          },
+          {
+            "name": "replies",
+            "signature": "replies(thread: ThreadRef, since: string): Promise<Reply[]>",
+            "doc": "Replies after `since`, oldest first. Files are readable local paths."
           }
         ]
       },
@@ -8134,6 +8198,30 @@
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "an-answer-arrives-where-the-question-was-asked",
+        "title": "Let a workflow ask and hear an operator in a work-scoped conversation instead of the tracker.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-fanout",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-inbox",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],
