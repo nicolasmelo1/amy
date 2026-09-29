@@ -42,6 +42,10 @@ the thread.
   `conversations.info` on the configured channel, which is also what says
   whether the public or the private pair is needed. A `missing_scope` refusal
   names the scope Slack said it needed.
+- **Replies to the microsecond.** A reply's `at` is ISO 8601 with Slack's six
+  fractional digits, and `since` is read back to the microsecond, so handing a
+  reply's `at` back as the next `since` neither repeats it nor loses one that
+  arrived a microsecond later.
 - **Only the operator answers.** Replies from anyone else, the bot's own posts
   and anything posted through an integration (`bot_id`) are never returned —
   by author id, not by a marker in the text.
@@ -79,7 +83,9 @@ the next number first:
 - **Forgetting.** A forget or a prune leaves a tombstone as the next number,
   asks again under it whether the work should still go, and backs off —
   removing only its tombstone — if the thread was used in between. An open
-  waits while a live tombstone stands, then starts a new chain.
+  waits while a live tombstone stands, then starts a new chain. Forgetting
+  work whose root is being posted right now is refused, so that post never
+  lands with nowhere to be remembered.
 
 Opening one work item never rewrites another's file, and a thread remembered
 for another channel starts a new generation. An empty work id is refused: it
@@ -108,11 +114,14 @@ from it, so a thread's files sit under it.
 
 - **Retention.** A downloaded file or a thread's memory nobody used within
   `retentionDays` is pruned. Using counts: reading a reply again, or opening
-  the thread, or reading its replies, keeps it. The plugin prunes on its own while it is used, at most
+  the thread, reading its replies, or posting to it keeps it. The plugin prunes on its own while it is used, at most
   once an hour, and a prune never fails a call. An attempt whose owner is
   still posting is never pruned, however old.
 - **One piece of work.** `forget(workId)` removes that thread's memory and
-  every file downloaded from it, for whatever retires work by command.
+  every file downloaded from it, for whatever retires work by command. It
+  leaves a `files/<thread ts>.forgotten` marker, and a download publishes
+  before it reads the marker, so one still in flight cannot bring a forgotten
+  thread's file back.
 - **By hand.** Any of `files/` can be deleted at any time: a missing file is
   downloaded again the next time its reply is read. Deleting a work item's
   directory under `threads/`, or pruning it, only forgets the thread on this

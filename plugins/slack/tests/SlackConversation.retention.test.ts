@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
 
 /**
@@ -100,6 +100,48 @@ describe("forgetting one piece of work", () => {
     expect(posted).toBe(3);
   });
 
+  it("refuses while that work's root is being posted, so the post never loses its memory", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const amy = new SlackConversation(new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        if (request.url.endsWith("/chat.postMessage")) await slow;
+        return answer(request);
+      },
+    }), { channel: CHANNEL, operator: OPERATOR, directory });
+
+    const opening = amy.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(() => amy.forget("ENG-1")).toThrow(/being opened right now/);
+    release();
+    const thread = await opening;
+
+    // The root was remembered after all, so opening again reuses it.
+    expect(await amy.open("ENG-1", "ENG-1")).toEqual(thread);
+    expect(posted).toBe(1);
+  });
+
+  it("keeps a download that was in flight from bringing a forgotten thread's file back", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const amy = new SlackConversation(new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        if (request.url.startsWith("https://files.slack.com/")) await slow;
+        return answer(request);
+      },
+    }), { channel: CHANNEL, operator: OPERATOR, directory });
+    const thread = await amy.open("ENG-1", "ENG-1");
+
+    const reading = amy.replies(thread, SINCE);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    amy.forget("ENG-1");
+    release();
+    const [reply] = await reading;
+
+    expect(reply!.files).toEqual([]);
+    expect(fs.existsSync(path.join(directory, "files", thread.id))).toBe(false);
+  });
+
   it("is harmless for work it never knew", () => {
     expect(() => slack(() => new Date()).forget("ENG-404")).not.toThrow();
   });
@@ -167,6 +209,38 @@ describe("retention", () => {
 
     expect(amy.prune(new Date()).threads).toBe(0);
     expect(await slack(() => new Date()).open("ENG-1", "ENG-1")).toEqual(thread);
+  });
+
+  it("keeps a thread that is only posted to, by a caller that never opens it again", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+    age(31);
+
+    await amy.post(thread, { text: "still here" });
+
+    expect(amy.prune(new Date()).threads).toBe(0);
+    expect(await slack(() => new Date()).open("ENG-1", "ENG-1")).toEqual(thread);
+  });
+
+  it("reads a chain removed between two looks as empty, instead of failing", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+    const chain = path.join(directory, "threads", Buffer.from("ENG-1").toString("base64url"));
+    const readdir = fs.readdirSync;
+    const spy = vi.spyOn(fs, "readdirSync").mockImplementation(((dir: fs.PathLike, options?: unknown) => {
+      if (String(dir) === chain) {
+        const gone = new Error("gone") as NodeJS.ErrnoException;
+        gone.code = "ENOENT";
+        throw gone;
+      }
+      return (readdir as (d: fs.PathLike, o?: unknown) => unknown)(dir, options);
+    }) as typeof fs.readdirSync);
+
+    try {
+      await expect(amy.replies(thread, SINCE)).resolves.toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("refuses to forget an empty work id, which would name every thread", async () => {

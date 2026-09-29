@@ -151,9 +151,8 @@ describe("the operator's replies", () => {
     const replies = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
 
     expect(replies).toHaveLength(1);
-    // 1790000100.000100 rounds up to the next millisecond, so passing it back
-    // as `since` never returns this reply again.
-    expect(replies[0]).toMatchObject({ author: OPERATOR, text: "this one", at: new Date(1790000100001).toISOString() });
+    // Exact to the microsecond, so passing it back as `since` is exactly this reply.
+    expect(replies[0]).toMatchObject({ author: OPERATOR, text: "this one", at: "2026-09-21T14:15:00.000100Z" });
     const [file] = replies[0]!.files;
     expect(file!.startsWith(directory)).toBe(true);
     expect(new Uint8Array(fs.readFileSync(file!))).toEqual(picture);
@@ -228,6 +227,25 @@ describe("the operator's replies", () => {
 
     expect(first.map((reply) => reply.text)).toEqual(["just after"]);
     expect(again).toEqual([]);
+  });
+
+  it("loses no reply that arrives in the same millisecond as one already read, in a later poll", async () => {
+    const first = await conversation(new ScriptedHttp([
+      WHO_AM_I,
+      thread([{ ts: "1790000100.000100", user: OPERATOR, text: "one" }]),
+    ])).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([
+        { ts: "1790000100.000100", user: OPERATOR, text: "one" },
+        { ts: "1790000100.000500", user: OPERATOR, text: "two" },
+      ]),
+    ]);
+
+    const next = await conversation(http).replies({ id: THREAD }, first[0]!.at);
+
+    expect(next.map((reply) => reply.text)).toEqual(["two"]);
+    expect(http.argsOf("conversations.replies")[0]).toMatchObject({ oldest: "1790000100.000100" });
   });
 
   it("never sends the token to a file URL that is not Slack's", async () => {

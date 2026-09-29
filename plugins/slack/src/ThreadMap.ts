@@ -99,7 +99,13 @@ export class ThreadMap {
    */
   forget(workId: string): string | undefined {
     requireId(workId);
-    return this.retire(workId, () => true);
+    const outcome = this.retire(workId, (generation) => !this.isLive(generation));
+    if (outcome === "busy") {
+      // Its root may be reaching Slack right now; forgetting it would leave
+      // that root with no memory, and the next open would post a second.
+      throw new Error(`the thread for ${workId} is being opened right now; forget it once that finishes`);
+    }
+    return outcome;
   }
 
   /**
@@ -108,15 +114,14 @@ export class ThreadMap {
    * pruned, however old.
    */
   prune(cutoffMs: number): string[] {
-    if (!fs.existsSync(this.root)) return [];
     const stale = (generation: Generation) =>
       !generation.entry.tombstone && !this.isLive(generation) && generation.mtimeMs < cutoffMs;
 
     const forgotten: string[] = [];
-    for (const name of fs.readdirSync(this.root)) {
+    for (const name of entriesOf(this.root)) {
       if (name.startsWith(".")) continue;
-      const ts = this.retire(Buffer.from(name, "base64url").toString(), stale);
-      if (ts) forgotten.push(ts);
+      const outcome = this.retire(Buffer.from(name, "base64url").toString(), stale);
+      if (outcome && outcome !== "busy") forgotten.push(outcome);
     }
     return forgotten;
   }
@@ -191,16 +196,17 @@ export class ThreadMap {
    * tombstone landed — touched, or taken — the forget backs off and removes
    * only its own tombstone.
    */
-  private retire(workId: string, shouldGo: (generation: Generation) => boolean): string | undefined {
+  private retire(workId: string, shouldGo: (generation: Generation) => boolean): string | "busy" | undefined {
     const seen = this.current(workId);
-    if (!seen || !shouldGo(seen)) return undefined;
+    if (!seen) return undefined;
+    if (!shouldGo(seen)) return "busy";
     const tombstone = seen.n + 1;
-    if (!this.create(workId, tombstone, { tombstone: true, owner: `${process.pid}:${randomUUID()}` })) return undefined;
+    if (!this.create(workId, tombstone, { tombstone: true, owner: `${process.pid}:${randomUUID()}` })) return "busy";
 
     const covered = this.read(workId, seen.n);
     if (!covered || !shouldGo(covered)) {
       fs.rmSync(this.file(workId, tombstone), { force: true });
-      return undefined;
+      return "busy";
     }
     this.removeBelow(workId, tombstone);
     fs.rmSync(this.file(workId, tombstone), { force: true });
@@ -239,8 +245,7 @@ export class ThreadMap {
   }
 
   private findWork(ts: string): string | undefined {
-    if (!fs.existsSync(this.root)) return undefined;
-    for (const name of fs.readdirSync(this.root)) {
+    for (const name of entriesOf(this.root)) {
       if (name.startsWith(".")) continue;
       const workId = Buffer.from(name, "base64url").toString();
       if (this.current(workId)?.entry.ts === ts) {
@@ -252,9 +257,7 @@ export class ThreadMap {
   }
 
   private generations(workId: string): number[] {
-    const directory = this.directoryOf(workId);
-    if (!fs.existsSync(directory)) return [];
-    return fs.readdirSync(directory)
+    return entriesOf(this.directoryOf(workId))
       .map((name) => /^(\d+)\.json$/.exec(name)?.[1])
       .filter((n): n is string => n !== undefined)
       .map(Number);
@@ -308,6 +311,16 @@ export class ThreadMap {
 /** The generation's entry when it is a thread in `channel`, not a tombstone. */
 function inChannel(current: Generation | undefined, channel: string): ThreadEntry | undefined {
   return current && !current.entry.tombstone && current.entry.channel === channel ? current.entry : undefined;
+}
+
+/** A directory's names, or none if a forget removed it a moment ago. */
+function entriesOf(directory: string): string[] {
+  try {
+    return fs.readdirSync(directory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
 }
 
 /** An empty id would name the whole `threads` directory. */

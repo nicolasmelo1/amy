@@ -114,6 +114,8 @@ export class SlackConversation implements Conversation {
       // amy asks in words, and the operator's pictures come the other way.
       throw new Error("@amykit/plugin-slack does not upload files; post their paths as text");
     }
+    // Writing to a thread is using it, as reading its replies is.
+    this.threads.used(thread.id);
     const { body } = await this.api.call("chat.postMessage", {
       channel: this.options.channel,
       thread_ts: thread.id,
@@ -123,7 +125,7 @@ export class SlackConversation implements Conversation {
   }
 
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
-    const after = Date.parse(since);
+    const after = instantToMicros(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
     this.pruneNowAndThen();
     // Reading a thread is using it, whether or not the caller opened it first.
@@ -133,10 +135,11 @@ export class SlackConversation implements Conversation {
     const answers: Reply[] = [];
     for (const message of await this.threadMessages(thread.id, after)) {
       if (!this.isOperatorAnswer(message, thread.id, bot)) continue;
-      if (tsToMicros(message.ts!) <= after * 1000) continue;
+      const at = tsToMicros(message.ts!);
+      if (at <= after) continue;
       const { paths, skipped } = await this.downloadAll(thread.id, message.files ?? []);
       answers.push({
-        at: new Date(ceilToMs(message.ts!)).toISOString(),
+        at: microsToInstant(at),
         author: message.user!,
         text: [message.text ?? "", ...skipped].filter(Boolean).join("\n"),
         files: paths,
@@ -170,7 +173,7 @@ export class SlackConversation implements Conversation {
    */
   forget(workId: string): void {
     const ts = this.threads.forget(workId);
-    if (ts) fs.rmSync(this.threadFiles(ts), { recursive: true, force: true });
+    if (ts) this.dropFiles(ts);
   }
 
   /**
@@ -184,7 +187,7 @@ export class SlackConversation implements Conversation {
     const cutoff = now.getTime() - days * DAY_MS;
 
     const threads = this.threads.prune(cutoff);
-    for (const ts of threads) fs.rmSync(this.threadFiles(ts), { recursive: true, force: true });
+    for (const ts of threads) this.dropFiles(ts);
     return { threads: threads.length, files: pruneFiles(this.filesDirectory, cutoff) };
   }
 
@@ -195,6 +198,22 @@ export class SlackConversation implements Conversation {
   /** Where one thread's downloads live, so forgetting it takes them too. */
   private threadFiles(ts: string): string {
     return path.join(this.filesDirectory, safeName(ts));
+  }
+
+  /** Beside the thread's files, not in them, so removing those leaves it. */
+  private forgottenMarker(ts: string): string {
+    return path.join(this.filesDirectory, `${safeName(ts)}.forgotten`);
+  }
+
+  /**
+   * Marks the thread forgotten, then removes its files. The marker is what a
+   * download still in flight — in this process or another — reads after it
+   * publishes, so it cannot bring a forgotten thread's file back.
+   */
+  private dropFiles(ts: string): void {
+    fs.mkdirSync(this.filesDirectory, { recursive: true });
+    fs.writeFileSync(this.forgottenMarker(ts), "");
+    fs.rmSync(this.threadFiles(ts), { recursive: true, force: true });
   }
 
   /** Throttled, and never the reason a call fails: pruning is housekeeping. */
@@ -281,9 +300,9 @@ export class SlackConversation implements Conversation {
     return root?.ts;
   }
 
-  /** Every message in the thread after `after`, across pages. */
-  private threadMessages(ts: string, after: number): Promise<SlackMessage[]> {
-    return this.pages("conversations.replies", { channel: this.options.channel, ts, oldest: msToTs(after) });
+  /** Every message in the thread after `afterMicros`, across pages. */
+  private threadMessages(ts: string, afterMicros: number): Promise<SlackMessage[]> {
+    return this.pages("conversations.replies", { channel: this.options.channel, ts, oldest: microsToTs(afterMicros) });
   }
 
   private async pages(method: string, args: Record<string, string>): Promise<SlackMessage[]> {
@@ -337,7 +356,8 @@ export class SlackConversation implements Conversation {
         continue;
       }
       try {
-        paths.push(await this.download(path.join(this.threadFiles(threadTs), safeName(file.id), safeName(name)), url, limit));
+        const kept = await this.download(threadTs, path.join(this.threadFiles(threadTs), safeName(file.id), safeName(name)), url, limit);
+        if (kept) paths.push(kept);
       } catch (error) {
         if (!(error instanceof TooLarge)) throw error;
         skipped.push(tooLarge);
@@ -346,7 +366,9 @@ export class SlackConversation implements Conversation {
     return { paths, skipped };
   }
 
-  private async download(target: string, url: string, limit: number): Promise<string> {
+  /** The file's local path, or nothing when its thread was forgotten. */
+  private async download(threadTs: string, target: string, url: string, limit: number): Promise<string | undefined> {
+    if (fs.existsSync(this.forgottenMarker(threadTs))) return undefined;
     if (keptAgain(target)) return target;
     const bytes = await this.api.download(url, limit);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -357,6 +379,12 @@ export class SlackConversation implements Conversation {
       fs.renameSync(partial, target);
     } finally {
       fs.rmSync(partial, { force: true });
+    }
+    // Published first, checked after: a forget that landed while the bytes
+    // were arriving is seen here, whichever of the two finished first.
+    if (fs.existsSync(this.forgottenMarker(threadTs))) {
+      fs.rmSync(this.threadFiles(threadTs), { recursive: true, force: true });
+      return undefined;
     }
     return target;
   }
@@ -380,9 +408,15 @@ function keptAgain(target: string): boolean {
 
 /** Removes files older than `cutoff`, then the directories they leave empty. */
 function pruneFiles(directory: string, cutoff: number): number {
-  if (!fs.existsSync(directory)) return 0;
   let removed = 0;
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(directory, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+    throw error;
+  }
+  for (const entry of entries) {
     const full = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       removed += pruneFiles(full, cutoff);
@@ -405,12 +439,26 @@ function tsToMicros(ts: string): number {
 }
 
 /**
- * A reply's instant, rounded up: handed back as the next `since`, it is at
- * or after the reply, so the reply is not returned twice, and nothing the
- * operator wrote a millisecond later is lost.
+ * A reply's instant to the microsecond, as ISO 8601 with six fractional
+ * digits. Handed back as the next `since` it is exactly the reply's, so the
+ * reply is not returned twice and one a microsecond later is not lost.
  */
-function ceilToMs(ts: string): number {
-  return Math.ceil(tsToMicros(ts) / 1000);
+function microsToInstant(micros: number): string {
+  const iso = new Date(Math.floor(micros / 1000)).toISOString();
+  return iso.replace(/Z$/, `${String(micros % 1000).padStart(3, "0")}Z`);
+}
+
+/** An instant to the microsecond: the digits past the millisecond are read too. */
+function instantToMicros(instant: string): number {
+  const ms = Date.parse(instant);
+  if (Number.isNaN(ms)) return Number.NaN;
+  const extra = /\.\d{3}(\d{1,3})Z$/.exec(instant)?.[1] ?? "";
+  return ms * 1000 + Number(extra.padEnd(3, "0"));
+}
+
+/** Exact, where going through milliseconds would drop the last three digits. */
+function microsToTs(micros: number): string {
+  return `${Math.floor(micros / 1_000_000)}.${String(micros % 1_000_000).padStart(6, "0")}`;
 }
 
 function msToTs(ms: number): string {
