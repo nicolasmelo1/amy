@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Conversation, Reply, ThreadRef } from "@amykit/core";
@@ -32,6 +33,7 @@ interface SlackFile {
 interface SlackMessage {
   ts?: string;
   thread_ts?: string;
+  metadata?: { event_type?: string; event_payload?: Record<string, unknown> };
   user?: string;
   bot_id?: string;
   subtype?: string;
@@ -47,6 +49,9 @@ interface SlackMessage {
  * accepted just before a crash is found again in the channel's history
  * rather than posted twice.
  */
+/** What marks a root as amy's, and whose work it opened. */
+const ROOT_EVENT = "amy_work_thread";
+
 export class SlackConversation implements Conversation {
   private readonly threads: ThreadMap;
   private readonly filesDirectory: string;
@@ -162,7 +167,7 @@ export class SlackConversation implements Conversation {
       if (entry?.channel === channel && entry.ts) return { id: entry.ts };
 
       const recovered = entry?.channel === channel && entry.pendingSince !== undefined
-        ? await this.findRoot(title, entry.pendingSince)
+        ? await this.findRoot(workId, entry.pendingSince)
         : undefined;
       if (recovered) {
         this.threads.set(workId, { channel, ts: recovered });
@@ -170,22 +175,35 @@ export class SlackConversation implements Conversation {
       }
 
       this.threads.set(workId, { channel, pendingSince: Date.now() });
-      const { body } = await this.api.call("chat.postMessage", { channel, text: title });
+      const { body } = await this.api.call("chat.postMessage", {
+        channel,
+        text: title,
+        metadata: JSON.stringify({ event_type: ROOT_EVENT, event_payload: { work_id: workId } }),
+      });
       const ts = String(body.ts);
       this.threads.set(workId, { channel, ts });
       return { id: ts };
     });
   }
 
-  /** The root this bot posted with this title since `since`, if Slack took one. */
-  private async findRoot(title: string, since: number): Promise<string | undefined> {
+  /**
+   * The root this bot posted for this work since `since`, if Slack took one.
+   *
+   * Matched by the work id carried in the root's metadata, never by its
+   * text: two items can share a title, and a title can change.
+   */
+  private async findRoot(workId: string, since: number): Promise<string | undefined> {
     const bot = await this.botUserId();
-    const texts = [title, escapeText(title)];
-    const messages = await this.pages("conversations.history", { channel: this.options.channel, oldest: msToTs(since - 1000) });
+    const messages = await this.pages("conversations.history", {
+      channel: this.options.channel,
+      oldest: msToTs(since - 1000),
+      include_all_metadata: "true",
+    });
     const root = messages.find((message) =>
       message.user === bot &&
       (!message.thread_ts || message.thread_ts === message.ts) &&
-      texts.includes(message.text ?? ""));
+      message.metadata?.event_type === ROOT_EVENT &&
+      message.metadata.event_payload?.work_id === workId);
     return root?.ts;
   }
 
@@ -242,9 +260,9 @@ export class SlackConversation implements Conversation {
     const bytes = await this.api.download(url);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     // Staged and renamed, so a path that exists is always a whole file.
-    const partial = `${target}.${process.pid}.${Date.now()}.partial`;
+    const partial = `${target}.${randomUUID()}.partial`;
     try {
-      fs.writeFileSync(partial, bytes);
+      fs.writeFileSync(partial, bytes, { flag: "wx" });
       fs.renameSync(partial, target);
     } finally {
       fs.rmSync(partial, { force: true });
@@ -266,11 +284,6 @@ function msToTs(ms: number): string {
 function safeName(name: string): string {
   const cleaned = name.replace(/[^A-Za-z0-9._-]/g, "_").replace(/^\.+/, "_");
   return cleaned || "file";
-}
-
-/** How Slack stores `&`, `<` and `>` in a message it was sent. */
-function escapeText(text: string): string {
-  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 function messageOf(error: unknown): string {

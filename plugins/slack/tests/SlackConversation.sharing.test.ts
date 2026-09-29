@@ -91,6 +91,54 @@ describe("two processes sharing the thread map", () => {
   });
 });
 
+describe("the lock a dead process left", () => {
+  it("is broken once when several waiters saw the same dead holder, and never the lock that replaced it", async () => {
+    const lock = path.join(directory, "threads.lock");
+    fs.writeFileSync(lock, "2147483646:dead");
+    const inside: number[] = [];
+    let concurrent = 0;
+    let most = 0;
+    const handler: Handler = async () => {
+      concurrent += 1;
+      most = Math.max(most, concurrent);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      concurrent -= 1;
+      inside.push(1);
+      return { ok: true, ts: `1790000000.00000${inside.length}` };
+    };
+
+    await Promise.all(["ENG-1", "ENG-2", "ENG-3"].map((id) => slackAt(directory, handler).open(id, id)));
+
+    expect(most).toBe(1);
+    expect(inside).toHaveLength(3);
+    expect(fs.readdirSync(directory).sort()).toEqual(["threads.json"]);
+  });
+
+  it("releases only a lock that is still its own", async () => {
+    const lock = path.join(directory, "threads.lock");
+    const slack = slackAt(directory, () => {
+      // Somebody else's lock appears while this holder is inside.
+      fs.writeFileSync(lock, `${process.pid}:somebody-else`);
+      return { ok: true, ts: "1790000000.000001" };
+    });
+
+    await slack.open("ENG-1", "ENG-1");
+
+    expect(fs.readFileSync(lock, "utf8")).toBe(`${process.pid}:somebody-else`);
+  });
+
+  it("clears a breaker whose own process died, so the dead lock can still be broken", async () => {
+    fs.writeFileSync(path.join(directory, "threads.lock"), "2147483646:dead");
+    const { createHash } = await import("node:crypto");
+    const digest = createHash("sha256").update("2147483646:dead").digest("hex").slice(0, 16);
+    fs.writeFileSync(path.join(directory, `threads.lock.${digest}.break`), "2147483645");
+
+    const opened = await slackAt(directory, () => ({ ok: true, ts: "1790000000.000001" })).open("ENG-1", "ENG-1");
+
+    expect(opened).toEqual({ id: "1790000000.000001" });
+  });
+});
+
 describe("a crash between Slack taking a root and the map remembering it", () => {
   const pendingSince = 1790000000000;
 
@@ -98,8 +146,9 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
     fs.writeFileSync(path.join(directory, "threads.json"), JSON.stringify({ "ENG-1": { channel: CHANNEL, pendingSince } }));
   });
 
-  it("adopts the root it finds in the channel instead of posting a second", async () => {
+  it("adopts the root it finds for this work instead of posting a second, by work id and not by title", async () => {
     const calls: HttpRequest[] = [];
+    const rootOf = (workId: string) => ({ event_type: "amy_work_thread", event_payload: { work_id: workId } });
     const handler: Handler = (request) => {
       switch (methodOf(request)) {
         case "auth.test":
@@ -108,9 +157,12 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
           return {
             ok: true,
             messages: [
-              { ts: "1790000003.000100", user: OPERATOR, text: "ENG-1: tom &amp; jerry" },
-              { ts: "1790000002.000100", user: BOT, text: "ENG-1: tom &amp; jerry", thread_ts: "1790000001.000100" },
-              { ts: "1790000001.000100", user: BOT, text: "ENG-1: tom &amp; jerry" },
+              // Another item with the same title, and one posted by somebody else.
+              { ts: "1790000004.000100", user: BOT, text: "ENG-1: renamed", metadata: rootOf("ENG-9") },
+              { ts: "1790000003.000100", user: OPERATOR, text: "ENG-1: renamed", metadata: rootOf("ENG-1") },
+              { ts: "1790000002.000100", user: BOT, text: "a reply", thread_ts: "1790000001.000100", metadata: rootOf("ENG-1") },
+              // Ours, under the title it had before it was renamed.
+              { ts: "1790000001.000100", user: BOT, text: "ENG-1: the old title", metadata: rootOf("ENG-1") },
             ],
             has_more: false,
           };
@@ -119,14 +171,40 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
       }
     };
 
-    const opened = await slackAt(directory, handler, calls).open("ENG-1", "ENG-1: tom & jerry");
+    const opened = await slackAt(directory, handler, calls).open("ENG-1", "ENG-1: renamed");
 
     expect(opened).toEqual({ id: "1790000001.000100" });
     expect(calls.map(methodOf)).not.toContain("chat.postMessage");
     expect(argsOf(calls.find((call) => methodOf(call) === "conversations.history")!)).toMatchObject({
       channel: CHANNEL,
       oldest: "1789999999.000000",
+      include_all_metadata: "true",
     });
+  });
+
+  it("does not adopt another item's root that shares the title", async () => {
+    const calls: HttpRequest[] = [];
+    const handler: Handler = (request) => {
+      switch (methodOf(request)) {
+        case "auth.test":
+          return { ok: true, user_id: BOT };
+        case "conversations.history":
+          return {
+            ok: true,
+            messages: [{
+              ts: "1790000004.000100",
+              user: BOT,
+              text: "ENG-1",
+              metadata: { event_type: "amy_work_thread", event_payload: { work_id: "ENG-9" } },
+            }],
+            has_more: false,
+          };
+        default:
+          return { ok: true, ts: "1790000009.000100" };
+      }
+    };
+
+    expect(await slackAt(directory, handler, calls).open("ENG-1", "ENG-1")).toEqual({ id: "1790000009.000100" });
   });
 
   it("posts the root when Slack never took the first one", async () => {

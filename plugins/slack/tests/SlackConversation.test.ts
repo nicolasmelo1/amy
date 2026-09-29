@@ -95,7 +95,9 @@ describe("a Slack thread per piece of work", () => {
     expect(reopened).toEqual({ id: THREAD });
     const posts = http.argsOf("chat.postMessage");
     expect(posts).toHaveLength(3);
-    expect(posts[0]).toEqual({ channel: CHANNEL, text: "ENG-1: the login page" });
+    expect(posts[0]).toMatchObject({ channel: CHANNEL, text: "ENG-1: the login page" });
+    // The root carries its work id, which is what recovery after a crash reads.
+    expect(JSON.parse(posts[0]!.metadata!)).toEqual({ event_type: "amy_work_thread", event_payload: { work_id: "ENG-1" } });
     expect(posts[1]).toMatchObject({ channel: CHANNEL, thread_ts: THREAD, text: "- which browser?" });
     expect(posts[2]).toMatchObject({ channel: CHANNEL, thread_ts: THREAD, text: "- and which version?" });
   });

@@ -63,12 +63,19 @@ remembered for another channel is not reused.
 
 The state directory is machine-wide, so every daemon that mounts the plugin
 shares that map. Opening a thread happens under `slack/threads.lock`, which
-holds the owner's pid and is taken over once that process is gone; under it
-the map is read again, so a second process adopts the thread the first one
-opened and no write loses another's entry. Before posting a root the map
-records when it was about to, and a crash between Slack taking the root and
-the map remembering it is recovered from `conversations.history`: the bot's
-own root with that title since then is adopted instead of posting a second.
+is linked into place already carrying the owner's pid and a claim for that one
+acquisition, and is released only while it still carries that claim. A lock
+whose owner is gone is broken by whichever waiter wins the breaker named after
+its claim, and only if it still carries it, so a lock somebody took after the
+dead one is never removed. Under the lock the map is read again, so a second
+process adopts the thread the first one opened and no write loses another's
+entry. Every root carries its work id in Slack's
+[message metadata](https://docs.slack.dev/messaging/message-metadata)
+(`amy_work_thread`). Before posting a root the map records when it was about
+to, and a crash between Slack taking the root and the map remembering it is
+recovered from `conversations.history` with `include_all_metadata`: the bot's
+own root carrying this work id is adopted instead of posting a second — by
+id, not title, because two items can share a title and a title can change.
 Downloaded files are staged and renamed, so a path that exists is a whole
 file.
 

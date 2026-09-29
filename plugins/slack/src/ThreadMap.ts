@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -17,16 +18,14 @@ export interface ThreadMapOptions {
   pollMs?: number;
 }
 
-/** A lock file nobody owns any more, when it has no pid for this long. */
-const UNWRITTEN_LOCK_MS = 5_000;
-
 /**
  * `workId → thread` on disk, shared by every process that mounts the plugin.
  *
  * The state directory is machine-wide, so two workflows' daemons read and
  * write the same map. Reading is free; opening a thread happens under a lock
- * file holding the owner's pid, so no two processes post a root for one work
- * item and no write loses another's entry.
+ * file holding the owner's pid and a claim for this one acquisition, so no
+ * two processes post a root for one work item and no write loses another's
+ * entry.
  */
 export class ThreadMap {
   private readonly file: string;
@@ -58,47 +57,80 @@ export class ThreadMap {
   }
 
   async withLock<T>(work: () => Promise<T>): Promise<T> {
-    await this.acquire();
+    const claim = await this.acquire();
     try {
       return await work();
     } finally {
-      fs.rmSync(this.lockFile, { force: true });
+      // Only our own: a live holder's lock is never broken, so a lock that
+      // still reads our claim is still ours.
+      if (this.readLock() === claim) fs.rmSync(this.lockFile, { force: true });
     }
   }
 
-  private async acquire(): Promise<void> {
+  private async acquire(): Promise<string> {
     fs.mkdirSync(this.directory, { recursive: true });
+    const claim = `${process.pid}:${randomUUID()}`;
     const deadline = Date.now() + this.maxWaitMs;
     for (;;) {
-      try {
-        fs.writeFileSync(this.lockFile, String(process.pid), { flag: "wx" });
-        return;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      }
-      if (this.isStale()) {
-        fs.rmSync(this.lockFile, { force: true });
-        continue;
-      }
+      if (this.publish(claim)) return claim;
+      const held = this.readLock();
+      if (held !== undefined && !isAlive(pidOf(held)) && this.breakStale(held)) continue;
       if (Date.now() >= deadline) throw new Error(`${this.lockFile} is still held; another amy is opening a thread`);
       await new Promise((resolve) => setTimeout(resolve, this.pollMs));
     }
   }
 
-  /** Held by a process that is gone, or created and never written. */
-  private isStale(): boolean {
-    let text: string;
-    let age: number;
+  /**
+   * Written aside and linked into place, which fails if a lock exists: the
+   * lock file never exists without the claim that owns it.
+   */
+  private publish(claim: string): boolean {
+    const staged = `${this.lockFile}.${randomUUID()}.tmp`;
+    fs.writeFileSync(staged, claim);
     try {
-      text = fs.readFileSync(this.lockFile, "utf8");
-      age = Date.now() - fs.statSync(this.lockFile).mtimeMs;
-    } catch {
+      fs.linkSync(staged, this.lockFile);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      return false;
+    } finally {
+      fs.rmSync(staged, { force: true });
+    }
+  }
+
+  /**
+   * One breaker per dead claim. Every waiter that saw the same dead holder
+   * races for the breaker named after it; the winner removes the lock only
+   * if it still carries that claim, and a loser removes nothing — so a lock
+   * somebody took after the dead one is never the one removed.
+   */
+  private breakStale(claim: string): boolean {
+    const breaker = `${this.lockFile}.${createHash("sha256").update(claim).digest("hex").slice(0, 16)}.break`;
+    try {
+      fs.writeFileSync(breaker, String(process.pid), { flag: "wx" });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      // A breaker whose own process died mid-break would hold this lock
+      // forever; clearing it lets the next waiter try.
+      if (!isAlive(pidOf(readOrEmpty(breaker)))) fs.rmSync(breaker, { force: true });
       return false;
     }
-    const pid = Number(text);
-    if (!Number.isInteger(pid) || pid <= 0) return age > UNWRITTEN_LOCK_MS;
-    return !isAlive(pid);
+    try {
+      if (this.readLock() === claim) fs.rmSync(this.lockFile, { force: true });
+    } finally {
+      fs.rmSync(breaker, { force: true });
+    }
+    return true;
   }
+
+  private readLock(): string | undefined {
+    try {
+      return fs.readFileSync(this.lockFile, "utf8");
+    } catch {
+      return undefined;
+    }
+  }
+
 
   private read(): Record<string, ThreadEntry> {
     if (!fs.existsSync(this.file)) return {};
@@ -106,7 +138,20 @@ export class ThreadMap {
   }
 }
 
+function readOrEmpty(file: string): string {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function pidOf(claim: string): number {
+  return Number(claim.split(":")[0]);
+}
+
 function isAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
     process.kill(pid, 0);
     return true;
