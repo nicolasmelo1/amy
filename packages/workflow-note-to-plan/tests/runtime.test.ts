@@ -66,6 +66,7 @@ function fakeStore(records: PlanRecord[] = []): Store<PlanRecord> {
 function fakeHost(overrides: Partial<CodeHost> = {}): CodeHost {
   return {
     findPullRequest: vi.fn<CodeHost["findPullRequest"]>().mockResolvedValue(null),
+    pullRequestAncestry: vi.fn<NonNullable<CodeHost["pullRequestAncestry"]>>().mockResolvedValue(null),
     pullRequest: vi.fn<CodeHost["pullRequest"]>().mockResolvedValue(null),
     openPullRequest: vi.fn<CodeHost["openPullRequest"]>().mockResolvedValue(12),
     requestReview: vi.fn<CodeHost["requestReview"]>().mockResolvedValue(undefined),

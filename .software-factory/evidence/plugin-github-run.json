@@ -1,0 +1,40 @@
+{
+  "scenario": "plugin-github",
+  "status": "passed",
+  "goal": "Prove the built GitHub adapter gives stacked work an explicit parent base without teaching a workflow its forge.",
+  "artifact": {
+    "package": "@amykit/plugin-github",
+    "entry": "dist/index.js"
+  },
+  "observed": {
+    "assertions_run": 6,
+    "assertions_failed": 0,
+    "node": "v22.22.2"
+  },
+  "assertions": [
+    {
+      "type": "stack.a_pull_request_opens_on_the_parent_head_while_it_is_open",
+      "status": "passed"
+    },
+    {
+      "type": "stack.a_pull_request_opens_on_the_parent_head_while_it_is_open",
+      "status": "passed"
+    },
+    {
+      "type": "stack.a_merged_parent_answers_its_recorded_base",
+      "status": "passed"
+    },
+    {
+      "type": "stack.an_absent_parent_or_one_closed_unmerged_waits",
+      "status": "passed"
+    },
+    {
+      "type": "stack.an_absent_parent_or_one_closed_unmerged_waits",
+      "status": "passed"
+    },
+    {
+      "type": "stack.no_workflow_learns_the_word_github",
+      "status": "passed"
+    }
+  ]
+}

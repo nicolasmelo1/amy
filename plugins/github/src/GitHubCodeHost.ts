@@ -4,6 +4,7 @@ import {
   CommandRunner,
   MergeState,
   OpenPullRequestRequest,
+  PullRequestAncestry,
   PullRequestView,
   ReviewDecision,
   ReviewRequest,
@@ -128,6 +129,19 @@ query PullRequestByNumber($owner: String!, $name: String!, $number: Int!) {
 
 ${PULL_REQUEST_FIELDS}`;
 
+/** A narrow read for stack resolution; no workflow needs GitHub's vocabulary. */
+const PULL_REQUEST_ANCESTRY_QUERY = `
+query PullRequestAncestry($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      state
+      merged
+      headRefName
+      baseRefName
+    }
+  }
+}`;
+
 /**
  * The variable is `$search` and not `$query`: the document itself travels as
  * the field `query`, so a variable of the same name is the field claimed
@@ -197,6 +211,13 @@ interface RawPullRequest {
   };
 }
 
+interface RawPullRequestAncestry {
+  state: string;
+  merged: boolean;
+  headRefName: string;
+  baseRefName: string;
+}
+
 interface GitHubCodeHostConfig {
   /**
    * Where one repository's base branch is, instead of the forge's own default
@@ -223,6 +244,22 @@ export class GitHubCodeHost implements CodeHost {
 
     const node = raw.repository?.pullRequests.nodes[0];
     return node ? toView(node) : null;
+  }
+
+  async pullRequestAncestry(repo: string, number: number): Promise<PullRequestAncestry | null> {
+    const { owner, name } = split(repo);
+    const raw = await this.graphql<{
+      repository: { pullRequest: RawPullRequestAncestry | null } | null;
+    }>(PULL_REQUEST_ANCESTRY_QUERY, { owner, name, number: String(number) });
+    if (!raw.repository) return null;
+    const parent = raw.repository.pullRequest;
+    if (!parent) return { state: "absent" };
+
+    return {
+      state: parent.state === "OPEN" ? "open" : parent.merged ? "merged" : "closed-unmerged",
+      headBranch: parent.headRefName,
+      baseBranch: parent.baseRefName,
+    };
   }
 
   /**

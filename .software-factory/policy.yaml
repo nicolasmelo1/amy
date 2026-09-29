@@ -110,6 +110,20 @@ gates:
       - "prompt.sends_the_agent_to_the_repository_not_the_tracker"
       - "prompt.carries_the_answers_to_its_own_questions"
 
+  # The GitHub adapter owns the forge facts a stacked workflow reads. Its
+  # scenario imports built dist and drives a server-shaped command runner.
+  plugin-github:
+    activation:
+      - "plugins/github/src/**"
+      - "packages/workflow-*/src/**"
+    evidence: ".software-factory/evidence/plugin-github.json"
+    plan: "docs/design/a-stack-knows-its-parent.md"
+    required_assertions:
+      - "stack.a_pull_request_opens_on_the_parent_head_while_it_is_open"
+      - "stack.a_merged_parent_answers_its_recorded_base"
+      - "stack.an_absent_parent_or_one_closed_unmerged_waits"
+      - "stack.no_workflow_learns_the_word_github"
+
   # The one claim no unit test can make. They all import source from inside
   # the workspace, so an install missing half of what it needs passes every
   # one of them. Activation covers the stamp and the install scripts, because

@@ -702,6 +702,40 @@ describe("GitHubCodeHost.pullRequest", () => {
   });
 });
 
+describe("GitHubCodeHost.pullRequestAncestry", () => {
+  it.each([
+    ["OPEN", false, "open"],
+    ["CLOSED", true, "merged"],
+    ["CLOSED", false, "closed-unmerged"],
+  ] as const)("maps a %s parent with merged=%s without making a workflow name GitHub", async (state, merged, expected) => {
+    const response = {
+      data: { repository: { pullRequest: { state, merged, headRefName: "ada/parent", baseRefName: "main" } } },
+    };
+    const { runner, host } = hostFor(response);
+
+    await expect(host.pullRequestAncestry("Northwind/northwind-backend", 4926)).resolves.toEqual({
+      state: expected,
+      headBranch: "ada/parent",
+      baseBranch: "main",
+    });
+    expect(runner.argvFor("gh").join(" ")).toContain("pullRequest(number: $number)");
+  });
+
+  it("says absent instead of guessing a base", async () => {
+    const { host } = hostFor({ data: { repository: { pullRequest: null } } });
+
+    await expect(host.pullRequestAncestry("Northwind/northwind-backend", 4926)).resolves.toEqual({
+      state: "absent",
+    });
+  });
+
+  it("leaves an unknown repository unavailable instead of calling it absent", async () => {
+    const { host } = hostFor({ data: { repository: null } });
+
+    await expect(host.pullRequestAncestry("Northwind/northwind-backend", 4926)).resolves.toBeNull();
+  });
+});
+
 describe("GitHubCodeHost.merge", () => {
   it("merges by the method the caller named", async () => {
     const { runner, host } = hostFor(REAL_RESPONSE);

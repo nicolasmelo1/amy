@@ -126,6 +126,7 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | Method | What it does |
 | :-- | :-- |
 | `findPullRequest(repo: string, branch: string): Promise<PullRequestView \| null>` |  |
+| `pullRequestAncestry(repo: string, number: number): Promise<PullRequestAncestry \| null>` | The forge facts a stacked child needs to choose its base. |
 | `openPullRequest(request: OpenPullRequestRequest): Promise<number>` |  |
 | `requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>` |  |
 | `resolveReviewThread(threadId: string): Promise<void>` | Closes one review thread, by its own id, in one act. |
