@@ -61,6 +61,12 @@ function writeGeneration(workId: string, n: number, entry: Record<string, unknow
   fs.writeFileSync(path.join(chainOf(workId), `${n}.json`), JSON.stringify(entry));
 }
 
+/** The one generation file a settled chain keeps, whatever its number. */
+function onlyGeneration(workId: string): string {
+  const [name] = fs.readdirSync(chainOf(workId));
+  return path.join(chainOf(workId), name!);
+}
+
 function modeOf(file: string): number {
   return fs.statSync(file).mode & 0o777;
 }
@@ -78,7 +84,7 @@ describe("what the plugin keeps is private", () => {
     expect(modeOf(path.dirname(reply!.files[0]!))).toBe(0o700);
     expect(modeOf(reply!.files[0]!)).toBe(0o600);
     expect(modeOf(chainOf("ENG-1"))).toBe(0o700);
-    expect(modeOf(path.join(chainOf("ENG-1"), "1.json"))).toBe(0o600);
+    expect(modeOf(onlyGeneration("ENG-1"))).toBe(0o600);
   });
 });
 
@@ -87,7 +93,7 @@ describe("a use while a prune's tombstone stands", () => {
     const amy = slack();
     const thread = await amy.open("ENG-1", "ENG-1");
     const old = new Date(Date.now() - 40 * DAY);
-    fs.utimesSync(path.join(chainOf("ENG-1"), "1.json"), old, old);
+    fs.utimesSync(onlyGeneration("ENG-1"), old, old);
     const other = slack();
     // Another process posts to the thread it holds just as the tombstone lands.
     const link = fs.linkSync;
@@ -163,11 +169,14 @@ describe("a forget that died half way", () => {
     const amy = slack();
     const thread = await amy.open("ENG-1", "ENG-1");
     const [reply] = await amy.replies(thread, SINCE);
-    writeGeneration("ENG-1", 2, { tombstone: true, owner: `${DEAD}:gone`, covers: thread.id });
+    const top = Math.max(...fs.readdirSync(chainOf("ENG-1")).map((name) => Number.parseInt(name, 10)));
+    writeGeneration("ENG-1", top + 1, { tombstone: true, owner: `${DEAD}:gone`, covers: thread.id });
 
     amy.forget("ENG-1");
 
-    expect(fs.existsSync(chainOf("ENG-1"))).toBe(false);
+    // Only the released floor is left, so a generation number never comes back.
+    const floor = JSON.parse(fs.readFileSync(onlyGeneration("ENG-1"), "utf8")) as Record<string, unknown>;
+    expect(floor).toEqual({ tombstone: true, covers: thread.id });
     expect(fs.existsSync(reply!.files[0]!)).toBe(false);
   });
 

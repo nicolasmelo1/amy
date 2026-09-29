@@ -219,23 +219,23 @@ export class ThreadMap {
     try {
       ({ ts, posted } = await start(recoverSince));
     } catch (error) {
-      // Released, not removed: Slack may have taken the root before the
-      // call failed, and the next attempt recovers from this instant.
-      this.replace(workId, next, { channel, pendingSince });
+      // Released as the next generation, not removed: Slack may have taken
+      // the root before the call failed, and the next attempt recovers from
+      // this instant. If the number is gone, somebody already moved on.
+      this.create(workId, next + 1, { channel, pendingSince });
       throw error;
     } finally {
       clearInterval(renew);
     }
-    if (Math.max(0, ...this.generations(workId)) > next) {
-      // Paused past its lease and taken over: the claim is not ours any more,
-      // so the root is not published. The open reads what the newer claim
-      // settles on, and takes this root back only if it posted it and the
-      // winner did not recover that very root.
-      return { ts, posted, won: false };
-    }
-    this.replace(workId, next, { channel, ts });
-    const displaced = this.rootsBelow(workId, next).filter((older) => older !== ts);
-    this.removeBelow(workId, next);
+    // Published as the next generation, created exclusively, never written
+    // over the claim: if a taker, a tombstone or anyone else took that number
+    // first, this claim was lost while the post was out. The open then reads
+    // what the newer claim settles on, and takes this root back only if it
+    // posted it and the winner did not recover that very root.
+    const result = next + 1;
+    if (!this.create(workId, result, { channel, ts })) return { ts, posted, won: false };
+    const displaced = this.rootsBelow(workId, result).filter((older) => older !== ts);
+    this.removeBelow(workId, result);
     for (const older of displaced) {
       this.workOf.delete(older);
       this.onDisplaced(older);
@@ -259,25 +259,24 @@ export class ThreadMap {
     if (!top) return undefined;
     if (this.isLive(top)) return "busy";
     const subject = this.settled(workId);
-    if (subject && !shouldGo(subject)) return "busy";
+    // Nothing under a floor or a dead tombstone: nothing left to forget.
+    if (!subject) return undefined;
+    if (!shouldGo(subject)) return "busy";
 
     const tombstone = top.n + 1;
     const claim = { tombstone: true as const, owner: `${process.pid}:${randomUUID()}`, covers: subject?.entry.ts };
     if (!this.create(workId, tombstone, claim)) return "busy";
 
-    const covered = subject && this.read(workId, subject.n);
-    if (subject && (!covered || !shouldGo(covered))) {
+    const covered = this.read(workId, subject.n);
+    if (!covered || !shouldGo(covered)) {
       fs.rmSync(this.file(workId, tombstone), { force: true });
       return "busy";
     }
     this.removeBelow(workId, tombstone);
-    fs.rmSync(this.file(workId, tombstone), { force: true });
-    try {
-      fs.rmdirSync(this.directoryOf(workId));
-    } catch {
-      // Somebody started a new chain for this work already; it is theirs.
-    }
-    const ts = covered?.entry.ts;
+    // Kept, released, as the chain's floor: numbers never come back, so a
+    // request that outlived its claim can never publish over a newer one.
+    this.release(workId, tombstone, { tombstone: true, covers: covered.entry.ts });
+    const ts = covered.entry.ts;
     if (ts) this.workOf.delete(ts);
     return ts;
   }
@@ -368,8 +367,8 @@ export class ThreadMap {
     }
   }
 
-  /** Only by the generation's owner, whole and renamed into place. */
-  private replace(workId: string, n: number, entry: ThreadEntry): void {
+  /** Only by the tombstone's owner, whole and renamed into place. */
+  private release(workId: string, n: number, entry: ThreadEntry): void {
     const staged = path.join(this.root, `.${randomUUID()}.tmp`);
     fs.writeFileSync(staged, JSON.stringify(entry), { mode: 0o600 });
     fs.renameSync(staged, this.file(workId, n));

@@ -73,9 +73,11 @@ created exclusively — written aside and linked into place — so exactly one
 process wins each number. Everything that changes what a chain means claims
 the next number first:
 
-- **Posting a root.** Whoever wins posts it and writes its `ts` into its own
-  generation; everybody else waits while that owner holds its claim, then
-  reads it.
+- **Posting a root.** Whoever wins the claim posts it and publishes its `ts`
+  as the *next* generation, created exclusively — never written over its
+  claim. If anybody took that number first, the claim was lost while the post
+  was out, and the owner goes the superseded way below. Everybody else waits
+  while that owner holds its claim, then reads it.
 - **Taking over.** An owner that died is taken over by creating the next
   number. A claim is held by lease: the owner renews its generation's mtime
   while it works, so a claim whose lease ran out is dead even when some other
@@ -100,9 +102,10 @@ the next number first:
   dead tombstone instead of posting a second root, and a retried forget
   finishes the job.
 
-Generation numbers come back after a forget, so a look that reads a
-thread checks the same generation still carries the same root, not only the
-same number. Opening one work item never rewrites another's file, and a thread remembered
+A forget keeps its tombstone, released, as the chain's floor, so generation
+numbers never come back: a request that outlived its claim can never publish
+over a newer owner's. A look that reads a thread still checks the generation
+carries the same root, not only the same number. Opening one work item never rewrites another's file, and a thread remembered
 for another channel starts a new generation. An empty work id is refused: it
 would name every thread.
 

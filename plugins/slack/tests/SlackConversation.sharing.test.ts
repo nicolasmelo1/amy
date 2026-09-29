@@ -117,8 +117,9 @@ describe("an owner that died while posting", () => {
 
     expect(posted).toBe(1);
     expect(new Set(opened.map((thread) => thread.id))).toEqual(new Set(["1790000009.000100"]));
-    // Settled: the dead attempt is gone and nothing staged is left behind.
-    expect(fs.readdirSync(chainOf("ENG-1"))).toEqual(["2.json"]);
+    // Settled: the dead attempt and the winner's claim are gone, only its
+    // published result is left, and nothing staged is left behind.
+    expect(fs.readdirSync(chainOf("ENG-1"))).toEqual(["3.json"]);
   });
 
   it("loses the takeover to a process that created the same generation first, and waits for its thread", async () => {
@@ -277,6 +278,48 @@ describe("an owner paused past its lease and taken over", () => {
     const deleted = calls.filter((call) => methodOf(call) === "chat.delete").map(argsOf);
     expect(deleted).toEqual([{ channel: CHANNEL, ts: "1790000001.000100" }]);
     expect(fs.readFileSync(path.join(chainOf("ENG-1"), "1.json"), "utf8")).not.toContain("1790000001.000100");
+  });
+});
+
+describe("a post that outlives its claim, a forget and a new open", () => {
+  it("never publishes over the newer owner's thread, and adopts it", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const calls: HttpRequest[] = [];
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        calls.push(request);
+        if (methodOf(request) === "chat.postMessage") await slow;
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+      },
+    });
+    const delayed = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
+
+    const opening = delayed.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // While the post is out, its claim was forgotten (a released floor at 2),
+    // and a new open claimed 3 and published its own thread as 4.
+    fs.rmSync(path.join(chainOf("ENG-1"), "1.json"));
+    writeGeneration("ENG-1", 2, { tombstone: true, covers: undefined });
+    writeGeneration("ENG-1", 4, { channel: CHANNEL, ts: "1790000004.000100" });
+    release();
+
+    expect(await opening).toEqual({ id: "1790000004.000100" });
+    expect(JSON.parse(fs.readFileSync(path.join(chainOf("ENG-1"), "4.json"), "utf8"))).toEqual({ channel: CHANNEL, ts: "1790000004.000100" });
+    expect(calls.filter((call) => methodOf(call) === "chat.delete").map(argsOf)).toEqual([{ channel: CHANNEL, ts: "1790000001.000100" }]);
+  });
+
+  it("keeps the numbers going after a forget, so none is ever reused", async () => {
+    let roots = 0;
+    const slack = slackAt(directory, () => ({ ok: true, ts: `179000000${++roots}.000100` }));
+    await slack.open("ENG-1", "ENG-1");
+    const before = Math.max(...fs.readdirSync(chainOf("ENG-1")).map((name) => Number.parseInt(name, 10)));
+
+    slack.forget("ENG-1");
+    await slack.open("ENG-1", "ENG-1");
+
+    const after = fs.readdirSync(chainOf("ENG-1")).map((name) => Number.parseInt(name, 10));
+    expect(Math.min(...after)).toBeGreaterThan(before);
   });
 });
 
