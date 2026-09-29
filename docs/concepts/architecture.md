@@ -100,7 +100,7 @@ plugins/
 ├── github               GitHub as the code host, through the gh CLI.
 ├── hermes-agent         Hermes as the agent, over its one-shot mode and usage report.
 ├── linear               Linear as the tracker, over its GraphQL API.
-├── notify-fanout        Sends one announcement down every configured channel, and keeps going when one is down.
+├── notify-fanout        Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.
 ├── notify-hermes        Announcements over Hermes, which already owns the messaging credentials.
 ├── notify-inbox         Announcements as a file on disk plus a desktop notification.
 ├── plan-check           The quality bar for a drafted plan: the repository's own check, run in its checkout.

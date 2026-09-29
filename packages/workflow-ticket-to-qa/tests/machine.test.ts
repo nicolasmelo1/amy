@@ -98,6 +98,7 @@ describe("CLARIFYING", () => {
     );
 
     expect(p.retryAfterMs).toBe(policy.pollBackoffMs);
+    expect(p.why).toBe("waiting for an answer in the work thread");
   });
 
   it("re-reads the ticket once it is answered, with the answer attached", () => {
@@ -106,7 +107,7 @@ describe("CLARIFYING", () => {
     const p = expectAdvance(plan(record("CLARIFYING", { triage: asked }), obs, policy));
 
     expect(p.to).toBe("READY");
-    expect(p.why).toContain("answered");
+    expect(p.why).toBe("the question in the work thread was answered");
     expect(p.effects).toEqual([
       {
         type: "triage",

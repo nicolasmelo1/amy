@@ -6,7 +6,8 @@ export interface Channel {
 }
 
 /**
- * Sends one announcement down every configured channel.
+ * Posts announcements to a mounted conversation, or fans them out through
+ * configured channels when no conversation is mounted.
  *
  * A channel that fails does not stop the others, because losing a
  * notification must never stop a ticket.

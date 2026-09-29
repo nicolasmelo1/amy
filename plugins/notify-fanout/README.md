@@ -2,7 +2,7 @@
 
 # @amykit/plugin-notify-fanout
 
-Sends one announcement down every configured channel, and keeps going when one is down.
+Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `notifier` port.
 

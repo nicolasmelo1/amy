@@ -114,7 +114,7 @@ function planClarifying(record: TicketRecord, obs: Observation, policy: Policy):
   const answer = said.find((line) => line.includes("answered:"));
 
   if (answer) {
-    return advance("READY", `the question on the ticket was answered`, {
+    return advance("READY", "the question in the work thread was answered", {
       type: "triage",
       conversation: said,
     });
@@ -123,7 +123,7 @@ function planClarifying(record: TicketRecord, obs: Observation, policy: Policy):
   // Re-asking is the defect this state used to be: a look without an answer
   // holds rather than posts the same words again. `CLARIFYING` cannot clear
   // because the ticket was touched — only because it was answered.
-  return wait(policy.pollBackoffMs, "waiting for an answer on the ticket");
+  return wait(policy.pollBackoffMs, "waiting for an answer in the work thread");
 }
 
 /**
