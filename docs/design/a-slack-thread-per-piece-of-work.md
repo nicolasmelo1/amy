@@ -87,7 +87,11 @@ the next number first:
   work whose root is being posted right now is refused, so that post never
   lands with nowhere to be remembered. A root still being posted for another
   channel is waited for too, so a mount moved to a new channel never races the
-  old one into a thread that is no longer current.
+  old one into a thread that is no longer current; the replaced root's
+  downloads are dropped with it. A tombstone names the root it covers. A
+  forget that died half way is stepped over: an open adopts the thread under a
+  dead tombstone instead of posting a second root, and a retried forget
+  finishes the job.
 
 Opening one work item never rewrites another's file, and a thread remembered
 for another channel starts a new generation. An empty work id is refused: it
@@ -112,7 +116,9 @@ reply names each skipped file in its text.
 
 Everything lives under `<state>/slack/`: `threads/<work id>/` for each work
 item's thread and `files/<thread ts>/<file id>/<name>` for what was downloaded
-from it, so a thread's files sit under it.
+from it, so a thread's files sit under it. All of it is private — directories
+`0700`, files `0600`, and a looser directory made before is tightened — since
+the files are the operator's screenshots fetched with the bot's token.
 
 - **Retention.** A downloaded file or a thread's memory nobody used within
   `retentionDays` is pruned. Using counts: reading a reply again, or opening
@@ -127,7 +133,9 @@ from it, so a thread's files sit under it.
   leaves a `files/<thread ts>.forgotten` marker, and a download publishes
   before it reads the marker, so one still in flight cannot bring a forgotten
   thread's file back. Markers are empty and never pruned, so a stale reference
-  read months later still finds its thread forgotten.
+  read months later still finds its thread forgotten, and every prune removes
+  the files of each marked thread — even with retention at `0` — so a forget
+  that died between its marker and its removal is finished.
 - **By hand.** Any of `files/` can be deleted at any time: a missing file is
   downloaded again the next time its reply is read. Deleting a work item's
   directory under `threads/`, or pruning it, only forgets the thread on this

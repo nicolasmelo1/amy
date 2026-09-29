@@ -15,6 +15,8 @@ export interface ThreadEntry {
   owner?: string;
   /** This work is being forgotten; nothing before it counts any more. */
   tombstone?: true;
+  /** The root a tombstone is forgetting, so a retry can finish the job. */
+  covers?: string;
 }
 
 export interface ThreadMapOptions {
@@ -23,6 +25,8 @@ export interface ThreadMapOptions {
   pollMs?: number;
   /** How long an owner's claim holds without being renewed. */
   leaseMs?: number;
+  /** Told a root a newer one replaced, in another channel, so its files can go. */
+  onDisplaced?: (ts: string) => void;
 }
 
 /** What `start` is told: when an earlier attempt that may have posted began. */
@@ -54,6 +58,7 @@ export class ThreadMap {
   private readonly maxWaitMs: number;
   private readonly pollMs: number;
   private readonly leaseMs: number;
+  private readonly onDisplaced: (ts: string) => void;
   /** Which work a root belongs to, as far as this process has seen. */
   private readonly workOf = new Map<string, string>();
 
@@ -63,6 +68,10 @@ export class ThreadMap {
     this.maxWaitMs = options.maxWaitMs ?? 10 * 60_000;
     this.pollMs = options.pollMs ?? 100;
     this.leaseMs = options.leaseMs ?? 60_000;
+    this.onDisplaced = options.onDisplaced ?? (() => {});
+    // What threads a machine's work lives in is nobody else's to read.
+    privateDirectory(directory);
+    privateDirectory(this.root);
   }
 
   /**
@@ -87,8 +96,10 @@ export class ThreadMap {
   used(ts: string): void {
     const workId = this.workOf.get(ts) ?? this.findWork(ts);
     if (!workId) return;
-    const current = this.current(workId);
-    if (current?.entry.ts === ts) touch(this.file(workId, current.n));
+    // The generation carrying it, even under a tombstone: a forget's second
+    // look reads that generation, so a use now makes it back off.
+    const carrying = this.settled(workId);
+    if (carrying?.entry.ts === ts) touch(this.file(workId, carrying.n));
   }
 
   /**
@@ -131,20 +142,31 @@ export class ThreadMap {
     requireId(workId);
     const deadline = Date.now() + this.maxWaitMs;
     for (;;) {
-      const current = this.current(workId);
-      if (this.mustWaitOn(current)) {
+      const top = this.current(workId);
+      if (this.mustWaitOn(top)) {
         if (Date.now() >= deadline) throw new Error(`another amy is still working on the thread for ${workId}`);
         await new Promise((resolve) => setTimeout(resolve, this.pollMs));
         continue;
       }
-      const entry = inChannel(current, channel);
+      // Under a tombstone whose owner died mid-forget, the thread it covered
+      // is still the thread: adopted, not replaced by a second root.
+      const settled = this.settled(workId);
+      const entry = inChannel(settled, channel);
       if (entry?.ts) {
+        if (top!.n !== settled!.n && !this.resettle(workId, top!.n + 1, channel, entry.ts)) continue;
         this.workOf.set(entry.ts, workId);
         return entry.ts;
       }
-      const ts = await this.attempt(workId, channel, (current?.n ?? 0) + 1, entry?.pendingSince, start);
+      const ts = await this.attempt(workId, channel, (top?.n ?? 0) + 1, entry?.pendingSince, start);
       if (ts !== undefined) return ts;
     }
+  }
+
+  /** Writes a known root again above a dead tombstone, clearing what is under it. */
+  private resettle(workId: string, next: number, channel: string, ts: string): boolean {
+    if (!this.create(workId, next, { channel, ts })) return false;
+    this.removeBelow(workId, next);
+    return true;
   }
 
   /**
@@ -186,7 +208,12 @@ export class ThreadMap {
       clearInterval(renew);
     }
     this.replace(workId, next, { channel, ts });
+    const displaced = this.rootsBelow(workId, next).filter((older) => older !== ts);
     this.removeBelow(workId, next);
+    for (const older of displaced) {
+      this.workOf.delete(older);
+      this.onDisplaced(older);
+    }
     this.workOf.set(ts, workId);
     return ts;
   }
@@ -195,19 +222,25 @@ export class ThreadMap {
    * Forgets a work item when `shouldGo` holds, asked again under a tombstone.
    *
    * The tombstone is the next generation, created exclusively, so nobody can
-   * post or take over while it stands. If what it covers changed before the
-   * tombstone landed — touched, or taken — the forget backs off and removes
-   * only its own tombstone.
+   * post or take over while it stands, and it names the root it covers. If
+   * what it covers changed before the tombstone landed — touched, or taken —
+   * the forget backs off and removes only its own tombstone. A tombstone left
+   * by a forget that died is stepped over: the thread under it is the one
+   * decided on again, so a retry finishes the job it started.
    */
   private retire(workId: string, shouldGo: (generation: Generation) => boolean): string | "busy" | undefined {
-    const seen = this.current(workId);
-    if (!seen) return undefined;
-    if (!shouldGo(seen)) return "busy";
-    const tombstone = seen.n + 1;
-    if (!this.create(workId, tombstone, { tombstone: true, owner: `${process.pid}:${randomUUID()}` })) return "busy";
+    const top = this.current(workId);
+    if (!top) return undefined;
+    if (this.isLive(top)) return "busy";
+    const subject = this.settled(workId);
+    if (subject && !shouldGo(subject)) return "busy";
 
-    const covered = this.read(workId, seen.n);
-    if (!covered || !shouldGo(covered)) {
+    const tombstone = top.n + 1;
+    const claim = { tombstone: true as const, owner: `${process.pid}:${randomUUID()}`, covers: subject?.entry.ts };
+    if (!this.create(workId, tombstone, claim)) return "busy";
+
+    const covered = subject && this.read(workId, subject.n);
+    if (subject && (!covered || !shouldGo(covered))) {
       fs.rmSync(this.file(workId, tombstone), { force: true });
       return "busy";
     }
@@ -218,14 +251,33 @@ export class ThreadMap {
     } catch {
       // Somebody started a new chain for this work already; it is theirs.
     }
-    if (covered.entry.ts) this.workOf.delete(covered.entry.ts);
-    return covered.entry.ts;
+    const ts = covered?.entry.ts;
+    if (ts) this.workOf.delete(ts);
+    return ts;
   }
 
   private isLive(generation: Generation): boolean {
     const owner = generation.entry.owner;
     if (!owner) return false;
     return Date.now() - generation.mtimeMs < this.leaseMs && isAlive(pidOf(owner));
+  }
+
+  /** The newest generation that is not a tombstone: the thread, or its attempt. */
+  private settled(workId: string): Generation | undefined {
+    const numbers = this.generations(workId).sort((a, b) => b - a);
+    for (const n of numbers) {
+      const generation = this.read(workId, n);
+      if (generation && !generation.entry.tombstone) return generation;
+    }
+    return undefined;
+  }
+
+  /** Every root recorded under generation `n`. */
+  private rootsBelow(workId: string, n: number): string[] {
+    return this.generations(workId)
+      .filter((older) => older < n)
+      .map((older) => this.read(workId, older)?.entry.ts)
+      .filter((ts): ts is string => ts !== undefined);
   }
 
   private current(workId: string): Generation | undefined {
@@ -251,7 +303,9 @@ export class ThreadMap {
     for (const name of entriesOf(this.root)) {
       if (name.startsWith(".")) continue;
       const workId = Buffer.from(name, "base64url").toString();
-      if (this.current(workId)?.entry.ts === ts) {
+      // The settled generation, not the top: under a tombstone, the thread
+      // it covers is still the one a held reference is using.
+      if (this.settled(workId)?.entry.ts === ts) {
         this.workOf.set(ts, workId);
         return workId;
       }
@@ -271,12 +325,12 @@ export class ThreadMap {
    * the chain's directory went away under a forget and has to be made again.
    */
   private create(workId: string, n: number, entry: ThreadEntry): boolean {
-    fs.mkdirSync(this.root, { recursive: true });
+    privateDirectory(this.root);
     // Staged outside the chain, so a forget can always remove an empty one.
     const staged = path.join(this.root, `.${randomUUID()}.tmp`);
-    fs.writeFileSync(staged, JSON.stringify(entry));
+    fs.writeFileSync(staged, JSON.stringify(entry), { mode: 0o600 });
     try {
-      fs.mkdirSync(this.directoryOf(workId), { recursive: true });
+      fs.mkdirSync(this.directoryOf(workId), { recursive: true, mode: 0o700 });
       fs.linkSync(staged, this.file(workId, n));
       return true;
     } catch (error) {
@@ -291,7 +345,7 @@ export class ThreadMap {
   /** Only by the generation's owner, whole and renamed into place. */
   private replace(workId: string, n: number, entry: ThreadEntry): void {
     const staged = path.join(this.root, `.${randomUUID()}.tmp`);
-    fs.writeFileSync(staged, JSON.stringify(entry));
+    fs.writeFileSync(staged, JSON.stringify(entry), { mode: 0o600 });
     fs.renameSync(staged, this.file(workId, n));
   }
 
@@ -314,6 +368,12 @@ export class ThreadMap {
 /** The generation's entry when it is a thread in `channel`, not a tombstone. */
 function inChannel(current: Generation | undefined, channel: string): ThreadEntry | undefined {
   return current && !current.entry.tombstone && current.entry.channel === channel ? current.entry : undefined;
+}
+
+/** Made if missing, and tightened if it was made looser before. */
+export function privateDirectory(directory: string): void {
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  fs.chmodSync(directory, 0o700);
 }
 
 /** A directory's names, or none if a forget removed it a moment ago. */

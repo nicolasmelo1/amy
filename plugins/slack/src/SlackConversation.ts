@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Conversation, Reply, ThreadRef } from "@amykit/core";
 import { SlackApi, TooLarge } from "./SlackApi.js";
-import { ThreadMap } from "./ThreadMap.js";
+import { ThreadMap, privateDirectory } from "./ThreadMap.js";
 
 export interface SlackConversationOptions {
   /** A channel id, not a name. */
@@ -85,8 +85,15 @@ export class SlackConversation implements Conversation {
     private readonly api: SlackApi,
     private readonly options: SlackConversationOptions,
   ) {
-    this.threads = new ThreadMap(options.directory, { maxWaitMs: options.lockWaitMs, leaseMs: options.leaseMs });
+    this.threads = new ThreadMap(options.directory, {
+      maxWaitMs: options.lockWaitMs,
+      leaseMs: options.leaseMs,
+      // A root replaced in another channel takes its downloads with it.
+      onDisplaced: (ts) => this.dropFiles(ts),
+    });
     this.filesDirectory = path.join(options.directory, "files");
+    // The operator's screenshots, fetched with the bot's token: private.
+    privateDirectory(this.filesDirectory);
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
@@ -185,6 +192,9 @@ export class SlackConversation implements Conversation {
    * files go with it. Returns how many of each went.
    */
   prune(now: Date = this.clock()): { threads: number; files: number } {
+    // Whatever a forget marked and did not get to remove goes first, even
+    // when retention keeps everything else: that was a decision, not an age.
+    sweepForgotten(this.filesDirectory);
     const days = this.options.retentionDays ?? DEFAULT_RETENTION_DAYS;
     if (days <= 0) return { threads: 0, files: 0 };
     const cutoff = now.getTime() - days * DAY_MS;
@@ -214,8 +224,8 @@ export class SlackConversation implements Conversation {
    * publishes, so it cannot bring a forgotten thread's file back.
    */
   private dropFiles(ts: string): void {
-    fs.mkdirSync(this.filesDirectory, { recursive: true });
-    fs.writeFileSync(this.forgottenMarker(ts), "");
+    privateDirectory(this.filesDirectory);
+    fs.writeFileSync(this.forgottenMarker(ts), "", { mode: 0o600 });
     fs.rmSync(this.threadFiles(ts), { recursive: true, force: true });
   }
 
@@ -374,11 +384,11 @@ export class SlackConversation implements Conversation {
     if (fs.existsSync(this.forgottenMarker(threadTs))) return undefined;
     if (keptAgain(target)) return target;
     const bytes = await this.api.download(url, limit);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
     // Staged and renamed, so a path that exists is always a whole file.
     const partial = `${target}.${randomUUID()}.partial`;
     try {
-      fs.writeFileSync(partial, bytes, { flag: "wx" });
+      fs.writeFileSync(partial, bytes, { flag: "wx", mode: 0o600 });
       fs.renameSync(partial, target);
     } finally {
       fs.rmSync(partial, { force: true });
@@ -436,20 +446,47 @@ function pruneFiles(directory: string, cutoff: number, top = true): number {
  * is fetched again; so a path a reader was handed is never removed under it.
  */
 function removeIfStale(file: string, cutoff: number): boolean {
-  if (fs.statSync(file).mtimeMs >= cutoff) return false;
+  // Another prune may have taken any of these first; then it is handled.
+  const before = mtimeOf(file);
+  if (before === undefined || before >= cutoff) return false;
   const aside = `${file}.${randomUUID()}.pruning`;
-  try {
-    fs.renameSync(file, aside);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
-    throw error;
-  }
-  if (fs.statSync(aside).mtimeMs >= cutoff) {
-    fs.renameSync(aside, file);
+  if (!ignoringGone(() => fs.renameSync(file, aside))) return false;
+  const after = mtimeOf(aside);
+  if (after === undefined) return false;
+  if (after >= cutoff) {
+    ignoringGone(() => fs.renameSync(aside, file));
     return false;
   }
   fs.rmSync(aside, { force: true });
   return true;
+}
+
+function mtimeOf(file: string): number | undefined {
+  try {
+    return fs.statSync(file).mtimeMs;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+/** Runs it; false when what it touched was already gone. */
+function ignoringGone(act: () => void): boolean {
+  try {
+    act();
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+/** Removes the files of every thread a marker says was forgotten; idempotent. */
+function sweepForgotten(directory: string): void {
+  for (const entry of direntsOf(directory)) {
+    if (!entry.isFile() || !entry.name.endsWith(".forgotten")) continue;
+    fs.rmSync(path.join(directory, entry.name.slice(0, -".forgotten".length)), { recursive: true, force: true });
+  }
 }
 
 function direntsOf(directory: string): fs.Dirent[] {
