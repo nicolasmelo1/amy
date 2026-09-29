@@ -53,6 +53,7 @@ export default defineConfig({
       "@amykit/plugin-notify-fanout": resolve(here, "plugins/notify-fanout/src/index.ts"),
       "@amykit/plugin-notify-hermes": resolve(here, "plugins/notify-hermes/src/index.ts"),
       "@amykit/plugin-notify-inbox": resolve(here, "plugins/notify-inbox/src/index.ts"),
+      "@amykit/plugin-slack": resolve(here, "plugins/slack/src/index.ts"),
       "@amykit/agent-kit": resolve(here, "packages/agent-kit/src/index.ts"),
       "@amykit/plugin-codex": resolve(here, "plugins/codex/src/index.ts"),
       "@amykit/plugin-hermes-agent": resolve(here, "plugins/hermes-agent/src/index.ts"),

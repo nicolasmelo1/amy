@@ -422,6 +422,7 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     // the channel's own knowledge, and a mount that did not happen is its
     // own answer to report.
     notifyPort: mounted?.ports.get("notify"),
+    conversationPort: mounted?.ports.get("conversation"),
   });
 
   for (const check of checks) {
