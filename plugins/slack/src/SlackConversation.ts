@@ -89,7 +89,13 @@ export class SlackConversation implements Conversation {
 
   open(workId: string, title: string): Promise<ThreadRef> {
     this.pruneNowAndThen();
-    const known = this.threads.known(workId, this.options.channel);
+    let known: string | undefined;
+    try {
+      known = this.threads.known(workId, this.options.channel);
+    } catch (error) {
+      // A promise-returning method rejects; it does not throw at the caller.
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
     if (known) return Promise.resolve({ id: known });
 
     // Two looks at the same work in one process must not open two threads.
@@ -123,11 +129,10 @@ export class SlackConversation implements Conversation {
     const answers: Reply[] = [];
     for (const message of await this.threadMessages(thread.id, after)) {
       if (!this.isOperatorAnswer(message, thread.id, bot)) continue;
-      const at = tsToMs(message.ts!);
-      if (at <= after) continue;
+      if (tsToMicros(message.ts!) <= after * 1000) continue;
       const { paths, skipped } = await this.downloadAll(thread.id, message.files ?? []);
       answers.push({
-        at: new Date(at).toISOString(),
+        at: new Date(ceilToMs(message.ts!)).toISOString(),
         author: message.user!,
         text: [message.text ?? "", ...skipped].filter(Boolean).join("\n"),
         files: paths,
@@ -204,9 +209,16 @@ export class SlackConversation implements Conversation {
     const label = `slack channel ${this.options.channel}`;
     try {
       const { body } = await this.api.call("conversations.info", { channel: this.options.channel });
-      const channel = (body.channel ?? {}) as { name?: string; is_private?: boolean };
+      const channel = (body.channel ?? {}) as { name?: string; is_private?: boolean; is_member?: boolean };
       const isPrivate = channel.is_private === true;
-      const checks: SlackCheck[] = [{ label, ok: true, detail: `#${channel.name ?? "?"}` }];
+      const name = `#${channel.name ?? "?"}`;
+      // A public channel can be read without joining it, but `chat:write`
+      // only posts where the bot is a member.
+      const checks: SlackCheck[] = [
+        channel.is_member === false
+          ? { label, ok: false, detail: `the bot is not in ${name}; invite it there with /invite` }
+          : { label, ok: true, detail: name },
+      ];
       const needed = [
         "chat:write",
         isPrivate ? "groups:read" : "channels:read",
@@ -368,9 +380,22 @@ function pruneFiles(directory: string, cutoff: number): number {
   return removed;
 }
 
-/** Slack's `ts` is seconds with a microsecond fraction. */
-function tsToMs(ts: string): number {
-  return Math.floor(Number(ts) * 1000);
+/**
+ * Slack's `ts` is seconds with a microsecond fraction, read exactly: a reply
+ * a fraction of a millisecond after `since` is still after it.
+ */
+function tsToMicros(ts: string): number {
+  const [seconds = "0", fraction = ""] = ts.split(".");
+  return Number(seconds) * 1_000_000 + Number(fraction.padEnd(6, "0").slice(0, 6));
+}
+
+/**
+ * A reply's instant, rounded up: handed back as the next `since`, it is at
+ * or after the reply, so the reply is not returned twice, and nothing the
+ * operator wrote a millisecond later is lost.
+ */
+function ceilToMs(ts: string): number {
+  return Math.ceil(tsToMicros(ts) / 1000);
 }
 
 function msToTs(ms: number): string {

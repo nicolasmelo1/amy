@@ -179,6 +179,57 @@ describe("an owner that died while posting", () => {
   });
 });
 
+describe("a generation that cannot be read", () => {
+  it("fails naming the problem instead of retrying it forever", async () => {
+    fs.mkdirSync(chainOf("ENG-1"), { recursive: true });
+    fs.writeFileSync(path.join(chainOf("ENG-1"), "1.json"), "{ not json");
+
+    await expect(slackAt(directory, () => ({ ok: true, ts: "1" })).open("ENG-1", "ENG-1")).rejects.toThrow(SyntaxError);
+  });
+});
+
+describe("a post Slack took but whose answer was lost", () => {
+  it("recovers from when the post began, however long the failure took to arrive", async () => {
+    const calls: HttpRequest[] = [];
+    let began = 0;
+    let first = true;
+    const handler: Handler = async (request) => {
+      switch (methodOf(request)) {
+        case "chat.postMessage":
+          if (first) {
+            first = false;
+            began = Date.now();
+            // Slack took it; the answer is lost two seconds later.
+            await new Promise((resolve) => setTimeout(resolve, 2_000));
+            throw new Error("socket hang up");
+          }
+          throw new Error("a second root must not be posted");
+        case "auth.test":
+          return { ok: true, user_id: BOT };
+        default:
+          return {
+            ok: true,
+            has_more: false,
+            messages: [{
+              ts: (began / 1000).toFixed(6),
+              user: BOT,
+              text: "ENG-1",
+              metadata: { event_type: "amy_work_thread", event_payload: { work_id: "ENG-1" } },
+            }],
+          };
+      }
+    };
+    const slack = slackAt(directory, handler, calls);
+
+    await expect(slack.open("ENG-1", "ENG-1")).rejects.toThrow(/socket hang up/);
+    const opened = await slack.open("ENG-1", "ENG-1");
+
+    expect(opened).toEqual({ id: (began / 1000).toFixed(6) });
+    const oldest = Number(argsOf(calls.find((call) => methodOf(call) === "conversations.history")!).oldest);
+    expect(oldest * 1000).toBeLessThanOrEqual(began);
+  }, 10_000);
+});
+
 describe("a crash between Slack taking a root and the map remembering it", () => {
   const pendingSince = 1790000000000;
 

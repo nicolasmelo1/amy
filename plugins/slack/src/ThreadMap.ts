@@ -109,8 +109,10 @@ export class ThreadMap {
 
       const next = (current?.n ?? 0) + 1;
       const recoverSince = entry?.pendingSince;
+      // Once, before the post: a failure reported later must not move it.
+      const pendingSince = recoverSince ?? Date.now();
       const owner = `${process.pid}:${randomUUID()}`;
-      if (!this.create(workId, next, { channel, pendingSince: recoverSince ?? Date.now(), owner })) continue;
+      if (!this.create(workId, next, { channel, pendingSince, owner })) continue;
 
       let ts: string;
       try {
@@ -118,7 +120,7 @@ export class ThreadMap {
       } catch (error) {
         // Released, not removed: Slack may have taken the root before the
         // call failed, and the next attempt recovers from this instant.
-        this.replace(workId, next, { channel, pendingSince: recoverSince ?? Date.now() });
+        this.replace(workId, next, { channel, pendingSince });
         throw error;
       }
       this.replace(workId, next, { channel, ts });
@@ -132,9 +134,11 @@ export class ThreadMap {
     if (n === 0) return undefined;
     try {
       return { n, entry: JSON.parse(fs.readFileSync(this.file(workId, n), "utf8")) as ThreadEntry };
-    } catch {
-      // Removed by the owner that superseded it between the listing and the read.
-      return this.current(workId);
+    } catch (error) {
+      // Removed by the owner that superseded it between the listing and the
+      // read; anything else is a real problem and is not retried into a loop.
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return this.current(workId);
+      throw error;
     }
   }
 

@@ -151,7 +151,9 @@ describe("the operator's replies", () => {
     const replies = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
 
     expect(replies).toHaveLength(1);
-    expect(replies[0]).toMatchObject({ author: OPERATOR, text: "this one", at: new Date(1790000100000).toISOString() });
+    // 1790000100.000100 rounds up to the next millisecond, so passing it back
+    // as `since` never returns this reply again.
+    expect(replies[0]).toMatchObject({ author: OPERATOR, text: "this one", at: new Date(1790000100001).toISOString() });
     const [file] = replies[0]!.files;
     expect(file!.startsWith(directory)).toBe(true);
     expect(new Uint8Array(fs.readFileSync(file!))).toEqual(picture);
@@ -213,6 +215,19 @@ describe("the operator's replies", () => {
 
     expect(replies.map((reply) => reply.text)).toEqual(["first", "second"]);
     expect(http.argsOf("conversations.replies")[0]).toMatchObject({ channel: CHANNEL, ts: THREAD, oldest: "1790000100.000000" });
+  });
+
+  it("keeps a reply a fraction of a millisecond after the instant asked for, and does not repeat it when its own instant is asked", async () => {
+    const script = () => [
+      WHO_AM_I,
+      thread([{ ts: "1790000100.000100", user: OPERATOR, text: "just after" }]),
+    ];
+
+    const first = await conversation(new ScriptedHttp(script())).replies({ id: THREAD }, new Date(1790000100000).toISOString());
+    const again = await conversation(new ScriptedHttp(script())).replies({ id: THREAD }, first[0]!.at);
+
+    expect(first.map((reply) => reply.text)).toEqual(["just after"]);
+    expect(again).toEqual([]);
   });
 
   it("never sends the token to a file URL that is not Slack's", async () => {
@@ -301,6 +316,19 @@ describe("what amy doctor asks", () => {
     const checks = await conversation(http).checks();
 
     expect(checks.at(-1)).toEqual({ label: "slack scopes", ok: false, detail: "missing channels:read, channels:history" });
+  });
+
+  it("fails the channel, naming the fix, when the bot can read it but is not in it", async () => {
+    const http = new ScriptedHttp([
+      { match: method("auth.test"), answer: ok({ user_id: BOT, user: "amy", team: "Workshop" }, { "x-oauth-scopes": "chat:write,channels:read,channels:history,files:read" }) },
+      { match: method("conversations.info"), answer: ok({ channel: { id: CHANNEL, name: "amy-work", is_private: false, is_member: false } }) },
+    ]);
+
+    const checks = await conversation(http).checks();
+
+    expect(checks).toContainEqual({ label: `slack channel ${CHANNEL}`, ok: false, detail: "the bot is not in #amy-work; invite it there with /invite" });
+    // The scopes are their own question, and still answered.
+    expect(checks).toContainEqual({ label: "slack scopes", ok: true, detail: "chat:write, channels:read, channels:history, files:read" });
   });
 
   it("says the channel cannot be seen when Slack says so", async () => {
