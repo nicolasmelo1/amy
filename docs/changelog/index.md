@@ -40,6 +40,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### Add a Slack adapter for the conversation port: one thread per piece of work over the Web API, operator-only replies with downloaded files, `Retry-After` backoff, and `amy doctor` checks for the token, channel and scopes.
+
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-slack`
+
+
+
 ### `classify` turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before `amy add`, `amy remove` and `amy update` arrive.
 
 `minor` · `@amykit/cli`

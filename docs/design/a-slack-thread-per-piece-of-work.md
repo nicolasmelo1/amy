@@ -1,11 +1,11 @@
 # A Slack thread per piece of work
 
-Filed as #85.
+Delivered, as `@amykit/plugin-slack`. Filed as #85.
 
 The first adapter for the `conversation` port in
-[an answer arrives where the question was asked](../docs/design/an-answer-arrives-where-the-question-was-asked.md):
-a Slack plugin. One channel, one thread per piece of work, and the operator
-answers inside the thread.
+[an answer arrives where the question was asked](an-answer-arrives-where-the-question-was-asked.md):
+one channel, one thread per piece of work, and the operator answers inside
+the thread.
 
 ## What shapes it
 
@@ -15,19 +15,29 @@ answers inside the thread.
   so a plugin that opened one would split events with anything else connected
   to the same app. It also does not need one: it posts with `chat.postMessage`
   (with `thread_ts`) and reads with `conversations.replies`, and only for work
-  that is waiting on an answer. No app token, no public endpoint.
+  that is waiting on an answer. No app token, no public endpoint. Every call
+  is form-encoded, which is the one body
+  [every Web API method accepts](https://docs.slack.dev/apis/web-api/).
 - **Rate limits.** Since 2025 `conversations.replies` is limited to one call a
   minute for apps distributed outside the Marketplace, while internal
   customer-built apps keep Tier 3
   ([changelog](https://docs.slack.dev/changelog/2025/06/03/rate-limits-clarity/)).
-  The plugin backs off on `429` and `Retry-After` either way.
-- **Files.** Reply attachments are fetched with the bot token (`files:read`)
-  into the state directory, and their paths returned on the `Reply`.
+  A `429` waits the `Retry-After` it carries, in seconds
+  ([rate limits](https://docs.slack.dev/apis/web-api/rate-limits)), or a
+  minute when it carries none, and gives up naming the URL after five.
+- **Files.** Reply attachments are fetched from `url_private_download` with the
+  bot token (`files:read`) into `<state>/slack/files/<file id>/`, and their
+  paths returned on the `Reply`. The token is only ever sent to an `https`
+  Slack host: the URL comes out of a message. The plugin does not upload —
+  that would need `files:write` — so a `post` carrying files is refused.
 - **Scopes.** `chat:write`, `groups:history` or `channels:history`,
-  `files:read`. `amy doctor` checks them with `auth.test` and a
-  `conversations.info` on the configured channel.
-- **Only the operator answers.** Replies from anyone else, and the bot's own
-  posts, are never returned — by author id, not by a marker in the text.
+  `files:read`. `amy doctor` asks the mounted conversation for its own checks:
+  `auth.test` for the token, its `x-oauth-scopes` header for the scopes, and
+  `conversations.info` on the configured channel, which is also what says
+  which of the two history scopes is needed.
+- **Only the operator answers.** Replies from anyone else, the bot's own posts
+  and anything posted through an integration (`bot_id`) are never returned —
+  by author id, not by a marker in the text.
 
 ## Config
 
@@ -39,28 +49,60 @@ plugins:
     operator: U0XXXXXXX           # the only user whose replies are answers
 ```
 
-`amy init` can walk somebody through creating the app from a manifest with
-exactly these scopes. The thread for a work item is remembered in the state
-directory (`workId → thread_ts`), so it survives restarts.
+The channel and the operator are refused at mount unless they look like ids,
+and the token unless it says where it lives. The thread for a work item is
+remembered in the state directory (`slack/threads.json`, `workId → thread_ts`),
+written whole and renamed into place, so it survives restarts; a thread
+remembered for another channel is not reused.
+
+The app is created from a manifest carrying exactly these scopes:
+
+```yaml
+display_information:
+  name: amy
+features:
+  bot_user:
+    display_name: amy
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - channels:history
+      - groups:history
+      - files:read
+settings:
+  socket_mode_enabled: false
+```
+
+`amy init` does not walk through this yet; the manifest is here for whoever
+does it by hand.
+
+The docs generator describes a plugin by mounting it against empty settings,
+which this one rightly refuses, so a schema field may now declare an
+`example` the generator mounts with instead. It is never applied to a config.
 
 ## The gate
 
 `plugins/slack/tests/SlackConversation.test.ts` drives the adapter against a
 scripted HTTP transport, the same way the tracker and forge adapters are proved
-against recorded responses.
+against recorded responses, and `every-method-is-exercised.test.ts` holds it to
+the guardrail the other two carry.
 
 ## Acceptance criteria
 
-- [ ] The first post for a work item opens a thread and later posts land in it,
+- [x] The first post for a work item opens a thread and later posts land in it,
       across a restart (proof: test:plugins/slack/tests/SlackConversation.test.ts)
-- [ ] A reply with an image is returned with a readable local path
+- [x] A reply with an image is returned with a readable local path
       (proof: test:plugins/slack/tests/SlackConversation.test.ts)
-- [ ] Replies from anyone but the operator, and the bot's own, are never
+- [x] Replies from anyone but the operator, and the bot's own, are never
       returned (proof: test:plugins/slack/tests/SlackConversation.test.ts)
-- [ ] A `429` waits the `Retry-After` it was given before trying again
+- [x] A `429` waits the `Retry-After` it was given before trying again
       (proof: test:plugins/slack/tests/SlackConversation.test.ts)
-- [ ] The token is refused when written inline in the config
+- [x] The token is refused when written inline in the config
       (proof: test:plugins/slack/tests/plugin.test.ts)
+- [x] `amy doctor` reports what a mounted conversation says about its own
+      token, channel and scopes
+      (proof: test:packages/cli/tests/doctor-conversation.test.ts)
 
 **Exit condition:** an operator answers amy inside a Slack thread that belongs
 to one piece of work, with text or a picture, and the plugin never opened a

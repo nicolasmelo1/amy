@@ -37,6 +37,7 @@ maintains.
 | `@amykit/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
 | `@amykit/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
 | `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
+| `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
 | `@amykit/workflow-feature-grooming` | Feature grooming against read-only base-branch source snapshots. | `grooming-source`<br>`grooming-tracker` |  |
 
 <!-- amy:end plugin-index -->
@@ -554,6 +555,32 @@ plugins:
 | `retentionDays` | `number` | no | `7` | how long a finished queue item is kept before it is pruned |
 | `retryDelayMs` | `number` | no | `300000` | how long a failed item is held before it is looked at again |
 | `staleClaimMs` | `number` | no | `1800000` | how long a claimed item may sit before it counts as abandoned |
+
+### `@amykit/plugin-slack`
+
+A Slack thread per piece of work, over the Web API, as the conversation port.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/slack` |
+| Mounts | `conversation` |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core` |
+
+```yaml
+plugins:
+  "@amykit/plugin-slack":
+    channel: …
+    operator: …
+    token: …
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `channel` | `string` | **yes** |  | the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name |
+| `operator` | `string` | **yes** |  | the user id, such as U0XXXXXXX, whose replies are answers; everybody else's are ignored |
+| `token` | `string` | **yes** |  | where the bot token lives: `env:SLACK_BOT_TOKEN` or `file:<path>#<KEY>`, never the token itself |
 
 ### `@amykit/workflow-feature-grooming`
 
