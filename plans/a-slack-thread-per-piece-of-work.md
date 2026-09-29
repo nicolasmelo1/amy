@@ -3,7 +3,7 @@
 Filed as #85.
 
 The first adapter for the `conversation` port in
-[an answer arrives where the question was asked](an-answer-arrives-where-the-question-was-asked.md):
+[an answer arrives where the question was asked](../docs/design/an-answer-arrives-where-the-question-was-asked.md):
 a Slack plugin. One channel, one thread per piece of work, and the operator
 answers inside the thread.
 
