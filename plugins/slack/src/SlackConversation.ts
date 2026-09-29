@@ -288,6 +288,10 @@ export class SlackConversation implements Conversation {
         metadata: JSON.stringify({ event_type: ROOT_EVENT, event_payload: { work_id: workId } }),
       });
       return String(body.ts);
+    }, async (superseded) => {
+      // Best effort: a root that cannot be deleted is a stray message in the
+      // channel, never a second thread this machine remembers.
+      await this.api.call("chat.delete", { channel, ts: superseded }).catch(() => undefined);
     });
     return { id: ts };
   }

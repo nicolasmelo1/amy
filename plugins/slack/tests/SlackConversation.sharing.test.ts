@@ -253,6 +253,33 @@ describe("a mount moved to another channel while the old one is still posting", 
   });
 });
 
+describe("an owner paused past its lease and taken over", () => {
+  it("neither publishes nor returns its root when it resumes, takes it back, and adopts the newer thread", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const calls: HttpRequest[] = [];
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        calls.push(request);
+        if (methodOf(request) === "chat.postMessage") await slow;
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+      },
+    });
+    const paused = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
+
+    const opening = paused.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Its lease ran out while it was paused; another process took over and settled.
+    writeGeneration("ENG-1", 2, { channel: CHANNEL, ts: "1790000002.000100" });
+    release();
+
+    expect(await opening).toEqual({ id: "1790000002.000100" });
+    const deleted = calls.filter((call) => methodOf(call) === "chat.delete").map(argsOf);
+    expect(deleted).toEqual([{ channel: CHANNEL, ts: "1790000001.000100" }]);
+    expect(fs.readFileSync(path.join(chainOf("ENG-1"), "1.json"), "utf8")).not.toContain("1790000001.000100");
+  });
+});
+
 describe("a forget racing an open", () => {
   it("backs off, removing only its tombstone, when the thread was used after it looked", () => {
     writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000001.000100" });

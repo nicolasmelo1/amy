@@ -32,6 +32,9 @@ export interface ThreadMapOptions {
 /** What `start` is told: when an earlier attempt that may have posted began. */
 export type StartRoot = (recoverSince: number | undefined) => Promise<string>;
 
+/** Takes back a root this process posted after somebody else's replaced its claim. */
+export type DiscardRoot = (ts: string) => Promise<void>;
+
 interface Generation {
   n: number;
   entry: ThreadEntry;
@@ -138,7 +141,7 @@ export class ThreadMap {
   }
 
   /** The work's thread in `channel`, posting its root through `start` only if nobody has. */
-  async open(workId: string, channel: string, start: StartRoot): Promise<string> {
+  async open(workId: string, channel: string, start: StartRoot, discard: DiscardRoot = async () => {}): Promise<string> {
     requireId(workId);
     const deadline = Date.now() + this.maxWaitMs;
     for (;;) {
@@ -157,7 +160,7 @@ export class ThreadMap {
         this.workOf.set(entry.ts, workId);
         return entry.ts;
       }
-      const ts = await this.attempt(workId, channel, (top?.n ?? 0) + 1, entry?.pendingSince, start);
+      const ts = await this.attempt(workId, channel, (top?.n ?? 0) + 1, entry?.pendingSince, start, discard);
       if (ts !== undefined) return ts;
     }
   }
@@ -188,6 +191,7 @@ export class ThreadMap {
     next: number,
     recoverSince: number | undefined,
     start: StartRoot,
+    discard: DiscardRoot,
   ): Promise<string | undefined> {
     // Once, before the post: a failure reported later must not move it.
     const pendingSince = recoverSince ?? Date.now();
@@ -206,6 +210,13 @@ export class ThreadMap {
       throw error;
     } finally {
       clearInterval(renew);
+    }
+    if (Math.max(0, ...this.generations(workId)) > next) {
+      // Paused past its lease and taken over: the claim is not ours any more,
+      // so the root is not published or returned. It is taken back from Slack,
+      // and the open goes on to read whatever the newer claim settles on.
+      await discard(ts);
+      return undefined;
     }
     this.replace(workId, next, { channel, ts });
     const displaced = this.rootsBelow(workId, next).filter((older) => older !== ts);

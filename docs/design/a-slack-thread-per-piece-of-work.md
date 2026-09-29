@@ -79,7 +79,12 @@ the next number first:
 - **Taking over.** An owner that died is taken over by creating the next
   number. A claim is held by lease: the owner renews its generation's mtime
   while it works, so a claim whose lease ran out is dead even when some other
-  process now has its pid.
+  process now has its pid. An owner paused past its lease and taken over may
+  still have reached Slack; when it resumes and finds a newer generation, it
+  neither publishes nor returns its root — it deletes it (`chat.delete`, which
+  `chat:write` allows for the bot's own messages) and adopts the newer thread.
+  A post already sent cannot be prevented from here; one thread remembered,
+  and at most a stray message removed, is what can be kept.
 - **Forgetting.** A forget or a prune leaves a tombstone as the next number,
   asks again under it whether the work should still go, and backs off —
   removing only its tombstone — if the thread was used in between. An open
