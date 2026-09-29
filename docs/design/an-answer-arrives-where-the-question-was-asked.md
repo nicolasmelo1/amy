@@ -15,8 +15,8 @@ can read the local path.
 
 `FanOutNotifier` routes an announcement with a work id into that same thread
 when a conversation exists. Without a conversation it still delivers to every
-contributed channel. The inbox footer now tells the operator to answer in the
-conversation rather than assuming a ticket exists.
+contributed channel. The inbox channel is only part of that fallback, so its
+footer directs the operator to answer on the ticket.
 
 ## Acceptance criteria
 
@@ -28,7 +28,7 @@ conversation rather than assuming a ticket exists.
 - [x] The inbox footer names where the answer is expected
       (proof: test:plugins/notify-inbox/tests/inboxChannel.test.ts)
 - [x] A workflow keeps its tracker answer path when no conversation port is
-      mounted (proof: test:packages/workflow-ticket-to-qa/tests/plugin.test.ts)
+      mounted (proof: test:packages/workflow-ticket-to-qa/tests/briefs.test.ts)
 
 **Exit condition:** a workflow can ask its operator a question and hear the
 answer, text and pictures, without the tracker being written to or read for it.
