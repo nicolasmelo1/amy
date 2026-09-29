@@ -86,7 +86,11 @@ export class SlackApi {
     if (response.status !== 200) throw new Error(`slack ${method} answered HTTP ${response.status}`);
 
     const body = JSON.parse(new TextDecoder().decode(response.body)) as Record<string, unknown>;
-    if (body.ok !== true) throw new Error(`slack ${method} refused: ${String(body.error ?? "unknown error")}`);
+    if (body.ok !== true) {
+      // `missing_scope` carries the scope it wanted, which is the fix.
+      const needed = typeof body.needed === "string" ? ` (needs ${body.needed})` : "";
+      throw new Error(`slack ${method} refused: ${String(body.error ?? "unknown error")}${needed}`);
+    }
     return { body, headers: response.headers };
   }
 

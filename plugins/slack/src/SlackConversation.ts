@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Conversation, Reply, ThreadRef } from "@amykit/core";
 import { SlackApi } from "./SlackApi.js";
+import { ThreadMap } from "./ThreadMap.js";
 
 export interface SlackConversationOptions {
   /** A channel id, not a name. */
@@ -10,6 +11,8 @@ export interface SlackConversationOptions {
   operator: string;
   /** Where the thread map and downloaded files live. */
   directory: string;
+  /** How long to wait for another process opening a thread. */
+  lockWaitMs?: number;
 }
 
 /** What `amy doctor` prints for this plugin, one line per question. */
@@ -28,6 +31,7 @@ interface SlackFile {
 
 interface SlackMessage {
   ts?: string;
+  thread_ts?: string;
   user?: string;
   bot_id?: string;
   subtype?: string;
@@ -35,19 +39,16 @@ interface SlackMessage {
   files?: SlackFile[];
 }
 
-interface RememberedThread {
-  channel: string;
-  ts: string;
-}
-
 /**
  * One Slack thread per piece of work, in one channel.
  *
  * The thread is remembered on disk by work id, so a restart posts into the
- * thread it already opened instead of opening a second one.
+ * thread it already opened instead of opening a second one. A root Slack
+ * accepted just before a crash is found again in the channel's history
+ * rather than posted twice.
  */
 export class SlackConversation implements Conversation {
-  private readonly threadsFile: string;
+  private readonly threads: ThreadMap;
   private readonly filesDirectory: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   private botUser?: Promise<string>;
@@ -56,13 +57,13 @@ export class SlackConversation implements Conversation {
     private readonly api: SlackApi,
     private readonly options: SlackConversationOptions,
   ) {
-    this.threadsFile = path.join(options.directory, "threads.json");
+    this.threads = new ThreadMap(options.directory, { maxWaitMs: options.lockWaitMs });
     this.filesDirectory = path.join(options.directory, "files");
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
-    const remembered = this.remembered()[workId];
-    if (remembered?.channel === this.options.channel) return Promise.resolve({ id: remembered.ts });
+    const remembered = this.threads.get(workId);
+    if (remembered?.channel === this.options.channel && remembered.ts) return Promise.resolve({ id: remembered.ts });
 
     // Two looks at the same work in one process must not open two threads.
     const pending = this.opening.get(workId);
@@ -132,7 +133,12 @@ export class SlackConversation implements Conversation {
       const channel = (body.channel ?? {}) as { name?: string; is_private?: boolean };
       const isPrivate = channel.is_private === true;
       const checks: SlackCheck[] = [{ label, ok: true, detail: `#${channel.name ?? "?"}` }];
-      const needed = ["chat:write", isPrivate ? "groups:history" : "channels:history", "files:read"];
+      const needed = [
+        "chat:write",
+        isPrivate ? "groups:read" : "channels:read",
+        isPrivate ? "groups:history" : "channels:history",
+        "files:read",
+      ];
       const missing = needed.filter((scope) => !scopes.includes(scope));
       checks.push({
         label: "slack scopes",
@@ -145,24 +151,54 @@ export class SlackConversation implements Conversation {
     }
   }
 
-  private async startThread(workId: string, title: string): Promise<ThreadRef> {
-    const { body } = await this.api.call("chat.postMessage", { channel: this.options.channel, text: title });
-    const ts = String(body.ts);
-    this.remember(workId, { channel: this.options.channel, ts });
-    return { id: ts };
+  /**
+   * Under the lock, the map is read again: another process may have opened
+   * the thread while this one waited.
+   */
+  private startThread(workId: string, title: string): Promise<ThreadRef> {
+    const channel = this.options.channel;
+    return this.threads.withLock(async () => {
+      const entry = this.threads.get(workId);
+      if (entry?.channel === channel && entry.ts) return { id: entry.ts };
+
+      const recovered = entry?.channel === channel && entry.pendingSince !== undefined
+        ? await this.findRoot(title, entry.pendingSince)
+        : undefined;
+      if (recovered) {
+        this.threads.set(workId, { channel, ts: recovered });
+        return { id: recovered };
+      }
+
+      this.threads.set(workId, { channel, pendingSince: Date.now() });
+      const { body } = await this.api.call("chat.postMessage", { channel, text: title });
+      const ts = String(body.ts);
+      this.threads.set(workId, { channel, ts });
+      return { id: ts };
+    });
+  }
+
+  /** The root this bot posted with this title since `since`, if Slack took one. */
+  private async findRoot(title: string, since: number): Promise<string | undefined> {
+    const bot = await this.botUserId();
+    const texts = [title, escapeText(title)];
+    const messages = await this.pages("conversations.history", { channel: this.options.channel, oldest: msToTs(since - 1000) });
+    const root = messages.find((message) =>
+      message.user === bot &&
+      (!message.thread_ts || message.thread_ts === message.ts) &&
+      texts.includes(message.text ?? ""));
+    return root?.ts;
   }
 
   /** Every message in the thread after `after`, across pages. */
-  private async threadMessages(ts: string, after: number): Promise<SlackMessage[]> {
+  private threadMessages(ts: string, after: number): Promise<SlackMessage[]> {
+    return this.pages("conversations.replies", { channel: this.options.channel, ts, oldest: msToTs(after) });
+  }
+
+  private async pages(method: string, args: Record<string, string>): Promise<SlackMessage[]> {
     const messages: SlackMessage[] = [];
     let cursor: string | undefined;
     do {
-      const { body } = await this.api.call("conversations.replies", {
-        channel: this.options.channel,
-        ts,
-        oldest: msToTs(after),
-        cursor,
-      });
+      const { body } = await this.api.call(method, { ...args, cursor });
       messages.push(...((body.messages ?? []) as SlackMessage[]));
       const next = (body.response_metadata as { next_cursor?: string } | undefined)?.next_cursor;
       cursor = body.has_more === true && next ? next : undefined;
@@ -178,8 +214,15 @@ export class SlackConversation implements Conversation {
     return message.user === this.options.operator;
   }
 
+  /** Cached once known; a failure is not, so the next poll asks again. */
   private botUserId(): Promise<string> {
-    this.botUser ??= this.api.call("auth.test").then(({ body }) => String(body.user_id));
+    this.botUser ??= this.api.call("auth.test").then(
+      ({ body }) => String(body.user_id),
+      (error: unknown) => {
+        this.botUser = undefined;
+        throw error;
+      },
+    );
     return this.botUser;
   }
 
@@ -198,22 +241,15 @@ export class SlackConversation implements Conversation {
     if (fs.existsSync(target)) return target;
     const bytes = await this.api.download(url);
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, bytes);
+    // Staged and renamed, so a path that exists is always a whole file.
+    const partial = `${target}.${process.pid}.${Date.now()}.partial`;
+    try {
+      fs.writeFileSync(partial, bytes);
+      fs.renameSync(partial, target);
+    } finally {
+      fs.rmSync(partial, { force: true });
+    }
     return target;
-  }
-
-  private remembered(): Record<string, RememberedThread> {
-    if (!fs.existsSync(this.threadsFile)) return {};
-    return JSON.parse(fs.readFileSync(this.threadsFile, "utf8")) as Record<string, RememberedThread>;
-  }
-
-  /** Written whole and renamed into place, so a crash never leaves half a map. */
-  private remember(workId: string, thread: RememberedThread): void {
-    const threads = { ...this.remembered(), [workId]: thread };
-    fs.mkdirSync(this.options.directory, { recursive: true });
-    const partial = `${this.threadsFile}.${process.pid}.tmp`;
-    fs.writeFileSync(partial, JSON.stringify(threads, null, 2));
-    fs.renameSync(partial, this.threadsFile);
   }
 }
 
@@ -230,6 +266,11 @@ function msToTs(ms: number): string {
 function safeName(name: string): string {
   const cleaned = name.replace(/[^A-Za-z0-9._-]/g, "_").replace(/^\.+/, "_");
   return cleaned || "file";
+}
+
+/** How Slack stores `&`, `<` and `>` in a message it was sent. */
+function escapeText(text: string): string {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 function messageOf(error: unknown): string {

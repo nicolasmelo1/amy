@@ -273,7 +273,7 @@ describe("rate limits", () => {
 });
 
 describe("what amy doctor asks", () => {
-  const SCOPES = { "x-oauth-scopes": "chat:write,groups:history,files:read" };
+  const SCOPES = { "x-oauth-scopes": "chat:write,groups:read,groups:history,files:read" };
 
   it("reports the token, the channel and the scopes a private channel needs", async () => {
     const http = new ScriptedHttp([
@@ -286,11 +286,11 @@ describe("what amy doctor asks", () => {
     expect(checks).toEqual([
       { label: "slack token", ok: true, detail: "amy in Workshop" },
       { label: `slack channel ${CHANNEL}`, ok: true, detail: "#amy-work" },
-      { label: "slack scopes", ok: true, detail: "chat:write, groups:history, files:read" },
+      { label: "slack scopes", ok: true, detail: "chat:write, groups:read, groups:history, files:read" },
     ]);
   });
 
-  it("names the history scope a public channel needs when the token lacks it", async () => {
+  it("names the read and history scopes a public channel needs when the token lacks them", async () => {
     const http = new ScriptedHttp([
       { match: method("auth.test"), answer: ok({ user_id: BOT, user: "amy", team: "Workshop" }, SCOPES) },
       { match: method("conversations.info"), answer: ok({ channel: { id: CHANNEL, name: "amy-work", is_private: false } }) },
@@ -298,7 +298,7 @@ describe("what amy doctor asks", () => {
 
     const checks = await conversation(http).checks();
 
-    expect(checks.at(-1)).toEqual({ label: "slack scopes", ok: false, detail: "missing channels:history" });
+    expect(checks.at(-1)).toEqual({ label: "slack scopes", ok: false, detail: "missing channels:read, channels:history" });
   });
 
   it("says the channel cannot be seen when Slack says so", async () => {

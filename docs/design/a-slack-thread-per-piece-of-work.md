@@ -30,11 +30,17 @@ the thread.
   paths returned on the `Reply`. The token is only ever sent to an `https`
   Slack host: the URL comes out of a message. The plugin does not upload —
   that would need `files:write` — so a `post` carrying files is refused.
-- **Scopes.** `chat:write`, `groups:history` or `channels:history`,
-  `files:read`. `amy doctor` asks the mounted conversation for its own checks:
-  `auth.test` for the token, its `x-oauth-scopes` header for the scopes, and
+- **Scopes.** `chat:write`, `channels:read` and `channels:history` for a
+  public channel or `groups:read` and `groups:history` for a private one, and
+  `files:read`. A bot token reads channel threads with the history scope
+  ([conversations.replies](https://docs.slack.dev/reference/methods/conversations.replies)
+  lists the same four for bot and user tokens); `conversations.info` needs the
+  read scope ([conversations.info](https://docs.slack.dev/reference/methods/conversations.info)).
+  `amy doctor` asks the mounted conversation for its own checks: `auth.test`
+  for the token, its `x-oauth-scopes` header for the scopes, and
   `conversations.info` on the configured channel, which is also what says
-  which of the two history scopes is needed.
+  whether the public or the private pair is needed. A `missing_scope` refusal
+  names the scope Slack said it needed.
 - **Only the operator answers.** Replies from anyone else, the bot's own posts
   and anything posted through an integration (`bot_id`) are never returned —
   by author id, not by a marker in the text.
@@ -55,6 +61,17 @@ remembered in the state directory (`slack/threads.json`, `workId → thread_ts`)
 written whole and renamed into place, so it survives restarts; a thread
 remembered for another channel is not reused.
 
+The state directory is machine-wide, so every daemon that mounts the plugin
+shares that map. Opening a thread happens under `slack/threads.lock`, which
+holds the owner's pid and is taken over once that process is gone; under it
+the map is read again, so a second process adopts the thread the first one
+opened and no write loses another's entry. Before posting a root the map
+records when it was about to, and a crash between Slack taking the root and
+the map remembering it is recovered from `conversations.history`: the bot's
+own root with that title since then is adopted instead of posting a second.
+Downloaded files are staged and renamed, so a path that exists is a whole
+file.
+
 The app is created from a manifest carrying exactly these scopes:
 
 ```yaml
@@ -67,7 +84,9 @@ oauth_config:
   scopes:
     bot:
       - chat:write
+      - channels:read
       - channels:history
+      - groups:read
       - groups:history
       - files:read
 settings:
@@ -92,6 +111,9 @@ the guardrail the other two carry.
 
 - [x] The first post for a work item opens a thread and later posts land in it,
       across a restart (proof: test:plugins/slack/tests/SlackConversation.test.ts)
+- [x] Two processes sharing the state directory open one thread for one work
+      item, and a root Slack took before a crash is adopted rather than posted
+      again (proof: test:plugins/slack/tests/SlackConversation.sharing.test.ts)
 - [x] A reply with an image is returned with a readable local path
       (proof: test:plugins/slack/tests/SlackConversation.test.ts)
 - [x] Replies from anyone but the operator, and the bot's own, are never
