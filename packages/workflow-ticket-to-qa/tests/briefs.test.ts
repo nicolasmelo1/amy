@@ -232,6 +232,7 @@ describe("a runtime whose tickets carry a brief", () => {
     const { record, root } = await drive({ tracker, agent, conversation }, 3);
     fs.rmSync(root, { recursive: true, force: true });
 
+    expect(open).toHaveBeenCalledWith("PROJ-1239", "The total is wrong on the invoice");
     expect(post).toHaveBeenCalledWith(thread, { text: "- Which currency?" });
     expect(comment).not.toHaveBeenCalled();
     expect(tracker.comments).not.toHaveBeenCalled();

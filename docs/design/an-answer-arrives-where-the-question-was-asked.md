@@ -7,9 +7,9 @@ when it asks and when it later reads replies.
 ## What changed
 
 `Conversation` carries `open`, `post` and `replies`. A reply has attributed
-text, its instant and local paths for downloaded files. `ticket-to-qa` declares
-that it listens to the optional port: with one mounted it posts questions and
-reads replies from the work thread; without one it preserves the tracker road.
+text, its instant and local paths for downloaded files. `ticket-to-qa` reads
+the optional port directly: with one mounted it posts questions and reads
+replies from the work thread; without one it preserves the tracker road.
 Files are rendered into the conversation that goes back to triage, so the agent
 can read the local path.
 
@@ -29,6 +29,9 @@ footer directs the operator to answer on the ticket.
       (proof: test:plugins/notify-inbox/tests/inboxChannel.test.ts)
 - [x] A workflow keeps its tracker answer path when no conversation port is
       mounted (proof: test:packages/workflow-ticket-to-qa/tests/briefs.test.ts)
+- [x] A workflow opens its work thread and resumes from its reply when a
+      conversation port is mounted
+      (proof: test:packages/workflow-ticket-to-qa/tests/briefs.test.ts)
 
 **Exit condition:** a workflow can ask its operator a question and hear the
 answer, text and pictures, without the tracker being written to or read for it.

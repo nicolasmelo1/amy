@@ -635,7 +635,6 @@ export const ticketToQa: Workflow<Observation, Policy> = {
   // status and assigns the QA owner; each write is declared here.
   trackerWrites: ["comment", "set-status", "assign", "create-follow-up"],
   codeHostWrites: ["open-pull-request", "request-review", "resolve-thread"],
-  conversation: true,
   // Empty, and honestly so. This workflow's engine assembles the observation
   // from the very ports its actions already require: the tracker, the code
   // host and the roster. There is no separate slice for a plugin to

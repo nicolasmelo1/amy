@@ -45,9 +45,6 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * gives this workflow a port whose unclaimed mutations refuse at the call.
    */
   readonly codeHostWrites?: readonly string[];
-  /** Whether this workflow hears questions through the optional conversation port. */
-  readonly conversation?: boolean;
-
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
 }
 
