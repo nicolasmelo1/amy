@@ -29,7 +29,7 @@
     "plugins/github/package.json": "1914da77fb25b80e2df050261ef635b2b9910fcd6ad21a156edcdfd329f3acb6",
     "plugins/hermes-agent/package.json": "79fdb7fc0174476c1da1a62bb7b11e1d52deffb60a02cf27fb447166269ba535",
     "plugins/linear/package.json": "a277f90f4eb6043f165c52857434f735a13c2ed50351f4b704dc7bf7489870d3",
-    "plugins/notify-fanout/package.json": "7644ca664858fcbdc3ad005383214e50b617a38f77895e9bbcbb9dfd0d6a3d8c",
+    "plugins/notify-fanout/package.json": "cf972f6f8c98ea81ee177edcf0434a59dc5164581ba97758eb0853b886a72804",
     "plugins/notify-hermes/package.json": "f94624ee2b1346a002d0538bef011931d645f14cdaedfef7a0e7ef7a033ab5bc",
     "plugins/notify-inbox/package.json": "08d191679e5d31ab1d84dd139048919fd7f48cf4096fd2fe39e814c92050bb3d",
     "plugins/plan-check/package.json": "245feb568890a5c0e2c22b7ba50196db00b339ea39a757349d016a752846758f",

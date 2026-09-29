@@ -2,6 +2,7 @@ import {
   Budget,
   BriefStore,
   CodeHost,
+  Conversation,
   EventLog,
   Git,
   Notifier,
@@ -49,6 +50,7 @@ class NullRunner {
  */
 export interface TicketWorkerOverrides {
   tracker?: Tracker;
+  conversation?: Conversation;
   host?: CodeHost;
   agent?: Agent & Partial<{
     ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
@@ -113,6 +115,7 @@ export function ticketWorkerDeps(overrides: TicketWorkerOverrides = {}): TicketW
     workflow,
     runtime: ticketRuntime({
       tracker: overrides.tracker ?? fakeTracker(),
+      conversation: overrides.conversation,
       host: overrides.host ?? fakeHost(),
       // The relay's port carries both halves, and so does the fake: the
       // ticket-shaped methods answer as they always did, and `ask` — the

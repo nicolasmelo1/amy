@@ -45,7 +45,6 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * gives this workflow a port whose unclaimed mutations refuse at the call.
    */
   readonly codeHostWrites?: readonly string[];
-
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
 }
 

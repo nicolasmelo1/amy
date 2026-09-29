@@ -1,4 +1,4 @@
-import { Announcement, Plugin, PluginContext } from "@amykit/core";
+import { Announcement, Conversation, Plugin, PluginContext } from "@amykit/core";
 import { Channel, FanOutNotifier } from "./FanOutNotifier.js";
 
 /** The collection other plugins add their channels to. */
@@ -33,7 +33,8 @@ export const plugin: Plugin = {
     registry.port("notifier", {
       announce: (announcement: Announcement) => {
         const channels = [...ctx.contributions(CHANNEL_COLLECTION).values()] as Channel[];
-        return new FanOutNotifier(channels, sinkFor(ctx, announcement)).announce(announcement);
+        const conversation = ctx.port("conversation") as Conversation | undefined;
+        return new FanOutNotifier(channels, sinkFor(ctx, announcement), conversation).announce(announcement);
       },
     });
   },

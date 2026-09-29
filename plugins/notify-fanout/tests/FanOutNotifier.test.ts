@@ -30,6 +30,18 @@ describe("FanOutNotifier", () => {
     expect(b.delivered).toBe(1);
   });
 
+  it("sends an announcement into its work thread instead of the channels", async () => {
+    const channel = recording("fallback");
+    const open = vi.fn().mockResolvedValue({ id: "thread-1" });
+    const post = vi.fn().mockResolvedValue("message-1");
+
+    await new FanOutNotifier([channel], () => {}, { open, post, replies: async () => [] }).announce(announcement);
+
+    expect(open).toHaveBeenCalledWith("ACME-1", "ACME-1");
+    expect(post).toHaveBeenCalledWith({ id: "thread-1" }, { text: announcement.text });
+    expect(channel.delivered).toBe(0);
+  });
+
   it("keeps going when one channel is down", async () => {
     // Losing a notification must never stop a ticket.
     const broken = recording("broken", true);

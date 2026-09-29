@@ -36,6 +36,7 @@ describe("inboxChannel", () => {
     expect(written).toContain("# ACME-1");
     expect(written).toContain("State: CLARIFYING");
     expect(written).toContain(announcement.text);
+    expect(written).toContain("Answer on the ticket");
   });
 
   it("raises a desktop notification as well", async () => {

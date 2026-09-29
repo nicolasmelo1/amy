@@ -5,7 +5,7 @@ import path from "node:path";
 import { FileBriefStore } from "@amykit/plugin-file-store";
 import { InMemoryStore, WORKDAY, ticket, ticketWorkerDeps } from "@amykit/test-fixtures";
 import { Worker } from "@amykit/plugin-serial-engine";
-import type { Agent, BriefStore, Tracker } from "@amykit/core";
+import type { Agent, BriefStore, Conversation, Tracker } from "@amykit/core";
 import type { Ticket } from "../src/ticket.js";
 
 const clock = new Date(WORKDAY);
@@ -31,7 +31,7 @@ function ticketWithBrief(): Ticket {
 }
 
 async function drive(
-  overrides: { tracker: Tracker; agent?: Agent; briefs?: BriefStore },
+  overrides: { tracker: Tracker; agent?: Agent; briefs?: BriefStore; conversation?: Conversation },
   times = 2,
 ) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-runtime-"));
@@ -42,7 +42,13 @@ async function drive(
   const worker = new Worker({
     queue,
     records,
-    ...ticketWorkerDeps({ tracker: overrides.tracker, agent: overrides.agent, briefs: overrides.briefs, now: () => clock }),
+    ...ticketWorkerDeps({
+      tracker: overrides.tracker,
+      agent: overrides.agent,
+      briefs: overrides.briefs,
+      conversation: overrides.conversation,
+      now: () => clock,
+    }),
   });
   for (let look = 0; look < times; look += 1) await worker.tick();
 
@@ -190,5 +196,47 @@ describe("a runtime whose tickets carry a brief", () => {
     expect(comment).toHaveBeenCalledWith("PROJ-1239", "- Does write-off count?");
     const briefs = new FileBriefStore(path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-never-")), "briefs"));
     expect(await briefs.get("invoice-currency")).toBeNull();
+  });
+
+  it("asks and resumes in this work's conversation without commenting on the tracker", async () => {
+    const comment = vi.fn<Tracker["comment"]>().mockResolvedValue(undefined);
+    const tracker = {
+      inProgress: vi.fn<() => Promise<Ticket[]>>().mockResolvedValue([ticket()]),
+      get: vi.fn<() => Promise<Ticket | null>>().mockResolvedValue(ticket()),
+      comment,
+      comments: vi.fn<Tracker["comments"]>().mockResolvedValue([]),
+      hasReplyAfter: vi.fn<Tracker["hasReplyAfter"]>().mockResolvedValue(false),
+      setStatus: async () => {},
+      assign: async () => {},
+      createFollowUp: async () => "PROJ-9999",
+    } as unknown as Tracker;
+    const thread = { id: "conversation-PROJ-1239" };
+    const open = vi.fn<Conversation["open"]>().mockResolvedValue(thread);
+    const post = vi.fn<Conversation["post"]>().mockResolvedValue("message-1");
+    const replies = vi.fn<Conversation["replies"]>().mockResolvedValue([
+      {
+        author: "Nico",
+        text: "Use EUR.",
+        files: ["/tmp/rates.csv"],
+        at: new Date(clock.getTime() + 1).toISOString(),
+      },
+    ]);
+    const conversation: Conversation = { open, post, replies };
+    const agent = {
+      triage: vi.fn<Agent["triage"]>().mockResolvedValue({
+        value: { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: clock.toISOString() },
+        run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
+      }),
+    } as unknown as Agent;
+
+    const { record, root } = await drive({ tracker, agent, conversation }, 3);
+    fs.rmSync(root, { recursive: true, force: true });
+
+    expect(open).toHaveBeenCalledWith("PROJ-1239", "The total is wrong on the invoice");
+    expect(post).toHaveBeenCalledWith(thread, { text: "- Which currency?" });
+    expect(comment).not.toHaveBeenCalled();
+    expect(tracker.comments).not.toHaveBeenCalled();
+    expect(replies).toHaveBeenCalledWith(thread, clock.toISOString());
+    expect(record?.state).toBe("READY");
   });
 });

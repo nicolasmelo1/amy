@@ -1,4 +1,4 @@
-import { Announcement, Notifier } from "@amykit/core";
+import { Announcement, Conversation, Notifier } from "@amykit/core";
 
 export interface Channel {
   name: string;
@@ -6,7 +6,8 @@ export interface Channel {
 }
 
 /**
- * Sends one announcement down every configured channel.
+ * Posts announcements to a mounted conversation, or fans them out through
+ * configured channels when no conversation is mounted.
  *
  * A channel that fails does not stop the others, because losing a
  * notification must never stop a ticket.
@@ -21,9 +22,16 @@ export class FanOutNotifier implements Notifier {
   constructor(
     private readonly channels: readonly Channel[],
     private readonly log: (message: string) => void = console.error,
+    private readonly conversation?: Conversation,
   ) {}
 
   async announce(announcement: Announcement): Promise<void> {
+    if (this.conversation) {
+      const thread = await this.conversation.open(announcement.workId, announcement.workId);
+      await this.conversation.post(thread, { text: announcement.text });
+      return;
+    }
+
     if (this.channels.length === 0) {
       throw new Error("no notification channel is configured, so nothing can reach you");
     }

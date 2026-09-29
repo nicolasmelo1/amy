@@ -1,7 +1,7 @@
 {
   "name": "@amykit/plugin-notify-fanout",
   "version": "0.4.0",
-  "description": "Sends one announcement down every configured channel, and keeps going when one is down.",
+  "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",
