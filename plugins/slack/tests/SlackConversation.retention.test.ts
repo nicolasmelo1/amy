@@ -243,6 +243,47 @@ describe("retention", () => {
     }
   });
 
+  it("prunes on its own for a caller that only posts, and never the thread it posts to", async () => {
+    const amy = slack(() => new Date());
+    const idle = await amy.open("ENG-9", "ENG-9");
+    const [idleReply] = await amy.replies(idle, SINCE);
+    const active = await amy.open("ENG-1", "ENG-1");
+    age(31);
+
+    // A fresh process, so its first call is the one that prunes.
+    const later = slack(() => new Date());
+    await later.post(active, { text: "still here" });
+
+    expect(fs.existsSync(idleReply!.files[0]!)).toBe(false);
+    expect(await slack(() => new Date()).open("ENG-1", "ENG-1")).toEqual(active);
+  });
+
+  it("never lets the prune take the thread whose replies are being read right now", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+    age(31);
+
+    // A fresh process whose first call is this read: it marks, then prunes.
+    const [reply] = await slack(() => new Date()).replies(thread, SINCE);
+
+    expect(fs.existsSync(reply!.files[0]!)).toBe(true);
+    expect(await slack(() => new Date()).open("ENG-1", "ENG-1")).toEqual(thread);
+  });
+
+  it("keeps a forgotten thread forgotten past retention, for a stale reference read later", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+    await amy.replies(thread, SINCE);
+    amy.forget("ENG-1");
+    age(365);
+    amy.prune(new Date());
+
+    const [reply] = await amy.replies(thread, SINCE);
+
+    expect(reply!.files).toEqual([]);
+    expect(downloads).toBe(1);
+  });
+
   it("refuses to forget an empty work id, which would name every thread", async () => {
     const amy = slack(() => new Date());
     const thread = await amy.open("ENG-1", "ENG-1");

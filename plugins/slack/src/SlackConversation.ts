@@ -90,14 +90,15 @@ export class SlackConversation implements Conversation {
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
-    this.pruneNowAndThen();
     let known: string | undefined;
     try {
+      // Known first, which marks it used, so the prune after it keeps it.
       known = this.threads.known(workId, this.options.channel);
     } catch (error) {
       // A promise-returning method rejects; it does not throw at the caller.
       return Promise.reject(error instanceof Error ? error : new Error(String(error)));
     }
+    this.pruneNowAndThen();
     if (known) return Promise.resolve({ id: known });
 
     // Two looks at the same work in one process must not open two threads.
@@ -116,6 +117,7 @@ export class SlackConversation implements Conversation {
     }
     // Writing to a thread is using it, as reading its replies is.
     this.threads.used(thread.id);
+    this.pruneNowAndThen();
     const { body } = await this.api.call("chat.postMessage", {
       channel: this.options.channel,
       thread_ts: thread.id,
@@ -127,9 +129,10 @@ export class SlackConversation implements Conversation {
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
     const after = instantToMicros(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
-    this.pruneNowAndThen();
-    // Reading a thread is using it, whether or not the caller opened it first.
+    // Reading a thread is using it, whether or not the caller opened it
+    // first — marked before the prune, so the prune never takes it.
     this.threads.used(thread.id);
+    this.pruneNowAndThen();
     const bot = await this.botUserId();
 
     const answers: Reply[] = [];
@@ -421,6 +424,10 @@ function pruneFiles(directory: string, cutoff: number): number {
     if (entry.isDirectory()) {
       removed += pruneFiles(full, cutoff);
       if (fs.readdirSync(full).length === 0) fs.rmdirSync(full);
+    } else if (entry.name.endsWith(".forgotten")) {
+      // Kept for good: a stale reference read later must still find it, or
+      // a download would bring the forgotten thread's files back. It is empty.
+      continue;
     } else if (fs.statSync(full).mtimeMs < cutoff) {
       fs.rmSync(full, { force: true });
       removed += 1;

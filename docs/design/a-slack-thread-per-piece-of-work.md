@@ -114,14 +114,16 @@ from it, so a thread's files sit under it.
 
 - **Retention.** A downloaded file or a thread's memory nobody used within
   `retentionDays` is pruned. Using counts: reading a reply again, or opening
-  the thread, reading its replies, or posting to it keeps it. The plugin prunes on its own while it is used, at most
+  the thread, reading its replies, or posting to it keeps it — each marks its
+  thread before it prunes, so a prune never takes the thread in hand. The plugin prunes on its own while it is used, at most
   once an hour, and a prune never fails a call. An attempt whose owner is
   still posting is never pruned, however old.
 - **One piece of work.** `forget(workId)` removes that thread's memory and
   every file downloaded from it, for whatever retires work by command. It
   leaves a `files/<thread ts>.forgotten` marker, and a download publishes
   before it reads the marker, so one still in flight cannot bring a forgotten
-  thread's file back.
+  thread's file back. Markers are empty and never pruned, so a stale reference
+  read months later still finds its thread forgotten.
 - **By hand.** Any of `files/` can be deleted at any time: a missing file is
   downloaded again the next time its reply is read. Deleting a work item's
   directory under `threads/`, or pruning it, only forgets the thread on this
