@@ -433,6 +433,8 @@ function repliesFor(conversation: Conversation, workId: string, title: string, s
 
 /**
  * Fails an action whose agent run did not complete.
+ *
+ * By the time this is reached, a relay has already tried every harness and
  * model it was given, so there is nowhere left to go and the action has to
  * fail rather than store an answer nobody gave.
  *
