@@ -147,14 +147,47 @@ describe("retention", () => {
     expect(await amy.open("ENG-2", "ENG-2")).toEqual(fresh);
   });
 
-  it("never forgets an attempt whose owner is still posting, however old", async () => {
+  it("never forgets an attempt whose owner still holds its lease, however long ago it began", () => {
     const chain = path.join(directory, "threads", Buffer.from("ENG-1").toString("base64url"));
     fs.mkdirSync(chain, { recursive: true });
     fs.writeFileSync(path.join(chain, "1.json"), JSON.stringify({ channel: CHANNEL, pendingSince: 0, owner: `${process.pid}:posting` }));
-    age(365);
 
-    expect(slack(() => new Date()).prune(new Date()).threads).toBe(0);
+    // A month from now by the prune's clock; the lease was renewed just now.
+    expect(slack(() => new Date()).prune(new Date(Date.now() + 31 * DAY)).threads).toBe(0);
     expect(fs.existsSync(path.join(chain, "1.json"))).toBe(true);
+  });
+
+  it("keeps a thread whose replies are read, even by a caller that never opens it again", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+    age(31);
+
+    // Held on to by the caller, as a port consumer may: no open, only replies.
+    await amy.replies(thread, SINCE);
+
+    expect(amy.prune(new Date()).threads).toBe(0);
+    expect(await slack(() => new Date()).open("ENG-1", "ENG-1")).toEqual(thread);
+  });
+
+  it("refuses to forget an empty work id, which would name every thread", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+
+    expect(() => amy.forget("")).toThrow(/work id is required/);
+    await expect(amy.open("", "")).rejects.toThrow(/work id is required/);
+    expect(await amy.open("ENG-1", "ENG-1")).toEqual(thread);
+  });
+
+  it("fetches a file again when it vanished between the look and the touch", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+    const [first] = await amy.replies(thread, SINCE);
+    fs.rmSync(first!.files[0]!);
+
+    const [again] = await amy.replies(thread, SINCE);
+
+    expect(new Uint8Array(fs.readFileSync(again!.files[0]!))).toEqual(PICTURE);
+    expect(downloads).toBe(2);
   });
 
   it("keeps everything when it is zero", async () => {

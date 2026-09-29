@@ -3,27 +3,36 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * One attempt at a work item's thread: its root `ts` once Slack answered, or
- * the owner still posting it and the instant the first attempt began, so a
- * crash between Slack taking a root and this file learning it is recoverable.
+ * One generation of a work item's thread: its root `ts` once Slack answered,
+ * the owner still posting it, or a tombstone left by whoever is forgetting it.
  */
 export interface ThreadEntry {
-  channel: string;
+  channel?: string;
   ts?: string;
   /** When the first attempt of this chain was about to post. */
   pendingSince?: number;
-  /** `<pid>:<uuid>` of the attempt still posting; absent once released. */
+  /** `<pid>:<uuid>` of the attempt still posting or forgetting; absent once released. */
   owner?: string;
+  /** This work is being forgotten; nothing before it counts any more. */
+  tombstone?: true;
 }
 
 export interface ThreadMapOptions {
   /** How long to wait for a live owner to finish before failing. */
   maxWaitMs?: number;
   pollMs?: number;
+  /** How long an owner's claim holds without being renewed. */
+  leaseMs?: number;
 }
 
 /** What `start` is told: when an earlier attempt that may have posted began. */
 export type StartRoot = (recoverSince: number | undefined) => Promise<string>;
+
+interface Generation {
+  n: number;
+  entry: ThreadEntry;
+  mtimeMs: number;
+}
 
 /**
  * `workId → thread` on disk, shared by every process that mounts the plugin.
@@ -31,34 +40,55 @@ export type StartRoot = (recoverSince: number | undefined) => Promise<string>;
  * The state directory is machine-wide, so several daemons use it at once.
  * Each work item is a chain of numbered generations, `threads/<id>/<n>.json`,
  * and a generation is created exclusively — written aside and linked into
- * place — so exactly one process wins each number. Taking over from an owner
- * that died is creating the next number, so no claim is ever removed while
- * somebody may hold it, and one work item's file is never rewritten by the
- * opening of another.
+ * place — so exactly one process wins each number. Everything that changes
+ * what a chain means claims the next number first: posting a root, taking
+ * over from an owner that died, and forgetting the work, which leaves a
+ * tombstone and re-checks under it before removing anything.
+ *
+ * An owner holds its claim by lease: its generation's mtime is renewed while
+ * it works, and a claim whose lease ran out is dead even if some other
+ * process now has its pid.
  */
 export class ThreadMap {
   private readonly root: string;
   private readonly maxWaitMs: number;
   private readonly pollMs: number;
+  private readonly leaseMs: number;
+  /** Which work a root belongs to, as far as this process has seen. */
+  private readonly workOf = new Map<string, string>();
 
   constructor(directory: string, options: ThreadMapOptions = {}) {
     this.root = path.join(directory, "threads");
     // An owner may be waiting out Slack's one-a-minute limit several times.
     this.maxWaitMs = options.maxWaitMs ?? 10 * 60_000;
     this.pollMs = options.pollMs ?? 100;
+    this.leaseMs = options.leaseMs ?? 60_000;
   }
 
   /**
    * The thread this work already has in `channel`, if it has one.
    *
-   * Asking counts as using it, which is what keeps a thread still being read
-   * out of the next prune.
+   * Asking counts as using it. The touch comes before looking for a
+   * tombstone, so a forget racing this either sees the touch and backs off,
+   * or left its tombstone first and this answers that there is no thread.
    */
   known(workId: string, channel: string): string | undefined {
+    requireId(workId);
     const current = this.current(workId);
-    const ts = current?.entry.channel === channel ? current.entry.ts : undefined;
-    if (ts) touch(this.file(workId, current!.n));
+    const ts = inChannel(current, channel)?.ts;
+    if (!ts) return undefined;
+    touch(this.file(workId, current!.n));
+    if (Math.max(0, ...this.generations(workId)) !== current!.n) return undefined;
+    this.workOf.set(ts, workId);
     return ts;
+  }
+
+  /** Marks the thread with this root as used, so reading its replies keeps it. */
+  used(ts: string): void {
+    const workId = this.workOf.get(ts) ?? this.findWork(ts);
+    if (!workId) return;
+    const current = this.current(workId);
+    if (current?.entry.ts === ts) touch(this.file(workId, current.n));
   }
 
   /**
@@ -68,78 +98,157 @@ export class ThreadMap {
    * next `open` for the same work starts a new one.
    */
   forget(workId: string): string | undefined {
-    const ts = this.current(workId)?.entry.ts;
-    fs.rmSync(this.directoryOf(workId), { recursive: true, force: true });
-    return ts;
+    requireId(workId);
+    return this.retire(workId, () => true);
   }
 
   /**
    * Forgets every settled thread nobody used since `cutoffMs`, returning the
-   * roots it forgot. An attempt still posting is never pruned while its owner
-   * is alive, however old.
+   * roots it forgot. An attempt whose owner still holds its lease is never
+   * pruned, however old.
    */
   prune(cutoffMs: number): string[] {
     if (!fs.existsSync(this.root)) return [];
+    const stale = (generation: Generation) =>
+      !generation.entry.tombstone && !this.isLive(generation) && generation.mtimeMs < cutoffMs;
+
     const forgotten: string[] = [];
     for (const name of fs.readdirSync(this.root)) {
-      const workId = Buffer.from(name, "base64url").toString();
-      const current = this.current(workId);
-      if (!current) continue;
-      if (current.entry.owner && isAlive(pidOf(current.entry.owner))) continue;
-      if (fs.statSync(this.file(workId, current.n)).mtimeMs >= cutoffMs) continue;
-      this.forget(workId);
-      if (current.entry.ts) forgotten.push(current.entry.ts);
+      if (name.startsWith(".")) continue;
+      const ts = this.retire(Buffer.from(name, "base64url").toString(), stale);
+      if (ts) forgotten.push(ts);
     }
     return forgotten;
   }
 
   /** The work's thread in `channel`, posting its root through `start` only if nobody has. */
   async open(workId: string, channel: string, start: StartRoot): Promise<string> {
+    requireId(workId);
     const deadline = Date.now() + this.maxWaitMs;
     for (;;) {
       const current = this.current(workId);
-      const entry = current?.entry.channel === channel ? current.entry : undefined;
-      if (entry?.ts) return entry.ts;
-
-      if (entry?.owner && isAlive(pidOf(entry.owner))) {
-        if (Date.now() >= deadline) throw new Error(`another amy is still opening the thread for ${workId}`);
+      if (this.mustWaitOn(current, channel)) {
+        if (Date.now() >= deadline) throw new Error(`another amy is still working on the thread for ${workId}`);
         await new Promise((resolve) => setTimeout(resolve, this.pollMs));
         continue;
       }
-
-      const next = (current?.n ?? 0) + 1;
-      const recoverSince = entry?.pendingSince;
-      // Once, before the post: a failure reported later must not move it.
-      const pendingSince = recoverSince ?? Date.now();
-      const owner = `${process.pid}:${randomUUID()}`;
-      if (!this.create(workId, next, { channel, pendingSince, owner })) continue;
-
-      let ts: string;
-      try {
-        ts = await start(recoverSince);
-      } catch (error) {
-        // Released, not removed: Slack may have taken the root before the
-        // call failed, and the next attempt recovers from this instant.
-        this.replace(workId, next, { channel, pendingSince });
-        throw error;
+      const entry = inChannel(current, channel);
+      if (entry?.ts) {
+        this.workOf.set(entry.ts, workId);
+        return entry.ts;
       }
-      this.replace(workId, next, { channel, ts });
-      this.forgetBefore(workId, next);
-      return ts;
+      const ts = await this.attempt(workId, channel, (current?.n ?? 0) + 1, entry?.pendingSince, start);
+      if (ts !== undefined) return ts;
     }
   }
 
-  private current(workId: string): { n: number; entry: ThreadEntry } | undefined {
+  /** A live owner still posting this channel's root, or a live tombstone. */
+  private mustWaitOn(current: Generation | undefined, channel: string): boolean {
+    if (!current || current.entry.ts || !this.isLive(current)) return false;
+    return current.entry.tombstone === true || current.entry.channel === channel;
+  }
+
+  /**
+   * One attempt at generation `next`: undefined when somebody else won the
+   * number, the root's `ts` when this one posted or recovered it.
+   */
+  private async attempt(
+    workId: string,
+    channel: string,
+    next: number,
+    recoverSince: number | undefined,
+    start: StartRoot,
+  ): Promise<string | undefined> {
+    // Once, before the post: a failure reported later must not move it.
+    const pendingSince = recoverSince ?? Date.now();
+    const owner = `${process.pid}:${randomUUID()}`;
+    if (!this.create(workId, next, { channel, pendingSince, owner })) return undefined;
+
+    const renew = setInterval(() => touch(this.file(workId, next)), Math.max(1, Math.floor(this.leaseMs / 4)));
+    renew.unref();
+    let ts: string;
+    try {
+      ts = await start(recoverSince);
+    } catch (error) {
+      // Released, not removed: Slack may have taken the root before the
+      // call failed, and the next attempt recovers from this instant.
+      this.replace(workId, next, { channel, pendingSince });
+      throw error;
+    } finally {
+      clearInterval(renew);
+    }
+    this.replace(workId, next, { channel, ts });
+    this.removeBelow(workId, next);
+    this.workOf.set(ts, workId);
+    return ts;
+  }
+
+  /**
+   * Forgets a work item when `shouldGo` holds, asked again under a tombstone.
+   *
+   * The tombstone is the next generation, created exclusively, so nobody can
+   * post or take over while it stands. If what it covers changed before the
+   * tombstone landed — touched, or taken — the forget backs off and removes
+   * only its own tombstone.
+   */
+  private retire(workId: string, shouldGo: (generation: Generation) => boolean): string | undefined {
+    const seen = this.current(workId);
+    if (!seen || !shouldGo(seen)) return undefined;
+    const tombstone = seen.n + 1;
+    if (!this.create(workId, tombstone, { tombstone: true, owner: `${process.pid}:${randomUUID()}` })) return undefined;
+
+    const covered = this.read(workId, seen.n);
+    if (!covered || !shouldGo(covered)) {
+      fs.rmSync(this.file(workId, tombstone), { force: true });
+      return undefined;
+    }
+    this.removeBelow(workId, tombstone);
+    fs.rmSync(this.file(workId, tombstone), { force: true });
+    try {
+      fs.rmdirSync(this.directoryOf(workId));
+    } catch {
+      // Somebody started a new chain for this work already; it is theirs.
+    }
+    if (covered.entry.ts) this.workOf.delete(covered.entry.ts);
+    return covered.entry.ts;
+  }
+
+  private isLive(generation: Generation): boolean {
+    const owner = generation.entry.owner;
+    if (!owner) return false;
+    return Date.now() - generation.mtimeMs < this.leaseMs && isAlive(pidOf(owner));
+  }
+
+  private current(workId: string): Generation | undefined {
     const n = Math.max(0, ...this.generations(workId));
     if (n === 0) return undefined;
+    // Removed by the owner that superseded it between the listing and the read.
+    return this.read(workId, n) ?? this.current(workId);
+  }
+
+  /** One generation, or nothing if it is gone; anything else is a real problem. */
+  private read(workId: string, n: number): Generation | undefined {
+    const file = this.file(workId, n);
     try {
-      return { n, entry: JSON.parse(fs.readFileSync(this.file(workId, n), "utf8")) as ThreadEntry };
+      const mtimeMs = fs.statSync(file).mtimeMs;
+      return { n, entry: JSON.parse(fs.readFileSync(file, "utf8")) as ThreadEntry, mtimeMs };
     } catch (error) {
-      // Removed by the owner that superseded it between the listing and the
-      // read; anything else is a real problem and is not retried into a loop.
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return this.current(workId);
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw error;
     }
+  }
+
+  private findWork(ts: string): string | undefined {
+    if (!fs.existsSync(this.root)) return undefined;
+    for (const name of fs.readdirSync(this.root)) {
+      if (name.startsWith(".")) continue;
+      const workId = Buffer.from(name, "base64url").toString();
+      if (this.current(workId)?.entry.ts === ts) {
+        this.workOf.set(ts, workId);
+        return workId;
+      }
+    }
+    return undefined;
   }
 
   private generations(workId: string): number[] {
@@ -151,16 +260,22 @@ export class ThreadMap {
       .map(Number);
   }
 
-  /** Exclusive: false when somebody else already holds this number. */
+  /**
+   * Exclusive: false when somebody else already holds this number, or when
+   * the chain's directory went away under a forget and has to be made again.
+   */
   private create(workId: string, n: number, entry: ThreadEntry): boolean {
-    fs.mkdirSync(this.directoryOf(workId), { recursive: true });
-    const staged = this.staged(workId);
+    fs.mkdirSync(this.root, { recursive: true });
+    // Staged outside the chain, so a forget can always remove an empty one.
+    const staged = path.join(this.root, `.${randomUUID()}.tmp`);
     fs.writeFileSync(staged, JSON.stringify(entry));
     try {
+      fs.mkdirSync(this.directoryOf(workId), { recursive: true });
       fs.linkSync(staged, this.file(workId, n));
       return true;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "EEXIST" && code !== "ENOENT") throw error;
       return false;
     } finally {
       fs.rmSync(staged, { force: true });
@@ -169,13 +284,13 @@ export class ThreadMap {
 
   /** Only by the generation's owner, whole and renamed into place. */
   private replace(workId: string, n: number, entry: ThreadEntry): void {
-    const staged = this.staged(workId);
+    const staged = path.join(this.root, `.${randomUUID()}.tmp`);
     fs.writeFileSync(staged, JSON.stringify(entry));
     fs.renameSync(staged, this.file(workId, n));
   }
 
-  /** Older generations are settled history once a root is known. */
-  private forgetBefore(workId: string, n: number): void {
+  /** Generations under `n` are settled history once `n` is decided. */
+  private removeBelow(workId: string, n: number): void {
     for (const older of this.generations(workId)) {
       if (older < n) fs.rmSync(this.file(workId, older), { force: true });
     }
@@ -188,18 +303,25 @@ export class ThreadMap {
   private file(workId: string, n: number): string {
     return path.join(this.directoryOf(workId), `${n}.json`);
   }
-
-  private staged(workId: string): string {
-    return path.join(this.directoryOf(workId), `.${randomUUID()}.tmp`);
-  }
 }
 
+/** The generation's entry when it is a thread in `channel`, not a tombstone. */
+function inChannel(current: Generation | undefined, channel: string): ThreadEntry | undefined {
+  return current && !current.entry.tombstone && current.entry.channel === channel ? current.entry : undefined;
+}
+
+/** An empty id would name the whole `threads` directory. */
+function requireId(workId: string): void {
+  if (!workId) throw new Error("a work id is required, and an empty one would name every thread");
+}
+
+/** Renews a claim or a last use; a file gone meanwhile has nothing to keep. */
 function touch(file: string): void {
   const now = new Date();
   try {
     fs.utimesSync(file, now, now);
-  } catch {
-    // Superseded or forgotten between the read and the touch: nothing to keep.
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 

@@ -66,12 +66,24 @@ The thread for a work item is remembered in the state directory, which is
 machine-wide, so every daemon that mounts the plugin shares it. Each work item
 is a chain of numbered generations, `slack/threads/<work id>/<n>.json`, each
 created exclusively — written aside and linked into place — so exactly one
-process wins each number. Whoever wins posts the root and writes its `ts`
-into its own generation; everybody else waits while that owner is alive and
-then reads it. An owner that died is taken over by creating the next number,
-so no claim is ever removed while somebody may hold it, and opening one work
-item never rewrites another's file. A thread remembered for another channel
-starts a new generation.
+process wins each number. Everything that changes what a chain means claims
+the next number first:
+
+- **Posting a root.** Whoever wins posts it and writes its `ts` into its own
+  generation; everybody else waits while that owner holds its claim, then
+  reads it.
+- **Taking over.** An owner that died is taken over by creating the next
+  number. A claim is held by lease: the owner renews its generation's mtime
+  while it works, so a claim whose lease ran out is dead even when some other
+  process now has its pid.
+- **Forgetting.** A forget or a prune leaves a tombstone as the next number,
+  asks again under it whether the work should still go, and backs off —
+  removing only its tombstone — if the thread was used in between. An open
+  waits while a live tombstone stands, then starts a new chain.
+
+Opening one work item never rewrites another's file, and a thread remembered
+for another channel starts a new generation. An empty work id is refused: it
+would name every thread.
 
 Every root carries its work id in Slack's
 [message metadata](https://docs.slack.dev/messaging/message-metadata)
@@ -96,7 +108,7 @@ from it, so a thread's files sit under it.
 
 - **Retention.** A downloaded file or a thread's memory nobody used within
   `retentionDays` is pruned. Using counts: reading a reply again, or opening
-  the thread, keeps it. The plugin prunes on its own while it is used, at most
+  the thread, or reading its replies, keeps it. The plugin prunes on its own while it is used, at most
   once an hour, and a prune never fails a call. An attempt whose owner is
   still posting is never pruned, however old.
 - **One piece of work.** `forget(workId)` removes that thread's memory and

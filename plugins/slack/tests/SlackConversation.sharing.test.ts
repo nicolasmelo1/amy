@@ -179,6 +179,91 @@ describe("an owner that died while posting", () => {
   });
 });
 
+describe("an owner whose pid somebody else has now", () => {
+  it("is dead once its lease ran out, and is taken over instead of waited on", async () => {
+    // Our own pid, so alive by pid alone; the lease is what says it is not ours.
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, pendingSince: 1790000000000, owner: `${process.pid}:before-the-reboot` });
+    const stale = new Date(Date.now() - 5 * 60_000);
+    fs.utimesSync(path.join(chainOf("ENG-1"), "1.json"), stale, stale);
+    const handler: Handler = (request) => {
+      switch (methodOf(request)) {
+        case "auth.test":
+          return { ok: true, user_id: BOT };
+        case "conversations.history":
+          return { ok: true, messages: [], has_more: false };
+        default:
+          return { ok: true, ts: "1790000009.000100" };
+      }
+    };
+
+    const started = Date.now();
+    expect(await slackAt(directory, handler).open("ENG-1", "ENG-1")).toEqual({ id: "1790000009.000100" });
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+
+  it("keeps its lease while it waits on Slack, so nobody takes a slow post over", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const api = new SlackApi("xoxb-test", {
+      transport: async (request) => {
+        if (methodOf(request) === "chat.postMessage") await slow;
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+      },
+    });
+    const owner = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory, leaseMs: 80 });
+    const posting = owner.open("ENG-1", "ENG-1");
+
+    // Several leases pass; the renewal keeps the claim's mtime fresh.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const age = Date.now() - fs.statSync(path.join(chainOf("ENG-1"), "1.json")).mtimeMs;
+    release();
+
+    expect(age).toBeLessThan(80);
+    expect(await posting).toEqual({ id: "1790000001.000100" });
+  });
+});
+
+describe("a forget racing an open", () => {
+  it("backs off, removing only its tombstone, when the thread was used after it looked", () => {
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000001.000100" });
+    const old = new Date(Date.now() - 40 * 24 * 60 * 60_000);
+    fs.utimesSync(path.join(chainOf("ENG-1"), "1.json"), old, old);
+    const slack = slackAt(directory, () => { throw new Error("nothing is posted"); });
+    // The use lands between the prune's first look and its tombstone.
+    const link = fs.linkSync;
+    const spy = vi.spyOn(fs, "linkSync").mockImplementationOnce((from, to) => {
+      const now = new Date();
+      fs.utimesSync(path.join(chainOf("ENG-1"), "1.json"), now, now);
+      link(from, to);
+    });
+
+    try {
+      expect(slack.prune(new Date())).toEqual({ threads: 0, files: 0 });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(fs.readdirSync(chainOf("ENG-1"))).toEqual(["1.json"]);
+  });
+
+  it("makes an open wait while its tombstone stands, then start a new thread", async () => {
+    writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000001.000100" });
+    writeGeneration("ENG-1", 2, { tombstone: true, owner: `${process.pid}:forgetting` });
+    const postedUnderTombstone: boolean[] = [];
+    const slack = slackAt(directory, () => {
+      postedUnderTombstone.push(fs.existsSync(path.join(chainOf("ENG-1"), "2.json")));
+      return { ok: true, ts: "1790000002.000100" };
+    });
+
+    const opening = slack.open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    // The forget finishes: everything it covered goes, then its tombstone.
+    fs.rmSync(chainOf("ENG-1"), { recursive: true, force: true });
+
+    expect(await opening).toEqual({ id: "1790000002.000100" });
+    expect(postedUnderTombstone).toEqual([false]);
+  });
+});
+
 describe("a generation that cannot be read", () => {
   it("fails naming the problem instead of retrying it forever", async () => {
     fs.mkdirSync(chainOf("ENG-1"), { recursive: true });

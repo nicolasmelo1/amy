@@ -14,6 +14,8 @@ export interface SlackConversationOptions {
   directory: string;
   /** How long to wait for another process opening a thread. */
   lockWaitMs?: number;
+  /** How long a claim on a thread holds without being renewed. */
+  leaseMs?: number;
   /** The largest attachment downloaded; a larger one is named in the reply instead. */
   maxFileBytes?: number;
   /**
@@ -83,7 +85,7 @@ export class SlackConversation implements Conversation {
     private readonly api: SlackApi,
     private readonly options: SlackConversationOptions,
   ) {
-    this.threads = new ThreadMap(options.directory, { maxWaitMs: options.lockWaitMs });
+    this.threads = new ThreadMap(options.directory, { maxWaitMs: options.lockWaitMs, leaseMs: options.leaseMs });
     this.filesDirectory = path.join(options.directory, "files");
   }
 
@@ -124,6 +126,8 @@ export class SlackConversation implements Conversation {
     const after = Date.parse(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
     this.pruneNowAndThen();
+    // Reading a thread is using it, whether or not the caller opened it first.
+    this.threads.used(thread.id);
     const bot = await this.botUserId();
 
     const answers: Reply[] = [];
@@ -343,12 +347,7 @@ export class SlackConversation implements Conversation {
   }
 
   private async download(target: string, url: string, limit: number): Promise<string> {
-    if (fs.existsSync(target)) {
-      // Read again, so kept: retention counts from the last use.
-      const now = new Date();
-      fs.utimesSync(target, now, now);
-      return target;
-    }
+    if (keptAgain(target)) return target;
     const bytes = await this.api.download(url, limit);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     // Staged and renamed, so a path that exists is always a whole file.
@@ -360,6 +359,22 @@ export class SlackConversation implements Conversation {
       fs.rmSync(partial, { force: true });
     }
     return target;
+  }
+}
+
+/**
+ * Whether a file was already downloaded, marking it used if so: retention
+ * counts from the last use. One pruned between the look and the touch is a
+ * miss, and is fetched again.
+ */
+function keptAgain(target: string): boolean {
+  const now = new Date();
+  try {
+    fs.utimesSync(target, now, now);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
   }
 }
 
