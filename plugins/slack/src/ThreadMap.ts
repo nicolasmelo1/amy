@@ -132,7 +132,7 @@ export class ThreadMap {
     const deadline = Date.now() + this.maxWaitMs;
     for (;;) {
       const current = this.current(workId);
-      if (this.mustWaitOn(current, channel)) {
+      if (this.mustWaitOn(current)) {
         if (Date.now() >= deadline) throw new Error(`another amy is still working on the thread for ${workId}`);
         await new Promise((resolve) => setTimeout(resolve, this.pollMs));
         continue;
@@ -147,10 +147,13 @@ export class ThreadMap {
     }
   }
 
-  /** A live owner still posting this channel's root, or a live tombstone. */
-  private mustWaitOn(current: Generation | undefined, channel: string): boolean {
-    if (!current || current.entry.ts || !this.isLive(current)) return false;
-    return current.entry.tombstone === true || current.entry.channel === channel;
+  /**
+   * A live owner still posting a root — for any channel: one for the old
+   * channel finishing after a newer generation settled would hand back a
+   * thread that is no longer current — or a live tombstone.
+   */
+  private mustWaitOn(current: Generation | undefined): boolean {
+    return current !== undefined && !current.entry.ts && this.isLive(current);
   }
 
   /**

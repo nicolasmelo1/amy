@@ -223,6 +223,36 @@ describe("an owner whose pid somebody else has now", () => {
   });
 });
 
+describe("a mount moved to another channel while the old one is still posting", () => {
+  it("waits for the old channel's root to settle before starting the new channel's", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => { release = resolve; });
+    const order: string[] = [];
+    const mountIn = (channel: string, ts: string, wait?: Promise<void>) =>
+      new SlackConversation(new SlackApi("xoxb-test", {
+        transport: async () => {
+          if (wait) await wait;
+          order.push(channel);
+          return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts })) };
+        },
+      }), { channel, operator: OPERATOR, directory });
+
+    const old = mountIn("C0OLD", "1790000001.000100", slow).open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const moved = mountIn("C0NEW", "1790000002.000100").open("ENG-1", "ENG-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(order).toEqual([]);
+    release();
+
+    expect(await old).toEqual({ id: "1790000001.000100" });
+    expect(await moved).toEqual({ id: "1790000002.000100" });
+    expect(order).toEqual(["C0OLD", "C0NEW"]);
+    // The newer channel's thread is what is remembered now.
+    const remembered = mountIn("C0NEW", "never").open("ENG-1", "ENG-1");
+    expect(await remembered).toEqual({ id: "1790000002.000100" });
+  });
+});
+
 describe("a forget racing an open", () => {
   it("backs off, removing only its tombstone, when the thread was used after it looked", () => {
     writeGeneration("ENG-1", 1, { channel: CHANNEL, ts: "1790000001.000100" });

@@ -409,31 +409,66 @@ function keptAgain(target: string): boolean {
   }
 }
 
-/** Removes files older than `cutoff`, then the directories they leave empty. */
-function pruneFiles(directory: string, cutoff: number): number {
+/**
+ * Removes files older than `cutoff`, then the directories they leave empty.
+ * The forgotten markers directly under `files/` are kept for good: a stale
+ * reference read later must still find one. Anything deeper is an attachment,
+ * whatever it is called, and ages like one.
+ */
+function pruneFiles(directory: string, cutoff: number, top = true): number {
   let removed = 0;
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(directory, { withFileTypes: true });
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
-    throw error;
-  }
-  for (const entry of entries) {
+  for (const entry of direntsOf(directory)) {
     const full = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      removed += pruneFiles(full, cutoff);
-      if (fs.readdirSync(full).length === 0) fs.rmdirSync(full);
-    } else if (entry.name.endsWith(".forgotten")) {
-      // Kept for good: a stale reference read later must still find it, or
-      // a download would bring the forgotten thread's files back. It is empty.
-      continue;
-    } else if (fs.statSync(full).mtimeMs < cutoff) {
-      fs.rmSync(full, { force: true });
+      removed += pruneFiles(full, cutoff, false);
+      removeIfEmpty(full);
+    } else if (!(top && entry.name.endsWith(".forgotten")) && removeIfStale(full, cutoff)) {
       removed += 1;
     }
   }
   return removed;
+}
+
+/**
+ * Moves the file aside, then asks its age again, and puts it back if a
+ * reader touched it first. A reader's touch lands either before the move —
+ * seen here, and the file stays — or after it, where it misses and the file
+ * is fetched again; so a path a reader was handed is never removed under it.
+ */
+function removeIfStale(file: string, cutoff: number): boolean {
+  if (fs.statSync(file).mtimeMs >= cutoff) return false;
+  const aside = `${file}.${randomUUID()}.pruning`;
+  try {
+    fs.renameSync(file, aside);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+  if (fs.statSync(aside).mtimeMs >= cutoff) {
+    fs.renameSync(aside, file);
+    return false;
+  }
+  fs.rmSync(aside, { force: true });
+  return true;
+}
+
+function direntsOf(directory: string): fs.Dirent[] {
+  try {
+    return fs.readdirSync(directory, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+/** A download may be filling it again right now; then it is not empty. */
+function removeIfEmpty(directory: string): void {
+  try {
+    fs.rmdirSync(directory);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOENT") throw error;
+  }
 }
 
 /**

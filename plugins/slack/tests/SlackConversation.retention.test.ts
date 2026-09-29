@@ -284,6 +284,40 @@ describe("retention", () => {
     expect(downloads).toBe(1);
   });
 
+  it("puts back a file a reader touched between the prune's look and its removal", async () => {
+    const amy = slack(() => new Date());
+    const thread = await amy.open("ENG-1", "ENG-1");
+    const [reply] = await amy.replies(thread, SINCE);
+    const file = reply!.files[0]!;
+    age(31);
+    await amy.open("ENG-1", "ENG-1");
+    // Another process reads the cached file just as the prune moves it.
+    const rename = fs.renameSync;
+    const spy = vi.spyOn(fs, "renameSync").mockImplementationOnce((from, to) => {
+      const now = new Date();
+      fs.utimesSync(file, now, now);
+      rename(from, to);
+    });
+
+    try {
+      expect(amy.prune(new Date()).files).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(new Uint8Array(fs.readFileSync(file))).toEqual(PICTURE);
+  });
+
+  it("ages an attachment that happens to be called .forgotten like any other", () => {
+    const nested = path.join(directory, "files", "1790000001.000100", "F0REPORT");
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, "report.forgotten"), "attached by the operator");
+    fs.writeFileSync(path.join(directory, "files", "1790000002.000100.forgotten"), "");
+    age(31);
+
+    expect(slack(() => new Date()).prune(new Date()).files).toBe(1);
+    expect(fs.existsSync(path.join(directory, "files", "1790000002.000100.forgotten"))).toBe(true);
+  });
+
   it("refuses to forget an empty work id, which would name every thread", async () => {
     const amy = slack(() => new Date());
     const thread = await amy.open("ENG-1", "ENG-1");

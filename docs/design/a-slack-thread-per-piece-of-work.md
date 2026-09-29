@@ -85,7 +85,9 @@ the next number first:
   removing only its tombstone — if the thread was used in between. An open
   waits while a live tombstone stands, then starts a new chain. Forgetting
   work whose root is being posted right now is refused, so that post never
-  lands with nowhere to be remembered.
+  lands with nowhere to be remembered. A root still being posted for another
+  channel is waited for too, so a mount moved to a new channel never races the
+  old one into a thread that is no longer current.
 
 Opening one work item never rewrites another's file, and a thread remembered
 for another channel starts a new generation. An empty work id is refused: it
@@ -115,7 +117,9 @@ from it, so a thread's files sit under it.
 - **Retention.** A downloaded file or a thread's memory nobody used within
   `retentionDays` is pruned. Using counts: reading a reply again, or opening
   the thread, reading its replies, or posting to it keeps it — each marks its
-  thread before it prunes, so a prune never takes the thread in hand. The plugin prunes on its own while it is used, at most
+  thread before it prunes, so a prune never takes the thread in hand. A file
+  is moved aside before its age is asked again and put back if a reader
+  touched it first, so a path a reader was handed is never removed under it. The plugin prunes on its own while it is used, at most
   once an hour, and a prune never fails a call. An attempt whose owner is
   still posting is never pruned, however old.
 - **One piece of work.** `forget(workId)` removes that thread's memory and
