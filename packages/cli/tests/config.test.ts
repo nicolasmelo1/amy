@@ -39,10 +39,10 @@ describe("config", () => {
     expect(config.policy).toEqual(DEFAULT_CONFIG.policy);
   });
 
-  it("anchors relative filesystem workflows at the config home", () => {
+  it("keeps relative filesystem workflows portable when loading config", () => {
     fs.writeFileSync(paths(root).config, "workflows:\n  execution:\n    workflow: ./project/workflow\n");
 
-    expect(loadConfig(root).workflows.execution?.workflow).toBe(path.join(root, "project", "workflow"));
+    expect(loadConfig(root).workflows.execution?.workflow).toBe("./project/workflow");
   });
 
   it.each(["autoUpdate: null\n", "autoUpdate: every day\n"])("preserves malformed auto-update source %j", (text) => {
@@ -167,6 +167,14 @@ describe("writing a profile's plugin list", () => {
     const config = loadConfig(root);
     expect(config.workflows["tickets"]?.plugins).toEqual(["@acme/plugin-one"]);
     expect(config.workflows["plans"]?.plugins).toEqual(["@acme/plugin-two"]);
+  });
+
+  it("preserves a relative workflow spec when rewriting its plugins", () => {
+    writeConfig("workflows:\n  execution:\n    workflow: ./project/workflow\n");
+
+    writeProfilePlugins(root, "execution", ["@acme/plugin-one"], loadConfig(root));
+
+    expect(fs.readFileSync(file(), "utf-8")).toContain("workflow: ./project/workflow");
   });
 
   it("refuses a profile nobody declared, rather than inventing one", () => {

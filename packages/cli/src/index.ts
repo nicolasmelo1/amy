@@ -210,7 +210,7 @@ async function aroundWorkflow(profile: Profile, work: () => Promise<void>): Prom
  * single workflow, so the profile is what chooses which.
  */
 function selected(config: AmyConfig = loadConfig(home)): Profile {
-  const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow);
+  const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow, home);
   if (resolution.ok) return resolution.profile;
 
   console.error(resolution.problem);
@@ -272,7 +272,7 @@ program
     // somewhere to drop a file into before anything has ever run.
     fs.mkdirSync(place.notes, { recursive: true });
 
-    for (const profile of Object.values(profiles(loadConfig(home)))) {
+    for (const profile of Object.values(profiles(loadConfig(home), home))) {
       const own = profilePaths(home, profile);
       fs.mkdirSync(own.records, { recursive: true });
       fs.mkdirSync(own.queue, { recursive: true });
@@ -304,7 +304,7 @@ program
     // which — a bare machine is the machine being set up, not one being
     // rebuilt.
     const config = loadConfig(home);
-    const wanted = Object.values(profiles(config)).flatMap((profile) =>
+    const wanted = Object.values(profiles(config, home)).flatMap((profile) =>
       pluginList(config, profile),
     );
     const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !isFilesystemWorkflow(name) && !installedPlugins(place.plugins).includes(name));
@@ -385,7 +385,7 @@ program
     // for: it reports everything else it can see, then names the one thing
     // that is missing in the words the operator can act on — rather than
     // exiting at the selection step with nothing reported.
-    const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow);
+    const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow, home);
     if (!resolution.ok) {
       await doctorReport(
         config,
@@ -617,7 +617,7 @@ program
     const pid = Number(pidText);
     if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error(`invalid daemon pid ${pidText}`);
     await waitForDaemonExit(pid);
-    const resolution = resolveProfile(loadConfig(home), workflow);
+    const resolution = resolveProfile(loadConfig(home), workflow, home);
     if (!resolution.ok) return;
     if (!claimExitedDaemon(profilePaths(home, resolution.profile).pid, pid)) return;
     if (!takeDaemonUpdate(home, workflow)) return;
@@ -824,7 +824,7 @@ function profileThat(
   const asked = program.opts<{ workflow?: string }>().workflow;
   if (asked) return selected(config);
 
-  const takers = Object.values(profiles(config)).filter((profile) => profile[takes]);
+  const takers = Object.values(profiles(config, home)).filter((profile) => profile[takes]);
   if (takers.length === 1) return takers[0];
 
   console.error(
@@ -1196,7 +1196,7 @@ async function bootsAfterAdd(home: string, workflow: boolean, name?: string) {
   const config = loadConfig(home);
   if (Object.keys(config.workflows).length === 0) return { ok: true as const, problems: [] };
   return whatBoots(async () => {
-    const profile = workflow ? resolveProfile(config, name) : { ok: true as const, profile: selected(config) };
+    const profile = workflow ? resolveProfile(config, name, home) : { ok: true as const, profile: selected(config) };
     if (!profile.ok) return { ok: false, problems: [profile.problem] };
     const assembled = await assemble(profile.profile);
     return assembled.ok
@@ -1329,7 +1329,7 @@ async function mountingWithout(
 
   // Extras mount under every profile. The trial is therefore all remaining
   // profiles, not merely the one selected by this invocation.
-  for (const trialProfile of Object.values(profiles(trialConfig))) {
+  for (const trialProfile of Object.values(profiles(trialConfig, home))) {
     const trialSlices = { ...pluginSlices(trialConfig, trialProfile, home) };
     delete trialSlices[spec];
     const loaded = await loadMountable(pluginList(trialConfig, trialProfile));
@@ -1385,13 +1385,13 @@ function refuseRemoval(
 ): string | undefined {
   const carried =
     Object.values(config.workflows).some((entry) => entry.workflow === spec) ||
-    Object.values(profiles(config)).some((candidate) => pluginList(config, candidate).includes(spec));
+    Object.values(profiles(config, home)).some((candidate) => pluginList(config, candidate).includes(spec));
 
   if (!carried) return `the config does not name ${spec}`;
 
   const live = carrier.place === "extras"
-    ? Object.values(profiles(config)).map((candidate) => running(profilePaths(home, candidate).pid)).find(Boolean)
-    : carrier.profile ? running(profilePaths(home, profiles(config)[carrier.profile] ?? profile).pid) : undefined;
+    ? Object.values(profiles(config, home)).map((candidate) => running(profilePaths(home, candidate).pid)).find(Boolean)
+    : carrier.profile ? running(profilePaths(home, profiles(config, home)[carrier.profile] ?? profile).pid) : undefined;
   if (live) {
     return `${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`;
   }
@@ -1401,7 +1401,7 @@ function refuseRemoval(
 
 /** A removed phase must leave neither an updater nor a sibling daemon stranded. */
 function pendingRemovalProblem(home: string, config: AmyConfig, spec: string, carrier: Carrier): string | undefined {
-  const affected = carrier.profile ? profiles(config)[carrier.profile] : undefined;
+  const affected = carrier.profile ? profiles(config, home)[carrier.profile] : undefined;
   if (affected && hasDaemonUpdate(home, affected.name)) {
     return `${affected.name} has a scheduled daemon update. Let it settle before removing ${spec}.`;
   }
@@ -1442,7 +1442,7 @@ function removeFromConfig(
   }
 
   const name = carrier.profile ?? profile.name;
-  const target = profiles(config)[name] ?? profile;
+  const target = profiles(config, home)[name] ?? profile;
   const own = target.plugins.length > 0
     ? target.plugins
     : pluginList(config, target).filter((name) => !config.extraPlugins.includes(name));
@@ -1839,7 +1839,7 @@ async function rewriteSkillsOrRollBack(
 function refuseWhileRunning(home: string): number | undefined {
     const live = [
       running(paths(home).pid),
-      ...Object.values(profiles(loadConfig(home))).map((profile) => running(profilePaths(home, profile).pid)),
+      ...Object.values(profiles(loadConfig(home), home)).map((profile) => running(profilePaths(home, profile).pid)),
     ].find((record) => record !== undefined);
     if (!live) return undefined;
     console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
@@ -2077,7 +2077,7 @@ async function rollBackAll(
 async function assembleProfiles(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const config = loadConfig(home);
   const problems: string[] = [];
-  for (const profile of Object.values(profiles(config))) {
+  for (const profile of Object.values(profiles(config, home))) {
     const booted = await assemble(profile);
     if (!booted.ok) problems.push(...booted.problems.map((problem) => `${profile.name}: ${problem}`));
   }
@@ -2328,8 +2328,8 @@ workflowCommand
   .description("Every workflow this install can drive")
   .action(async () => {
     const config = loadConfig(home);
-    const known = profiles(config);
-    const asked = resolveProfile(config, undefined);
+    const known = profiles(config, home);
+    const asked = resolveProfile(config, undefined, home);
     const present = installedPlugins(paths(home).plugins);
 
     for (const profile of Object.values(known)) {
@@ -2357,7 +2357,7 @@ workflowCommand
   .option("--yes", "actually delete, rather than saying what would go")
   .action((name: string, options: { yes?: boolean }) => {
     const config = loadConfig(home);
-    const resolution = resolveProfile(config, name);
+    const resolution = resolveProfile(config, name, home);
     if (!resolution.ok) {
       console.error(resolution.problem);
       process.exitCode = 1;
@@ -2403,7 +2403,7 @@ workflowCommand
 /** A phase cannot lose its project identity while its own daemon still runs. */
 function runningPhaseLosingIdentity(home: string, config: AmyConfig, removed: Profile) {
   if (!removed.project) return undefined;
-  const siblings = Object.values(profiles(config)).filter((profile) =>
+  const siblings = Object.values(profiles(config, home)).filter((profile) =>
     profile.name !== removed.name && profile.project?.root === removed.project!.root,
   );
   // Removing one of two configured phases turns the survivor back into a

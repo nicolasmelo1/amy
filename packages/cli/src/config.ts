@@ -410,10 +410,11 @@ function mountingFrom(
   return {
     workflows: Object.fromEntries(Object.entries(parsed.workflows ?? {}).map(([name, profile]) => [name, {
       ...profile,
-      // A filesystem workflow is part of the machine configuration, not of
-      // whichever directory happened to invoke this command. Persist its
-      // meaning when the config is read so profile identity and import agree.
-      workflow: profile.workflow.startsWith(".") ? path.resolve(root, profile.workflow) : profile.workflow,
+      // Keep the operator's spelling in the configuration model. Runtime
+      // profile construction resolves filesystem specs against this home, but
+      // config writers and removal matching must not turn a portable `./…`
+      // setting into the absolute path of this particular machine.
+      workflow: profile.workflow,
     }])),
     defaultWorkflow: parsed.defaultWorkflow ?? "",
     extraPlugins: parsed.extraPlugins ?? [],

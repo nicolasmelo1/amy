@@ -104,19 +104,20 @@ export function recommendedFor(profile: Profile): readonly string[] {
 }
 
 /** Every profile this install can drive: the shipped ones, plus the config's. */
-export function profiles(config: AmyConfig): Record<string, Profile> {
+export function profiles(config: AmyConfig, home?: string): Record<string, Profile> {
   const declared = { ...SHIPPED_PROFILES, ...config.workflows };
   const resolved: Record<string, Profile> = {};
 
   for (const [name, entry] of Object.entries(declared)) {
+    const workflow = filesystemWorkflow(home, entry.workflow);
     resolved[name] = {
       name,
-      workflow: entry.workflow,
+      workflow,
       plugins: entry.plugins ?? [],
       briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
-      project: projectFor(entry.workflow, Object.values(declared).map((candidate) => candidate.workflow)),
+      project: projectFor(workflow, Object.values(declared).map((candidate) => filesystemWorkflow(home, candidate.workflow))),
       agent: entry.agent,
     };
   }
@@ -134,8 +135,8 @@ export type Resolution = { ok: true; profile: Profile } | { ok: false; problem: 
  * nothing. No name at all takes `defaultWorkflow`, and then the first one
  * declared, so an install with one workflow never has to name it.
  */
-export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
-  const known = profiles(config);
+export function resolveProfile(config: AmyConfig, asked?: string, home?: string): Resolution {
+  const known = profiles(config, home);
   const names = Object.keys(known);
   const wanted = (asked ?? config.defaultWorkflow ?? "").trim() || names[0];
 
@@ -153,6 +154,11 @@ export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
   }
 
   return { ok: true, profile };
+}
+
+/** Resolve a portable filesystem spec only while constructing its live profile. */
+function filesystemWorkflow(home: string | undefined, workflow: string): string {
+  return home && workflow.startsWith(".") ? path.resolve(home, workflow) : workflow;
 }
 
 /**

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
 
 /**
@@ -28,18 +29,19 @@ export class FileBriefStore implements BriefStore {
     explains: string[];
     at: string;
   }): Promise<BriefRecord> {
-    const existing = await this.get(input.id);
-    const record: BriefRecord = {
-      id: input.id,
-      sections: input.sections,
-      questions: existing?.questions ?? [],
-      explains: input.explains,
-      createdAt: existing?.createdAt ?? input.at,
-      updatedAt: input.at,
-      revision: (existing?.revision ?? 0) + 1,
-    };
-    this.save(record);
-    return record;
+    return this.mutate(input.id, async (existing) => {
+      const record: BriefRecord = {
+        id: input.id,
+        sections: input.sections,
+        questions: existing?.questions ?? [],
+        explains: input.explains,
+        createdAt: existing?.createdAt ?? input.at,
+        updatedAt: input.at,
+        revision: (existing?.revision ?? 0) + 1,
+      };
+      this.save(record);
+      return record;
+    });
   }
 
   async appendQuestion(input: {
@@ -47,11 +49,12 @@ export class FileBriefStore implements BriefStore {
     question: BriefQuestion;
     at: string;
   }): Promise<BriefRecord> {
-    const existing = await this.get(input.id);
-    if (!existing) throw new Error(`there is no brief \`${input.id}\` to append a question to`);
-    const record: BriefRecord = { ...existing, questions: [...existing.questions, input.question], updatedAt: input.at };
-    this.save(record);
-    return record;
+    return this.mutate(input.id, async (existing) => {
+      if (!existing) throw new Error(`there is no brief \`${input.id}\` to append a question to`);
+      const record: BriefRecord = { ...existing, questions: [...existing.questions, input.question], updatedAt: input.at };
+      this.save(record);
+      return record;
+    });
   }
 
   async retired(
@@ -77,9 +80,50 @@ export class FileBriefStore implements BriefStore {
   /** Written to a sibling and renamed, so a brief is never half-written. */
   private save(record: BriefRecord): void {
     const file = this.file(record.id);
-    const temporary = `${file}.tmp`;
+    const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
     fs.writeFileSync(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf-8");
     fs.renameSync(temporary, file);
+  }
+
+  /** Serializes a read-modify-write across phase processes for one brief. */
+  private async mutate(id: BriefId, change: (existing: BriefRecord | null) => Promise<BriefRecord>): Promise<BriefRecord> {
+    const lock = `${this.file(id)}.lock`;
+    await this.acquire(lock);
+    try {
+      return await change(await this.get(id));
+    } finally {
+      fs.rmSync(lock, { force: true });
+    }
+  }
+
+  /** Atomically publish a complete owner before another process can inspect it. */
+  private async acquire(lock: string): Promise<void> {
+    for (;;) {
+      const privateOwner = `${lock}.${process.pid}.${randomUUID()}`;
+      fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
+      try {
+        fs.linkSync(privateOwner, lock);
+        fs.rmSync(privateOwner, { force: true });
+        return;
+      } catch (error: unknown) {
+        fs.rmSync(privateOwner, { force: true });
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        this.recover(lock);
+        await new Promise((resolve) => setTimeout(resolve, 1));
+      }
+    }
+  }
+
+  /** A dead owner cannot permanently block a brief after a phase crashes. */
+  private recover(lock: string): void {
+    try {
+      const owner = Number.parseInt(fs.readFileSync(lock, "utf-8").trim(), 10);
+      if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
+      process.kill(owner, 0);
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === "EPERM") return;
+      fs.rmSync(lock, { force: true });
+    }
   }
 
   private ids(): BriefId[] {

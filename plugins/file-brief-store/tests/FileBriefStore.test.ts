@@ -91,6 +91,29 @@ describe("FileBriefStore", () => {
     ]);
   });
 
+  it("serializes concurrent phase mutations of the same brief", async () => {
+    await seeded(store);
+
+    await Promise.all([
+      store.write({
+        id: "brief-1",
+        sections: [{ name: "Goal", body: "A newer grooming pass." }],
+        explains: ["BILL-4021"],
+        at: new Date(NOW.getTime() + DAY).toISOString(),
+      }),
+      store.appendQuestion({
+        id: "brief-1",
+        question: { workId: "BILL-4021", question: "Who owns the rollout?", at: NOW.toISOString() },
+        at: NOW.toISOString(),
+      }),
+    ]);
+
+    const brief = await store.get("brief-1");
+    expect(brief?.questions).toHaveLength(1);
+    expect(brief?.revision).toBe(2);
+    expect(fs.readdirSync(root).filter((name) => name.endsWith(".lock"))).toEqual([]);
+  });
+
   it("refuses to append to a brief that does not exist", async () => {
     await expect(
       store.appendQuestion({
