@@ -121,6 +121,18 @@ describe("FileBriefStore", () => {
     expect(fs.readdirSync(root).filter((name) => name.includes(".lock."))).toEqual([]);
   });
 
+  it("reclaims a crashed owner's unpublished hard link", async () => {
+    await seeded(store);
+    const lock = path.join(root, "brief-1.json.lock");
+    const owner = `${lock}.crashed`;
+    fs.writeFileSync(owner, "0\n", "utf8");
+    fs.linkSync(owner, lock);
+
+    await store.write({ id: "brief-1", sections: [], explains: [], at: NOW.toISOString() });
+
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
+  });
+
   it("refuses to append to a brief that does not exist", async () => {
     await expect(
       store.appendQuestion({
