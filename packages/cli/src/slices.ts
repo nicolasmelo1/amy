@@ -104,7 +104,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     // profiles must never share a tree.
     "@amykit/plugin-file-worktree": {
       root: config.worktrees.root,
-      workflow: profile.name,
+      workflow: worktreeNamespace(profile),
       recordsDirectory: worktreeRecordsDirectory(stateDir, dirs.records),
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
@@ -173,6 +173,11 @@ function pluginStateDirectories(stateDir: string | undefined, profile: Profile):
   }
   const place = profilePaths(stateDir, profile);
   return { tasks: path.relative(stateDir, place.tasks), slack: path.relative(stateDir, place.slack) };
+}
+
+/** A phase checkout belongs to both its project and its configured profile. */
+export function worktreeNamespace(profile: Profile): string {
+  return profile.project ? projectStateKey(profile.project, profile.name) : profile.name;
 }
 
 /** The worktree adapter reads the same absolute records directory as the file store. */

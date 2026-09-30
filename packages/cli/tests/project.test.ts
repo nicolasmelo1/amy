@@ -9,7 +9,7 @@ import { DEFAULT_CONFIG } from "../src/config.js";
 import { isFilesystemWorkflow, load, pluginsRootResolver } from "../src/loader.js";
 import { profileOwnedDirectories, profilePaths } from "../src/paths.js";
 import { missingPhase, profiles } from "../src/profiles.js";
-import { hostPaths, pluginSlices } from "../src/slices.js";
+import { hostPaths, pluginSlices, worktreeNamespace } from "../src/slices.js";
 
 describe("a project is three phases", () => {
   const root = path.join("/projects", "invoices");
@@ -162,6 +162,42 @@ describe("a project is three phases", () => {
     });
 
     expect(profilePaths("/amy", known.one!).queue).not.toBe(profilePaths("/amy", known.two!).queue);
+  });
+
+  it("gives a repointed phase project a fresh worktree namespace", () => {
+    const first = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { execution: { workflow: path.join("/projects", "invoices", "workflow") } },
+    }).execution!;
+    const second = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { execution: { workflow: path.join("/projects", "payroll", "workflow") } },
+    }).execution!;
+
+    expect(worktreeNamespace(first)).not.toBe(worktreeNamespace(second));
+    const worktree = pluginSlices(
+      { ...DEFAULT_CONFIG, workflows: { execution: { workflow: second.workflow } } },
+      second,
+    )["@amykit/plugin-file-worktree"] as { workflow: string };
+    expect(worktree.workflow).toBe(worktreeNamespace(second));
+    expect(worktreeNamespace(profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { tickets: { workflow: "@amykit/workflow-ticket-to-qa" } },
+    }).tickets!)).toBe("tickets");
+  });
+
+  it("keeps a running phase discoverable when its profile is repointed", () => {
+    const first = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { execution: { workflow: path.join("/projects", "invoices", "workflow") } },
+    }).execution!;
+    const second = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { execution: { workflow: path.join("/projects", "payroll", "workflow") } },
+    }).execution!;
+
+    expect(profilePaths("/amy", first).pid).toBe(profilePaths("/amy", second).pid);
+    expect(profilePaths("/amy", first).records).not.toBe(profilePaths("/amy", second).records);
   });
 
   it("keeps a surviving workflow phase in its existing project state", () => {

@@ -47,8 +47,19 @@ function statePaths(home: string, profile: string | Profile) {
     tasks: path.join(home, project ?? "", "tasks"),
     slack: path.join(home, project ?? "", "slack"),
     ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
-    ...(project ? { log: path.join(home, project, "log"), pid: path.join(home, project, "daemon.pid") } : {}),
+    ...(project ? { log: path.join(home, project, "log"), pid: profileDaemonPid(home, profile) } : {}),
   };
+}
+
+/**
+ * A daemon is owned by the configured profile, not its current project path.
+ *
+ * Project state can deliberately move when a profile is repointed; a live
+ * process must stay visible to stop, removal and update checks through that
+ * transition so a second worker cannot take its place.
+ */
+function profileDaemonPid(home: string, profile: string | Profile): string {
+  return typeof profile === "string" ? path.join(home, "daemon.pid") : path.join(home, "profiles", profile.name, "daemon.pid");
 }
 
 function phaseState(profile: string | Profile): string | undefined {

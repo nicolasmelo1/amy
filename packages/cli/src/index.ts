@@ -60,7 +60,7 @@ import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { Assembled, assembleProfile } from "./assemble.js";
 import { installedStamp } from "./stamp.js";
-import { hostPaths, pluginList, pluginSlices } from "./slices.js";
+import { hostPaths, pluginList, pluginSlices, worktreeNamespace } from "./slices.js";
 import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
 import {
   BootCheck,
@@ -2434,7 +2434,7 @@ async function worktreeManager(config: AmyConfig): Promise<Worktree> {
 
   return new WorktreeManager(runner, {
     root: config.worktrees.root || path.join(home, "worktrees"),
-    workflow: profile.name,
+    workflow: worktreeNamespace(profile),
     defaultBranch: config.defaultBranch,
     baseBranch: config.baseBranch,
     retentionDays: config.worktrees.retentionDays,
