@@ -115,8 +115,9 @@ export class FileBriefStore implements BriefStore {
     try {
       // Inside the guard: an open that fails (the directory went away, the
       // process ran out of descriptors) must not leave the in-process claim
-      // behind, or every later write to this brief waits forever.
-      descriptor = fs.openSync(lock, "a");
+      // behind, or every later write to this brief waits forever. `a+`, not
+      // `a`: Windows' LockFileEx refuses a handle with append access alone.
+      descriptor = fs.openSync(lock, "a+");
       await this.flock(descriptor, "ex");
       return descriptor;
     } catch (error: unknown) {

@@ -41,7 +41,7 @@ async function holdLockInAnotherProcess(lock: string, ready: string, release: st
     import fs from "node:fs";
     import { flock } from "fs-ext";
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const descriptor = fs.openSync(process.env.AMY_LOCK, "a");
+    const descriptor = fs.openSync(process.env.AMY_LOCK, "a+");
     await new Promise((resolve, reject) => flock(descriptor, "ex", (error) => error ? reject(error) : resolve()));
     fs.writeFileSync(process.env.AMY_READY, "ready");
     while (!fs.existsSync(process.env.AMY_RELEASE)) await wait(1);
