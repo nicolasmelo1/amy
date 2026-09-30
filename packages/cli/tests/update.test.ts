@@ -487,6 +487,26 @@ describe("the running loop", () => {
     expect(runner.calls).toHaveLength(0);
   });
 
+  it("refuses an update while a renamed phase daemon remains live on disk", async () => {
+    const { writeDaemon } = await import("../src/daemon.js");
+    writeDaemon(path.join(home, "profiles", "renamed-away", "daemon.pid"), {
+      pid: process.pid,
+      workflow: "renamed-away",
+      startedAt: new Date().toISOString(),
+    });
+    const runner = new ScriptedRunner([
+      { match: () => true, result: { ok: false, exitCode: 1, stderr: "must not be reached" } },
+    ]);
+    const { updateCommand } = await import("../src/index.js");
+    const code = await updateCommand(home, runner, undefined, true, {
+      mountProfiles: async () => ({ ok: true as const }),
+      skillsInto: () => [],
+    });
+
+    expect(code).toBe(1);
+    expect(runner.calls).toHaveLength(0);
+  });
+
   it("moves nothing while `--check` only names what would move", async () => {
     rootWith(home, { "@acme/workflow-oncall": "^1.0.0" });
     const runner = new ScriptedRunner([

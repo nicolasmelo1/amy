@@ -150,8 +150,11 @@ async function settlePendingDaemonUpdate(profile: Profile, command: string, conf
   // A package update is machine-wide. Keep its durable due marker for the
   // first idle boundary rather than making another phase's startup fail.
   if (anotherProfileDaemonIsRunning(profile, config)) return;
-  if (await settleDaemonUpdate(home, profile.name, scheduledUpdate)) return;
-  throw new Error(`the previous daemon's scheduled update did not settle; fix it and try ${command} again`);
+  for (const pending of Object.values(profiles(config, home))) {
+    if (!await settleDaemonUpdate(home, pending.name, scheduledUpdate)) {
+      throw new Error(`the previous daemon's scheduled update did not settle; fix it and try ${command} again`);
+    }
+  }
 }
 
 /** A profile may start while a sibling owns the shared package installation. */
@@ -1854,10 +1857,25 @@ function refuseWhileRunning(home: string): number | undefined {
     const live = [
       running(paths(home).pid),
       ...Object.values(profiles(loadConfig(home), home)).map(runningProfileDaemon).map((daemon) => daemon?.record),
+      ...orphanedProfileDaemons(home),
     ].find((record) => record !== undefined);
     if (!live) return undefined;
     console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
     return 1;
+}
+
+/** Daemons outlive a manual profile rename, so update discovers their PID files instead of trusting config. */
+function orphanedProfileDaemons(home: string): Array<NonNullable<ReturnType<typeof running>>> {
+  const profilesDirectory = path.join(home, "profiles");
+  try {
+    return fs.readdirSync(profilesDirectory, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => running(path.join(profilesDirectory, entry.name, "daemon.pid")))
+      .filter((record): record is NonNullable<ReturnType<typeof running>> => record !== undefined);
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
 }
 
 /** The one-line report of everything the two roots hold. */

@@ -310,6 +310,14 @@ describe("a project is three phases", () => {
       .toThrow("@amykit/plugin-file-worktree.workflow is shared across profiles");
   });
 
+  it.each(["@amykit/plugin-file-tasks", "@amykit/plugin-slack"])("rejects a global %s directory for phases", (plugin) => {
+    const known = profiles(config, "/amy");
+    const overridden = { ...config, plugins: { [plugin]: { directory: "shared-on-volume" } } };
+
+    expect(() => pluginSlices(overridden, known.execution!, "/amy"))
+      .toThrow(`${plugin}.directory is shared across profiles`);
+  });
+
   it("keeps prototype-named profiles as configured own entries", () => {
     const workflows: Record<string, { workflow: string }> = Object.create(null);
     workflows["__proto__"] = { workflow: path.join(root, "brief") };

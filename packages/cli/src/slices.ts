@@ -155,7 +155,12 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
 /** Global state-directory overrides have no profile slot, so phases cannot safely share one. */
 function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Profile): void {
   if (!profile.project) return;
-  for (const plugin of ["@amykit/plugin-file-queue", "@amykit/plugin-file-store"] as const) {
+  for (const plugin of [
+    "@amykit/plugin-file-queue",
+    "@amykit/plugin-file-store",
+    "@amykit/plugin-file-tasks",
+    "@amykit/plugin-slack",
+  ] as const) {
     const slice = config.plugins[plugin];
     if (isRecord(slice) && typeof slice.directory === "string") {
       throw new Error(`${plugin}.directory is shared across profiles and cannot be overridden for project phases`);
