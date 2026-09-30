@@ -165,7 +165,7 @@ export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
  */
 export function directoriesFor(profile: string | Pick<Profile, "name" | "project">): { records: string; queue: string } {
   if (typeof profile !== "string" && profile.project) {
-    const base = projectStateKey(profile.project);
+    const base = projectStateKey(profile.project, profile.name);
     return { records: `${base}/records`, queue: `${base}/queue` };
   }
   const name = typeof profile === "string" ? profile : profile.name;
@@ -190,8 +190,8 @@ function projectFor(workflow: string, configured: readonly string[]): ProjectIde
 }
 
 /** A stable, path-safe state name that cannot make a profile leave Amy home. */
-export function projectStateKey(project: ProjectIdentity): string {
-  return `${projectRootKey(project)}/${project.phase}`;
+export function projectStateKey(project: ProjectIdentity, profile?: string): string {
+  return `${projectRootKey(project)}${profile ? `/${profile}` : ""}/${project.phase}`;
 }
 
 /** The project-owned state root; phase names are appended only by the host. */

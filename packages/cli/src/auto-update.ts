@@ -91,6 +91,18 @@ export function retryDaemonUpdate(home: string, profile: string): void {
   }
 }
 
+/** Settles an interrupted after-daemon update before a new daemon starts. */
+export async function settleDaemonUpdate(home: string, profile: string, update: () => Promise<number>): Promise<boolean> {
+  if (!hasDaemonUpdate(home, profile)) return true;
+  if (!takeDaemonUpdate(home, profile)) return false;
+  if (await update() === 0) {
+    finishDaemonUpdate(home, profile);
+    return true;
+  }
+  retryDaemonUpdate(home, profile);
+  return false;
+}
+
 /**
  * Counts one lifecycle invocation, then places a due update at its requested
  * boundary. The count is written before the update so a failed attempt remains

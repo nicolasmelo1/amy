@@ -86,7 +86,10 @@ describe("a project is three phases", () => {
       expect(profilePaths(home, known.execution!).records).toBe(path.join(home, "execution", "records"));
       expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-store"] as { directory: string }).directory)
         .toBe("execution/records");
-      expect(hostPaths(config, home, known.execution!).artifacts).toBeUndefined();
+      expect(hostPaths(config, home, known.execution!).artifacts).toBeDefined();
+      expect(profilePaths(home, known.execution!).log).not.toBe(path.join(home, "log"));
+      expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-brief-store"] as { directory: string }).directory)
+        .toBe("briefs");
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
@@ -104,5 +107,18 @@ describe("a project is three phases", () => {
 
     const component = profilePaths("/amy", known.execution!).records.split(path.sep)[3]!;
     expect(component).toHaveLength(43);
+  });
+
+  it("keeps profiles sharing a phase directory out of one another's state", () => {
+    const known = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: {
+        one: { workflow: path.join(root, "workflow") },
+        two: { workflow: path.join(root, "workflow") },
+        brief: { workflow: path.join(root, "brief") },
+      },
+    });
+
+    expect(profilePaths("/amy", known.one!).queue).not.toBe(profilePaths("/amy", known.two!).queue);
   });
 });

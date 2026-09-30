@@ -11,6 +11,7 @@ import {
   markDaemonUpdate,
   retryDaemonUpdate,
   runWithAutoUpdate,
+  settleDaemonUpdate,
   takeDaemonUpdate,
 } from "../src/auto-update.js";
 
@@ -115,6 +116,14 @@ describe("runWithAutoUpdate", () => {
 
     expect(hasDaemonUpdate(root, "oncall")).toBe(true);
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
+  });
+
+  it("lets the next daemon start settle a due update left by its reaper", async () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+
+    expect(await settleDaemonUpdate(root, "oncall", async () => 0)).toBe(true);
+    expect(hasDaemonUpdate(root, "oncall")).toBe(false);
   });
 
   it("fails the workflow invocation when its scheduled update fails", async () => {

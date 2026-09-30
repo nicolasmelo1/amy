@@ -45,7 +45,7 @@ function statePaths(home: string, profile: string | Profile) {
   return {
     records: path.join(home, legacy ? name : dirs.records, legacy ? "records" : ""),
     queue: path.join(home, legacy ? name : dirs.queue, legacy ? "queue" : ""),
-    ...(project && !legacy ? {
+    ...(project ? {
       artifacts: path.join(home, projectArtifacts(profile)!),
       log: path.join(home, project, "log"),
       pid: path.join(home, project, "daemon.pid"),
@@ -54,7 +54,7 @@ function statePaths(home: string, profile: string | Profile) {
 }
 
 function phaseState(profile: string | Profile): string | undefined {
-  return typeof profile === "string" || !profile.project ? undefined : projectStateKey(profile.project);
+  return typeof profile === "string" || !profile.project ? undefined : projectStateKey(profile.project, profile.name);
 }
 
 function projectArtifacts(profile: string | Profile): string | undefined {

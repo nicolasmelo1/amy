@@ -144,7 +144,7 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
     // A specifier that is already a URL — a path spec the CLI resolved to its
     // own entry — is not Node's to walk, and handing it to the resolver
     // rooted at `<root>/package.json` would answer nothing useful.
-    if (path.win32.isAbsolute(spec) || path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) {
+    if (isFilesystemWorkflow(spec)) {
       const resolved = path.resolve(spec);
       return fs.statSync(resolved).isDirectory() ? directoryEntrySpecifier(resolved) : pathToFileURL(resolved).href;
     }
@@ -162,10 +162,22 @@ function pluginNotInstalled(spec: string): Error & { code: string } {
   return error;
 }
 
+/** A configured path that the loader can import without installing a package. */
+export function isFilesystemWorkflow(spec: string): boolean {
+  if (!path.win32.isAbsolute(spec) && !path.isAbsolute(spec) && !spec.startsWith("./") && !spec.startsWith("../")) return false;
+  try {
+    const resolved = path.resolve(spec);
+    return fs.statSync(resolved).isFile() || fs.existsSync(path.join(resolved, "package.json")) ||
+      ["index.ts", "index.js"].some((entry) => fs.existsSync(path.join(resolved, entry)));
+  } catch {
+    return false;
+  }
+}
+
 /** A phase directory may be a package, or a plain editable workflow. */
 function directoryEntrySpecifier(directory: string): string {
   if (fs.existsSync(path.join(directory, "package.json"))) return packageEntrySpecifier(directory);
-  for (const name of ["index.js", "index.ts"]) {
+  for (const name of ["index.ts", "index.js"]) {
     const entry = path.join(directory, name);
     if (fs.existsSync(entry)) return pathToFileURL(entry).href;
   }

@@ -55,7 +55,7 @@ import {
 import { budgetLines } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
-import { LoadResult, NOT_INSTALLED, installedPlugins, load, pluginsRootResolver } from "./loader.js";
+import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
@@ -86,7 +86,7 @@ import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { Held, held, isRange, line, move, restore, roots } from "./update.js";
-import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
+import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -180,6 +180,12 @@ function scheduledUpdate(): Promise<number> {
     });
     child.once("exit", (code) => resolve(code ?? 1));
   });
+}
+
+/** A reaper can leave a due update behind; the next owner settles it before publishing a daemon. */
+async function settlePendingDaemonUpdate(profile: Profile, command: string): Promise<void> {
+  if (await settleDaemonUpdate(home, profile.name, scheduledUpdate)) return;
+  throw new Error(`the previous daemon's scheduled update did not settle; fix it and try ${command} again`);
 }
 
 /** Applies the persisted schedule around one foreground workflow invocation. */
@@ -295,7 +301,7 @@ program
     const wanted = Object.values(profiles(config)).flatMap((profile) =>
       pluginList(config, profile),
     );
-    const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !installedPlugins(place.plugins).includes(name));
+    const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !isFilesystemWorkflow(name) && !installedPlugins(place.plugins).includes(name));
     if (absent.length === 0) {
       if (wanted.length === 0) {
         console.log("\nkept the plugins it did not need: nothing is mounted yet.");
@@ -513,9 +519,7 @@ program
     // A detached reaper still owns the dead record and its after-timed
     // update. Starting another loop must not clear that record before the
     // reaper can claim it, or silently lose the scheduled maintenance.
-    if (hasDaemonUpdate(home, profile.name)) {
-      throw new Error("the previous daemon is settling its scheduled update; try start again when it finishes");
-    }
+    await settlePendingDaemonUpdate(profile, "start");
     const schedule = beginAutoUpdateInvocation(home, profile.name, config);
     if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
       throw new Error("amy update failed");
@@ -666,6 +670,7 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   const config = loadConfig(home);
   const problems = configuredAutoUpdateProblems(config);
   if (problems.length > 0) throw new Error(problems.join("; "));
+  await settlePendingDaemonUpdate(profile, "daemon");
   const schedule = beginAutoUpdateInvocation(home, profile.name, config);
   // A before update settles before this foreground process becomes the daemon;
   // an after update settles after its record is removed.
@@ -1378,9 +1383,11 @@ function refuseRemoval(
 
   if (!carried) return `the config does not name ${spec}`;
 
-  const live = running(profilePaths(home, profile).pid);
-  if (live && carrier.profile === live.workflow) {
-    return `${carrier.profile} is running as pid ${live.pid}. Run \`amy stop\` first.`;
+  const live = carrier.place === "extras"
+    ? Object.values(profiles(config)).map((candidate) => running(profilePaths(home, candidate).pid)).find(Boolean)
+    : carrier.profile ? running(profilePaths(home, profiles(config)[carrier.profile] ?? profile).pid) : undefined;
+  if (live) {
+    return `${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`;
   }
 
   return undefined;
@@ -2315,7 +2322,7 @@ workflowCommand
         asked.ok && asked.profile.name === profile.name ? "default" : "",
         live?.workflow === profile.name ? "running" : "",
         localWorkflow(home, profile.workflow) ? `local: ${workflowsDirectory(home)}` : "",
-        present.includes(profile.workflow) || localWorkflow(home, profile.workflow) ? "" : "not installed",
+        present.includes(profile.workflow) || localWorkflow(home, profile.workflow) || isFilesystemWorkflow(profile.workflow) ? "" : "not installed",
       ].filter(Boolean);
 
       console.log(
