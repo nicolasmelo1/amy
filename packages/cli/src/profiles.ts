@@ -129,7 +129,7 @@ export function profiles(config: AmyConfig, home?: string): Record<string, Profi
       briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
-      project: projectFor(workflow, Object.values(declared).map((candidate) => filesystemWorkflow(home, candidate.workflow)), home, name),
+      project: projectFor(workflow),
       agent: entry.agent,
     };
   }
@@ -190,26 +190,22 @@ export function directoriesFor(profile: string | Pick<Profile, "name" | "project
   return { records: `${name}/records`, queue: `${name}/queue` };
 }
 
-/** The shared project root is inferred from a phase package, never from `..` configuration. */
-function projectFor(workflow: string, configured: readonly string[], home?: string, name?: string): ProjectIdentity | undefined {
+/**
+ * The shared project root is inferred from a phase directory, never from `..`
+ * configuration. Every `brief/`, `workflow/` or `test/` is a phase, alone or
+ * not: a folder a project lacks is a part of the work nobody drives.
+ */
+function projectFor(workflow: string): ProjectIdentity | undefined {
   if (!workflow.startsWith(".") && !path.isAbsolute(workflow)) return undefined;
   const phase = path.basename(workflow) as ProjectPhase;
   if (!PROJECT_PHASES.includes(phase)) return undefined;
-  const root = path.resolve(workflow, "..");
-  // A lone `workflow/` is a long-supported ordinary profile. A solitary
-  // `brief/` or `test/` is still a phase: it must get phase-local state and
-  // fail the configured-workflow check rather than silently becoming legacy.
-  const phases = new Set(configured
-    .filter((candidate) => candidate.startsWith(".") || path.isAbsolute(candidate))
-    .map((candidate) => path.resolve(candidate))
-    .filter((candidate) => path.dirname(candidate) === root)
-    .map((candidate) => path.basename(candidate))
-    .filter((candidate): candidate is ProjectPhase => PROJECT_PHASES.includes(candidate as ProjectPhase)));
-  const identity = { root, phase };
-  // A previously active phase keeps its identity when config edits leave its
-  // workflow directory alone. A fresh lone workflow remains legacy.
-  const keptPhaseState = home !== undefined && name !== undefined && fs.existsSync(path.join(home, projectStateKey(identity, name)));
-  return phase !== "workflow" || phases.size > 1 || keptPhaseState ? identity : undefined;
+  return { root: path.resolve(workflow, ".."), phase };
+}
+
+/** Why a command that needs one phase cannot answer for this profile's project, if it cannot. */
+export function missingPhase(profile: Pick<Profile, "name" | "project">, phase: ProjectPhase): string | undefined {
+  if (!profile.project || fs.existsSync(path.join(profile.project.root, phase))) return undefined;
+  return `${profile.name}'s project has no ${phase}/ phase, so nothing drives that part of its work: add ${path.join(profile.project.root, phase)}`;
 }
 
 /** A stable, path-safe state name that cannot make a profile leave Amy home. */

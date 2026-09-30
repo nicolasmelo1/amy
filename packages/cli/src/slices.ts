@@ -224,14 +224,13 @@ function fileStoreBriefDirectory(config: AmyConfig): string | undefined {
 
 /** The file BriefStore's settings, including the one-time legacy translation. */
 function briefStoreSlice(config: AmyConfig, profile: Profile): { directory: string } {
-  // Project phases share a host-owned artifact root; a promoted phase's old
-  // briefs are adopted into it at assembly. Ordinary profiles retain the
-  // file-store translation, including an explicit path they already use.
+  // Project phases share a host-owned artifact root. Ordinary profiles retain
+  // the file-store translation, including an explicit path they already use.
   return { directory: profile.project ? "briefs" : legacyBriefDirectory(config) };
 }
 
 /** Where an ordinary profile keeps its briefs, relative to the state directory. */
-export function legacyBriefDirectory(config: AmyConfig): string {
+function legacyBriefDirectory(config: AmyConfig): string {
   const own = config.plugins["@amykit/plugin-file-brief-store"];
   if (isRecord(own) && typeof own.directory === "string") return own.directory;
   return fileStoreBriefDirectory(config) ?? "briefs";

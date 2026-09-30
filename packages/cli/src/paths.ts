@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import { Profile, artifactDirectory, directoriesFor, projectStateKey } from "./profiles.js";
 
@@ -38,35 +37,18 @@ export function profilePaths(home: string, profile: string | Profile) {
 
 function statePaths(home: string, profile: string | Profile) {
   const dirs = directoriesFor(profile);
-  const name = typeof profile === "string" ? profile : profile.name;
   const project = phaseState(profile);
-  const legacy = keepsLegacyState(home, name, project);
   const artifacts = projectArtifacts(profile);
-  // Plugin-owned state follows the phase the way its queue does. A retained
-  // legacy phase keeps the shared locations it has always written.
-  const own = project && !legacy ? project : "";
 
   return {
-    records: path.join(home, legacy ? name : dirs.records, legacy ? "records" : ""),
-    queue: path.join(home, legacy ? name : dirs.queue, legacy ? "queue" : ""),
-    tasks: path.join(home, own, "tasks"),
-    slack: path.join(home, own, "slack"),
-    // Every phase of a project shares one artifact root, including a phase
-    // that keeps its legacy records: otherwise the upgrade path is the one
-    // where grooming writes a brief execution cannot read.
+    records: path.join(home, dirs.records),
+    queue: path.join(home, dirs.queue),
+    // Plugin-owned state follows the phase the way its queue does.
+    tasks: path.join(home, project ?? "", "tasks"),
+    slack: path.join(home, project ?? "", "slack"),
     ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
-    ...(project && !legacy ? {
-      log: path.join(home, project, "log"),
-      // A retained legacy queue is still driven by the legacy daemon. Keep
-      // looking at its PID until an explicit state migration moves the queue.
-      pid: path.join(home, project, "daemon.pid"),
-    } : {}),
+    ...(project ? { log: path.join(home, project, "log"), pid: path.join(home, project, "daemon.pid") } : {}),
   };
-}
-
-/** Whether a phase still reads the layout it had before it became one. */
-export function keepsLegacyLayout(home: string, profile: Profile): boolean {
-  return keepsLegacyState(home, profile.name, phaseState(profile));
 }
 
 function phaseState(profile: string | Profile): string | undefined {
@@ -77,11 +59,14 @@ function projectArtifacts(profile: string | Profile): string | undefined {
   return typeof profile === "string" ? undefined : artifactDirectory(profile);
 }
 
-function keepsLegacyState(home: string, name: string, project: string | undefined): boolean {
-  // Adding a sibling must not make an existing workflow's records disappear.
-  // Retain the old profile directory until an explicit migration moves it.
-  // Creating a phase PID or log directory is not a state migration.
-  return project !== undefined && (
-    fs.existsSync(path.join(home, name, "records")) || fs.existsSync(path.join(home, name, "queue"))
-  );
+/**
+ * What `amy workflow rm` may delete: the directories no other profile reads.
+ *
+ * A phase owns its tasks and Slack threads as well as its records and queue;
+ * an ordinary profile shares those with its neighbours. Never the log: it is
+ * append-only because the budget is measured off it.
+ */
+export function profileOwnedDirectories(home: string, profile: Profile): string[] {
+  const place = profilePaths(home, profile);
+  return profile.project ? [place.records, place.queue, place.tasks, place.slack] : [place.records, place.queue];
 }

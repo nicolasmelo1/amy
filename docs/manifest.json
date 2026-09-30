@@ -839,8 +839,8 @@
         },
         {
           "depth": 3,
-          "title": "Let project phase profiles share artifacts while keeping state and spending isolated. A workflow promoted to a phase adopts the briefs it kept alone, each phase keeps its own tasks and Slack threads, and amy stop signals only the selected phase's daemon without touching the shared handbrake.",
-          "slug": "let-project-phase-profiles-share-artifacts-while-keeping-state-and-spending-isolated-a-workflow-promoted-to-a-phase-adopts-the-briefs-it-kept-alone-each-phase-keeps-its-own-tasks-and-slack-threads-and-amy-stop-signals-only-the-selected-phases-daemon-without-touching-the-shared-handbrake"
+          "title": "Let a project keep three phases — brief/, workflow/, test/ — that share briefs while keeping state and spending isolated. Every such folder is a phase, a lone workflow/ included, so its state moves under the project key and nothing is kept from an old profile of the same name. Each phase keeps its own tasks and Slack threads, amy brief names the missing brief/ when a project has none, and amy stop signals only the selected phase's daemon without touching the shared handbrake.",
+          "slug": "let-a-project-keep-three-phases-brief-workflow-test-that-share-briefs-while-keeping-state-and-spending-isolated-every-such-folder-is-a-phase-a-lone-workflow-included-so-its-state-moves-under-the-project-key-and-nothing-is-kept-from-an-old-profile-of-the-same-name-each-phase-keeps-its-own-tasks-and-slack-threads-amy-brief-names-the-missing-brief-when-a-project-has-none-and-amy-stop-signals-only-the-selected-phases-daemon-without-touching-the-shared-handbrake"
         },
         {
           "depth": 3,
@@ -7841,8 +7841,9 @@
         "evidence": ".software-factory/evidence/project-phases.json",
         "plan": "docs/design/a-project-is-three-phases.md",
         "assertions": [
-          "project.a_workflow_only_install_is_unchanged",
-          "project.a_workflow_only_install_keeps_its_briefs",
+          "project.a_packaged_workflow_is_unchanged",
+          "project.a_lone_workflow_is_a_phase",
+          "project.a_project_without_brief_keeps_no_briefs",
           "project.every_phase_mounts",
           "project.each_phase_has_its_own_queue",
           "project.each_phase_spends_its_own_budget",
@@ -7852,7 +7853,7 @@
           "project.a_brief_crosses_the_phase_boundary",
           "project.no_config_names_a_shared_directory",
           "project.no_phase_state_escapes_home",
-          "project.a_promoted_workflow_keeps_its_briefs",
+          "project.a_phase_never_reads_an_old_profiles_records",
           "project.a_phase_without_a_workflow_is_refused_by_name"
         ],
         "scenario": ".software-factory/evidence/project-phases-scenario.sh"
@@ -8277,7 +8278,7 @@
       },
       {
         "id": "a-project-is-three-phases",
-        "title": "Let project phase profiles share artifacts while keeping state and spending isolated. A workflow promoted to a phase adopts the briefs it kept alone, each phase keeps its own tasks and Slack threads, and `amy stop` signals only the selected phase's daemon without touching the shared handbrake.",
+        "title": "Let a project keep three phases — `brief/`, `workflow/`, `test/` — that share briefs while keeping state and spending isolated. Every such folder is a phase, a lone `workflow/` included, so its state moves under the project key and nothing is kept from an old profile of the same name. Each phase keeps its own tasks and Slack threads, `amy brief` names the missing `brief/` when a project has none, and `amy stop` signals only the selected phase's daemon without touching the shared handbrake.",
         "body": "",
         "bumps": [
           {

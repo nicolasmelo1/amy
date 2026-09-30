@@ -7,9 +7,9 @@ import { FileEventLog } from "@amykit/plugin-file-log";
 import { assembleProfile } from "../src/assemble.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { isFilesystemWorkflow, load, pluginsRootResolver } from "../src/loader.js";
-import { profilePaths } from "../src/paths.js";
-import { profiles } from "../src/profiles.js";
-import { hostPaths, legacyBriefDirectory, pluginSlices } from "../src/slices.js";
+import { profileOwnedDirectories, profilePaths } from "../src/paths.js";
+import { missingPhase, profiles } from "../src/profiles.js";
+import { hostPaths, pluginSlices } from "../src/slices.js";
 
 describe("a project is three phases", () => {
   const root = path.join("/projects", "invoices");
@@ -61,12 +61,23 @@ describe("a project is three phases", () => {
     expect(grooming["@amykit/plugin-agent-relay"]?.budget).not.toEqual(execution["@amykit/plugin-agent-relay"]?.budget);
   });
 
-  it("keeps a workflow-only project compatible without a new configuration key", () => {
+  it("makes a lone workflow directory a phase, with no new configuration key", () => {
     const only = profiles({ ...DEFAULT_CONFIG, workflows: { execution: { workflow: path.join(root, "workflow") } } });
 
-    expect(only.execution?.project).toBeUndefined();
-    expect(profilePaths("/amy", only.execution!).records).toBe("/amy/execution/records");
+    expect(only.execution?.project).toMatchObject({ root, phase: "workflow" });
+    expect(profilePaths("/amy", only.execution!).records).not.toBe("/amy/execution/records");
     expect(only.execution?.agent).toBeUndefined();
+  });
+
+  it("leaves a packaged workflow exactly where it always was", () => {
+    const packaged = profiles({ ...DEFAULT_CONFIG, workflows: { tickets: { workflow: "@amykit/workflow-ticket-to-qa" } } });
+    const place = profilePaths("/amy", packaged.tickets!);
+
+    expect(packaged.tickets?.project).toBeUndefined();
+    expect([place.records, place.queue, place.pid, place.log, place.tasks]).toEqual(
+      ["/amy/tickets/records", "/amy/tickets/queue", "/amy/daemon.pid", "/amy/log", "/amy/tasks"],
+    );
+    expect(hostPaths(DEFAULT_CONFIG, "/amy", packaged.tickets!).artifacts).toBeUndefined();
   });
 
   it("treats solitary brief and test directories as phases", () => {
@@ -81,7 +92,7 @@ describe("a project is three phases", () => {
     }
   });
 
-  it("does not let an unrelated sibling turn a legacy workflow into a phase", () => {
+  it("does not make an unrelated directory a phase", () => {
     const known = profiles({
       ...DEFAULT_CONFIG,
       workflows: {
@@ -90,54 +101,40 @@ describe("a project is three phases", () => {
       },
     });
 
-    expect(known.execution?.project).toBeUndefined();
+    expect(known.other?.project).toBeUndefined();
+    expect(known.execution?.project).toMatchObject({ root, phase: "workflow" });
   });
 
-  it("names a missing entry in an existing phase directory", () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-empty-phase-"));
-    try {
-      expect(isFilesystemWorkflow(directory)).toBe(true);
-      expect(() => pluginsRootResolver("/amy", "/amy/plugins")(directory))
-        .toThrow("directory with neither package.json nor index.js/index.ts");
-    } finally {
-      fs.rmSync(directory, { recursive: true, force: true });
-    }
-  });
-
-  it("keeps existing legacy state when a sibling phase is later added", () => {
+  it("never picks up the records an old profile of the same name left", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-project-state-"));
     try {
       fs.mkdirSync(path.join(home, "execution", "records"), { recursive: true });
-      const known = profiles(config);
+      fs.mkdirSync(path.join(home, "execution", "queue"), { recursive: true });
+      const execution = profiles(config, home).execution!;
+      const place = profilePaths(home, execution);
 
-      expect(profilePaths(home, known.execution!).records).toBe(path.join(home, "execution", "records"));
-      expect(profilePaths(home, known.execution!).pid).toBe(path.join(home, "daemon.pid"));
-      expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-store"] as { directory: string }).directory)
-        .toBe("execution/records");
-      expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-worktree"] as { recordsDirectory: string }).recordsDirectory)
-        .toBe(path.join(home, "execution", "records"));
-      // Promotion retains the records, the queue and the spending, but not
-      // the briefs: those are what the new sibling has to read, so the phase
-      // joins the project's artifact root and adopts its old ones at mount.
-      expect(hostPaths(config, home, known.execution!).artifacts).toBe(hostPaths(config, home, known.grooming!).artifacts);
-      expect(profilePaths(home, known.execution!).log).toBe(path.join(home, "log"));
-      expect(profilePaths(home, known.execution!).tasks).toBe(path.join(home, "tasks"));
-      const legacyBriefs = {
-        ...config,
-        plugins: { "@amykit/plugin-file-store": { briefsDirectory: "legacy-briefs" } },
-      };
-      expect((pluginSlices(legacyBriefs, known.execution!, home)["@amykit/plugin-file-brief-store"] as { directory: string }).directory)
-        .toBe("briefs");
-      expect(legacyBriefDirectory(legacyBriefs)).toBe("legacy-briefs");
-
-      // A daemon creates its phase PID/log directory; that cannot make the
-      // following mount abandon the legacy queue and records.
-      const phase = profilePaths(home, known.execution!);
-      fs.mkdirSync(path.dirname(phase.pid), { recursive: true });
-      expect(profilePaths(home, known.execution!).records).toBe(path.join(home, "execution", "records"));
+      // A phase is its project's, whatever ran under the name before it.
+      expect(place.records).not.toBe(path.join(home, "execution", "records"));
+      expect(place.queue).not.toBe(path.join(home, "execution", "queue"));
+      expect((pluginSlices(config, execution, home)["@amykit/plugin-file-worktree"] as { recordsDirectory: string }).recordsDirectory)
+        .toBe(place.records);
+      expect(hostPaths(config, home, execution).artifacts).toBe(hostPaths(config, home, profiles(config, home).grooming!).artifacts);
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
+  });
+
+  it("forgets a phase's tasks and threads with it, and never its log", () => {
+    const known = profiles(config);
+    const owned = profileOwnedDirectories("/amy", known.execution!);
+    const place = profilePaths("/amy", known.execution!);
+
+    expect(owned).toEqual([place.records, place.queue, place.tasks, place.slack]);
+    expect(owned).not.toContain(place.log);
+    expect(owned).not.toContain(place.artifacts);
+    // An ordinary profile shares its tasks and threads, so it forgets neither.
+    expect(profileOwnedDirectories("/amy", { name: "tickets", workflow: "@amykit/workflow-ticket-to-qa", plugins: [], takesNotes: false, takesTasks: false }))
+      .toEqual(["/amy/tickets/records", "/amy/tickets/queue"]);
   });
 
   it("keeps the project state component bounded for long valid paths", () => {
@@ -377,24 +374,13 @@ describe("a brief crosses the phase boundary", () => {
     }
   });
 
-  it("adopts a promoted workflow's existing briefs into the project root", async () => {
-    // An install that ran `workflow/` alone before it had a sibling.
-    const workflow = phase("workflow");
-    fs.mkdirSync(path.join(home, "execution", "records"), { recursive: true });
-    const before = await briefPort(configured({ execution: workflow }), "execution");
-    await before.write({ id: "legacy", sections: [{ name: "Goal", body: "Written before brief/ existed." }], explains: [], at: "2026-09-01T00:00:00.000Z" });
-    expect(fs.existsSync(path.join(home, "briefs", "legacy.json"))).toBe(true);
+  it("names the missing brief/ when a project has no grooming phase", () => {
+    const config = configured({ execution: phase("workflow") });
+    const execution = profiles(config, home).execution!;
 
-    // Adding brief/ promotes it to a phase that keeps its legacy records.
-    const config = configured({ grooming: phase("brief"), execution: workflow });
-    expect(profilePaths(home, profiles(config, home).execution!).records).toBe(path.join(home, "execution", "records"));
-
-    const execution = await briefPort(config, "execution");
-    const grooming = await briefPort(config, "grooming");
-    expect((await grooming.get("legacy"))?.sections[0]?.body).toBe("Written before brief/ existed.");
-
-    await grooming.write({ id: "fresh", sections: [{ name: "Goal", body: "Written by grooming." }], explains: [], at: "2026-09-30T00:00:00.000Z" });
-    expect((await execution.get("fresh"))?.sections[0]?.body).toBe("Written by grooming.");
+    expect(missingPhase(execution, "brief")).toContain(path.join(project, "brief"));
+    phase("brief");
+    expect(missingPhase(execution, "brief")).toBeUndefined();
   });
 
   it("keeps each phase's tasks and threads out of the other's", () => {

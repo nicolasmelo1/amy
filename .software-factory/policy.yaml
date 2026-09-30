@@ -479,8 +479,9 @@ gates:
     evidence: ".software-factory/evidence/project-phases.json"
     plan: "docs/design/a-project-is-three-phases.md"
     required_assertions:
-      - "project.a_workflow_only_install_is_unchanged"
-      - "project.a_workflow_only_install_keeps_its_briefs"
+      - "project.a_packaged_workflow_is_unchanged"
+      - "project.a_lone_workflow_is_a_phase"
+      - "project.a_project_without_brief_keeps_no_briefs"
       - "project.every_phase_mounts"
       - "project.each_phase_has_its_own_queue"
       - "project.each_phase_spends_its_own_budget"
@@ -490,7 +491,7 @@ gates:
       - "project.a_brief_crosses_the_phase_boundary"
       - "project.no_config_names_a_shared_directory"
       - "project.no_phase_state_escapes_home"
-      - "project.a_promoted_workflow_keeps_its_briefs"
+      - "project.a_phase_never_reads_an_old_profiles_records"
       - "project.a_phase_without_a_workflow_is_refused_by_name"
 
 rules:

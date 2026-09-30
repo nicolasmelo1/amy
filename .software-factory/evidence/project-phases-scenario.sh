@@ -26,6 +26,7 @@ trap 'rm -rf "$work"' EXIT
 node --input-type=module - "$work" "$dist" "$report" <<'PROBE'
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const [work, dist, report] = process.argv.slice(2);
@@ -93,22 +94,31 @@ const briefOf = async (config, name) => {
   return assembled.mounted.ports.get("brief");
 };
 
-// 0. Before there is a project: a workflow driven on its own, the install
-// that never heard of phases.
+// 0. A packaged workflow is not a phase, and keeps the layout it always had.
+const packaged = profiles(configured({ tickets: { workflow: "@amykit/workflow-ticket-to-qa" } }), home).tickets;
+record("project.a_packaged_workflow_is_unchanged",
+  packaged.project === undefined
+  && profilePaths(home, packaged).records === path.join(home, "tickets", "records")
+  && profilePaths(home, packaged).pid === path.join(home, "daemon.pid"));
+
+// A project that so far has only `workflow/`: a phase already, and its
+// grooming is simply missing. Asked for a brief, the real command says so.
 const workflowDir = phase("workflow");
 const alone = configured({ execution: { workflow: workflowDir } });
-const aloneProfile = profiles(alone, home).execution;
-await attempt("project.a_workflow_only_install_is_unchanged", async () =>
-  aloneProfile.project === undefined
-  && profilePaths(home, aloneProfile).records === path.join(home, "execution", "records")
-  && profilePaths(home, aloneProfile).pid === path.join(home, "daemon.pid")
-  && (await mountedAs(alone, "execution")).ok);
-fs.mkdirSync(profilePaths(home, aloneProfile).records, { recursive: true });
-await attempt("project.a_workflow_only_install_keeps_its_briefs", async () => {
-  const store = await briefOf(alone, "execution");
-  await store.write({ id: "before-phases", sections: [{ name: "Goal", body: "Written alone." }], explains: [], at: "2026-09-01T00:00:00.000Z" });
-  return fs.existsSync(path.join(home, "briefs", "before-phases.json"));
+await attempt("project.a_lone_workflow_is_a_phase", async () =>
+  profiles(alone, home).execution.project?.phase === "workflow" && (await mountedAs(alone, "execution")).ok);
+await attempt("project.a_project_without_brief_keeps_no_briefs", async () => {
+  fs.writeFileSync(path.join(home, "config.yaml"), `workflows:\n  execution:\n    workflow: ${JSON.stringify(workflowDir)}\n`, "utf-8");
+  const asked = spawnSync(process.execPath, [path.join(dist, "index.js"), "--workflow", "execution", "brief", "invoices"], {
+    env: { ...process.env, AMY_HOME: home }, encoding: "utf-8",
+  });
+  fs.rmSync(path.join(home, "config.yaml"));
+  return asked.status === 1 && asked.stderr.includes(path.join(project, "brief"));
 });
+
+// An old profile of the same name left records behind; the phase never reads them.
+fs.mkdirSync(path.join(home, "execution", "records"), { recursive: true });
+fs.writeFileSync(path.join(home, "execution", "records", "OLD-1.json"), "{}\n", "utf-8");
 
 // 1. The project: grooming plans on an expensive model with a large budget,
 // execution runs on a cheap one with a small one, proving takes the defaults.
@@ -154,10 +164,8 @@ await attempt("project.a_brief_crosses_the_phase_boundary", async () => {
 record("project.no_config_names_a_shared_directory", !JSON.stringify(config).includes("briefs"));
 record("project.no_phase_state_escapes_home",
   places.every((place) => Object.values(place).every((dir) => !path.relative(home, dir).startsWith(".."))));
-await attempt("project.a_promoted_workflow_keeps_its_briefs", async () => {
-  const grooming = await briefOf(config, "grooming");
-  return (await grooming.get("before-phases"))?.sections[0]?.body === "Written alone.";
-});
+record("project.a_phase_never_reads_an_old_profiles_records",
+  profilePaths(home, known.execution).records !== path.join(home, "execution", "records"));
 
 // 3. A phase that exports no workflow is refused at boot, by its directory.
 // Another project, because a module this process imported stays imported.
@@ -180,7 +188,7 @@ fs.writeFileSync(
       scenario: "project-phases",
       status: failed.length === 0 ? "passed" : "failed",
       goal:
-        "I keep one project as three phases: grooming decides the work on an expensive model, execution does it continuously on a cheap one, and proving shows it holds. Prove each phase keeps its own queue, budget and daemon, that execution and proving read the brief grooming wrote without my config naming any directory, that my workflow's old briefs survive it becoming a phase, that a phase with no workflow is refused by name, and that an install with only a workflow is exactly what it was.",
+        "I keep one project as three phases: grooming decides the work on an expensive model, execution does it continuously on a cheap one, and proving shows it holds. Prove each phase keeps its own queue, budget and daemon, that execution and proving read the brief grooming wrote without my config naming any directory, that a project with no brief/ is told so by name when I ask it for a brief, that a phase never reads records an old profile of the same name left, that a phase with no workflow is refused by name, and that a packaged workflow keeps the layout it always had.",
       artifact: { package: "@amykit/cli", entry: "dist/assemble.js" },
       observed: {
         assertions_run: assertions.length,

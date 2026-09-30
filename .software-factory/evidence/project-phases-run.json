@@ -1,23 +1,27 @@
 {
   "scenario": "project-phases",
   "status": "passed",
-  "goal": "I keep one project as three phases: grooming decides the work on an expensive model, execution does it continuously on a cheap one, and proving shows it holds. Prove each phase keeps its own queue, budget and daemon, that execution and proving read the brief grooming wrote without my config naming any directory, that my workflow's old briefs survive it becoming a phase, that a phase with no workflow is refused by name, and that an install with only a workflow is exactly what it was.",
+  "goal": "I keep one project as three phases: grooming decides the work on an expensive model, execution does it continuously on a cheap one, and proving shows it holds. Prove each phase keeps its own queue, budget and daemon, that execution and proving read the brief grooming wrote without my config naming any directory, that a project with no brief/ is told so by name when I ask it for a brief, that a phase never reads records an old profile of the same name left, that a phase with no workflow is refused by name, and that a packaged workflow keeps the layout it always had.",
   "artifact": {
     "package": "@amykit/cli",
     "entry": "dist/assemble.js"
   },
   "observed": {
-    "assertions_run": 13,
+    "assertions_run": 14,
     "assertions_failed": 0,
     "node": "v22.22.2"
   },
   "assertions": [
     {
-      "type": "project.a_workflow_only_install_is_unchanged",
+      "type": "project.a_packaged_workflow_is_unchanged",
       "status": "passed"
     },
     {
-      "type": "project.a_workflow_only_install_keeps_its_briefs",
+      "type": "project.a_lone_workflow_is_a_phase",
+      "status": "passed"
+    },
+    {
+      "type": "project.a_project_without_brief_keeps_no_briefs",
       "status": "passed"
     },
     {
@@ -57,7 +61,7 @@
       "status": "passed"
     },
     {
-      "type": "project.a_promoted_workflow_keeps_its_briefs",
+      "type": "project.a_phase_never_reads_an_old_profiles_records",
       "status": "passed"
     },
     {

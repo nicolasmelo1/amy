@@ -56,7 +56,7 @@ import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
-import { Profile, profiles, resolveProfile } from "./profiles.js";
+import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
 import { Assembled, assembleProfile } from "./assemble.js";
 import { installedStamp } from "./stamp.js";
@@ -81,7 +81,7 @@ import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runnin
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
-import { keepsLegacyLayout, paths, profilePaths } from "./paths.js";
+import { paths, profileOwnedDirectories, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
@@ -850,6 +850,14 @@ program
   .option("--json", "the same snapshot as data, for something else to render")
   .action(async (id: string, options: { json?: boolean }) => {
     const profile = selected();
+    // A project without `brief/` has no grooming phase, so it keeps no briefs:
+    // say which folder is missing rather than that a brief was not found.
+    const missing = missingPhase(profile, "brief");
+    if (missing) {
+      console.error(missing);
+      process.exitCode = 1;
+      return;
+    }
 
     // Assembled, because the store is a mounted port rather than a path:
     // `amy brief show` resolves the adapter the same way a tick does, and a
@@ -1369,14 +1377,11 @@ function refuseRemoval(
   return pendingRemovalProblem(home, config, spec, carrier);
 }
 
-/** A removed phase must leave neither an updater nor a sibling daemon stranded. */
+/** A removed profile must not leave its scheduled updater stranded. */
 function pendingRemovalProblem(home: string, config: AmyConfig, spec: string, carrier: Carrier): string | undefined {
   const affected = carrier.profile ? profiles(config, home)[carrier.profile] : undefined;
   if (affected && hasDaemonUpdate(home, affected.name)) {
     return `${affected.name} has a scheduled daemon update. Let it settle before removing ${spec}.`;
-  }
-  if (carrier.place === "workflow" && affected && runningPhaseLosingIdentity(home, config, affected)) {
-    return `removing ${affected.name} would orphan a running sibling phase. Run \`amy stop\` first.`;
   }
   return undefined;
 }
@@ -2334,7 +2339,7 @@ workflowCommand
       return;
     }
 
-    const live = running(profilePaths(home, resolution.profile).pid) ?? runningPhaseLosingIdentity(home, config, resolution.profile);
+    const live = running(profilePaths(home, resolution.profile).pid);
     if (live) {
       console.error(`${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`);
       process.exitCode = 1;
@@ -2346,13 +2351,7 @@ workflowCommand
       return;
     }
 
-    const place = profilePaths(home, resolution.profile);
-    // A phase owns its task and Slack directories; the legacy layout owns the
-    // machine-wide copies, so removing one retained profile must leave those.
-    const owned = resolution.profile.project && !keepsLegacyLayout(home, resolution.profile)
-      ? [place.tasks, place.slack]
-      : [];
-    const going = [place.records, place.queue, ...owned].filter((directory) => fs.existsSync(directory));
+    const going = profileOwnedDirectories(home, resolution.profile).filter((directory) => fs.existsSync(directory));
 
     for (const directory of going) {
       const held = fs.readdirSync(directory).length;
@@ -2374,17 +2373,6 @@ workflowCommand
     removeProfile(home, name, config);
     console.log(`\nforgot ${name}`);
   });
-
-/** A phase cannot lose its project identity while its own daemon still runs. */
-function runningPhaseLosingIdentity(home: string, config: AmyConfig, removed: Profile) {
-  if (!removed.project) return undefined;
-  const siblings = Object.values(profiles(config, home)).filter((profile) =>
-    profile.name !== removed.name && profile.project?.root === removed.project!.root,
-  );
-  // Removing one of two configured phases turns the survivor back into a
-  // legacy profile, changing the PID path before it can be stopped.
-  return siblings.length === 1 ? running(profilePaths(home, siblings[0]!).pid) : undefined;
-}
 
 const queueCommand = program.command("queue").description("Inspect and tidy the queue");
 
