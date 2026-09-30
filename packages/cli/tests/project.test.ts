@@ -65,6 +65,18 @@ describe("a project is three phases", () => {
     expect(only.execution?.agent).toBeUndefined();
   });
 
+  it("treats solitary brief and test directories as phases", () => {
+    for (const phase of ["brief", "test"] as const) {
+      const known = profiles({
+        ...DEFAULT_CONFIG,
+        workflows: { [phase]: { workflow: path.join(root, phase) } },
+      });
+
+      expect(known[phase]?.project).toMatchObject({ root, phase });
+      expect(profilePaths("/amy", known[phase]!).pid).not.toBe("/amy/daemon.pid");
+    }
+  });
+
   it("does not let an unrelated sibling turn a legacy workflow into a phase", () => {
     const known = profiles({
       ...DEFAULT_CONFIG,

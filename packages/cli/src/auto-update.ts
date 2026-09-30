@@ -62,19 +62,25 @@ export function markDaemonUpdate(home: string, profile: string): void {
 /** Whether an exited daemon still has a reaper-owned update to run. */
 export function hasDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
-  return fs.existsSync(file) || fs.existsSync(`${file}.claimed`);
+  return fs.existsSync(file) || fs.existsSync(`${file}.claiming`) || fs.existsSync(`${file}.claimed`);
 }
 
 /** Takes a due after-timed daemon update exactly once, retaining its claim while it runs. */
 export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
   recoverDaemonUpdateClaim(file);
+  const staging = `${file}.claiming`;
   try {
-    // Publish the owner before consuming `due`: a concurrent starter can
-    // observe either a due marker or a fully-owned claim, never a claim whose
-    // temporary `due` contents look abandoned.
-    fs.writeFileSync(`${file}.claimed`, `${process.pid}\n`, { encoding: "utf8", flag: "wx" });
-    fs.rmSync(file, { force: true });
+    // The owner-bearing staging file serializes the check and consume steps.
+    // A crashed claimant leaves `due` intact; a live one is visible to every
+    // starter before it can consume the marker.
+    fs.writeFileSync(staging, `${process.pid}\n`, { encoding: "utf8", flag: "wx" });
+    if (!fs.existsSync(file)) {
+      fs.rmSync(staging, { force: true });
+      return false;
+    }
+    fs.renameSync(staging, `${file}.claimed`);
+    fs.unlinkSync(file);
     return true;
   } catch {
     return false;
@@ -83,8 +89,9 @@ export function takeDaemonUpdate(home: string, profile: string): boolean {
 
 /** Returns an abandoned claim to due state without stealing a live updater. */
 function recoverDaemonUpdateClaim(file: string): void {
-  const claim = `${file}.claimed`;
-  if (!fs.existsSync(claim)) return;
+  const claims = [`${file}.claimed`, `${file}.claiming`];
+  const claim = claims.find((candidate) => fs.existsSync(candidate));
+  if (!claim) return;
   try {
     const owner = Number.parseInt(fs.readFileSync(claim, "utf8").trim(), 10);
     if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
@@ -92,7 +99,8 @@ function recoverDaemonUpdateClaim(file: string): void {
     return;
   } catch {
     try {
-      fs.renameSync(claim, file);
+      if (claim.endsWith(".claimed")) fs.renameSync(claim, file);
+      else fs.rmSync(claim, { force: true });
     } catch {
       // A live owner or another recovery settled the claim first.
     }

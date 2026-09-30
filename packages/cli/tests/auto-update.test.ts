@@ -107,6 +107,9 @@ describe("runWithAutoUpdate", () => {
     expect(takeDaemonUpdate(root, "oncall")).toBe(false);
     finishDaemonUpdate(root, "oncall");
     expect(hasDaemonUpdate(root, "oncall")).toBe(false);
+    // A delayed reaper that observed the old due marker must not manufacture
+    // another claim after the first owner has settled it.
+    expect(takeDaemonUpdate(root, "oncall")).toBe(false);
   });
 
   it("keeps a blocked after-update due for a later retry", () => {

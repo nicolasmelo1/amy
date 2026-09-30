@@ -2396,7 +2396,6 @@ workflowCommand
     }
 
     for (const directory of going) fs.rmSync(directory, { recursive: true, force: true });
-    fs.rmSync(path.join(home, name), { recursive: true, force: true });
     removeProfile(home, name, config);
     console.log(`\nforgot ${name}`);
   });

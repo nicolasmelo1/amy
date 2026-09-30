@@ -178,15 +178,16 @@ function projectFor(workflow: string, configured: readonly string[]): ProjectIde
   const phase = path.basename(workflow) as ProjectPhase;
   if (!PROJECT_PHASES.includes(phase)) return undefined;
   const root = path.resolve(workflow, "..");
-  // A lone `workflow/` is a long-supported ordinary profile. Treat it as a
-  // project only once another configured phase confirms the three-phase layout.
+  // A lone `workflow/` is a long-supported ordinary profile. A solitary
+  // `brief/` or `test/` is still a phase: it must get phase-local state and
+  // fail the configured-workflow check rather than silently becoming legacy.
   const phases = new Set(configured
     .filter((candidate) => candidate.startsWith(".") || path.isAbsolute(candidate))
     .map((candidate) => path.resolve(candidate))
     .filter((candidate) => path.dirname(candidate) === root)
     .map((candidate) => path.basename(candidate))
     .filter((candidate): candidate is ProjectPhase => PROJECT_PHASES.includes(candidate as ProjectPhase)));
-  return phases.size > 1 ? { root, phase } : undefined;
+  return phase !== "workflow" || phases.size > 1 ? { root, phase } : undefined;
 }
 
 /** A stable, path-safe state name that cannot make a profile leave Amy home. */
