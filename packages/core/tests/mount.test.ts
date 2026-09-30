@@ -558,6 +558,21 @@ describe("contributions", () => {
     expect((context!.port("tracker") as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
   });
 
+  it("attenuates a custom brief adapter with a mutating helper", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: [], codeHostWrites: [] }); context = ctx; },
+    });
+    const briefs = plugin("@amykit/plugin-briefs", {
+      register: (r) => r.port("brief", { get: async () => null, mutate: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, briefs], {}, HOST);
+
+    const brief = context!.port("brief") as { mutate?: () => Promise<void> };
+    expect(brief.mutate).toBeUndefined();
+  });
+
   it("attenuates an unrecognised mutator mounted only under a tracker-shaped alias", async () => {
     let context: PluginContext | undefined;
     let mutations = 0;

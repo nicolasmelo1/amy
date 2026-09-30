@@ -32,7 +32,7 @@ export class FileBriefStore implements BriefStore {
     explains: string[];
     at: string;
   }): Promise<BriefRecord> {
-    return this.mutate(input.id, async (existing) => {
+    return this.updateBrief(input.id, async (existing) => {
       const record: BriefRecord = {
         id: input.id,
         sections: input.sections,
@@ -52,7 +52,7 @@ export class FileBriefStore implements BriefStore {
     question: BriefQuestion;
     at: string;
   }): Promise<BriefRecord> {
-    return this.mutate(input.id, async (existing) => {
+    return this.updateBrief(input.id, async (existing) => {
       if (!existing) throw new Error(`there is no brief \`${input.id}\` to append a question to`);
       const record: BriefRecord = { ...existing, questions: [...existing.questions, input.question], updatedAt: input.at };
       this.save(record);
@@ -95,7 +95,7 @@ export class FileBriefStore implements BriefStore {
   }
 
   /** Serializes a read-modify-write across phase processes for one brief. */
-  private mutate<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
+  private updateBrief<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
     return this.locked(id, async () => change(await this.get(id)));
   }
 

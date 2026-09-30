@@ -549,9 +549,6 @@ function mutablePortKindForPort(
   port: object,
   mutablePortKinds: WeakMap<object, MutablePortKind>,
 ): MutablePortKind | undefined {
-  // BriefStore's internal read-modify-write helper is named `mutate`, but its
-  // reader contract is deliberately available to ticket workflows.
-  if (kind === "brief") return undefined;
   return mutablePortKind(port, kind, mutablePortKinds)
     ?? (isCodeHostPort(port) ? "code-host" : undefined)
     ?? (isTrackerPort(port) ? "tracker" : undefined)

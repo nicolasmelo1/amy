@@ -62,6 +62,14 @@ function profileDaemonPid(home: string, profile: string | Profile): string {
   return typeof profile === "string" ? path.join(home, "daemon.pid") : path.join(home, "profiles", profile.name, "daemon.pid");
 }
 
+/** Every PID location a profile may own across a packaged/phase transition. */
+export function profileDaemonPids(home: string, profile: string | Profile): readonly string[] {
+  if (typeof profile === "string") return [path.join(home, "daemon.pid")];
+  const current = profilePaths(home, profile).pid;
+  const previous = profile.project ? paths(home).pid : profileDaemonPid(home, profile);
+  return current === previous ? [current] : [current, previous];
+}
+
 function phaseState(profile: string | Profile): string | undefined {
   return typeof profile === "string" || !profile.project ? undefined : projectStateKey(profile.project, profile.name);
 }

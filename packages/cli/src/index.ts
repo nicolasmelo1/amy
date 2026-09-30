@@ -81,7 +81,7 @@ import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runnin
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
-import { paths, profileOwnedDirectories, profilePaths } from "./paths.js";
+import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
@@ -172,6 +172,15 @@ function selected(config: AmyConfig = loadConfig(home)): Profile {
 
   console.error(resolution.problem);
   process.exit(1);
+}
+
+/** A config transition must not hide the daemon its prior layout published. */
+function runningProfileDaemon(profile: Profile): { file: string; record: NonNullable<ReturnType<typeof running>> } | undefined {
+  for (const file of profileDaemonPids(home, profile)) {
+    const record = running(file);
+    if (record) return { file, record };
+  }
+  return undefined;
 }
 
 /** Assembles, or prints why it could not and stops. */
@@ -471,9 +480,9 @@ program
     const config = loadConfig(home);
     const profile = selected(config);
     const place = profilePaths(home, profile);
-    const already = running(place.pid);
+    const already = runningProfileDaemon(profile);
     if (already) {
-      console.log(`already running: pid ${already.pid}, driving ${already.workflow}`);
+      console.log(`already running: pid ${already.record.pid}, driving ${already.record.workflow}`);
       return;
     }
 
@@ -501,9 +510,9 @@ program
       return;
     }
     try {
-      const current = running(place.pid);
+      const current = runningProfileDaemon(profile);
       if (current) {
-        console.log(`already running: pid ${current.pid}, driving ${current.workflow}`);
+        console.log(`already running: pid ${current.record.pid}, driving ${current.record.workflow}`);
         return;
       }
 
@@ -544,12 +553,13 @@ program
   .command("stop")
   .description("Stop the background loop")
   .action(async () => {
-    const place = profilePaths(home, selected());
-    const record = running(place.pid);
-    if (!record) {
+    const selectedProfile = selected();
+    const live = runningProfileDaemon(selectedProfile);
+    if (!live) {
       console.log("nothing running");
       return;
     }
+    const { file, record } = live;
 
     // Only the selected daemon is signalled. Its SIGTERM handler ends its own
     // agent children; the handbrake is machine-wide, so pulling it here would
@@ -559,7 +569,7 @@ program
     await waitForDaemonExit(record.pid);
     // The detached reaper owns an after-timed update, including a crash or
     // direct signal. Do not race it by consuming the marker here.
-    if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(place.pid);
+    if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(file);
     console.log(`stopped ${record.workflow}: pid ${record.pid}`);
   });
 
@@ -574,7 +584,7 @@ program
     await waitForDaemonExit(pid);
     const resolution = resolveProfile(loadConfig(home), workflow, home);
     if (!resolution.ok) return;
-    if (!claimExitedDaemon(profilePaths(home, resolution.profile).pid, pid)) return;
+    if (!profileDaemonPids(home, resolution.profile).some((file) => claimExitedDaemon(file, pid))) return;
     if (!takeDaemonUpdate(home, workflow)) return;
     if (await scheduledUpdate() === 0) finishDaemonUpdate(home, workflow);
     else {
@@ -1368,8 +1378,8 @@ function refuseRemoval(
   if (!carried) return `the config does not name ${spec}`;
 
   const live = carrier.place === "extras"
-    ? Object.values(profiles(config, home)).map((candidate) => running(profilePaths(home, candidate).pid)).find(Boolean)
-    : carrier.profile ? running(profilePaths(home, profiles(config, home)[carrier.profile] ?? profile).pid) : undefined;
+    ? Object.values(profiles(config, home)).map(runningProfileDaemon).find(Boolean)?.record
+    : carrier.profile ? runningProfileDaemon(profiles(config, home)[carrier.profile] ?? profile)?.record : undefined;
   if (live) {
     return `${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`;
   }
@@ -1814,7 +1824,7 @@ async function rewriteSkillsOrRollBack(
 function refuseWhileRunning(home: string): number | undefined {
     const live = [
       running(paths(home).pid),
-      ...Object.values(profiles(loadConfig(home), home)).map((profile) => running(profilePaths(home, profile).pid)),
+      ...Object.values(profiles(loadConfig(home), home)).map(runningProfileDaemon).map((daemon) => daemon?.record),
     ].find((record) => record !== undefined);
     if (!live) return undefined;
     console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
@@ -2309,7 +2319,7 @@ workflowCommand
 
     for (const profile of Object.values(known)) {
       const place = profilePaths(home, profile);
-      const live = running(place.pid);
+      const live = runningProfileDaemon(profile)?.record;
       const held = fs.existsSync(place.records) ? fs.readdirSync(place.records).length : 0;
       const marks = [
         asked.ok && asked.profile.name === profile.name ? "default" : "",
@@ -2339,7 +2349,7 @@ workflowCommand
       return;
     }
 
-    const live = running(profilePaths(home, resolution.profile).pid);
+    const live = runningProfileDaemon(resolution.profile)?.record;
     if (live) {
       console.error(`${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`);
       process.exitCode = 1;

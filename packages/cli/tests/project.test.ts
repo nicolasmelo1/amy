@@ -7,7 +7,7 @@ import { FileEventLog } from "@amykit/plugin-file-log";
 import { assembleProfile } from "../src/assemble.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { isFilesystemWorkflow, load, pluginsRootResolver } from "../src/loader.js";
-import { profileOwnedDirectories, profilePaths } from "../src/paths.js";
+import { profileDaemonPids, profileOwnedDirectories, profilePaths } from "../src/paths.js";
 import { missingPhase, profiles } from "../src/profiles.js";
 import { hostPaths, pluginSlices, worktreeNamespace } from "../src/slices.js";
 
@@ -198,6 +198,20 @@ describe("a project is three phases", () => {
 
     expect(profilePaths("/amy", first).pid).toBe(profilePaths("/amy", second).pid);
     expect(profilePaths("/amy", first).records).not.toBe(profilePaths("/amy", second).records);
+  });
+
+  it("keeps both daemon layouts visible while a profile changes shape", () => {
+    const packaged = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { execution: { workflow: "@amykit/workflow-ticket-to-qa" } },
+    }).execution!;
+    const phase = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { execution: { workflow: path.join(root, "workflow") } },
+    }).execution!;
+
+    expect(profileDaemonPids("/amy", phase)).toEqual(["/amy/profiles/execution/daemon.pid", "/amy/daemon.pid"]);
+    expect(profileDaemonPids("/amy", packaged)).toEqual(["/amy/daemon.pid", "/amy/profiles/execution/daemon.pid"]);
   });
 
   it("keeps a surviving workflow phase in its existing project state", () => {
