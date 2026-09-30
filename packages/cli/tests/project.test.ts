@@ -90,6 +90,12 @@ describe("a project is three phases", () => {
       expect(profilePaths(home, known.execution!).log).not.toBe(path.join(home, "log"));
       expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-brief-store"] as { directory: string }).directory)
         .toBe("briefs");
+
+      // A daemon creates its phase PID/log directory; that cannot make the
+      // following mount abandon the legacy queue and records.
+      const phase = profilePaths(home, known.execution!);
+      fs.mkdirSync(path.dirname(phase.pid), { recursive: true });
+      expect(profilePaths(home, known.execution!).records).toBe(path.join(home, "execution", "records"));
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }

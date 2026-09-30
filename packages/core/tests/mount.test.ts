@@ -1126,6 +1126,18 @@ describe("a plugin that cannot mount", () => {
     expect(outcome).toMatchObject({ ok: false, problems: ["brief/: exports no workflow"] });
   });
 
+  it("requires the configured plugin rather than a workflow another plugin contributes", async () => {
+    const configured = plugin("@acme/brief");
+    const unrelated = plugin("@acme/workflow", { register: (r) => r.workflow(WORKFLOW) });
+
+    const outcome = await mount([configured, unrelated], {}, HOST, {
+      workflowLabel: "brief/",
+      workflowPlugin: configured,
+    });
+
+    expect(outcome).toMatchObject({ ok: false, problems: ["brief/: exports no workflow"] });
+  });
+
   it("becomes a problem with a name, not an anonymous throw", async () => {
     const broken = plugin("@amykit/plugin-broken", {
       register: () => {

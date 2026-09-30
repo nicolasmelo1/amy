@@ -148,7 +148,10 @@ async function assemble(
       log: new FileEventLog(place.log, undefined, build),
       paths: hostPaths(config, place.base, profile),
     },
-    profile.project ? { workflowLabel: `${profile.project.phase}/` } : undefined,
+    profile.project ? {
+      workflowLabel: `${profile.project.phase}/`,
+      workflowPlugin: loaded.bySpec.get(profile.workflow),
+    } : undefined,
   );
 
   if (!outcome.ok) return { ok: false, problems: outcome.problems };
@@ -1324,7 +1327,7 @@ async function mountingWithout(
   // Extras mount under every profile. The trial is therefore all remaining
   // profiles, not merely the one selected by this invocation.
   for (const trialProfile of Object.values(profiles(trialConfig))) {
-    const trialSlices = { ...pluginSlices(trialConfig, trialProfile) };
+    const trialSlices = { ...pluginSlices(trialConfig, trialProfile, home) };
     delete trialSlices[spec];
     const loaded = await loadMountable(pluginList(trialConfig, trialProfile));
     if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
@@ -2346,9 +2349,9 @@ workflowCommand
       return;
     }
 
-    const live = running(profilePaths(home, resolution.profile).pid);
-    if (live?.workflow === name) {
-      console.error(`${name} is running as pid ${live.pid}. Run \`amy stop\` first.`);
+    const live = running(profilePaths(home, resolution.profile).pid) ?? runningPhaseLosingIdentity(home, config, resolution.profile);
+    if (live) {
+      console.error(`${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`);
       process.exitCode = 1;
       return;
     }
@@ -2377,6 +2380,17 @@ workflowCommand
     removeProfile(home, name, config);
     console.log(`\nforgot ${name}`);
   });
+
+/** A phase cannot lose its project identity while its own daemon still runs. */
+function runningPhaseLosingIdentity(home: string, config: AmyConfig, removed: Profile) {
+  if (!removed.project) return undefined;
+  const siblings = Object.values(profiles(config)).filter((profile) =>
+    profile.name !== removed.name && profile.project?.root === removed.project!.root,
+  );
+  // Removing one of two configured phases turns the survivor back into a
+  // legacy profile, changing the PID path before it can be stopped.
+  return siblings.length === 1 ? running(profilePaths(home, siblings[0]!).pid) : undefined;
+}
 
 const queueCommand = program.command("queue").description("Inspect and tidy the queue");
 

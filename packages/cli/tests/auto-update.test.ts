@@ -118,6 +118,17 @@ describe("runWithAutoUpdate", () => {
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
   });
 
+  it("recovers an abandoned claimed update without taking a live owner's claim", () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+    expect(takeDaemonUpdate(root, "oncall")).toBe(true);
+    const claim = path.join(root, "workflows", "oncall", "auto-update-daemon.claimed");
+    fs.writeFileSync(claim, "0\n", "utf8");
+
+    expect(takeDaemonUpdate(root, "oncall")).toBe(true);
+    expect(fs.readFileSync(claim, "utf8")).toBe(`${process.pid}\n`);
+  });
+
   it("lets the next daemon start settle a due update left by its reaper", async () => {
     const root = home();
     markDaemonUpdate(root, "oncall");

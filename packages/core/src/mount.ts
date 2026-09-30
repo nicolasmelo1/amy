@@ -56,6 +56,8 @@ export type MountOutcome =
 export interface MountRequirements {
   /** Label supplied by the host and repeated in the boot refusal. */
   readonly workflowLabel?: string;
+  /** The configured plugin that must contribute the workflow. */
+  readonly workflowPlugin?: Plugin;
 }
 
 /**
@@ -82,6 +84,7 @@ export async function mount(
 
   const registered: { plugin: Plugin; ctx: PluginContext }[] = [];
   const workflowFor = new WeakMap<PluginContext, Workflow<never, never>>();
+  const workflowOwners = new Set<Plugin>();
   const mutablePortKinds = new WeakMap<object, MutablePortKind>();
 
   for (const plugin of plugins) {
@@ -93,7 +96,7 @@ export async function mount(
     const ctx = contextFor(settings, mounted, host, workflowFor, mutablePortKinds, registrationComplete);
 
     try {
-      await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor, mutablePortKinds), ctx);
+      await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor, workflowOwners, mutablePortKinds), ctx);
     } catch (error) {
       // A plugin that cannot set itself up is a problem with a name, not an
       // unhandled throw that takes the whole boot down anonymously.
@@ -130,15 +133,16 @@ export async function mount(
     }
   }
 
-  if (requiresWorkflow(requirements, mounted)) {
+  if (requiresWorkflow(requirements, mounted, workflowOwners)) {
     problems.push(`${requirements.workflowLabel}: exports no workflow`);
   }
 
   return problems.length > 0 ? { ok: false, problems } : { ok: true, mounted };
 }
 
-function requiresWorkflow(requirements: MountRequirements, mounted: Mounted): boolean {
-  return Boolean(requirements.workflowLabel && !mounted.workflow);
+function requiresWorkflow(requirements: MountRequirements, mounted: Mounted, workflowOwners: ReadonlySet<Plugin>): boolean {
+  return Boolean(requirements.workflowLabel && (!mounted.workflow ||
+    (requirements.workflowPlugin && !workflowOwners.has(requirements.workflowPlugin))));
 }
 
 function configFor(
@@ -434,6 +438,7 @@ function registrarFor(
   problems: string[],
   ctx: PluginContext,
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
+  workflowOwners: Set<Plugin>,
   mutablePortKinds: WeakMap<object, MutablePortKind>,
 ): Registry {
   const claim = <T>(what: string, held: T | undefined, incoming: T): T => {
@@ -459,7 +464,10 @@ function registrarFor(
     workflow: (impl) => {
       const snapshot = snapshotWorkflow(impl);
       mounted.workflow = claim("a workflow", mounted.workflow, snapshot);
-      if (mounted.workflow === snapshot) workflowFor.set(ctx, snapshot);
+      if (mounted.workflow === snapshot) {
+        workflowFor.set(ctx, snapshot);
+        workflowOwners.add(plugin);
+      }
     },
     port: (kind, impl) => {
       if (mounted.ports.has(kind)) {

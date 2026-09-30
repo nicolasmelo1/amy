@@ -68,11 +68,31 @@ export function hasDaemonUpdate(home: string, profile: string): boolean {
 /** Takes a due after-timed daemon update exactly once, retaining its claim while it runs. */
 export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
+  recoverDaemonUpdateClaim(file);
   try {
     fs.renameSync(file, `${file}.claimed`);
+    fs.writeFileSync(`${file}.claimed`, `${process.pid}\n`, "utf8");
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Returns an abandoned claim to due state without stealing a live updater. */
+function recoverDaemonUpdateClaim(file: string): void {
+  const claim = `${file}.claimed`;
+  if (!fs.existsSync(claim)) return;
+  try {
+    const owner = Number.parseInt(fs.readFileSync(claim, "utf8").trim(), 10);
+    if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
+    process.kill(owner, 0);
+    return;
+  } catch {
+    try {
+      fs.renameSync(claim, file);
+    } catch {
+      // A live owner or another recovery settled the claim first.
+    }
   }
 }
 
