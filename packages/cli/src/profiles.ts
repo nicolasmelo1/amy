@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import type { AmyConfig, WorkflowProfile } from "./config.js";
 
@@ -115,7 +116,7 @@ export function profiles(config: AmyConfig): Record<string, Profile> {
       briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
-      project: projectFor(entry.workflow),
+      project: projectFor(entry.workflow, Object.values(declared).map((candidate) => candidate.workflow)),
       agent: entry.agent,
     };
   }
@@ -172,11 +173,18 @@ export function directoriesFor(profile: string | Pick<Profile, "name" | "project
 }
 
 /** The shared project root is inferred from a phase package, never from `..` configuration. */
-function projectFor(workflow: string): ProjectIdentity | undefined {
+function projectFor(workflow: string, configured: readonly string[]): ProjectIdentity | undefined {
   if (!workflow.startsWith(".") && !path.isAbsolute(workflow)) return undefined;
   const phase = path.basename(workflow) as ProjectPhase;
   if (!PROJECT_PHASES.includes(phase)) return undefined;
-  return { root: path.resolve(workflow, ".."), phase };
+  const root = path.resolve(workflow, "..");
+  // A lone `workflow/` is a long-supported ordinary profile. Treat it as a
+  // project only once another configured phase confirms the three-phase layout.
+  const phases = new Set(configured
+    .map((candidate) => path.resolve(candidate))
+    .filter((candidate) => path.dirname(candidate) === root)
+    .map((candidate) => path.basename(candidate)));
+  return phases.size > 1 ? { root, phase } : undefined;
 }
 
 /** A stable, path-safe state name that cannot make a profile leave Amy home. */
@@ -186,7 +194,7 @@ export function projectStateKey(project: ProjectIdentity): string {
 
 /** The project-owned state root; phase names are appended only by the host. */
 function projectRootKey(project: ProjectIdentity): string {
-  const safe = Buffer.from(project.root).toString("base64url");
+  const safe = createHash("sha256").update(project.root).digest("base64url");
   return `projects/${safe}`;
 }
 

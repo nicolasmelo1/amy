@@ -58,7 +58,22 @@ describe("a project is three phases", () => {
   it("keeps a workflow-only project compatible without a new configuration key", () => {
     const only = profiles({ ...DEFAULT_CONFIG, workflows: { execution: { workflow: path.join(root, "workflow") } } });
 
-    expect(only.execution?.project?.phase).toBe("workflow");
+    expect(only.execution?.project).toBeUndefined();
+    expect(profilePaths("/amy", only.execution!).records).toBe("/amy/execution/records");
     expect(only.execution?.agent).toBeUndefined();
+  });
+
+  it("keeps the project state component bounded for long valid paths", () => {
+    const longRoot = path.join("/projects", "x".repeat(500));
+    const known = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: {
+        grooming: { workflow: path.join(longRoot, "brief") },
+        execution: { workflow: path.join(longRoot, "workflow") },
+      },
+    });
+
+    const component = profilePaths("/amy", known.execution!).records.split(path.sep)[3]!;
+    expect(component).toHaveLength(43);
   });
 });

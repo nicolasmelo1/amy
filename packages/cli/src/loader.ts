@@ -146,7 +146,7 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
     // rooted at `<root>/package.json` would answer nothing useful.
     if (path.win32.isAbsolute(spec) || path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) {
       const resolved = path.resolve(spec);
-      return fs.statSync(resolved).isDirectory() ? packageEntrySpecifier(resolved) : pathToFileURL(resolved).href;
+      return fs.statSync(resolved).isDirectory() ? directoryEntrySpecifier(resolved) : pathToFileURL(resolved).href;
     }
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(spec)) return spec;
 
@@ -160,6 +160,16 @@ function pluginNotInstalled(spec: string): Error & { code: string } {
   const error = new Error(`${spec} is not in amy's plugins root`) as Error & { code: string };
   error.code = PLUGIN_NOT_INSTALLED;
   return error;
+}
+
+/** A phase directory may be a package, or a plain editable workflow. */
+function directoryEntrySpecifier(directory: string): string {
+  if (fs.existsSync(path.join(directory, "package.json"))) return packageEntrySpecifier(directory);
+  for (const name of ["index.js", "index.ts"]) {
+    const entry = path.join(directory, name);
+    if (fs.existsSync(entry)) return pathToFileURL(entry).href;
+  }
+  throw new Error(`${directory} is a directory with neither package.json nor index.js/index.ts`);
 }
 
 /** The directory npm gives one exact package name beneath this root. */

@@ -525,7 +525,9 @@ program
     // refused to move packages while a child was between its spawn and its
     // pid record. A due before-update runs unclaimed above, because it is
     // an `amy update` itself and owns the boundary inside its own process.
-    const release = claimDaemonBoundary(place.pid);
+    // Package updates are shared across every phase, so every phase start
+    // takes the same short boundary before publishing its own PID.
+    const release = claimDaemonBoundary(paths(home).pid);
     if (!release) {
       console.error("the loop is starting or amy update is running; try again when it finishes");
       process.exitCode = 1;
@@ -604,7 +606,9 @@ program
     const pid = Number(pidText);
     if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error(`invalid daemon pid ${pidText}`);
     await waitForDaemonExit(pid);
-    if (!claimExitedDaemon(paths(home).pid, pid)) return;
+    const resolution = resolveProfile(loadConfig(home), workflow);
+    if (!resolution.ok) return;
+    if (!claimExitedDaemon(profilePaths(home, resolution.profile).pid, pid)) return;
     if (!takeDaemonUpdate(home, workflow)) return;
     try {
       if (await scheduledUpdate() !== 0) process.exitCode = 1;
@@ -667,8 +671,8 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
     throw new Error("amy update failed");
   }
-  const file = paths(home).pid;
-  const release = claimDaemonBoundary(file);
+  const file = profilePaths(home, profile).pid;
+  const release = claimDaemonBoundary(paths(home).pid);
   if (!release) throw new Error("the loop is starting or amy update is running; try again when it finishes");
   try {
     const live = running(file);
@@ -695,7 +699,7 @@ program
   .description("Look at one piece of work now, rather than when it was next due")
   .argument("<workId>", "the work to bring forward, such as a ticket key")
   .action((workId: string) => {
-    const queue = new FileQueue(profilePaths(home, selected().name).queue);
+    const queue = new FileQueue(profilePaths(home, selected()).queue);
     console.log(describePoke(workId, poke(queue, workId, new Date())));
   });
 
@@ -1010,7 +1014,7 @@ program
       return;
     }
 
-    const log = new FileEventLog(paths(home).log, undefined, build);
+    const log = new FileEventLog(profilePaths(home, selected()).log, undefined, build);
     const now = new Date();
 
     // Read once, over the longest window any ceiling could be set on, rather
@@ -1320,8 +1324,8 @@ async function mountingWithout(
       {
         runner,
         now: () => new Date(),
-        log: new FileEventLog(paths(home).log, undefined, build),
-        paths: hostPaths(trialConfig, profilePaths(home, trialProfile.name).base),
+        log: new FileEventLog(profilePaths(home, trialProfile).log, undefined, build),
+        paths: hostPaths(trialConfig, profilePaths(home, trialProfile).base, trialProfile),
       },
     );
     if (!outcome.ok) return { ok: false, problems: outcome.problems };
@@ -1368,7 +1372,7 @@ function refuseRemoval(
 
   if (!carried) return `the config does not name ${spec}`;
 
-  const live = running(paths(home).pid);
+  const live = running(profilePaths(home, profile).pid);
   if (live && carrier.profile === live.workflow) {
     return `${carrier.profile} is running as pid ${live.pid}. Run \`amy stop\` first.`;
   }
@@ -1802,7 +1806,10 @@ async function rewriteSkillsOrRollBack(
  * it names the pid it is refusing to interrupt.
  */
 function refuseWhileRunning(home: string): number | undefined {
-    const live = running(paths(home).pid);
+    const live = [
+      running(paths(home).pid),
+      ...Object.values(profiles(loadConfig(home))).map((profile) => running(profilePaths(home, profile).pid)),
+    ].find((record) => record !== undefined);
     if (!live) return undefined;
     console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
     return 1;
@@ -2293,10 +2300,10 @@ workflowCommand
     const known = profiles(config);
     const asked = resolveProfile(config, undefined);
     const present = installedPlugins(paths(home).plugins);
-    const live = running(paths(home).pid);
 
     for (const profile of Object.values(known)) {
       const place = profilePaths(home, profile);
+      const live = running(place.pid);
       const held = fs.existsSync(place.records) ? fs.readdirSync(place.records).length : 0;
       const marks = [
         asked.ok && asked.profile.name === profile.name ? "default" : "",
@@ -2326,14 +2333,14 @@ workflowCommand
       return;
     }
 
-    const live = running(paths(home).pid);
+    const live = running(profilePaths(home, resolution.profile).pid);
     if (live?.workflow === name) {
       console.error(`${name} is running as pid ${live.pid}. Run \`amy stop\` first.`);
       process.exitCode = 1;
       return;
     }
 
-    const place = profilePaths(home, name);
+    const place = profilePaths(home, resolution.profile);
     const going = [place.records, place.queue].filter((directory) => fs.existsSync(directory));
 
     for (const directory of going) {
@@ -2368,8 +2375,9 @@ queueCommand
     const config = loadConfig(home);
     const days = options.days ? Number(options.days) : config.retentionDays;
     const now = new Date();
-    const removed = new FileQueue(profilePaths(home, selected().name).queue).prune(days, now);
-    const assembled = await assemble(selected());
+    const profile = selected();
+    const removed = new FileQueue(profilePaths(home, profile).queue).prune(days, now);
+    const assembled = await assemble(profile);
     const briefStore = assembled.ok ? (assembled.mounted.ports.get("brief") as BriefStore | undefined) : undefined;
     const records = assembled.ok ? assembled.mounted.store : undefined;
     const terminal = assembled.ok ? new Set(assembled.mounted.workflow?.terminalStates ?? []) : new Set<string>();
@@ -2385,7 +2393,7 @@ queueCommand
   .description("Return items abandoned by a dead worker")
   .action(() => {
     const config = loadConfig(home);
-    const recovered = new FileQueue(profilePaths(home, selected().name).queue).recover(
+    const recovered = new FileQueue(profilePaths(home, selected()).queue).recover(
       config.staleClaimMs,
       new Date(),
     );

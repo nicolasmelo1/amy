@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "bare-install",
-  "implementation_sha256": "4d06baf056b81a3734bb90ff9f6ba6edd8ab78872c0936789d0f19cdd52ec40e",
+  "implementation_sha256": "2f66ee22ce22aec49e8c16b77c5d38491b1bfe7922c1dac8f2108258481330c2",
   "runs": [
     {
       "scenario": "bare-install",
