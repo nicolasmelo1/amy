@@ -45,12 +45,12 @@ function statePaths(home: string, profile: string | Profile) {
   return {
     records: path.join(home, legacy ? name : dirs.records, legacy ? "records" : ""),
     queue: path.join(home, legacy ? name : dirs.queue, legacy ? "queue" : ""),
-    ...(project ? {
+    ...(project && !legacy ? {
       artifacts: path.join(home, projectArtifacts(profile)!),
       log: path.join(home, project, "log"),
       // A retained legacy queue is still driven by the legacy daemon. Keep
       // looking at its PID until an explicit state migration moves the queue.
-      pid: path.join(home, legacy ? "daemon.pid" : project, legacy ? "" : "daemon.pid"),
+      pid: path.join(home, project, "daemon.pid"),
     } : {}),
   };
 }

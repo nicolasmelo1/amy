@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { flockSync } from "fs-ext";
+import { flock } from "fs-ext";
 import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
 
 /**
@@ -103,29 +103,40 @@ export class FileBriefStore implements BriefStore {
     try {
       return await change(await this.get(id));
     } finally {
-      this.release(lock, descriptor);
+      await this.release(lock, descriptor);
     }
   }
 
   /** Hold an OS lock, which the kernel releases even if a phase crashes. */
   private async acquire(lock: string): Promise<number> {
     while (FileBriefStore.heldLocks.has(lock)) await new Promise((resolve) => setTimeout(resolve, 1));
+    FileBriefStore.heldLocks.add(lock);
     const descriptor = fs.openSync(lock, "a");
     try {
-      flockSync(descriptor, "ex");
-      FileBriefStore.heldLocks.add(lock);
+      await this.flock(descriptor, "ex");
       return descriptor;
     } catch (error: unknown) {
       fs.closeSync(descriptor);
+      FileBriefStore.heldLocks.delete(lock);
       throw error;
     }
   }
 
   /** Release this process and the kernel lock; keep the stable lock inode. */
-  private release(lock: string, descriptor: number): void {
+  private async release(lock: string, descriptor: number): Promise<void> {
     FileBriefStore.heldLocks.delete(lock);
-    flockSync(descriptor, "un");
-    fs.closeSync(descriptor);
+    try {
+      await this.flock(descriptor, "un");
+    } finally {
+      fs.closeSync(descriptor);
+    }
+  }
+
+  /** fs-ext's callback API keeps a contested flock off the Node event loop. */
+  private flock(descriptor: number, operation: "ex" | "un"): Promise<void> {
+    return new Promise((resolve, reject) => {
+      flock(descriptor, operation, (error) => error ? reject(error) : resolve());
+    });
   }
 
   private ids(): BriefId[] {

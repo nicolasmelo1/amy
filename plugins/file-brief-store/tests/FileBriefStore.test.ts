@@ -35,6 +35,33 @@ function appendFromAnotherProcess(root: string, prefix: string): Promise<void> {
   });
 }
 
+/** Hold the real kernel lock in another process until the test releases it. */
+function holdLockInAnotherProcess(lock: string, ready: string, release: string): Promise<void> {
+  const program = `
+    import fs from "node:fs";
+    import { flock } from "fs-ext";
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const descriptor = fs.openSync(process.env.AMY_LOCK, "a");
+    await new Promise((resolve, reject) => flock(descriptor, "ex", (error) => error ? reject(error) : resolve()));
+    fs.writeFileSync(process.env.AMY_READY, "ready");
+    while (!fs.existsSync(process.env.AMY_RELEASE)) await wait(1);
+    await new Promise((resolve, reject) => flock(descriptor, "un", (error) => error ? reject(error) : resolve()));
+    fs.closeSync(descriptor);
+  `;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--input-type=module", "--eval", program], {
+      env: { ...process.env, AMY_LOCK: lock, AMY_READY: ready, AMY_RELEASE: release },
+      stdio: "inherit",
+    });
+    child.once("error", reject);
+    child.once("exit", (code) => code === 0 ? resolve() : reject(new Error(`brief lock holder exited ${code}`)));
+  });
+}
+
+async function waitForFile(file: string): Promise<void> {
+  while (!fs.existsSync(file)) await new Promise((resolve) => setTimeout(resolve, 1));
+}
+
 /** A written brief, in the shape the port's own writers leave behind. */
 async function seeded(
   store: FileBriefStore,
@@ -148,6 +175,27 @@ describe("FileBriefStore", () => {
     const brief = await store.get("brief-1");
     expect(brief?.questions).toHaveLength(60);
     expect(new Set(brief?.questions.map((question) => question.workId))).toHaveLength(60);
+  });
+
+  it("keeps the event loop free while another phase owns a brief lock", async () => {
+    await seeded(store);
+    const lock = path.join(root, "brief-1.json.lock");
+    const ready = path.join(root, "lock-ready");
+    const release = path.join(root, "lock-release");
+    const holder = holdLockInAnotherProcess(lock, ready, release);
+    await waitForFile(ready);
+
+    const mutation = store.appendQuestion({
+      id: "brief-1",
+      question: { workId: "BILL-4021", question: "Does contention block the daemon?", at: NOW.toISOString() },
+      at: NOW.toISOString(),
+    });
+    let timerRan = false;
+    await new Promise<void>((resolve) => setTimeout(() => { timerRan = true; resolve(); }, 10));
+    expect(timerRan).toBe(true);
+
+    fs.writeFileSync(release, "release");
+    await Promise.all([holder, mutation]);
   });
 
   it("keeps one stable kernel-lock inode without private owner files", async () => {

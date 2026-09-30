@@ -101,10 +101,16 @@ describe("a project is three phases", () => {
         .toBe("execution/records");
       expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-worktree"] as { recordsDirectory: string }).recordsDirectory)
         .toBe(path.join(home, "execution", "records"));
-      expect(hostPaths(config, home, known.execution!).artifacts).toBeDefined();
-      expect(profilePaths(home, known.execution!).log).not.toBe(path.join(home, "log"));
-      expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-brief-store"] as { directory: string }).directory)
-        .toBe("briefs");
+      // Promotion retains existing artifacts and spending until an explicit
+      // migration can move them into the shared phase boundary.
+      expect(hostPaths(config, home, known.execution!).artifacts).toBeUndefined();
+      expect(profilePaths(home, known.execution!).log).toBe(path.join(home, "log"));
+      const legacyBriefs = {
+        ...config,
+        plugins: { "@amykit/plugin-file-store": { briefsDirectory: "legacy-briefs" } },
+      };
+      expect((pluginSlices(legacyBriefs, known.execution!, home)["@amykit/plugin-file-brief-store"] as { directory: string }).directory)
+        .toBe("legacy-briefs");
 
       // A daemon creates its phase PID/log directory; that cannot make the
       // following mount abandon the legacy queue and records.

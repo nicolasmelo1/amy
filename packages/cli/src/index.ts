@@ -693,20 +693,33 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   } finally {
     release();
   }
+  let afterUpdateClaimed = false;
   try {
     await drive();
   } finally {
+    afterUpdateClaimed = reserveAfterDaemonUpdate(schedule, profile);
     // Do not erase a record a later owner wrote after this process ended.
     if (readDaemon(file)?.pid === process.pid) clearDaemon(file);
   }
-  if (schedule.due && schedule.timing === "after") {
-    markDaemonUpdate(home, profile.name);
-    if (!takeDaemonUpdate(home, profile.name) || await scheduledUpdate() !== 0) {
-      retryDaemonUpdate(home, profile.name);
-      throw new Error("amy update failed");
-    }
-    finishDaemonUpdate(home, profile.name);
+  await finishAfterDaemonUpdate(schedule, profile, afterUpdateClaimed);
+}
+
+/** Reserve a due after-update while this foreground daemon is still visible. */
+function reserveAfterDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile): boolean {
+  if (!schedule.due || schedule.timing !== "after") return false;
+  // A concurrent start must see either this PID or our claimed update, never neither.
+  markDaemonUpdate(home, profile.name);
+  return takeDaemonUpdate(home, profile.name);
+}
+
+/** Run a foreground daemon's reserved after-update, retaining failure for retry. */
+async function finishAfterDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile, claimed: boolean): Promise<void> {
+  if (!schedule.due || schedule.timing !== "after") return;
+  if (!claimed || await scheduledUpdate() !== 0) {
+    if (claimed) retryDaemonUpdate(home, profile.name);
+    throw new Error("amy update failed");
   }
+  finishDaemonUpdate(home, profile.name);
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

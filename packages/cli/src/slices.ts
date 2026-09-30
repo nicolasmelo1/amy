@@ -42,7 +42,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
       staleClaimMs: config.staleClaimMs,
     },
     "@amykit/plugin-file-store": { directory: dirs.records },
-    "@amykit/plugin-file-brief-store": briefStoreSlice(config, profile),
+    "@amykit/plugin-file-brief-store": briefStoreSlice(config, profile, stateDir),
     // Mounted in both profiles: one writes the notes, the other reads them,
     // and an install running only the first would still be filing the
     // friction the second will pick up.
@@ -203,10 +203,11 @@ function fileStoreBriefDirectory(config: AmyConfig): string | undefined {
 }
 
 /** The file BriefStore's settings, including the one-time legacy translation. */
-function briefStoreSlice(config: AmyConfig, profile: Profile): { directory: string } {
+function briefStoreSlice(config: AmyConfig, profile: Profile, stateDir?: string): { directory: string } {
   // Project phases share a host-owned artifact root.  Legacy profiles retain
   // the file-store translation, including an explicit path they already use.
-  return { directory: profile.project ? "briefs" : (fileStoreBriefDirectory(config) ?? "briefs") };
+  const projectArtifacts = stateDir === undefined || profilePaths(stateDir, profile).artifacts !== undefined;
+  return { directory: profile.project && projectArtifacts ? "briefs" : (fileStoreBriefDirectory(config) ?? "briefs") };
 }
 
 /**
