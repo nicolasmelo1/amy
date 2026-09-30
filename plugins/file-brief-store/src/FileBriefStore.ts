@@ -138,25 +138,48 @@ export class FileBriefStore implements BriefStore {
 
   /** Recover a dead acquisition gate before it can permanently block a brief. */
   private async recoverGate(gate: string): Promise<void> {
-    if (!fs.existsSync(gate)) return;
     const recovery = `${gate}.recovering`;
-    const privateRecovery = `${recovery}.${process.pid}.${randomUUID()}`;
-    fs.writeFileSync(privateRecovery, `${process.pid}\n`, "utf-8");
+    // A reclaimer that crashed leaves a second hard link to the dead gate.
+    // Removing that link only makes its own incomplete recovery retry; it
+    // cannot retire a replacement gate.
+    if (fs.existsSync(recovery)) fs.rmSync(recovery, { force: true });
+    if (!fs.existsSync(gate)) return;
     try {
-      fs.linkSync(privateRecovery, recovery);
+      // Keep the observed gate in place while examining it. This hard link is
+      // our exclusive recovery token: a rival cannot remove or replace the
+      // gate until we either unlink it as stale or release this token.
+      fs.linkSync(gate, recovery);
     } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      // A reclaimer can crash too. Retire only its observed owner; callers
-      // will retry the main gate after the recovery pathname comes free.
-      this.recover(recovery);
-      return;
-    } finally {
-      fs.rmSync(privateRecovery, { force: true });
+      if (["EEXIST", "ENOENT"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
+      throw error;
     }
     try {
-      this.recover(gate);
+      this.recoverGateOwner(gate, recovery);
     } finally {
       fs.rmSync(recovery, { force: true });
+    }
+  }
+
+  /** Retire a gate only while its pathname still names the recovery token. */
+  private recoverGateOwner(gate: string, recovery: string): void {
+    try {
+      if (fs.statSync(gate).ino !== fs.statSync(recovery).ino) return;
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+      throw error;
+    }
+    try {
+      const owner = Number.parseInt(fs.readFileSync(recovery, "utf-8").trim(), 10);
+      if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
+      process.kill(owner, 0);
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === "EPERM") return;
+      try {
+        this.removeOwnerLinks(gate, recovery);
+        fs.unlinkSync(gate);
+      } catch (unlinkError: unknown) {
+        if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT") throw unlinkError;
+      }
     }
   }
 

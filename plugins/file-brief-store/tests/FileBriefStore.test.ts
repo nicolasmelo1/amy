@@ -166,11 +166,17 @@ describe("FileBriefStore", () => {
     await seeded(store);
     const gate = path.join(root, "brief-1.json.lock.acquiring");
     fs.writeFileSync(gate, "0\n", "utf8");
-    fs.writeFileSync(`${gate}.recovering`, "0\n", "utf8");
+    // A crashed reclaimer leaves its recovery hard link to the same stale
+    // gate. Two later phase mutations must safely settle it and serialize.
+    fs.linkSync(gate, `${gate}.recovering`);
 
-    await store.write({ id: "brief-1", sections: [{ name: "Goal", body: "Recovered twice." }], explains: [], at: NOW.toISOString() });
+    await Promise.all([
+      store.write({ id: "brief-1", sections: [{ name: "Goal", body: "Recovered twice." }], explains: [], at: NOW.toISOString() }),
+      store.appendQuestion({ id: "brief-1", question: { workId: "BILL-4021", question: "Recovered safely?", at: NOW.toISOString() }, at: NOW.toISOString() }),
+    ]);
 
     expect((await store.get("brief-1"))?.sections[0]?.body).toBe("Recovered twice.");
+    expect((await store.get("brief-1"))?.questions).toHaveLength(1);
     expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
   });
 

@@ -113,7 +113,9 @@ export function recommendedFor(profile: Profile): readonly string[] {
 /** Every profile this install can drive: the shipped ones, plus the config's. */
 export function profiles(config: AmyConfig, home?: string): Record<string, Profile> {
   const declared = { ...SHIPPED_PROFILES, ...config.workflows };
-  const resolved: Record<string, Profile> = {};
+  // Profile names come from configuration. A null prototype makes every
+  // accepted name an own entry rather than inheriting Object's vocabulary.
+  const resolved = Object.create(null) as Record<string, Profile>;
 
   for (const [name, entry] of Object.entries(declared)) {
     assertProfileName(name);

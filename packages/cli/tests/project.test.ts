@@ -195,4 +195,15 @@ describe("a project is three phases", () => {
       workflows: { "../../../outside": { workflow: path.join(root, "brief") } },
     })).toThrow("a workflow profile name must be one path component");
   });
+
+  it("keeps prototype-named profiles as configured own entries", () => {
+    const workflows: Record<string, { workflow: string }> = Object.create(null);
+    workflows["__proto__"] = { workflow: path.join(root, "brief") };
+    workflows["constructor"] = { workflow: path.join(root, "test") };
+
+    const known = profiles({ ...DEFAULT_CONFIG, workflows });
+
+    expect(known["__proto__"]?.name).toBe("__proto__");
+    expect(known.constructor?.name).toBe("constructor");
+  });
 });
