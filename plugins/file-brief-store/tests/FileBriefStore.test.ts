@@ -1,13 +1,39 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { mount } from "@amykit/core";
 import { FileBriefStore, plugin } from "../src/index.js";
 import { plugin as records } from "../../file-store/src/plugin.js";
 
 const NOW = new Date("2026-09-03T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
+
+/** Drive real built code in another process, where in-memory serialization cannot help. */
+function appendFromAnotherProcess(root: string, prefix: string): Promise<void> {
+  const entry = pathToFileURL(path.join(process.cwd(), "plugins/file-brief-store/dist/index.js")).href;
+  const program = `
+    import { FileBriefStore } from ${JSON.stringify(entry)};
+    const store = new FileBriefStore(process.env.AMY_BRIEF_ROOT);
+    for (let index = 0; index < 30; index += 1) {
+      await store.appendQuestion({
+        id: "brief-1",
+        question: { workId: process.env.AMY_BRIEF_PREFIX + index, question: "cross-process", at: "2026-09-03T12:00:00.000Z" },
+        at: "2026-09-03T12:00:00.000Z",
+      });
+    }
+  `;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--input-type=module", "--eval", program], {
+      env: { ...process.env, AMY_BRIEF_ROOT: root, AMY_BRIEF_PREFIX: prefix },
+      stdio: "inherit",
+    });
+    child.once("error", reject);
+    child.once("exit", (code) => code === 0 ? resolve() : reject(new Error(`brief writer exited ${code}`)));
+  });
+}
 
 /** A written brief, in the shape the port's own writers leave behind. */
 async function seeded(
@@ -112,6 +138,16 @@ describe("FileBriefStore", () => {
     expect(brief?.questions).toHaveLength(1);
     expect(brief?.revision).toBe(2);
     expect(fs.readdirSync(root).filter((name) => name.endsWith(".lock"))).toEqual(["brief-1.json.lock"]);
+  });
+
+  it("keeps every question when separate processes mutate the shared brief", async () => {
+    await seeded(store);
+
+    await Promise.all([appendFromAnotherProcess(root, "first-"), appendFromAnotherProcess(root, "second-")]);
+
+    const brief = await store.get("brief-1");
+    expect(brief?.questions).toHaveLength(60);
+    expect(new Set(brief?.questions.map((question) => question.workId))).toHaveLength(60);
   });
 
   it("keeps one stable kernel-lock inode without private owner files", async () => {

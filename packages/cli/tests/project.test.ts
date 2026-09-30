@@ -216,6 +216,19 @@ describe("a project is three phases", () => {
     expect(slices["@amykit/plugin-file-worktree"]?.recordsDirectory).toBe(path.join(home, "records-on-volume"));
   });
 
+  it("keeps an absolute-looking record override on the file store's state-root path", () => {
+    const home = "/amy";
+    const known = profiles(config, home);
+    const overridden = {
+      ...config,
+      plugins: { "@amykit/plugin-file-store": { directory: "/records-on-volume" } },
+    };
+    const slices = pluginSlices(overridden, known.execution!, home) as Record<string, Record<string, string>>;
+
+    expect(slices["@amykit/plugin-file-store"]?.directory).toBe("/records-on-volume");
+    expect(slices["@amykit/plugin-file-worktree"]?.recordsDirectory).toBe(path.join(home, "/records-on-volume"));
+  });
+
   it("keeps prototype-named profiles as configured own entries", () => {
     const workflows: Record<string, { workflow: string }> = Object.create(null);
     workflows["__proto__"] = { workflow: path.join(root, "brief") };

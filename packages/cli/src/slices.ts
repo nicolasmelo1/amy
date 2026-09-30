@@ -157,7 +157,11 @@ function stateDirectories(stateDir: string | undefined, profile: Profile): { rec
 
 /** The worktree adapter reads the same absolute records directory as the file store. */
 function worktreeRecordsDirectory(stateDir: string | undefined, recordsDirectory: string): string {
-  return stateDir ? path.resolve(stateDir, recordsDirectory) : "";
+  // The file-store provider deliberately treats its setting as a state-root
+  // relative directory, even when it begins with a slash. Keep its reader on
+  // that exact path rather than giving this sibling adapter path.resolve's
+  // different absolute-path semantics.
+  return stateDir ? path.join(stateDir, recordsDirectory) : "";
 }
 
 /** Resolve the file store's final configured directory after explicit slices win. */

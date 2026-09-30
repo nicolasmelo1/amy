@@ -92,8 +92,11 @@ anything touches a ticket.
 
 ### Windows, macOS, Linux
 
-There is no install script and nothing to clone. It is npm, so the three work
-the same, and the `amy` command is put on the PATH by npm's own shim.
+Amy supports Windows, macOS, and Linux, and npm puts the `amy` command on the
+PATH with its own shim. The recommended set includes a shared-brief lock backed
+by the native `fs-ext` module, so installation runs its node-gyp build step:
+install the platform's supported C/C++ build tools and the Node.js headers for
+your chosen Node release before running `amy init --install`.
 
 ### Installing from a checkout
 
