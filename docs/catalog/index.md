@@ -39,6 +39,7 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/plugin-notify-inbox` | plugin | Announcements as a file on disk plus a desktop notification. | [npm](https://www.npmjs.com/package/@amykit/plugin-notify-inbox) |
 | `@amykit/plugin-plan-check` | plugin | The quality bar for a drafted plan: the repository's own check, run in its checkout. | [npm](https://www.npmjs.com/package/@amykit/plugin-plan-check) |
 | `@amykit/plugin-serial-engine` | plugin | Advances one work item by one move per tick. | [npm](https://www.npmjs.com/package/@amykit/plugin-serial-engine) |
+| `@amykit/plugin-slack` | plugin | A Slack thread per piece of work, over the Web API, as the conversation port. | [npm](https://www.npmjs.com/package/@amykit/plugin-slack) |
 
 <!-- amy:end catalog-shipped -->
 

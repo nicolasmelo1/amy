@@ -6,6 +6,14 @@ export interface ConfigField {
   readonly description: string;
   readonly required?: boolean;
   readonly default?: unknown;
+  /**
+   * A value the plugin would mount with, never applied to a config.
+   *
+   * For a required field the plugin checks beyond its type — an id that has
+   * to look like an id — so the reference docs can ask the plugin what it
+   * mounts without handing it a blank it rightly refuses.
+   */
+  readonly example?: unknown;
 }
 
 /**

@@ -1,0 +1,181 @@
+/** One HTTP exchange, small enough to script in a test. */
+export interface HttpRequest {
+  url: string;
+  method: "GET" | "POST";
+  headers: Record<string, string>;
+  body?: string;
+  /** Refuse the answer once its body passes this many bytes, while it arrives. */
+  maxBytes?: number;
+}
+
+export interface HttpResponse {
+  status: number;
+  /** Lower-cased names. */
+  headers: Record<string, string>;
+  body: Uint8Array;
+}
+
+export type HttpTransport = (request: HttpRequest) => Promise<HttpResponse>;
+
+/** An answer larger than the request allowed, refused before it was held whole. */
+export class TooLarge extends Error {
+  constructor(readonly limit: number) {
+    super(`the answer is larger than ${limit} bytes`);
+  }
+}
+
+export const fetchTransport: HttpTransport = async (request) => {
+  const response = await fetch(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+  });
+  const headers: Record<string, string> = {};
+  response.headers.forEach((value, name) => {
+    headers[name.toLowerCase()] = value;
+  });
+  return { status: response.status, headers, body: await readBody(response, request.maxBytes) };
+};
+
+/**
+ * The body, counted as it arrives: a declared length over the limit is
+ * refused unread, and a missing or wrong one is caught by the count.
+ */
+async function readBody(response: Response, maxBytes: number | undefined): Promise<Uint8Array> {
+  if (maxBytes === undefined || !response.body) return new Uint8Array(await response.arrayBuffer());
+  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) {
+    await response.body.cancel();
+    throw new TooLarge(maxBytes);
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new TooLarge(maxBytes);
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
+export const SLACK_API = "https://slack.com/api";
+
+/** What one Web API method answered, with the headers that carry the scopes. */
+export interface SlackAnswer {
+  body: Record<string, unknown>;
+  headers: Record<string, string>;
+}
+
+export interface SlackApiOptions {
+  transport?: HttpTransport;
+  sleep?: (ms: number) => Promise<void>;
+  /** How many times a `429` is waited out before the call fails. */
+  maxRateLimitRetries?: number;
+  /** How long a `429` that names no `Retry-After` is waited out. */
+  defaultRetryAfterSeconds?: number;
+}
+
+/**
+ * Slack's answer when it waits without saying for how long: the one-a-minute
+ * limit on `conversations.replies` is the one this plugin is likeliest to hit.
+ */
+export const DEFAULT_RETRY_AFTER_S = 60;
+
+export const DEFAULT_RATE_LIMIT_RETRIES = 5;
+
+/**
+ * The Web API, and only the Web API.
+ *
+ * No Socket Mode: Slack hands each event to one of an app's connections, so
+ * a connection opened here would take events from whatever else is connected.
+ */
+export class SlackApi {
+  private readonly transport: HttpTransport;
+  private readonly sleep: (ms: number) => Promise<void>;
+  private readonly maxRetries: number;
+  private readonly defaultRetryAfterS: number;
+
+  constructor(
+    private readonly token: string,
+    options: SlackApiOptions = {},
+  ) {
+    this.transport = options.transport ?? fetchTransport;
+    this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+    this.maxRetries = options.maxRateLimitRetries ?? DEFAULT_RATE_LIMIT_RETRIES;
+    this.defaultRetryAfterS = options.defaultRetryAfterSeconds ?? DEFAULT_RETRY_AFTER_S;
+  }
+
+  /** Calls a method form-encoded, which every method accepts, and refuses `ok: false`. */
+  async call(method: string, args: Record<string, string | undefined> = {}): Promise<SlackAnswer> {
+    const form = new URLSearchParams();
+    for (const [key, value] of Object.entries(args)) if (value !== undefined) form.set(key, value);
+
+    const response = await this.send({
+      url: `${SLACK_API}/${method}`,
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: form.toString(),
+    });
+    if (response.status !== 200) throw new Error(`slack ${method} answered HTTP ${response.status}`);
+
+    const body = JSON.parse(new TextDecoder().decode(response.body)) as Record<string, unknown>;
+    if (body.ok !== true) {
+      // `missing_scope` carries the scope it wanted, which is the fix.
+      const needed = typeof body.needed === "string" ? ` (needs ${body.needed})` : "";
+      throw new Error(`slack ${method} refused: ${String(body.error ?? "unknown error")}${needed}`);
+    }
+    return { body, headers: response.headers };
+  }
+
+  /**
+   * A file's bytes, with the bot token.
+   *
+   * Only ever to Slack's own hosts over https: the URL comes out of a message,
+   * and the token must not follow one anywhere else.
+   */
+  async download(url: string, maxBytes?: number): Promise<Uint8Array> {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" || !isSlackHost(parsed.hostname)) {
+      throw new Error(`refusing to send the slack token to ${parsed.origin}`);
+    }
+    const response = await this.send({ url, method: "GET", headers: { Authorization: `Bearer ${this.token}` }, maxBytes });
+    if (response.status !== 200) throw new Error(`slack file ${parsed.pathname} answered HTTP ${response.status}`);
+    // Checked again here for a transport that does not honour the limit.
+    if (maxBytes !== undefined && response.body.byteLength > maxBytes) throw new TooLarge(maxBytes);
+    return response.body;
+  }
+
+  private async send(request: HttpRequest): Promise<HttpResponse> {
+    for (let attempt = 0; ; attempt++) {
+      const response = await this.transport(request);
+      if (response.status !== 429) return response;
+      if (attempt >= this.maxRetries) {
+        throw new Error(`slack kept rate limiting ${request.url} after ${attempt + 1} tries`);
+      }
+      await this.sleep(retryAfterMs(response.headers["retry-after"], this.defaultRetryAfterS));
+    }
+  }
+}
+
+function retryAfterMs(header: string | undefined, fallbackS: number): number {
+  const seconds = header?.trim() ? Number(header) : Number.NaN;
+  return (Number.isFinite(seconds) && seconds >= 0 ? seconds : fallbackS) * 1000;
+}
+
+function isSlackHost(hostname: string): boolean {
+  return hostname === "slack.com" || hostname.endsWith(".slack.com");
+}

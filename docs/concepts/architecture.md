@@ -104,7 +104,8 @@ plugins/
 ├── notify-hermes        Announcements over Hermes, which already owns the messaging credentials.
 ├── notify-inbox         Announcements as a file on disk plus a desktop notification.
 ├── plan-check           The quality bar for a drafted plan: the repository's own check, run in its checkout.
-└── serial-engine        Advances one work item by one move per tick.
+├── serial-engine        Advances one work item by one move per tick.
+└── slack                A Slack thread per piece of work, over the Web API, as the conversation port.
 ```
 
 <!-- amy:end workspace-layout -->
@@ -148,6 +149,7 @@ this repository.
 | `@amykit/plugin-notify-inbox` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-plan-check` | plugin | `@amykit/core`, `@amykit/workflow-note-to-plan` |
 | `@amykit/plugin-serial-engine` | plugin | `@amykit/core` |
+| `@amykit/plugin-slack` | plugin | `@amykit/core` |
 
 <!-- amy:end workspace-dependencies -->
 

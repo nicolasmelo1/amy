@@ -180,9 +180,10 @@ async function registers(plugin, environment, runtimes = new Map()) {
     },
   };
 
-  const restore = placeholders(environment);
+  const context = contextFor(plugin);
+  const restore = placeholders([...environment, ...referencedEnvironment(context.config)]);
   try {
-    await plugin.register(registry, contextFor(plugin));
+    await plugin.register(registry, context);
   } catch (error) {
     // A plugin that will not register against a stand-in host is reported as
     // such rather than dropped: a reference page missing a plugin looks
@@ -213,6 +214,19 @@ function placeholders(names) {
   };
 }
 
+/**
+ * The variables a stand-in setting points at, as `env:<NAME>`.
+ *
+ * A plugin whose credential is named in its config rather than in its
+ * source still needs one to describe itself, and only for as long as the
+ * variables the package reads directly.
+ */
+function referencedEnvironment(config) {
+  return Object.values(config)
+    .map((value) => (typeof value === "string" ? /^env:([A-Z][A-Z0-9_]*)$/.exec(value)?.[1] : undefined))
+    .filter(Boolean);
+}
+
 function sorted(seen) {
   return {
     mounts: [...seen.mounts].sort(),
@@ -229,8 +243,8 @@ function sorted(seen) {
 /**
  * The context a plugin sees while it is being asked what it is.
  *
- * Every setting takes its declared default, or a value of the declared type
- * where there is none, so a required field does not stop a plugin describing
+ * Every setting takes its declared default, then its declared example, or a
+ * value of the declared type where there is neither, so a required field does not stop a plugin describing
  * itself. Nothing here touches the disk or the network, and the environment
  * is filled with obvious placeholders so an adapter that refuses to mount
  * without a credential can still say what it mounts.
@@ -238,7 +252,7 @@ function sorted(seen) {
 function contextFor(plugin) {
   const config = {};
   for (const [name, field] of Object.entries(plugin.configSchema ?? {})) {
-    config[name] = field.default !== undefined ? field.default : sample(field.type);
+    config[name] = field.default ?? field.example ?? sample(field.type);
   }
 
   return {

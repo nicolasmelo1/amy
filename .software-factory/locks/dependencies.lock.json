@@ -33,6 +33,7 @@
     "plugins/notify-hermes/package.json": "f94624ee2b1346a002d0538bef011931d645f14cdaedfef7a0e7ef7a033ab5bc",
     "plugins/notify-inbox/package.json": "08d191679e5d31ab1d84dd139048919fd7f48cf4096fd2fe39e814c92050bb3d",
     "plugins/plan-check/package.json": "245feb568890a5c0e2c22b7ba50196db00b339ea39a757349d016a752846758f",
-    "plugins/serial-engine/package.json": "073e8274fe6bfd0b477d7b774082f5c6953944e99a9583b611f9c2f267e8fd1b"
+    "plugins/serial-engine/package.json": "073e8274fe6bfd0b477d7b774082f5c6953944e99a9583b611f9c2f267e8fd1b",
+    "plugins/slack/package.json": "07c58db083b7e29b692d5662ff9ab32df28589133b338797c022217612d855ca"
   }
 }

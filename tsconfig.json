@@ -90,6 +90,9 @@
     },
     {
       "path": "plugins/serial-engine"
+    },
+    {
+      "path": "plugins/slack"
     }
   ]
 }

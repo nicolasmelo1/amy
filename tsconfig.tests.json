@@ -77,6 +77,9 @@
       "@amykit/plugin-serial-engine": [
         "plugins/serial-engine/src/index.ts"
       ],
+      "@amykit/plugin-slack": [
+        "plugins/slack/src/index.ts"
+      ],
       "@amykit/test-fixtures": [
         "packages/test-fixtures/src/index.ts"
       ],

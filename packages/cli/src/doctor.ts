@@ -45,6 +45,14 @@ export interface DoctorDeps {
    * was mounted, which is its own answer.
    */
   notifyPort?: object;
+  /**
+   * The conversation port, if this install mounted one.
+   *
+   * Asked for its own checks for the same reason the notification port is
+   * asked whether its target is reachable: which scopes a Slack token needs
+   * is the adapter's knowledge, and the host imports no adapter to learn it.
+   */
+  conversationPort?: object;
   /** The selected workflow's declared external-write surface, if it mounted. */
   workflow?: Workflow;
 }
@@ -69,6 +77,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     apiKey(deps),
     ...(await tools(deps)),
     ...(await hermes(deps)),
+    ...(await conversation(deps)),
     ...checkouts(deps),
     ...worktrees(deps),
   ];
@@ -274,6 +283,25 @@ async function hermes({ config, notifyPort }: DoctorDeps): Promise<Check[]> {
         label: `hermes target ${target}`,
         ok: false,
         detail: error instanceof Error ? error.message : "the channel could not be asked",
+      },
+    ];
+  }
+}
+
+/** A conversation adapter that can say whether it can reach its thread. */
+type SelfChecking = { checks(): Promise<Check[]> };
+
+async function conversation({ conversationPort }: DoctorDeps): Promise<Check[]> {
+  const port = conversationPort as Partial<SelfChecking> | undefined;
+  if (typeof port?.checks !== "function") return [];
+  try {
+    return await port.checks();
+  } catch (error) {
+    return [
+      {
+        label: "conversation",
+        ok: false,
+        detail: error instanceof Error ? error.message : "the conversation could not be asked",
       },
     ];
   }
