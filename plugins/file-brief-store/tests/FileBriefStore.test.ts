@@ -335,6 +335,14 @@ describe("FileBriefStore", () => {
     expect(await store.get("brief-1")).toBeNull();
   });
 
+  it("removes a corrupt brief while still taking its mutation lock", async () => {
+    fs.writeFileSync(path.join(root, "brief-1.json"), "not json", "utf-8");
+
+    await store.remove("brief-1");
+
+    expect(fs.existsSync(path.join(root, "brief-1.json"))).toBe(false);
+  });
+
   it("serializes removal with a concurrent writer", async () => {
     await seeded(store);
 

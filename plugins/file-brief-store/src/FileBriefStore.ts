@@ -76,10 +76,9 @@ export class FileBriefStore implements BriefStore {
   }
 
   async remove(id: BriefId): Promise<void> {
-    await this.mutate(id, async () => {
+    await this.withLock(id, async () => {
       const file = this.file(id);
       if (fs.existsSync(file)) fs.rmSync(file);
-      return null;
     });
   }
 
@@ -98,10 +97,15 @@ export class FileBriefStore implements BriefStore {
 
   /** Serializes a read-modify-write across phase processes for one brief. */
   private async mutate<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
+    return this.withLock(id, async () => change(await this.get(id)));
+  }
+
+  /** Serializes every mutation without making deletion parse a damaged brief. */
+  private async withLock<T>(id: BriefId, change: () => Promise<T>): Promise<T> {
     const lock = `${this.file(id)}.lock`;
     const descriptor = await this.acquire(lock);
     try {
-      return await change(await this.get(id));
+      return await change();
     } finally {
       await this.release(lock, descriptor);
     }

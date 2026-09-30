@@ -93,6 +93,17 @@ describe("a project is three phases", () => {
     expect(known.execution?.project).toBeUndefined();
   });
 
+  it("names a missing entry in an existing phase directory", () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-empty-phase-"));
+    try {
+      expect(isFilesystemWorkflow(directory)).toBe(true);
+      expect(() => pluginsRootResolver("/amy", "/amy/plugins")(directory))
+        .toThrow("directory with neither package.json nor index.js/index.ts");
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("keeps existing legacy state when a sibling phase is later added", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-project-state-"));
     try {

@@ -81,7 +81,7 @@ import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runnin
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
-import { paths, profilePaths } from "./paths.js";
+import { keepsLegacyLayout, paths, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
@@ -2347,7 +2347,12 @@ workflowCommand
     }
 
     const place = profilePaths(home, resolution.profile);
-    const going = [place.records, place.queue].filter((directory) => fs.existsSync(directory));
+    // A phase owns its task and Slack directories; the legacy layout owns the
+    // machine-wide copies, so removing one retained profile must leave those.
+    const owned = resolution.profile.project && !keepsLegacyLayout(home, resolution.profile)
+      ? [place.tasks, place.slack]
+      : [];
+    const going = [place.records, place.queue, ...owned].filter((directory) => fs.existsSync(directory));
 
     for (const directory of going) {
       const held = fs.readdirSync(directory).length;

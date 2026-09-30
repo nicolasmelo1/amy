@@ -167,7 +167,7 @@ export function isFilesystemWorkflow(spec: string): boolean {
   if (!path.win32.isAbsolute(spec) && !path.isAbsolute(spec) && !spec.startsWith("./") && !spec.startsWith("../")) return false;
   try {
     const resolved = path.resolve(spec);
-    return fs.statSync(resolved).isFile() || fs.existsSync(path.join(resolved, "package.json")) ||
+    return fs.statSync(resolved).isFile() || fs.statSync(resolved).isDirectory() ||
       ["index.ts", "index.js"].some((entry) => fs.existsSync(path.join(resolved, entry)));
   } catch {
     return false;
