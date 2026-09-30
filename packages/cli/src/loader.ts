@@ -166,9 +166,10 @@ function pluginNotInstalled(spec: string): Error & { code: string } {
 export function isFilesystemWorkflow(spec: string): boolean {
   if (!path.win32.isAbsolute(spec) && !path.isAbsolute(spec) && !spec.startsWith("./") && !spec.startsWith("../")) return false;
   try {
-    const resolved = path.resolve(spec);
-    return fs.statSync(resolved).isFile() || fs.statSync(resolved).isDirectory() ||
-      ["index.ts", "index.js"].some((entry) => fs.existsSync(path.join(resolved, entry)));
+    // Any existing file or directory: a phase folder with no manifest or index
+    // yet is refused by the entry resolver naming what it lacks, not reported
+    // as a package nobody installed.
+    return fs.existsSync(path.resolve(spec));
   } catch {
     return false;
   }

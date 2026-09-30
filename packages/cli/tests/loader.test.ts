@@ -193,6 +193,19 @@ describe("what this machine has", () => {
     }
   });
 
+  it("names what a phase directory lacks instead of calling it not installed", async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-loader-empty-phase-"));
+    try {
+      const loaded = await load([directory], pluginsRootResolver(home, root), root);
+
+      expect(loaded.problems).toHaveLength(1);
+      expect(loaded.problems[0]).toContain("neither package.json nor index.js/index.ts");
+      expect(loaded.problems[0]).not.toMatch(/not installed/i);
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("loads a plain workflow directory with an index and no package manifest", async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-loader-phase-"));
     try {

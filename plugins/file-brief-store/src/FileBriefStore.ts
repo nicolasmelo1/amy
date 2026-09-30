@@ -76,10 +76,9 @@ export class FileBriefStore implements BriefStore {
   }
 
   async remove(id: BriefId): Promise<void> {
-    await this.withLock(id, async () => {
-      const file = this.file(id);
-      if (fs.existsSync(file)) fs.rmSync(file);
-    });
+    // The same lock as a writer, but nothing read: a brief too corrupt to
+    // parse is exactly the one somebody needs to be able to clear.
+    await this.locked(id, async () => fs.rmSync(this.file(id), { force: true }));
   }
 
   /** Written to a sibling and renamed, so a brief is never half-written. */
@@ -96,16 +95,16 @@ export class FileBriefStore implements BriefStore {
   }
 
   /** Serializes a read-modify-write across phase processes for one brief. */
-  private async mutate<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
-    return this.withLock(id, async () => change(await this.get(id)));
+  private mutate<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
+    return this.locked(id, async () => change(await this.get(id)));
   }
 
-  /** Serializes every mutation without making deletion parse a damaged brief. */
-  private async withLock<T>(id: BriefId, change: () => Promise<T>): Promise<T> {
+  /** Holds one brief's lock across a callback, whatever it does with the file. */
+  private async locked<T>(id: BriefId, work: () => Promise<T>): Promise<T> {
     const lock = `${this.file(id)}.lock`;
     const descriptor = await this.acquire(lock);
     try {
-      return await change();
+      return await work();
     } finally {
       await this.release(lock, descriptor);
     }

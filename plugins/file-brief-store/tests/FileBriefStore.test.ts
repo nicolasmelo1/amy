@@ -335,8 +335,8 @@ describe("FileBriefStore", () => {
     expect(await store.get("brief-1")).toBeNull();
   });
 
-  it("removes a corrupt brief while still taking its mutation lock", async () => {
-    fs.writeFileSync(path.join(root, "brief-1.json"), "not json", "utf-8");
+  it("removes a brief too corrupt to read", async () => {
+    fs.writeFileSync(path.join(root, "brief-1.json"), "{ not json", "utf-8");
 
     await store.remove("brief-1");
 
