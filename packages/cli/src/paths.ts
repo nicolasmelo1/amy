@@ -65,5 +65,7 @@ function keepsLegacyState(home: string, name: string, project: string | undefine
   // Adding a sibling must not make an existing workflow's records disappear.
   // Retain the old profile directory until an explicit migration moves it.
   // Creating a phase PID or log directory is not a state migration.
-  return project !== undefined && fs.existsSync(path.join(home, name));
+  return project !== undefined && (
+    fs.existsSync(path.join(home, name, "records")) || fs.existsSync(path.join(home, name, "queue"))
+  );
 }

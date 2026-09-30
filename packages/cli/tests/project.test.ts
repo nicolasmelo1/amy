@@ -139,4 +139,24 @@ describe("a project is three phases", () => {
 
     expect(profilePaths("/amy", known.one!).queue).not.toBe(profilePaths("/amy", known.two!).queue);
   });
+
+  it("does not mistake the shared projects namespace for a legacy profile", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-projects-profile-"));
+    try {
+      const known = profiles({
+        ...DEFAULT_CONFIG,
+        workflows: {
+          projects: { workflow: path.join(root, "brief") },
+          execution: { workflow: path.join(root, "workflow") },
+        },
+      });
+      const place = profilePaths(home, known.projects!);
+      fs.mkdirSync(path.dirname(place.records), { recursive: true });
+
+      expect(profilePaths(home, known.projects!).records).toBe(place.records);
+      expect(profilePaths(home, known.projects!).queue).toBe(place.queue);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
 });

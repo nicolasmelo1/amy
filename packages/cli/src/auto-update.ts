@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { AmyConfig } from "./config.js";
 
 /** The per-profile count belongs beside the profile's other durable state. */
@@ -70,12 +71,16 @@ export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
   recoverDaemonUpdateClaim(file);
   const staging = `${file}.claiming`;
+  const prepared = `${staging}.${process.pid}.${randomUUID()}`;
   try {
-    // The owner-bearing staging file serializes the check and consume steps.
-    // A crashed claimant leaves `due` intact; a live one is visible to every
-    // starter before it can consume the marker.
-    fs.writeFileSync(staging, `${process.pid}\n`, { encoding: "utf8", flag: "wx" });
-    if (!fs.existsSync(file)) {
+    // Link a fully-written owner into place: another starter can never recover
+    // an empty staging file between its creation and its first write.
+    fs.writeFileSync(prepared, `${process.pid}\n`, "utf8");
+    fs.linkSync(prepared, staging);
+    fs.rmSync(prepared, { force: true });
+    // A claimant may arrive after the owner moved staging to claimed but before
+    // it consumed due. It must leave that owner and its due marker untouched.
+    if (!fs.existsSync(file) || fs.existsSync(`${file}.claimed`)) {
       fs.rmSync(staging, { force: true });
       return false;
     }
@@ -84,6 +89,8 @@ export function takeDaemonUpdate(home: string, profile: string): boolean {
     return true;
   } catch {
     return false;
+  } finally {
+    fs.rmSync(prepared, { force: true });
   }
 }
 

@@ -112,6 +112,27 @@ describe("runWithAutoUpdate", () => {
     expect(takeDaemonUpdate(root, "oncall")).toBe(false);
   });
 
+  it("does not replace an owner while its claim still leaves due visible", () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+    const claim = path.join(root, "workflows", "oncall", "auto-update-daemon.claimed");
+    fs.writeFileSync(claim, `${process.pid}\n`, "utf8");
+
+    expect(takeDaemonUpdate(root, "oncall")).toBe(false);
+    expect(fs.readFileSync(claim, "utf8")).toBe(`${process.pid}\n`);
+    expect(fs.existsSync(path.join(root, "workflows", "oncall", "auto-update-daemon"))).toBe(true);
+  });
+
+  it("does not recover a fully-published live staging claim", () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+    const staging = path.join(root, "workflows", "oncall", "auto-update-daemon.claiming");
+    fs.writeFileSync(staging, `${process.pid}\n`, "utf8");
+
+    expect(takeDaemonUpdate(root, "oncall")).toBe(false);
+    expect(fs.readFileSync(staging, "utf8")).toBe(`${process.pid}\n`);
+  });
+
   it("keeps a blocked after-update due for a later retry", () => {
     const root = home();
     markDaemonUpdate(root, "oncall");
