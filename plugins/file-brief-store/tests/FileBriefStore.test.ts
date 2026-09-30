@@ -133,6 +133,22 @@ describe("FileBriefStore", () => {
     expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
   });
 
+  it("serializes stale-lock recovery with a new writer", async () => {
+    await seeded(store);
+    const lock = path.join(root, "brief-1.json.lock");
+    fs.writeFileSync(lock, "0\n", "utf8");
+
+    await Promise.all([
+      store.write({ id: "brief-1", sections: [{ name: "Goal", body: "Recovered write." }], explains: [], at: NOW.toISOString() }),
+      store.appendQuestion({ id: "brief-1", question: { workId: "BILL-4021", question: "Still safe?", at: NOW.toISOString() }, at: NOW.toISOString() }),
+    ]);
+
+    const brief = await store.get("brief-1");
+    expect(brief?.sections[0]?.body).toBe("Recovered write.");
+    expect(brief?.questions).toHaveLength(1);
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
+  });
+
   it("refuses to append to a brief that does not exist", async () => {
     await expect(
       store.appendQuestion({

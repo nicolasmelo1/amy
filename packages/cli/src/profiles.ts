@@ -116,6 +116,7 @@ export function profiles(config: AmyConfig, home?: string): Record<string, Profi
   const resolved: Record<string, Profile> = {};
 
   for (const [name, entry] of Object.entries(declared)) {
+    assertProfileName(name);
     const workflow = filesystemWorkflow(home, entry.workflow);
     resolved[name] = {
       name,
@@ -212,6 +213,13 @@ function projectFor(workflow: string, configured: readonly string[], home?: stri
 /** A stable, path-safe state name that cannot make a profile leave Amy home. */
 export function projectStateKey(project: ProjectIdentity, profile?: string): string {
   return `${projectRootKey(project)}${profile ? `/${profile}` : ""}/${project.phase}`;
+}
+
+/** A profile name becomes part of its state path, so it has one safe component. */
+function assertProfileName(name: string): void {
+  if (name === "." || name === ".." || name.includes("/") || name.includes("\\") || path.win32.basename(name) !== name) {
+    throw new Error(`a workflow profile name must be one path component: \`${name}\``);
+  }
 }
 
 /** The project-owned state root; phase names are appended only by the host. */

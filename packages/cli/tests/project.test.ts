@@ -188,4 +188,11 @@ describe("a project is three phases", () => {
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
+
+  it("refuses profile names that could escape their phase state directory", () => {
+    expect(() => profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { "../../../outside": { workflow: path.join(root, "brief") } },
+    })).toThrow("a workflow profile name must be one path component");
+  });
 });

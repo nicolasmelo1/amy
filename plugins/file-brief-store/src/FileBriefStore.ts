@@ -102,17 +102,34 @@ export class FileBriefStore implements BriefStore {
   /** Atomically publish a complete owner before another process can inspect it. */
   private async acquire(lock: string): Promise<void> {
     for (;;) {
-      const privateOwner = `${lock}.${process.pid}.${randomUUID()}`;
-      fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
+      const gate = `${lock}.acquiring`;
+      const privateGate = `${gate}.${process.pid}.${randomUUID()}`;
+      fs.writeFileSync(privateGate, `${process.pid}\n`, "utf-8");
       try {
-        fs.linkSync(privateOwner, lock);
-        fs.rmSync(privateOwner, { force: true });
-        return;
+        fs.linkSync(privateGate, gate);
       } catch (error: unknown) {
-        fs.rmSync(privateOwner, { force: true });
+        fs.rmSync(privateGate, { force: true });
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        this.recover(lock);
         await new Promise((resolve) => setTimeout(resolve, 1));
+        continue;
+      }
+      fs.rmSync(privateGate, { force: true });
+      try {
+        if (fs.existsSync(lock)) this.recover(lock);
+        if (fs.existsSync(lock)) {
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          continue;
+        }
+        const privateOwner = `${lock}.${process.pid}.${randomUUID()}`;
+        fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
+        try {
+          fs.linkSync(privateOwner, lock);
+          return;
+        } finally {
+          fs.rmSync(privateOwner, { force: true });
+        }
+      } finally {
+        fs.rmSync(gate, { force: true });
       }
     }
   }
@@ -127,9 +144,8 @@ export class FileBriefStore implements BriefStore {
     } catch (error: unknown) {
       if ((error as NodeJS.ErrnoException).code === "EPERM") return;
       try {
-        // Move the dead claim out of the contested name. A contender that lost
-        // this rename leaves a replacement claim alone; only this private inode
-        // is discarded below.
+        // acquire() holds the per-brief gate while recovery and publication run,
+        // so this move cannot displace a lock a new writer just published.
         fs.renameSync(lock, recovery);
         this.removeOwnerLinks(lock, recovery);
       } catch (renameError: unknown) {
