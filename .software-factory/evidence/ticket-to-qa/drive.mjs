@@ -328,10 +328,6 @@ function installPlugins(root) {
       file,
       manifest: JSON.parse(execFileSync("tar", ["-xOf", file, "package/package.json"], { encoding: "utf-8" })),
     }));
-  // The CLI is already bootstrapped by install.sh. Reinstalling its old
-  // pre-release tarball as a direct dependency bypasses that install's local
-  // overrides and asks the registry for the not-yet-published worktree patch.
-  const packages = packed.filter(({ manifest }) => manifest.name !== "@amykit/cli").map(({ file }) => file);
   const prefix = path.join(root, "home", ".amy", "plugins");
   // Packages are packed before their fixed release group receives its next
   // version. Install through the same local overrides the real installer
@@ -341,10 +337,18 @@ function installPlugins(root) {
     .filter(({ manifest }) => manifest.name !== "@amykit/cli")
     .map(({ file, manifest }) => [manifest.name, `file:${file}`]));
   fs.mkdirSync(prefix, { recursive: true });
-  fs.writeFileSync(path.join(prefix, "package.json"), `${JSON.stringify({ name: "amy-e2e-plugins", private: true, overrides }, null, 2)}\n`, "utf-8");
+  // npm 11 rejects an override that disagrees syntactically with a package
+  // supplied on the install command line. Keep each tarball as the explicit
+  // dependency and use the identical specifier for its transitive override,
+  // matching the production install manifest.
+  fs.writeFileSync(
+    path.join(prefix, "package.json"),
+    `${JSON.stringify({ name: "amy-e2e-plugins", private: true, dependencies: overrides, overrides }, null, 2)}\n`,
+    "utf-8",
+  );
   const result = spawnSync(
     "npm",
-    ["install", "--prefix", path.join(root, "home", ".amy", "plugins"), "--no-audit", "--no-fund", ...packages],
+    ["install", "--prefix", path.join(root, "home", ".amy", "plugins"), "--no-audit", "--no-fund"],
     { encoding: "utf-8" },
   );
   if (result.status !== 0) throw new Error(`the scenario could not install the packaged plugins: ${result.stderr}`);
