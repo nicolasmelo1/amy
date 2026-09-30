@@ -13,6 +13,7 @@ import { profilePaths } from "./paths.js";
  */
 export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: string): Record<string, unknown> {
   const dirs = stateDirectories(stateDir, profile);
+  const recordsDirectory = worktreeRecordsDirectory(stateDir, profile);
   const agent = effectiveAgent(config, profile);
 
   const derived: Record<string, unknown> = {
@@ -102,6 +103,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     "@amykit/plugin-file-worktree": {
       root: config.worktrees.root,
       workflow: profile.name,
+      recordsDirectory,
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
       checkouts: config.checkouts,
@@ -143,6 +145,11 @@ function stateDirectories(stateDir: string | undefined, profile: Profile): { rec
     records: path.relative(stateDir, place.records),
     queue: path.relative(stateDir, place.queue),
   };
+}
+
+/** The worktree adapter reads the same absolute records directory as the file store. */
+function worktreeRecordsDirectory(stateDir: string | undefined, profile: Profile): string {
+  return stateDir ? profilePaths(stateDir, profile).records : "";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

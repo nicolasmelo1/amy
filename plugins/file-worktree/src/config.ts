@@ -14,6 +14,12 @@ export const configSchema: ConfigSchema = {
       "the first path segment of every tree this mount creates, so two workflows under one install never share a tree",
     default: "",
   },
+  recordsDirectory: {
+    type: "string",
+    description:
+      "where this profile stores workflow records. The host derives it so phase-local worktrees consult the same records as the mounted file store",
+    default: "",
+  },
   defaultBranch: {
     type: "string",
     description: "the branch a tree is cut from for a repository that named none, which is not always `main`",

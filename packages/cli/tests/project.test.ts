@@ -99,6 +99,8 @@ describe("a project is three phases", () => {
       expect(profilePaths(home, known.execution!).pid).toBe(path.join(home, "daemon.pid"));
       expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-store"] as { directory: string }).directory)
         .toBe("execution/records");
+      expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-worktree"] as { recordsDirectory: string }).recordsDirectory)
+        .toBe(path.join(home, "execution", "records"));
       expect(hostPaths(config, home, known.execution!).artifacts).toBeDefined();
       expect(profilePaths(home, known.execution!).log).not.toBe(path.join(home, "log"));
       expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-brief-store"] as { directory: string }).directory)
