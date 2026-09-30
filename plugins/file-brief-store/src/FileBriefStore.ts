@@ -73,8 +73,11 @@ export class FileBriefStore implements BriefStore {
   }
 
   async remove(id: BriefId): Promise<void> {
-    const file = this.file(id);
-    if (fs.existsSync(file)) fs.rmSync(file);
+    await this.mutate(id, async () => {
+      const file = this.file(id);
+      if (fs.existsSync(file)) fs.rmSync(file);
+      return null;
+    });
   }
 
   /** Written to a sibling and renamed, so a brief is never half-written. */
@@ -86,25 +89,24 @@ export class FileBriefStore implements BriefStore {
   }
 
   /** Serializes a read-modify-write across phase processes for one brief. */
-  private async mutate(id: BriefId, change: (existing: BriefRecord | null) => Promise<BriefRecord>): Promise<BriefRecord> {
+  private async mutate<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
     const lock = `${this.file(id)}.lock`;
-    await this.acquire(lock);
+    const owner = await this.acquire(lock);
     try {
       return await change(await this.get(id));
     } finally {
-      fs.rmSync(lock, { force: true });
+      this.release(lock, owner);
     }
   }
 
   /** Atomically publish a complete owner before another process can inspect it. */
-  private async acquire(lock: string): Promise<void> {
+  private async acquire(lock: string): Promise<string> {
     for (;;) {
       const privateOwner = `${lock}.${process.pid}.${randomUUID()}`;
       fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
       try {
         fs.linkSync(privateOwner, lock);
-        fs.rmSync(privateOwner, { force: true });
-        return;
+        return privateOwner;
       } catch (error: unknown) {
         fs.rmSync(privateOwner, { force: true });
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
@@ -116,13 +118,36 @@ export class FileBriefStore implements BriefStore {
 
   /** A dead owner cannot permanently block a brief after a phase crashes. */
   private recover(lock: string): void {
+    const recovery = `${lock}.recovering.${process.pid}.${randomUUID()}`;
     try {
       const owner = Number.parseInt(fs.readFileSync(lock, "utf-8").trim(), 10);
       if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
       process.kill(owner, 0);
     } catch (error: unknown) {
       if ((error as NodeJS.ErrnoException).code === "EPERM") return;
-      fs.rmSync(lock, { force: true });
+      try {
+        // Move the dead claim out of the contested name. A contender that lost
+        // this rename leaves a replacement claim alone; only this private inode
+        // is discarded below.
+        fs.renameSync(lock, recovery);
+      } catch (renameError: unknown) {
+        if ((renameError as NodeJS.ErrnoException).code !== "ENOENT") throw renameError;
+      } finally {
+        fs.rmSync(recovery, { force: true });
+      }
+    }
+  }
+
+  /** Release exactly the hard-linked owner this mutation acquired. */
+  private release(lock: string, owner: string): void {
+    try {
+      // A live claim cannot be replaced: stale recovery moves only a dead
+      // owner. The unlink therefore removes this acquisition, not a contender.
+      fs.unlinkSync(lock);
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    } finally {
+      fs.rmSync(owner, { force: true });
     }
   }
 

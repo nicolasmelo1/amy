@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
 import type { AmyConfig, WorkflowProfile } from "./config.js";
 
@@ -100,7 +101,9 @@ const NEEDS: Record<string, readonly string[]> = {
 
 /** What `amy init` suggests installing for a profile that lists nothing. */
 export function recommendedFor(profile: Profile): readonly string[] {
-  return [profile.workflow, ...SHARED, ...(NEEDS[profile.workflow] ?? [])];
+  // Providers must register before a workflow captures its optional ports in
+  // register(). In particular, ticket runtime dependencies retain BriefStore.
+  return [...SHARED, profile.workflow, ...(NEEDS[profile.workflow] ?? [])];
 }
 
 /** Every profile this install can drive: the shipped ones, plus the config's. */
@@ -113,11 +116,13 @@ export function profiles(config: AmyConfig, home?: string): Record<string, Profi
     resolved[name] = {
       name,
       workflow,
-      plugins: entry.plugins ?? [],
+      // The configured spelling remains in config, but the plugin loader and
+      // the required-workflow check must agree on the live absolute spec.
+      plugins: (entry.plugins ?? []).map((plugin) => plugin === entry.workflow ? workflow : plugin),
       briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
-      project: projectFor(workflow, Object.values(declared).map((candidate) => filesystemWorkflow(home, candidate.workflow))),
+      project: projectFor(workflow, Object.values(declared).map((candidate) => filesystemWorkflow(home, candidate.workflow)), home, name),
       agent: entry.agent,
     };
   }
@@ -179,7 +184,7 @@ export function directoriesFor(profile: string | Pick<Profile, "name" | "project
 }
 
 /** The shared project root is inferred from a phase package, never from `..` configuration. */
-function projectFor(workflow: string, configured: readonly string[]): ProjectIdentity | undefined {
+function projectFor(workflow: string, configured: readonly string[], home?: string, name?: string): ProjectIdentity | undefined {
   if (!workflow.startsWith(".") && !path.isAbsolute(workflow)) return undefined;
   const phase = path.basename(workflow) as ProjectPhase;
   if (!PROJECT_PHASES.includes(phase)) return undefined;
@@ -193,7 +198,11 @@ function projectFor(workflow: string, configured: readonly string[]): ProjectIde
     .filter((candidate) => path.dirname(candidate) === root)
     .map((candidate) => path.basename(candidate))
     .filter((candidate): candidate is ProjectPhase => PROJECT_PHASES.includes(candidate as ProjectPhase)));
-  return phase !== "workflow" || phases.size > 1 ? { root, phase } : undefined;
+  const identity = { root, phase };
+  // A previously active phase keeps its identity when config edits leave its
+  // workflow directory alone. A fresh lone workflow remains legacy.
+  const keptPhaseState = home !== undefined && name !== undefined && fs.existsSync(path.join(home, projectStateKey(identity, name)));
+  return phase !== "workflow" || phases.size > 1 || keptPhaseState ? identity : undefined;
 }
 
 /** A stable, path-safe state name that cannot make a profile leave Amy home. */

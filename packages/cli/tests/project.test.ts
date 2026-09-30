@@ -140,6 +140,35 @@ describe("a project is three phases", () => {
     expect(profilePaths("/amy", known.one!).queue).not.toBe(profilePaths("/amy", known.two!).queue);
   });
 
+  it("keeps a surviving workflow phase in its existing project state", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-project-survivor-"));
+    try {
+      const phaseConfig = {
+        ...DEFAULT_CONFIG,
+        workflows: { execution: { workflow: path.join(root, "workflow") }, grooming: { workflow: path.join(root, "brief") } },
+      };
+      const phase = profiles(phaseConfig, home).execution!;
+      fs.mkdirSync(path.dirname(profilePaths(home, phase).pid), { recursive: true });
+
+      const survivor = profiles({ ...DEFAULT_CONFIG, workflows: { execution: phaseConfig.workflows.execution } }, home).execution!;
+      expect(survivor.project).toMatchObject({ root, phase: "workflow" });
+      expect(profilePaths(home, survivor).pid).toBe(profilePaths(home, phase).pid);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("normalizes an explicit relative workflow plugin only for runtime mounting", () => {
+    const home = "/amy-home";
+    const known = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { execution: { workflow: "./project/workflow", plugins: ["./project/workflow"] } },
+    }, home);
+
+    expect(known.execution?.workflow).toBe(path.join(home, "project", "workflow"));
+    expect(known.execution?.plugins).toEqual([path.join(home, "project", "workflow")]);
+  });
+
   it("does not mistake the shared projects namespace for a legacy profile", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-projects-profile-"));
     try {

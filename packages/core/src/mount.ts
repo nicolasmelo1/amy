@@ -549,14 +549,12 @@ function mutablePortKindForPort(
   port: object,
   mutablePortKinds: WeakMap<object, MutablePortKind>,
 ): MutablePortKind | undefined {
+  // BriefStore's internal read-modify-write helper is named `mutate`, but its
+  // reader contract is deliberately available to ticket workflows.
+  if (kind === "brief") return undefined;
   return mutablePortKind(port, kind, mutablePortKinds)
     ?? (isCodeHostPort(port) ? "code-host" : undefined)
     ?? (isTrackerPort(port) ? "tracker" : undefined)
-    // A consumer-named adapter may expose a mutator the core contracts do not
-    // yet name. Its method cannot be safely handed whole to a workflow merely
-    // because no action happens to bind it. This deliberately does not treat
-    // every provider seam as mutable: workflow ports such as notes and tasks
-    // expose their independent read contracts through the same registry.
     ?? (hasUnknownMutableMethod(port) ? "unknown" : undefined);
 }
 

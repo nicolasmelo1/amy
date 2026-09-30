@@ -193,6 +193,21 @@ describe("FileBriefStore", () => {
     expect(await store.get("brief-1")).toBeNull();
   });
 
+  it("serializes removal with a concurrent writer", async () => {
+    await seeded(store);
+
+    await Promise.all([
+      store.remove("brief-1"),
+      store.write({ id: "brief-1", sections: [{ name: "Goal", body: "A later revision." }], explains: [], at: NOW.toISOString() }),
+    ]);
+
+    // Whichever mutation wins, no writer can observe or overwrite deletion
+    // halfway through its own read-modify-write cycle.
+    const brief = await store.get("brief-1");
+    expect(brief === null || brief.sections[0]?.body).toBe("A later revision.");
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
+  });
+
   it("reads the current version, not a copy folded in at write time", async () => {
     // The whole point of the port: a reader between two ticks sees revision
     // two, not the revision one it saw yesterday. Read again, read fresh.

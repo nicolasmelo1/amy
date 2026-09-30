@@ -2427,7 +2427,11 @@ queueCommand
     const briefStore = assembled.ok ? (assembled.mounted.ports.get("brief") as BriefStore | undefined) : undefined;
     const records = assembled.ok ? assembled.mounted.store : undefined;
     const terminal = assembled.ok ? new Set(assembled.mounted.workflow?.terminalStates ?? []) : new Set<string>();
-    const retired = briefStore && records
+    // A shared project brief may still explain live work in another phase.
+    // Until the project has one cross-phase retention view, auto-pruning it
+    // would be destructive; ordinary profile-local briefs retain their
+    // existing retention behaviour.
+    const retired = !profile.project && briefStore && records
       ? await briefStore.retired((id) => terminal.has(records.load(id)?.state ?? ""), days * 86_400_000, now)
       : [];
     await Promise.all(retired.map((id) => briefStore!.remove(id)));
