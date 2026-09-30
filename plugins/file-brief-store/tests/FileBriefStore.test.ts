@@ -149,6 +149,31 @@ describe("FileBriefStore", () => {
     expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
   });
 
+  it("reclaims a crashed acquisition gate before mutating the brief", async () => {
+    await seeded(store);
+    const gate = path.join(root, "brief-1.json.lock.acquiring");
+    const owner = `${gate}.crashed`;
+    fs.writeFileSync(owner, "0\n", "utf8");
+    fs.linkSync(owner, gate);
+
+    await store.write({ id: "brief-1", sections: [{ name: "Goal", body: "Recovered after a crash." }], explains: [], at: NOW.toISOString() });
+
+    expect((await store.get("brief-1"))?.sections[0]?.body).toBe("Recovered after a crash.");
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
+  });
+
+  it("recovers a crashed gate reclaimer before retrying the acquisition", async () => {
+    await seeded(store);
+    const gate = path.join(root, "brief-1.json.lock.acquiring");
+    fs.writeFileSync(gate, "0\n", "utf8");
+    fs.writeFileSync(`${gate}.recovering`, "0\n", "utf8");
+
+    await store.write({ id: "brief-1", sections: [{ name: "Goal", body: "Recovered twice." }], explains: [], at: NOW.toISOString() });
+
+    expect((await store.get("brief-1"))?.sections[0]?.body).toBe("Recovered twice.");
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
+  });
+
   it("refuses to append to a brief that does not exist", async () => {
     await expect(
       store.appendQuestion({

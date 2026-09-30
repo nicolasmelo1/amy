@@ -103,6 +103,7 @@ export class FileBriefStore implements BriefStore {
   private async acquire(lock: string): Promise<void> {
     for (;;) {
       const gate = `${lock}.acquiring`;
+      await this.recoverGate(gate);
       const privateGate = `${gate}.${process.pid}.${randomUUID()}`;
       fs.writeFileSync(privateGate, `${process.pid}\n`, "utf-8");
       try {
@@ -110,6 +111,7 @@ export class FileBriefStore implements BriefStore {
       } catch (error: unknown) {
         fs.rmSync(privateGate, { force: true });
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        await this.recoverGate(gate);
         await new Promise((resolve) => setTimeout(resolve, 1));
         continue;
       }
@@ -131,6 +133,30 @@ export class FileBriefStore implements BriefStore {
       } finally {
         fs.rmSync(gate, { force: true });
       }
+    }
+  }
+
+  /** Recover a dead acquisition gate before it can permanently block a brief. */
+  private async recoverGate(gate: string): Promise<void> {
+    if (!fs.existsSync(gate)) return;
+    const recovery = `${gate}.recovering`;
+    const privateRecovery = `${recovery}.${process.pid}.${randomUUID()}`;
+    fs.writeFileSync(privateRecovery, `${process.pid}\n`, "utf-8");
+    try {
+      fs.linkSync(privateRecovery, recovery);
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      // A reclaimer can crash too. Retire only its observed owner; callers
+      // will retry the main gate after the recovery pathname comes free.
+      this.recover(recovery);
+      return;
+    } finally {
+      fs.rmSync(privateRecovery, { force: true });
+    }
+    try {
+      this.recover(gate);
+    } finally {
+      fs.rmSync(recovery, { force: true });
     }
   }
 
