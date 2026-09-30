@@ -91,22 +91,23 @@ export class FileBriefStore implements BriefStore {
   /** Serializes a read-modify-write across phase processes for one brief. */
   private async mutate<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
     const lock = `${this.file(id)}.lock`;
-    const owner = await this.acquire(lock);
+    await this.acquire(lock);
     try {
       return await change(await this.get(id));
     } finally {
-      this.release(lock, owner);
+      this.release(lock);
     }
   }
 
   /** Atomically publish a complete owner before another process can inspect it. */
-  private async acquire(lock: string): Promise<string> {
+  private async acquire(lock: string): Promise<void> {
     for (;;) {
       const privateOwner = `${lock}.${process.pid}.${randomUUID()}`;
       fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
       try {
         fs.linkSync(privateOwner, lock);
-        return privateOwner;
+        fs.rmSync(privateOwner, { force: true });
+        return;
       } catch (error: unknown) {
         fs.rmSync(privateOwner, { force: true });
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
@@ -130,6 +131,7 @@ export class FileBriefStore implements BriefStore {
         // this rename leaves a replacement claim alone; only this private inode
         // is discarded below.
         fs.renameSync(lock, recovery);
+        this.removeOwnerLinks(lock, recovery);
       } catch (renameError: unknown) {
         if ((renameError as NodeJS.ErrnoException).code !== "ENOENT") throw renameError;
       } finally {
@@ -138,16 +140,28 @@ export class FileBriefStore implements BriefStore {
     }
   }
 
-  /** Release exactly the hard-linked owner this mutation acquired. */
-  private release(lock: string, owner: string): void {
+  /** Remove private hard links left by a process that died while publishing. */
+  private removeOwnerLinks(lock: string, recovered: string): void {
+    const inode = fs.statSync(recovered).ino;
+    for (const name of fs.readdirSync(this.root)) {
+      const candidate = path.join(this.root, name);
+      if (!candidate.startsWith(`${lock}.`) || candidate === recovered) continue;
+      try {
+        if (fs.statSync(candidate).ino === inode) fs.rmSync(candidate, { force: true });
+      } catch {
+        // A concurrent cleaner settled this private owner first.
+      }
+    }
+  }
+
+  /** Release the lock name this mutation acquired. */
+  private release(lock: string): void {
     try {
       // A live claim cannot be replaced: stale recovery moves only a dead
       // owner. The unlink therefore removes this acquisition, not a contender.
       fs.unlinkSync(lock);
     } catch (error: unknown) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    } finally {
-      fs.rmSync(owner, { force: true });
     }
   }
 

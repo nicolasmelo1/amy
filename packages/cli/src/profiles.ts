@@ -60,7 +60,7 @@ const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {};
  * it carries, every notification channel, and the engine. Not one of them is
  * duplicated for a second workflow, and not one changed to take it.
  */
-const SHARED: readonly string[] = [
+const PROVIDERS: readonly string[] = [
   "@amykit/plugin-file-queue",
   "@amykit/plugin-file-store",
   // A BriefStore is intentionally its own mount: a Git-backed adapter can
@@ -68,9 +68,10 @@ const SHARED: readonly string[] = [
   "@amykit/plugin-file-brief-store",
   "@amykit/plugin-file-notes",
   "@amykit/plugin-github",
-  // One isolated checkout per piece of work must mount before the harnesses
-  // and gates construct their Git bridges, or their optional port lookup sees
-  // nothing and silently falls back to the shared checkout.
+];
+
+/** Mount after the workflow declares terminal states, before its consumers capture Git. */
+const WORKTREE_AND_CONSUMERS: readonly string[] = [
   "@amykit/plugin-file-worktree",
   "@amykit/plugin-claude",
   "@amykit/plugin-codex",
@@ -101,9 +102,12 @@ const NEEDS: Record<string, readonly string[]> = {
 
 /** What `amy init` suggests installing for a profile that lists nothing. */
 export function recommendedFor(profile: Profile): readonly string[] {
-  // Providers must register before a workflow captures its optional ports in
-  // register(). In particular, ticket runtime dependencies retain BriefStore.
-  return [...SHARED, profile.workflow, ...(NEEDS[profile.workflow] ?? [])];
+  const needs = NEEDS[profile.workflow] ?? [];
+  // Workflow ports need their providers during registration, while the
+  // worktree captures the workflow's terminal states and must follow it.
+  const prerequisites = needs.filter((plugin) => plugin === "@amykit/plugin-linear");
+  const consumers = needs.filter((plugin) => plugin !== "@amykit/plugin-linear");
+  return [...PROVIDERS, ...prerequisites, profile.workflow, ...WORKTREE_AND_CONSUMERS, ...consumers];
 }
 
 /** Every profile this install can drive: the shipped ones, plus the config's. */

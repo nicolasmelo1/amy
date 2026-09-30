@@ -309,9 +309,11 @@ describe("pluginList", () => {
     expect(pluginList(CONFIG, alternative)).not.toContain("@amykit/plugin-file-brief-store");
   });
 
-  it("falls back to what the workflow needs, starting with the workflow", () => {
-    expect(pluginList(CONFIG, TICKETS)[0]).toBe("@amykit/workflow-ticket-to-qa");
-    expect(pluginList(CONFIG, PLANS)[0]).toBe("@amykit/workflow-note-to-plan");
+  it("mounts providers before a workflow and checkout consumers after it", () => {
+    const tickets = pluginList(CONFIG, TICKETS);
+    expect(tickets.indexOf("@amykit/plugin-linear")).toBeLessThan(tickets.indexOf("@amykit/workflow-ticket-to-qa"));
+    expect(tickets.indexOf("@amykit/plugin-file-worktree")).toBeGreaterThan(tickets.indexOf("@amykit/workflow-ticket-to-qa"));
+    expect(pluginList(CONFIG, PLANS)).toContain("@amykit/workflow-note-to-plan");
   });
 
   it("recommends a different set for a workflow it has never heard of", () => {
@@ -325,9 +327,10 @@ describe("pluginList", () => {
       takesTasks: false,
     };
 
-    expect(pluginList(CONFIG, oncall)[0]).toBe("@acme/workflow-oncall");
-    expect(pluginList(CONFIG, oncall)).toContain("@amykit/plugin-serial-engine");
-    expect(pluginList(CONFIG, oncall)).not.toContain("@amykit/plugin-linear");
+    const suggested = pluginList(CONFIG, oncall);
+    expect(suggested).toContain("@acme/workflow-oncall");
+    expect(suggested).toContain("@amykit/plugin-serial-engine");
+    expect(suggested).not.toContain("@amykit/plugin-linear");
   });
 
   it("leaves out a channel nobody configured", () => {

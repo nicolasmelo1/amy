@@ -177,6 +177,13 @@ describe("writing a profile's plugin list", () => {
     expect(fs.readFileSync(file(), "utf-8")).toContain("workflow: ./project/workflow");
   });
 
+  it("restores a normalized filesystem workflow plugin to its configured spelling", () => {
+    writeConfig("workflows:\n  execution:\n    workflow: ./project/workflow\n    plugins:\n      - ./project/workflow\n");
+    writeProfilePlugins(root, "execution", [path.join(root, "project", "workflow"), "@acme/plugin-one"], loadConfig(root));
+
+    expect(loadConfig(root).workflows.execution?.plugins).toEqual(["./project/workflow", "@acme/plugin-one"]);
+  });
+
   it("refuses a profile nobody declared, rather than inventing one", () => {
     expect(() => writeProfilePlugins(root, "oncall", [], loadConfig(root))).toThrow("oncall");
   });

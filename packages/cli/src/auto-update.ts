@@ -104,7 +104,8 @@ function recoverDaemonUpdateClaim(file: string): void {
     if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
     process.kill(owner, 0);
     return;
-  } catch {
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") return;
     try {
       if (claim.endsWith(".claimed")) fs.renameSync(claim, file);
       else fs.rmSync(claim, { force: true });

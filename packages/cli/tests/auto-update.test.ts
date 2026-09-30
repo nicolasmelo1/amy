@@ -155,6 +155,22 @@ describe("runWithAutoUpdate", () => {
     expect(fs.readFileSync(claim, "utf8")).toBe(`${process.pid}\n`);
   });
 
+  it("keeps an update claimed by an owner it cannot signal", () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+    expect(takeDaemonUpdate(root, "oncall")).toBe(true);
+    const claim = path.join(root, "workflows", "oncall", "auto-update-daemon.claimed");
+    fs.writeFileSync(claim, "42\n", "utf8");
+    const kill = process.kill;
+    process.kill = (() => { const error = new Error("denied") as NodeJS.ErrnoException; error.code = "EPERM"; throw error; }) as typeof process.kill;
+    try {
+      expect(takeDaemonUpdate(root, "oncall")).toBe(false);
+      expect(fs.existsSync(claim)).toBe(true);
+    } finally {
+      process.kill = kill;
+    }
+  });
+
   it("lets the next daemon start settle a due update left by its reaper", async () => {
     const root = home();
     markDaemonUpdate(root, "oncall");
