@@ -1,6 +1,7 @@
 import path from "node:path";
 import { AmyConfig } from "./config.js";
-import { Profile, artifactDirectory, directoriesFor, recommendedFor } from "./profiles.js";
+import { Profile, directoriesFor, recommendedFor } from "./profiles.js";
+import { profilePaths } from "./paths.js";
 
 /**
  * The settings each plugin gets, derived from the top-level config.
@@ -10,8 +11,8 @@ import { Profile, artifactDirectory, directoriesFor, recommendedFor } from "./pr
  * it. An explicit `plugins:` slice always wins, which is the direction this
  * is moving in.
  */
-export function pluginSlices(config: AmyConfig, profile: Profile): Record<string, unknown> {
-  const dirs = directoriesFor(profile);
+export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: string): Record<string, unknown> {
+  const dirs = stateDirectories(stateDir, profile);
   const agent = effectiveAgent(config, profile);
 
   const derived: Record<string, unknown> = {
@@ -133,6 +134,15 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
   }
 
   return merged;
+}
+
+function stateDirectories(stateDir: string | undefined, profile: Profile): { records: string; queue: string } {
+  if (!stateDir) return directoriesFor(profile);
+  const place = profilePaths(stateDir, profile);
+  return {
+    records: path.relative(stateDir, place.records),
+    queue: path.relative(stateDir, place.queue),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -277,10 +287,11 @@ function withBriefStore(profile: Profile, plugins: readonly string[]): string[] 
 
 /** Where the host keeps its own state, and where the checkouts live. */
 export function hostPaths(config: AmyConfig, stateDir: string, profile?: Profile) {
+  const place = profile ? profilePaths(stateDir, profile) : undefined;
   return {
     workspace: path.resolve(config.workspaceRoot),
     checkouts: config.checkouts,
     state: stateDir,
-    ...(profile && artifactDirectory(profile) ? { artifacts: path.join(stateDir, artifactDirectory(profile)!) } : {}),
+    ...(place?.artifacts ? { artifacts: place.artifacts } : {}),
   };
 }

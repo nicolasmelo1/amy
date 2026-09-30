@@ -377,7 +377,7 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
-    ...mountingFrom(parsed),
+    ...mountingFrom(root, parsed),
     ...autoUpdateFrom(parsed),
     policy: { ...DEFAULT_POLICY, ...(parsed.policy ?? {}) },
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
@@ -404,10 +404,17 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
  * edit for all three, which is why they default in one place.
  */
 function mountingFrom(
+  root: string,
   parsed: Partial<AmyConfig>,
 ): Pick<AmyConfig, "workflows" | "defaultWorkflow" | "extraPlugins"> {
   return {
-    workflows: parsed.workflows ?? {},
+    workflows: Object.fromEntries(Object.entries(parsed.workflows ?? {}).map(([name, profile]) => [name, {
+      ...profile,
+      // A filesystem workflow is part of the machine configuration, not of
+      // whichever directory happened to invoke this command. Persist its
+      // meaning when the config is read so profile identity and import agree.
+      workflow: profile.workflow.startsWith(".") ? path.resolve(root, profile.workflow) : profile.workflow,
+    }])),
     defaultWorkflow: parsed.defaultWorkflow ?? "",
     extraPlugins: parsed.extraPlugins ?? [],
   };

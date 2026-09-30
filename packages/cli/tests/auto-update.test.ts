@@ -9,6 +9,7 @@ import {
   finishDaemonUpdate,
   hasDaemonUpdate,
   markDaemonUpdate,
+  retryDaemonUpdate,
   runWithAutoUpdate,
   takeDaemonUpdate,
 } from "../src/auto-update.js";
@@ -103,6 +104,17 @@ describe("runWithAutoUpdate", () => {
     expect(takeDaemonUpdate(root, "oncall")).toBe(false);
     finishDaemonUpdate(root, "oncall");
     expect(hasDaemonUpdate(root, "oncall")).toBe(false);
+  });
+
+  it("keeps a blocked after-update due for a later retry", () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+    expect(takeDaemonUpdate(root, "oncall")).toBe(true);
+
+    retryDaemonUpdate(root, "oncall");
+
+    expect(hasDaemonUpdate(root, "oncall")).toBe(true);
+    expect(takeDaemonUpdate(root, "oncall")).toBe(true);
   });
 
   it("fails the workflow invocation when its scheduled update fails", async () => {

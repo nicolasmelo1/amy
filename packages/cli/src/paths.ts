@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { Profile, artifactDirectory, directoriesFor, projectStateKey } from "./profiles.js";
 
@@ -32,18 +33,38 @@ export function paths(home: string) {
 
 /** The two directories that belong to one profile and to nothing else. */
 export function profilePaths(home: string, profile: string | Profile) {
+  return { ...paths(home), ...statePaths(home, profile) };
+}
+
+function statePaths(home: string, profile: string | Profile) {
   const dirs = directoriesFor(profile);
-  const project = typeof profile === "string" ? undefined : artifactDirectory(profile);
-  const phaseState = typeof profile === "string" || !profile.project ? undefined : projectStateKey(profile.project);
+  const name = typeof profile === "string" ? profile : profile.name;
+  const project = phaseState(profile);
+  const legacy = keepsLegacyState(home, name, project);
 
   return {
-    ...paths(home),
-    records: path.join(home, dirs.records),
-    queue: path.join(home, dirs.queue),
-    ...(project && phaseState ? {
-      artifacts: path.join(home, project),
-      log: path.join(home, phaseState, "log"),
-      pid: path.join(home, phaseState, "daemon.pid"),
+    records: path.join(home, legacy ? name : dirs.records, legacy ? "records" : ""),
+    queue: path.join(home, legacy ? name : dirs.queue, legacy ? "queue" : ""),
+    ...(project && !legacy ? {
+      artifacts: path.join(home, projectArtifacts(profile)!),
+      log: path.join(home, project, "log"),
+      pid: path.join(home, project, "daemon.pid"),
     } : {}),
   };
+}
+
+function phaseState(profile: string | Profile): string | undefined {
+  return typeof profile === "string" || !profile.project ? undefined : projectStateKey(profile.project);
+}
+
+function projectArtifacts(profile: string | Profile): string | undefined {
+  return typeof profile === "string" ? undefined : artifactDirectory(profile);
+}
+
+function keepsLegacyState(home: string, name: string, project: string | undefined): boolean {
+  // Adding a sibling must not make an existing workflow's records disappear.
+  // Once phase state exists it remains authoritative, including after another
+  // phase is removed; otherwise retain the old profile directory until an
+  // explicit migration can move it.
+  return project !== undefined && fs.existsSync(path.join(home, name)) && !fs.existsSync(path.join(home, project));
 }

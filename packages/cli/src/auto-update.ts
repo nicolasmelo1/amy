@@ -81,6 +81,16 @@ export function finishDaemonUpdate(home: string, profile: string): void {
   fs.rmSync(`${daemonUpdatePath(home, profile)}.claimed`, { force: true });
 }
 
+/** Makes a claimed update due again when a shared daemon boundary blocked it. */
+export function retryDaemonUpdate(home: string, profile: string): void {
+  const file = daemonUpdatePath(home, profile);
+  try {
+    fs.renameSync(`${file}.claimed`, file);
+  } catch {
+    // Another recovery owner already settled it; either result is safe.
+  }
+}
+
 /**
  * Counts one lifecycle invocation, then places a due update at its requested
  * boundary. The count is written before the update so a failed attempt remains

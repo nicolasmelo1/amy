@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { profilePaths } from "../src/paths.js";
@@ -61,6 +63,33 @@ describe("a project is three phases", () => {
     expect(only.execution?.project).toBeUndefined();
     expect(profilePaths("/amy", only.execution!).records).toBe("/amy/execution/records");
     expect(only.execution?.agent).toBeUndefined();
+  });
+
+  it("does not let an unrelated sibling turn a legacy workflow into a phase", () => {
+    const known = profiles({
+      ...DEFAULT_CONFIG,
+      workflows: {
+        execution: { workflow: path.join(root, "workflow") },
+        other: { workflow: path.join(root, "other") },
+      },
+    });
+
+    expect(known.execution?.project).toBeUndefined();
+  });
+
+  it("keeps existing legacy state when a sibling phase is later added", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-project-state-"));
+    try {
+      fs.mkdirSync(path.join(home, "execution", "records"), { recursive: true });
+      const known = profiles(config);
+
+      expect(profilePaths(home, known.execution!).records).toBe(path.join(home, "execution", "records"));
+      expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-store"] as { directory: string }).directory)
+        .toBe("execution/records");
+      expect(hostPaths(config, home, known.execution!).artifacts).toBeUndefined();
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 
   it("keeps the project state component bounded for long valid paths", () => {

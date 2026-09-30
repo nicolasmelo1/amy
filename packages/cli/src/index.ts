@@ -86,7 +86,7 @@ import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { Held, held, isRange, line, move, restore, roots } from "./update.js";
-import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
+import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -141,7 +141,7 @@ async function assemble(
 
   const outcome = await mount(
     [...loaded.plugins, hostPlugin(() => loadRoster(home))],
-    pluginSlices(config, profile),
+    pluginSlices(config, profile, home),
     {
       runner,
       now: () => new Date(),
@@ -542,6 +542,7 @@ program
 
       // Detached, with its output on a file rather than this terminal: the
       // point of starting it is that it outlives the session that started it.
+      fs.mkdirSync(path.dirname(place.pid), { recursive: true });
       const out = fs.openSync(path.join(path.dirname(place.pid), "daemon.log"), "a");
       const child = spawn(
         process.execPath,
@@ -610,10 +611,10 @@ program
     if (!resolution.ok) return;
     if (!claimExitedDaemon(profilePaths(home, resolution.profile).pid, pid)) return;
     if (!takeDaemonUpdate(home, workflow)) return;
-    try {
-      if (await scheduledUpdate() !== 0) process.exitCode = 1;
-    } finally {
-      finishDaemonUpdate(home, workflow);
+    if (await scheduledUpdate() === 0) finishDaemonUpdate(home, workflow);
+    else {
+      retryDaemonUpdate(home, workflow);
+      process.exitCode = 1;
     }
   });
 
@@ -687,8 +688,13 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
     // Do not erase a record a later owner wrote after this process ended.
     if (readDaemon(file)?.pid === process.pid) clearDaemon(file);
   }
-  if (schedule.due && schedule.timing === "after" && await scheduledUpdate() !== 0) {
-    throw new Error("amy update failed");
+  if (schedule.due && schedule.timing === "after") {
+    markDaemonUpdate(home, profile.name);
+    if (!takeDaemonUpdate(home, profile.name) || await scheduledUpdate() !== 0) {
+      retryDaemonUpdate(home, profile.name);
+      throw new Error("amy update failed");
+    }
+    finishDaemonUpdate(home, profile.name);
   }
 }
 
@@ -2434,7 +2440,7 @@ async function worktreeManager(config: AmyConfig): Promise<Worktree> {
     terminalStates: assembled.ok
       ? (assembled.mounted.workflow?.terminalStates ?? [])
       : [],
-    log: new FileEventLog(paths(home).log, undefined, build),
+    log: new FileEventLog(place.log, undefined, build),
   });
 }
 

@@ -181,9 +181,11 @@ function projectFor(workflow: string, configured: readonly string[]): ProjectIde
   // A lone `workflow/` is a long-supported ordinary profile. Treat it as a
   // project only once another configured phase confirms the three-phase layout.
   const phases = new Set(configured
+    .filter((candidate) => candidate.startsWith(".") || path.isAbsolute(candidate))
     .map((candidate) => path.resolve(candidate))
     .filter((candidate) => path.dirname(candidate) === root)
-    .map((candidate) => path.basename(candidate)));
+    .map((candidate) => path.basename(candidate))
+    .filter((candidate): candidate is ProjectPhase => PROJECT_PHASES.includes(candidate as ProjectPhase)));
   return phases.size > 1 ? { root, phase } : undefined;
 }
 

@@ -39,6 +39,12 @@ describe("config", () => {
     expect(config.policy).toEqual(DEFAULT_CONFIG.policy);
   });
 
+  it("anchors relative filesystem workflows at the config home", () => {
+    fs.writeFileSync(paths(root).config, "workflows:\n  execution:\n    workflow: ./project/workflow\n");
+
+    expect(loadConfig(root).workflows.execution?.workflow).toBe(path.join(root, "project", "workflow"));
+  });
+
   it.each(["autoUpdate: null\n", "autoUpdate: every day\n"])("preserves malformed auto-update source %j", (text) => {
     fs.writeFileSync(paths(root).config, text);
 
