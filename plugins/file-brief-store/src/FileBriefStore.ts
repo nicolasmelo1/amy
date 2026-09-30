@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { flockSync } from "fs-ext";
 import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
 
 /**
@@ -13,6 +14,8 @@ import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
  * parses as something it is not.
  */
 export class FileBriefStore implements BriefStore {
+  private static readonly heldLocks = new Set<string>();
+
   constructor(private readonly root: string) {
     fs.mkdirSync(this.root, { recursive: true });
   }
@@ -84,179 +87,45 @@ export class FileBriefStore implements BriefStore {
   private save(record: BriefRecord): void {
     const file = this.file(record.id);
     const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
-    fs.writeFileSync(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf-8");
-    fs.renameSync(temporary, file);
+    try {
+      fs.writeFileSync(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf-8");
+      fs.renameSync(temporary, file);
+    } catch (error: unknown) {
+      fs.rmSync(temporary, { force: true });
+      throw error;
+    }
   }
 
   /** Serializes a read-modify-write across phase processes for one brief. */
   private async mutate<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
     const lock = `${this.file(id)}.lock`;
-    await this.acquire(lock);
+    const descriptor = await this.acquire(lock);
     try {
       return await change(await this.get(id));
     } finally {
-      this.release(lock);
+      this.release(lock, descriptor);
     }
   }
 
-  /** Atomically publish a complete owner before another process can inspect it. */
-  private async acquire(lock: string): Promise<void> {
-    for (;;) {
-      const gate = `${lock}.acquiring`;
-      await this.recoverGate(gate);
-      const privateGate = `${gate}.${process.pid}.${randomUUID()}`;
-      fs.writeFileSync(privateGate, `${process.pid}\n`, "utf-8");
-      try {
-        fs.linkSync(privateGate, gate);
-      } catch (error: unknown) {
-        fs.rmSync(privateGate, { force: true });
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        await this.recoverGate(gate);
-        await new Promise((resolve) => setTimeout(resolve, 1));
-        continue;
-      }
-      fs.rmSync(privateGate, { force: true });
-      try {
-        if (fs.existsSync(lock)) this.recover(lock);
-        if (fs.existsSync(lock)) {
-          await new Promise((resolve) => setTimeout(resolve, 1));
-          continue;
-        }
-        const privateOwner = `${lock}.${process.pid}.${randomUUID()}`;
-        fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
-        try {
-          fs.linkSync(privateOwner, lock);
-          return;
-        } finally {
-          fs.rmSync(privateOwner, { force: true });
-        }
-      } finally {
-        fs.rmSync(gate, { force: true });
-      }
-    }
-  }
-
-  /** Recover a dead acquisition gate before it can permanently block a brief. */
-  private async recoverGate(gate: string): Promise<void> {
-    const recovery = `${gate}.recovering`;
-    if (!fs.existsSync(gate)) return;
-    if (!this.claimRecovery(recovery)) return;
-    const snapshot = `${recovery}.gate`;
+  /** Hold an OS lock, which the kernel releases even if a phase crashes. */
+  private async acquire(lock: string): Promise<number> {
+    while (FileBriefStore.heldLocks.has(lock)) await new Promise((resolve) => setTimeout(resolve, 1));
+    const descriptor = fs.openSync(lock, "a");
     try {
-      try {
-        // Keep the observed gate in place while examining it. The recovery
-        // claim stays live through removal, so another reclaimer cannot act
-        // on this snapshot while a writer is able to publish a replacement.
-        fs.linkSync(gate, snapshot);
-      } catch (error: unknown) {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-        throw error;
-      }
-      this.recoverGateOwner(gate, snapshot);
-    } finally {
-      fs.rmSync(snapshot, { force: true });
-      fs.rmSync(recovery, { force: true });
-    }
-  }
-
-  /** Claim stale-gate recovery without exposing an empty owner file. */
-  private claimRecovery(recovery: string): boolean {
-    const privateOwner = `${recovery}.${process.pid}.${randomUUID()}`;
-    fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
-    try {
-      fs.linkSync(privateOwner, recovery);
-      return true;
+      flockSync(descriptor, "ex");
+      FileBriefStore.heldLocks.add(lock);
+      return descriptor;
     } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      if (this.liveOwner(recovery)) return false;
-      // A crashed reclaimer cannot continue after its PID is dead. This also
-      // recognizes the old hard-link recovery token as stale on upgrade.
-      fs.rmSync(recovery, { force: true });
-      return false;
-    } finally {
-      fs.rmSync(privateOwner, { force: true });
-    }
-  }
-
-  private liveOwner(file: string): boolean {
-    try {
-      const owner = Number.parseInt(fs.readFileSync(file, "utf-8").trim(), 10);
-      if (!Number.isSafeInteger(owner) || owner <= 0) return false;
-      process.kill(owner, 0);
-      return true;
-    } catch (error: unknown) {
-      return (error as NodeJS.ErrnoException).code === "EPERM";
-    }
-  }
-
-  /** Retire a gate only while its pathname still names the recovery token. */
-  private recoverGateOwner(gate: string, recovery: string): void {
-    try {
-      if (fs.statSync(gate).ino !== fs.statSync(recovery).ino) return;
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+      fs.closeSync(descriptor);
       throw error;
     }
-    try {
-      const owner = Number.parseInt(fs.readFileSync(recovery, "utf-8").trim(), 10);
-      if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
-      process.kill(owner, 0);
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === "EPERM") return;
-      try {
-        this.removeOwnerLinks(gate, recovery);
-        fs.unlinkSync(gate);
-      } catch (unlinkError: unknown) {
-        if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT") throw unlinkError;
-      }
-    }
   }
 
-  /** A dead owner cannot permanently block a brief after a phase crashes. */
-  private recover(lock: string): void {
-    const recovery = `${lock}.recovering.${process.pid}.${randomUUID()}`;
-    try {
-      const owner = Number.parseInt(fs.readFileSync(lock, "utf-8").trim(), 10);
-      if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
-      process.kill(owner, 0);
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === "EPERM") return;
-      try {
-        // acquire() holds the per-brief gate while recovery and publication run,
-        // so this move cannot displace a lock a new writer just published.
-        fs.renameSync(lock, recovery);
-        this.removeOwnerLinks(lock, recovery);
-      } catch (renameError: unknown) {
-        if ((renameError as NodeJS.ErrnoException).code !== "ENOENT") throw renameError;
-      } finally {
-        fs.rmSync(recovery, { force: true });
-      }
-    }
-  }
-
-  /** Remove private hard links left by a process that died while publishing. */
-  private removeOwnerLinks(lock: string, recovered: string): void {
-    const inode = fs.statSync(recovered).ino;
-    for (const name of fs.readdirSync(this.root)) {
-      const candidate = path.join(this.root, name);
-      if (!candidate.startsWith(`${lock}.`) || candidate === recovered) continue;
-      try {
-        if (fs.statSync(candidate).ino === inode) fs.rmSync(candidate, { force: true });
-      } catch {
-        // A concurrent cleaner settled this private owner first.
-      }
-    }
-  }
-
-  /** Release the lock name this mutation acquired. */
-  private release(lock: string): void {
-    try {
-      // A live claim cannot be replaced: stale recovery moves only a dead
-      // owner. The unlink therefore removes this acquisition, not a contender.
-      fs.unlinkSync(lock);
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
+  /** Release this process and the kernel lock; keep the stable lock inode. */
+  private release(lock: string, descriptor: number): void {
+    FileBriefStore.heldLocks.delete(lock);
+    flockSync(descriptor, "un");
+    fs.closeSync(descriptor);
   }
 
   private ids(): BriefId[] {

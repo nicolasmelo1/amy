@@ -111,26 +111,14 @@ describe("FileBriefStore", () => {
     const brief = await store.get("brief-1");
     expect(brief?.questions).toHaveLength(1);
     expect(brief?.revision).toBe(2);
-    expect(fs.readdirSync(root).filter((name) => name.endsWith(".lock"))).toEqual([]);
+    expect(fs.readdirSync(root).filter((name) => name.endsWith(".lock"))).toEqual(["brief-1.json.lock"]);
   });
 
-  it("does not retain a private lock owner after publishing", async () => {
+  it("keeps one stable kernel-lock inode without private owner files", async () => {
     await seeded(store);
     await store.write({ id: "brief-1", sections: [], explains: [], at: NOW.toISOString() });
 
-    expect(fs.readdirSync(root).filter((name) => name.includes(".lock."))).toEqual([]);
-  });
-
-  it("reclaims a crashed owner's unpublished hard link", async () => {
-    await seeded(store);
-    const lock = path.join(root, "brief-1.json.lock");
-    const owner = `${lock}.crashed`;
-    fs.writeFileSync(owner, "0\n", "utf8");
-    fs.linkSync(owner, lock);
-
-    await store.write({ id: "brief-1", sections: [], explains: [], at: NOW.toISOString() });
-
-    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual(["brief-1.json.lock"]);
   });
 
   it("serializes stale-lock recovery with a new writer", async () => {
@@ -146,49 +134,7 @@ describe("FileBriefStore", () => {
     const brief = await store.get("brief-1");
     expect(brief?.sections[0]?.body).toBe("Recovered write.");
     expect(brief?.questions).toHaveLength(1);
-    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
-  });
-
-  it("reclaims a crashed acquisition gate before mutating the brief", async () => {
-    await seeded(store);
-    const gate = path.join(root, "brief-1.json.lock.acquiring");
-    const owner = `${gate}.crashed`;
-    fs.writeFileSync(owner, "0\n", "utf8");
-    fs.linkSync(owner, gate);
-
-    await store.write({ id: "brief-1", sections: [{ name: "Goal", body: "Recovered after a crash." }], explains: [], at: NOW.toISOString() });
-
-    expect((await store.get("brief-1"))?.sections[0]?.body).toBe("Recovered after a crash.");
-    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
-  });
-
-  it("recovers a crashed gate reclaimer before retrying the acquisition", async () => {
-    await seeded(store);
-    const gate = path.join(root, "brief-1.json.lock.acquiring");
-    fs.writeFileSync(gate, "0\n", "utf8");
-    // A crashed reclaimer leaves its recovery hard link to the same stale
-    // gate. Two later phase mutations must safely settle it and serialize.
-    fs.linkSync(gate, `${gate}.recovering`);
-
-    await Promise.all([
-      store.write({ id: "brief-1", sections: [{ name: "Goal", body: "Recovered twice." }], explains: [], at: NOW.toISOString() }),
-      store.appendQuestion({ id: "brief-1", question: { workId: "BILL-4021", question: "Recovered safely?", at: NOW.toISOString() }, at: NOW.toISOString() }),
-    ]);
-
-    expect((await store.get("brief-1"))?.sections[0]?.body).toBe("Recovered twice.");
-    expect((await store.get("brief-1"))?.questions).toHaveLength(1);
-    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
-  });
-
-  it("lets only one live process reclaim an acquisition gate", async () => {
-    await seeded(store);
-    const recovery = path.join(root, "brief-1.json.lock.acquiring.recovering");
-    const contender = store as unknown as { claimRecovery(file: string): boolean };
-
-    expect(contender.claimRecovery(recovery)).toBe(true);
-    expect(contender.claimRecovery(recovery)).toBe(false);
-    expect(fs.readFileSync(recovery, "utf8")).toBe(`${process.pid}\n`);
-    fs.rmSync(recovery);
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual(["brief-1.json.lock"]);
   });
 
   it("refuses to append to a brief that does not exist", async () => {
@@ -282,7 +228,7 @@ describe("FileBriefStore", () => {
     // halfway through its own read-modify-write cycle.
     const brief = await store.get("brief-1");
     expect(brief === null || brief.sections[0]?.body).toBe("A later revision.");
-    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
+    expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual(["brief-1.json.lock"]);
   });
 
   it("reads the current version, not a copy folded in at write time", async () => {
