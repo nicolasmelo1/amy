@@ -190,6 +190,18 @@ describe("runWithAutoUpdate", () => {
     expect(hasDaemonUpdate(root, "oncall")).toBe(false);
   });
 
+  it("does not reject startup after recovering the last stale staging claim", async () => {
+    const root = home();
+    const staging = path.join(root, "workflows", "oncall", "auto-update-daemon.claiming");
+    fs.mkdirSync(path.dirname(staging), { recursive: true });
+    fs.writeFileSync(staging, "0\n", "utf8");
+    let updates = 0;
+
+    expect(await settleDaemonUpdate(root, "oncall", async () => { updates += 1; return 0; })).toBe(true);
+    expect(updates).toBe(0);
+    expect(hasDaemonUpdate(root, "oncall")).toBe(false);
+  });
+
   it("keeps a failed pre-start update due for the next daemon", async () => {
     const root = home();
     markDaemonUpdate(root, "oncall");

@@ -158,6 +158,7 @@ function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Pro
   for (const plugin of [
     "@amykit/plugin-file-queue",
     "@amykit/plugin-file-store",
+    "@amykit/plugin-file-brief-store",
     "@amykit/plugin-file-tasks",
     "@amykit/plugin-slack",
   ] as const) {

@@ -136,7 +136,9 @@ export function retryDaemonUpdate(home: string, profile: string): void {
 /** Settles an interrupted after-daemon update before a new daemon starts. */
 export async function settleDaemonUpdate(home: string, profile: string, update: () => Promise<number>): Promise<boolean> {
   if (!hasDaemonUpdate(home, profile)) return true;
-  if (!takeDaemonUpdate(home, profile)) return false;
+  // A stale staging claim can be the last marker. Recovery removes it, so a
+  // failed take is settled when no due or claim marker remains to be claimed.
+  if (!takeDaemonUpdate(home, profile)) return !hasDaemonUpdate(home, profile);
   if (await update() === 0) {
     finishDaemonUpdate(home, profile);
     return true;
