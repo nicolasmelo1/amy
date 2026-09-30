@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../src/config.js";
-import { Profile } from "../src/profiles.js";
+import { Profile, profiles } from "../src/profiles.js";
 import { carriedBy, configWithout, stillMounted } from "../src/remove.js";
 import { pluginList } from "../src/slices.js";
 
@@ -134,5 +134,25 @@ describe("remove configuration", () => {
     expect(after.workflows.oncall).toBeUndefined();
     expect(after.workflows.weekly?.workflow).toBe("@acme/workflow-shared");
     expect(stillMounted(after, "@acme/workflow-shared")).toBe(true);
+  });
+
+  it("recognizes an absolute live workflow spec as its configured workflow during removal", () => {
+    const home = "/amy-home";
+    const before = {
+      ...DEFAULT_CONFIG,
+      workflows: {
+        project: {
+          workflow: "./project/workflow",
+          plugins: ["./project/workflow", "@acme/plugin-local"],
+        },
+      },
+    };
+    const profile = profiles(before, home).project!;
+
+    const carrier = carriedBy(before, profile, profile.workflow, home);
+    const after = configWithout(before, profile, profile.workflow, carrier, home);
+
+    expect(carrier).toEqual({ place: "workflow", profile: "project" });
+    expect(after.workflows.project).toBeUndefined();
   });
 });

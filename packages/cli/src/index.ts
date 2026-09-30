@@ -1325,7 +1325,7 @@ async function mountingWithout(
   spec: string,
   carrier: Carrier,
 ): Promise<BootCheck> {
-  const trialConfig = configWithout(config, profile, spec, carrier);
+  const trialConfig = configWithout(config, profile, spec, carrier, home);
 
   // Extras mount under every profile. The trial is therefore all remaining
   // profiles, not merely the one selected by this invocation.
@@ -1385,7 +1385,9 @@ function refuseRemoval(
 ): string | undefined {
   const carried =
     Object.values(config.workflows).some((entry) => entry.workflow === spec) ||
-    Object.values(profiles(config, home)).some((candidate) => pluginList(config, candidate).includes(spec));
+    Object.values(profiles(config, home)).some((candidate) =>
+      candidate.workflow === spec || pluginList(config, candidate).includes(spec),
+    );
 
   if (!carried) return `the config does not name ${spec}`;
 
@@ -1494,7 +1496,7 @@ async function removeCommand(home: string, spec: string): Promise<void> {
     return;
   }
   const profile = selected(config);
-  const carrier = carriedBy(config, profile, spec);
+  const carrier = carriedBy(config, profile, spec, home);
 
   const refusal = refuseRemoval(home, config, profile, spec, carrier);
   if (refusal) {
