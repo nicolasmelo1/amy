@@ -1,6 +1,6 @@
 import path from "node:path";
 import { AmyConfig } from "./config.js";
-import { Profile, directoriesFor, recommendedFor } from "./profiles.js";
+import { Profile, directoriesFor, projectStateKey, recommendedFor } from "./profiles.js";
 import { profilePaths } from "./paths.js";
 
 /**
@@ -13,6 +13,7 @@ import { profilePaths } from "./paths.js";
  */
 export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: string): Record<string, unknown> {
   const dirs = stateDirectories(stateDir, profile);
+  const own = pluginStateDirectories(stateDir, profile);
   const agent = effectiveAgent(config, profile);
 
   const derived: Record<string, unknown> = {
@@ -42,7 +43,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
       staleClaimMs: config.staleClaimMs,
     },
     "@amykit/plugin-file-store": { directory: dirs.records },
-    "@amykit/plugin-file-brief-store": briefStoreSlice(config, profile, stateDir),
+    "@amykit/plugin-file-brief-store": briefStoreSlice(config, profile),
     // Mounted in both profiles: one writes the notes, the other reads them,
     // and an install running only the first would still be filing the
     // friction the second will pick up.
@@ -72,8 +73,10 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
     },
+    // Phase-local, like the queue the tasks are put on: two phases of one
+    // project mounting it must not drain each other's errands.
     "@amykit/plugin-file-tasks": {
-      directory: "tasks",
+      directory: own.tasks,
       repo: config.repos[0] ?? "",
     },
     "@amykit/plugin-plan-check": {
@@ -117,6 +120,8 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     },
   };
 
+  Object.assign(derived, slackSlice(own.slack));
+
   if (config.notify.hermes) {
     derived["@amykit/plugin-notify-hermes"] = { target: config.notify.hermes };
   }
@@ -153,6 +158,21 @@ function stateDirectories(stateDir: string | undefined, profile: Profile): { rec
     records: path.relative(stateDir, place.records),
     queue: path.relative(stateDir, place.queue),
   };
+}
+
+/** The threads a phase opened are its own; an ordinary profile's slice stays as it was. */
+function slackSlice(directory: string): Record<string, unknown> {
+  return directory === "slack" ? {} : { "@amykit/plugin-slack": { directory } };
+}
+
+/** Plugin-owned state directories, relative to the state root the plugin is handed. */
+function pluginStateDirectories(stateDir: string | undefined, profile: Profile): { tasks: string; slack: string } {
+  if (!stateDir) {
+    const base = profile.project ? `${projectStateKey(profile.project, profile.name)}/` : "";
+    return { tasks: `${base}tasks`, slack: `${base}slack` };
+  }
+  const place = profilePaths(stateDir, profile);
+  return { tasks: path.relative(stateDir, place.tasks), slack: path.relative(stateDir, place.slack) };
 }
 
 /** The worktree adapter reads the same absolute records directory as the file store. */
@@ -203,11 +223,18 @@ function fileStoreBriefDirectory(config: AmyConfig): string | undefined {
 }
 
 /** The file BriefStore's settings, including the one-time legacy translation. */
-function briefStoreSlice(config: AmyConfig, profile: Profile, stateDir?: string): { directory: string } {
-  // Project phases share a host-owned artifact root.  Legacy profiles retain
-  // the file-store translation, including an explicit path they already use.
-  const projectArtifacts = stateDir === undefined || profilePaths(stateDir, profile).artifacts !== undefined;
-  return { directory: profile.project && projectArtifacts ? "briefs" : (fileStoreBriefDirectory(config) ?? "briefs") };
+function briefStoreSlice(config: AmyConfig, profile: Profile): { directory: string } {
+  // Project phases share a host-owned artifact root; a promoted phase's old
+  // briefs are adopted into it at assembly. Ordinary profiles retain the
+  // file-store translation, including an explicit path they already use.
+  return { directory: profile.project ? "briefs" : legacyBriefDirectory(config) };
+}
+
+/** Where an ordinary profile keeps its briefs, relative to the state directory. */
+export function legacyBriefDirectory(config: AmyConfig): string {
+  const own = config.plugins["@amykit/plugin-file-brief-store"];
+  if (isRecord(own) && typeof own.directory === "string") return own.directory;
+  return fileStoreBriefDirectory(config) ?? "briefs";
 }
 
 /**

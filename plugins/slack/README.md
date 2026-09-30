@@ -29,6 +29,7 @@ plugins:
   "@amykit/plugin-slack":
     channel: <string>
     defaultRetryAfterSeconds: 60
+    directory: "slack"
     maxRateLimitRetries: 5
     operator: <string>
     retentionDays: 30
@@ -39,6 +40,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `channel` | `string` | **yes** |  | the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name |
 | `defaultRetryAfterSeconds` | `number` | no | `60` | how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins |
+| `directory` | `string` | no | `slack` | where each work item's thread is remembered, relative to the state directory |
 | `maxRateLimitRetries` | `number` | no | `5` | how many times a call Slack rate limits (HTTP 429) is waited out and tried again before it fails |
 | `operator` | `string` | **yes** |  | the user id, such as U0XXXXXXX, whose replies are answers; everybody else's are ignored |
 | `retentionDays` | `number` | no | `30` | days a downloaded file or a thread's memory stays unused before it is pruned, 0 to keep everything. A pruned file is fetched again when its reply is read; a pruned thread means the next question opens a new one |

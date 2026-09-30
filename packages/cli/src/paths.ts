@@ -31,7 +31,7 @@ export function paths(home: string) {
   };
 }
 
-/** The two directories that belong to one profile and to nothing else. */
+/** The directories that belong to one profile and to nothing else. */
 export function profilePaths(home: string, profile: string | Profile) {
   return { ...paths(home), ...statePaths(home, profile) };
 }
@@ -41,18 +41,32 @@ function statePaths(home: string, profile: string | Profile) {
   const name = typeof profile === "string" ? profile : profile.name;
   const project = phaseState(profile);
   const legacy = keepsLegacyState(home, name, project);
+  const artifacts = projectArtifacts(profile);
+  // Plugin-owned state follows the phase the way its queue does. A retained
+  // legacy phase keeps the shared locations it has always written.
+  const own = project && !legacy ? project : "";
 
   return {
     records: path.join(home, legacy ? name : dirs.records, legacy ? "records" : ""),
     queue: path.join(home, legacy ? name : dirs.queue, legacy ? "queue" : ""),
+    tasks: path.join(home, own, "tasks"),
+    slack: path.join(home, own, "slack"),
+    // Every phase of a project shares one artifact root, including a phase
+    // that keeps its legacy records: otherwise the upgrade path is the one
+    // where grooming writes a brief execution cannot read.
+    ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
     ...(project && !legacy ? {
-      artifacts: path.join(home, projectArtifacts(profile)!),
       log: path.join(home, project, "log"),
       // A retained legacy queue is still driven by the legacy daemon. Keep
       // looking at its PID until an explicit state migration moves the queue.
       pid: path.join(home, project, "daemon.pid"),
     } : {}),
   };
+}
+
+/** Whether a phase still reads the layout it had before it became one. */
+export function keepsLegacyLayout(home: string, profile: Profile): boolean {
+  return keepsLegacyState(home, profile.name, phaseState(profile));
 }
 
 function phaseState(profile: string | Profile): string | undefined {

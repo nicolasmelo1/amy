@@ -111,12 +111,16 @@ export class FileBriefStore implements BriefStore {
   private async acquire(lock: string): Promise<number> {
     while (FileBriefStore.heldLocks.has(lock)) await new Promise((resolve) => setTimeout(resolve, 1));
     FileBriefStore.heldLocks.add(lock);
-    const descriptor = fs.openSync(lock, "a");
+    let descriptor: number | undefined;
     try {
+      // Inside the guard: an open that fails (the directory went away, the
+      // process ran out of descriptors) must not leave the in-process claim
+      // behind, or every later write to this brief waits forever.
+      descriptor = fs.openSync(lock, "a");
       await this.flock(descriptor, "ex");
       return descriptor;
     } catch (error: unknown) {
-      fs.closeSync(descriptor);
+      if (descriptor !== undefined) fs.closeSync(descriptor);
       FileBriefStore.heldLocks.delete(lock);
       throw error;
     }

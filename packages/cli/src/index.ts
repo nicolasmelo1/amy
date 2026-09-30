@@ -13,7 +13,6 @@ import {
   CommandRunner,
   Engine,
   FileStopSwitch,
-  Mounted,
   NodeCommandRunner,
   WorkRecord,
   Worktree,
@@ -59,6 +58,7 @@ import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
+import { Assembled, assembleProfile } from "./assemble.js";
 import { installedStamp } from "./stamp.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
 import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
@@ -120,57 +120,14 @@ function loadMountable(specs: readonly string[]): Promise<LoadResult> {
   return load(specs, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
 }
 
-/**
- * Loads the plugins the config asks for and assembles them.
- *
- * Every refusal happens here, by name, before a ticket is touched: a plugin
- * that will not import, a setting that is not one it has, two plugins
- * claiming the same port, an action the workflow emits that nothing can run.
- */
-async function assemble(
-  profile: Profile,
-): Promise<
-  { ok: true; engine: Engine; mounted: Mounted } | { ok: false; problems: string[] }
-> {
-  const config = loadConfig(home);
-  const place = profilePaths(home, profile);
-  const specs = pluginList(config, profile);
-
-  const loaded = await loadMountable(specs);
-  if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
-  if (profile.project && !loaded.bySpec.has(profile.workflow)) {
-    return { ok: false, problems: [`${profile.project.phase}/: configured workflow plugin is not mounted`] };
-  }
-
-  const outcome = await mount(
-    [...loaded.plugins, hostPlugin(() => loadRoster(home))],
-    pluginSlices(config, profile, home),
-    {
-      runner,
-      now: () => new Date(),
-      log: new FileEventLog(place.log, undefined, build),
-      paths: hostPaths(config, place.base, profile),
-    },
-    profile.project ? {
-      workflowLabel: `${profile.project.phase}/`,
-      workflowPlugin: loaded.bySpec.get(profile.workflow),
-    } : undefined,
-  );
-
-  if (!outcome.ok) return { ok: false, problems: outcome.problems };
-
-  const { mounted } = outcome;
-  if (!mounted.engine) {
-    return { ok: false, problems: ["no plugin mounted an engine, so nothing can advance work"] };
-  }
-  if (!mounted.workflow) {
-    return { ok: false, problems: ["no plugin mounted a workflow, so there is no order to follow"] };
-  }
-
-  const unmet = unmetNeeds(mounted, mounted.workflow);
-  if (unmet.length > 0) return { ok: false, problems: unmet };
-
-  return { ok: true, engine: mounted.engine, mounted };
+/** Assembles one profile with this process's runner, loader, log and host glue. */
+function assemble(profile: Profile): Promise<Assembled> {
+  return assembleProfile(home, loadConfig(home), profile, {
+    runner,
+    load: loadMountable,
+    log: (file) => new FileEventLog(file, undefined, build),
+    host: [hostPlugin(() => loadRoster(home))],
+  });
 }
 
 /** Runs this executable's update command and returns its exact exit status. */
@@ -594,14 +551,12 @@ program
       return;
     }
 
-    // The handbrake first, so a run in the middle of an agent call ends its
-    // children rather than being killed with them still going, and then the
-    // loop itself. Cleared afterwards: pausing is a separate thing an
-    // operator does, and stopping should not leave the machine held.
-    stopSwitch.request("stopped by hand");
+    // Only the selected daemon is signalled. Its SIGTERM handler ends its own
+    // agent children; the handbrake is machine-wide, so pulling it here would
+    // also interrupt another phase's `run`, and clearing it afterwards would
+    // discard a pause the operator set. `pause` and `resume` own the switch.
     process.kill(record.pid, "SIGTERM");
     await waitForDaemonExit(record.pid);
-    stopSwitch.clear();
     // The detached reaper owns an after-timed update, including a crash or
     // direct signal. Do not race it by consuming the marker here.
     if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(place.pid);
@@ -693,7 +648,7 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   } finally {
     release();
   }
-  let afterUpdateClaimed = false;
+  let afterUpdateClaimed: boolean;
   try {
     await drive();
   } finally {
@@ -877,7 +832,7 @@ program
     // anything. That is the whole point of the command: the cost of capturing
     // a thing you said in passing has to be close to zero, or it does not get
     // captured.
-    const task = new FileTasks(path.join(place.base, "tasks"), { defaultRepo: repo }).add(
+    const task = new FileTasks(place.tasks, { defaultRepo: repo }).add(
       { repo, text, source: options.source },
       now,
     );

@@ -36,7 +36,7 @@ function appendFromAnotherProcess(root: string, prefix: string): Promise<void> {
 }
 
 /** Hold the real kernel lock in another process until the test releases it. */
-function holdLockInAnotherProcess(lock: string, ready: string, release: string): Promise<void> {
+async function holdLockInAnotherProcess(lock: string, ready: string, release: string): Promise<{ held: Promise<void> }> {
   const program = `
     import fs from "node:fs";
     import { flock } from "fs-ext";
@@ -48,18 +48,38 @@ function holdLockInAnotherProcess(lock: string, ready: string, release: string):
     await new Promise((resolve, reject) => flock(descriptor, "un", (error) => error ? reject(error) : resolve()));
     fs.closeSync(descriptor);
   `;
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ["--input-type=module", "--eval", program], {
-      env: { ...process.env, AMY_LOCK: lock, AMY_READY: ready, AMY_RELEASE: release },
-      stdio: "inherit",
-    });
+  const child = spawn(process.execPath, ["--input-type=module", "--eval", program], {
+    env: { ...process.env, AMY_LOCK: lock, AMY_READY: ready, AMY_RELEASE: release },
+    stdio: "inherit",
+  });
+  const held = new Promise<void>((resolve, reject) => {
     child.once("error", reject);
     child.once("exit", (code) => code === 0 ? resolve() : reject(new Error(`brief lock holder exited ${code}`)));
   });
+  // Readiness races the holder's own exit and a deadline: a holder that dies
+  // before taking the lock is a failure to report, not a file to wait for.
+  try {
+    await Promise.race([
+      waitForFile(ready, held),
+      held.then(() => { throw new Error("brief lock holder exited before it held the lock"); }),
+    ]);
+  } catch (error: unknown) {
+    child.kill();
+    await held.catch(() => undefined);
+    throw error;
+  }
+  return { held };
 }
 
-async function waitForFile(file: string): Promise<void> {
-  while (!fs.existsSync(file)) await new Promise((resolve) => setTimeout(resolve, 1));
+async function waitForFile(file: string, until: Promise<unknown>, timeoutMs = 10_000): Promise<void> {
+  let settled = false;
+  until.then(() => { settled = true; }, () => { settled = true; });
+  const deadline = Date.now() + timeoutMs;
+  while (!fs.existsSync(file)) {
+    if (settled) return;
+    if (Date.now() > deadline) throw new Error(`${file} did not appear within ${timeoutMs}ms`);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
 }
 
 /** A written brief, in the shape the port's own writers leave behind. */
@@ -174,7 +194,7 @@ describe("FileBriefStore", () => {
 
     const brief = await store.get("brief-1");
     expect(brief?.questions).toHaveLength(60);
-    expect(new Set(brief?.questions.map((question) => question.workId))).toHaveLength(60);
+    expect(new Set(brief?.questions.map((question) => question.workId)).size).toBe(60);
   });
 
   it("keeps the event loop free while another phase owns a brief lock", async () => {
@@ -182,8 +202,7 @@ describe("FileBriefStore", () => {
     const lock = path.join(root, "brief-1.json.lock");
     const ready = path.join(root, "lock-ready");
     const release = path.join(root, "lock-release");
-    const holder = holdLockInAnotherProcess(lock, ready, release);
-    await waitForFile(ready);
+    const holder = await holdLockInAnotherProcess(lock, ready, release);
 
     const mutation = store.appendQuestion({
       id: "brief-1",
@@ -195,7 +214,23 @@ describe("FileBriefStore", () => {
     expect(timerRan).toBe(true);
 
     fs.writeFileSync(release, "release");
-    await Promise.all([holder, mutation]);
+    await Promise.all([holder.held, mutation]);
+  });
+
+  it("releases its claim on a brief when the lock cannot even be opened", async () => {
+    // The artifact directory disappears under the store, so opening the lock
+    // fails before any kernel lock is taken.
+    fs.rmSync(root, { recursive: true, force: true });
+    await expect(seeded(store)).rejects.toThrow(/ENOENT/);
+
+    // Once the filesystem is back, the next write to that brief proceeds
+    // rather than waiting on a claim nobody holds.
+    fs.mkdirSync(root, { recursive: true });
+    const recovered = await Promise.race([
+      seeded(store),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("the write waited on a stale claim")), 2_000)),
+    ]);
+    expect(recovered.revision).toBe(1);
   });
 
   it("keeps one stable kernel-lock inode without private owner files", async () => {
