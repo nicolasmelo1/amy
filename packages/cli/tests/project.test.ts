@@ -274,30 +274,28 @@ describe("a project is three phases", () => {
     })).toThrow("a workflow profile name must be one path component");
   });
 
-  it("gives every worktree reader the file store directory an operator overrides", () => {
+  it("rejects global record directory overrides for phases rather than sharing their state", () => {
     const home = "/amy";
     const known = profiles(config, home);
     const overridden = {
       ...config,
       plugins: { "@amykit/plugin-file-store": { directory: "records-on-volume" } },
     };
-    const slices = pluginSlices(overridden, known.execution!, home) as Record<string, Record<string, string>>;
 
-    expect(slices["@amykit/plugin-file-store"]?.directory).toBe("records-on-volume");
-    expect(slices["@amykit/plugin-file-worktree"]?.recordsDirectory).toBe(path.join(home, "records-on-volume"));
+    expect(() => pluginSlices(overridden, known.execution!, home))
+      .toThrow("@amykit/plugin-file-store.directory is shared across profiles");
   });
 
-  it("keeps an absolute-looking record override on the file store's state-root path", () => {
+  it("rejects global queue directory overrides for phases rather than splitting writers from mounts", () => {
     const home = "/amy";
     const known = profiles(config, home);
     const overridden = {
       ...config,
-      plugins: { "@amykit/plugin-file-store": { directory: "/records-on-volume" } },
+      plugins: { "@amykit/plugin-file-queue": { directory: "queue-on-volume" } },
     };
-    const slices = pluginSlices(overridden, known.execution!, home) as Record<string, Record<string, string>>;
 
-    expect(slices["@amykit/plugin-file-store"]?.directory).toBe("/records-on-volume");
-    expect(slices["@amykit/plugin-file-worktree"]?.recordsDirectory).toBe(path.join(home, "/records-on-volume"));
+    expect(() => pluginSlices(overridden, known.execution!, home))
+      .toThrow("@amykit/plugin-file-queue.directory is shared across profiles");
   });
 
   it("keeps prototype-named profiles as configured own entries", () => {

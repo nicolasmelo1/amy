@@ -143,7 +143,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | `plugin-file-queue` | `plugins/file-queue/src/**` | 9 |
 | `plugin-github` | `plugins/github/src/**`<br>`packages/workflow-*/src/**` | 4 |
 | `plugin-serial-engine` | `plugins/serial-engine/src/**`<br>`plugins/notify-fanout/src/**` | 13 |
-| `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 14 |
+| `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 14 |
 | `ticket-to-qa` | `packages/workflow-ticket-to-qa/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-brief-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**` | 49 |
 
 <!-- amy:end factory-gates -->

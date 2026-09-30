@@ -7831,6 +7831,7 @@
         "name": "project-phases",
         "activation": [
           "packages/cli/src/assemble.ts",
+          "packages/cli/src/index.ts",
           "packages/cli/src/paths.ts",
           "packages/cli/src/profiles.ts",
           "packages/cli/src/slices.ts",

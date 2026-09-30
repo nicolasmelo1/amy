@@ -12,6 +12,7 @@ import { profilePaths } from "./paths.js";
  * is moving in.
  */
 export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: string): Record<string, unknown> {
+  assertPhaseStateDirectoriesAreNotShared(config, profile);
   const dirs = stateDirectories(stateDir, profile);
   const own = pluginStateDirectories(stateDir, profile);
   const agent = effectiveAgent(config, profile);
@@ -149,6 +150,17 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
   );
 
   return merged;
+}
+
+/** Global state-directory overrides have no profile slot, so phases cannot safely share one. */
+function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Profile): void {
+  if (!profile.project) return;
+  for (const plugin of ["@amykit/plugin-file-queue", "@amykit/plugin-file-store"] as const) {
+    const slice = config.plugins[plugin];
+    if (isRecord(slice) && typeof slice.directory === "string") {
+      throw new Error(`${plugin}.directory is shared across profiles and cannot be overridden for project phases`);
+    }
+  }
 }
 
 function stateDirectories(stateDir: string | undefined, profile: Profile): { records: string; queue: string } {
