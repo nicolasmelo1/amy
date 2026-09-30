@@ -2,6 +2,7 @@
 "@amykit/cli": patch
 "@amykit/core": patch
 "@amykit/plugin-file-brief-store": patch
+"@amykit/plugin-file-worktree": patch
 "@amykit/plugin-slack": patch
 ---
 

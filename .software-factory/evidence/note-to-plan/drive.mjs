@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   BY_HAND,
   BY_HAND_SLUG,
@@ -65,12 +65,25 @@ const plans = (root, args) => amy(root, ["--workflow", "plans", ...args]);
 function installPlugins(root) {
   const tarballs = process.env.AMY_E2E_TARBALLS;
   if (!tarballs) throw new Error("the scenario did not name the packaged plugins");
-  const packages = fs.readdirSync(tarballs)
+  const packed = fs.readdirSync(tarballs)
     .filter((name) => name.endsWith(".tgz"))
-    .map((name) => path.join(tarballs, name));
+    .map((name) => path.join(tarballs, name))
+    .map((file) => ({
+      file,
+      manifest: JSON.parse(execFileSync("tar", ["-xOf", file, "package/package.json"], { encoding: "utf-8" })),
+    }));
+  // The CLI is already installed through install.sh, where local overrides
+  // bind unreleased fixed-group siblings to these tarballs.
+  const packages = packed.filter(({ manifest }) => manifest.name !== "@amykit/cli").map(({ file }) => file);
+  const prefix = path.join(root, "home", ".amy", "plugins");
+  const overrides = Object.fromEntries(packed
+    .filter(({ manifest }) => manifest.name !== "@amykit/cli")
+    .map(({ file, manifest }) => [manifest.name, `file:${file}`]));
+  fs.mkdirSync(prefix, { recursive: true });
+  fs.writeFileSync(path.join(prefix, "package.json"), `${JSON.stringify({ name: "amy-e2e-plugins", private: true, overrides }, null, 2)}\n`, "utf-8");
   const result = spawnSync(
     "npm",
-    ["install", "--prefix", path.join(root, "home", ".amy", "plugins"), "--no-audit", "--no-fund", ...packages],
+    ["install", "--prefix", prefix, "--no-audit", "--no-fund", ...packages],
     { encoding: "utf-8" },
   );
   if (result.status !== 0) throw new Error(`the scenario could not install the packaged plugins: ${result.stderr}`);

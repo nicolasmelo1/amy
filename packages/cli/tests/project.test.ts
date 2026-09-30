@@ -298,6 +298,18 @@ describe("a project is three phases", () => {
       .toThrow("@amykit/plugin-file-queue.directory is shared across profiles");
   });
 
+  it("rejects a global worktree workflow override for phases rather than sharing checkouts", () => {
+    const home = "/amy";
+    const known = profiles(config, home);
+    const overridden = {
+      ...config,
+      plugins: { "@amykit/plugin-file-worktree": { workflow: "shared-worktrees" } },
+    };
+
+    expect(() => pluginSlices(overridden, known.execution!, home))
+      .toThrow("@amykit/plugin-file-worktree.workflow is shared across profiles");
+  });
+
   it("keeps prototype-named profiles as configured own entries", () => {
     const workflows: Record<string, { workflow: string }> = Object.create(null);
     workflows["__proto__"] = { workflow: path.join(root, "brief") };

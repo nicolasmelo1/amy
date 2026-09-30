@@ -321,9 +321,27 @@ function reactions() {
 function installPlugins(root) {
   const tarballs = process.env.AMY_E2E_TARBALLS;
   if (!tarballs) throw new Error("the scenario did not name the packaged plugins");
-  const packages = fs.readdirSync(tarballs)
+  const packed = fs.readdirSync(tarballs)
     .filter((name) => name.endsWith(".tgz"))
-    .map((name) => path.join(tarballs, name));
+    .map((name) => path.join(tarballs, name))
+    .map((file) => ({
+      file,
+      manifest: JSON.parse(execFileSync("tar", ["-xOf", file, "package/package.json"], { encoding: "utf-8" })),
+    }));
+  // The CLI is already bootstrapped by install.sh. Reinstalling its old
+  // pre-release tarball as a direct dependency bypasses that install's local
+  // overrides and asks the registry for the not-yet-published worktree patch.
+  const packages = packed.filter(({ manifest }) => manifest.name !== "@amykit/cli").map(({ file }) => file);
+  const prefix = path.join(root, "home", ".amy", "plugins");
+  // Packages are packed before their fixed release group receives its next
+  // version. Install through the same local overrides the real installer
+  // writes, so this scenario exercises those tarballs rather than asking the
+  // registry for an unreleased sibling range.
+  const overrides = Object.fromEntries(packed
+    .filter(({ manifest }) => manifest.name !== "@amykit/cli")
+    .map(({ file, manifest }) => [manifest.name, `file:${file}`]));
+  fs.mkdirSync(prefix, { recursive: true });
+  fs.writeFileSync(path.join(prefix, "package.json"), `${JSON.stringify({ name: "amy-e2e-plugins", private: true, overrides }, null, 2)}\n`, "utf-8");
   const result = spawnSync(
     "npm",
     ["install", "--prefix", path.join(root, "home", ".amy", "plugins"), "--no-audit", "--no-fund", ...packages],

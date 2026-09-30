@@ -161,6 +161,10 @@ function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Pro
       throw new Error(`${plugin}.directory is shared across profiles and cannot be overridden for project phases`);
     }
   }
+  const worktree = config.plugins["@amykit/plugin-file-worktree"];
+  if (isRecord(worktree) && typeof worktree.workflow === "string") {
+    throw new Error("@amykit/plugin-file-worktree.workflow is shared across profiles and cannot be overridden for project phases");
+  }
 }
 
 function stateDirectories(stateDir: string | undefined, profile: Profile): { records: string; queue: string } {

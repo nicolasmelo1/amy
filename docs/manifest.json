@@ -8295,6 +8295,10 @@
             "level": "patch"
           },
           {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "patch"
+          },
+          {
             "package": "@amykit/plugin-slack",
             "level": "patch"
           }

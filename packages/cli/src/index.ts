@@ -146,9 +146,17 @@ function scheduledUpdate(): Promise<number> {
 }
 
 /** A reaper can leave a due update behind; the next owner settles it before publishing a daemon. */
-async function settlePendingDaemonUpdate(profile: Profile, command: string): Promise<void> {
+async function settlePendingDaemonUpdate(profile: Profile, command: string, config: AmyConfig): Promise<void> {
+  // A package update is machine-wide. Keep its durable due marker for the
+  // first idle boundary rather than making another phase's startup fail.
+  if (anotherProfileDaemonIsRunning(profile, config)) return;
   if (await settleDaemonUpdate(home, profile.name, scheduledUpdate)) return;
   throw new Error(`the previous daemon's scheduled update did not settle; fix it and try ${command} again`);
+}
+
+/** A profile may start while a sibling owns the shared package installation. */
+function anotherProfileDaemonIsRunning(profile: Profile, config: AmyConfig): boolean {
+  return Object.values(profiles(config, home)).some((candidate) => candidate.name !== profile.name && runningProfileDaemon(candidate));
 }
 
 /** Applies the persisted schedule around one foreground workflow invocation. */
@@ -496,9 +504,9 @@ program
     // A detached reaper still owns the dead record and its after-timed
     // update. Starting another loop must not clear that record before the
     // reaper can claim it, or silently lose the scheduled maintenance.
-    await settlePendingDaemonUpdate(profile, "start");
+    await settlePendingDaemonUpdate(profile, "start", config);
     const schedule = beginAutoUpdateInvocation(home, profile.name, config);
-    await runDueBeforeDaemonUpdate(schedule, profile);
+    await runDueBeforeDaemonUpdate(schedule, profile, config);
 
     // The claim spans only the moment the loop becomes visible: an update
     // refused to move packages while a child was between its spawn and its
@@ -649,11 +657,11 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   const config = loadConfig(home);
   const problems = configuredAutoUpdateProblems(config);
   if (problems.length > 0) throw new Error(problems.join("; "));
-  await settlePendingDaemonUpdate(profile, "daemon");
+  await settlePendingDaemonUpdate(profile, "daemon", config);
   const schedule = beginAutoUpdateInvocation(home, profile.name, config);
   // A before update settles before this foreground process becomes the daemon;
   // an after update settles after its record is removed.
-  await runDueBeforeDaemonUpdate(schedule, profile);
+  await runDueBeforeDaemonUpdate(schedule, profile, config);
   const file = profilePaths(home, profile).pid;
   const release = claimDaemonBoundary(paths(home).pid);
   if (!release) throw new Error("the loop is starting or amy update is running; try again when it finishes");
@@ -678,9 +686,10 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
 }
 
 /** Keep a failed before-update due until a later start can settle it safely. */
-async function runDueBeforeDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile): Promise<void> {
+async function runDueBeforeDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile, config: AmyConfig): Promise<void> {
   if (!schedule.due || schedule.timing !== "before") return;
   markDaemonUpdate(home, profile.name);
+  if (anotherProfileDaemonIsRunning(profile, config)) return;
   const claimed = takeDaemonUpdate(home, profile.name);
   if (!claimed || await scheduledUpdate() !== 0) {
     if (claimed) retryDaemonUpdate(home, profile.name);

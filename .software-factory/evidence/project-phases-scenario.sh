@@ -175,10 +175,16 @@ await attempt("project.each_phase_is_its_own_daemon", async () => {
   fs.writeFileSync(path.join(home, "config.yaml"), JSON.stringify(config), "utf-8");
   try {
     const groomingStart = run("grooming", "start");
+    // An exited execution daemon still owes a shared package update. While
+    // grooming is live, execution must defer that update and still start.
+    const executionUpdate = path.join(home, "workflows", "execution", "auto-update-daemon");
+    fs.mkdirSync(path.dirname(executionUpdate), { recursive: true });
+    fs.writeFileSync(executionUpdate, "due\n", "utf-8");
     const executionStart = run("execution", "start");
     if (groomingStart.status !== 0 || executionStart.status !== 0) {
       throw new Error(`start failed: ${groomingStart.stderr}${executionStart.stderr}`);
     }
+    if (!fs.existsSync(executionUpdate)) throw new Error("execution consumed its deferred update while grooming was live");
     if (!(await waitFor(() => live(groomingPid) && live(executionPid)))) {
       const output = (file) => fs.existsSync(file) ? fs.readFileSync(path.join(path.dirname(file), "daemon.log"), "utf-8") : "missing pid";
       throw new Error(`daemons were not both live: grooming=${output(groomingPid)}, execution=${output(executionPid)}`);
