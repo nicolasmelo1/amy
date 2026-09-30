@@ -35,6 +35,12 @@ describe("the loop that is running", () => {
     expect(runningForWorkflow(file, "other")).toMatchObject({ pid: process.pid, workflow: "other" });
   });
 
+  it("keeps a live shared record visible before another profile can publish", () => {
+    writeDaemon(file, record(process.pid, "other"));
+
+    expect(running(file)).toMatchObject({ pid: process.pid, workflow: "other" });
+  });
+
   it("is nothing when the process it names is gone", () => {
     // What a reboot leaves behind. A second `amy start` has to be able to
     // tell this from a loop that is genuinely up.

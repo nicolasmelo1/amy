@@ -171,10 +171,31 @@ describe("runWithAutoUpdate", () => {
     }
   });
 
+  it("does not recover a claim when its owner cannot be read", () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+    const claim = path.join(root, "workflows", "oncall", "auto-update-daemon.claimed");
+    fs.mkdirSync(claim);
+
+    expect(() => takeDaemonUpdate(root, "oncall")).toThrow("EISDIR");
+    expect(fs.existsSync(claim)).toBe(true);
+    expect(fs.existsSync(path.join(root, "workflows", "oncall", "auto-update-daemon"))).toBe(true);
+  });
+
   it("lets the next daemon start settle a due update left by its reaper", async () => {
     const root = home();
     markDaemonUpdate(root, "oncall");
 
+    expect(await settleDaemonUpdate(root, "oncall", async () => 0)).toBe(true);
+    expect(hasDaemonUpdate(root, "oncall")).toBe(false);
+  });
+
+  it("keeps a failed pre-start update due for the next daemon", async () => {
+    const root = home();
+    markDaemonUpdate(root, "oncall");
+
+    expect(await settleDaemonUpdate(root, "oncall", async () => 1)).toBe(false);
+    expect(hasDaemonUpdate(root, "oncall")).toBe(true);
     expect(await settleDaemonUpdate(root, "oncall", async () => 0)).toBe(true);
     expect(hasDaemonUpdate(root, "oncall")).toBe(false);
   });

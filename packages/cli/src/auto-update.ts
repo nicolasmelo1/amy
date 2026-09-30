@@ -99,19 +99,22 @@ function recoverDaemonUpdateClaim(file: string): void {
   const claims = [`${file}.claimed`, `${file}.claiming`];
   const claim = claims.find((candidate) => fs.existsSync(candidate));
   if (!claim) return;
-  try {
-    const owner = Number.parseInt(fs.readFileSync(claim, "utf8").trim(), 10);
-    if (!Number.isSafeInteger(owner) || owner <= 0) throw new Error("invalid owner");
-    process.kill(owner, 0);
-    return;
-  } catch (error: unknown) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") return;
+  const owner = Number.parseInt(fs.readFileSync(claim, "utf8").trim(), 10);
+  if (Number.isSafeInteger(owner) && owner > 0) {
     try {
-      if (claim.endsWith(".claimed")) fs.renameSync(claim, file);
-      else fs.rmSync(claim, { force: true });
-    } catch {
-      // A live owner or another recovery settled the claim first.
+      process.kill(owner, 0);
+      return;
+    } catch (error: unknown) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EPERM") return;
+      if (code !== "ESRCH") throw error;
     }
+  }
+  try {
+    if (claim.endsWith(".claimed")) fs.renameSync(claim, file);
+    else fs.rmSync(claim, { force: true });
+  } catch {
+    // Another recovery settled the stale claim first.
   }
 }
 

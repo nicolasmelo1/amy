@@ -183,6 +183,11 @@ function runningProfileDaemon(profile: Profile): { file: string; record: NonNull
   return undefined;
 }
 
+/** The legacy PID is shared, so it must never be overwritten by another profile. */
+function runningSharedDaemon(): ReturnType<typeof running> {
+  return running(paths(home).pid);
+}
+
 /** Assembles, or prints why it could not and stops. */
 async function engineOrExit(): Promise<Engine> {
   const config = loadConfig(home);
@@ -493,9 +498,7 @@ program
     // reaper can claim it, or silently lose the scheduled maintenance.
     await settlePendingDaemonUpdate(profile, "start");
     const schedule = beginAutoUpdateInvocation(home, profile.name, config);
-    if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
-      throw new Error("amy update failed");
-    }
+    await runDueBeforeDaemonUpdate(schedule, profile);
 
     // The claim spans only the moment the loop becomes visible: an update
     // refused to move packages while a child was between its spawn and its
@@ -510,6 +513,11 @@ program
       return;
     }
     try {
+      const shared = runningSharedDaemon();
+      if (shared) {
+        console.log(`already running: pid ${shared.pid}, driving ${shared.workflow}`);
+        return;
+      }
       const current = runningProfileDaemon(profile);
       if (current) {
         console.log(`already running: pid ${current.record.pid}, driving ${current.record.workflow}`);
@@ -645,13 +653,13 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   const schedule = beginAutoUpdateInvocation(home, profile.name, config);
   // A before update settles before this foreground process becomes the daemon;
   // an after update settles after its record is removed.
-  if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
-    throw new Error("amy update failed");
-  }
+  await runDueBeforeDaemonUpdate(schedule, profile);
   const file = profilePaths(home, profile).pid;
   const release = claimDaemonBoundary(paths(home).pid);
   if (!release) throw new Error("the loop is starting or amy update is running; try again when it finishes");
   try {
+    const shared = runningSharedDaemon();
+    if (shared) throw new Error(`already running: pid ${shared.pid}, driving ${shared.workflow}`);
     const live = runningProfileDaemon(profile);
     if (live) throw new Error(`already running: pid ${live.record.pid}, driving ${live.record.workflow}`);
     writeDaemon(file, { pid: process.pid, workflow: profile.name, startedAt: new Date().toISOString() });
@@ -667,6 +675,18 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
     if (readDaemon(file)?.pid === process.pid) clearDaemon(file);
   }
   await finishAfterDaemonUpdate(schedule, profile, afterUpdateClaimed);
+}
+
+/** Keep a failed before-update due until a later start can settle it safely. */
+async function runDueBeforeDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile): Promise<void> {
+  if (!schedule.due || schedule.timing !== "before") return;
+  markDaemonUpdate(home, profile.name);
+  const claimed = takeDaemonUpdate(home, profile.name);
+  if (!claimed || await scheduledUpdate() !== 0) {
+    if (claimed) retryDaemonUpdate(home, profile.name);
+    throw new Error("amy update failed");
+  }
+  finishDaemonUpdate(home, profile.name);
 }
 
 /** Reserve a due after-update while this foreground daemon is still visible. */
