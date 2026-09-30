@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, isAlive, readDaemon, running, writeDaemon } from "../src/daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, isAlive, readDaemon, running, runningForWorkflow, writeDaemon } from "../src/daemon.js";
 
 describe("the loop that is running", () => {
   let home: string;
@@ -15,7 +15,7 @@ describe("the loop that is running", () => {
 
   afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
-  const record = (pid: number) => ({ pid, workflow: "oncall", startedAt: "2026-09-05T00:00:00.000Z" });
+  const record = (pid: number, workflow = "oncall") => ({ pid, workflow, startedAt: "2026-09-05T00:00:00.000Z" });
 
   it("is nothing when nothing was ever written", () => {
     expect(running(file)).toBeUndefined();
@@ -26,6 +26,13 @@ describe("the loop that is running", () => {
     writeDaemon(file, record(process.pid));
 
     expect(running(file)).toMatchObject({ pid: process.pid, workflow: "oncall" });
+  });
+
+  it("does not treat another workflow's live legacy record as its own", () => {
+    writeDaemon(file, record(process.pid, "other"));
+
+    expect(runningForWorkflow(file, "selected")).toBeUndefined();
+    expect(runningForWorkflow(file, "other")).toMatchObject({ pid: process.pid, workflow: "other" });
   });
 
   it("is nothing when the process it names is gone", () => {

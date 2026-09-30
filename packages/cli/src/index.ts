@@ -77,7 +77,7 @@ import {
   workflowProfileConflict,
   workflowProfileName,
 } from "./add.js";
-import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, running, writeDaemon } from "./daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, running, runningForWorkflow, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
@@ -177,7 +177,7 @@ function selected(config: AmyConfig = loadConfig(home)): Profile {
 /** A config transition must not hide the daemon its prior layout published. */
 function runningProfileDaemon(profile: Profile): { file: string; record: NonNullable<ReturnType<typeof running>> } | undefined {
   for (const file of profileDaemonPids(home, profile)) {
-    const record = running(file);
+    const record = runningForWorkflow(file, profile.name);
     if (record) return { file, record };
   }
   return undefined;
@@ -652,8 +652,8 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   const release = claimDaemonBoundary(paths(home).pid);
   if (!release) throw new Error("the loop is starting or amy update is running; try again when it finishes");
   try {
-    const live = running(file);
-    if (live) throw new Error(`already running: pid ${live.pid}, driving ${live.workflow}`);
+    const live = runningProfileDaemon(profile);
+    if (live) throw new Error(`already running: pid ${live.record.pid}, driving ${live.record.workflow}`);
     writeDaemon(file, { pid: process.pid, workflow: profile.name, startedAt: new Date().toISOString() });
   } finally {
     release();
@@ -930,7 +930,7 @@ program
       .all()
       .sort((a, b) => a.id.localeCompare(b.id));
 
-    const live = running(place.pid);
+    const live = runningProfileDaemon(profile)?.record;
     const held = stopSwitch.isRequested() ? stopSwitch.reason() : null;
     const notes = countIn(place.notes);
     const asked = countIn(place.needsInput);

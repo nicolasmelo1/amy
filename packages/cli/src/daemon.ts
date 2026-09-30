@@ -125,3 +125,9 @@ export function running(file: string): DaemonRecord | undefined {
   clearDaemon(file);
   return undefined;
 }
+
+/** A live record belongs to the profile that wrote it, not merely its path. */
+export function runningForWorkflow(file: string, workflow: string): DaemonRecord | undefined {
+  const record = running(file);
+  return record?.workflow === workflow ? record : undefined;
+}
