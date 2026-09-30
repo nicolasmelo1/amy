@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "gate": "amy-add-remove",
-  "implementation_sha256": "eef6ea178b695f967191f67bdb344429f598b0a4477b241dba5fdc403daf4564",
+  "implementation_sha256": "55790840607481a5fdb99e3ae74f462d4da13bd9c55a1b8ad536ce8da36fb731",
   "runs": [
     {
       "scenario": "amy-add-remove",
       "status": "passed",
-      "actor": "Hermes Agent, installing the command onto a scratch machine on macOS for Nicolas Melo",
+      "actor": "Claude (agent), installing the command onto a scratch machine with .software-factory/evidence/amy-add-remove-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/amy-add-remove-run.json",
       "report_sha256": "ebf83f3d2b8002ee33db92c30c8971b002b113396e6be4bfadde4a9da480c442",
       "required_assertions": [

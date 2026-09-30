@@ -1,0 +1,68 @@
+{
+  "scenario": "project-phases",
+  "status": "passed",
+  "goal": "I keep one project as three phases: grooming decides the work on an expensive model, execution does it continuously on a cheap one, and proving shows it holds. Prove each phase keeps its own queue, budget and daemon, that execution and proving read the brief grooming wrote without my config naming any directory, that my workflow's old briefs survive it becoming a phase, that a phase with no workflow is refused by name, and that an install with only a workflow is exactly what it was.",
+  "artifact": {
+    "package": "@amykit/cli",
+    "entry": "dist/assemble.js"
+  },
+  "observed": {
+    "assertions_run": 13,
+    "assertions_failed": 0,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "project.a_workflow_only_install_is_unchanged",
+      "status": "passed"
+    },
+    {
+      "type": "project.a_workflow_only_install_keeps_its_briefs",
+      "status": "passed"
+    },
+    {
+      "type": "project.every_phase_mounts",
+      "status": "passed"
+    },
+    {
+      "type": "project.each_phase_has_its_own_queue",
+      "status": "passed"
+    },
+    {
+      "type": "project.each_phase_spends_its_own_budget",
+      "status": "passed"
+    },
+    {
+      "type": "project.each_phase_is_its_own_daemon",
+      "status": "passed"
+    },
+    {
+      "type": "project.each_phase_keeps_its_own_tasks",
+      "status": "passed"
+    },
+    {
+      "type": "project.grooming_and_execution_choose_their_own_models",
+      "status": "passed"
+    },
+    {
+      "type": "project.a_brief_crosses_the_phase_boundary",
+      "status": "passed"
+    },
+    {
+      "type": "project.no_config_names_a_shared_directory",
+      "status": "passed"
+    },
+    {
+      "type": "project.no_phase_state_escapes_home",
+      "status": "passed"
+    },
+    {
+      "type": "project.a_promoted_workflow_keeps_its_briefs",
+      "status": "passed"
+    },
+    {
+      "type": "project.a_phase_without_a_workflow_is_refused_by_name",
+      "status": "passed"
+    }
+  ]
+}

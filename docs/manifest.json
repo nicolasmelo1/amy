@@ -839,8 +839,8 @@
         },
         {
           "depth": 3,
-          "title": "Let project phase profiles share artifacts while keeping state and spending isolated.",
-          "slug": "let-project-phase-profiles-share-artifacts-while-keeping-state-and-spending-isolated"
+          "title": "Let project phase profiles share artifacts while keeping state and spending isolated. A workflow promoted to a phase adopts the briefs it kept alone, each phase keeps its own tasks and Slack threads, and amy stop signals only the selected phase's daemon without touching the shared handbrake.",
+          "slug": "let-project-phase-profiles-share-artifacts-while-keeping-state-and-spending-isolated-a-workflow-promoted-to-a-phase-adopts-the-briefs-it-kept-alone-each-phase-keeps-its-own-tasks-and-slack-threads-and-amy-stop-signals-only-the-selected-phases-daemon-without-touching-the-shared-handbrake"
         },
         {
           "depth": 3,
@@ -7144,6 +7144,13 @@
             "description": "how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins"
           },
           {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "slack",
+            "description": "where each work item's thread is remembered, relative to the state directory"
+          },
+          {
             "name": "maxRateLimitRetries",
             "type": "number",
             "required": false,
@@ -7821,6 +7828,36 @@
         "scenario": ".software-factory/evidence/plugin-serial-engine-scenario.sh"
       },
       {
+        "name": "project-phases",
+        "activation": [
+          "packages/cli/src/assemble.ts",
+          "packages/cli/src/paths.ts",
+          "packages/cli/src/profiles.ts",
+          "packages/cli/src/slices.ts",
+          "packages/cli/src/loader.ts",
+          "packages/core/src/mount.ts",
+          "plugins/file-brief-store/src/**"
+        ],
+        "evidence": ".software-factory/evidence/project-phases.json",
+        "plan": "docs/design/a-project-is-three-phases.md",
+        "assertions": [
+          "project.a_workflow_only_install_is_unchanged",
+          "project.a_workflow_only_install_keeps_its_briefs",
+          "project.every_phase_mounts",
+          "project.each_phase_has_its_own_queue",
+          "project.each_phase_spends_its_own_budget",
+          "project.each_phase_is_its_own_daemon",
+          "project.each_phase_keeps_its_own_tasks",
+          "project.grooming_and_execution_choose_their_own_models",
+          "project.a_brief_crosses_the_phase_boundary",
+          "project.no_config_names_a_shared_directory",
+          "project.no_phase_state_escapes_home",
+          "project.a_promoted_workflow_keeps_its_briefs",
+          "project.a_phase_without_a_workflow_is_refused_by_name"
+        ],
+        "scenario": ".software-factory/evidence/project-phases-scenario.sh"
+      },
+      {
         "name": "ticket-to-qa",
         "activation": [
           "packages/workflow-ticket-to-qa/src/**",
@@ -8240,7 +8277,7 @@
       },
       {
         "id": "a-project-is-three-phases",
-        "title": "Let project phase profiles share artifacts while keeping state and spending isolated.",
+        "title": "Let project phase profiles share artifacts while keeping state and spending isolated. A workflow promoted to a phase adopts the briefs it kept alone, each phase keeps its own tasks and Slack threads, and `amy stop` signals only the selected phase's daemon without touching the shared handbrake.",
         "body": "",
         "bumps": [
           {
@@ -8253,6 +8290,10 @@
           },
           {
             "package": "@amykit/plugin-file-brief-store",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-slack",
             "level": "patch"
           }
         ],

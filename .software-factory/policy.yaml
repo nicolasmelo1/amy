@@ -462,6 +462,37 @@ gates:
       - "groom.the_step_reads_the_base_branch"
       - "groom.a_second_run_retires_what_it_cut"
 
+  # One project, three phases: the grooming phase's brief is what execution
+  # and proving read, while each keeps its own queue, budget and daemon. The
+  # scenario mounts every phase through the built assembly, so a change to
+  # how a phase's paths, slices or brief store are derived means the last run
+  # proved a project that no longer exists.
+  project-phases:
+    activation:
+      - "packages/cli/src/assemble.ts"
+      - "packages/cli/src/paths.ts"
+      - "packages/cli/src/profiles.ts"
+      - "packages/cli/src/slices.ts"
+      - "packages/cli/src/loader.ts"
+      - "packages/core/src/mount.ts"
+      - "plugins/file-brief-store/src/**"
+    evidence: ".software-factory/evidence/project-phases.json"
+    plan: "docs/design/a-project-is-three-phases.md"
+    required_assertions:
+      - "project.a_workflow_only_install_is_unchanged"
+      - "project.a_workflow_only_install_keeps_its_briefs"
+      - "project.every_phase_mounts"
+      - "project.each_phase_has_its_own_queue"
+      - "project.each_phase_spends_its_own_budget"
+      - "project.each_phase_is_its_own_daemon"
+      - "project.each_phase_keeps_its_own_tasks"
+      - "project.grooming_and_execution_choose_their_own_models"
+      - "project.a_brief_crosses_the_phase_boundary"
+      - "project.no_config_names_a_shared_directory"
+      - "project.no_phase_state_escapes_home"
+      - "project.a_promoted_workflow_keeps_its_briefs"
+      - "project.a_phase_without_a_workflow_is_refused_by_name"
+
 rules:
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:

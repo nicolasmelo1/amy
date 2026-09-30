@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "gate": "a-workflow-of-your-own",
-  "implementation_sha256": "c1be624fb850a65414523e5f2beb231fc45847a25f6d583f22ee9d01222d1bf1",
+  "implementation_sha256": "342eaf25d7c92421b7b2143e4f92037024b19d74876b5d1f0ee33b67a8fbfc2a",
   "runs": [
     {
       "scenario": "a-workflow-of-your-own",
       "status": "passed",
-      "actor": "Hermes Agent, installing the command alone and writing a private workflow for Nicolas Melo",
+      "actor": "Claude (agent), installing the command alone and writing a private workflow with .software-factory/evidence/workflow-new-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/workflow-new-run.json",
       "report_sha256": "5e325c7279264b83f0c480c1571137a38622212bfe68215d38d8b56af0887307",
       "required_assertions": []
