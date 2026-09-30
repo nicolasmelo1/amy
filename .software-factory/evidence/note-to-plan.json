@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable from a written-down piece of friction to a pull request against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/note-to-plan-run.json",
-      "report_sha256": "f070e62172e77809880a5401c21aafa997049c1b55442ef186226ccc46387079",
+      "report_sha256": "a5a46d22a58c52da59e056f8b175f0e4ebfff5ebf3ae5f4e4ae67e4af584640d",
       "required_assertions": []
     }
   ]
