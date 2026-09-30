@@ -2467,6 +2467,8 @@ const rosterCommand = program.command("roster").description("Who is reviewing to
 async function worktreeManager(config: AmyConfig): Promise<Worktree> {
   const profile = selected();
   const place = profilePaths(home, profile);
+  const slices = pluginSlices(config, profile, home) as Record<string, Record<string, unknown>>;
+  const recordsDirectory = slices["@amykit/plugin-file-worktree"]?.recordsDirectory;
   const assembled = await assemble(profile);
 
   return new WorktreeManager(runner, {
@@ -2476,7 +2478,8 @@ async function worktreeManager(config: AmyConfig): Promise<Worktree> {
     baseBranch: config.baseBranch,
     retentionDays: config.worktrees.retentionDays,
     record: (workId) => {
-      const file = path.join(place.records, `${workId}.json`);
+      const directory = typeof recordsDirectory === "string" ? recordsDirectory : place.records;
+      const file = path.join(directory, `${workId}.json`);
       try {
         return JSON.parse(fs.readFileSync(file, "utf-8")) as { state: string };
       } catch {

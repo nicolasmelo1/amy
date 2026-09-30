@@ -197,6 +197,23 @@ describe("a project is three phases", () => {
       ...DEFAULT_CONFIG,
       workflows: { "../../../outside": { workflow: path.join(root, "brief") } },
     })).toThrow("a workflow profile name must be one path component");
+    expect(() => profiles({
+      ...DEFAULT_CONFIG,
+      workflows: { "": { workflow: path.join(root, "brief") } },
+    })).toThrow("a workflow profile name must be one path component");
+  });
+
+  it("gives every worktree reader the file store directory an operator overrides", () => {
+    const home = "/amy";
+    const known = profiles(config, home);
+    const overridden = {
+      ...config,
+      plugins: { "@amykit/plugin-file-store": { directory: "records-on-volume" } },
+    };
+    const slices = pluginSlices(overridden, known.execution!, home) as Record<string, Record<string, string>>;
+
+    expect(slices["@amykit/plugin-file-store"]?.directory).toBe("records-on-volume");
+    expect(slices["@amykit/plugin-file-worktree"]?.recordsDirectory).toBe(path.join(home, "records-on-volume"));
   });
 
   it("keeps prototype-named profiles as configured own entries", () => {

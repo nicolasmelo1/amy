@@ -219,7 +219,7 @@ export function projectStateKey(project: ProjectIdentity, profile?: string): str
 
 /** A profile name becomes part of its state path, so it has one safe component. */
 function assertProfileName(name: string): void {
-  if (name === "." || name === ".." || name.includes("/") || name.includes("\\") || path.win32.basename(name) !== name) {
+  if (!name || name === "." || name === ".." || name.includes("/") || name.includes("\\") || path.win32.basename(name) !== name) {
     throw new Error(`a workflow profile name must be one path component: \`${name}\``);
   }
 }

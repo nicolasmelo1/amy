@@ -13,7 +13,6 @@ import { profilePaths } from "./paths.js";
  */
 export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: string): Record<string, unknown> {
   const dirs = stateDirectories(stateDir, profile);
-  const recordsDirectory = worktreeRecordsDirectory(stateDir, profile);
   const agent = effectiveAgent(config, profile);
 
   const derived: Record<string, unknown> = {
@@ -103,7 +102,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     "@amykit/plugin-file-worktree": {
       root: config.worktrees.root,
       workflow: profile.name,
-      recordsDirectory,
+      recordsDirectory: worktreeRecordsDirectory(stateDir, dirs.records),
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
       checkouts: config.checkouts,
@@ -135,6 +134,15 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     merged[name] = isRecord(derived[name]) && isRecord(given) ? { ...derived[name], ...given } : given;
   }
 
+  // The worktree adapter reads records directly to classify trees. Its path
+  // is an invariant of the mounted file store, not an independent preference:
+  // an explicit store directory must move both readers together.
+  const recordsDirectory = effectiveRecordsDirectory(merged["@amykit/plugin-file-store"], stateDir, dirs.records);
+  merged["@amykit/plugin-file-worktree"] = withWorktreeRecordsDirectory(
+    merged["@amykit/plugin-file-worktree"],
+    recordsDirectory,
+  );
+
   return merged;
 }
 
@@ -148,8 +156,19 @@ function stateDirectories(stateDir: string | undefined, profile: Profile): { rec
 }
 
 /** The worktree adapter reads the same absolute records directory as the file store. */
-function worktreeRecordsDirectory(stateDir: string | undefined, profile: Profile): string {
-  return stateDir ? profilePaths(stateDir, profile).records : "";
+function worktreeRecordsDirectory(stateDir: string | undefined, recordsDirectory: string): string {
+  return stateDir ? path.resolve(stateDir, recordsDirectory) : "";
+}
+
+/** Resolve the file store's final configured directory after explicit slices win. */
+function effectiveRecordsDirectory(slice: unknown, stateDir: string | undefined, fallback: string): string {
+  const directory = isRecord(slice) && typeof slice.directory === "string" ? slice.directory : fallback;
+  return worktreeRecordsDirectory(stateDir, directory);
+}
+
+/** Keep a valid worktree slice coupled to the mounted record store. */
+function withWorktreeRecordsDirectory(slice: unknown, recordsDirectory: string): unknown {
+  return isRecord(slice) ? { ...slice, recordsDirectory } : slice;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
