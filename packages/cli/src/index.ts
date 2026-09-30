@@ -133,7 +133,7 @@ async function assemble(
   { ok: true; engine: Engine; mounted: Mounted } | { ok: false; problems: string[] }
 > {
   const config = loadConfig(home);
-  const place = profilePaths(home, profile.name);
+  const place = profilePaths(home, profile);
   const specs = pluginList(config, profile);
 
   const loaded = await loadMountable(specs);
@@ -146,8 +146,9 @@ async function assemble(
       runner,
       now: () => new Date(),
       log: new FileEventLog(place.log, undefined, build),
-      paths: hostPaths(config, place.base),
+      paths: hostPaths(config, place.base, profile),
     },
+    profile.project ? { workflowLabel: `${profile.project.phase}/` } : undefined,
   );
 
   if (!outcome.ok) return { ok: false, problems: outcome.problems };
@@ -260,7 +261,7 @@ program
     fs.mkdirSync(place.notes, { recursive: true });
 
     for (const profile of Object.values(profiles(loadConfig(home)))) {
-      const own = profilePaths(home, profile.name);
+      const own = profilePaths(home, profile);
       fs.mkdirSync(own.records, { recursive: true });
       fs.mkdirSync(own.queue, { recursive: true });
     }
@@ -498,17 +499,17 @@ program
   .description("Start the loop in the background, and keep it running")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
   .action(async (options: { every: string }) => {
-    const place = paths(home);
+    const config = loadConfig(home);
+    const profile = selected(config);
+    const place = profilePaths(home, profile);
     const already = running(place.pid);
     if (already) {
       console.log(`already running: pid ${already.pid}, driving ${already.workflow}`);
       return;
     }
 
-    const config = loadConfig(home);
     const problems = configuredAutoUpdateProblems(config);
     if (problems.length > 0) throw new Error(problems.join("; "));
-    const profile = selected(config);
     // A detached reaper still owns the dead record and its after-timed
     // update. Starting another loop must not clear that record before the
     // reaper can claim it, or silently lose the scheduled maintenance.
@@ -539,7 +540,7 @@ program
 
       // Detached, with its output on a file rather than this terminal: the
       // point of starting it is that it outlives the session that started it.
-      const out = fs.openSync(path.join(place.base, "daemon.log"), "a");
+      const out = fs.openSync(path.join(path.dirname(place.pid), "daemon.log"), "a");
       const child = spawn(
         process.execPath,
         [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
@@ -563,7 +564,7 @@ program
       }
 
       console.log(`started ${profile.name}: pid ${child.pid}`);
-      console.log(`Watch it: tail -f ${path.join(place.base, "daemon.log")}`);
+      console.log(`Watch it: tail -f ${path.join(path.dirname(place.pid), "daemon.log")}`);
     } finally {
       release();
     }
@@ -573,7 +574,7 @@ program
   .command("stop")
   .description("Stop the background loop")
   .action(async () => {
-    const place = paths(home);
+    const place = profilePaths(home, selected());
     const record = running(place.pid);
     if (!record) {
       console.log("nothing running");
@@ -770,7 +771,7 @@ program
       return;
     }
 
-    const place = profilePaths(home, profile.name);
+    const place = profilePaths(home, profile);
     const now = new Date();
 
     // Written and queued in one step, with nothing resolved against anything.
@@ -835,7 +836,7 @@ program
       return;
     }
 
-    const place = profilePaths(home, profile.name);
+    const place = profilePaths(home, profile);
     const now = new Date();
 
     // Written and queued in one step, and nothing is resolved against
@@ -906,7 +907,7 @@ program
   .option("--all", "include work that has finished")
   .action(async (options: { json?: boolean; all?: boolean }) => {
     const profile = selected();
-    const place = profilePaths(home, profile.name);
+    const place = profilePaths(home, profile);
     const queue = new FileQueue(place.queue);
     const now = new Date();
 
@@ -2295,7 +2296,7 @@ workflowCommand
     const live = running(paths(home).pid);
 
     for (const profile of Object.values(known)) {
-      const place = profilePaths(home, profile.name);
+      const place = profilePaths(home, profile);
       const held = fs.existsSync(place.records) ? fs.readdirSync(place.records).length : 0;
       const marks = [
         asked.ok && asked.profile.name === profile.name ? "default" : "",
@@ -2405,7 +2406,7 @@ const rosterCommand = program.command("roster").description("Who is reviewing to
  */
 async function worktreeManager(config: AmyConfig): Promise<Worktree> {
   const profile = selected();
-  const place = profilePaths(home, profile.name);
+  const place = profilePaths(home, profile);
   const assembled = await assemble(profile);
 
   return new WorktreeManager(runner, {

@@ -32,7 +32,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `directory` | `string` | no | `briefs` | where briefs are kept, relative to the workflow state directory |
+| `directory` | `string` | no | `briefs` | where briefs are kept, relative to the host-selected artifact root |
 
 Every field is checked at boot against the schema this package declares. A key that is
 not one of the above is a refusal naming the plugin and the key, not a setting that

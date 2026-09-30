@@ -1,5 +1,5 @@
 import path from "node:path";
-import { directoriesFor } from "./profiles.js";
+import { Profile, artifactDirectory, directoriesFor, projectStateKey } from "./profiles.js";
 
 /**
  * What every profile shares, under one state directory.
@@ -31,12 +31,19 @@ export function paths(home: string) {
 }
 
 /** The two directories that belong to one profile and to nothing else. */
-export function profilePaths(home: string, profile: string) {
+export function profilePaths(home: string, profile: string | Profile) {
   const dirs = directoriesFor(profile);
+  const project = typeof profile === "string" ? undefined : artifactDirectory(profile);
+  const phaseState = typeof profile === "string" || !profile.project ? undefined : projectStateKey(profile.project);
 
   return {
     ...paths(home),
     records: path.join(home, dirs.records),
     queue: path.join(home, dirs.queue),
+    ...(project && phaseState ? {
+      artifacts: path.join(home, project),
+      log: path.join(home, phaseState, "log"),
+      pid: path.join(home, phaseState, "daemon.pid"),
+    } : {}),
   };
 }

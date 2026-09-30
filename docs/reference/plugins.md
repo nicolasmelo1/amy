@@ -224,7 +224,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `directory` | `string` | no | `briefs` | where briefs are kept, relative to the workflow state directory |
+| `directory` | `string` | no | `briefs` | where briefs are kept, relative to the host-selected artifact root |
 
 ### `@amykit/plugin-file-notes`
 

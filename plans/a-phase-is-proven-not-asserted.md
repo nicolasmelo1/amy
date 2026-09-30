@@ -1,6 +1,6 @@
 # A phase is proven, not asserted
 
-[A project is three phases](a-project-is-three-phases.md) asks for the slot.
+[A project is three phases](../docs/design/a-project-is-three-phases.md) asks for the slot.
 This is what goes in it, and it is the phase that does not exist anywhere in amy
 today.
 

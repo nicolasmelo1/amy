@@ -47,6 +47,8 @@ export interface WorkflowProfile {
   notes?: boolean;
   /** Whether `amy btw` puts a task onto this profile's queue. */
   tasks?: boolean;
+  /** A profile may spend differently from the machine-wide default. */
+  agent?: Partial<AmyConfig["agent"]>;
 }
 
 /**

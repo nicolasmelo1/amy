@@ -144,7 +144,10 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
     // A specifier that is already a URL — a path spec the CLI resolved to its
     // own entry — is not Node's to walk, and handing it to the resolver
     // rooted at `<root>/package.json` would answer nothing useful.
-    if (path.win32.isAbsolute(spec) || path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) return pathToFileURL(path.resolve(spec)).href;
+    if (path.win32.isAbsolute(spec) || path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) {
+      const resolved = path.resolve(spec);
+      return fs.statSync(resolved).isDirectory() ? packageEntrySpecifier(resolved) : pathToFileURL(resolved).href;
+    }
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(spec)) return spec;
 
     const directory = packageDirectory(pluginsRoot, spec);

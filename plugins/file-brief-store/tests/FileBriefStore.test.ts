@@ -189,6 +189,27 @@ describe("FileBriefStore", () => {
     expect(second?.sections[0]?.body).toBe("Changed since the first look.");
   });
 
+  it("uses a host-selected artifact root when phases share one", async () => {
+    const artifacts = path.join(root, "project-artifacts");
+    const outcome = await mount(
+      [records, plugin],
+      {},
+      {
+        runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+        now: () => NOW,
+        paths: { workspace: root, checkouts: {}, state: path.join(root, "brief-phase"), artifacts },
+      },
+    );
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    const mounted = outcome.mounted.ports.get("brief") as FileBriefStore;
+    await seeded(mounted, "cross-phase");
+    const reader = new FileBriefStore(path.join(artifacts, "briefs"));
+    expect((await reader.get("cross-phase"))?.sections[0]?.body).toBe("One currency on every invoice line.");
+    expect(fs.existsSync(path.join(artifacts, "briefs", "cross-phase.json"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "brief-phase", "briefs", "cross-phase.json"))).toBe(false);
+  });
+
   it("mounts beside the record store, leaving the port free for another adapter", async () => {
     const outcome = await mount(
       [records, plugin],

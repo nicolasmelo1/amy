@@ -1,4 +1,13 @@
+import path from "node:path";
 import type { AmyConfig, WorkflowProfile } from "./config.js";
+
+const PROJECT_PHASES = ["brief", "workflow", "test"] as const;
+type ProjectPhase = (typeof PROJECT_PHASES)[number];
+
+export interface ProjectIdentity {
+  readonly root: string;
+  readonly phase: ProjectPhase;
+}
 
 /**
  * Which workflow this invocation drives.
@@ -25,6 +34,10 @@ export interface Profile {
   readonly takesNotes: boolean;
   /** Whether `amy btw` puts a task onto this profile's queue. */
   readonly takesTasks: boolean;
+  /** The project artifact boundary inferred from a phase directory. */
+  readonly project?: ProjectIdentity;
+  /** Per-profile model and budget overrides, merged by the CLI before mount. */
+  readonly agent?: WorkflowProfile["agent"];
 }
 
 /**
@@ -102,6 +115,8 @@ export function profiles(config: AmyConfig): Record<string, Profile> {
       briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
+      project: projectFor(entry.workflow),
+      agent: entry.agent,
     };
   }
 
@@ -147,8 +162,37 @@ export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
  * Everything else under `.amy` stays shared: one log means one budget, and
  * one handbrake means `amy stop` stops whichever workflow is running.
  */
-export function directoriesFor(profile: string): { records: string; queue: string } {
-  return { records: `${profile}/records`, queue: `${profile}/queue` };
+export function directoriesFor(profile: string | Pick<Profile, "name" | "project">): { records: string; queue: string } {
+  if (typeof profile !== "string" && profile.project) {
+    const base = projectStateKey(profile.project);
+    return { records: `${base}/records`, queue: `${base}/queue` };
+  }
+  const name = typeof profile === "string" ? profile : profile.name;
+  return { records: `${name}/records`, queue: `${name}/queue` };
+}
+
+/** The shared project root is inferred from a phase package, never from `..` configuration. */
+function projectFor(workflow: string): ProjectIdentity | undefined {
+  if (!workflow.startsWith(".") && !path.isAbsolute(workflow)) return undefined;
+  const phase = path.basename(workflow) as ProjectPhase;
+  if (!PROJECT_PHASES.includes(phase)) return undefined;
+  return { root: path.resolve(workflow, ".."), phase };
+}
+
+/** A stable, path-safe state name that cannot make a profile leave Amy home. */
+export function projectStateKey(project: ProjectIdentity): string {
+  return `${projectRootKey(project)}/${project.phase}`;
+}
+
+/** The project-owned state root; phase names are appended only by the host. */
+function projectRootKey(project: ProjectIdentity): string {
+  const safe = Buffer.from(project.root).toString("base64url");
+  return `projects/${safe}`;
+}
+
+/** The one directory phases share; queues, records and budgets remain phase-local. */
+export function artifactDirectory(profile: Pick<Profile, "project">): string | undefined {
+  return profile.project ? `${projectRootKey(profile.project)}/artifacts` : undefined;
 }
 
 /**

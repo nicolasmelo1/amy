@@ -1,6 +1,6 @@
 import path from "node:path";
 import { AmyConfig } from "./config.js";
-import { Profile, directoriesFor, recommendedFor } from "./profiles.js";
+import { Profile, artifactDirectory, directoriesFor, recommendedFor } from "./profiles.js";
 
 /**
  * The settings each plugin gets, derived from the top-level config.
@@ -11,7 +11,8 @@ import { Profile, directoriesFor, recommendedFor } from "./profiles.js";
  * is moving in.
  */
 export function pluginSlices(config: AmyConfig, profile: Profile): Record<string, unknown> {
-  const dirs = directoriesFor(profile.name);
+  const dirs = directoriesFor(profile);
+  const agent = effectiveAgent(config, profile);
 
   const derived: Record<string, unknown> = {
     "@amykit/plugin-linear": {
@@ -19,13 +20,13 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       repoByTeam: config.repoByTeam,
       defaultRepo: config.repos[0] ?? "",
     },
-    "@amykit/plugin-claude": harnessSlice(config, "claude"),
-    "@amykit/plugin-codex": harnessSlice(config, "codex"),
-    "@amykit/plugin-hermes-agent": harnessSlice(config, "hermes"),
+    "@amykit/plugin-claude": harnessSlice(config, profile, "claude"),
+    "@amykit/plugin-codex": harnessSlice(config, profile, "codex"),
+    "@amykit/plugin-hermes-agent": harnessSlice(config, profile, "hermes"),
     "@amykit/plugin-agent-relay": {
-      ladder: config.agent.ladder ?? [],
-      ladderByStep: config.agent.ladderByStep ?? {},
-      budget: config.agent.budget ?? {},
+      ladder: agent.ladder ?? [],
+      ladderByStep: agent.ladderByStep ?? {},
+      budget: agent.budget ?? {},
       skills: config.skills,
     },
     "@amykit/plugin-command-gate": {
@@ -40,7 +41,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
       staleClaimMs: config.staleClaimMs,
     },
     "@amykit/plugin-file-store": { directory: dirs.records },
-    "@amykit/plugin-file-brief-store": briefStoreSlice(config),
+    "@amykit/plugin-file-brief-store": briefStoreSlice(config, profile),
     // Mounted in both profiles: one writes the notes, the other reads them,
     // and an install running only the first would still be filing the
     // friction the second will pick up.
@@ -83,7 +84,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile): Record<string
     // function reads.
     "@amykit/workflow-ticket-to-qa": {
       repos: config.repos,
-      ...ticketBudgetSlice(config),
+      ...ticketBudgetSlice(config, profile),
       // Both halves of the layout, named the way the workflow's own schema
       // does: the branch a repository without a mapping is cut from, and the
       // map that names one. Derived here so no workflow package carries a
@@ -138,8 +139,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function ticketBudgetSlice(config: AmyConfig): { budget: Record<string, unknown> } {
-  return { budget: config.agent.budget ?? {} };
+/** The profile can narrow cost and model choices without changing any other host setting. */
+function effectiveAgent(config: AmyConfig, profile: Profile): AmyConfig["agent"] {
+  return { ...config.agent, ...(profile.agent ?? {}) };
+}
+
+function ticketBudgetSlice(config: AmyConfig, profile: Profile): { budget: Record<string, unknown> } {
+  return { budget: effectiveAgent(config, profile).budget ?? {} };
 }
 
 /**
@@ -157,8 +163,10 @@ function fileStoreBriefDirectory(config: AmyConfig): string | undefined {
 }
 
 /** The file BriefStore's settings, including the one-time legacy translation. */
-function briefStoreSlice(config: AmyConfig): { directory: string } {
-  return { directory: fileStoreBriefDirectory(config) ?? "briefs" };
+function briefStoreSlice(config: AmyConfig, profile: Profile): { directory: string } {
+  // Project phases share a host-owned artifact root.  Legacy profiles retain
+  // the file-store translation, including an explicit path they already use.
+  return { directory: profile.project ? "briefs" : (fileStoreBriefDirectory(config) ?? "briefs") };
 }
 
 /**
@@ -169,8 +177,9 @@ function briefStoreSlice(config: AmyConfig): { directory: string } {
  * the claude plugin contribute two agents, and the relay then finds both
  * names it was told to try.
  */
-function harnessSlice(config: AmyConfig, harness: string): Record<string, unknown> {
-  const fromLadder = tiersFor(everyLadderEntry(config), harness);
+function harnessSlice(config: AmyConfig, profile: Profile, harness: string): Record<string, unknown> {
+  const agent = effectiveAgent(config, profile);
+  const fromLadder = tiersFor(everyLadderEntry(agent), harness);
 
   return {
     defaultBranch: config.defaultBranch,
@@ -181,10 +190,10 @@ function harnessSlice(config: AmyConfig, harness: string): Record<string, unknow
     // reason: the repository is known per piece of work, not when the slice
     // is built.
     baseBranch: config.baseBranch,
-    model: config.agent.model ?? "",
-    models: fromLadder.length > 0 ? fromLadder : (config.agent.models ?? []),
-    reviewerHints: config.agent.reviewerHints ?? {},
-    ...(config.agent.timeoutMs === undefined ? {} : { timeoutMs: config.agent.timeoutMs }),
+    model: agent.model ?? "",
+    models: fromLadder.length > 0 ? fromLadder : (agent.models ?? []),
+    reviewerHints: agent.reviewerHints ?? {},
+    ...(agent.timeoutMs === undefined ? {} : { timeoutMs: agent.timeoutMs }),
   };
 }
 
@@ -209,10 +218,10 @@ export function tiersFor(ladder: readonly string[], harness: string): string[] {
  * Reading only the default would refuse that mount at boot, correctly but
  * for a reason nobody could see from the config they wrote.
  */
-function everyLadderEntry(config: AmyConfig): string[] {
+function everyLadderEntry(agent: AmyConfig["agent"]): string[] {
   return [
-    ...(config.agent.ladder ?? []),
-    ...Object.values(config.agent.ladderByStep ?? {}).flat(),
+    ...(agent.ladder ?? []),
+    ...Object.values(agent.ladderByStep ?? {}).flat(),
   ];
 }
 
@@ -228,7 +237,7 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
     return withBriefStore(profile, explicit);
   }
 
-  const ladder = everyLadderEntry(config);
+  const ladder = everyLadderEntry(effectiveAgent(config, profile));
 
   // A channel nobody configured should not be mounted, or the fan-out would
   // announce into a target that is not there. Same reasoning for a harness:
@@ -267,10 +276,11 @@ function withBriefStore(profile: Profile, plugins: readonly string[]): string[] 
 }
 
 /** Where the host keeps its own state, and where the checkouts live. */
-export function hostPaths(config: AmyConfig, stateDir: string) {
+export function hostPaths(config: AmyConfig, stateDir: string, profile?: Profile) {
   return {
     workspace: path.resolve(config.workspaceRoot),
     checkouts: config.checkouts,
     state: stateDir,
+    ...(profile && artifactDirectory(profile) ? { artifacts: path.join(stateDir, artifactDirectory(profile)!) } : {}),
   };
 }

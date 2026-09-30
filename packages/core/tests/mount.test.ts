@@ -1120,6 +1120,12 @@ describe("one declaration per action", () => {
 });
 
 describe("a plugin that cannot mount", () => {
+  it("lets a host require a workflow without changing ordinary plugin-only mounts", async () => {
+    const outcome = await mount([plugin("@amykit/plugin-only")], {}, HOST, { workflowLabel: "brief/" });
+
+    expect(outcome).toMatchObject({ ok: false, problems: ["brief/: exports no workflow"] });
+  });
+
   it("becomes a problem with a name, not an anonymous throw", async () => {
     const broken = plugin("@amykit/plugin-broken", {
       register: () => {

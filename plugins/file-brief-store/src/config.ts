@@ -4,7 +4,7 @@ import { ConfigSchema } from "@amykit/core";
 export const configSchema: ConfigSchema = {
   directory: {
     type: "string",
-    description: "where briefs are kept, relative to the workflow state directory",
+    description: "where briefs are kept, relative to the host-selected artifact root",
     default: "briefs",
   },
 };

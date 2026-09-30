@@ -52,6 +52,12 @@ export type MountOutcome =
   | { ok: true; mounted: Mounted }
   | { ok: false; problems: string[] };
 
+/** An embedding may require one workflow without changing generic plugin mounts. */
+export interface MountRequirements {
+  /** Label supplied by the host and repeated in the boot refusal. */
+  readonly workflowLabel?: string;
+}
+
 /**
  * Assembles a set of plugins into one working host.
  *
@@ -63,6 +69,7 @@ export async function mount(
   plugins: readonly Plugin[],
   config: Readonly<Record<string, unknown>>,
   host: HostServices,
+  requirements: MountRequirements = {},
 ): Promise<MountOutcome> {
   const problems: string[] = [];
   const mounted: Mounted = {
@@ -123,7 +130,15 @@ export async function mount(
     }
   }
 
+  if (requiresWorkflow(requirements, mounted)) {
+    problems.push(`${requirements.workflowLabel}: exports no workflow`);
+  }
+
   return problems.length > 0 ? { ok: false, problems } : { ok: true, mounted };
+}
+
+function requiresWorkflow(requirements: MountRequirements, mounted: Mounted): boolean {
+  return Boolean(requirements.workflowLabel && !mounted.workflow);
 }
 
 function configFor(
