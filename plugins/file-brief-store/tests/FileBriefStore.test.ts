@@ -180,6 +180,17 @@ describe("FileBriefStore", () => {
     expect(fs.readdirSync(root).filter((name) => name.includes(".lock"))).toEqual([]);
   });
 
+  it("lets only one live process reclaim an acquisition gate", async () => {
+    await seeded(store);
+    const recovery = path.join(root, "brief-1.json.lock.acquiring.recovering");
+    const contender = store as unknown as { claimRecovery(file: string): boolean };
+
+    expect(contender.claimRecovery(recovery)).toBe(true);
+    expect(contender.claimRecovery(recovery)).toBe(false);
+    expect(fs.readFileSync(recovery, "utf8")).toBe(`${process.pid}\n`);
+    fs.rmSync(recovery);
+  });
+
   it("refuses to append to a brief that does not exist", async () => {
     await expect(
       store.appendQuestion({

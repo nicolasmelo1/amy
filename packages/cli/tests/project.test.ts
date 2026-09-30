@@ -96,6 +96,7 @@ describe("a project is three phases", () => {
       const known = profiles(config);
 
       expect(profilePaths(home, known.execution!).records).toBe(path.join(home, "execution", "records"));
+      expect(profilePaths(home, known.execution!).pid).toBe(path.join(home, "daemon.pid"));
       expect((pluginSlices(config, known.execution!, home)["@amykit/plugin-file-store"] as { directory: string }).directory)
         .toBe("execution/records");
       expect(hostPaths(config, home, known.execution!).artifacts).toBeDefined();

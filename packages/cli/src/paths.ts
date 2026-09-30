@@ -48,7 +48,9 @@ function statePaths(home: string, profile: string | Profile) {
     ...(project ? {
       artifacts: path.join(home, projectArtifacts(profile)!),
       log: path.join(home, project, "log"),
-      pid: path.join(home, project, "daemon.pid"),
+      // A retained legacy queue is still driven by the legacy daemon. Keep
+      // looking at its PID until an explicit state migration moves the queue.
+      pid: path.join(home, legacy ? "daemon.pid" : project, legacy ? "" : "daemon.pid"),
     } : {}),
   };
 }

@@ -139,24 +139,53 @@ export class FileBriefStore implements BriefStore {
   /** Recover a dead acquisition gate before it can permanently block a brief. */
   private async recoverGate(gate: string): Promise<void> {
     const recovery = `${gate}.recovering`;
-    // A reclaimer that crashed leaves a second hard link to the dead gate.
-    // Removing that link only makes its own incomplete recovery retry; it
-    // cannot retire a replacement gate.
-    if (fs.existsSync(recovery)) fs.rmSync(recovery, { force: true });
     if (!fs.existsSync(gate)) return;
+    if (!this.claimRecovery(recovery)) return;
+    const snapshot = `${recovery}.gate`;
     try {
-      // Keep the observed gate in place while examining it. This hard link is
-      // our exclusive recovery token: a rival cannot remove or replace the
-      // gate until we either unlink it as stale or release this token.
-      fs.linkSync(gate, recovery);
-    } catch (error: unknown) {
-      if (["EEXIST", "ENOENT"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
-      throw error;
-    }
-    try {
-      this.recoverGateOwner(gate, recovery);
+      try {
+        // Keep the observed gate in place while examining it. The recovery
+        // claim stays live through removal, so another reclaimer cannot act
+        // on this snapshot while a writer is able to publish a replacement.
+        fs.linkSync(gate, snapshot);
+      } catch (error: unknown) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        throw error;
+      }
+      this.recoverGateOwner(gate, snapshot);
     } finally {
+      fs.rmSync(snapshot, { force: true });
       fs.rmSync(recovery, { force: true });
+    }
+  }
+
+  /** Claim stale-gate recovery without exposing an empty owner file. */
+  private claimRecovery(recovery: string): boolean {
+    const privateOwner = `${recovery}.${process.pid}.${randomUUID()}`;
+    fs.writeFileSync(privateOwner, `${process.pid}\n`, "utf-8");
+    try {
+      fs.linkSync(privateOwner, recovery);
+      return true;
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (this.liveOwner(recovery)) return false;
+      // A crashed reclaimer cannot continue after its PID is dead. This also
+      // recognizes the old hard-link recovery token as stale on upgrade.
+      fs.rmSync(recovery, { force: true });
+      return false;
+    } finally {
+      fs.rmSync(privateOwner, { force: true });
+    }
+  }
+
+  private liveOwner(file: string): boolean {
+    try {
+      const owner = Number.parseInt(fs.readFileSync(file, "utf-8").trim(), 10);
+      if (!Number.isSafeInteger(owner) || owner <= 0) return false;
+      process.kill(owner, 0);
+      return true;
+    } catch (error: unknown) {
+      return (error as NodeJS.ErrnoException).code === "EPERM";
     }
   }
 
