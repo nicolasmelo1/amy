@@ -70,8 +70,11 @@ export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
   recoverDaemonUpdateClaim(file);
   try {
-    fs.renameSync(file, `${file}.claimed`);
-    fs.writeFileSync(`${file}.claimed`, `${process.pid}\n`, "utf8");
+    // Publish the owner before consuming `due`: a concurrent starter can
+    // observe either a due marker or a fully-owned claim, never a claim whose
+    // temporary `due` contents look abandoned.
+    fs.writeFileSync(`${file}.claimed`, `${process.pid}\n`, { encoding: "utf8", flag: "wx" });
+    fs.rmSync(file, { force: true });
     return true;
   } catch {
     return false;

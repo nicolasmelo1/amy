@@ -99,6 +99,8 @@ describe("runWithAutoUpdate", () => {
     expect(schedule).toEqual({ due: true, timing: "after" });
     markDaemonUpdate(root, "oncall");
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
+    expect(fs.existsSync(path.join(root, "workflows", "oncall", "auto-update-daemon"))).toBe(false);
+    expect(fs.readFileSync(path.join(root, "workflows", "oncall", "auto-update-daemon.claimed"), "utf8")).toBe(`${process.pid}\n`);
     // The claim stays visible while the detached reaper runs, so a new start
     // cannot clear the dead daemon record and lose this due update.
     expect(hasDaemonUpdate(root, "oncall")).toBe(true);

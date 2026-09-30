@@ -138,6 +138,9 @@ async function assemble(
 
   const loaded = await loadMountable(specs);
   if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
+  if (profile.project && !loaded.bySpec.has(profile.workflow)) {
+    return { ok: false, problems: [`${profile.project.phase}/: configured workflow plugin is not mounted`] };
+  }
 
   const outcome = await mount(
     [...loaded.plugins, hostPlugin(() => loadRoster(home))],
@@ -1393,6 +1396,18 @@ function refuseRemoval(
     return `${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`;
   }
 
+  return pendingRemovalProblem(home, config, spec, carrier);
+}
+
+/** A removed phase must leave neither an updater nor a sibling daemon stranded. */
+function pendingRemovalProblem(home: string, config: AmyConfig, spec: string, carrier: Carrier): string | undefined {
+  const affected = carrier.profile ? profiles(config)[carrier.profile] : undefined;
+  if (affected && hasDaemonUpdate(home, affected.name)) {
+    return `${affected.name} has a scheduled daemon update. Let it settle before removing ${spec}.`;
+  }
+  if (carrier.place === "workflow" && affected && runningPhaseLosingIdentity(home, config, affected)) {
+    return `removing ${affected.name} would orphan a running sibling phase. Run \`amy stop\` first.`;
+  }
   return undefined;
 }
 
@@ -2352,6 +2367,11 @@ workflowCommand
     const live = running(profilePaths(home, resolution.profile).pid) ?? runningPhaseLosingIdentity(home, config, resolution.profile);
     if (live) {
       console.error(`${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`);
+      process.exitCode = 1;
+      return;
+    }
+    if (hasDaemonUpdate(home, resolution.profile.name)) {
+      console.error(`${resolution.profile.name} has a scheduled daemon update. Let it settle before removing it.`);
       process.exitCode = 1;
       return;
     }
