@@ -46,6 +46,32 @@ is the most common thing counted as a success, and most homegrown gates have no
 such state, so an unevaluatable assertion quietly becomes green. That is the
 failure this whole plan is about, wearing a different hat.
 
+## A proof is a lock, and it goes stale
+
+Decided 2026-10-01. A workflow is the three phases together, and the proving
+phase is what stands between work being done and work being trusted.
+
+**The lock is a project artifact, not a state of the execution phase.** It sits
+beside the briefs in the project's artifact root: one proof record per unit of
+work, written by `test/` and read by the others, the same way a brief is
+written by `brief/` and read by `workflow/`. No phase reaches into another's
+lifecycle, so the three stay independently driven, budgeted and stoppable.
+
+**A proof can be manual.** A person running the scenario by hand and recording
+the outcome is a proof like any other; what makes it one is the record, not
+who ran it. The record names the scenario, each assertion's status, who ran it
+and what it ran against.
+
+**A proof goes stale.** It records the digest of the code it was run against
+and the revision of the brief it proved. When either moves, the proof stops
+counting and the unit is unproven again, without anybody remembering to look.
+Unproven work is what the lock holds: it does not count as done.
+
+**A missing phase is a warning, not a refusal.** A project without `brief/` or
+`test/` still boots; `amy doctor` names the missing folder and what the project
+loses without it. Refusing would block every project before there is anything
+for a proving phase to run.
+
 ## Where it pays for itself
 
 In the planning phase. A unit of work that must name the scenario proving it has
@@ -79,14 +105,22 @@ first came to be mistaken for proof.
 - [ ] An assertion the harness cannot evaluate blocks completion, naming the
       assertion and why, rather than counting as a pass
       (proof: test:packages/core/tests/proving.test.ts)
-- [ ] A completed phase leaves an artifact a later reader checks without
-      rerunning it, and an artifact whose digest no longer matches the
-      implementation it certified stops counting
+- [ ] A proof is a record in the project's artifact root, written by the
+      proving phase and read by the others, with no phase reading another's
+      records or queue
+      (proof: assertion:proof.a_proof_crosses_the_phase_boundary)
+- [ ] A person can record a manual run as the proof, naming who ran it and
+      each assertion's status
+      (proof: assertion:proof.a_manual_run_is_a_proof)
+- [ ] A proof whose code digest or brief revision no longer matches what it
+      certified stops counting, and the unit it proved is unproven again
       (proof: assertion:proof.the_artifact_expires_with_its_subject)
-- [ ] A project with no proving phase behaves exactly as it does today
-      (proof: test:packages/cli/tests/project.test.ts)
+- [ ] A project without `brief/` or `test/` boots, and `amy doctor` names each
+      missing folder and what the project loses without it
+      (proof: test:packages/cli/tests/doctor.test.ts)
 
 **Exit condition:** a unit of work whose scenario names no example cannot leave
 planning, a phase whose run left one assertion unevaluated is refused with that
-assertion named, and a phase proven last month against code that has since
-changed goes red without anybody remembering to look.
+assertion named, a person's manual run locks a unit as proven, and a unit
+proven last month against code or a brief that has since changed is unproven
+again without anybody remembering to look.

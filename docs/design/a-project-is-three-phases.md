@@ -22,7 +22,9 @@ of the three — only doing, or only proving — so a missing folder is a missin
 part of the work, and amy says so rather than papering over it: without
 `brief/`, `amy brief` names the folder a project would need instead of looking
 for a brief nobody could have written. What `test/` drives is still open; the
-slot exists so its absence is visible.
+slot exists so its absence is visible, and
+[a phase is proven, not asserted](../../plans/a-phase-is-proven-not-asserted.md)
+is what goes in it.
 
 A lone `workflow/` used to stay an ordinary profile, so that an install which
 never heard of phases would not move. That rule, and the promotion it forced
