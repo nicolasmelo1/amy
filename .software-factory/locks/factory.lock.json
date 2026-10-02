@@ -3,8 +3,8 @@
   "files": {
     ".allowed-root-files": "6b96c6cde21f0a325b44a460c9d46632b09ea60876b9ac0f05e78f0254104a10",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
-    ".github/workflows/software-factory.yml": "7cbd0705ba1756849508881718c346a11daf214dc7e1524221e91c524b0b14ff",
-    ".software-factory/policy.yaml": "976e4d771897cfdf0a3b0fc56a52da0024cc40e080f8d7f8294353c07632cc94",
+    ".github/workflows/software-factory.yml": "19c3ef4f598e345e05fd8eb5c6c2a5f377825f382bde877eef3e3b175abd959f",
+    ".software-factory/policy.yaml": "eb67e3788c5c991a98a27204d8bcca05f6e20c836f72bbb15ac40dc8919d30ca",
     ".software-factory/ratchet.yaml": "e0be45ffb042d35cb29274e8ad70a8ab1f82cb94ac21c1203e183a929158b8e2",
     ".software-factory/rules/branch-reset-loses-commits.yaml": "204b3806cb3b1b14b69d57e1a256efa9447a35f4e25b45d417c494d6aafd5101",
     ".software-factory/rules/core-stays-ignorant.yaml": "f49946b95bd97b7e075ef73d3241c3530d323607abb5b9b9a5558f8f216f2942",

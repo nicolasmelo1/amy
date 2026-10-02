@@ -26,6 +26,7 @@ function settingsFor(ctx: PluginContext): WorktreeManagerConfig {
   const workflow = (ctx.config.workflow as string) || "unconfigured";
 
   const root = (ctx.config.root as string) || path.join(ctx.paths.state, "worktrees");
+  const recordsDirectory = (ctx.config.recordsDirectory as string) || path.join(ctx.paths.state, "records");
 
   return {
     root: expandHome(root),
@@ -40,7 +41,7 @@ function settingsFor(ctx: PluginContext): WorktreeManagerConfig {
     // truth about what the store holds now.
     record: (workId) => {
       try {
-        return JSON.parse(fs.readFileSync(path.join(ctx.paths.state, "records", `${workId}.json`), "utf-8")) as {
+        return JSON.parse(fs.readFileSync(path.join(recordsDirectory, `${workId}.json`), "utf-8")) as {
           state: string;
         };
       } catch {

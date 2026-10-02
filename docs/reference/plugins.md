@@ -224,7 +224,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `directory` | `string` | no | `briefs` | where briefs are kept, relative to the workflow state directory |
+| `directory` | `string` | no | `briefs` | where briefs are kept, relative to the host-selected artifact root |
 
 ### `@amykit/plugin-file-notes`
 
@@ -344,6 +344,7 @@ plugins:
     baseBranch: {}
     checkouts: {}
     defaultBranch: main
+    recordsDirectory: ""
     retentionDays: 7
     root: ""
     workflow: ""
@@ -354,6 +355,7 @@ plugins:
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its trees cut from that branch |
 | `checkouts` | `record` | no | `{}` | where one repository's standing checkout is, instead of under the workspace root. A repository named here is never looked for under `root` at all |
 | `defaultBranch` | `string` | no | `main` | the branch a tree is cut from for a repository that named none, which is not always `main` |
+| `recordsDirectory` | `string` | no | `""` | where this profile stores workflow records. The host derives it so phase-local worktrees consult the same records as the mounted file store |
 | `retentionDays` | `number` | no | `7` | how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's |
 | `root` | `string` | no | `""` | where the worktrees live, outside every repository. `~` is expanded. The default is beside the state directory, which keeps one install's trees together |
 | `workflow` | `string` | no | `""` | the first path segment of every tree this mount creates, so two workflows under one install never share a tree |
@@ -573,6 +575,7 @@ plugins:
   "@amykit/plugin-slack":
     channel: …
     defaultRetryAfterSeconds: 60
+    directory: slack
     maxRateLimitRetries: 5
     operator: …
     retentionDays: 30
@@ -583,6 +586,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `channel` | `string` | **yes** |  | the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name |
 | `defaultRetryAfterSeconds` | `number` | no | `60` | how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins |
+| `directory` | `string` | no | `slack` | where each work item's thread is remembered, relative to the state directory |
 | `maxRateLimitRetries` | `number` | no | `5` | how many times a call Slack rate limits (HTTP 429) is waited out and tried again before it fails |
 | `operator` | `string` | **yes** |  | the user id, such as U0XXXXXXX, whose replies are answers; everybody else's are ignored |
 | `retentionDays` | `number` | no | `30` | days a downloaded file or a thread's memory stays unused before it is pruned, 0 to keep everything. A pruned file is fetched again when its reply is read; a pruned thread means the next question opens a new one |

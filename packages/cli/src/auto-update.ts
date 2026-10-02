@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { AmyConfig } from "./config.js";
 
 /** The per-profile count belongs beside the profile's other durable state. */
@@ -62,23 +63,88 @@ export function markDaemonUpdate(home: string, profile: string): void {
 /** Whether an exited daemon still has a reaper-owned update to run. */
 export function hasDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
-  return fs.existsSync(file) || fs.existsSync(`${file}.claimed`);
+  return fs.existsSync(file) || fs.existsSync(`${file}.claiming`) || fs.existsSync(`${file}.claimed`);
 }
 
 /** Takes a due after-timed daemon update exactly once, retaining its claim while it runs. */
 export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
+  recoverDaemonUpdateClaim(file);
+  const staging = `${file}.claiming`;
+  const prepared = `${staging}.${process.pid}.${randomUUID()}`;
   try {
-    fs.renameSync(file, `${file}.claimed`);
+    // Link a fully-written owner into place: another starter can never recover
+    // an empty staging file between its creation and its first write.
+    fs.writeFileSync(prepared, `${process.pid}\n`, "utf8");
+    fs.linkSync(prepared, staging);
+    fs.rmSync(prepared, { force: true });
+    // A claimant may arrive after the owner moved staging to claimed but before
+    // it consumed due. It must leave that owner and its due marker untouched.
+    if (!fs.existsSync(file) || fs.existsSync(`${file}.claimed`)) {
+      fs.rmSync(staging, { force: true });
+      return false;
+    }
+    fs.renameSync(staging, `${file}.claimed`);
+    fs.unlinkSync(file);
     return true;
   } catch {
     return false;
+  } finally {
+    fs.rmSync(prepared, { force: true });
+  }
+}
+
+/** Returns an abandoned claim to due state without stealing a live updater. */
+function recoverDaemonUpdateClaim(file: string): void {
+  const claims = [`${file}.claimed`, `${file}.claiming`];
+  const claim = claims.find((candidate) => fs.existsSync(candidate));
+  if (!claim) return;
+  const owner = Number.parseInt(fs.readFileSync(claim, "utf8").trim(), 10);
+  if (Number.isSafeInteger(owner) && owner > 0) {
+    try {
+      process.kill(owner, 0);
+      return;
+    } catch (error: unknown) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EPERM") return;
+      if (code !== "ESRCH") throw error;
+    }
+  }
+  try {
+    if (claim.endsWith(".claimed")) fs.renameSync(claim, file);
+    else fs.rmSync(claim, { force: true });
+  } catch {
+    // Another recovery settled the stale claim first.
   }
 }
 
 /** Releases the durable reaper claim only after the scheduled update settled. */
 export function finishDaemonUpdate(home: string, profile: string): void {
   fs.rmSync(`${daemonUpdatePath(home, profile)}.claimed`, { force: true });
+}
+
+/** Makes a claimed update due again when a shared daemon boundary blocked it. */
+export function retryDaemonUpdate(home: string, profile: string): void {
+  const file = daemonUpdatePath(home, profile);
+  try {
+    fs.renameSync(`${file}.claimed`, file);
+  } catch {
+    // Another recovery owner already settled it; either result is safe.
+  }
+}
+
+/** Settles an interrupted after-daemon update before a new daemon starts. */
+export async function settleDaemonUpdate(home: string, profile: string, update: () => Promise<number>): Promise<boolean> {
+  if (!hasDaemonUpdate(home, profile)) return true;
+  // A stale staging claim can be the last marker. Recovery removes it, so a
+  // failed take is settled when no due or claim marker remains to be claimed.
+  if (!takeDaemonUpdate(home, profile)) return !hasDaemonUpdate(home, profile);
+  if (await update() === 0) {
+    finishDaemonUpdate(home, profile);
+    return true;
+  }
+  retryDaemonUpdate(home, profile);
+  return false;
 }
 
 /**

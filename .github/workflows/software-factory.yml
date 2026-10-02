@@ -123,6 +123,29 @@ jobs:
       # subtle enough to hide in the noise.
       - run: npm run bench
 
+  # The one native module in the recommended set, on the platform it is most
+  # likely to break on. The shared-brief lock is fs-ext's `flock`, which is
+  # LockFileEx on Windows, and the installation guide promises Windows: this
+  # installs it the way `npm ci` does there, node-gyp build included, and runs
+  # the brief store's own suite, the cross-process lock tests among them.
+  windows:
+    runs-on: windows-latest
+    env:
+      # npm runs lifecycle scripts through cmd.exe by default, and the
+      # workspace's `prepare` is written for a POSIX shell.
+      NPM_CONFIG_SCRIPT_SHELL: C:\Program Files\Git\bin\bash.exe
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --build plugins/file-brief-store
+      - run: npx vitest run plugins/file-brief-store
+
   # The end-to-end runs, which are the ones that drive what somebody installs
   # rather than what a test imports. They need bun, because the single
   # executable is what they drive and `bun build --compile` is what makes one.

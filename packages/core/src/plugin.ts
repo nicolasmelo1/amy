@@ -74,6 +74,11 @@ export interface HostPaths {
   readonly checkouts: Readonly<Record<string, string>>;
   /** Where the host keeps its own state. */
   readonly state: string;
+  /**
+   * A host-selected root for artifacts several independently driven workflows
+   * share.  The core does not interpret the artifacts or their producers.
+   */
+  readonly artifacts?: string;
 }
 
 /**

@@ -58,6 +58,7 @@ For what the two halves mean and why, see
 | `briefStore` | `string` | no | The package providing durable briefs for this workflow. When omitted, legacy explicit profiles that still name file-store receive the local file provider they had before briefs became their own mount. |
 | `notes` | `boolean` | no | Whether `amy note` files friction onto this profile's queue. |
 | `tasks` | `boolean` | no | Whether `amy btw` puts a task onto this profile's queue. |
+| `agent` | `Partial<AmyConfig["agent"]>` | no | A profile may spend differently from the machine-wide default. |
 
 <!-- amy:end config-profile -->
 

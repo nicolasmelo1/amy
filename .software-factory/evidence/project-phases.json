@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "gate": "project-phases",
+  "implementation_sha256": "274cda22948a131b68dafcecd98a5d51bf0182bbe0ef6393e93bb749155afa95",
+  "runs": [
+    {
+      "scenario": "project-phases",
+      "status": "passed",
+      "actor": "Claude (agent), running .software-factory/evidence/project-phases-scenario.sh against the built dist on macOS, for Nicolas Melo",
+      "report": ".software-factory/evidence/project-phases-run.json",
+      "report_sha256": "2eb180a1c694e9cab64ae787cce68394c6ff41fecaa5d1e924471c3cdfc1b5f8",
+      "required_assertions": [
+        "project.a_packaged_workflow_is_unchanged",
+        "project.a_lone_workflow_is_a_phase",
+        "project.a_project_without_brief_keeps_no_briefs",
+        "project.every_phase_mounts",
+        "project.each_phase_has_its_own_queue",
+        "project.each_phase_spends_its_own_budget",
+        "project.each_phase_is_its_own_daemon",
+        "project.each_phase_keeps_its_own_tasks",
+        "project.grooming_and_execution_choose_their_own_models",
+        "project.a_brief_crosses_the_phase_boundary",
+        "project.no_config_names_a_shared_directory",
+        "project.no_phase_state_escapes_home",
+        "project.a_phase_never_reads_an_old_profiles_records",
+        "project.a_phase_without_a_workflow_is_refused_by_name"
+      ]
+    }
+  ]
+}

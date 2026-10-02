@@ -144,7 +144,10 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
     // A specifier that is already a URL — a path spec the CLI resolved to its
     // own entry — is not Node's to walk, and handing it to the resolver
     // rooted at `<root>/package.json` would answer nothing useful.
-    if (path.win32.isAbsolute(spec) || path.isAbsolute(spec) || spec.startsWith("./") || spec.startsWith("../")) return pathToFileURL(path.resolve(spec)).href;
+    if (isFilesystemWorkflow(spec)) {
+      const resolved = path.resolve(spec);
+      return fs.statSync(resolved).isDirectory() ? directoryEntrySpecifier(resolved) : pathToFileURL(resolved).href;
+    }
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(spec)) return spec;
 
     const directory = packageDirectory(pluginsRoot, spec);
@@ -157,6 +160,29 @@ function pluginNotInstalled(spec: string): Error & { code: string } {
   const error = new Error(`${spec} is not in amy's plugins root`) as Error & { code: string };
   error.code = PLUGIN_NOT_INSTALLED;
   return error;
+}
+
+/** A configured path that the loader can import without installing a package. */
+export function isFilesystemWorkflow(spec: string): boolean {
+  if (!path.win32.isAbsolute(spec) && !path.isAbsolute(spec) && !spec.startsWith("./") && !spec.startsWith("../")) return false;
+  try {
+    // Any existing file or directory: a phase folder with no manifest or index
+    // yet is refused by the entry resolver naming what it lacks, not reported
+    // as a package nobody installed.
+    return fs.existsSync(path.resolve(spec));
+  } catch {
+    return false;
+  }
+}
+
+/** A phase directory may be a package, or a plain editable workflow. */
+function directoryEntrySpecifier(directory: string): string {
+  if (fs.existsSync(path.join(directory, "package.json"))) return packageEntrySpecifier(directory);
+  for (const name of ["index.ts", "index.js"]) {
+    const entry = path.join(directory, name);
+    if (fs.existsSync(entry)) return pathToFileURL(entry).href;
+  }
+  throw new Error(`${directory} is a directory with neither package.json nor index.js/index.ts`);
 }
 
 /** The directory npm gives one exact package name beneath this root. */

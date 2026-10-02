@@ -14,9 +14,10 @@ const clock = new Date(WORKDAY);
  * A brief store in a scratch directory, with one brief the tickets below
  * share — the shape a grooming workflow leaves behind.
  */
-function briefStoreWith(root: string): BriefStore {
+async function briefStoreWith(root: string): Promise<BriefStore> {
   const store = new FileBriefStore(path.join(root, "briefs"));
-  void store.write({
+  // Awaited: a write takes the brief's lock, so it is not done when it returns.
+  await store.write({
     id: "invoice-currency",
     sections: [{ name: "Goal", body: "One currency on every invoice line." }],
     explains: ["PROJ-1239"],
@@ -80,7 +81,7 @@ describe("a runtime whose tickets carry a brief", () => {
     } as unknown as Agent;
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-store-"));
-    const { record } = await drive({ tracker, agent, briefs: briefStoreWith(root) });
+    const { record } = await drive({ tracker, agent, briefs: await briefStoreWith(root) });
     fs.rmSync(root, { recursive: true, force: true });
 
     // The brief reached the agent as the current rendered text, and the
@@ -102,7 +103,7 @@ describe("a runtime whose tickets carry a brief", () => {
     } as unknown as Tracker;
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-rev-"));
-    const briefs = briefStoreWith(root);
+    const briefs = await briefStoreWith(root);
 
     const seen: string[] = [];
     const agent = {
@@ -146,7 +147,7 @@ describe("a runtime whose tickets carry a brief", () => {
     } as unknown as Tracker;
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-append-"));
-    const briefs = briefStoreWith(root);
+    const briefs = await briefStoreWith(root);
 
     const agent = {
       triage: vi.fn<Agent["triage"]>().mockResolvedValue({
@@ -190,7 +191,7 @@ describe("a runtime whose tickets carry a brief", () => {
       }),
     } as unknown as Agent;
 
-    await drive({ tracker, agent, briefs: briefStoreWith(root) }, 2);
+    await drive({ tracker, agent, briefs: await briefStoreWith(root) }, 2);
     fs.rmSync(root, { recursive: true, force: true });
 
     expect(comment).toHaveBeenCalledWith("PROJ-1239", "- Does write-off count?");

@@ -67,6 +67,16 @@ describe("which workflows an install can drive", () => {
     expect(recommendedFor(oncall.profile)).toContain("@acme/workflow-oncall");
     expect(recommendedFor(oncall.profile)).toContain("@amykit/plugin-serial-engine");
   });
+
+  it("mounts workflow prerequisites before it and checkout consumers after it", () => {
+    const profile = resolveProfile({ ...WITH_ONCALL, workflows: {
+      grooming: { workflow: "@amykit/workflow-feature-grooming" },
+    } }, "grooming");
+    if (!profile.ok) throw new Error(profile.problem);
+    const suggested = recommendedFor(profile.profile);
+    expect(suggested.indexOf("@amykit/plugin-linear")).toBeLessThan(suggested.indexOf(profile.profile.workflow));
+    expect(suggested.indexOf("@amykit/plugin-file-worktree")).toBeGreaterThan(suggested.indexOf(profile.profile.workflow));
+  });
 });
 
 describe("where a profile keeps its state", () => {

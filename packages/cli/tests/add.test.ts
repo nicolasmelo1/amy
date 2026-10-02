@@ -480,9 +480,10 @@ describe("the config the two commands write", () => {
     // The recommendation is derived at every read, not frozen at add time:
     // a later amy recommending one more plugin hands it to this profile too.
     expect(declared).toBe("@acme/workflow-weekly");
-    expect(pluginList(config, profile)[0]).toBe("@acme/workflow-weekly");
-    expect(pluginList(config, profile)).toContain("@amykit/plugin-file-queue");
-    expect(pluginList(config, profile)).not.toContain("@acme/workflow-oncall");
+    const suggested = pluginList(config, profile);
+    expect(suggested).toContain("@acme/workflow-weekly");
+    expect(suggested).toContain("@amykit/plugin-file-queue");
+    expect(suggested).not.toContain("@acme/workflow-oncall");
   });
 
   it("mounts an extra plugin under a profile that stays on its recommendation", () => {

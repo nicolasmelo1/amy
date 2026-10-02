@@ -9,6 +9,6 @@ export const plugin: Plugin = {
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {
-    registry.port("brief", new FileBriefStore(path.join(ctx.paths.state, ctx.config.directory as string)));
+    registry.port("brief", new FileBriefStore(path.join(ctx.paths.artifacts ?? ctx.paths.state, ctx.config.directory as string)));
   },
 };

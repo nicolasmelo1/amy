@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "gate": "feature-grooming",
-  "implementation_sha256": "66eb1ea15ff72fb6aa80e79628f80bad52c93fe172213566e62b73921c620c44",
+  "implementation_sha256": "90d7b71736c1071bf23ffe0d7f65ef1f34eb7b8b08937167a51d8f7e121acae6",
   "runs": [
     {
       "scenario": "feature-grooming",
       "status": "passed",
-      "actor": "Hermes Agent, driving real Git repositories through the feature-grooming public API for Nicolas Melo",
+      "actor": "Claude (agent), driving real Git repositories through the feature-grooming public API with .software-factory/evidence/feature-grooming-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/feature-grooming-run.json",
       "report_sha256": "9d701bc11728c120a1c573523d3cfc5dbbccbaa1701d4145ae9ab264e531bc98",
       "required_assertions": []

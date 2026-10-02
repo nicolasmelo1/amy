@@ -12,7 +12,7 @@
       "file": "github-rest.json.gz",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
       "publisher": "GitHub — the OpenAPI description of the github.com REST API",
-      "sha256": "bab647359529118583d35867f0fdb42ea7ea1b8a2f712590b61ba45b6d4d9b37"
+      "sha256": "94a14854504d016821fa3bfc452204a9e0196059ff680c3fad29db377a24e063"
     },
     {
       "name": "linear-graphql",
@@ -23,7 +23,7 @@
     }
   ],
   "gh": {
-    "version": "2.101.0",
+    "version": "2.102.0",
     "releases": "https://api.github.com/repos/cli/cli/releases",
     "reference": {
       "file": "gh-reference.md",

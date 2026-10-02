@@ -13,7 +13,6 @@ import {
   CommandRunner,
   Engine,
   FileStopSwitch,
-  Mounted,
   NodeCommandRunner,
   WorkRecord,
   Worktree,
@@ -55,12 +54,13 @@ import {
 import { budgetLines } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
-import { LoadResult, NOT_INSTALLED, installedPlugins, load, pluginsRootResolver } from "./loader.js";
+import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
-import { Profile, profiles, resolveProfile } from "./profiles.js";
+import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
+import { Assembled, assembleProfile } from "./assemble.js";
 import { installedStamp } from "./stamp.js";
-import { hostPaths, pluginList, pluginSlices } from "./slices.js";
+import { hostPaths, pluginList, pluginSlices, worktreeNamespace } from "./slices.js";
 import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
 import {
   BootCheck,
@@ -77,16 +77,16 @@ import {
   workflowProfileConflict,
   workflowProfileName,
 } from "./add.js";
-import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, running, writeDaemon } from "./daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, running, runningForWorkflow, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
-import { paths, profilePaths } from "./paths.js";
+import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { Held, held, isRange, line, move, restore, roots } from "./update.js";
-import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, runWithAutoUpdate, takeDaemonUpdate } from "./auto-update.js";
+import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -120,50 +120,14 @@ function loadMountable(specs: readonly string[]): Promise<LoadResult> {
   return load(specs, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
 }
 
-/**
- * Loads the plugins the config asks for and assembles them.
- *
- * Every refusal happens here, by name, before a ticket is touched: a plugin
- * that will not import, a setting that is not one it has, two plugins
- * claiming the same port, an action the workflow emits that nothing can run.
- */
-async function assemble(
-  profile: Profile,
-): Promise<
-  { ok: true; engine: Engine; mounted: Mounted } | { ok: false; problems: string[] }
-> {
-  const config = loadConfig(home);
-  const place = profilePaths(home, profile.name);
-  const specs = pluginList(config, profile);
-
-  const loaded = await loadMountable(specs);
-  if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
-
-  const outcome = await mount(
-    [...loaded.plugins, hostPlugin(() => loadRoster(home))],
-    pluginSlices(config, profile),
-    {
-      runner,
-      now: () => new Date(),
-      log: new FileEventLog(place.log, undefined, build),
-      paths: hostPaths(config, place.base),
-    },
-  );
-
-  if (!outcome.ok) return { ok: false, problems: outcome.problems };
-
-  const { mounted } = outcome;
-  if (!mounted.engine) {
-    return { ok: false, problems: ["no plugin mounted an engine, so nothing can advance work"] };
-  }
-  if (!mounted.workflow) {
-    return { ok: false, problems: ["no plugin mounted a workflow, so there is no order to follow"] };
-  }
-
-  const unmet = unmetNeeds(mounted, mounted.workflow);
-  if (unmet.length > 0) return { ok: false, problems: unmet };
-
-  return { ok: true, engine: mounted.engine, mounted };
+/** Assembles one profile with this process's runner, loader, log and host glue. */
+function assemble(profile: Profile): Promise<Assembled> {
+  return assembleProfile(home, loadConfig(home), profile, {
+    runner,
+    load: loadMountable,
+    log: (file) => new FileEventLog(file, undefined, build),
+    host: [hostPlugin(() => loadRoster(home))],
+  });
 }
 
 /** Runs this executable's update command and returns its exact exit status. */
@@ -179,6 +143,23 @@ function scheduledUpdate(): Promise<number> {
     });
     child.once("exit", (code) => resolve(code ?? 1));
   });
+}
+
+/** A reaper can leave a due update behind; the next owner settles it before publishing a daemon. */
+async function settlePendingDaemonUpdate(profile: Profile, command: string, config: AmyConfig): Promise<void> {
+  // A package update is machine-wide. Keep its durable due marker for the
+  // first idle boundary rather than making another phase's startup fail.
+  if (anotherProfileDaemonIsRunning(profile, config)) return;
+  for (const pending of Object.values(profiles(config, home))) {
+    if (!await settleDaemonUpdate(home, pending.name, scheduledUpdate)) {
+      throw new Error(`the previous daemon's scheduled update did not settle; fix it and try ${command} again`);
+    }
+  }
+}
+
+/** A profile may start while a sibling owns the shared package installation. */
+function anotherProfileDaemonIsRunning(profile: Profile, config: AmyConfig): boolean {
+  return Object.values(profiles(config, home)).some((candidate) => candidate.name !== profile.name && runningProfileDaemon(candidate));
 }
 
 /** Applies the persisted schedule around one foreground workflow invocation. */
@@ -197,11 +178,25 @@ async function aroundWorkflow(profile: Profile, work: () => Promise<void>): Prom
  * single workflow, so the profile is what chooses which.
  */
 function selected(config: AmyConfig = loadConfig(home)): Profile {
-  const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow);
+  const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow, home);
   if (resolution.ok) return resolution.profile;
 
   console.error(resolution.problem);
   process.exit(1);
+}
+
+/** A config transition must not hide the daemon its prior layout published. */
+function runningProfileDaemon(profile: Profile): { file: string; record: NonNullable<ReturnType<typeof running>> } | undefined {
+  for (const file of profileDaemonPids(home, profile)) {
+    const record = runningForWorkflow(file, profile.name);
+    if (record) return { file, record };
+  }
+  return undefined;
+}
+
+/** The legacy PID is shared, so it must never be overwritten by another profile. */
+function runningSharedDaemon(): ReturnType<typeof running> {
+  return running(paths(home).pid);
 }
 
 /** Assembles, or prints why it could not and stops. */
@@ -259,8 +254,8 @@ program
     // somewhere to drop a file into before anything has ever run.
     fs.mkdirSync(place.notes, { recursive: true });
 
-    for (const profile of Object.values(profiles(loadConfig(home)))) {
-      const own = profilePaths(home, profile.name);
+    for (const profile of Object.values(profiles(loadConfig(home), home))) {
+      const own = profilePaths(home, profile);
       fs.mkdirSync(own.records, { recursive: true });
       fs.mkdirSync(own.queue, { recursive: true });
     }
@@ -291,10 +286,10 @@ program
     // which — a bare machine is the machine being set up, not one being
     // rebuilt.
     const config = loadConfig(home);
-    const wanted = Object.values(profiles(config)).flatMap((profile) =>
+    const wanted = Object.values(profiles(config, home)).flatMap((profile) =>
       pluginList(config, profile),
     );
-    const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !installedPlugins(place.plugins).includes(name));
+    const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !isFilesystemWorkflow(name) && !installedPlugins(place.plugins).includes(name));
     if (absent.length === 0) {
       if (wanted.length === 0) {
         console.log("\nkept the plugins it did not need: nothing is mounted yet.");
@@ -372,7 +367,7 @@ program
     // for: it reports everything else it can see, then names the one thing
     // that is missing in the words the operator can act on — rather than
     // exiting at the selection step with nothing reported.
-    const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow);
+    const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow, home);
     if (!resolution.ok) {
       await doctorReport(
         config,
@@ -498,48 +493,52 @@ program
   .description("Start the loop in the background, and keep it running")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
   .action(async (options: { every: string }) => {
-    const place = paths(home);
-    const already = running(place.pid);
+    const config = loadConfig(home);
+    const profile = selected(config);
+    const place = profilePaths(home, profile);
+    const already = runningProfileDaemon(profile);
     if (already) {
-      console.log(`already running: pid ${already.pid}, driving ${already.workflow}`);
+      console.log(`already running: pid ${already.record.pid}, driving ${already.record.workflow}`);
       return;
     }
 
-    const config = loadConfig(home);
     const problems = configuredAutoUpdateProblems(config);
     if (problems.length > 0) throw new Error(problems.join("; "));
-    const profile = selected(config);
     // A detached reaper still owns the dead record and its after-timed
     // update. Starting another loop must not clear that record before the
     // reaper can claim it, or silently lose the scheduled maintenance.
-    if (hasDaemonUpdate(home, profile.name)) {
-      throw new Error("the previous daemon is settling its scheduled update; try start again when it finishes");
-    }
+    await settlePendingDaemonUpdate(profile, "start", config);
     const schedule = beginAutoUpdateInvocation(home, profile.name, config);
-    if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
-      throw new Error("amy update failed");
-    }
+    await runDueBeforeDaemonUpdate(schedule, profile, config);
 
     // The claim spans only the moment the loop becomes visible: an update
     // refused to move packages while a child was between its spawn and its
     // pid record. A due before-update runs unclaimed above, because it is
     // an `amy update` itself and owns the boundary inside its own process.
-    const release = claimDaemonBoundary(place.pid);
+    // Package updates are shared across every phase, so every phase start
+    // takes the same short boundary before publishing its own PID.
+    const release = claimDaemonBoundary(paths(home).pid);
     if (!release) {
       console.error("the loop is starting or amy update is running; try again when it finishes");
       process.exitCode = 1;
       return;
     }
     try {
-      const current = running(place.pid);
+      const shared = runningSharedDaemon();
+      if (shared) {
+        console.log(`already running: pid ${shared.pid}, driving ${shared.workflow}`);
+        return;
+      }
+      const current = runningProfileDaemon(profile);
       if (current) {
-        console.log(`already running: pid ${current.pid}, driving ${current.workflow}`);
+        console.log(`already running: pid ${current.record.pid}, driving ${current.record.workflow}`);
         return;
       }
 
       // Detached, with its output on a file rather than this terminal: the
       // point of starting it is that it outlives the session that started it.
-      const out = fs.openSync(path.join(place.base, "daemon.log"), "a");
+      fs.mkdirSync(path.dirname(place.pid), { recursive: true });
+      const out = fs.openSync(path.join(path.dirname(place.pid), "daemon.log"), "a");
       const child = spawn(
         process.execPath,
         [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
@@ -563,7 +562,7 @@ program
       }
 
       console.log(`started ${profile.name}: pid ${child.pid}`);
-      console.log(`Watch it: tail -f ${path.join(place.base, "daemon.log")}`);
+      console.log(`Watch it: tail -f ${path.join(path.dirname(place.pid), "daemon.log")}`);
     } finally {
       release();
     }
@@ -573,24 +572,23 @@ program
   .command("stop")
   .description("Stop the background loop")
   .action(async () => {
-    const place = paths(home);
-    const record = running(place.pid);
-    if (!record) {
+    const selectedProfile = selected();
+    const live = runningProfileDaemon(selectedProfile);
+    if (!live) {
       console.log("nothing running");
       return;
     }
+    const { file, record } = live;
 
-    // The handbrake first, so a run in the middle of an agent call ends its
-    // children rather than being killed with them still going, and then the
-    // loop itself. Cleared afterwards: pausing is a separate thing an
-    // operator does, and stopping should not leave the machine held.
-    stopSwitch.request("stopped by hand");
+    // Only the selected daemon is signalled. Its SIGTERM handler ends its own
+    // agent children; the handbrake is machine-wide, so pulling it here would
+    // also interrupt another phase's `run`, and clearing it afterwards would
+    // discard a pause the operator set. `pause` and `resume` own the switch.
     process.kill(record.pid, "SIGTERM");
     await waitForDaemonExit(record.pid);
-    stopSwitch.clear();
     // The detached reaper owns an after-timed update, including a crash or
     // direct signal. Do not race it by consuming the marker here.
-    if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(place.pid);
+    if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(file);
     console.log(`stopped ${record.workflow}: pid ${record.pid}`);
   });
 
@@ -603,12 +601,14 @@ program
     const pid = Number(pidText);
     if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error(`invalid daemon pid ${pidText}`);
     await waitForDaemonExit(pid);
-    if (!claimExitedDaemon(paths(home).pid, pid)) return;
+    const resolution = resolveProfile(loadConfig(home), workflow, home);
+    if (!resolution.ok) return;
+    if (!profileDaemonPids(home, resolution.profile).some((file) => claimExitedDaemon(file, pid))) return;
     if (!takeDaemonUpdate(home, workflow)) return;
-    try {
-      if (await scheduledUpdate() !== 0) process.exitCode = 1;
-    } finally {
-      finishDaemonUpdate(home, workflow);
+    if (await scheduledUpdate() === 0) finishDaemonUpdate(home, workflow);
+    else {
+      retryDaemonUpdate(home, workflow);
+      process.exitCode = 1;
     }
   });
 
@@ -660,31 +660,63 @@ async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<vo
   const config = loadConfig(home);
   const problems = configuredAutoUpdateProblems(config);
   if (problems.length > 0) throw new Error(problems.join("; "));
+  await settlePendingDaemonUpdate(profile, "daemon", config);
   const schedule = beginAutoUpdateInvocation(home, profile.name, config);
   // A before update settles before this foreground process becomes the daemon;
   // an after update settles after its record is removed.
-  if (schedule.due && schedule.timing === "before" && await scheduledUpdate() !== 0) {
-    throw new Error("amy update failed");
-  }
-  const file = paths(home).pid;
-  const release = claimDaemonBoundary(file);
+  await runDueBeforeDaemonUpdate(schedule, profile, config);
+  const file = profilePaths(home, profile).pid;
+  const release = claimDaemonBoundary(paths(home).pid);
   if (!release) throw new Error("the loop is starting or amy update is running; try again when it finishes");
   try {
-    const live = running(file);
-    if (live) throw new Error(`already running: pid ${live.pid}, driving ${live.workflow}`);
+    const shared = runningSharedDaemon();
+    if (shared) throw new Error(`already running: pid ${shared.pid}, driving ${shared.workflow}`);
+    const live = runningProfileDaemon(profile);
+    if (live) throw new Error(`already running: pid ${live.record.pid}, driving ${live.record.workflow}`);
     writeDaemon(file, { pid: process.pid, workflow: profile.name, startedAt: new Date().toISOString() });
   } finally {
     release();
   }
+  let afterUpdateClaimed: boolean;
   try {
     await drive();
   } finally {
+    afterUpdateClaimed = reserveAfterDaemonUpdate(schedule, profile);
     // Do not erase a record a later owner wrote after this process ended.
     if (readDaemon(file)?.pid === process.pid) clearDaemon(file);
   }
-  if (schedule.due && schedule.timing === "after" && await scheduledUpdate() !== 0) {
+  await finishAfterDaemonUpdate(schedule, profile, afterUpdateClaimed);
+}
+
+/** Keep a failed before-update due until a later start can settle it safely. */
+async function runDueBeforeDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile, config: AmyConfig): Promise<void> {
+  if (!schedule.due || schedule.timing !== "before") return;
+  markDaemonUpdate(home, profile.name);
+  if (anotherProfileDaemonIsRunning(profile, config)) return;
+  const claimed = takeDaemonUpdate(home, profile.name);
+  if (!claimed || await scheduledUpdate() !== 0) {
+    if (claimed) retryDaemonUpdate(home, profile.name);
     throw new Error("amy update failed");
   }
+  finishDaemonUpdate(home, profile.name);
+}
+
+/** Reserve a due after-update while this foreground daemon is still visible. */
+function reserveAfterDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile): boolean {
+  if (!schedule.due || schedule.timing !== "after") return false;
+  // A concurrent start must see either this PID or our claimed update, never neither.
+  markDaemonUpdate(home, profile.name);
+  return takeDaemonUpdate(home, profile.name);
+}
+
+/** Run a foreground daemon's reserved after-update, retaining failure for retry. */
+async function finishAfterDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile, claimed: boolean): Promise<void> {
+  if (!schedule.due || schedule.timing !== "after") return;
+  if (!claimed || await scheduledUpdate() !== 0) {
+    if (claimed) retryDaemonUpdate(home, profile.name);
+    throw new Error("amy update failed");
+  }
+  finishDaemonUpdate(home, profile.name);
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -694,7 +726,7 @@ program
   .description("Look at one piece of work now, rather than when it was next due")
   .argument("<workId>", "the work to bring forward, such as a ticket key")
   .action((workId: string) => {
-    const queue = new FileQueue(profilePaths(home, selected().name).queue);
+    const queue = new FileQueue(profilePaths(home, selected()).queue);
     console.log(describePoke(workId, poke(queue, workId, new Date())));
   });
 
@@ -770,7 +802,7 @@ program
       return;
     }
 
-    const place = profilePaths(home, profile.name);
+    const place = profilePaths(home, profile);
     const now = new Date();
 
     // Written and queued in one step, with nothing resolved against anything.
@@ -802,7 +834,7 @@ function profileThat(
   const asked = program.opts<{ workflow?: string }>().workflow;
   if (asked) return selected(config);
 
-  const takers = Object.values(profiles(config)).filter((profile) => profile[takes]);
+  const takers = Object.values(profiles(config, home)).filter((profile) => profile[takes]);
   if (takers.length === 1) return takers[0];
 
   console.error(
@@ -835,14 +867,14 @@ program
       return;
     }
 
-    const place = profilePaths(home, profile.name);
+    const place = profilePaths(home, profile);
     const now = new Date();
 
     // Written and queued in one step, and nothing is resolved against
     // anything. That is the whole point of the command: the cost of capturing
     // a thing you said in passing has to be close to zero, or it does not get
     // captured.
-    const task = new FileTasks(path.join(place.base, "tasks"), { defaultRepo: repo }).add(
+    const task = new FileTasks(place.tasks, { defaultRepo: repo }).add(
       { repo, text, source: options.source },
       now,
     );
@@ -860,6 +892,14 @@ program
   .option("--json", "the same snapshot as data, for something else to render")
   .action(async (id: string, options: { json?: boolean }) => {
     const profile = selected();
+    // A project without `brief/` has no grooming phase, so it keeps no briefs:
+    // say which folder is missing rather than that a brief was not found.
+    const missing = missingPhase(profile, "brief");
+    if (missing) {
+      console.error(missing);
+      process.exitCode = 1;
+      return;
+    }
 
     // Assembled, because the store is a mounted port rather than a path:
     // `amy brief show` resolves the adapter the same way a tick does, and a
@@ -906,7 +946,7 @@ program
   .option("--all", "include work that has finished")
   .action(async (options: { json?: boolean; all?: boolean }) => {
     const profile = selected();
-    const place = profilePaths(home, profile.name);
+    const place = profilePaths(home, profile);
     const queue = new FileQueue(place.queue);
     const now = new Date();
 
@@ -922,7 +962,7 @@ program
       .all()
       .sort((a, b) => a.id.localeCompare(b.id));
 
-    const live = running(place.pid);
+    const live = runningProfileDaemon(profile)?.record;
     const held = stopSwitch.isRequested() ? stopSwitch.reason() : null;
     const notes = countIn(place.notes);
     const asked = countIn(place.needsInput);
@@ -1009,7 +1049,7 @@ program
       return;
     }
 
-    const log = new FileEventLog(paths(home).log, undefined, build);
+    const log = new FileEventLog(profilePaths(home, selected()).log, undefined, build);
     const now = new Date();
 
     // Read once, over the longest window any ceiling could be set on, rather
@@ -1174,7 +1214,7 @@ async function bootsAfterAdd(home: string, workflow: boolean, name?: string) {
   const config = loadConfig(home);
   if (Object.keys(config.workflows).length === 0) return { ok: true as const, problems: [] };
   return whatBoots(async () => {
-    const profile = workflow ? resolveProfile(config, name) : { ok: true as const, profile: selected(config) };
+    const profile = workflow ? resolveProfile(config, name, home) : { ok: true as const, profile: selected(config) };
     if (!profile.ok) return { ok: false, problems: [profile.problem] };
     const assembled = await assemble(profile.profile);
     return assembled.ok
@@ -1303,12 +1343,12 @@ async function mountingWithout(
   spec: string,
   carrier: Carrier,
 ): Promise<BootCheck> {
-  const trialConfig = configWithout(config, profile, spec, carrier);
+  const trialConfig = configWithout(config, profile, spec, carrier, home);
 
   // Extras mount under every profile. The trial is therefore all remaining
   // profiles, not merely the one selected by this invocation.
-  for (const trialProfile of Object.values(profiles(trialConfig))) {
-    const trialSlices = { ...pluginSlices(trialConfig, trialProfile) };
+  for (const trialProfile of Object.values(profiles(trialConfig, home))) {
+    const trialSlices = { ...pluginSlices(trialConfig, trialProfile, home) };
     delete trialSlices[spec];
     const loaded = await loadMountable(pluginList(trialConfig, trialProfile));
     if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
@@ -1319,8 +1359,8 @@ async function mountingWithout(
       {
         runner,
         now: () => new Date(),
-        log: new FileEventLog(paths(home).log, undefined, build),
-        paths: hostPaths(trialConfig, profilePaths(home, trialProfile.name).base),
+        log: new FileEventLog(profilePaths(home, trialProfile).log, undefined, build),
+        paths: hostPaths(trialConfig, profilePaths(home, trialProfile).base, trialProfile),
       },
     );
     if (!outcome.ok) return { ok: false, problems: outcome.problems };
@@ -1363,15 +1403,28 @@ function refuseRemoval(
 ): string | undefined {
   const carried =
     Object.values(config.workflows).some((entry) => entry.workflow === spec) ||
-    Object.values(profiles(config)).some((candidate) => pluginList(config, candidate).includes(spec));
+    Object.values(profiles(config, home)).some((candidate) =>
+      candidate.workflow === spec || pluginList(config, candidate).includes(spec),
+    );
 
   if (!carried) return `the config does not name ${spec}`;
 
-  const live = running(paths(home).pid);
-  if (live && carrier.profile === live.workflow) {
-    return `${carrier.profile} is running as pid ${live.pid}. Run \`amy stop\` first.`;
+  const live = carrier.place === "extras"
+    ? Object.values(profiles(config, home)).map(runningProfileDaemon).find(Boolean)?.record
+    : carrier.profile ? runningProfileDaemon(profiles(config, home)[carrier.profile] ?? profile)?.record : undefined;
+  if (live) {
+    return `${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`;
   }
 
+  return pendingRemovalProblem(home, config, spec, carrier);
+}
+
+/** A removed profile must not leave its scheduled updater stranded. */
+function pendingRemovalProblem(home: string, config: AmyConfig, spec: string, carrier: Carrier): string | undefined {
+  const affected = carrier.profile ? profiles(config, home)[carrier.profile] : undefined;
+  if (affected && hasDaemonUpdate(home, affected.name)) {
+    return `${affected.name} has a scheduled daemon update. Let it settle before removing ${spec}.`;
+  }
   return undefined;
 }
 
@@ -1406,7 +1459,7 @@ function removeFromConfig(
   }
 
   const name = carrier.profile ?? profile.name;
-  const target = profiles(config)[name] ?? profile;
+  const target = profiles(config, home)[name] ?? profile;
   const own = target.plugins.length > 0
     ? target.plugins
     : pluginList(config, target).filter((name) => !config.extraPlugins.includes(name));
@@ -1458,7 +1511,7 @@ async function removeCommand(home: string, spec: string): Promise<void> {
     return;
   }
   const profile = selected(config);
-  const carrier = carriedBy(config, profile, spec);
+  const carrier = carriedBy(config, profile, spec, home);
 
   const refusal = refuseRemoval(home, config, profile, spec, carrier);
   if (refusal) {
@@ -1801,10 +1854,28 @@ async function rewriteSkillsOrRollBack(
  * it names the pid it is refusing to interrupt.
  */
 function refuseWhileRunning(home: string): number | undefined {
-    const live = running(paths(home).pid);
+    const live = [
+      running(paths(home).pid),
+      ...Object.values(profiles(loadConfig(home), home)).map(runningProfileDaemon).map((daemon) => daemon?.record),
+      ...orphanedProfileDaemons(home),
+    ].find((record) => record !== undefined);
     if (!live) return undefined;
     console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
     return 1;
+}
+
+/** Daemons outlive a manual profile rename, so update discovers their PID files instead of trusting config. */
+function orphanedProfileDaemons(home: string): Array<NonNullable<ReturnType<typeof running>>> {
+  const profilesDirectory = path.join(home, "profiles");
+  try {
+    return fs.readdirSync(profilesDirectory, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => running(path.join(profilesDirectory, entry.name, "daemon.pid")))
+      .filter((record): record is NonNullable<ReturnType<typeof running>> => record !== undefined);
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
 }
 
 /** The one-line report of everything the two roots hold. */
@@ -2038,7 +2109,7 @@ async function rollBackAll(
 async function assembleProfiles(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const config = loadConfig(home);
   const problems: string[] = [];
-  for (const profile of Object.values(profiles(config))) {
+  for (const profile of Object.values(profiles(config, home))) {
     const booted = await assemble(profile);
     if (!booted.ok) problems.push(...booted.problems.map((problem) => `${profile.name}: ${problem}`));
   }
@@ -2289,19 +2360,19 @@ workflowCommand
   .description("Every workflow this install can drive")
   .action(async () => {
     const config = loadConfig(home);
-    const known = profiles(config);
-    const asked = resolveProfile(config, undefined);
+    const known = profiles(config, home);
+    const asked = resolveProfile(config, undefined, home);
     const present = installedPlugins(paths(home).plugins);
-    const live = running(paths(home).pid);
 
     for (const profile of Object.values(known)) {
-      const place = profilePaths(home, profile.name);
+      const place = profilePaths(home, profile);
+      const live = runningProfileDaemon(profile)?.record;
       const held = fs.existsSync(place.records) ? fs.readdirSync(place.records).length : 0;
       const marks = [
         asked.ok && asked.profile.name === profile.name ? "default" : "",
         live?.workflow === profile.name ? "running" : "",
         localWorkflow(home, profile.workflow) ? `local: ${workflowsDirectory(home)}` : "",
-        present.includes(profile.workflow) || localWorkflow(home, profile.workflow) ? "" : "not installed",
+        present.includes(profile.workflow) || localWorkflow(home, profile.workflow) || isFilesystemWorkflow(profile.workflow) ? "" : "not installed",
       ].filter(Boolean);
 
       console.log(
@@ -2318,22 +2389,26 @@ workflowCommand
   .option("--yes", "actually delete, rather than saying what would go")
   .action((name: string, options: { yes?: boolean }) => {
     const config = loadConfig(home);
-    const resolution = resolveProfile(config, name);
+    const resolution = resolveProfile(config, name, home);
     if (!resolution.ok) {
       console.error(resolution.problem);
       process.exitCode = 1;
       return;
     }
 
-    const live = running(paths(home).pid);
-    if (live?.workflow === name) {
-      console.error(`${name} is running as pid ${live.pid}. Run \`amy stop\` first.`);
+    const live = runningProfileDaemon(resolution.profile)?.record;
+    if (live) {
+      console.error(`${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`);
+      process.exitCode = 1;
+      return;
+    }
+    if (hasDaemonUpdate(home, resolution.profile.name)) {
+      console.error(`${resolution.profile.name} has a scheduled daemon update. Let it settle before removing it.`);
       process.exitCode = 1;
       return;
     }
 
-    const place = profilePaths(home, name);
-    const going = [place.records, place.queue].filter((directory) => fs.existsSync(directory));
+    const going = profileOwnedDirectories(home, resolution.profile).filter((directory) => fs.existsSync(directory));
 
     for (const directory of going) {
       const held = fs.readdirSync(directory).length;
@@ -2352,7 +2427,6 @@ workflowCommand
     }
 
     for (const directory of going) fs.rmSync(directory, { recursive: true, force: true });
-    fs.rmSync(path.join(home, name), { recursive: true, force: true });
     removeProfile(home, name, config);
     console.log(`\nforgot ${name}`);
   });
@@ -2367,12 +2441,17 @@ queueCommand
     const config = loadConfig(home);
     const days = options.days ? Number(options.days) : config.retentionDays;
     const now = new Date();
-    const removed = new FileQueue(profilePaths(home, selected().name).queue).prune(days, now);
-    const assembled = await assemble(selected());
+    const profile = selected();
+    const removed = new FileQueue(profilePaths(home, profile).queue).prune(days, now);
+    const assembled = await assemble(profile);
     const briefStore = assembled.ok ? (assembled.mounted.ports.get("brief") as BriefStore | undefined) : undefined;
     const records = assembled.ok ? assembled.mounted.store : undefined;
     const terminal = assembled.ok ? new Set(assembled.mounted.workflow?.terminalStates ?? []) : new Set<string>();
-    const retired = briefStore && records
+    // A shared project brief may still explain live work in another phase.
+    // Until the project has one cross-phase retention view, auto-pruning it
+    // would be destructive; ordinary profile-local briefs retain their
+    // existing retention behaviour.
+    const retired = !profile.project && briefStore && records
       ? await briefStore.retired((id) => terminal.has(records.load(id)?.state ?? ""), days * 86_400_000, now)
       : [];
     await Promise.all(retired.map((id) => briefStore!.remove(id)));
@@ -2384,7 +2463,7 @@ queueCommand
   .description("Return items abandoned by a dead worker")
   .action(() => {
     const config = loadConfig(home);
-    const recovered = new FileQueue(profilePaths(home, selected().name).queue).recover(
+    const recovered = new FileQueue(profilePaths(home, selected()).queue).recover(
       config.staleClaimMs,
       new Date(),
     );
@@ -2405,17 +2484,20 @@ const rosterCommand = program.command("roster").description("Who is reviewing to
  */
 async function worktreeManager(config: AmyConfig): Promise<Worktree> {
   const profile = selected();
-  const place = profilePaths(home, profile.name);
+  const place = profilePaths(home, profile);
+  const slices = pluginSlices(config, profile, home) as Record<string, Record<string, unknown>>;
+  const recordsDirectory = slices["@amykit/plugin-file-worktree"]?.recordsDirectory;
   const assembled = await assemble(profile);
 
   return new WorktreeManager(runner, {
     root: config.worktrees.root || path.join(home, "worktrees"),
-    workflow: profile.name,
+    workflow: worktreeNamespace(profile),
     defaultBranch: config.defaultBranch,
     baseBranch: config.baseBranch,
     retentionDays: config.worktrees.retentionDays,
     record: (workId) => {
-      const file = path.join(place.records, `${workId}.json`);
+      const directory = typeof recordsDirectory === "string" ? recordsDirectory : place.records;
+      const file = path.join(directory, `${workId}.json`);
       try {
         return JSON.parse(fs.readFileSync(file, "utf-8")) as { state: string };
       } catch {
@@ -2425,7 +2507,7 @@ async function worktreeManager(config: AmyConfig): Promise<Worktree> {
     terminalStates: assembled.ok
       ? (assembled.mounted.workflow?.terminalStates ?? [])
       : [],
-    log: new FileEventLog(paths(home).log, undefined, build),
+    log: new FileEventLog(place.log, undefined, build),
   });
 }
 

@@ -100,7 +100,7 @@ describe("the self-review half-step", () => {
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-self-review-brief-"));
     const briefs = new FileBriefStore(path.join(root, "briefs"));
-    void briefs.write({
+    await briefs.write({
       id: "invoice-currency",
       sections: [{ name: "Goal", body: "One currency on every invoice line." }],
       explains: ["PROJ-1239"],

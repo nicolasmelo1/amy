@@ -1,5 +1,5 @@
 import path from "node:path";
-import { directoriesFor } from "./profiles.js";
+import { Profile, artifactDirectory, directoriesFor, projectStateKey } from "./profiles.js";
 
 /**
  * What every profile shares, under one state directory.
@@ -30,13 +30,62 @@ export function paths(home: string) {
   };
 }
 
-/** The two directories that belong to one profile and to nothing else. */
-export function profilePaths(home: string, profile: string) {
+/** The directories that belong to one profile and to nothing else. */
+export function profilePaths(home: string, profile: string | Profile) {
+  return { ...paths(home), ...statePaths(home, profile) };
+}
+
+function statePaths(home: string, profile: string | Profile) {
   const dirs = directoriesFor(profile);
+  const project = phaseState(profile);
+  const artifacts = projectArtifacts(profile);
 
   return {
-    ...paths(home),
     records: path.join(home, dirs.records),
     queue: path.join(home, dirs.queue),
+    // Plugin-owned state follows the phase the way its queue does.
+    tasks: path.join(home, project ?? "", "tasks"),
+    slack: path.join(home, project ?? "", "slack"),
+    ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
+    ...(project ? { log: path.join(home, project, "log"), pid: profileDaemonPid(home, profile) } : {}),
   };
+}
+
+/**
+ * A daemon is owned by the configured profile, not its current project path.
+ *
+ * Project state can deliberately move when a profile is repointed; a live
+ * process must stay visible to stop, removal and update checks through that
+ * transition so a second worker cannot take its place.
+ */
+function profileDaemonPid(home: string, profile: string | Profile): string {
+  return typeof profile === "string" ? path.join(home, "daemon.pid") : path.join(home, "profiles", profile.name, "daemon.pid");
+}
+
+/** Every PID location a profile may own across a packaged/phase transition. */
+export function profileDaemonPids(home: string, profile: string | Profile): readonly string[] {
+  if (typeof profile === "string") return [path.join(home, "daemon.pid")];
+  const current = profilePaths(home, profile).pid;
+  const previous = profile.project ? paths(home).pid : profileDaemonPid(home, profile);
+  return current === previous ? [current] : [current, previous];
+}
+
+function phaseState(profile: string | Profile): string | undefined {
+  return typeof profile === "string" || !profile.project ? undefined : projectStateKey(profile.project, profile.name);
+}
+
+function projectArtifacts(profile: string | Profile): string | undefined {
+  return typeof profile === "string" ? undefined : artifactDirectory(profile);
+}
+
+/**
+ * What `amy workflow rm` may delete: the directories no other profile reads.
+ *
+ * A phase owns its tasks and Slack threads as well as its records and queue;
+ * an ordinary profile shares those with its neighbours. Never the log: it is
+ * append-only because the budget is measured off it.
+ */
+export function profileOwnedDirectories(home: string, profile: Profile): string[] {
+  const place = profilePaths(home, profile);
+  return profile.project ? [place.records, place.queue, place.tasks, place.slack] : [place.records, place.queue];
 }

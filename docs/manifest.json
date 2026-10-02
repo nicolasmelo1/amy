@@ -233,6 +233,11 @@
           "description": ""
         },
         {
+          "title": "A project is three phases, and amy reads them",
+          "path": "/design/a-project-is-three-phases",
+          "description": ""
+        },
+        {
           "title": "A reply inside a thread reaches the agent",
           "path": "/design/a-reply-inside-a-thread-reaches-the-agent",
           "description": ""
@@ -831,6 +836,11 @@
           "depth": 3,
           "title": "findPrivateReferences reads a tree against a policy of hashed terms, so the repository gate can refuse a private name — standing alone or glued into a longer identifier — without the list of forbidden names being published alongside the check that hides them.",
           "slug": "findprivatereferences-reads-a-tree-against-a-policy-of-hashed-terms-so-the-repository-gate-can-refuse-a-private-name-standing-alone-or-glued-into-a-longer-identifier-without-the-list-of-forbidden-names-being-published-alongside-the-check-that-hides-them"
+        },
+        {
+          "depth": 3,
+          "title": "Let a project keep three phases — brief/, workflow/, test/ — that share briefs while keeping state and spending isolated. Every such folder is a phase, a lone workflow/ included, so its state moves under the project key and nothing is kept from an old profile of the same name. Each phase keeps its own tasks and Slack threads, amy brief names the missing brief/ when a project has none, and amy stop signals only the selected phase's daemon without touching the shared handbrake.",
+          "slug": "let-a-project-keep-three-phases-brief-workflow-test-that-share-briefs-while-keeping-state-and-spending-isolated-every-such-folder-is-a-phase-a-lone-workflow-included-so-its-state-moves-under-the-project-key-and-nothing-is-kept-from-an-old-profile-of-the-same-name-each-phase-keeps-its-own-tasks-and-slack-threads-amy-brief-names-the-missing-brief-when-a-project-has-none-and-amy-stop-signals-only-the-selected-phases-daemon-without-touching-the-shared-handbrake"
         },
         {
           "depth": 3,
@@ -1617,6 +1627,33 @@
           "depth": 2,
           "title": "Acceptance criteria",
           "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-project-is-three-phases",
+      "file": "docs/design/a-project-is-three-phases.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-project-is-three-phases.md",
+      "title": "A project is three phases, and amy reads them",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The contract",
+          "slug": "the-contract"
+        },
+        {
+          "depth": 2,
+          "title": "The delivery",
+          "slug": "the-delivery"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance",
+          "slug": "acceptance"
         }
       ]
     },
@@ -6557,7 +6594,7 @@
             "type": "string",
             "required": false,
             "default": "briefs",
-            "description": "where briefs are kept, relative to the workflow state directory"
+            "description": "where briefs are kept, relative to the host-selected artifact root"
           }
         ],
         "environment": []
@@ -6747,6 +6784,13 @@
             "required": false,
             "default": "main",
             "description": "the branch a tree is cut from for a repository that named none, which is not always `main`"
+          },
+          {
+            "name": "recordsDirectory",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "where this profile stores workflow records. The host derives it so phase-local worktrees consult the same records as the mounted file store"
           },
           {
             "name": "retentionDays",
@@ -7098,6 +7142,13 @@
             "required": false,
             "default": 60,
             "description": "how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins"
+          },
+          {
+            "name": "directory",
+            "type": "string",
+            "required": false,
+            "default": "slack",
+            "description": "where each work item's thread is remembered, relative to the state directory"
           },
           {
             "name": "maxRateLimitRetries",
@@ -7777,6 +7828,38 @@
         "scenario": ".software-factory/evidence/plugin-serial-engine-scenario.sh"
       },
       {
+        "name": "project-phases",
+        "activation": [
+          "packages/cli/src/assemble.ts",
+          "packages/cli/src/index.ts",
+          "packages/cli/src/paths.ts",
+          "packages/cli/src/profiles.ts",
+          "packages/cli/src/slices.ts",
+          "packages/cli/src/loader.ts",
+          "packages/core/src/mount.ts",
+          "plugins/file-brief-store/src/**"
+        ],
+        "evidence": ".software-factory/evidence/project-phases.json",
+        "plan": "docs/design/a-project-is-three-phases.md",
+        "assertions": [
+          "project.a_packaged_workflow_is_unchanged",
+          "project.a_lone_workflow_is_a_phase",
+          "project.a_project_without_brief_keeps_no_briefs",
+          "project.every_phase_mounts",
+          "project.each_phase_has_its_own_queue",
+          "project.each_phase_spends_its_own_budget",
+          "project.each_phase_is_its_own_daemon",
+          "project.each_phase_keeps_its_own_tasks",
+          "project.grooming_and_execution_choose_their_own_models",
+          "project.a_brief_crosses_the_phase_boundary",
+          "project.no_config_names_a_shared_directory",
+          "project.no_phase_state_escapes_home",
+          "project.a_phase_never_reads_an_old_profiles_records",
+          "project.a_phase_without_a_workflow_is_refused_by_name"
+        ],
+        "scenario": ".software-factory/evidence/project-phases-scenario.sh"
+      },
+      {
         "name": "ticket-to-qa",
         "activation": [
           "packages/workflow-ticket-to-qa/src/**",
@@ -8189,6 +8272,34 @@
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "a-project-is-three-phases",
+        "title": "Let a project keep three phases — `brief/`, `workflow/`, `test/` — that share briefs while keeping state and spending isolated. Every such folder is a phase, a lone `workflow/` included, so its state moves under the project key and nothing is kept from an old profile of the same name. Each phase keeps its own tasks and Slack threads, `amy brief` names the missing `brief/` when a project has none, and `amy stop` signals only the selected phase's daemon without touching the shared handbrake.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-brief-store",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-slack",
             "level": "patch"
           }
         ],

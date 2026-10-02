@@ -558,6 +558,21 @@ describe("contributions", () => {
     expect((context!.port("tracker") as { mutate?: () => Promise<void> }).mutate).toBeUndefined();
   });
 
+  it("attenuates a custom brief adapter with a mutating helper", async () => {
+    let context: PluginContext | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => { r.workflow({ ...WORKFLOW, trackerWrites: [], codeHostWrites: [] }); context = ctx; },
+    });
+    const briefs = plugin("@amykit/plugin-briefs", {
+      register: (r) => r.port("brief", { get: async () => null, mutate: async () => { throw new Error("called"); } }),
+    });
+
+    await mount([workflow, briefs], {}, HOST);
+
+    const brief = context!.port("brief") as { mutate?: () => Promise<void> };
+    expect(brief.mutate).toBeUndefined();
+  });
+
   it("attenuates an unrecognised mutator mounted only under a tracker-shaped alias", async () => {
     let context: PluginContext | undefined;
     let mutations = 0;
@@ -1120,6 +1135,24 @@ describe("one declaration per action", () => {
 });
 
 describe("a plugin that cannot mount", () => {
+  it("lets a host require a workflow without changing ordinary plugin-only mounts", async () => {
+    const outcome = await mount([plugin("@amykit/plugin-only")], {}, HOST, { workflowLabel: "brief/" });
+
+    expect(outcome).toMatchObject({ ok: false, problems: ["brief/: exports no workflow"] });
+  });
+
+  it("requires the configured plugin rather than a workflow another plugin contributes", async () => {
+    const configured = plugin("@acme/brief");
+    const unrelated = plugin("@acme/workflow", { register: (r) => r.workflow(WORKFLOW) });
+
+    const outcome = await mount([configured, unrelated], {}, HOST, {
+      workflowLabel: "brief/",
+      workflowPlugin: configured,
+    });
+
+    expect(outcome).toMatchObject({ ok: false, problems: ["brief/: exports no workflow"] });
+  });
+
   it("becomes a problem with a name, not an anonymous throw", async () => {
     const broken = plugin("@amykit/plugin-broken", {
       register: () => {

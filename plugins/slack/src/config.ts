@@ -32,6 +32,11 @@ export const configSchema: ConfigSchema = {
     description: "how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins",
     default: DEFAULT_RETRY_AFTER_S,
   },
+  directory: {
+    type: "string",
+    description: "where each work item's thread is remembered, relative to the state directory",
+    default: "slack",
+  },
   retentionDays: {
     type: "number",
     description:

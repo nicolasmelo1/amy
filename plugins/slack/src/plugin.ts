@@ -40,7 +40,7 @@ export const plugin: Plugin = {
       new SlackConversation(api, {
         channel,
         operator,
-        directory: path.join(ctx.paths.state, "slack"),
+        directory: path.join(ctx.paths.state, (ctx.config.directory as string | undefined) ?? "slack"),
         retentionDays,
         now: ctx.now,
       }),

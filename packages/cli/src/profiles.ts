@@ -1,4 +1,15 @@
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import type { AmyConfig, WorkflowProfile } from "./config.js";
+
+const PROJECT_PHASES = ["brief", "workflow", "test"] as const;
+type ProjectPhase = (typeof PROJECT_PHASES)[number];
+
+export interface ProjectIdentity {
+  readonly root: string;
+  readonly phase: ProjectPhase;
+}
 
 /**
  * Which workflow this invocation drives.
@@ -25,6 +36,10 @@ export interface Profile {
   readonly takesNotes: boolean;
   /** Whether `amy btw` puts a task onto this profile's queue. */
   readonly takesTasks: boolean;
+  /** The project artifact boundary inferred from a phase directory. */
+  readonly project?: ProjectIdentity;
+  /** Per-profile model and budget overrides, merged by the CLI before mount. */
+  readonly agent?: WorkflowProfile["agent"];
 }
 
 /**
@@ -45,7 +60,7 @@ const SHIPPED_PROFILES: Record<string, WorkflowProfile> = {};
  * it carries, every notification channel, and the engine. Not one of them is
  * duplicated for a second workflow, and not one changed to take it.
  */
-const SHARED: readonly string[] = [
+const PROVIDERS: readonly string[] = [
   "@amykit/plugin-file-queue",
   "@amykit/plugin-file-store",
   // A BriefStore is intentionally its own mount: a Git-backed adapter can
@@ -53,9 +68,10 @@ const SHARED: readonly string[] = [
   "@amykit/plugin-file-brief-store",
   "@amykit/plugin-file-notes",
   "@amykit/plugin-github",
-  // One isolated checkout per piece of work must mount before the harnesses
-  // and gates construct their Git bridges, or their optional port lookup sees
-  // nothing and silently falls back to the shared checkout.
+];
+
+/** Mount after the workflow declares terminal states, before its consumers capture Git. */
+const WORKTREE_AND_CONSUMERS: readonly string[] = [
   "@amykit/plugin-file-worktree",
   "@amykit/plugin-claude",
   "@amykit/plugin-codex",
@@ -86,22 +102,35 @@ const NEEDS: Record<string, readonly string[]> = {
 
 /** What `amy init` suggests installing for a profile that lists nothing. */
 export function recommendedFor(profile: Profile): readonly string[] {
-  return [profile.workflow, ...SHARED, ...(NEEDS[profile.workflow] ?? [])];
+  const needs = NEEDS[profile.workflow] ?? [];
+  // Workflow ports need their providers during registration, while the
+  // worktree captures the workflow's terminal states and must follow it.
+  const prerequisites = needs.filter((plugin) => plugin === "@amykit/plugin-linear");
+  const consumers = needs.filter((plugin) => plugin !== "@amykit/plugin-linear");
+  return [...PROVIDERS, ...prerequisites, profile.workflow, ...WORKTREE_AND_CONSUMERS, ...consumers];
 }
 
 /** Every profile this install can drive: the shipped ones, plus the config's. */
-export function profiles(config: AmyConfig): Record<string, Profile> {
+export function profiles(config: AmyConfig, home?: string): Record<string, Profile> {
   const declared = { ...SHIPPED_PROFILES, ...config.workflows };
-  const resolved: Record<string, Profile> = {};
+  // Profile names come from configuration. A null prototype makes every
+  // accepted name an own entry rather than inheriting Object's vocabulary.
+  const resolved = Object.create(null) as Record<string, Profile>;
 
   for (const [name, entry] of Object.entries(declared)) {
+    assertProfileName(name);
+    const workflow = filesystemWorkflow(home, entry.workflow);
     resolved[name] = {
       name,
-      workflow: entry.workflow,
-      plugins: entry.plugins ?? [],
+      workflow,
+      // The configured spelling remains in config, but the plugin loader and
+      // the required-workflow check must agree on the live absolute spec.
+      plugins: (entry.plugins ?? []).map((plugin) => plugin === entry.workflow ? workflow : plugin),
       briefStore: entry.briefStore,
       takesNotes: entry.notes ?? false,
       takesTasks: entry.tasks ?? false,
+      project: projectFor(workflow),
+      agent: entry.agent,
     };
   }
 
@@ -118,8 +147,8 @@ export type Resolution = { ok: true; profile: Profile } | { ok: false; problem: 
  * nothing. No name at all takes `defaultWorkflow`, and then the first one
  * declared, so an install with one workflow never has to name it.
  */
-export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
-  const known = profiles(config);
+export function resolveProfile(config: AmyConfig, asked?: string, home?: string): Resolution {
+  const known = profiles(config, home);
   const names = Object.keys(known);
   const wanted = (asked ?? config.defaultWorkflow ?? "").trim() || names[0];
 
@@ -139,6 +168,11 @@ export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
   return { ok: true, profile };
 }
 
+/** Resolve a portable filesystem spec only while constructing its live profile. */
+function filesystemWorkflow(home: string | undefined, workflow: string): string {
+  return home && workflow.startsWith(".") ? path.resolve(home, workflow) : workflow;
+}
+
 /**
  * Where a profile keeps its records and its queue, under one `.amy`.
  *
@@ -147,8 +181,54 @@ export function resolveProfile(config: AmyConfig, asked?: string): Resolution {
  * Everything else under `.amy` stays shared: one log means one budget, and
  * one handbrake means `amy stop` stops whichever workflow is running.
  */
-export function directoriesFor(profile: string): { records: string; queue: string } {
-  return { records: `${profile}/records`, queue: `${profile}/queue` };
+export function directoriesFor(profile: string | Pick<Profile, "name" | "project">): { records: string; queue: string } {
+  if (typeof profile !== "string" && profile.project) {
+    const base = projectStateKey(profile.project, profile.name);
+    return { records: `${base}/records`, queue: `${base}/queue` };
+  }
+  const name = typeof profile === "string" ? profile : profile.name;
+  return { records: `${name}/records`, queue: `${name}/queue` };
+}
+
+/**
+ * The shared project root is inferred from a phase directory, never from `..`
+ * configuration. Every `brief/`, `workflow/` or `test/` is a phase, alone or
+ * not: a folder a project lacks is a part of the work nobody drives.
+ */
+function projectFor(workflow: string): ProjectIdentity | undefined {
+  if (!workflow.startsWith(".") && !path.isAbsolute(workflow)) return undefined;
+  const phase = path.basename(workflow) as ProjectPhase;
+  if (!PROJECT_PHASES.includes(phase)) return undefined;
+  return { root: path.resolve(workflow, ".."), phase };
+}
+
+/** Why a command that needs one phase cannot answer for this profile's project, if it cannot. */
+export function missingPhase(profile: Pick<Profile, "name" | "project">, phase: ProjectPhase): string | undefined {
+  if (!profile.project || fs.existsSync(path.join(profile.project.root, phase))) return undefined;
+  return `${profile.name}'s project has no ${phase}/ phase, so nothing drives that part of its work: add ${path.join(profile.project.root, phase)}`;
+}
+
+/** A stable, path-safe state name that cannot make a profile leave Amy home. */
+export function projectStateKey(project: ProjectIdentity, profile?: string): string {
+  return `${projectRootKey(project)}${profile ? `/${profile}` : ""}/${project.phase}`;
+}
+
+/** A profile name becomes part of its state path, so it has one safe component. */
+function assertProfileName(name: string): void {
+  if (!name || name === "." || name === ".." || name.includes("/") || name.includes("\\") || path.win32.basename(name) !== name) {
+    throw new Error(`a workflow profile name must be one path component: \`${name}\``);
+  }
+}
+
+/** The project-owned state root; phase names are appended only by the host. */
+function projectRootKey(project: ProjectIdentity): string {
+  const safe = createHash("sha256").update(project.root).digest("base64url");
+  return `projects/${safe}`;
+}
+
+/** The one directory phases share; queues, records and budgets remain phase-local. */
+export function artifactDirectory(profile: Pick<Profile, "project">): string | undefined {
+  return profile.project ? `${projectRootKey(profile.project)}/artifacts` : undefined;
 }
 
 /**

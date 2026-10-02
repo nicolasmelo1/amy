@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { flock } from "fs-ext";
 import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
 
 /**
@@ -12,6 +14,8 @@ import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
  * parses as something it is not.
  */
 export class FileBriefStore implements BriefStore {
+  private static readonly heldLocks = new Set<string>();
+
   constructor(private readonly root: string) {
     fs.mkdirSync(this.root, { recursive: true });
   }
@@ -28,18 +32,19 @@ export class FileBriefStore implements BriefStore {
     explains: string[];
     at: string;
   }): Promise<BriefRecord> {
-    const existing = await this.get(input.id);
-    const record: BriefRecord = {
-      id: input.id,
-      sections: input.sections,
-      questions: existing?.questions ?? [],
-      explains: input.explains,
-      createdAt: existing?.createdAt ?? input.at,
-      updatedAt: input.at,
-      revision: (existing?.revision ?? 0) + 1,
-    };
-    this.save(record);
-    return record;
+    return this.updateBrief(input.id, async (existing) => {
+      const record: BriefRecord = {
+        id: input.id,
+        sections: input.sections,
+        questions: existing?.questions ?? [],
+        explains: input.explains,
+        createdAt: existing?.createdAt ?? input.at,
+        updatedAt: input.at,
+        revision: (existing?.revision ?? 0) + 1,
+      };
+      this.save(record);
+      return record;
+    });
   }
 
   async appendQuestion(input: {
@@ -47,11 +52,12 @@ export class FileBriefStore implements BriefStore {
     question: BriefQuestion;
     at: string;
   }): Promise<BriefRecord> {
-    const existing = await this.get(input.id);
-    if (!existing) throw new Error(`there is no brief \`${input.id}\` to append a question to`);
-    const record: BriefRecord = { ...existing, questions: [...existing.questions, input.question], updatedAt: input.at };
-    this.save(record);
-    return record;
+    return this.updateBrief(input.id, async (existing) => {
+      if (!existing) throw new Error(`there is no brief \`${input.id}\` to append a question to`);
+      const record: BriefRecord = { ...existing, questions: [...existing.questions, input.question], updatedAt: input.at };
+      this.save(record);
+      return record;
+    });
   }
 
   async retired(
@@ -70,16 +76,75 @@ export class FileBriefStore implements BriefStore {
   }
 
   async remove(id: BriefId): Promise<void> {
-    const file = this.file(id);
-    if (fs.existsSync(file)) fs.rmSync(file);
+    // The same lock as a writer, but nothing read: a brief too corrupt to
+    // parse is exactly the one somebody needs to be able to clear.
+    await this.locked(id, async () => fs.rmSync(this.file(id), { force: true }));
   }
 
   /** Written to a sibling and renamed, so a brief is never half-written. */
   private save(record: BriefRecord): void {
     const file = this.file(record.id);
-    const temporary = `${file}.tmp`;
-    fs.writeFileSync(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf-8");
-    fs.renameSync(temporary, file);
+    const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      fs.writeFileSync(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf-8");
+      fs.renameSync(temporary, file);
+    } catch (error: unknown) {
+      fs.rmSync(temporary, { force: true });
+      throw error;
+    }
+  }
+
+  /** Serializes a read-modify-write across phase processes for one brief. */
+  private updateBrief<T>(id: BriefId, change: (existing: BriefRecord | null) => Promise<T>): Promise<T> {
+    return this.locked(id, async () => change(await this.get(id)));
+  }
+
+  /** Holds one brief's lock across a callback, whatever it does with the file. */
+  private async locked<T>(id: BriefId, work: () => Promise<T>): Promise<T> {
+    const lock = `${this.file(id)}.lock`;
+    const descriptor = await this.acquire(lock);
+    try {
+      return await work();
+    } finally {
+      await this.release(lock, descriptor);
+    }
+  }
+
+  /** Hold an OS lock, which the kernel releases even if a phase crashes. */
+  private async acquire(lock: string): Promise<number> {
+    while (FileBriefStore.heldLocks.has(lock)) await new Promise((resolve) => setTimeout(resolve, 1));
+    FileBriefStore.heldLocks.add(lock);
+    let descriptor: number | undefined;
+    try {
+      // Inside the guard: an open that fails (the directory went away, the
+      // process ran out of descriptors) must not leave the in-process claim
+      // behind, or every later write to this brief waits forever. `a+`, not
+      // `a`: Windows' LockFileEx refuses a handle with append access alone.
+      descriptor = fs.openSync(lock, "a+");
+      await this.flock(descriptor, "ex");
+      return descriptor;
+    } catch (error: unknown) {
+      if (descriptor !== undefined) fs.closeSync(descriptor);
+      FileBriefStore.heldLocks.delete(lock);
+      throw error;
+    }
+  }
+
+  /** Release this process and the kernel lock; keep the stable lock inode. */
+  private async release(lock: string, descriptor: number): Promise<void> {
+    FileBriefStore.heldLocks.delete(lock);
+    try {
+      await this.flock(descriptor, "un");
+    } finally {
+      fs.closeSync(descriptor);
+    }
+  }
+
+  /** fs-ext's callback API keeps a contested flock off the Node event loop. */
+  private flock(descriptor: number, operation: "ex" | "un"): Promise<void> {
+    return new Promise((resolve, reject) => {
+      flock(descriptor, operation, (error) => error ? reject(error) : resolve());
+    });
   }
 
   private ids(): BriefId[] {
