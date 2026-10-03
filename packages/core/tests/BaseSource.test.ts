@@ -32,6 +32,9 @@ describe("a base-source snapshot", () => {
     author = path.join(root, "author");
     git(root, "init", "-q", "--bare", "--initial-branch=main", bare);
     git(root, "clone", "-q", bare, author);
+    // A merge asks for an identity before it starts, and CI has none of its own.
+    git(author, "config", "user.email", "amy@example.test");
+    git(author, "config", "user.name", "amy");
     commit(author, "base", { "schema.sql": "create table items (id text);\n" });
     git(author, "push", "-q", "origin", "main");
     git(root, "clone", "-q", bare, checkout);
@@ -189,7 +192,7 @@ describe("a base-source snapshot", () => {
     git(author, "checkout", "-q", "main");
     commit(author, "main adds a column", { "schema.sql": "create table items (id text, main text);\n" });
     // The merge stops on the conflict, which is the point: the commit below is its resolution.
-    expect(() => git(author, "merge", "-q", "--no-commit", "side")).toThrow();
+    conflict(author, "side");
     const merged = commit(author, "resolve the columns", { "schema.sql": "create table items (id text, resolved text);\n" });
     git(author, "push", "-q", "origin", "main");
     const snapshot = await source().snapshot("acme/widgets");
@@ -219,7 +222,7 @@ describe("a base-source snapshot", () => {
     commit(author, "side adds a column", { "schema.sql": "create table items (id text, side_only text);\n" });
     git(author, "checkout", "-q", "main");
     commit(author, "main changes the table", { "schema.sql": "create table items (id text, main text);\n" });
-    expect(() => git(author, "merge", "-q", "--no-commit", "side")).toThrow();
+    conflict(author, "side");
     const merged = commit(author, "keep main's side", { "schema.sql": "create table items (id text, main text);\n" });
     git(author, "push", "-q", "origin", "main");
     const snapshot = await source().snapshot("acme/widgets");
@@ -304,4 +307,10 @@ function commit(cwd: string, message: string, files: Record<string, string | Buf
   git(cwd, "add", "-A");
   git(cwd, "-c", "user.email=amy@example.test", "-c", "user.name=amy", "commit", "-q", "-m", message);
   return git(cwd, "rev-parse", "HEAD");
+}
+
+/** Merges a branch that must stop on a conflict, and fails if it stopped for any other reason. */
+function conflict(cwd: string, branch: string): void {
+  expect(() => git(cwd, "merge", "-q", "--no-commit", branch)).toThrow();
+  expect(git(cwd, "rev-parse", "-q", "--verify", "MERGE_HEAD")).toBe(git(cwd, "rev-parse", branch));
 }
