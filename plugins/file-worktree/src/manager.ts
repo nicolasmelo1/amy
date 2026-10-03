@@ -12,8 +12,8 @@ export interface WorktreeManagerConfig {
   /**
    * Where one repository's base branch is, instead of the fallback.
    *
-   * The cut a tree is made from is the same answer `Git.prepareBranch` cuts
-   * the branch from, so the two cannot disagree about what a repository's
+   * The cut a tree is made from is the same answer `Git` cuts a work
+   * branch from, so the two cannot disagree about what a repository's
    * base is: one map, one resolution, handed to both.
    */
   baseBranch?: Readonly<Record<string, string>>;

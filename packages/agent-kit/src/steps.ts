@@ -1,4 +1,4 @@
-import { Agent, AgentResult, AskContext, AttemptOutcome } from "@amykit/core";
+import { Agent, AgentResult, AskContext, AttemptOutcome, HarnessReply } from "@amykit/core";
 import { extractJson } from "./json.js";
 
 /** One question to the agent, in the directory the work is in. */
@@ -22,32 +22,46 @@ export interface ImplementInput extends StepInput {
   now?: () => Date;
 }
 
+const NO_CHANGE = "the agent finished without changing any file";
+
 /**
  * Asks for a change, commits it through the caller, and says whether it moved.
  *
- * A run that completed and changed no file is a failure with `unchanged`
- * progress, so a retry policy can tell an attempt that added nothing from
- * one that did. A run that did not complete is returned rather than thrown:
- * a relay above may hand the step to another harness, and it needs the run
- * to decide.
+ * The commit runs as the context's `verify`, so a relay commits after each
+ * rung that completed and climbs on one that changed nothing, exactly as it
+ * climbs on a failure. Over an agent that never calls `verify` the commit
+ * runs once the answer is back. A run that completed and changed no file is
+ * a failure with `unchanged` progress, so a retry policy can tell an attempt
+ * that added nothing from one that did. A run that did not complete is
+ * returned rather than thrown, with its account.
  */
 export async function implementStep(agent: Agent, input: ImplementInput): Promise<AgentResult<AttemptOutcome>> {
-  const reply = await agent.ask(input.prompt, input.cwd, input.context);
+  // The last run `verify` judged, and whether it changed anything. Only the
+  // run that comes back is the attempt's, so an earlier rung's verdict never
+  // speaks for a later rung that failed for another reason.
+  let judged: { reply: HarnessReply; changed: boolean } | undefined;
+  const verify = async (reply: HarnessReply): Promise<HarnessReply> => {
+    const changed = await input.commit();
+    const verdict = changed ? reply : { ...reply, run: { ...reply.run, outcome: "failed" as const, output: `${NO_CHANGE}\n\n${reply.run.output}` } };
+    judged = { reply: verdict, changed };
+    return verdict;
+  };
+
+  let reply = await agent.ask(input.prompt, input.cwd, { ...input.context, verify });
+  if (reply.run.outcome === "completed" && judged?.reply !== reply) reply = await verify(reply);
+
   const at = (input.now ?? (() => new Date()))().toISOString();
   const key = input.key ?? "implementation";
 
+  if (judged?.reply === reply && !judged.changed) {
+    return {
+      value: { ok: false, output: reply.run.output, at, progress: { kind: "unchanged", key, detail: NO_CHANGE } },
+      run: reply.run,
+    };
+  }
   if (reply.run.outcome !== "completed") {
     return { value: { ok: false, output: reply.run.output, at }, run: reply.run };
   }
-
-  if (!(await input.commit())) {
-    const detail = "the agent finished without changing any file";
-    return {
-      value: { ok: false, output: `${detail}\n\n${reply.run.output}`, at, progress: { kind: "unchanged", key, detail } },
-      run: { ...reply.run, outcome: "failed" },
-    };
-  }
-
   return { value: { ok: true, output: reply.run.output, at, progress: { kind: "advanced", key } }, run: reply.run };
 }
 

@@ -90,6 +90,9 @@ export class HarnessRelay implements Harness {
     while (index < ladder.length) {
       const rung = ladder[index]!;
       last = await rung.cli.ask(asked(prompt, skill, handoff), cwd, context);
+      // The caller says whether a completed run holds while there is still a
+      // rung to climb to, rather than after the ladder has stopped.
+      if (last.run.outcome === "completed" && context.verify) last = await context.verify(last);
 
       const next = nextRung(ladder, index, last.run.outcome);
       if (next === null) return last;

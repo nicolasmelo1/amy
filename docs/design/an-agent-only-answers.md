@@ -39,6 +39,10 @@ workflow chooses to call:
   passed in, then classify the progress (a run that changed no file is
   `unchanged`). It never names git. Whoever calls it decides whether that
   commit pushes.
+- The commit runs as the context's `verify`, which a relay calls after each
+  rung that completed. A rung that completed and changed nothing is then a
+  failure while the ladder can still climb, so the stronger model or the next
+  skill gets the step, as it did when the agent committed by itself.
 - `agent-kit` exports `judgeStep`: ask, then parse the JSON answer the caller
   describes. Triage and review verdicts are two uses of it.
 - The ticket prompts, `TriageOutcome`, `ThreadVerdict` and the review hints

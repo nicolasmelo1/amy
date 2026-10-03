@@ -45,7 +45,7 @@ An entry in the core's action catalogue whose port is `agent` names `ask` as its
 
 **An agent never prepares a branch, commits or pushes**
 
-Nothing in packages/agent-kit, plugins/agent-relay or a harness plugin calls `prepareBranch` or `commitAndPush`, or runs `git push`.
+Nothing in packages/agent-kit or in any plugin calls `prepareBranch` or `commitAndPush`, or runs `git push`.
 
 **Why.** When work is committed and when it reaches the remote are a workflow's decisions. One workflow pushes after every attempt, another pushes once per cycle so nobody reviews half-done work, a third never pushes at all. An agent that pushes by itself makes the second and third impossible without replacing the checkout, which is exactly what a private workflow had to do.
 

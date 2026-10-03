@@ -34,6 +34,8 @@ class TicketWorld implements World {
   private followUp: string | undefined;
   private pr: PullRequestView | null = null;
   private heads = 0;
+  /** Files the agent changed since the last commit; only a commit publishes them. */
+  private changed = false;
   private triaged = 0;
   private gateRuns = 0;
   private humanReviewCount = 0;
@@ -161,9 +163,10 @@ class TicketWorld implements World {
             const disagrees = id === "H1" && this.humanThreadAnswered++ === 0;
             return { threadId: id, verdict: disagrees ? "disagreed" : "fixed", note: disagrees ? "the index is load-bearing" : "done" };
           });
-          if (verdicts.some((v) => v.verdict === "fixed")) this.push();
+          if (verdicts.some((v) => v.verdict === "fixed")) this.changed = true;
           return { text: JSON.stringify({ verdicts }), run: fakeRun() };
         }
+        if (context?.step === "implement") this.changed = true;
         return { text: "looks right against the ticket", run: fakeRun() };
       },
     };
@@ -175,7 +178,14 @@ class TicketWorld implements World {
       pathFor: () => "/tmp/amy-conformance/tree",
       acquire: async () => "/tmp/amy-conformance/tree",
       prepareBranch: async () => {},
-      commitAndPush: async () => true,
+      // The agent only edits files. The head moves when, and only when, the
+      // runtime commits and pushes them — which is what a real git does.
+      commitAndPush: async () => {
+        if (!this.changed) return false;
+        this.changed = false;
+        this.push();
+        return true;
+      },
     };
   }
 

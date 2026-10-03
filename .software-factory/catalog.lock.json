@@ -16,7 +16,7 @@
     },
     "L0.AN_AGENT_NEVER_TOUCHES_GIT": {
       "severity": "high",
-      "scope": 5,
+      "scope": 6,
       "exclude": 0,
       "forbidden": 2,
       "narrowed_patterns": 0,
