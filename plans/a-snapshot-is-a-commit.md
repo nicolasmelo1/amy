@@ -1,0 +1,168 @@
+# A snapshot is a commit, and it can be searched
+
+[Grooming reads the code it is about](../docs/design/grooming-reads-the-code-it-is-about.md)
+gave a grooming step a read-only view of each repository at its base branch.
+The view is a file reader and nothing else. `BaseSourceSnapshot` carries
+`repo`, `baseBranch` and `read(path)` (`packages/core/src/ports/BaseSource.ts:5`).
+That is not enough to answer the question the design doc was written for,
+which is *"does something here already do this?"*
+
+## The question it was built for, and why it cannot answer it
+
+The exhibit in that design doc is a ticket that adds a column. On the day it
+was groomed the ticket was correct. Fifteen days later somebody else shipped
+the column under another ticket, and the work was cancelled after code had
+been written. Catching it takes three facts, and the snapshot gives one:
+
+| what grooming needs | what the snapshot gives |
+| --- | --- |
+| the code as it is **today** on the base branch | the code as it was the last time anything fetched |
+| **where** a name appears, without knowing the file first | `read(path)`, for a path you already know |
+| **which commit** introduced it, and which commit the answer was read at | nothing: no revision, no history |
+
+The private workflow that first tried to use the snapshot for this wants to write
+`exists_today` with the revision it was read at, and to cut a ticket while
+naming the commit that made it unnecessary. Neither can be done through the
+port today, and the workflow cannot fill the gap itself: the design doc
+deliberately gives grooming no checkout path, branch or commit, so it cannot
+run `git` on its own.
+
+## Three defects in what is there
+
+**It never fetches.** `GitBaseSource.snapshot` checks that `origin/<base>`
+exists and reads from it (`BaseSource.ts:36-46`). Nothing before it runs
+`git fetch`. The only fetch in the core is `Git.prepareBranch`
+(`packages/core/src/git.ts:139`), which runs when a work item gets a branch,
+and grooming runs before any work item exists. On a machine where nobody
+started a ticket in a repository for two weeks, the snapshot is two weeks old,
+and it says *"the column does not exist"* about a column that shipped twelve
+days ago. That is the exhibit, reproduced by the tool built to prevent it.
+
+**It is not pinned.** `rev-parse --verify origin/<base>` resolves a commit and
+then throws it away. Every `read` asks for `origin/<base>:<file>` again. Any
+fetch in between, from a ticket in another phase or from the operator's own
+shell, means two reads in one grooming run can come from two different commits.
+A step that compares a migration with the model that uses it can see half of
+a change.
+
+**It cannot say what it read.** No revision is returned. A claim about the code
+is a claim about the code on one commit. Without the commit, nobody can check
+the claim later or tell when it went stale.
+
+## The change
+
+`BaseSourceSnapshot` becomes a commit with a reader, a search and a history,
+all pinned to that commit:
+
+```ts
+export interface BaseSourceSnapshot {
+  readonly repo: string;
+  readonly baseBranch: string;
+  /** The full commit id every method below reads at. */
+  readonly revision: string;
+  /** When that commit was made, as ISO 8601. */
+  readonly committedAt: string;
+  read(path: string): Promise<string | null>;
+  /** Where a text appears at `revision`. Literal by default. */
+  search(text: string, options?: { paths?: string[]; regex?: boolean; limit?: number }): Promise<SearchResult>;
+  /** Commits up to `revision` that added or removed occurrences of a text. */
+  history(text: string, options?: { paths?: string[]; limit?: number }): Promise<HistoryEntry[]>;
+}
+
+export interface SearchResult {
+  matches: { path: string; line: number; text: string }[];
+  /** True when `limit` cut the list. A cut list must not read as "nothing else". */
+  truncated: boolean;
+}
+
+export interface HistoryEntry {
+  commit: string;
+  at: string;
+  subject: string;
+  /** Whether the commit raised or lowered the number of occurrences. */
+  change: "added" | "removed";
+}
+```
+
+And `GitBaseSource.snapshot` does, in order:
+
+1. `git fetch origin <base>`. This updates only the remote-tracking ref.
+   [`git fetch`](https://git-scm.com/docs/git-fetch) updates remote-tracking
+   branches and leaves local branches and the working tree alone, so it keeps
+   the design doc's promise that the standing checkout stays where its owner
+   left it. A failed fetch is refused, naming the repository and git's own
+   words. A stale answer to *"does this exist"* is the defect this plan is
+   about, so serving one quietly is not a fallback.
+2. `git rev-parse --verify origin/<base>^{commit}`, kept as `revision`. Every
+   later call names that id, never `origin/<base>`.
+3. `read(path)` becomes `git show <revision>:<path>`.
+4. `search` becomes [`git grep`](https://git-scm.com/docs/git-grep) against
+   the tree of `revision` (*"instead of searching tracked files in the working
+   tree, search blobs in the given trees"*), with `-F` unless `regex` is set,
+   `-n`, and the paths after `--`. The tree prefix git adds to every line is
+   stripped, so `path` is a repository path a later `read` accepts.
+5. `history` becomes [`git log -S<text>`](https://git-scm.com/docs/git-log)
+   ending at `revision`: the commits where the number of occurrences of the
+   text changed, which is how the fifteen-day gap in the exhibit was found by
+   hand. Whether a commit added or removed is read from the count on each side
+   of the commit, not guessed from the subject.
+
+Every argument reaches git as an argv element. Nothing goes through a shell,
+and a `text` that starts with `-` is passed after `-e` (grep) or bound to
+`-S` (log), so it cannot be read as a flag.
+
+## What stays the same
+
+- **Still read-only.** Grooming still gets no checkout path, branch, worktree
+  or a git it can run. The three new things are answers, not capabilities. The
+  fetch is the only write, and it writes to a ref nobody works on.
+- **The core still parses no section.** It returns matches and commits. What
+  counts as *"already exists"*, and whether a ticket is cut, stays with the
+  workflow.
+- **`groomFeature` needs no change to keep working.** It only reads, and every
+  added member is additive. A groomer that wants the revision now has it.
+
+## What is not in this
+
+**Recording the revision in the brief.** Where `read_at` lives and how a
+re-run notices it moved belongs to the workflow, which owns the brief's
+sections.
+
+**Search across repositories, or semantic search.** One repository per
+snapshot, plain text or a regex. A model does the reading. The port only has
+to make the reading honest.
+
+**History beyond the base branch.** A change on an unmerged branch is not
+something the base already does, and asking about it is the half-finished-branch
+mistake the design doc already refuses.
+
+## Acceptance criteria
+
+- [ ] A snapshot fetches the base branch before resolving it, and a commit
+      pushed to the remote after the checkout's last fetch is visible to it
+      (proof: assertion:groom.the_snapshot_sees_what_was_pushed_since_the_last_fetch)
+- [ ] A failed fetch refuses the snapshot, naming the repository and git's
+      error, and does not fall back to the old ref
+      (proof: test:packages/core/tests/BaseSource.test.ts)
+- [ ] A snapshot carries the full commit id and its commit time, and every
+      read, search and history call names that id rather than `origin/<base>`
+      (proof: test:packages/core/tests/BaseSource.test.ts)
+- [ ] A commit fetched while a snapshot is in use changes none of its answers
+      (proof: assertion:groom.a_snapshot_is_pinned_to_its_commit)
+- [ ] `search` finds a literal text at the snapshot's commit and returns paths
+      `read` accepts; a text the working tree has and the base does not is not
+      found (proof: assertion:groom.search_reads_the_base_not_the_tree)
+- [ ] A search cut by its limit says so (proof: test:packages/core/tests/BaseSource.test.ts)
+- [ ] `history` names the commit that introduced a text, and the one that
+      removed it, up to the snapshot's commit and no further
+      (proof: assertion:groom.history_names_the_commit_that_added_it)
+- [ ] A text beginning with `-` is searched for, never read as a flag
+      (proof: test:packages/core/tests/BaseSource.test.ts)
+- [ ] The grooming step still receives no checkout path, branch, worktree or
+      runner (proof: test:packages/workflow-feature-grooming/tests/groom.test.ts)
+
+**Exit condition:** grooming a feature whose column was pushed by somebody
+else after this machine last fetched finds that column, names the commit that
+added it, and reports the commit it read at, all through the snapshot and with
+the standing checkout exactly where it was. The `feature-grooming` gate's
+scenario drives exactly that against a real remote.
