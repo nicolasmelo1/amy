@@ -21,6 +21,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { URL } from "node:url";
 import { gunzipSync, gzipSync } from "node:zlib";
 
 const repo = path.resolve(import.meta.dirname, "..");
@@ -65,6 +66,26 @@ async function download(url, headers = {}) {
   const response = await fetch(url, { headers: { "user-agent": "amy-contracts", ...headers } });
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
+}
+
+/**
+ * What a publisher serves today, not what the nearest cache kept. The GitHub
+ * docs host sits behind Fastly with a week's `max-age` and ignores a
+ * request's `cache-control`, so two edges can serve two versions of the same
+ * URL: the check passed here and failed on a CI runner against one vendored
+ * file, twice in a day. A query string nobody else sends is a cache key no
+ * edge holds, so the request reaches the origin; the publishers ignore it.
+ */
+async function published(document) {
+  const url = new URL(document.url);
+  url.searchParams.set("amy-contracts", String(Date.now()));
+  const response = await fetch(url, { headers: { "user-agent": "amy-contracts" } });
+  if (!response.ok) throw new Error(`${document.url} answered ${response.status}`);
+  const servedAs = ["last-modified", "age", "x-cache"]
+    .map((header) => response.headers.get(header) && `${header}: ${response.headers.get(header)}`)
+    .filter(Boolean)
+    .join(", ");
+  return { body: Buffer.from(await response.arrayBuffer()), servedAs };
 }
 
 async function release(which) {
@@ -159,7 +180,7 @@ const latestGh = async () => String((await release("latest")).tag_name).replace(
  */
 async function update() {
   const bodies = [];
-  for (const document of DOCUMENTS) bodies.push({ document, body: await download(document.url) });
+  for (const document of DOCUMENTS) bodies.push({ document, body: (await published(document)).body });
   const version = await latestGh();
   const gh = await ghContract(version);
 
@@ -190,9 +211,9 @@ async function check() {
     }
     const stored = fs.readFileSync(path.join(directory, document.file));
     const vendored = document.gzip ? gunzipSync(stored) : stored;
-    const published = await download(document.url);
-    if (sha256(published) !== sha256(vendored)) {
-      problems.push(`${document.name} moved: ${document.url} no longer serves the vendored copy`);
+    const served = await published(document);
+    if (sha256(served.body) !== sha256(vendored)) {
+      problems.push(`${document.name} moved: ${document.url} no longer serves the vendored copy (${served.servedAs || "no cache headers"})`);
     }
   }
 
