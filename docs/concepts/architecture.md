@@ -73,7 +73,7 @@ The dependency direction is the whole point:
 
 ```text
 packages/
-├── agent-kit            What every agent does the same way: the prompts, the git dance, and the JSON.
+├── agent-kit            What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.
 ├── cli                  The amy command line: one install per machine, reached from any harness.
 ├── core                 Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.
 ├── model-specs          What each model costs per token, vendored and versioned.
@@ -86,7 +86,7 @@ packages/
 
 plugins/
 ├── agent-relay          One agent made of several: swaps harness on a quota, escalates model on a failure.
-├── claude               The claude CLI as the agent, with git on the side.
+├── claude               The claude CLI as the agent, over its JSON envelope.
 ├── codex                The codex CLI as the agent, over its JSONL event stream.
 ├── command              Any command line tool, reached by a name the config allows.
 ├── command-gate         A gate that runs the target repository's own commands.
@@ -128,7 +128,7 @@ this repository.
 | `@amykit/workflow-feature-grooming` | plugin | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
 | `@amykit/workflow-testkit` | library | `@amykit/core` |
-| `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/core` |
+| `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/agent-kit`, `@amykit/core` |
 | `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-claude` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-codex` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |

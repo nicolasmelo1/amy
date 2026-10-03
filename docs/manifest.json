@@ -288,6 +288,11 @@
           "description": ""
         },
         {
+          "title": "An agent only answers",
+          "path": "/design/an-agent-only-answers",
+          "description": ""
+        },
+        {
           "title": "An answer arrives where the question was asked",
           "path": "/design/an-answer-arrives-where-the-question-was-asked",
           "description": ""
@@ -896,6 +901,11 @@
           "depth": 3,
           "title": "New amy update command: moves a machine forward without leaving it half-updated — reads both roots (the plugins root and the one that resolved the CLI), re-resolves every registry range through npm, installs the exact version each range now points at, and keeps the manifest's ranges the way the operator wrote them. Refuses while the loop is running; a version that will not import or mount is rolled back to the one that did; a config that will not boot fails the update and rolls back every move; and when the CLI itself moves, its skills are rewritten into the harnesses they were written into before — through the new CLI, never the old process. amy skills now records where it wrote, and --recorded rewrites into exactly those places.",
           "slug": "new-amy-update-command-moves-a-machine-forward-without-leaving-it-half-updated-reads-both-roots-the-plugins-root-and-the-one-that-resolved-the-cli-re-resolves-every-registry-range-through-npm-installs-the-exact-version-each-range-now-points-at-and-keeps-the-manifests-ranges-the-way-the-operator-wrote-them-refuses-while-the-loop-is-running-a-version-that-will-not-import-or-mount-is-rolled-back-to-the-one-that-did-a-config-that-will-not-boot-fails-the-update-and-rolls-back-every-move-and-when-the-cli-itself-moves-its-skills-are-rewritten-into-the-harnesses-they-were-written-into-before-through-the-new-cli-never-the-old-process-amy-skills-now-records-where-it-wrote-and---recorded-rewrites-into-exactly-those-places"
+        },
+        {
+          "depth": 3,
+          "title": "**Breaking for anyone who implements or calls the agent, the gate or a ticket. It ships in the same release as the workflow contract change, so you migrate once.**",
+          "slug": "breaking-for-anyone-who-implements-or-calls-the-agent-the-gate-or-a-ticket-it-ships-in-the-same-release-as-the-workflow-contract-change-so-you-migrate-once"
         },
         {
           "depth": 3,
@@ -1934,6 +1944,38 @@
           "depth": 2,
           "title": "The proof",
           "slug": "the-proof"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/an-agent-only-answers",
+      "file": "docs/design/an-agent-only-answers.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/an-agent-only-answers.md",
+      "title": "An agent only answers",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The decision",
+          "slug": "the-decision"
+        },
+        {
+          "depth": 2,
+          "title": "The gates came first",
+          "slug": "the-gates-came-first"
+        },
+        {
+          "depth": 2,
+          "title": "Breaking changes",
+          "slug": "breaking-changes"
         },
         {
           "depth": 2,
@@ -3750,6 +3792,21 @@
         },
         {
           "depth": 3,
+          "title": "L0.AGENT_ACTIONS_DISPATCH_TO_ASK",
+          "slug": "l0agentactionsdispatchtoask"
+        },
+        {
+          "depth": 3,
+          "title": "L0.AN_AGENT_NEVER_TOUCHES_GIT",
+          "slug": "l0anagentnevertouchesgit"
+        },
+        {
+          "depth": 3,
+          "title": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
+          "slug": "l0aticketrequireswhateverytrackerhas"
+        },
+        {
+          "depth": 3,
           "title": "L0.CORE_STAYS_IGNORANT",
           "slug": "l0corestaysignorant"
         },
@@ -3762,6 +3819,31 @@
           "depth": 3,
           "title": "L0.NO_CROSS_LAYER_IMPORT",
           "slug": "l0nocrosslayerimport"
+        },
+        {
+          "depth": 3,
+          "title": "L0.ONLY_THE_TRACKER_SPEAKS_TICKET",
+          "slug": "l0onlythetrackerspeaksticket"
+        },
+        {
+          "depth": 3,
+          "title": "L0.PORTS_LIVE_IN_THEIR_OWN_FILE",
+          "slug": "l0portsliveintheirownfile"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_AGENT_PORT_ONLY_ASKS",
+          "slug": "l0theagentportonlyasks"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_CORE_NAMES_NO_VENDOR",
+          "slug": "l0thecorenamesnovendor"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_CORE_WORDS_NOTHING",
+          "slug": "l0thecorewordsnothing"
         },
         {
           "depth": 2,
@@ -4338,7 +4420,7 @@
       {
         "name": "address-threads",
         "port": "agent",
-        "method": "addressThreads",
+        "method": "ask",
         "doc": ""
       },
       {
@@ -4380,7 +4462,7 @@
       {
         "name": "implement",
         "port": "agent",
-        "method": "implement",
+        "method": "ask",
         "doc": ""
       },
       {
@@ -4422,30 +4504,20 @@
       {
         "name": "triage",
         "port": "agent",
-        "method": "triage",
+        "method": "ask",
         "doc": ""
       }
     ],
     "contracts": [
       {
         "interface": "Agent",
-        "file": "packages/core/src/ports/Ticketing.ts",
+        "file": "packages/core/src/ports/Agent.ts",
         "doc": "The coding agent, and the only probabilistic thing in the system.",
         "methods": [
           {
-            "name": "triage",
-            "signature": "triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>>",
-            "doc": "Reads the ticket and says whether it can be implemented as written."
-          },
-          {
-            "name": "implement",
-            "signature": "implement(ticket: Ticket, retryContext?: string, conversation?: readonly string[]): Promise<AgentResult<AttemptOutcome>>",
-            "doc": "Writes the change, or the next attempt after one that did not hold."
-          },
-          {
-            "name": "addressThreads",
-            "signature": "addressThreads(ticket: Ticket, threads: readonly ReviewThread[], from: \"automated\" | \"human\"): Promise<AgentResult<ThreadVerdict[]>>",
-            "doc": "Judges review comments one by one. A comment it agrees with is fixed, a comment it disagrees with comes back as a disagreement for the owner rather than being argued with on the pull request."
+            "name": "ask",
+            "signature": "ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>",
+            "doc": ""
           }
         ]
       },
@@ -4718,13 +4790,13 @@
       },
       {
         "interface": "Gate",
-        "file": "packages/core/src/ports/Ticketing.ts",
+        "file": "packages/core/src/ports/Gate.ts",
         "doc": "The gate: the check that decides whether an implementation holds, before anything is published for a person to read.",
         "methods": [
           {
             "name": "run",
-            "signature": "run(ticket: Ticket): Promise<AttemptOutcome>",
-            "doc": "Runs the gate against the ticket's own checkout, and says what happened."
+            "signature": "run(workplace: Workplace): Promise<AttemptOutcome>",
+            "doc": "Runs the gate in the work's own tree, and says what happened."
           }
         ]
       },
@@ -6222,23 +6294,6 @@
     ],
     "collections": [
       {
-        "collection": "agent",
-        "contributors": [
-          {
-            "name": "claude",
-            "package": "@amykit/plugin-claude"
-          },
-          {
-            "name": "codex",
-            "package": "@amykit/plugin-codex"
-          },
-          {
-            "name": "hermes",
-            "package": "@amykit/plugin-hermes-agent"
-          }
-        ]
-      },
-      {
         "collection": "harness",
         "contributors": [
           {
@@ -6304,7 +6359,7 @@
         "name": "@amykit/agent-kit",
         "version": "0.4.0",
         "kind": "library",
-        "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
+        "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
         "directory": "packages/agent-kit",
         "npm": "https://www.npmjs.com/package/@amykit/agent-kit",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/agent-kit",
@@ -6412,7 +6467,7 @@
         "name": "@amykit/plugin-claude",
         "version": "0.4.0",
         "kind": "plugin",
-        "description": "The claude CLI as the agent, with git on the side.",
+        "description": "The claude CLI as the agent, over its JSON envelope.",
         "directory": "plugins/claude",
         "npm": "https://www.npmjs.com/package/@amykit/plugin-claude",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/claude",
@@ -6420,36 +6475,11 @@
         "mounts": [],
         "contributes": [
           {
-            "collection": "agent",
-            "name": "claude"
-          },
-          {
             "collection": "harness",
             "name": "claude"
           }
         ],
         "settings": [
-          {
-            "name": "baseBranch",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
-          },
-          {
-            "name": "checkouts",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "where one repository's checkout is, instead of under the workspace root, which is where the agent is sent"
-          },
-          {
-            "name": "defaultBranch",
-            "type": "string",
-            "required": false,
-            "default": "main",
-            "description": "the branch new work is cut from, which is not always `main`"
-          },
           {
             "name": "model",
             "type": "string",
@@ -6463,13 +6493,6 @@
             "required": false,
             "default": [],
             "description": "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `claude:<model>`. Empty means a single agent using `model`"
-          },
-          {
-            "name": "reviewerHints",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "guidance appended when answering a particular reviewer, by host login"
           },
           {
             "name": "timeoutMs",
@@ -6493,36 +6516,11 @@
         "mounts": [],
         "contributes": [
           {
-            "collection": "agent",
-            "name": "codex"
-          },
-          {
             "collection": "harness",
             "name": "codex"
           }
         ],
         "settings": [
-          {
-            "name": "baseBranch",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
-          },
-          {
-            "name": "checkouts",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "where one repository's checkout is, instead of under the workspace root, which is where the agent is sent"
-          },
-          {
-            "name": "defaultBranch",
-            "type": "string",
-            "required": false,
-            "default": "main",
-            "description": "the branch new work is cut from, which is not always `main`"
-          },
           {
             "name": "model",
             "type": "string",
@@ -6536,13 +6534,6 @@
             "required": false,
             "default": [],
             "description": "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `codex:<model>`. Empty means a single agent named `codex`"
-          },
-          {
-            "name": "reviewerHints",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "guidance appended when answering a particular reviewer, by host login"
           },
           {
             "name": "timeoutMs",
@@ -6919,36 +6910,11 @@
         "mounts": [],
         "contributes": [
           {
-            "collection": "agent",
-            "name": "hermes"
-          },
-          {
             "collection": "harness",
             "name": "hermes"
           }
         ],
         "settings": [
-          {
-            "name": "baseBranch",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
-          },
-          {
-            "name": "checkouts",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "where one repository's checkout is, instead of under the workspace root, which is where the agent is sent"
-          },
-          {
-            "name": "defaultBranch",
-            "type": "string",
-            "required": false,
-            "default": "main",
-            "description": "the branch new work is cut from, which is not always `main`"
-          },
           {
             "name": "model",
             "type": "string",
@@ -6962,13 +6928,6 @@
             "required": false,
             "default": [],
             "description": "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes`"
-          },
-          {
-            "name": "reviewerHints",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "guidance appended when answering a particular reviewer, by host login"
           },
           {
             "name": "timeoutMs",
@@ -7448,6 +7407,13 @@
             "type": "string[]",
             "required": true,
             "description": "every repository review load is counted across"
+          },
+          {
+            "name": "reviewerHints",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "guidance appended to the review prompt when answering a particular reviewer, by host login"
           }
         ],
         "environment": []
@@ -8006,6 +7972,27 @@
     ],
     "rules": [
       {
+        "id": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
+        "enabled": true,
+        "settings": {},
+        "title": "A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.AGENT_ACTIONS_DISPATCH_TO_ASK",
+        "enabled": true,
+        "settings": {},
+        "title": "Every catalogue action on the agent port dispatches to ask (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.AN_AGENT_NEVER_TOUCHES_GIT",
+        "enabled": true,
+        "settings": {},
+        "title": "An agent never prepares a branch, commits or pushes (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
         "id": "L0.CORE_STAYS_IGNORANT",
         "enabled": true,
         "settings": {},
@@ -8024,6 +8011,41 @@
         "enabled": true,
         "settings": {},
         "title": "Private and generated modules are not imported across the boundary",
+        "reason": ""
+      },
+      {
+        "id": "L0.ONLY_THE_TRACKER_SPEAKS_TICKET",
+        "enabled": true,
+        "settings": {},
+        "title": "Only the tracker's contract names a ticket (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.PORTS_LIVE_IN_THEIR_OWN_FILE",
+        "enabled": true,
+        "settings": {},
+        "title": "The agent and gate ports live in their own files (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_AGENT_PORT_ONLY_ASKS",
+        "enabled": true,
+        "settings": {},
+        "title": "The core's agent port declares ask and nothing else (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_CORE_NAMES_NO_VENDOR",
+        "enabled": true,
+        "settings": {},
+        "title": "The core's code names no product (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_CORE_WORDS_NOTHING",
+        "enabled": true,
+        "settings": {},
+        "title": "The core writes no title for anybody (docs/design/an-agent-only-answers.md)",
         "reason": ""
       },
       {
@@ -8528,6 +8550,50 @@
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "an-agent-only-answers",
+        "title": "**Breaking for anyone who implements or calls the agent, the gate or a ticket. It ships in the same release as the workflow contract change, so you migrate once.**",
+        "body": "The core's contracts carried one workflow's lifecycle into every workflow:\n- The agent port had `triage`, `implement` and `addressThreads`, each taking a `Ticket`.\n- The agent prepared branches, committed and pushed by itself.\n- The gate took a whole `Ticket` to find a directory.\n- `Ticket` required Linear's `branchName` and `team`.\n- The core prescribed a pull-request title.\n\nA workflow that pushed once per cycle had to replace the checkout to get that decision back.\n\n- **`Agent` is `ask(prompt, cwd, context)` and nothing else.** It lives in `ports/Agent.ts`, beside `AttemptOutcome` and `Progress`.\n  - The catalogue keeps `triage`, `implement` and `address-threads` as action names, so ladders, skills and budgets keyed on them are unchanged. Each now dispatches to `agent.ask`.\n  - Build a step on `ask`, or with the new `implementStep` and `judgeStep` from `@amykit/agent-kit`.\n- **`AskContext` gains an optional `verify`.** A relay calls it after each run that completed, so a step can turn a completed run that did not hold into `failed` while the ladder can still climb. `implementStep` commits there, so a rung that changed no file still hands the step to the stronger model or the next skill.\n- **`implementStep` commits only through a `commit` function its caller passes.** No agent touches git any more: `HarnessAgent`, `NamedAgent`, `AGENT_COLLECTION` and the `git` and `agent` options of `contributeTiers` are gone.\n  - A harness plugin contributes its CLI to `HARNESS_COLLECTION` and nothing else.\n  - The claude, codex and hermes-agent plugins no longer take `defaultBranch`, `baseBranch`, `checkouts` or `reviewerHints`.\n- **A `config.yaml` that set `defaultBranch`, `baseBranch`, `checkouts` or `reviewerHints` under `plugins:` for a harness is now refused at boot**, naming the key. Delete it. A harness is never told where the work lives, and `reviewerHints` belongs under `agent:`.\n- **`AgentRelay` is gone.** The relay mounts the `agent` port as `ask` over `HarnessRelay`, with the same skill and harness ladders, the same budget and the same boot refusals.\n- **`Gate.run` takes a `Workplace`**, which is `{ repo, workId }`. It lives in `ports/Gate.ts`. `CommandGate` runs in `pathFor(repo, workId)` as before.\n- **`Ticket.branchName` and `Ticket.team` are optional.** ticket-to-qa refuses a ticket without a `branchName` on its first look, naming the field.\n- **`pullRequestTitle`, `TriageOutcome` and `ThreadVerdict` moved to `@amykit/workflow-ticket-to-qa`**, which now owns its prompts:\n  - prompts: `triagePrompt`, `implementPrompt`, `threadPrompt`;\n  - readers: `readTriage`, `readVerdicts`;\n  - helpers: `branchOf`, plus the `TicketGit` type for the part of `Git` it drives.\n- **`agent.reviewerHints` in `config.yaml` stays where it is.** It now reaches ticket-to-qa's review prompt instead of every harness plugin.\n\nEight local rules in `.software-factory/rules/` hold these decisions, and `docs/design/an-agent-only-answers.md` records them.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],

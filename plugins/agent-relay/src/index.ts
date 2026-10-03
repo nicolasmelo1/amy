@@ -1,5 +1,3 @@
-export { AgentRelay } from "./AgentRelay.js";
-export type { RelayDeps } from "./AgentRelay.js";
 export { configSchema } from "./config.js";
 export { capsMoney, inertCeilingProblems, unpricedRungs } from "./pricing.js";
 export type { UnpricedRung } from "./pricing.js";

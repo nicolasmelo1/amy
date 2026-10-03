@@ -8,10 +8,19 @@ export type { TicketState } from "./state.js";
 
 export { attemptsIn, disagreements, judgedThreadIds, newRecord } from "./record.js";
 export type { Escalation, TicketRecord } from "./record.js";
-// The outcome contracts re-exported from the core: they moved there beside
-// the ports that carry them, and every consumer of this package keeps
-// compiling because the names are the same names.
-export type { AttemptOutcome, ThreadVerdict, TriageOutcome } from "@amykit/core";
+export type { AttemptOutcome } from "@amykit/core";
+// This workflow's steps on the agent's one method, for a workflow that wants
+// the same triage, implementation and review on its own lifecycle.
+export {
+  branchOf,
+  implementPrompt,
+  readTriage,
+  readVerdicts,
+  threadPrompt,
+  triagePrompt,
+  unreadTriage,
+} from "./agent-steps.js";
+export type { ReviewerHints, ThreadVerdict, TriageOutcome } from "./agent-steps.js";
 
 export { DEFAULT_POLICY } from "./observation.js";
 export type { Observation, Policy } from "./observation.js";
@@ -35,7 +44,7 @@ export type { EffectOutcomes } from "./outcomes.js";
 export { plan, ticketToQa } from "./machine.js";
 
 export { ticketRuntime } from "./runtime.js";
-export type { TicketRuntimeConfig, TicketRuntimeDeps } from "./runtime.js";
+export type { TicketGit, TicketRuntimeConfig, TicketRuntimeDeps } from "./runtime.js";
 
 export { WORKFLOW_DATA, configSchema, plugin } from "./plugin.js";
 export type { Provider } from "./plugin.js";

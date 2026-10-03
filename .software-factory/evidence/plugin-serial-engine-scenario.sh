@@ -104,6 +104,7 @@ function ticketFor(id) {
     url: `https://tracker.test/${id}`,
     branchName: `ada/${id.toLowerCase()}-invoice-total`,
     status: "In Progress",
+    labels: [],
     repo: ticketRepos[id] ?? "acme/widgets",
   };
 }
@@ -130,16 +131,14 @@ function worldPlugin() {
       });
       // Never clear, so every ticket's next move is `ask-question`, which is
       // the cheapest real move that reaches the notifier.
+      // An agent only answers: a triage is the JSON its prompt asks for.
       registry.port("agent", {
-        triage: async () => ({
-          value: { clear: false, questions: ["which total is wrong?"], at: clock.toISOString() },
+        ask: async (_prompt, _cwd, context) => ({
+          text: context?.step === "triage"
+            ? JSON.stringify({ clear: false, questions: ["which total is wrong?"] })
+            : "",
           run: agentRun(),
         }),
-        implement: async () => ({
-          value: { ok: true, output: "", at: clock.toISOString() },
-          run: agentRun(),
-        }),
-        addressThreads: async () => ({ value: [], run: agentRun() }),
       });
       registry.port("gate", {
         run: async () => ({ ok: true, output: "", at: clock.toISOString() }),

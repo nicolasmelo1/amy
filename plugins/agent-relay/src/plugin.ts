@@ -1,33 +1,15 @@
 import {
+  Agent,
   AskContext,
   HarnessReply,
   LogBudget,
   Plugin,
   PluginContext,
   Registry,
-  ReviewThread,
   hasACeiling,
   parseBudget,
 } from "@amykit/core";
-import {
-  AGENT_COLLECTION,
-  HARNESS_COLLECTION,
-  HarnessRelay,
-  NamedAgent,
-  NamedHarness,
-  Ladders,
-  Rung,
-  SkillLadders,
-} from "@amykit/agent-kit";
-import {
-  Agent,
-  AgentResult,
-  AttemptOutcome,
-  ThreadVerdict,
-  Ticket,
-  TriageOutcome,
-} from "@amykit/core";
-import { AgentRelay } from "./AgentRelay.js";
+import { HARNESS_COLLECTION, HarnessRelay, NamedHarness, Ladders, Rung, SkillLadders } from "@amykit/agent-kit";
 import { configSchema } from "./config.js";
 import { inertCeilingProblems } from "./pricing.js";
 import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
@@ -40,24 +22,14 @@ import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from ".
  * the first one's ladder. The context is per mount, which makes it the right
  * key.
  */
-const relays = new WeakMap<PluginContext, AgentRelay>();
-const harnesses = new WeakMap<PluginContext, HarnessRelay>();
+const relays = new WeakMap<PluginContext, HarnessRelay>();
 
-function relayFor(ctx: PluginContext): AgentRelay {
+function relayFor(ctx: PluginContext): HarnessRelay {
   const existing = relays.get(ctx);
   if (existing) return existing;
 
-  const relay = build(ctx);
-  relays.set(ctx, relay);
-  return relay;
-}
-
-function harnessFor(ctx: PluginContext): HarnessRelay {
-  const existing = harnesses.get(ctx);
-  if (existing) return existing;
-
-  const built = buildHarness(ctx);
-  harnesses.set(ctx, built);
+  const built = build(ctx);
+  relays.set(ctx, built);
   return built;
 }
 
@@ -71,37 +43,16 @@ export const plugin: Plugin = {
     // something an operator has to get right. `ready` builds it as soon as
     // they have all registered, and this is the fallback for a host that
     // mounts without that second pass.
-    const lazily = (): AgentRelay => relayFor(ctx);
-
-    const facade: Agent = {
-      triage: (ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>> =>
-        lazily().triage(ticket, conversation),
-
-      implement: (
-        ticket: Ticket,
-        retryContext?: string,
-        conversation?: readonly string[],
-      ): Promise<AgentResult<AttemptOutcome>> => lazily().implement(ticket, retryContext, conversation),
-
-      addressThreads: (
-        ticket: Ticket,
-        threads: readonly ReviewThread[],
-        from: "automated" | "human",
-      ): Promise<AgentResult<ThreadVerdict[]>> =>
-        lazily().addressThreads(ticket, threads, from),
-    };
-
-    // One port, two levels of the same thing. The ticket-shaped half is what
-    // `triage` and `implement` reach; `ask` is the half with no vocabulary in
-    // it, which is how a second workflow's own prompts end up on the same
-    // ladder, in the same log and under the same ceiling as the first
-    // workflow's. Neither workflow has to know the other exists.
-    registry.port("agent", {
-      ...facade,
+    //
+    // The port is `ask` and nothing else. Every workflow's steps go up the
+    // same ladder, into the same log and under the same ceiling, keyed by the
+    // step each one names in its context.
+    const agent: Agent & { name: string } = {
       ask: (prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply> =>
-        harnessFor(ctx).ask(prompt, cwd, context),
+        relayFor(ctx).ask(prompt, cwd, context),
       name: "relay",
-    });
+    };
+    registry.port("agent", agent);
     mountBudget(registry, ctx);
   },
 
@@ -139,8 +90,8 @@ function mountBudget(registry: Registry, ctx: PluginContext): void {
   registry.port("budget", new LogBudget(ctx.log, parsed.limits));
 }
 
-function build(ctx: PluginContext): AgentRelay {
-  const contributed = [...ctx.contributions(AGENT_COLLECTION).values()] as NamedAgent[];
+function build(ctx: PluginContext): HarnessRelay {
+  const contributed = [...ctx.contributions(HARNESS_COLLECTION).values()] as NamedHarness[];
   const rungs = ladders(ctx, contributed);
 
   // Here rather than beside `mountBudget`, because this is the one question
@@ -148,7 +99,7 @@ function build(ctx: PluginContext): AgentRelay {
   // which models are underneath it. `register` has only the first.
   refuseAnInertCeiling(ctx, rungs);
 
-  return new AgentRelay(rungs, {
+  return new HarnessRelay(rungs, {
     log: ctx.log,
     now: ctx.now,
     skills: skillLadders(ctx),
@@ -163,29 +114,12 @@ function build(ctx: PluginContext): AgentRelay {
  * measure nobody can supply, which is the same failure — a ceiling that reads
  * like policy and is decoration — arrived at from the other side.
  */
-function refuseAnInertCeiling(ctx: PluginContext, rungs: Ladders<NamedAgent>): void {
+function refuseAnInertCeiling(ctx: PluginContext, rungs: Ladders<NamedHarness>): void {
   const parsed = parseBudget(ctx.config.budget);
   if (!parsed.ok) throw new Error(parsed.problems.join("; "));
 
   const problems = inertCeilingProblems(parsed.limits, rungs);
   if (problems.length > 0) throw new Error(problems.join("; "));
-}
-
-/**
- * The same ladder, one level down.
- *
- * Built from its own collection rather than by unwrapping the agents, because
- * the two are contributed together by the same plugin and reading the one you
- * mean is cheaper to follow than reaching through the other.
- */
-function buildHarness(ctx: PluginContext): HarnessRelay {
-  const contributed = [...ctx.contributions(HARNESS_COLLECTION).values()] as NamedHarness[];
-
-  return new HarnessRelay(ladders(ctx, contributed), {
-    log: ctx.log,
-    now: ctx.now,
-    skills: skillLadders(ctx),
-  });
 }
 
 /**

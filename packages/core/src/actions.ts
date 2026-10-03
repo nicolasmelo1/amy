@@ -19,9 +19,9 @@ export interface ActionSpec {
  * proves general it graduates to this table, by evidence rather than guess.
  */
 export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
-  "triage": { port: "agent", method: "triage" },
+  "triage": { port: "agent", method: "ask" },
   "ask-question": { port: "tracker", method: "comment" },
-  "implement": { port: "agent", method: "implement" },
+  "implement": { port: "agent", method: "ask" },
   "run-gate": { port: "gate", method: "run" },
   /**
    * Ask the agent for a piece of writing, in whoever asked's own words.
@@ -74,7 +74,7 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
    * stays the workflow's policy — the port only has to make it possible.
    */
   "resolve-review-thread": { port: "code-host", method: "resolveReviewThread" },
-  "address-threads": { port: "agent", method: "addressThreads" },
+  "address-threads": { port: "agent", method: "ask" },
   "assign-reviewer": { port: "code-host", method: "requestReview" },
   "request-rereview": { port: "code-host", method: "requestReview" },
   "escalate": { port: "tracker", method: "createFollowUp" },

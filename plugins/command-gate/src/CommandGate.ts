@@ -1,4 +1,4 @@
-import { CommandRunner, Git, AttemptOutcome, Gate, Ticket } from "@amykit/core";
+import { CommandRunner, Git, AttemptOutcome, Gate, Workplace } from "@amykit/core";
 
 
 export interface CommandGateConfig {
@@ -12,8 +12,8 @@ export interface CommandGateConfig {
 }
 
 /**
- * The deterministic check, as a list of shell commands run in the ticket's
- * checkout.
+ * The deterministic check, as a list of shell commands run in the work's own
+ * tree.
  *
  * It stops at the first failure rather than collecting all of them, so the
  * agent gets one clear thing to fix instead of a wall of noise where the
@@ -26,14 +26,14 @@ export class CommandGate implements Gate {
     private readonly config: CommandGateConfig,
   ) {}
 
-  async run(ticket: Ticket): Promise<AttemptOutcome> {
-    const commands = this.config.commands[ticket.repo] ?? this.config.commands.default ?? [];
+  async run(workplace: Workplace): Promise<AttemptOutcome> {
+    const commands = this.config.commands[workplace.repo] ?? this.config.commands.default ?? [];
     const at = new Date().toISOString();
 
     if (commands.length === 0) {
       return {
         ok: false,
-        output: `no gate is configured for ${ticket.repo}, so nothing can vouch for this change`,
+        output: `no gate is configured for ${workplace.repo}, so nothing can vouch for this change`,
         at,
       };
     }
@@ -43,8 +43,8 @@ export class CommandGate implements Gate {
     for (const command of commands) {
       const result = await this.runner.run("sh", ["-c", command], {
         // Where the work is, not where the checkout is: with a worktree port
-        // behind the Git, the gate runs in the ticket's own tree.
-        cwd: this.git.pathFor(ticket.repo, ticket.id),
+        // behind the Git, the gate runs in the work's own tree.
+        cwd: this.git.pathFor(workplace.repo, workplace.workId),
         timeoutMs: this.config.timeoutMs,
       });
 

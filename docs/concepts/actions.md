@@ -39,21 +39,21 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 | Action | Port | Method | Shipped by | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `acquire-worktree` | `worktree` | `acquire()` | `@amykit/core` | An isolated checkout for one piece of work, created or reused. |
-| `address-threads` | `agent` | `addressThreads()` | `@amykit/core` |  |
+| `address-threads` | `agent` | `ask()` | `@amykit/core` |  |
 | `announce` | `notifier` | `announce()` | `@amykit/core` |  |
 | `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |
 | `assign-reviewer` | `code-host` | `requestReview()` | `@amykit/core` |  |
 | `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
 | `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
 | `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |
-| `implement` | `agent` | `implement()` | `@amykit/core` |  |
+| `implement` | `agent` | `ask()` | `@amykit/core` |  |
 | `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
 | `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |
 | `resolve-review-thread` | `code-host` | `resolveReviewThread()` | `@amykit/core` | Close one review thread, by its id. |
 | `run-errand` | `agent` | `ask()` | `@amykit/core` | Do the thing somebody asked for, in their own words. |
 | `run-gate` | `gate` | `run()` | `@amykit/core` |  |
 | `self-review` | `agent` | `ask()` | `@amykit/core` | A workflow-declared half-step: the work reviews itself before a person is asked to. |
-| `triage` | `agent` | `triage()` | `@amykit/core` |  |
+| `triage` | `agent` | `ask()` | `@amykit/core` |  |
 | `check-plan` | `plan-check` | `check()` | `@amykit/plugin-plan-check` | Registered by the plugin that brings the port behind it. |
 | `run-command` | `commands` | `run()` | `@amykit/plugin-command` | Registered by the plugin that brings the port behind it. |
 

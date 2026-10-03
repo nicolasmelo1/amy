@@ -65,10 +65,9 @@ export {
   CODE_HOST_WRITE_FOR_METHOD,
   codeHostWriteFor,
 } from "./ports/CodeHost.js";
+export type { Agent, AttemptOutcome, Progress } from "./ports/Agent.js";
+export type { Gate, Workplace } from "./ports/Gate.js";
 export type {
-  Agent,
-  AttemptOutcome,
-  Progress,
   Comment,
   Feature,
   FeatureTracker,
@@ -76,19 +75,15 @@ export type {
   GroomedWork,
   GroomingTracker,
   FollowUpRequest,
-  Gate,
   Ticket,
-  ThreadVerdict,
   Tracker,
   TrackerReads,
   TrackerWrites,
   TrackerWriteCapability,
-  TriageOutcome,
 } from "./ports/Ticketing.js";
 export {
   TRACKER_WRITE_CAPABILITIES,
   TRACKER_WRITE_FOR_METHOD,
-  pullRequestTitle,
   trackerCapabilitiesFor,
   trackerWriteFor,
   trackerWritesFor,

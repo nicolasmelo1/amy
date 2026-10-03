@@ -66,13 +66,11 @@ mounted as ports — see the next section.
 
 The coding agent, and the only probabilistic thing in the system.
 
-Declared in `packages/core/src/ports/Ticketing.ts`.
+Declared in `packages/core/src/ports/Agent.ts`.
 
 | Method | What it does |
 | :-- | :-- |
-| `triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>>` | Reads the ticket and says whether it can be implemented as written. |
-| `implement(ticket: Ticket, retryContext?: string, conversation?: readonly string[]): Promise<AgentResult<AttemptOutcome>>` | Writes the change, or the next attempt after one that did not hold. |
-| `addressThreads(ticket: Ticket, threads: readonly ReviewThread[], from: "automated" \| "human"): Promise<AgentResult<ThreadVerdict[]>>` | Judges review comments one by one. A comment it agrees with is fixed, a comment it disagrees with comes back as a disagreement for the owner rather than being argued with on the pull request. |
+| `ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>` |  |
 
 ### `BaseSource`
 
@@ -215,11 +213,11 @@ Declared in `packages/core/src/ports/Ticketing.ts`.
 
 The gate: the check that decides whether an implementation holds, before anything is published for a person to read.
 
-Declared in `packages/core/src/ports/Ticketing.ts`.
+Declared in `packages/core/src/ports/Gate.ts`.
 
 | Method | What it does |
 | :-- | :-- |
-| `run(ticket: Ticket): Promise<AttemptOutcome>` | Runs the gate against the ticket's own checkout, and says what happened. |
+| `run(workplace: Workplace): Promise<AttemptOutcome>` | Runs the gate in the work's own tree, and says what happened. |
 
 ### `GraphQLClient`
 
@@ -350,11 +348,12 @@ gets them in its context, and nothing mounts them:
 | `GraphQLClient` | A transport an adapter constructs for itself, kept behind an interface so the adapter's queries can be tested without a network. |
 
 And one contract is mounted under a different name than it is called:
-**`Harness` mounts as `agent`**. The relay mounts an object that is both — the
-ticket-shaped half (`triage`, `implement`, `addressThreads`) and the half with
-no vocabulary in it (`ask`) — so a second workflow's own prompts end up on the
-same ladder, in the same log and under the same ceiling as the first workflow's.
-Neither workflow has to know the other exists.
+**`Harness` mounts as `agent`**. The relay mounts `ask` and nothing else, so
+every workflow's prompts end up on the same ladder, in the same log and under
+the same ceiling, keyed by the step each names in its context. Neither
+workflow has to know the other exists, and no agent touches git: when work is
+committed and pushed is the workflow's decision
+([an agent only answers](../design/an-agent-only-answers.md)).
 
 ## Narrowing a port
 
@@ -362,20 +361,22 @@ The core keeps its contracts domain-free, so a workflow narrows what it uses to
 what it needs:
 
 ```ts
-// The ticket workflow's view of the agent port
-export interface Agent {
-  triage(ticket: Ticket): Promise<AgentResult<TriageOutcome>>;
-  implement(ticket: Ticket, retryContext?: string): Promise<AgentResult<AttemptOutcome>>;
-  addressThreads(…): Promise<AgentResult<ThreadVerdict[]>>;
-}
+// The ticket workflow's view of the git half: only what it drives
+export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commitAndPush">;
 
-// The errand workflow's view of the same mounted object
-import type { Harness } from "@amykit/core";   // just `ask`
+// Its steps are prompts on the one agent method, read into its own types
+const { value } = await judgeStep(agent, {
+  prompt: triagePrompt(ticket),
+  cwd,
+  context: { workId: ticket.id, step: "triage" },
+  read: (answer) => readTriage(answer, at),
+  fallback: unreadTriage(at),
+});
 ```
 
-Both are the same mounted object. Neither package imports the other. This is
-what "the core is generic so type safety comes from the other side" means in
-practice.
+The port says nothing about tickets; the workflow narrows it to its own
+vocabulary at its own boundary. This is what "the core is generic so type
+safety comes from the other side" means in practice.
 
 ## Filling a port from your own plugin
 

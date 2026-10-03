@@ -102,6 +102,8 @@ had.
 | 14 | [The errand is proven end to end](the-errand-is-proven-end-to-end.md) | Editing the errand workflow or the task store turns `sf check` red until the errand scenario is run again and resealed, the same way the other two shipped workflows already behave |
 | 15 | [A phase is proven, not asserted](a-phase-is-proven-not-asserted.md) | A unit of work whose scenario names no example cannot leave planning, a phase whose run left one assertion unevaluated is refused with that assertion named, a person's manual run locks a unit as proven, and a proof whose code or brief has since changed goes red without anybody looking. |
 
+**Delivered:** *An agent only answers* now lives at `docs/design/an-agent-only-answers.md`.
+
 **Delivered:** *A snapshot is a commit* now lives at `docs/design/a-snapshot-is-a-commit.md`.
 
 **Delivered:** *A Slack thread per piece of work* now lives at `docs/design/a-slack-thread-per-piece-of-work.md`.

@@ -19,8 +19,8 @@ maintains.
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
 | `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
-| `@amykit/plugin-claude` | The claude CLI as the agent, with git on the side. |  | `agent:claude`<br>`harness:claude` |
-| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `agent:codex`<br>`harness:codex` |
+| `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude` |
+| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex` |
 | `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
 | `@amykit/plugin-file-brief-store` | Briefs kept as one file per item. | `brief` |  |
@@ -30,7 +30,7 @@ maintains.
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
 | `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
-| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
+| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes` |
 | `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `feature`<br>`tracker` |  |
 | `@amykit/plugin-notify-fanout` | Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted. | `notifier` |  |
 | `@amykit/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. | `notify` | `notify-channel:hermes` |
@@ -82,36 +82,28 @@ plugins:
 
 ### `@amykit/plugin-claude`
 
-The claude CLI as the agent, with git on the side.
+The claude CLI as the agent, over its JSON envelope.
 
 |  |  |
 | :-- | :-- |
 | Source | `plugins/claude` |
 | Mounts | _nothing_ |
-| Contributes | `agent:claude`, `harness:claude` |
+| Contributes | `harness:claude` |
 | Needs in the environment | _nothing_ |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
 plugins:
   "@amykit/plugin-claude":
-    baseBranch: {}
-    checkouts: {}
-    defaultBranch: main
     model: ""
     models: []
-    reviewerHints: {}
     timeoutMs: 1800000
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
-| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the agent is sent |
-| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `model` | `string` | no | `""` | passed to the CLI as --model, which is the flag it accepts |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `claude:<model>`. Empty means a single agent using `model` |
-| `reviewerHints` | `record` | no | `{}` | guidance appended when answering a particular reviewer, by host login |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 ### `@amykit/plugin-codex`
@@ -122,30 +114,22 @@ The codex CLI as the agent, over its JSONL event stream.
 | :-- | :-- |
 | Source | `plugins/codex` |
 | Mounts | _nothing_ |
-| Contributes | `agent:codex`, `harness:codex` |
+| Contributes | `harness:codex` |
 | Needs in the environment | _nothing_ |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
 plugins:
   "@amykit/plugin-codex":
-    baseBranch: {}
-    checkouts: {}
-    defaultBranch: main
     model: ""
     models: []
-    reviewerHints: {}
     timeoutMs: 1800000
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
-| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the agent is sent |
-| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to codex |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `codex:<model>`. Empty means a single agent named `codex` |
-| `reviewerHints` | `record` | no | `{}` | guidance appended when answering a particular reviewer, by host login |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 ### `@amykit/plugin-command`
@@ -390,30 +374,22 @@ Hermes as the agent, over its one-shot mode and usage report.
 | :-- | :-- |
 | Source | `plugins/hermes-agent` |
 | Mounts | _nothing_ |
-| Contributes | `agent:hermes`, `harness:hermes` |
+| Contributes | `harness:hermes` |
 | Needs in the environment | _nothing_ |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
 plugins:
   "@amykit/plugin-hermes-agent":
-    baseBranch: {}
-    checkouts: {}
-    defaultBranch: main
     model: ""
     models: []
-    reviewerHints: {}
     timeoutMs: 1800000
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
-| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the agent is sent |
-| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
-| `reviewerHints` | `record` | no | `{}` | guidance appended when answering a particular reviewer, by host login |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 ### `@amykit/plugin-linear`
@@ -627,7 +603,6 @@ plugins:
 
 | Collection | Contributed to by | Read by |
 | :-- | :-- | :-- |
-| `agent` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `harness` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox` | _whichever plugin reads it_ |
 | `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |

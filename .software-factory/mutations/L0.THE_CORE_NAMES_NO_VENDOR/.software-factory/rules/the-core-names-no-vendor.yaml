@@ -1,0 +1,28 @@
+id: L0.THE_CORE_NAMES_NO_VENDOR
+layer: L0
+title: The core's code names no product
+severity: high
+statement: >-
+  No identifier or string in packages/core/src names a tracker, a forge, a
+  chat or an agent vendor. Comments may.
+why: >-
+  amy is a workflow builder: Linear, GitHub, Slack and Claude are plugins
+  somebody chose to install, and the next install may choose others. The
+  moment the core's code says one of their names, it has a branch that only
+  one product takes, and the plugin model is a fork with extra steps.
+fix: >-
+  Name the capability instead of the product (`tracker`, `code-host`,
+  `conversation`, `harness`), and put the product's behaviour in its plugin.
+  See docs/design/an-agent-only-answers.md.
+ratchet: allowlist
+check:
+  kind: shape
+  languages:
+    typescript:
+      query: |
+        ([(identifier) (property_identifier) (type_identifier)
+          (shorthand_property_identifier) (string_fragment)] @name @target
+          (#match? @name "(?i)(linear|github|gitlab|jira|slack|copilot|claude|codex|hermes|openai|anthropic|figma)"))
+defaults:
+  scope: ["packages/core/src/**"]
+  must_not_live_in: ["packages/core/src/**"]

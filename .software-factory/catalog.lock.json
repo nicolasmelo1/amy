@@ -3,6 +3,39 @@
   "sf_version": "0.4.1",
   "catalog_digest": "2977e80238dbcaabd4088edb7fd530e5ac215e8c15f648dc70194f5fc6e835bf",
   "rules": {
+    "L0.AGENT_ACTIONS_DISPATCH_TO_ASK": {
+      "severity": "high",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 1,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 1
+    },
+    "L0.AN_AGENT_NEVER_TOUCHES_GIT": {
+      "severity": "high",
+      "scope": 6,
+      "exclude": 0,
+      "forbidden": 2,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
+    "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS": {
+      "severity": "high",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 1,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 1
+    },
     "L0.CORE_STAYS_IGNORANT": {
       "severity": "high",
       "scope": 1,
@@ -34,6 +67,61 @@
       "languages": 5,
       "tools": 0,
       "must_live_in": 4,
+      "must_not_live_in": 0
+    },
+    "L0.ONLY_THE_TRACKER_SPEAKS_TICKET": {
+      "severity": "high",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 1,
+      "tools": 0,
+      "must_live_in": 1,
+      "must_not_live_in": 0
+    },
+    "L0.PORTS_LIVE_IN_THEIR_OWN_FILE": {
+      "severity": "medium",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 1,
+      "tools": 0,
+      "must_live_in": 2,
+      "must_not_live_in": 0
+    },
+    "L0.THE_AGENT_PORT_ONLY_ASKS": {
+      "severity": "high",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 1,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 1
+    },
+    "L0.THE_CORE_NAMES_NO_VENDOR": {
+      "severity": "high",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 1,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 1
+    },
+    "L0.THE_CORE_WORDS_NOTHING": {
+      "severity": "medium",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 1,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
       "must_not_live_in": 0
     },
     "L1.COMMENT_STAYS_SUCCINCT": {

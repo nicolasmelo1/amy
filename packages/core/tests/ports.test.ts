@@ -7,13 +7,11 @@ import {
   FollowUpRequest,
   Gate,
   Ticket,
-  ThreadVerdict,
   Tracker,
   TrackerReads,
   TrackerWrites,
   TrackerWriteCapability,
-  TriageOutcome,
-  pullRequestTitle,
+  Workplace,
   trackerCapabilitiesFor,
   trackerWriteFor,
 } from "../src/index.js";
@@ -47,15 +45,13 @@ describe("the ports belong to the core", () => {
   });
 
   it("exports the outcome contracts a workflow and a plugin share", () => {
-    const triage: TriageOutcome = null as unknown as TriageOutcome;
     const attempt: AttemptOutcome = null as unknown as AttemptOutcome;
-    const verdict: ThreadVerdict = null as unknown as ThreadVerdict;
+    const workplace: Workplace = null as unknown as Workplace;
     const aComment: Comment = null as unknown as Comment;
     const aFollowUp: FollowUpRequest = null as unknown as FollowUpRequest;
 
-    expect(triage).toBeNull();
     expect(attempt).toBeNull();
-    expect(verdict).toBeNull();
+    expect(workplace).toBeNull();
     expect(aComment).toBeNull();
     expect(aFollowUp).toBeNull();
   });
@@ -63,10 +59,6 @@ describe("the ports belong to the core", () => {
   it("exports the conversation contract a workflow and adapter share", () => {
     const conversation: Conversation = null as unknown as Conversation;
     expect(conversation).toBeNull();
-  });
-
-  it("spells a pull request title the convention's way", () => {
-    expect(pullRequestTitle(ticket())).toBe("PROJ-1239: The total is wrong on the invoice");
   });
 
   it("names every write capability a tracker action can resolve to", () => {
@@ -86,6 +78,20 @@ describe("the ports belong to the core", () => {
     expect(capabilities).toContain("comment");
   });
 
+  it("takes a ticket from a tracker that derives no branch and has no team", () => {
+    // GitHub Issues has neither; an adapter for it must not have to invent them.
+    const fromAnyTracker: Ticket = {
+      id: "acme/widgets#12",
+      title: "The total is wrong on the invoice",
+      url: "https://example.test/acme/widgets/issues/12",
+      status: "open",
+      labels: [],
+      repo: "acme/widgets",
+    };
+
+    expect(fromAnyTracker.branchName).toBeUndefined();
+  });
+
   it("refuses a write capability for an action that is not a tracker write", () => {
     expect(trackerWriteFor("triage")).toBeUndefined();
     expect(trackerWriteFor("implement")).toBeUndefined();
@@ -93,16 +99,3 @@ describe("the ports belong to the core", () => {
     expect(trackerWriteFor("nobody-defined-this")).toBeUndefined();
   });
 });
-
-function ticket(): Ticket {
-  return {
-    id: "PROJ-1239",
-    title: "The total is wrong on the invoice",
-    team: "Platform",
-    url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
-    branchName: "ada/proj-1239-total-is-wrong",
-    status: "In Progress",
-    labels: [],
-    repo: "Northwind/northwind-backend",
-  };
-}

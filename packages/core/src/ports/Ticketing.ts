@@ -1,112 +1,4 @@
 import { CORE_ACTIONS } from "../actions.js";
-import { AgentResult } from "../agent-run.js";
-import { ReviewThread } from "./CodeHost.js";
-
-/** What one read of a ticket concluded, for every workflow that reads one. */
-export interface TriageOutcome {
-  /** True when the ticket can be implemented as written. */
-  clear: boolean;
-  questions: string[];
-  at: string;
-  /**
-   * The questions the machine asked on the ticket for this ticket to be
-   * read again.
-   *
-   * Recorded beside the questions rather than re-derived from history, so a
-   * second look can tell its own words from new information without reading
-   * anything but the record and the conversation.
-   */
-  askedQuestions: string[];
-}
-
-/** What a run learned about whether another run could add evidence. */
-export type Progress =
-  | { kind: "advanced"; key: string }
-  | { kind: "unchanged"; key: string; detail: string }
-  | { kind: "handoff"; detail: string };
-
-/** What one attempt to write the change produced, gate included. */
-export interface AttemptOutcome {
-  ok: boolean;
-  /** Whatever the agent or the gate said, verbatim, for the next prompt. */
-  output: string;
-  at: string;
-  /** Absent keeps older agents and workflows behaving exactly as they did. */
-  progress?: Progress;
-}
-
-/** What one judged review comment concluded. */
-export interface ThreadVerdict {
-  threadId: string;
-  /** `fixed` means the code changed. `disagreed` means it needs the owner. */
-  verdict: "fixed" | "disagreed";
-  note: string;
-}
-
-/**
- * The coding agent, and the only probabilistic thing in the system.
- *
- * Every method returns what it was asked for **and** an account of what the
- * run took: which harness, which model, how it ended, and what it spent.
- * Without that account there is nothing to escalate on and nothing to budget
- * against, so it is part of the contract rather than something bolted on.
- *
- * Lives here rather than in any one workflow because several workflows need
- * the same agent behind the same relay and the same ceiling, and a port that
- * lived in the first workflow would make the second a fork instead of a
- * package.
- */
-export interface Agent {
-  /**
-   * Reads the ticket and says whether it can be implemented as written.
-   *
-   * `conversation` carries what the ticket's comments said, already split by
-   * who wrote it — an answer to an earlier question is part of the ticket,
-   * and a prompt that leaves it out asks the same question twice.
-   */
-  triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>>;
-
-  /**
-   * Writes the change, or the next attempt after one that did not hold.
-   *
-   * `conversation` is here for the same reason: a first attempt that worked
-   * from an answer the ticket never showed is an attempt nobody can audit.
-   */
-  implement(
-    ticket: Ticket,
-    retryContext?: string,
-    conversation?: readonly string[],
-  ): Promise<AgentResult<AttemptOutcome>>;
-
-  /**
-   * Judges review comments one by one. A comment it agrees with is fixed, a
-   * comment it disagrees with comes back as a disagreement for the owner
-   * rather than being argued with on the pull request.
-   */
-  addressThreads(
-    ticket: Ticket,
-    threads: readonly ReviewThread[],
-    from: "automated" | "human",
-  ): Promise<AgentResult<ThreadVerdict[]>>;
-}
-
-/**
- * The gate: the check that decides whether an implementation holds, before
- * anything is published for a person to read.
- *
- * Lives here for the same reason `Agent` does: the answer is a workflow's to
- * weigh, but what a gate *is* belongs below every workflow, so a second
- * workflow's own check slots into the same seam without restating it.
- */
-export interface Gate {
-  /**
-   * Runs the gate against the ticket's own checkout, and says what happened.
-   *
-   * `ok` is the verdict; `output` is the evidence, verbatim, so a retry can
-   * be handed the reason it is retrying rather than a summary of it.
-   */
-  run(ticket: Ticket): Promise<AttemptOutcome>;
-}
 
 /**
  * One comment on a ticket, as the tracker holds it.
@@ -138,7 +30,8 @@ export interface FollowUpRequest {
 export interface Ticket {
   id: string;
   title: string;
-  team: string;
+  /** The tracker's team, where it has one. Linear does; GitHub Issues does not. */
+  team?: string;
   url: string;
 
   /**
@@ -147,9 +40,10 @@ export interface Ticket {
    *
    * Never derive this locally. The tracker owns the slug, it truncates long
    * titles in its own way, and a branch that disagrees with it breaks the
-   * tracker's automatic PR linking.
+   * tracker's automatic PR linking. Absent where the tracker derives none,
+   * and a workflow that needs one refuses the ticket by name.
    */
-  branchName: string;
+  branchName?: string;
 
   /**
    * The status *name*, not its category.
@@ -208,11 +102,6 @@ export interface Ticket {
    * carries none, and every prompt built from one is unchanged.
    */
   brief?: string;
-}
-
-/** The title convention for a pull request opened for a ticket. */
-export function pullRequestTitle(ticket: Ticket): string {
-  return `${ticket.id}: ${ticket.title}`;
 }
 
 /** Reads a tracker answers, and writes only the workflow's declared surface. */

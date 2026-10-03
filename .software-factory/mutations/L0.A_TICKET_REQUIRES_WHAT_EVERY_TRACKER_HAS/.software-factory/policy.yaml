@@ -1,0 +1,11 @@
+# Mutation fixture for L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS:
+    enabled: true

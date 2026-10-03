@@ -1,0 +1,36 @@
+id: L0.AGENT_ACTIONS_DISPATCH_TO_ASK
+layer: L0
+title: Every catalogue action on the agent port dispatches to ask
+severity: high
+statement: >-
+  An entry in the core's action catalogue whose port is `agent` names `ask` as
+  its method.
+why: >-
+  The catalogue is the list of actions a workflow author arranges, and its
+  names (triage, implement, address-threads) are what the budget, the model
+  ladders and the skills key on. Those names stay. What must not come back is
+  a method per action on the agent port, because each one is a step's
+  vocabulary in the contract every workflow shares.
+fix: >-
+  Point the entry at `{ port: "agent", method: "ask" }` and build the step's
+  prompt and parsing in the workflow that runs it. See
+  docs/design/an-agent-only-answers.md.
+ratchet: allowlist
+check:
+  kind: shape
+  languages:
+    typescript:
+      query: |
+        (object
+          (pair key: (property_identifier) @pk (#eq? @pk "port")
+                value: (string (string_fragment) @port (#eq? @port "agent")))
+          (pair key: (property_identifier) @mk (#eq? @mk "method")
+                value: (string (string_fragment) @name (#not-eq? @name "ask")))) @target
+        (object
+          (pair key: (property_identifier) @mk (#eq? @mk "method")
+                value: (string (string_fragment) @name (#not-eq? @name "ask")))
+          (pair key: (property_identifier) @pk (#eq? @pk "port")
+                value: (string (string_fragment) @port (#eq? @port "agent")))) @target
+defaults:
+  scope: ["packages/core/src/**"]
+  must_not_live_in: ["packages/core/src/**"]

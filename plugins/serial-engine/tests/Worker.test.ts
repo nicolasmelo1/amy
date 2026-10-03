@@ -270,9 +270,11 @@ describe("Worker", () => {
 
     await build({ agent, host }).tick();
 
-    const [, threads, from] = (agent.addressThreads as any).mock.calls[0];
-    expect(threads.map((t: { id: string }) => t.id)).toEqual(["B1"]);
-    expect(from).toBe("automated");
+    // The review prompt names the threads it asks about, and who left them.
+    const [prompt] = agent.addressThreads.mock.calls[0]!;
+    expect(prompt).toContain("[B1]");
+    expect(prompt).not.toContain("[H1]");
+    expect(prompt).toContain("An automated reviewer left comments");
   });
 
   it("retries after an error, behind a backoff", async () => {

@@ -226,10 +226,16 @@ trusting a green run over a mixed tree.
 <!-- sf:generated language-coverage -->
 | Rule | Languages with a query |
 | :-- | :-- |
+| `L0.AGENT_ACTIONS_DISPATCH_TO_ASK` | typescript |
+| `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` | typescript |
 | `L0.EXCEPTIONS_HAVE_ONE_HOME` | go, python, ruby, rust, typescript |
 | `L0.NO_CROSS_LAYER_IMPORT` | go, python, ruby, rust, typescript |
 | `L0.ONE_ENTRYPOINT_PER_FILE` | go, python, typescript |
+| `L0.ONLY_THE_TRACKER_SPEAKS_TICKET` | typescript |
 | `L0.PERSISTENCE_STAYS_IN_REPOSITORIES` | go, python, typescript |
+| `L0.PORTS_LIVE_IN_THEIR_OWN_FILE` | typescript |
+| `L0.THE_AGENT_PORT_ONLY_ASKS` | typescript |
+| `L0.THE_CORE_NAMES_NO_VENDOR` | typescript |
 | `L1.INDIRECTION_EARNS_ITS_NAME` | python, rust, typescript |
 | `L1.SKIPPED_TESTS_STATE_A_REASON` | go, python, ruby, rust, typescript |
 | `L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK` | go, python, ruby, rust |

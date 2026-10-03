@@ -28,6 +28,16 @@ export interface AskContext {
    * nothing, and the prompt is unchanged.
    */
   brief?: string;
+  /**
+   * Says whether a run that completed actually holds, while a relay can still
+   * hand the step to the next rung.
+   *
+   * A run can complete and still not be the answer — an implementation that
+   * changed no file is the case. Called by a relay after each completed run;
+   * what it returns is the run the relay climbs on, so a step that turns the
+   * outcome to `failed` gets the stronger model or the next skill.
+   */
+  verify?: (reply: HarnessReply) => Promise<HarnessReply>;
 }
 
 /**

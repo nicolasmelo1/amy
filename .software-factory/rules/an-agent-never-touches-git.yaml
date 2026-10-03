@@ -1,0 +1,35 @@
+id: L0.AN_AGENT_NEVER_TOUCHES_GIT
+layer: L0
+title: An agent never prepares a branch, commits or pushes
+severity: high
+statement: >-
+  Nothing in packages/agent-kit or in any plugin calls `prepareBranch` or
+  `commitAndPush`, or runs `git push`.
+why: >-
+  When work is committed and when it reaches the remote are a workflow's
+  decisions. One workflow pushes after every attempt, another pushes once per
+  cycle so nobody reviews half-done work, a third never pushes at all. An
+  agent that pushes by itself makes the second and third impossible without
+  replacing the checkout, which is exactly what a private workflow had to do.
+fix: >-
+  Return the answer and let the caller commit. A helper in agent-kit that needs
+  to commit takes the commit as a function its caller passes in, the way
+  `implementStep` does. See docs/design/an-agent-only-answers.md.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  # Every plugin, so a harness added tomorrow is covered without editing this
+  # file. The named ones stay so the scope only ever grows.
+  scope:
+    - "packages/agent-kit/src/**"
+    - "plugins/agent-relay/src/**"
+    - "plugins/claude/src/**"
+    - "plugins/codex/src/**"
+    - "plugins/hermes-agent/src/**"
+    - "plugins/*/src/**"
+  forbidden:
+    - regex: '\b(prepareBranch|commitAndPush)\b'
+      message: "An agent does not prepare branches or commit. Let the caller do it."
+    - regex: '["'']push["'']'
+      message: "An agent does not push. Pushing is the workflow's decision."

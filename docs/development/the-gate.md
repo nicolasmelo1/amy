@@ -31,9 +31,17 @@ held to a gate that is proven to work.
 
 | Rule | What it holds |
 | :-- | :-- |
+| `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` | A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md) |
+| `L0.AGENT_ACTIONS_DISPATCH_TO_ASK` | Every catalogue action on the agent port dispatches to ask (docs/design/an-agent-only-answers.md) |
+| `L0.AN_AGENT_NEVER_TOUCHES_GIT` | An agent never prepares a branch, commits or pushes (docs/design/an-agent-only-answers.md) |
 | `L0.CORE_STAYS_IGNORANT` | The core imports no workflow and no plugin |
 | `L0.EXCEPTIONS_HAVE_ONE_HOME` | Error types live in one canonical module per domain |
 | `L0.NO_CROSS_LAYER_IMPORT` | Private and generated modules are not imported across the boundary |
+| `L0.ONLY_THE_TRACKER_SPEAKS_TICKET` | Only the tracker's contract names a ticket (docs/design/an-agent-only-answers.md) |
+| `L0.PORTS_LIVE_IN_THEIR_OWN_FILE` | The agent and gate ports live in their own files (docs/design/an-agent-only-answers.md) |
+| `L0.THE_AGENT_PORT_ONLY_ASKS` | The core's agent port declares ask and nothing else (docs/design/an-agent-only-answers.md) |
+| `L0.THE_CORE_NAMES_NO_VENDOR` | The core's code names no product (docs/design/an-agent-only-answers.md) |
+| `L0.THE_CORE_WORDS_NOTHING` | The core writes no title for anybody (docs/design/an-agent-only-answers.md) |
 | `L1.COMMENT_STAYS_SUCCINCT` | A comment block stays under the line ceiling |
 | `L1.COMPLEXITY_CEILING` | No function exceeds the cyclomatic ceiling |
 | `L1.NO_BLANKET_SUPPRESSION` | Every suppression names a code and a reason |

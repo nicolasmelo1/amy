@@ -1,0 +1,11 @@
+# Mutation fixture for L0.AN_AGENT_NEVER_TOUCHES_GIT. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.AN_AGENT_NEVER_TOUCHES_GIT
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.AN_AGENT_NEVER_TOUCHES_GIT:
+    enabled: true

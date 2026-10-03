@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { FileBriefStore } from "@amykit/plugin-file-store";
-import { InMemoryStore, WORKDAY, ticket, ticketWorkerDeps } from "@amykit/test-fixtures";
+import { InMemoryStore, WORKDAY, fakeAgent, ticket, ticketWorkerDeps } from "@amykit/test-fixtures";
 import { Worker } from "@amykit/plugin-serial-engine";
 import type { Agent, BriefStore, Conversation, Tracker } from "@amykit/core";
 import type { Ticket } from "../src/ticket.js";
@@ -69,24 +69,24 @@ describe("a runtime whose tickets carry a brief", () => {
       createFollowUp: async () => "PROJ-9999",
     } as unknown as Tracker;
 
-    const seen: Ticket[] = [];
-    const agent = {
-      triage: vi.fn<Agent["triage"]>().mockImplementation(async (read: Ticket) => {
-        seen.push(read);
+    const seen: string[] = [];
+    const agent = fakeAgent({
+      triage: vi.fn().mockImplementation(async (prompt: string) => {
+        seen.push(prompt);
         return {
           value: { clear: true, questions: [], askedQuestions: [], at: clock.toISOString() },
           run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
         };
       }),
-    } as unknown as Agent;
+    });
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-store-"));
     const { record } = await drive({ tracker, agent, briefs: await briefStoreWith(root) });
     fs.rmSync(root, { recursive: true, force: true });
 
-    // The brief reached the agent as the current rendered text, and the
-    // ticket the machine read carried it beside the body.
-    expect(seen[0]?.brief).toContain("One currency on every invoice line.");
+    // The brief reached the agent as the current rendered text, in the
+    // prompt the triage was asked with.
+    expect(seen[0]).toContain("One currency on every invoice line.");
     expect(record?.state).toBe("READY");
   });
 
@@ -106,15 +106,15 @@ describe("a runtime whose tickets carry a brief", () => {
     const briefs = await briefStoreWith(root);
 
     const seen: string[] = [];
-    const agent = {
-      triage: vi.fn<Agent["triage"]>().mockImplementation(async (read: Ticket) => {
-        seen.push(read.brief ?? "");
+    const agent = fakeAgent({
+      triage: vi.fn().mockImplementation(async (prompt: string) => {
+        seen.push(prompt);
         return {
           value: { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: clock.toISOString() },
           run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
         };
       }),
-    } as unknown as Agent;
+    });
 
     await drive({ tracker, agent, briefs }, 1);
 
@@ -149,12 +149,12 @@ describe("a runtime whose tickets carry a brief", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-append-"));
     const briefs = await briefStoreWith(root);
 
-    const agent = {
-      triage: vi.fn<Agent["triage"]>().mockResolvedValue({
+    const agent = fakeAgent({
+      triage: vi.fn().mockResolvedValue({
         value: { clear: false, questions: ["Which currency for the total?"], askedQuestions: ["Which currency for the total?"], at: clock.toISOString() },
         run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
       }),
-    } as unknown as Agent;
+    });
 
     await drive({ tracker, agent, briefs }, 2);
 
@@ -184,12 +184,12 @@ describe("a runtime whose tickets carry a brief", () => {
     } as unknown as Tracker;
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-none-"));
-    const agent = {
-      triage: vi.fn<Agent["triage"]>().mockResolvedValue({
+    const agent = fakeAgent({
+      triage: vi.fn().mockResolvedValue({
         value: { clear: false, questions: ["Does write-off count?"], askedQuestions: ["Does write-off count?"], at: clock.toISOString() },
         run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
       }),
-    } as unknown as Agent;
+    });
 
     await drive({ tracker, agent, briefs: await briefStoreWith(root) }, 2);
     fs.rmSync(root, { recursive: true, force: true });
@@ -223,12 +223,12 @@ describe("a runtime whose tickets carry a brief", () => {
       },
     ]);
     const conversation: Conversation = { open, post, replies };
-    const agent = {
-      triage: vi.fn<Agent["triage"]>().mockResolvedValue({
+    const agent = fakeAgent({
+      triage: vi.fn().mockResolvedValue({
         value: { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: clock.toISOString() },
         run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
       }),
-    } as unknown as Agent;
+    });
 
     const { record, root } = await drive({ tracker, agent, conversation }, 3);
     fs.rmSync(root, { recursive: true, force: true });
