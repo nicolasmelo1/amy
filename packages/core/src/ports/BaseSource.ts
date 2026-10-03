@@ -100,7 +100,7 @@ export class GitBaseSource implements BaseSource {
     // The destination is named because a narrowed `remote.origin.fetch` would
     // otherwise fetch the branch and leave origin/<base> where it was.
     const remoteRef = `refs/remotes/origin/${baseBranch}`;
-    const fetched = await git(["fetch", "origin", `+refs/heads/${baseBranch}:${remoteRef}`]);
+    const fetched = await git(["fetch", "--no-tags", "origin", `+refs/heads/${baseBranch}:${remoteRef}`]);
     if (!fetched.ok) throw new Error(`the grooming source could not fetch ${baseBranch} for ${repo}: ${why(fetched)}`);
 
     const resolved = await git(["log", "-1", "--no-color", "--format=%H%x00%cI", remoteRef]);
@@ -128,6 +128,7 @@ export class GitBaseSource implements BaseSource {
         throw new Error(`the grooming source could not read ${file} in ${repo}: ${why(result)}`);
       },
       search: async (text, options = {}) => {
+        textOf(text);
         const limit = limitOf(options.limit, DEFAULT_SEARCH_LIMIT);
         // The runner buffers everything git prints, so cap each file at the
         // one extra match `truncated` needs rather than read every match there is.
@@ -139,6 +140,7 @@ export class GitBaseSource implements BaseSource {
         return { matches: matches.slice(0, limit), truncated: matches.length > limit };
       },
       history: async (text, options = {}) => {
+        textOf(text);
         const limit = limitOf(options.limit, DEFAULT_HISTORY_LIMIT);
         const paths = options.paths ?? [];
         // One more than asked for: the extra entry is what says the list was cut.
@@ -159,6 +161,11 @@ export class GitBaseSource implements BaseSource {
       },
     };
   }
+}
+
+// An empty text matches every line, and a bare `-S` makes git read the next flag as its argument.
+function textOf(text: string): void {
+  if (text === "") throw new Error("the grooming source needs a text to look for, and was given an empty one");
 }
 
 function limitOf(limit: number | undefined, fallback: number): number {

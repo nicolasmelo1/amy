@@ -45,7 +45,7 @@ describe("feature grooming", () => {
     const snapshot = await source.snapshot("acme/widgets");
     expect(await snapshot.read("schema.sql")).toBe("base column");
     expect(run.mock.calls.map((call) => call[1][0])).toEqual(["fetch", "log", "show"]);
-    expect(run.mock.calls.at(0)?.[1]).toEqual(["fetch", "origin", "+refs/heads/release:refs/remotes/origin/release"]);
+    expect(run.mock.calls.at(0)?.[1]).toEqual(["fetch", "--no-tags", "origin", "+refs/heads/release:refs/remotes/origin/release"]);
     expect(run.mock.calls.at(2)?.[1]).toEqual(["show", `${revision}:schema.sql`]);
     // Answers, not capabilities: nothing on the snapshot names a checkout, a branch to work on, or a runner.
     expect(Object.keys(snapshot).sort()).toEqual(["baseBranch", "committedAt", "history", "read", "repo", "revision", "search"]);

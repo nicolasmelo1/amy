@@ -7,6 +7,8 @@ import { GitBaseSource } from "../src/ports/BaseSource.js";
 import { NodeCommandRunner } from "../src/NodeCommandRunner.js";
 import type { CommandResult, CommandRunner } from "../src/ports/CommandRunner.js";
 
+const notOnWindows = process.platform !== "win32";
+
 /**
  * Real repositories, because every claim here is about what git answers at
  * one commit: a scripted runner would only prove the script.
@@ -98,8 +100,18 @@ describe("a base-source snapshot", () => {
     expect(await snapshot.search("nowhere")).toEqual({ matches: [], truncated: false });
   });
 
-  it("does not return a binary blob as a match, and returns a path containing a colon or a newline whole", async () => {
-    commit(author, "odd files", { "blob.bin": Buffer.from([0, 1, 2, ...Buffer.from("needle"), 0]), "docs/a:b.md": "needle here\n", "docs/two\nlines.md": "a needle\n" });
+  it("does not return a binary blob as a match", async () => {
+    commit(author, "a binary", { "blob.bin": Buffer.from([0, 1, 2, ...Buffer.from("needle"), 0]), "notes.md": "needle here\n" });
+    git(author, "push", "-q", "origin", "main");
+
+    const found = await (await source().snapshot("acme/widgets")).search("needle");
+
+    expect(found.matches).toEqual([{ path: "notes.md", line: 1, text: "needle here" }]);
+  });
+
+  // Windows cannot name a file with a colon or a newline in it, so the tree cannot be written there.
+  it.runIf(notOnWindows)("returns a path containing a colon or a newline whole", async () => {
+    commit(author, "odd paths", { "docs/a:b.md": "needle here\n", "docs/two\nlines.md": "a needle\n" });
     git(author, "push", "-q", "origin", "main");
     const snapshot = await source().snapshot("acme/widgets");
 
@@ -107,6 +119,27 @@ describe("a base-source snapshot", () => {
 
     expect(found.matches).toEqual([{ path: "docs/a:b.md", line: 1, text: "needle here" }, { path: "docs/two\nlines.md", line: 1, text: "a needle" }]);
     expect(await snapshot.read(found.matches[1]!.path)).toBe("a needle");
+  });
+
+  it("refuses an empty text before asking git", async () => {
+    const snapshot = await source().snapshot("acme/widgets");
+    const before = calls.length;
+
+    await expect(snapshot.search("")).rejects.toThrow(/empty/);
+    await expect(snapshot.history("")).rejects.toThrow(/empty/);
+    expect(calls.length).toBe(before);
+  });
+
+  it("writes no tag into the checkout, only the remote-tracking ref", async () => {
+    // Git follows a tag only onto a commit the fetch brings in, so the tag sits on a new one.
+    commit(author, "released", { "release.md": "v1\n" });
+    git(author, "tag", "v1");
+    git(author, "push", "-q", "origin", "main", "v1");
+
+    const snapshot = await source().snapshot("acme/widgets");
+
+    expect(snapshot.revision).toBe(git(author, "rev-parse", "HEAD"));
+    expect(git(checkout, "tag", "--list")).toBe("");
   });
 
   it("refuses a limit that is not a whole number of zero or more, before asking git", async () => {
