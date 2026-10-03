@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-store",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Work records kept as one file per item.",
   "type": "module",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.4.0",
-    "@amykit/plugin-file-brief-store": "^0.4.0"
+    "@amykit/core": "^0.5.0",
+    "@amykit/plugin-file-brief-store": "^0.5.0"
   }
 }

@@ -1,5 +1,28 @@
 # @amykit/plugin-github
 
+## 0.5.0
+
+### Minor Changes
+
+- 3a993e1: Let workflows resolve the base of a stacked pull request through the code-host port.
+
+### Patch Changes
+
+- 1641aed: `reviewsRequestedOf` and `changesRequestedOf` work. Their GraphQL document named its variable `$query`, and the document itself travels to `gh` as the field `query`, so every call claimed that field twice and `gh` refused it before GitHub was reached: `unexpected override existing field under "query"`. The variable is `$search` now.
+  
+  `submitReview` works. It sent the state a review is read as (`event=APPROVED`), and the REST API takes `APPROVE`, `REQUEST_CHANGES` and `COMMENT`. The state is mapped to the event now, and `DISMISSED`, which is not a review anyone submits, is refused.
+- Updated dependencies [d490ceb]
+- Updated dependencies [b8c781a]
+- Updated dependencies [c1edd17]
+- Updated dependencies [5ff03ad]
+- Updated dependencies [3a993e1]
+- Updated dependencies [f259468]
+- Updated dependencies [75e1f57]
+- Updated dependencies [8b2fcc8]
+- Updated dependencies [9bb3d24]
+- Updated dependencies [98cc10e]
+  - @amykit/core@0.5.0
+
 ## 0.4.0
 
 ### Patch Changes

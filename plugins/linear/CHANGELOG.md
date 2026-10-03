@@ -1,5 +1,22 @@
 # @amykit/plugin-linear
 
+## 0.5.0
+
+### Patch Changes
+
+- 1641aed: A ticket or feature that is not in Linear answers `null` again instead of throwing. `issue(id:)` is non-null in Linear's schema, so a missing issue never came back as `null`: it came back as the error `Entity not found: Issue`, and `get` and `getFeature` threw it. That one error now reads as "gone"; every other error is still a failure.
+- Updated dependencies [d490ceb]
+- Updated dependencies [b8c781a]
+- Updated dependencies [c1edd17]
+- Updated dependencies [5ff03ad]
+- Updated dependencies [3a993e1]
+- Updated dependencies [f259468]
+- Updated dependencies [75e1f57]
+- Updated dependencies [8b2fcc8]
+- Updated dependencies [9bb3d24]
+- Updated dependencies [98cc10e]
+  - @amykit/core@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes
