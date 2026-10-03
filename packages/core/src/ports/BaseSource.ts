@@ -108,15 +108,6 @@ export class GitBaseSource implements BaseSource {
     const [revision, committedAt] = resolved.stdout.trim().split("\0");
     if (!resolved.ok || !revision || !committedAt) throw new Error(`the grooming source cannot read ${repo} at origin/${baseBranch}: ${why(resolved)}`);
 
-    // How many times `text` appears at `commit`, over the same paths `history` was asked about.
-    const occurrences = async (commit: string, text: string, paths: string[]): Promise<number> => {
-      const result = await git(["grep", "--no-color", "-o", "-z", "-I", "-F", "-e", text, commit, "--", ...paths]);
-      // One NUL ends each occurrence's path, and neither a path nor a text-file match holds another.
-      if (result.ok) return result.stdout.split("\0").length - 1;
-      if (result.exitCode === 1 && !result.stderr) return 0;
-      throw new Error(`the grooming source could not count ${JSON.stringify(text)} in ${repo} at ${commit}: ${why(result)}`);
-    };
-
     return {
       repo,
       baseBranch,
@@ -145,21 +136,17 @@ export class GitBaseSource implements BaseSource {
         textOf(text);
         const limit = limitOf(options.limit, DEFAULT_HISTORY_LIMIT);
         const paths = options.paths ?? [];
-        // One more than asked for: the extra entry is what says the list was cut.
-        // A merge is searched by what its conflict resolution changed (remerge), so a clean merge does not repeat its branch's commit.
-        const result = await git(["log", "--no-color", "-s", "--diff-merges=remerge", `-S${text}`, "-n", String(limit + 1), "--format=%H%x00%cI%x00%P%x00%s", revision, "--", ...paths]);
+        // One more than asked for: the extra entry is what says the list was cut. A merge is
+        // searched, and counted, by what its conflict resolution changed (remerge), so a clean
+        // merge does not repeat its branch's commit and a dropped side of a conflict reads as removed.
+        const result = await git(["log", "--no-color", "--no-ext-diff", "--no-textconv", "-p", "-U0", "--diff-merges=remerge", `-S${text}`, "-n", String(limit + 1), "--format=%x00%H%x00%cI%x00%s", revision, "--", ...paths]);
         if (!result.ok) throw new Error(`the grooming source could not read the history of ${JSON.stringify(text)} in ${repo}: ${why(result)}`);
-        const rows = result.stdout ? result.stdout.replace(/\n$/, "").split("\n") : [];
-        // One commit at a time: each count is a full-tree grep, and fifty at once is a fork bomb on a large repository.
-        const entries: HistoryEntry[] = [];
-        for (const row of rows.slice(0, limit)) {
-          const [commit = "", at = "", parents = "", ...subject] = row.split("\0");
-          const parent = parents.split(" ")[0];
-          const after = await occurrences(commit, text, paths);
-          const before = parent ? await occurrences(parent, text, paths) : 0;
+        const rows = parseHistory(result.stdout, text);
+        const entries = rows.slice(0, limit).map(({ added, removed, ...entry }): HistoryEntry => ({
+          ...entry,
           // A move between files changes no total; the text still exists after it, so it did not go away.
-          entries.push({ commit, at, subject: subject.join("\0"), change: after >= before ? "added" : "removed" });
-        }
+          change: added >= removed ? "added" : "removed",
+        }));
         return { entries, truncated: rows.length > limit };
       },
     };
@@ -175,6 +162,39 @@ function limitOf(limit: number | undefined, fallback: number): number {
   if (limit === undefined) return fallback;
   if (!Number.isSafeInteger(limit) || limit < 0) throw new Error(`the grooming source needs a limit that is a whole number of zero or more, not ${limit}`);
   return limit;
+}
+
+/**
+ * Reads `git log -p -U0 --format=%x00…` output: one record per commit, then the
+ * diff `-S` selected it by. Lines that did not change cancel out between the
+ * two sides, so the occurrences on `+` and `-` lines are the commit's change.
+ */
+function parseHistory(output: string, text: string): { commit: string; at: string; subject: string; added: number; removed: number }[] {
+  const rows: { commit: string; at: string; subject: string; added: number; removed: number }[] = [];
+  let header = false;
+  for (const line of output.split("\n")) {
+    const row = rows.at(-1);
+    if (line.startsWith("\0")) {
+      const [, commit = "", at = "", ...subject] = line.split("\0");
+      rows.push({ commit, at, subject: subject.join("\0"), added: 0, removed: 0 });
+    } else if (line.startsWith("diff ")) {
+      header = true;
+    } else if (line.startsWith("@@")) {
+      header = false;
+    } else if (row && !header && line.startsWith("+")) {
+      row.added += count(line.slice(1), text);
+    } else if (row && !header && line.startsWith("-")) {
+      row.removed += count(line.slice(1), text);
+    }
+  }
+  return rows;
+}
+
+/** Non-overlapping occurrences, the way `-S` counts them. */
+function count(line: string, text: string): number {
+  let found = 0;
+  for (let at = line.indexOf(text); at >= 0; at = line.indexOf(text, at + text.length)) found++;
+  return found;
 }
 
 /**

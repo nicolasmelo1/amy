@@ -212,6 +212,22 @@ describe("a base-source snapshot", () => {
     ]);
   });
 
+  it("reads a merge that dropped one side of a conflict as removing what that side added", async () => {
+    git(author, "checkout", "-q", "-b", "side");
+    commit(author, "side adds a column", { "schema.sql": "create table items (id text, side_only text);\n" });
+    git(author, "checkout", "-q", "main");
+    commit(author, "main changes the table", { "schema.sql": "create table items (id text, main text);\n" });
+    expect(() => git(author, "merge", "-q", "--no-commit", "side")).toThrow();
+    const merged = commit(author, "keep main's side", { "schema.sql": "create table items (id text, main text);\n" });
+    git(author, "push", "-q", "origin", "main");
+    const snapshot = await source().snapshot("acme/widgets");
+
+    expect((await snapshot.history("side_only")).entries).toMatchObject([
+      { commit: merged, change: "removed" },
+      { subject: "side adds a column", change: "added" },
+    ]);
+  });
+
   it("says when its limit cut the history, and not when it did not", async () => {
     commit(author, "one", { "a.txt": "needle\n" });
     commit(author, "two", { "b.txt": "needle\n" });

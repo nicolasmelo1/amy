@@ -127,12 +127,14 @@ And `GitBaseSource.snapshot` does, in order:
    ending at `revision`: the commits where the number of occurrences of the
    text changed, which is how the fifteen-day gap in the exhibit was found by
    hand. Whether a commit added or removed is read from the count on each side
-   of the commit, not guessed from the subject. A commit that moves the text
-   between files leaves the count where it was and reads as `added`: the text
-   still exists after it. A merge is searched with `--diff-merges=remerge`,
-   by what its conflict resolution changed rather than what its branch
-   brought in, so a text that first appeared while resolving a conflict is
-   named and a clean merge does not repeat its branch's commit. `limit` asks
+   of the same diff `-S` selected it by (`-p -U0`, occurrences on `+` lines
+   against `-` lines), not guessed from the subject. A commit that moves the
+   text between files leaves the count where it was and reads as `added`: the
+   text still exists after it. A merge is searched, and counted, with
+   `--diff-merges=remerge`, by what its conflict resolution changed rather
+   than what its branch brought in: a text that first appeared while
+   resolving a conflict is named, a resolution that dropped one side reads as
+   removing it, and a clean merge does not repeat its branch's commit. `limit` asks
    git for one more than it returns, and the extra entry is what sets
    `truncated`.
 
