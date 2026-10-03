@@ -11,7 +11,7 @@ const run = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8" 
 try {
   const remote = path.join(root, "remote.git");
   const checkout = path.join(root, "checkout");
-  run(root, "init", "--bare", remote);
+  run(root, "init", "--bare", "--initial-branch=main", remote);
   run(root, "clone", remote, checkout);
   run(checkout, "config", "user.email", "e2e@example.test"); run(checkout, "config", "user.name", "E2E");
   fs.writeFileSync(path.join(checkout, "schema.sql"), "create table items (id text);\n");

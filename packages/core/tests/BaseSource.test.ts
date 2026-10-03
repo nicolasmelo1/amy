@@ -98,13 +98,27 @@ describe("a base-source snapshot", () => {
     expect(await snapshot.search("nowhere")).toEqual({ matches: [], truncated: false });
   });
 
-  it("does not return a binary blob as a match, and returns a path containing a colon whole", async () => {
-    commit(author, "odd files", { "blob.bin": Buffer.from([0, 1, 2, ...Buffer.from("needle"), 0]), "docs/a:b.md": "needle here\n" });
+  it("does not return a binary blob as a match, and returns a path containing a colon or a newline whole", async () => {
+    commit(author, "odd files", { "blob.bin": Buffer.from([0, 1, 2, ...Buffer.from("needle"), 0]), "docs/a:b.md": "needle here\n", "docs/two\nlines.md": "a needle\n" });
     git(author, "push", "-q", "origin", "main");
+    const snapshot = await source().snapshot("acme/widgets");
 
-    const found = await (await source().snapshot("acme/widgets")).search("needle");
+    const found = await snapshot.search("needle");
 
-    expect(found.matches).toEqual([{ path: "docs/a:b.md", line: 1, text: "needle here" }]);
+    expect(found.matches).toEqual([{ path: "docs/a:b.md", line: 1, text: "needle here" }, { path: "docs/two\nlines.md", line: 1, text: "a needle" }]);
+    expect(await snapshot.read(found.matches[1]!.path)).toBe("a needle");
+  });
+
+  it("refuses a limit that is not a whole number of zero or more, before asking git", async () => {
+    const snapshot = await source().snapshot("acme/widgets");
+    const before = calls.length;
+
+    for (const limit of [Number.NaN, -1, 1.5, Number.POSITIVE_INFINITY]) {
+      await expect(snapshot.search("items", { limit })).rejects.toThrow(/limit/);
+      await expect(snapshot.history("items", { limit })).rejects.toThrow(/limit/);
+    }
+    expect(calls.length).toBe(before);
+    expect(await snapshot.search("items", { limit: 0 })).toEqual({ matches: [], truncated: true });
   });
 
   it("searches for a text beginning with a dash instead of reading it as a flag", async () => {

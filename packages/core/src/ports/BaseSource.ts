@@ -128,35 +128,65 @@ export class GitBaseSource implements BaseSource {
         throw new Error(`the grooming source could not read ${file} in ${repo}: ${why(result)}`);
       },
       search: async (text, options = {}) => {
-        const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
-        const args = ["grep", "--no-color", "--no-column", "-n", "-I", "-z", options.regex ? "-E" : "-F", "-e", text, revision, "--", ...(options.paths ?? [])];
+        const limit = limitOf(options.limit, DEFAULT_SEARCH_LIMIT);
+        // The runner buffers everything git prints, so cap each file at the
+        // one extra match `truncated` needs rather than read every match there is.
+        const args = ["grep", "--no-color", "--no-column", "-n", "-I", "-z", `--max-count=${limit + 1}`, options.regex ? "-E" : "-F", "-e", text, revision, "--", ...(options.paths ?? [])];
         const result = await git(args);
         if (!result.ok && result.exitCode === 1 && !result.stderr) return { matches: [], truncated: false };
         if (!result.ok) throw new Error(`the grooming source could not search ${repo} for ${JSON.stringify(text)}: ${why(result)}`);
-        // With -z each line is `<revision>:<path>\0<line>\0<text>`.
-        const prefix = `${revision}:`;
-        const matches = result.stdout.split("\n").map((row) => {
-          const [where = "", line = "", ...rest] = row.split("\0");
-          return { path: where.startsWith(prefix) ? where.slice(prefix.length) : where, line: Number(line), text: rest.join("\0") };
-        });
+        const matches = parseGrep(result.stdout, `${revision}:`);
         return { matches: matches.slice(0, limit), truncated: matches.length > limit };
       },
       history: async (text, options = {}) => {
-        const limit = options.limit ?? DEFAULT_HISTORY_LIMIT;
+        const limit = limitOf(options.limit, DEFAULT_HISTORY_LIMIT);
         const paths = options.paths ?? [];
         // One more than asked for: the extra entry is what says the list was cut.
         const result = await git(["log", "--no-color", `-S${text}`, "-n", String(limit + 1), "--format=%H%x00%cI%x00%P%x00%s", revision, "--", ...paths]);
         if (!result.ok) throw new Error(`the grooming source could not read the history of ${JSON.stringify(text)} in ${repo}: ${why(result)}`);
         const rows = result.stdout ? result.stdout.split("\n") : [];
-        const entries = await Promise.all(rows.slice(0, limit).map(async (row): Promise<HistoryEntry> => {
+        // One commit at a time: each count is a full-tree grep, and fifty at once is a fork bomb on a large repository.
+        const entries: HistoryEntry[] = [];
+        for (const row of rows.slice(0, limit)) {
           const [commit = "", at = "", parents = "", ...subject] = row.split("\0");
           const parent = parents.split(" ")[0];
-          const [after, before] = await Promise.all([occurrences(commit, text, paths), parent ? occurrences(parent, text, paths) : 0]);
+          const after = await occurrences(commit, text, paths);
+          const before = parent ? await occurrences(parent, text, paths) : 0;
           // A move between files changes no total; the text still exists after it, so it did not go away.
-          return { commit, at, subject: subject.join("\0"), change: after >= before ? "added" : "removed" };
-        }));
+          entries.push({ commit, at, subject: subject.join("\0"), change: after >= before ? "added" : "removed" });
+        }
         return { entries, truncated: rows.length > limit };
       },
     };
   }
+}
+
+function limitOf(limit: number | undefined, fallback: number): number {
+  if (limit === undefined) return fallback;
+  if (!Number.isSafeInteger(limit) || limit < 0) throw new Error(`the grooming source needs a limit that is a whole number of zero or more, not ${limit}`);
+  return limit;
+}
+
+/**
+ * Reads `git grep -n -z` output, `<prefix><path>\0<line>\0<text>\n` per match.
+ * The path is read up to its NUL rather than split on newlines first, because
+ * a path may contain a newline and the matched text never does.
+ */
+function parseGrep(output: string, prefix: string): SearchMatch[] {
+  const matches: SearchMatch[] = [];
+  let at = 0;
+  while (at < output.length) {
+    const pathEnd = output.indexOf("\0", at);
+    const lineEnd = pathEnd < 0 ? -1 : output.indexOf("\0", pathEnd + 1);
+    if (lineEnd < 0) break;
+    const textEnd = output.indexOf("\n", lineEnd + 1);
+    const where = output.slice(at, pathEnd);
+    matches.push({
+      path: where.startsWith(prefix) ? where.slice(prefix.length) : where,
+      line: Number(output.slice(pathEnd + 1, lineEnd)),
+      text: output.slice(lineEnd + 1, textEnd < 0 ? output.length : textEnd),
+    });
+    at = textEnd < 0 ? output.length : textEnd + 1;
+  }
+  return matches;
 }
