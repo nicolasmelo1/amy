@@ -144,7 +144,8 @@ export class GitBaseSource implements BaseSource {
         const limit = limitOf(options.limit, DEFAULT_HISTORY_LIMIT);
         const paths = options.paths ?? [];
         // One more than asked for: the extra entry is what says the list was cut.
-        const result = await git(["log", "--no-color", `-S${text}`, "-n", String(limit + 1), "--format=%H%x00%cI%x00%P%x00%s", revision, "--", ...paths]);
+        // A merge is searched by what its conflict resolution changed (remerge), so a clean merge does not repeat its branch's commit.
+        const result = await git(["log", "--no-color", "-s", "--diff-merges=remerge", `-S${text}`, "-n", String(limit + 1), "--format=%H%x00%cI%x00%P%x00%s", revision, "--", ...paths]);
         if (!result.ok) throw new Error(`the grooming source could not read the history of ${JSON.stringify(text)} in ${repo}: ${why(result)}`);
         const rows = result.stdout ? result.stdout.split("\n") : [];
         // One commit at a time: each count is a full-tree grep, and fifty at once is a fork bomb on a large repository.

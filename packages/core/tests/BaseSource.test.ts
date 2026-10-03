@@ -181,6 +181,21 @@ describe("a base-source snapshot", () => {
     });
   });
 
+  it("names a merge whose conflict resolution introduced a text, and not a merge that only brought a branch in", async () => {
+    git(author, "checkout", "-q", "-b", "side");
+    const sideCommit = commit(author, "side adds a column", { "schema.sql": "create table items (id text, side text);\n", "clean.sql": "clean_column\n" });
+    git(author, "checkout", "-q", "main");
+    commit(author, "main adds a column", { "schema.sql": "create table items (id text, main text);\n" });
+    // The merge stops on the conflict, which is the point: the commit below is its resolution.
+    expect(() => git(author, "merge", "-q", "--no-commit", "side")).toThrow();
+    const merged = commit(author, "resolve the columns", { "schema.sql": "create table items (id text, resolved text);\n" });
+    git(author, "push", "-q", "origin", "main");
+    const snapshot = await source().snapshot("acme/widgets");
+
+    expect((await snapshot.history("resolved text")).entries).toMatchObject([{ commit: merged, change: "added" }]);
+    expect((await snapshot.history("clean_column")).entries).toMatchObject([{ commit: sideCommit, change: "added" }]);
+  });
+
   it("says when its limit cut the history, and not when it did not", async () => {
     commit(author, "one", { "a.txt": "needle\n" });
     commit(author, "two", { "b.txt": "needle\n" });

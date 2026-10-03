@@ -129,8 +129,12 @@ And `GitBaseSource.snapshot` does, in order:
    hand. Whether a commit added or removed is read from the count on each side
    of the commit, not guessed from the subject. A commit that moves the text
    between files leaves the count where it was and reads as `added`: the text
-   still exists after it. `limit` asks git for one more than it returns, and
-   the extra entry is what sets `truncated`.
+   still exists after it. A merge is searched with `--diff-merges=remerge`,
+   by what its conflict resolution changed rather than what its branch
+   brought in, so a text that first appeared while resolving a conflict is
+   named and a clean merge does not repeat its branch's commit. `limit` asks
+   git for one more than it returns, and the extra entry is what sets
+   `truncated`.
 
 Without a `limit`, `search` returns at most 200 matches and `history` at most
 50 commits, and says so through `truncated` when that cut the list.
