@@ -58,6 +58,8 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 This is breaking for anything that implements `BaseSourceSnapshot` itself: it must now provide `revision` (the full commit id), `committedAt` (ISO 8601), `search(text, { paths, regex, limit })`, which returns `{ matches: { path, line, text }[], truncated }`, and `history(text, { paths, limit })`, which returns `{ entries: { commit, at, subject, change: "added" | "removed" }[], truncated }`, newest first. A consumer that only reads snapshots is unaffected.
 
+`read` now returns a file exactly as it is, including the trailing newline it used to drop. `RunOptions` gains an optional `trim`: `NodeCommandRunner` still trims stdout unless it is `false`, which is what the snapshot asks for so that a file, a matched line and a count of whitespace keep the whitespace they are made of.
+
 ### `classify` turns a plugin spec into what npm installs and what the config names — a name, a range, a git URL, a tarball or a path — in one place, before `amy add`, `amy remove` and `amy update` arrive.
 
 `minor` · `@amykit/cli`

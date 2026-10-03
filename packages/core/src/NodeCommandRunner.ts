@@ -50,7 +50,7 @@ export class NodeCommandRunner implements CommandRunner {
         resolve({
           ok: exitCode === 0,
           exitCode,
-          stdout: stdout.trim(),
+          stdout: options.trim === false ? stdout : stdout.trim(),
           stderr: (stderr + extra).trim(),
         });
       };

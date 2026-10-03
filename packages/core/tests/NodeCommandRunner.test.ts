@@ -19,6 +19,12 @@ describe("NodeCommandRunner", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("keeps stdout whole when asked not to trim it", async () => {
+    const result = await new NodeCommandRunner().run("sh", ["-c", "printf '  hello  \\n'"], { trim: false });
+
+    expect(result.stdout).toBe("  hello  \n");
+  });
+
   it("pipes stdin when it is given", async () => {
     const result = await new NodeCommandRunner().run("cat", [], { stdin: "from stdin" });
 

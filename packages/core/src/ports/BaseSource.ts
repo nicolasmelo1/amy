@@ -94,7 +94,8 @@ export class GitBaseSource implements BaseSource {
   async snapshot(repo: string): Promise<BaseSourceSnapshot> {
     const cwd = checkoutFor(this.layout, repo);
     const baseBranch = baseBranchFor(this.layout, repo);
-    const git = (args: string[]): Promise<CommandResult> => this.runner.run("git", args, { cwd });
+    // Whole output: a file's content, and a matched line, keep the whitespace they have.
+    const git = (args: string[]): Promise<CommandResult> => this.runner.run("git", args, { cwd, trim: false });
     const why = (result: CommandResult): string => result.stderr || result.stdout;
 
     // The destination is named because a narrowed `remote.origin.fetch` would
@@ -104,13 +105,14 @@ export class GitBaseSource implements BaseSource {
     if (!fetched.ok) throw new Error(`the grooming source could not fetch ${baseBranch} for ${repo}: ${why(fetched)}`);
 
     const resolved = await git(["log", "-1", "--no-color", "--format=%H%x00%cI", remoteRef]);
-    const [revision, committedAt] = resolved.stdout.split("\0");
+    const [revision, committedAt] = resolved.stdout.trim().split("\0");
     if (!resolved.ok || !revision || !committedAt) throw new Error(`the grooming source cannot read ${repo} at origin/${baseBranch}: ${why(resolved)}`);
 
     // How many times `text` appears at `commit`, over the same paths `history` was asked about.
     const occurrences = async (commit: string, text: string, paths: string[]): Promise<number> => {
-      const result = await git(["grep", "--no-color", "-o", "-h", "-I", "-F", "-e", text, commit, "--", ...paths]);
-      if (result.ok) return result.stdout.split("\n").length;
+      const result = await git(["grep", "--no-color", "-o", "-z", "-I", "-F", "-e", text, commit, "--", ...paths]);
+      // One NUL ends each occurrence's path, and neither a path nor a text-file match holds another.
+      if (result.ok) return result.stdout.split("\0").length - 1;
       if (result.exitCode === 1 && !result.stderr) return 0;
       throw new Error(`the grooming source could not count ${JSON.stringify(text)} in ${repo} at ${commit}: ${why(result)}`);
     };
@@ -147,7 +149,7 @@ export class GitBaseSource implements BaseSource {
         // A merge is searched by what its conflict resolution changed (remerge), so a clean merge does not repeat its branch's commit.
         const result = await git(["log", "--no-color", "-s", "--diff-merges=remerge", `-S${text}`, "-n", String(limit + 1), "--format=%H%x00%cI%x00%P%x00%s", revision, "--", ...paths]);
         if (!result.ok) throw new Error(`the grooming source could not read the history of ${JSON.stringify(text)} in ${repo}: ${why(result)}`);
-        const rows = result.stdout ? result.stdout.split("\n") : [];
+        const rows = result.stdout ? result.stdout.replace(/\n$/, "").split("\n") : [];
         // One commit at a time: each count is a full-tree grep, and fifty at once is a fork bomb on a large repository.
         const entries: HistoryEntry[] = [];
         for (const row of rows.slice(0, limit)) {

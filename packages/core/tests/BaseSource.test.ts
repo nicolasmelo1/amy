@@ -118,7 +118,7 @@ describe("a base-source snapshot", () => {
     const found = await snapshot.search("needle");
 
     expect(found.matches).toEqual([{ path: "docs/a:b.md", line: 1, text: "needle here" }, { path: "docs/two\nlines.md", line: 1, text: "a needle" }]);
-    expect(await snapshot.read(found.matches[1]!.path)).toBe("a needle");
+    expect(await snapshot.read(found.matches[1]!.path)).toBe("a needle\n");
   });
 
   it("refuses an empty text before asking git", async () => {
@@ -194,6 +194,22 @@ describe("a base-source snapshot", () => {
 
     expect((await snapshot.history("resolved text")).entries).toMatchObject([{ commit: merged, change: "added" }]);
     expect((await snapshot.history("clean_column")).entries).toMatchObject([{ commit: sideCommit, change: "added" }]);
+  });
+
+  it("keeps the whitespace a file, a match and a count are made of", async () => {
+    commit(author, "one gap", { "gaps.txt": "a  b\n" });
+    commit(author, "two gaps", { "gaps.txt": "a  b  c\n" });
+    commit(author, "one gap again", { "gaps.txt": "a b  c\n", "tail.txt": "needle  \n" });
+    git(author, "push", "-q", "origin", "main");
+    const snapshot = await source().snapshot("acme/widgets");
+
+    expect(await snapshot.read("tail.txt")).toBe("needle  \n");
+    expect((await snapshot.search("needle")).matches).toEqual([{ path: "tail.txt", line: 1, text: "needle  " }]);
+    expect((await snapshot.history("  ", { paths: ["gaps.txt"] })).entries.map((entry) => [entry.subject, entry.change])).toEqual([
+      ["one gap again", "removed"],
+      ["two gaps", "added"],
+      ["one gap", "added"],
+    ]);
   });
 
   it("says when its limit cut the history, and not when it did not", async () => {
