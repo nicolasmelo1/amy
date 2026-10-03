@@ -7,9 +7,9 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**42 rules shipped**, 34 enabled here, 8 switched off, 34 carrying a mutation fixture, 2 violations frozen.
+**50 rules shipped**, 42 enabled here, 8 switched off, 42 carrying a mutation fixture, 17 violations frozen.
 
-Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
+Frozen, with a date the build fails on: `L0.AGENT_ACTIONS_DISPATCH_TO_ASK` by 2026-11-03, `L0.AN_AGENT_NEVER_TOUCHES_GIT` by 2026-11-03, `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` by 2026-11-03, `L0.PORTS_LIVE_IN_THEIR_OWN_FILE` by 2026-11-03, `L0.THE_AGENT_PORT_ONLY_ASKS` by 2026-11-03, `L0.THE_CORE_WORDS_NOTHING` by 2026-11-03, `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
 
 What each layer is for, and how much of it this repository has switched on.
@@ -19,7 +19,7 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:generated layer-index -->
 | | Layer | What it checks | Shipped | Enabled here |
 | :-- | :-- | :-- | --: | --: |
-| **L0** | Shape | where things live | 5 | 3 |
+| **L0** | Shape | where things live | 13 | 11 |
 | **L1** | Grain | how the code reads | 6 | 5 |
 | **L2** | Contract | no drift from the source of truth | 7 | 7 |
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
@@ -30,6 +30,36 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:end layer-index -->
 
 ## L0 — Shape: where things live
+
+### L0.AGENT_ACTIONS_DISPATCH_TO_ASK
+
+**Every catalogue action on the agent port dispatches to ask**
+
+An entry in the core's action catalogue whose port is `agent` names `ask` as its method.
+
+**Why.** The catalogue is the list of actions a workflow author arranges, and its names (triage, implement, address-threads) are what the budget, the model ladders and the skills key on. Those names stay. What must not come back is a method per action on the agent port, because each one is a step's vocabulary in the contract every workflow shares.
+
+**Fix.** Point the entry at `{ port: "agent", method: "ask" }` and build the step's prompt and parsing in the workflow that runs it. See docs/design/an-agent-only-answers.md.
+
+### L0.AN_AGENT_NEVER_TOUCHES_GIT
+
+**An agent never prepares a branch, commits or pushes**
+
+Nothing in packages/agent-kit, plugins/agent-relay or a harness plugin calls `prepareBranch` or `commitAndPush`, or runs `git push`.
+
+**Why.** When work is committed and when it reaches the remote are a workflow's decisions. One workflow pushes after every attempt, another pushes once per cycle so nobody reviews half-done work, a third never pushes at all. An agent that pushes by itself makes the second and third impossible without replacing the checkout, which is exactly what a private workflow had to do.
+
+**Fix.** Return the answer and let the caller commit. A helper in agent-kit that needs to commit takes the commit as a function its caller passes in, the way `implementStep` does. See docs/design/an-agent-only-answers.md.
+
+### L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS
+
+**A ticket requires only what every tracker has**
+
+The core's `Ticket` requires `id`, `title`, `url`, `status`, `labels` and `repo`. Every other field is optional.
+
+**Why.** Every required field is a promise each tracker adapter has to keep. `branchName` and `team` were Linear's: GitHub Issues derives no branch name and has no team, so an adapter for it would have to invent both. A workflow that needs such a field asks for it and refuses a ticket without it, by name.
+
+**Fix.** Make the field optional (`name?: type`) and have the workflow that relies on it refuse a ticket that lacks it. Widening the required set is a decision about every tracker, and changes docs/design/an-agent-only-answers.md first.
 
 ### L0.CORE_STAYS_IGNORANT
 
@@ -60,6 +90,56 @@ Modules marked private or generated are imported only from inside the package th
 **Why.** Generated and internal modules are the parts you intend to be free to replace. Every import from outside quietly converts one into public API, and the cost only shows up the day you regenerate. An agent has no way to know which modules were meant to be replaceable unless the boundary is executable.
 
 **Fix.** Import from the package's public surface instead. If the symbol you need is not exposed there, exposing it deliberately is the change to make.
+
+### L0.ONLY_THE_TRACKER_SPEAKS_TICKET
+
+**Only the tracker's contract names a ticket**
+
+The `Ticket` type is named in packages/core/src only inside ports/Ticketing.ts.
+
+**Why.** A ticket is one kind of work, the kind a tracker holds. Errands, notes and plans are work too and are not tickets. A port outside the tracker that takes a `Ticket` (the gate did, to find a directory) can only be used by a workflow whose work is a ticket, and every other workflow has to invent one to call it.
+
+**Fix.** Take what the port actually needs: a workplace is `{ repo, workId }`, a prompt is a string. If the thing really is about a ticket, it belongs in the tracker's contract or in the workflow. See docs/design/an-agent-only-answers.md.
+
+### L0.PORTS_LIVE_IN_THEIR_OWN_FILE
+
+**The agent and gate ports live in their own files**
+
+The core declares `Agent` only in packages/core/src/ports/Agent.ts and `Gate` only in packages/core/src/ports/Gate.ts.
+
+**Why.** Both used to live in the tracker's file, and that is how they came to take a `Ticket`: the type was one line away and nothing said it should not be used. Out of that file, the rule that only the tracker speaks of tickets can see them.
+
+**Fix.** Move the declaration back to its own file and re-export it from the index. See docs/design/an-agent-only-answers.md.
+
+### L0.THE_AGENT_PORT_ONLY_ASKS
+
+**The core's agent port declares ask and nothing else**
+
+The `Agent` interface in packages/core/src declares one member, `ask`, and extends nothing.
+
+**Why.** The agent port is the one every workflow shares. A method named for a step (triage, implement, review) carries that step's inputs, its prompt and its side effects into every workflow that mounts an agent, which is how one workflow's lifecycle ended up in the contract of all of them. A prompt, a directory and a context in, an answer and its cost out, is the whole of what an agent does; what a step does around that call is the workflow's.
+
+**Fix.** Do not add the method to the port. Build the step on `ask` in the workflow, or as a helper in packages/agent-kit that takes the agent as an argument (see `implementStep` and `judgeStep`). The decision and its reasons are in docs/design/an-agent-only-answers.md.
+
+### L0.THE_CORE_NAMES_NO_VENDOR
+
+**The core's code names no product**
+
+No identifier or string in packages/core/src names a tracker, a forge, a chat or an agent vendor. Comments may.
+
+**Why.** amy is a workflow builder: Linear, GitHub, Slack and Claude are plugins somebody chose to install, and the next install may choose others. The moment the core's code says one of their names, it has a branch that only one product takes, and the plugin model is a fork with extra steps.
+
+**Fix.** Name the capability instead of the product (`tracker`, `code-host`, `conversation`, `harness`), and put the product's behaviour in its plugin. See docs/design/an-agent-only-answers.md.
+
+### L0.THE_CORE_WORDS_NOTHING
+
+**The core writes no title for anybody**
+
+packages/core/src defines no `pullRequestTitle`.
+
+**Why.** How a pull request, a commit or a comment is worded is something a person reads, and every team words it differently. ticket-to-qa titles a pull request `ID: title`, the errand titles it with the first line of the task. A convention in the core is one every workflow inherits and half of them then work around.
+
+**Fix.** Put the wording in the workflow that publishes it. ticket-to-qa exports its own `pullRequestTitle`. See docs/design/an-agent-only-answers.md.
 
 ## L1 — Grain: how the code reads
 

@@ -121,6 +121,23 @@ plugins/*                adapters. Depend on core, and on a workflow only for
 packages/cli             the command. Nothing depends on it
 ```
 
+Four more follow from it, each a local rule that fails the build, all from
+[an agent only answers](plans/an-agent-only-answers.md):
+
+- **The agent port is `ask`.** A step (triage, implement, a review) is built
+  on `ask` in the workflow, or with a helper from `agent-kit`. Never as a new
+  method on the port.
+- **An agent never touches git.** It answers. The workflow decides when the
+  work is committed and when it is pushed.
+- **Only the tracker speaks of tickets.** A port that is not the tracker takes
+  what it needs (a workplace is `{ repo, workId }`), not a `Ticket`.
+- **The core names no product and words nothing a person reads.** Linear,
+  GitHub, Slack and Claude are plugins; titles and messages are the workflow's.
+
+When one of these rules fires, its message says why the rule exists. Read it
+before changing the code, and never loosen the rule to get past it: the rule
+files are hash-locked, so loosening one shows up in the diff.
+
 A **workflow** is two halves: `plan()`, which is pure and says *what* should
 happen, and a runtime, which says *how*. If you find yourself wanting to
 `await` something inside `plan()`, the thing you want belongs in the runtime —

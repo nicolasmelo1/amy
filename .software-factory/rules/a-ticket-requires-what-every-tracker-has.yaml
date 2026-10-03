@@ -1,0 +1,38 @@
+id: L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS
+layer: L0
+title: A ticket requires only what every tracker has
+severity: high
+statement: >-
+  The core's `Ticket` requires `id`, `title`, `url`, `status`, `labels` and
+  `repo`. Every other field is optional.
+why: >-
+  Every required field is a promise each tracker adapter has to keep.
+  `branchName` and `team` were Linear's: GitHub Issues derives no branch name
+  and has no team, so an adapter for it would have to invent both. A workflow
+  that needs such a field asks for it and refuses a ticket without it, by name.
+fix: >-
+  Make the field optional (`name?: type`) and have the workflow that relies on
+  it refuse a ticket that lacks it. Widening the required set is a decision
+  about every tracker, and changes docs/design/an-agent-only-answers.md first.
+ratchet: allowlist
+check:
+  kind: shape
+  languages:
+    typescript:
+      query: |
+        (interface_declaration
+          name: (type_identifier) @iface (#eq? @iface "Ticket")
+          body: (interface_body
+            (property_signature
+              name: (property_identifier) @name
+              (#not-match? @name "^(id|title|url|status|labels|repo)$")) @target))
+      unless: |
+        (interface_declaration
+          name: (type_identifier) @iface (#eq? @iface "Ticket")
+          body: (interface_body
+            (property_signature
+              name: (property_identifier)
+              "?") @target))
+defaults:
+  scope: ["packages/core/src/**"]
+  must_not_live_in: ["packages/core/src/**"]

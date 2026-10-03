@@ -4,6 +4,45 @@
 # visible in review.
 version: 1
 rules:
+  L0.AGENT_ACTIONS_DISPATCH_TO_ASK:
+    review_by: 2026-11-03
+    note: 'Frozen the day the rule was written, as the debt plans/an-agent-only-answers.md pays off in the same pull request. Every entry here is removed by the commit that fixes it; none may be added.'
+    allow:
+    - packages/core/src/actions.ts:addressThreads
+    - packages/core/src/actions.ts:implement
+    - packages/core/src/actions.ts:triage
+  L0.AN_AGENT_NEVER_TOUCHES_GIT:
+    review_by: 2026-11-03
+    note: 'Frozen the day the rule was written, as the debt plans/an-agent-only-answers.md pays off in the same pull request. Every entry here is removed by the commit that fixes it; none may be added.'
+    allow:
+    - packages/agent-kit/src/HarnessAgent.ts:10dcfd02f49f
+    - packages/agent-kit/src/HarnessAgent.ts:6f6eaee72976
+    - packages/agent-kit/src/HarnessAgent.ts:874cdd94617a
+  L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS:
+    review_by: 2026-11-03
+    note: 'Frozen the day the rule was written, as the debt plans/an-agent-only-answers.md pays off in the same pull request. Every entry here is removed by the commit that fixes it; none may be added.'
+    allow:
+    - packages/core/src/ports/Ticketing.ts:branchName
+    - packages/core/src/ports/Ticketing.ts:team
+  L0.PORTS_LIVE_IN_THEIR_OWN_FILE:
+    review_by: 2026-11-03
+    note: 'Frozen the day the rule was written, as the debt plans/an-agent-only-answers.md pays off in the same pull request. Every entry here is removed by the commit that fixes it; none may be added.'
+    allow:
+    - packages/core/src/ports/Ticketing.ts:Agent
+    - packages/core/src/ports/Ticketing.ts:Gate
+  L0.THE_AGENT_PORT_ONLY_ASKS:
+    review_by: 2026-11-03
+    note: 'Frozen the day the rule was written, as the debt plans/an-agent-only-answers.md pays off in the same pull request. Every entry here is removed by the commit that fixes it; none may be added.'
+    allow:
+    - packages/core/src/ports/Ticketing.ts:addressThreads
+    - packages/core/src/ports/Ticketing.ts:implement
+    - packages/core/src/ports/Ticketing.ts:triage
+  L0.THE_CORE_WORDS_NOTHING:
+    review_by: 2026-11-03
+    note: 'Frozen the day the rule was written, as the debt plans/an-agent-only-answers.md pays off in the same pull request. Every entry here is removed by the commit that fixes it; none may be added.'
+    allow:
+    - packages/core/src/index.ts:8bcc65cd428c
+    - packages/core/src/ports/Ticketing.ts:9465560a2f44
   L1.COMPLEXITY_CEILING:
     review_by: 2027-03-03
     note: 'Both are exhaustive dispatch switches: plan() over every ticket state, and the fake world''s execute() over every action. The branch count is the number of cases, and splitting them would hide the one place that proves nothing was forgotten. Two others used to be here and are not any more: Worker.execute() became a typed handler map, and the doctor became a list of small checks. Revisit if either of these grows logic inside a case rather than delegating out of it.'

@@ -1,0 +1,11 @@
+# Mutation fixture for L0.THE_CORE_NAMES_NO_VENDOR. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.THE_CORE_NAMES_NO_VENDOR
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.THE_CORE_NAMES_NO_VENDOR:
+    enabled: true

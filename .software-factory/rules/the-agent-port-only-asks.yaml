@@ -1,0 +1,43 @@
+id: L0.THE_AGENT_PORT_ONLY_ASKS
+layer: L0
+title: The core's agent port declares ask and nothing else
+severity: high
+statement: >-
+  The `Agent` interface in packages/core/src declares one member, `ask`, and
+  extends nothing.
+why: >-
+  The agent port is the one every workflow shares. A method named for a step
+  (triage, implement, review) carries that step's inputs, its prompt and its
+  side effects into every workflow that mounts an agent, which is how one
+  workflow's lifecycle ended up in the contract of all of them. A prompt, a
+  directory and a context in, an answer and its cost out, is the whole of what
+  an agent does; what a step does around that call is the workflow's.
+fix: >-
+  Do not add the method to the port. Build the step on `ask` in the workflow,
+  or as a helper in packages/agent-kit that takes the agent as an argument
+  (see `implementStep` and `judgeStep`). The decision and its reasons are in
+  docs/design/an-agent-only-answers.md.
+ratchet: allowlist
+check:
+  kind: shape
+  languages:
+    typescript:
+      query: |
+        (interface_declaration
+          name: (type_identifier) @iface (#eq? @iface "Agent")
+          body: (interface_body
+            [(method_signature name: (property_identifier) @name)
+             (property_signature name: (property_identifier) @name)] @target
+            (#not-eq? @name "ask")))
+        (interface_declaration
+          name: (type_identifier) @name (#eq? @name "Agent")
+          (extends_type_clause) @target)
+        (type_alias_declaration
+          name: (type_identifier) @iface (#eq? @iface "Agent")
+          value: (object_type
+            [(method_signature name: (property_identifier) @name)
+             (property_signature name: (property_identifier) @name)] @target
+            (#not-eq? @name "ask")))
+defaults:
+  scope: ["packages/core/src/**"]
+  must_not_live_in: ["packages/core/src/**"]

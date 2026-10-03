@@ -1,0 +1,11 @@
+# Mutation fixture for L0.AGENT_ACTIONS_DISPATCH_TO_ASK. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.AGENT_ACTIONS_DISPATCH_TO_ASK
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.AGENT_ACTIONS_DISPATCH_TO_ASK:
+    enabled: true

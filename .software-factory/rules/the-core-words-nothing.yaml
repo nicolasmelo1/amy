@@ -1,0 +1,23 @@
+id: L0.THE_CORE_WORDS_NOTHING
+layer: L0
+title: The core writes no title for anybody
+severity: medium
+statement: >-
+  packages/core/src defines no `pullRequestTitle`.
+why: >-
+  How a pull request, a commit or a comment is worded is something a person
+  reads, and every team words it differently. ticket-to-qa titles a pull
+  request `ID: title`, the errand titles it with the first line of the task.
+  A convention in the core is one every workflow inherits and half of them
+  then work around.
+fix: >-
+  Put the wording in the workflow that publishes it. ticket-to-qa exports its
+  own `pullRequestTitle`. See docs/design/an-agent-only-answers.md.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope: ["packages/core/src/**"]
+  forbidden:
+    - regex: '\bpullRequestTitle\b'
+      message: "The core words nothing a person reads. Put the title in the workflow."

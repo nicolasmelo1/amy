@@ -1,0 +1,30 @@
+id: L0.PORTS_LIVE_IN_THEIR_OWN_FILE
+layer: L0
+title: The agent and gate ports live in their own files
+severity: medium
+statement: >-
+  The core declares `Agent` only in packages/core/src/ports/Agent.ts and `Gate`
+  only in packages/core/src/ports/Gate.ts.
+why: >-
+  Both used to live in the tracker's file, and that is how they came to take a
+  `Ticket`: the type was one line away and nothing said it should not be used.
+  Out of that file, the rule that only the tracker speaks of tickets can see
+  them.
+fix: >-
+  Move the declaration back to its own file and re-export it from the index.
+  See docs/design/an-agent-only-answers.md.
+ratchet: allowlist
+check:
+  kind: shape
+  languages:
+    typescript:
+      query: |
+        (interface_declaration
+          name: (type_identifier) @name (#match? @name "^(Agent|Gate)$")) @target
+        (type_alias_declaration
+          name: (type_identifier) @name (#match? @name "^(Agent|Gate)$")) @target
+defaults:
+  scope: ["packages/core/src/**"]
+  must_live_in:
+    - "packages/core/src/ports/Agent.ts"
+    - "packages/core/src/ports/Gate.ts"

@@ -3750,6 +3750,21 @@
         },
         {
           "depth": 3,
+          "title": "L0.AGENT_ACTIONS_DISPATCH_TO_ASK",
+          "slug": "l0agentactionsdispatchtoask"
+        },
+        {
+          "depth": 3,
+          "title": "L0.AN_AGENT_NEVER_TOUCHES_GIT",
+          "slug": "l0anagentnevertouchesgit"
+        },
+        {
+          "depth": 3,
+          "title": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
+          "slug": "l0aticketrequireswhateverytrackerhas"
+        },
+        {
+          "depth": 3,
           "title": "L0.CORE_STAYS_IGNORANT",
           "slug": "l0corestaysignorant"
         },
@@ -3762,6 +3777,31 @@
           "depth": 3,
           "title": "L0.NO_CROSS_LAYER_IMPORT",
           "slug": "l0nocrosslayerimport"
+        },
+        {
+          "depth": 3,
+          "title": "L0.ONLY_THE_TRACKER_SPEAKS_TICKET",
+          "slug": "l0onlythetrackerspeaksticket"
+        },
+        {
+          "depth": 3,
+          "title": "L0.PORTS_LIVE_IN_THEIR_OWN_FILE",
+          "slug": "l0portsliveintheirownfile"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_AGENT_PORT_ONLY_ASKS",
+          "slug": "l0theagentportonlyasks"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_CORE_NAMES_NO_VENDOR",
+          "slug": "l0thecorenamesnovendor"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_CORE_WORDS_NOTHING",
+          "slug": "l0thecorewordsnothing"
         },
         {
           "depth": 2,
@@ -8006,6 +8046,27 @@
     ],
     "rules": [
       {
+        "id": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
+        "enabled": true,
+        "settings": {},
+        "title": "A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.AGENT_ACTIONS_DISPATCH_TO_ASK",
+        "enabled": true,
+        "settings": {},
+        "title": "Every catalogue action on the agent port dispatches to ask (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.AN_AGENT_NEVER_TOUCHES_GIT",
+        "enabled": true,
+        "settings": {},
+        "title": "An agent never prepares a branch, commits or pushes (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
         "id": "L0.CORE_STAYS_IGNORANT",
         "enabled": true,
         "settings": {},
@@ -8024,6 +8085,41 @@
         "enabled": true,
         "settings": {},
         "title": "Private and generated modules are not imported across the boundary",
+        "reason": ""
+      },
+      {
+        "id": "L0.ONLY_THE_TRACKER_SPEAKS_TICKET",
+        "enabled": true,
+        "settings": {},
+        "title": "Only the tracker's contract names a ticket (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.PORTS_LIVE_IN_THEIR_OWN_FILE",
+        "enabled": true,
+        "settings": {},
+        "title": "The agent and gate ports live in their own files (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_AGENT_PORT_ONLY_ASKS",
+        "enabled": true,
+        "settings": {},
+        "title": "The core's agent port declares ask and nothing else (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_CORE_NAMES_NO_VENDOR",
+        "enabled": true,
+        "settings": {},
+        "title": "The core's code names no product (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_CORE_WORDS_NOTHING",
+        "enabled": true,
+        "settings": {},
+        "title": "The core writes no title for anybody (docs/design/an-agent-only-answers.md)",
         "reason": ""
       },
       {

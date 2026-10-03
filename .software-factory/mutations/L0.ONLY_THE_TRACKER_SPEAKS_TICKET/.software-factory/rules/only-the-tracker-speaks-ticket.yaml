@@ -1,0 +1,28 @@
+id: L0.ONLY_THE_TRACKER_SPEAKS_TICKET
+layer: L0
+title: Only the tracker's contract names a ticket
+severity: high
+statement: >-
+  The `Ticket` type is named in packages/core/src only inside
+  ports/Ticketing.ts.
+why: >-
+  A ticket is one kind of work, the kind a tracker holds. Errands, notes and
+  plans are work too and are not tickets. A port outside the tracker that
+  takes a `Ticket` (the gate did, to find a directory) can only be used by a
+  workflow whose work is a ticket, and every other workflow has to invent one
+  to call it.
+fix: >-
+  Take what the port actually needs: a workplace is `{ repo, workId }`, a
+  prompt is a string. If the thing really is about a ticket, it belongs in the
+  tracker's contract or in the workflow. See
+  docs/design/an-agent-only-answers.md.
+ratchet: allowlist
+check:
+  kind: shape
+  languages:
+    typescript:
+      query: |
+        ((type_identifier) @name (#eq? @name "Ticket")) @target
+defaults:
+  scope: ["packages/core/src/**"]
+  must_live_in: ["packages/core/src/ports/Ticketing.ts"]
