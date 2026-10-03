@@ -110,13 +110,15 @@ Declared in `packages/core/src/ports/BaseSource.ts`.
 
 ### `BaseSourceSnapshot`
 
-A read-only view of one repository at its configured base revision.
+A read-only view of one repository at one commit of its base branch.
 
 Declared in `packages/core/src/ports/BaseSource.ts`.
 
 | Method | What it does |
 | :-- | :-- |
-| `read(path: string): Promise<string \| null>` | Reads a tracked file as it exists at the configured base branch. |
+| `read(path: string): Promise<string \| null>` | Reads a tracked file as it exists at `revision`. |
+| `search(text: string, options?: SearchOptions): Promise<SearchResult>` | Where a text appears at `revision`. Literal by default. |
+| `history(text: string, options?: HistoryOptions): Promise<HistoryResult>` | Commits up to `revision` that added or removed occurrences of a text. |
 
 ### `BriefStore`
 

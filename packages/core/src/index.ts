@@ -103,7 +103,7 @@ export type {
 export { renderBrief } from "./ports/Brief.js";
 export type { Worktree, WorktreeInfo } from "./ports/Worktree.js";
 export { GitBaseSource } from "./ports/BaseSource.js";
-export type { BaseSource, BaseSourceSnapshot } from "./ports/BaseSource.js";
+export type { BaseSource, BaseSourceSnapshot, SearchMatch, SearchResult, SearchOptions, HistoryEntry, HistoryResult, HistoryOptions } from "./ports/BaseSource.js";
 
 export { NodeCommandRunner } from "./NodeCommandRunner.js";
 export { FileStopSwitch } from "./FileStopSwitch.js";

@@ -1,6 +1,6 @@
 # A snapshot is a commit, and it can be searched
 
-[Grooming reads the code it is about](../docs/design/grooming-reads-the-code-it-is-about.md)
+[Grooming reads the code it is about](grooming-reads-the-code-it-is-about.md)
 gave a grooming step a read-only view of each repository at its base branch.
 The view is a file reader and nothing else. `BaseSourceSnapshot` carries
 `repo`, `baseBranch` and `read(path)` (`packages/core/src/ports/BaseSource.ts:5`).
@@ -127,8 +127,13 @@ And `GitBaseSource.snapshot` does, in order:
    ending at `revision`: the commits where the number of occurrences of the
    text changed, which is how the fifteen-day gap in the exhibit was found by
    hand. Whether a commit added or removed is read from the count on each side
-   of the commit, not guessed from the subject. `limit` asks git for one more
-   than it returns, and the extra entry is what sets `truncated`.
+   of the commit, not guessed from the subject. A commit that moves the text
+   between files leaves the count where it was and reads as `added`: the text
+   still exists after it. `limit` asks git for one more than it returns, and
+   the extra entry is what sets `truncated`.
+
+Without a `limit`, `search` returns at most 200 matches and `history` at most
+50 commits, and says so through `truncated` when that cut the list.
 
 Every argument reaches git as an argv element. Nothing goes through a shell,
 and a `text` that starts with `-` is passed after `-e` (grep) or bound to
@@ -180,35 +185,35 @@ mistake the design doc already refuses.
 
 ## Acceptance criteria
 
-- [ ] A snapshot fetches the base branch before resolving it, and a commit
+- [x] A snapshot fetches the base branch before resolving it, and a commit
       pushed to the remote after the checkout's last fetch is visible to it
       (proof: assertion:groom.the_snapshot_sees_what_was_pushed_since_the_last_fetch)
-- [ ] A failed fetch refuses the snapshot, naming the repository and git's
+- [x] A failed fetch refuses the snapshot, naming the repository and git's
       error, and does not fall back to the old ref
       (proof: test:packages/core/tests/BaseSource.test.ts)
-- [ ] A snapshot carries the full commit id and its commit time, and every
+- [x] A snapshot carries the full commit id and its commit time, and every
       read, search and history call names that id rather than `origin/<base>`
       (proof: test:packages/core/tests/BaseSource.test.ts)
-- [ ] A commit fetched while a snapshot is in use changes none of its answers
+- [x] A commit fetched while a snapshot is in use changes none of its answers
       (proof: assertion:groom.a_snapshot_is_pinned_to_its_commit)
-- [ ] `search` finds a literal text at the snapshot's commit and returns paths
+- [x] `search` finds a literal text at the snapshot's commit and returns paths
       `read` accepts; a text the working tree has and the base does not is not
       found (proof: assertion:groom.search_reads_the_base_not_the_tree)
-- [ ] A search cut by its limit says so (proof: test:packages/core/tests/BaseSource.test.ts)
-- [ ] `history` names the commit that introduced a text, and the one that
+- [x] A search cut by its limit says so (proof: test:packages/core/tests/BaseSource.test.ts)
+- [x] `history` names the commit that introduced a text, and the one that
       removed it, up to the snapshot's commit and no further
       (proof: assertion:groom.history_names_the_commit_that_added_it)
-- [ ] A history cut by its limit says so, and an uncut one does not
+- [x] A history cut by its limit says so, and an uncut one does not
       (proof: test:packages/core/tests/BaseSource.test.ts)
-- [ ] A fetch updates `origin/<base>` in a checkout whose `remote.origin.fetch`
+- [x] A fetch updates `origin/<base>` in a checkout whose `remote.origin.fetch`
       does not map the base branch
       (proof: assertion:groom.the_fetch_names_its_destination)
-- [ ] A binary blob that contains the text is not returned as a match, and a
+- [x] A binary blob that contains the text is not returned as a match, and a
       path containing `:` is returned whole
       (proof: test:packages/core/tests/BaseSource.test.ts)
-- [ ] A text beginning with `-` is searched for, never read as a flag
+- [x] A text beginning with `-` is searched for, never read as a flag
       (proof: test:packages/core/tests/BaseSource.test.ts)
-- [ ] The grooming step still receives no checkout path, branch, worktree or
+- [x] The grooming step still receives no checkout path, branch, worktree or
       runner (proof: test:packages/workflow-feature-grooming/tests/groom.test.ts)
 
 **Exit condition:** grooming a feature whose column was pushed by somebody

@@ -461,6 +461,11 @@ gates:
     required_assertions:
       - "groom.the_step_reads_the_base_branch"
       - "groom.a_second_run_retires_what_it_cut"
+      - "groom.the_snapshot_sees_what_was_pushed_since_the_last_fetch"
+      - "groom.the_fetch_names_its_destination"
+      - "groom.a_snapshot_is_pinned_to_its_commit"
+      - "groom.search_reads_the_base_not_the_tree"
+      - "groom.history_names_the_commit_that_added_it"
 
   # One project, three phases: the grooming phase's brief is what execution
   # and proving read, while each keeps its own queue, budget and daemon. The

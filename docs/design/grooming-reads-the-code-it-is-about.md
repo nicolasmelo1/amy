@@ -37,8 +37,10 @@ work item.
 ## Read-only, and it matters here
 
 Grooming receives one `BaseSourceSnapshot` per named repository. It is given no
-checkout path, branch, commit or worktree: the narrow source port reads Git
-objects at `origin/<configured-base>` and exposes only `read()`. It therefore
+checkout path, branch, commit or worktree: the narrow source port fetches the
+configured base, pins the commit it resolved, and answers `read()`, `search()`
+and `history()` at that commit, as [a snapshot is a commit](a-snapshot-is-a-commit.md)
+describes. It therefore
 cannot repoint the standing checkout, create a branch, commit or acquire a
 worktree; the proof reads a base-only file while the standing tree remains on a
 private branch.
@@ -84,6 +86,24 @@ workflow, which owns policy. The core parses no section.
 - [ ] An install whose workflow declares no grooming step behaves exactly as it
       does today, with no config change
       (proof: test:packages/cli/tests/slices.test.ts)
+
+[A snapshot is a commit](a-snapshot-is-a-commit.md) later made the snapshot
+able to answer the question this note was written for, and the same gate
+proves it:
+
+- [x] A snapshot fetches the base branch before it resolves it, and sees a
+      commit pushed after the checkout's last fetch
+      (proof: assertion:groom.the_snapshot_sees_what_was_pushed_since_the_last_fetch)
+- [x] The fetch names its destination, so a narrowed `remote.origin.fetch`
+      still moves `origin/<base>`
+      (proof: assertion:groom.the_fetch_names_its_destination)
+- [x] A snapshot is pinned to one commit, and a later fetch changes none of
+      its answers
+      (proof: assertion:groom.a_snapshot_is_pinned_to_its_commit)
+- [x] A search reads the base commit, never the working tree
+      (proof: assertion:groom.search_reads_the_base_not_the_tree)
+- [x] History names the commit that added a text, up to the snapshot's commit
+      (proof: assertion:groom.history_names_the_commit_that_added_it)
 
 **Exit condition:** a grooming run over a feature whose column already exists in
 the repository cuts that ticket before a branch is ever created, and the same
