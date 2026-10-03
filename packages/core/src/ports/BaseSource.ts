@@ -108,6 +108,9 @@ export class GitBaseSource implements BaseSource {
     const [revision, committedAt] = resolved.stdout.trim().split("\0");
     if (!resolved.ok || !revision || !committedAt) throw new Error(`the grooming source cannot read ${repo} at origin/${baseBranch}: ${why(resolved)}`);
 
+    let isShallow: Promise<boolean> | undefined;
+    const shallow = (): Promise<boolean> => (isShallow ??= git(["rev-parse", "--is-shallow-repository"]).then((result) => result.stdout.trim() === "true"));
+
     return {
       repo,
       baseBranch,
@@ -136,20 +139,28 @@ export class GitBaseSource implements BaseSource {
         textOf(text);
         const limit = limitOf(options.limit, DEFAULT_HISTORY_LIMIT);
         const paths = options.paths ?? [];
+        // A shallow clone ends its history at the boundary, and the oldest entry would read as the introduction.
+        if (await shallow()) throw new Error(`the grooming source cannot read the history of ${repo}: its checkout is a shallow clone, so the commits before its boundary are missing. Run \`git fetch --unshallow\` there`);
         // One more than asked for: the extra entry is what says the list was cut. A merge is
         // searched, and counted, by what its conflict resolution changed (remerge), so a clean
         // merge does not repeat its branch's commit and a dropped side of a conflict reads as removed.
-        const result = await git(["log", "--no-color", "--no-ext-diff", "--no-textconv", "-p", "-U0", "--diff-merges=remerge", `-S${text}`, "-n", String(limit + 1), "--format=%x00%H%x00%cI%x00%s", revision, "--", ...paths]);
-        if (!result.ok) throw new Error(`the grooming source could not read the history of ${JSON.stringify(text)} in ${repo}: ${why(result)}`);
-        const rows = parseHistory(result.stdout, text);
-        // A commit whose matching changes are all binary shows no text line to count; like search, history reads source.
-        const textual = rows.filter((row) => row.added + row.removed > 0);
+        // A commit whose matching changes are all binary shows no text line to count and is left
+        // out, as search skips binaries; git's -n counts it anyway, so ask again for more until
+        // enough text rows are in or git ran out.
+        let textual: HistoryRow[];
+        for (let asked = limit + 1; ; asked *= 2) {
+          const result = await git(["log", "--no-color", "--no-ext-diff", "--no-textconv", "-p", "-U0", "--diff-merges=remerge", `-S${text}`, "-n", String(asked), "--format=%x00%H%x00%cI%x00%s", revision, "--", ...paths]);
+          if (!result.ok) throw new Error(`the grooming source could not read the history of ${JSON.stringify(text)} in ${repo}: ${why(result)}`);
+          const rows = parseHistory(result.stdout, text);
+          textual = rows.filter((row) => row.added + row.removed > 0);
+          if (textual.length > limit || rows.length < asked) break;
+        }
         const entries = textual.slice(0, limit).map(({ added, removed, ...entry }): HistoryEntry => ({
           ...entry,
           // A move between files changes no total; the text still exists after it, so it did not go away.
           change: added >= removed ? "added" : "removed",
         }));
-        return { entries, truncated: rows.length > limit || textual.length > limit };
+        return { entries, truncated: textual.length > limit };
       },
     };
   }
@@ -173,8 +184,10 @@ function limitOf(limit: number | undefined, fallback: number): number {
  * diff `-S` selected it by. Lines that did not change cancel out between the
  * two sides, so the occurrences on `+` and `-` lines are the commit's change.
  */
-function parseHistory(output: string, text: string): { commit: string; at: string; subject: string; added: number; removed: number }[] {
-  const rows: { commit: string; at: string; subject: string; added: number; removed: number }[] = [];
+interface HistoryRow { commit: string; at: string; subject: string; added: number; removed: number }
+
+function parseHistory(output: string, text: string): HistoryRow[] {
+  const rows: HistoryRow[] = [];
   let header = false;
   for (const line of output.split("\n")) {
     const row = rows.at(-1);

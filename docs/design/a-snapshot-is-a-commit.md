@@ -136,7 +136,11 @@ And `GitBaseSource.snapshot` does, in order:
    resolving a conflict is named, a resolution that dropped one side reads as
    removing it, and a clean merge does not repeat its branch's commit. A
    commit whose only matching changes are binary has no line to count and is
-   left out, for the same reason `search` skips binaries. `limit` asks
+   left out, for the same reason `search` skips binaries; git's `-n` still
+   counts it, so a list short of text rows is asked for again with twice the
+   count until it holds enough or git runs out. A shallow clone has no history
+   before its boundary, so `history` is refused there, naming the clone, rather
+   than reading its oldest commit as the introduction. `limit` asks
    git for one more than it returns, and the extra entry is what sets
    `truncated`.
 

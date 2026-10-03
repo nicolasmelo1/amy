@@ -71,11 +71,11 @@ describe("a base-source snapshot", () => {
     expect(snapshot.revision).toBe(head);
     expect(snapshot.committedAt).toBe(at);
     const later = calls.slice(2);
-    expect(later.length).toBeGreaterThanOrEqual(3);
-    for (const args of later) {
-      expect(args.join(" ")).not.toContain("origin/");
-      expect(args.some((arg) => arg.startsWith(head))).toBe(true);
-    }
+    for (const args of later) expect(args.join(" ")).not.toContain("origin/");
+    // Asking whether the clone is shallow names no ref; everything that reads source names the commit.
+    const reads = later.filter((args) => ["show", "grep", "log"].includes(args[0]!));
+    expect(reads.map((args) => args[0])).toEqual(["show", "grep", "log"]);
+    for (const args of reads) expect(args.some((arg) => arg.startsWith(head))).toBe(true);
   });
 
   it("finds a literal text and returns paths a read accepts", async () => {
@@ -242,6 +242,30 @@ describe("a base-source snapshot", () => {
       entries: [{ commit: notes, at: expect.any(String), subject: "notes with the text", change: "added" }],
       truncated: false,
     });
+  });
+
+  it("does not let binary commits use up the limit and hide an older text one", async () => {
+    const notes = commit(author, "notes with the text", { "notes.md": "needle\n" });
+    commit(author, "a binary", { "a.bin": Buffer.from([0, ...Buffer.from("needle"), 0]) });
+    commit(author, "another binary", { "b.bin": Buffer.from([0, ...Buffer.from("needle"), 0]) });
+    git(author, "push", "-q", "origin", "main");
+    const snapshot = await source().snapshot("acme/widgets");
+
+    expect(await snapshot.history("needle", { limit: 1 })).toEqual({
+      entries: [{ commit: notes, at: expect.any(String), subject: "notes with the text", change: "added" }],
+      truncated: false,
+    });
+  });
+
+  it("refuses history in a shallow clone, whose oldest commit would read as the introduction, and still searches it", async () => {
+    commit(author, "more", { "more.md": "items\n" });
+    git(author, "push", "-q", "origin", "main");
+    fs.rmSync(checkout, { recursive: true, force: true });
+    git(root, "clone", "-q", "--depth", "1", `file://${path.join(root, "widgets.git")}`, checkout);
+    const snapshot = await source().snapshot("acme/widgets");
+
+    await expect(snapshot.history("items")).rejects.toThrow(/acme\/widgets: .*shallow/);
+    expect((await snapshot.search("items")).matches.length).toBeGreaterThan(0);
   });
 
   it("says when its limit cut the history, and not when it did not", async () => {

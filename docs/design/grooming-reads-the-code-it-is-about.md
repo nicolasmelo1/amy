@@ -37,10 +37,11 @@ work item.
 ## Read-only, and it matters here
 
 Grooming receives one `BaseSourceSnapshot` per named repository. It is given no
-checkout path, branch, commit or worktree: the narrow source port fetches the
-configured base, pins the commit it resolved, and answers `read()`, `search()`
-and `history()` at that commit, as [a snapshot is a commit](a-snapshot-is-a-commit.md)
-describes. It therefore
+checkout path, branch to work on, worktree or runner: the narrow source port
+fetches the configured base, pins the commit it resolved, and answers `read()`,
+`search()` and `history()` at that commit, as [a snapshot is a commit](a-snapshot-is-a-commit.md)
+describes. It is told that commit's id, which names what it read and can do
+nothing to a repository. It therefore
 cannot repoint the standing checkout, create a branch, commit or acquire a
 worktree; the proof reads a base-only file while the standing tree remains on a
 private branch.
@@ -75,7 +76,7 @@ workflow, which owns policy. The core parses no section.
       configured base branch, whatever the standing working tree was on when
       the tick started
       (proof: assertion:groom.the_step_reads_the_base_branch)
-- [ ] A grooming step is handed no checkout path, branch, commit or worktree;
+- [ ] A grooming step is handed no checkout path, branch, worktree or runner, only the id of the commit it reads at;
       its source port can only read base-branch Git objects and cannot create a
       branch, commit or worktree
       (proof: test:packages/workflow-feature-grooming/tests/groom.test.ts)
