@@ -142,20 +142,24 @@ export class GitBaseSource implements BaseSource {
         const result = await git(["log", "--no-color", "--no-ext-diff", "--no-textconv", "-p", "-U0", "--diff-merges=remerge", `-S${text}`, "-n", String(limit + 1), "--format=%x00%H%x00%cI%x00%s", revision, "--", ...paths]);
         if (!result.ok) throw new Error(`the grooming source could not read the history of ${JSON.stringify(text)} in ${repo}: ${why(result)}`);
         const rows = parseHistory(result.stdout, text);
-        const entries = rows.slice(0, limit).map(({ added, removed, ...entry }): HistoryEntry => ({
+        // A commit whose matching changes are all binary shows no text line to count; like search, history reads source.
+        const textual = rows.filter((row) => row.added + row.removed > 0);
+        const entries = textual.slice(0, limit).map(({ added, removed, ...entry }): HistoryEntry => ({
           ...entry,
           // A move between files changes no total; the text still exists after it, so it did not go away.
           change: added >= removed ? "added" : "removed",
         }));
-        return { entries, truncated: rows.length > limit };
+        return { entries, truncated: rows.length > limit || textual.length > limit };
       },
     };
   }
 }
 
 // An empty text matches every line, and a bare `-S` makes git read the next flag as its argument.
+// A newline splits a grep pattern into several, and a line-by-line count can never see it.
 function textOf(text: string): void {
   if (text === "") throw new Error("the grooming source needs a text to look for, and was given an empty one");
+  if (text.includes("\n")) throw new Error("the grooming source looks for text within one line, and was given one with a newline in it");
 }
 
 function limitOf(limit: number | undefined, fallback: number): number {

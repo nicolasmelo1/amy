@@ -121,12 +121,14 @@ describe("a base-source snapshot", () => {
     expect(await snapshot.read(found.matches[1]!.path)).toBe("a needle\n");
   });
 
-  it("refuses an empty text before asking git", async () => {
+  it("refuses an empty text, or one spanning lines, before asking git", async () => {
     const snapshot = await source().snapshot("acme/widgets");
     const before = calls.length;
 
     await expect(snapshot.search("")).rejects.toThrow(/empty/);
     await expect(snapshot.history("")).rejects.toThrow(/empty/);
+    await expect(snapshot.search("a\nb")).rejects.toThrow(/newline/);
+    await expect(snapshot.history("a\nb")).rejects.toThrow(/newline/);
     expect(calls.length).toBe(before);
   });
 
@@ -226,6 +228,20 @@ describe("a base-source snapshot", () => {
       { commit: merged, change: "removed" },
       { subject: "side adds a column", change: "added" },
     ]);
+  });
+
+  it("leaves a binary blob out of history, as search does", async () => {
+    commit(author, "a binary with the text", { "blob.bin": Buffer.from([0, 1, 2, ...Buffer.from("needle"), 0]) });
+    const notes = commit(author, "notes with the text", { "notes.md": "needle\n" });
+    fs.rmSync(path.join(author, "blob.bin"));
+    commit(author, "drop the binary", {});
+    git(author, "push", "-q", "origin", "main");
+    const snapshot = await source().snapshot("acme/widgets");
+
+    expect(await snapshot.history("needle")).toEqual({
+      entries: [{ commit: notes, at: expect.any(String), subject: "notes with the text", change: "added" }],
+      truncated: false,
+    });
   });
 
   it("says when its limit cut the history, and not when it did not", async () => {

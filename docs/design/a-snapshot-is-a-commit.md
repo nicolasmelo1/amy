@@ -134,12 +134,18 @@ And `GitBaseSource.snapshot` does, in order:
    `--diff-merges=remerge`, by what its conflict resolution changed rather
    than what its branch brought in: a text that first appeared while
    resolving a conflict is named, a resolution that dropped one side reads as
-   removing it, and a clean merge does not repeat its branch's commit. `limit` asks
+   removing it, and a clean merge does not repeat its branch's commit. A
+   commit whose only matching changes are binary has no line to count and is
+   left out, for the same reason `search` skips binaries. `limit` asks
    git for one more than it returns, and the extra entry is what sets
    `truncated`.
 
 Without a `limit`, `search` returns at most 200 matches and `history` at most
 50 commits, and says so through `truncated` when that cut the list.
+
+A `text` is one line: an empty one, or one with a newline, is refused before
+git runs, because grep would split it into several patterns and a count by
+line could never see it.
 
 Every argument reaches git as an argv element. Nothing goes through a shell,
 and a `text` that starts with `-` is passed after `-e` (grep) or bound to
