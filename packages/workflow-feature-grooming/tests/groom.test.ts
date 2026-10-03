@@ -35,17 +35,30 @@ function briefs(): BriefStore & { records: Map<string, BriefRecord> } {
 }
 
 describe("feature grooming", () => {
-  it("reads the configured base branch without checkout, branch, or worktree", async () => {
-    const run = vi.fn(async (_command: string, args: readonly string[]) => ({ ok: true, exitCode: 0, stdout: args[0] === "show" ? "base column" : "abc", stderr: "" }));
+  it("reads the configured base branch at one pinned commit without checkout, branch, or worktree", async () => {
+    const revision = "a".repeat(40);
+    const run = vi.fn(async (_command: string, args: readonly string[]) => ({
+      ok: true, exitCode: 0, stderr: "",
+      stdout: args[0] === "show" ? "base column" : args[0] === "log" ? `${revision}\u00002026-09-17T11:00:00Z` : "",
+    }));
     const source = new GitBaseSource({ run }, { workspaceRoot: "/unused", checkouts: { "acme/widgets": "/repo" }, defaultBranch: "main", baseBranch: { "acme/widgets": "release" } });
     const snapshot = await source.snapshot("acme/widgets");
     expect(await snapshot.read("schema.sql")).toBe("base column");
-    expect(run.mock.calls.map((call) => call[1][0])).toEqual(["rev-parse", "show"]);
-    expect(run.mock.calls.at(1)?.[1]).toEqual(["show", "origin/release:schema.sql"]);
+    expect(run.mock.calls.map((call) => call[1][0])).toEqual(["fetch", "log", "show"]);
+    expect(run.mock.calls.at(0)?.[1]).toEqual(["fetch", "--no-tags", "origin", "+refs/heads/release:refs/remotes/origin/release"]);
+    expect(run.mock.calls.at(2)?.[1]).toEqual(["show", `${revision}:schema.sql`]);
+    // Answers, not capabilities: nothing on the snapshot names a checkout, a branch to work on, or a runner.
+    expect(Object.keys(snapshot).sort()).toEqual(["baseBranch", "committedAt", "history", "read", "repo", "revision", "search"]);
+    expect(JSON.stringify(snapshot)).not.toContain("/repo");
   });
 
   it("rewrites the brief, keeps questions, and retires only grooming-provenanced removed work", async () => {
-    const source: BaseSource = { snapshot: async (repo) => ({ repo, baseBranch: "main", read: async () => "existing column" }) };
+    const source: BaseSource = { snapshot: async (repo) => ({
+      repo, baseBranch: "main", revision: "b".repeat(40), committedAt: NOW.toISOString(),
+      read: async () => "existing column",
+      search: async () => ({ matches: [], truncated: false }),
+      history: async () => ({ entries: [], truncated: false }),
+    }) };
     const works: GroomedWork[] = [
       { id: "old", featureId: "F-1", groomedBy: "feature-grooming", title: "old", body: "<!-- amy:grooming-key=remove -->\nremove", retired: false },
       { id: "human", featureId: "F-1", groomedBy: "human", title: "keep", body: "keep", retired: false },

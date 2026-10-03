@@ -1,19 +1,39 @@
 {
   "scenario": "feature-grooming",
   "status": "passed",
-  "goal": "Re-groom a feature against configured base-branch source without changing the standing checkout, and retire only obsolete work the grooming workflow produced.",
+  "goal": "Re-groom a feature against a freshly fetched, pinned commit of the base branch without changing the standing checkout, find a column somebody else pushed since the last fetch and the commit that added it, and retire only obsolete work the grooming workflow produced.",
   "artifact": {
     "package": "@amykit/workflow-feature-grooming",
     "entry": "groomFeature with GitBaseSource",
     "built_by": "npm run build"
   },
   "observed": {
-    "assertions_run": 2,
+    "assertions_run": 7,
     "assertions_failed": 0
   },
   "assertions": [
     {
       "type": "groom.the_step_reads_the_base_branch",
+      "status": "passed"
+    },
+    {
+      "type": "groom.the_snapshot_sees_what_was_pushed_since_the_last_fetch",
+      "status": "passed"
+    },
+    {
+      "type": "groom.the_fetch_names_its_destination",
+      "status": "passed"
+    },
+    {
+      "type": "groom.a_snapshot_is_pinned_to_its_commit",
+      "status": "passed"
+    },
+    {
+      "type": "groom.search_reads_the_base_not_the_tree",
+      "status": "passed"
+    },
+    {
+      "type": "groom.history_names_the_commit_that_added_it",
       "status": "passed"
     },
     {

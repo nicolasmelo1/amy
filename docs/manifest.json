@@ -248,6 +248,11 @@
           "description": ""
         },
         {
+          "title": "A snapshot is a commit, and it can be searched",
+          "path": "/design/a-snapshot-is-a-commit",
+          "description": ""
+        },
+        {
           "title": "A spec is a name, a URL or a path",
           "path": "/design/a-spec-is-a-name-a-url-or-a-path",
           "description": ""
@@ -846,6 +851,11 @@
           "depth": 3,
           "title": "Add a Slack adapter for the conversation port: one thread per piece of work over the Web API, operator-only replies with downloaded files, Retry-After backoff, and amy doctor checks for the token, channel and scopes.",
           "slug": "add-a-slack-adapter-for-the-conversation-port-one-thread-per-piece-of-work-over-the-web-api-operator-only-replies-with-downloaded-files-retry-after-backoff-and-amy-doctor-checks-for-the-token-channel-and-scopes"
+        },
+        {
+          "depth": 3,
+          "title": "A grooming snapshot is now a commit that can be searched. GitBaseSource.snapshot never fetched, so on a machine where nobody had started a ticket in a repository for two weeks it answered \"this column does not exist\" about a column that shipped twelve days ago; it read origin/<base> again on every call, so two reads in one run could come from two commits; and it returned no revision, so no claim made from it could be checked later. It now fetches +refs/heads/<base>:refs/remotes/origin/<base> first (naming the destination, so a checkout with a narrowed remote.origin.fetch still moves) and refuses the snapshot if that fails rather than serving the old ref, then pins the commit it resolved, and every answer is read at that commit.",
+          "slug": "a-grooming-snapshot-is-now-a-commit-that-can-be-searched-gitbasesourcesnapshot-never-fetched-so-on-a-machine-where-nobody-had-started-a-ticket-in-a-repository-for-two-weeks-it-answered-this-column-does-not-exist-about-a-column-that-shipped-twelve-days-ago-it-read-originbase-again-on-every-call-so-two-reads-in-one-run-could-come-from-two-commits-and-it-returned-no-revision-so-no-claim-made-from-it-could-be-checked-later-it-now-fetches-refsheadsbaserefsremotesoriginbase-first-naming-the-destination-so-a-checkout-with-a-narrowed-remoteoriginfetch-still-moves-and-refuses-the-snapshot-if-that-fails-rather-than-serving-the-old-ref-then-pins-the-commit-it-resolved-and-every-answer-is-read-at-that-commit"
         },
         {
           "depth": 3,
@@ -1713,6 +1723,53 @@
           "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-snapshot-is-a-commit",
+      "file": "docs/design/a-snapshot-is-a-commit.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-snapshot-is-a-commit.md",
+      "title": "A snapshot is a commit, and it can be searched",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The question it was built for, and why it cannot answer it",
+          "slug": "the-question-it-was-built-for-and-why-it-cannot-answer-it"
+        },
+        {
+          "depth": 2,
+          "title": "Three defects in what is there",
+          "slug": "three-defects-in-what-is-there"
+        },
+        {
+          "depth": 2,
+          "title": "The change",
+          "slug": "the-change"
+        },
+        {
+          "depth": 2,
+          "title": "What stays the same",
+          "slug": "what-stays-the-same"
+        },
+        {
+          "depth": 2,
+          "title": "This is a breaking change for implementers",
+          "slug": "this-is-a-breaking-change-for-implementers"
+        },
+        {
+          "depth": 2,
+          "title": "What is not in this",
+          "slug": "what-is-not-in-this"
         },
         {
           "depth": 2,
@@ -4407,12 +4464,22 @@
       {
         "interface": "BaseSourceSnapshot",
         "file": "packages/core/src/ports/BaseSource.ts",
-        "doc": "A read-only view of one repository at its configured base revision.",
+        "doc": "A read-only view of one repository at one commit of its base branch.",
         "methods": [
           {
             "name": "read",
             "signature": "read(path: string): Promise<string | null>",
-            "doc": "Reads a tracked file as it exists at the configured base branch."
+            "doc": "Reads a tracked file as it exists at `revision`."
+          },
+          {
+            "name": "search",
+            "signature": "search(text: string, options?: SearchOptions): Promise<SearchResult>",
+            "doc": "Where a text appears at `revision`. Literal by default."
+          },
+          {
+            "name": "history",
+            "signature": "history(text: string, options?: HistoryOptions): Promise<HistoryResult>",
+            "doc": "Commits up to `revision` that added or removed occurrences of a text."
           }
         ]
       },
@@ -7629,7 +7696,12 @@
         "plan": "docs/design/grooming-reads-the-code-it-is-about.md",
         "assertions": [
           "groom.the_step_reads_the_base_branch",
-          "groom.a_second_run_retires_what_it_cut"
+          "groom.a_second_run_retires_what_it_cut",
+          "groom.the_snapshot_sees_what_was_pushed_since_the_last_fetch",
+          "groom.the_fetch_names_its_destination",
+          "groom.a_snapshot_is_pinned_to_its_commit",
+          "groom.search_reads_the_base_not_the_tree",
+          "groom.history_names_the_commit_that_added_it"
         ],
         "scenario": ".software-factory/evidence/feature-grooming-scenario.sh"
       },
@@ -8320,6 +8392,18 @@
           },
           {
             "package": "@amykit/plugin-slack",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-snapshot-is-a-commit",
+        "title": "A grooming snapshot is now a commit that can be searched. `GitBaseSource.snapshot` never fetched, so on a machine where nobody had started a ticket in a repository for two weeks it answered \"this column does not exist\" about a column that shipped twelve days ago; it read `origin/<base>` again on every call, so two reads in one run could come from two commits; and it returned no revision, so no claim made from it could be checked later. It now fetches `+refs/heads/<base>:refs/remotes/origin/<base>` first (naming the destination, so a checkout with a narrowed `remote.origin.fetch` still moves) and refuses the snapshot if that fails rather than serving the old ref, then pins the commit it resolved, and every answer is read at that commit.",
+        "body": "This is breaking for anything that implements `BaseSourceSnapshot` itself: it must now provide `revision` (the full commit id), `committedAt` (ISO 8601), `search(text, { paths, regex, limit })`, which returns `{ matches: { path, line, text }[], truncated }`, and `history(text, { paths, limit })`, which returns `{ entries: { commit, at, subject, change: \"added\" | \"removed\" }[], truncated }`, newest first. A consumer that only reads snapshots is unaffected.\n\n`read` now returns a file exactly as it is, including the trailing newline it used to drop. `RunOptions` gains an optional `trim`: `NodeCommandRunner` still trims stdout unless it is `false`, which is what the snapshot asks for so that a file, a matched line and a count of whitespace keep the whitespace they are made of.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
             "level": "minor"
           }
         ],

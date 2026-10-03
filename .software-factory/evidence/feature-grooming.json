@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "feature-grooming",
-  "implementation_sha256": "90d7b71736c1071bf23ffe0d7f65ef1f34eb7b8b08937167a51d8f7e121acae6",
+  "implementation_sha256": "eae21f6d1cf6cab58bb5a2995f1d835c1875097ba4ed62c61e44e6a5f337121c",
   "runs": [
     {
       "scenario": "feature-grooming",
       "status": "passed",
       "actor": "Claude (agent), driving real Git repositories through the feature-grooming public API with .software-factory/evidence/feature-grooming-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/feature-grooming-run.json",
-      "report_sha256": "9d701bc11728c120a1c573523d3cfc5dbbccbaa1701d4145ae9ab264e531bc98",
+      "report_sha256": "12485f4b4e5bdddddeefd900d08a51d10a6ebf4f7c49276ae6b7e63d732e6ea0",
       "required_assertions": []
     }
   ]

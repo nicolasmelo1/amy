@@ -10,6 +10,11 @@ export interface RunOptions {
   stdin?: string;
   timeoutMs?: number;
   env?: Record<string, string>;
+  /**
+   * Whether stdout is trimmed, which it is unless this is `false`. A caller
+   * that reads whitespace as data, such as a file's content, asks for it whole.
+   */
+  trim?: boolean;
 }
 
 /**
