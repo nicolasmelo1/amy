@@ -1,5 +1,25 @@
 # @amykit/plugin-file-queue
 
+## 0.5.0
+
+### Minor Changes
+
+- 9bb3d24: Park an opted-in workflow before it spends another agent run with no new evidence.
+
+### Patch Changes
+
+- Updated dependencies [d490ceb]
+- Updated dependencies [b8c781a]
+- Updated dependencies [c1edd17]
+- Updated dependencies [5ff03ad]
+- Updated dependencies [3a993e1]
+- Updated dependencies [f259468]
+- Updated dependencies [75e1f57]
+- Updated dependencies [8b2fcc8]
+- Updated dependencies [9bb3d24]
+- Updated dependencies [98cc10e]
+  - @amykit/core@0.5.0
+
 ## 0.4.0
 
 ### Patch Changes

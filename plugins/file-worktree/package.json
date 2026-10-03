@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-worktree",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
   "type": "module",
   "license": "MIT",
@@ -28,6 +28,6 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.4.0"
+    "@amykit/core": "^0.5.0"
   }
 }

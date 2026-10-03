@@ -1,6 +1,6 @@
 {
   "name": "@amykit/workflow-feature-grooming",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Feature grooming against read-only base-branch source snapshots.",
   "type": "module",
   "license": "MIT",
@@ -13,5 +13,5 @@
   "types": "./dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
   "files": ["dist"],
-  "dependencies": { "@amykit/core": "^0.4.0" }
+  "dependencies": { "@amykit/core": "^0.5.0" }
 }

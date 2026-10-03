@@ -1,5 +1,64 @@
 # @amykit/workflow-ticket-to-qa
 
+## 0.5.0
+
+### Minor Changes
+
+- 75e1f57: **Breaking for anyone who implements or calls the agent, the gate or a ticket. It ships in the same release as the workflow contract change, so you migrate once.**
+  
+  The core's contracts carried one workflow's lifecycle into every workflow:
+  - The agent port had `triage`, `implement` and `addressThreads`, each taking a `Ticket`.
+  - The agent prepared branches, committed and pushed by itself.
+  - The gate took a whole `Ticket` to find a directory.
+  - `Ticket` required Linear's `branchName` and `team`.
+  - The core prescribed a pull-request title.
+  
+  A workflow that pushed once per cycle had to replace the checkout to get that decision back.
+  
+  - **`Agent` is `ask(prompt, cwd, context)` and nothing else.** It lives in `ports/Agent.ts`, beside `AttemptOutcome` and `Progress`.
+    - The catalogue keeps `triage`, `implement` and `address-threads` as action names, so ladders, skills and budgets keyed on them are unchanged. Each now dispatches to `agent.ask`.
+    - Build a step on `ask`, or with the new `implementStep` and `judgeStep` from `@amykit/agent-kit`.
+  - **`AskContext` gains an optional `verify`.** A relay calls it after each run that completed, so a step can turn a completed run that did not hold into `failed` while the ladder can still climb. `implementStep` commits there, so a rung that changed no file still hands the step to the stronger model or the next skill.
+  - **`implementStep` commits only through a `commit` function its caller passes.** No agent touches git any more: `HarnessAgent`, `NamedAgent`, `AGENT_COLLECTION` and the `git` and `agent` options of `contributeTiers` are gone.
+    - A harness plugin contributes its CLI to `HARNESS_COLLECTION` and nothing else.
+    - The claude, codex and hermes-agent plugins no longer take `defaultBranch`, `baseBranch`, `checkouts` or `reviewerHints`.
+  - **A `config.yaml` that set `defaultBranch`, `baseBranch`, `checkouts` or `reviewerHints` under `plugins:` for a harness is now refused at boot**, naming the key. Delete it. A harness is never told where the work lives, and `reviewerHints` belongs under `agent:`.
+  - **`AgentRelay` is gone.** The relay mounts the `agent` port as `ask` over `HarnessRelay`, with the same skill and harness ladders, the same budget and the same boot refusals.
+  - **`Gate.run` takes a `Workplace`**, which is `{ repo, workId }`. It lives in `ports/Gate.ts`. `CommandGate` runs in `pathFor(repo, workId)` as before.
+  - **`Ticket.branchName` and `Ticket.team` are optional.** ticket-to-qa refuses a ticket without a `branchName` on its first look, naming the field.
+  - **`pullRequestTitle`, `TriageOutcome` and `ThreadVerdict` moved to `@amykit/workflow-ticket-to-qa`**, which now owns its prompts:
+    - prompts: `triagePrompt`, `implementPrompt`, `threadPrompt`;
+    - readers: `readTriage`, `readVerdicts`;
+    - helpers: `branchOf`, plus the `TicketGit` type for the part of `Git` it drives.
+  - **`agent.reviewerHints` in `config.yaml` stays where it is.** It now reaches ticket-to-qa's review prompt instead of every harness plugin.
+  
+  Eight local rules in `.software-factory/rules/` hold these decisions, and `docs/design/an-agent-only-answers.md` records them.
+- 8b2fcc8: Let a workflow ask and hear an operator in a work-scoped conversation instead of the tracker.
+- 9bb3d24: Park an opted-in workflow before it spends another agent run with no new evidence.
+- 98cc10e: **Breaking for workflow authors — one migration for two changes.**
+  
+  An action is declared once. `WorkflowRuntime.handlers()` and `Workflow.usesActions` are replaced by `WorkflowRuntime.actions`: a map whose keys are the actions the plan may emit and whose values run them — a handler, or `{ port, method }` for a method its port marked with the new `acceptsAction`, which the host calls with the action and its context and whose answer lands in `outcomes` under the action's name. The mount refuses at boot, by name, a key with nothing behind it, a port nothing mounted, a method the port lacks, or one that takes its own arguments rather than an action; the engine refuses a plan carrying an undeclared action before any of its actions run. A package still carrying `usesActions` or `handlers()` is refused with the sentence that says what to change.
+  
+  `apply` is told the move: `apply(record, plan, outcomes, observation, now, moved)`, where `moved` is `{ from, to }` for an advance and `null` otherwise. `record` has already moved, so where the work came from is `moved.from`, never `record.state`. `movedBy`, `runAction`, `implementationOf`, `undeclaredIn`, `unrunnable`, `mountedActions` and `mountedRuntime` are exported from the core.
+  
+  `ticket-to-qa` now resumes an answered escalation in the state that raised it — implementing, the gate, an automated or human fix, or reviewer assignment — instead of always in `HUMAN_FIX`, and starts its attempt counters again when it does. `@amykit/workflow-testkit` takes a `ports` option for actions declared as a port and a method, and `amy workflow new` scaffolds the new shape.
+
+### Patch Changes
+
+- f259468: A workflow now declares the code-host writes it may make, and the mount gives its runtime capability-limited tracker and code-host ports. `amy doctor` reports the selected workflow's external write surface, including tracker/code-host read-only installs.
+- Updated dependencies [d490ceb]
+- Updated dependencies [b8c781a]
+- Updated dependencies [c1edd17]
+- Updated dependencies [5ff03ad]
+- Updated dependencies [3a993e1]
+- Updated dependencies [f259468]
+- Updated dependencies [75e1f57]
+- Updated dependencies [8b2fcc8]
+- Updated dependencies [9bb3d24]
+- Updated dependencies [98cc10e]
+  - @amykit/core@0.5.0
+  - @amykit/agent-kit@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes

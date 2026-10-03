@@ -1,6 +1,6 @@
 {
   "name": "@amykit/workflow-testkit",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
   "type": "module",
   "license": "MIT",
@@ -28,6 +28,6 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.4.0"
+    "@amykit/core": "^0.5.0"
   }
 }
