@@ -66,12 +66,23 @@ export interface BaseSourceSnapshot {
   /** Where a text appears at `revision`. Literal by default. */
   search(text: string, options?: { paths?: string[]; regex?: boolean; limit?: number }): Promise<SearchResult>;
   /** Commits up to `revision` that added or removed occurrences of a text. */
-  history(text: string, options?: { paths?: string[]; limit?: number }): Promise<HistoryEntry[]>;
+  history(text: string, options?: { paths?: string[]; limit?: number }): Promise<HistoryResult>;
 }
 
 export interface SearchResult {
   matches: { path: string; line: number; text: string }[];
   /** True when `limit` cut the list. A cut list must not read as "nothing else". */
+  truncated: boolean;
+}
+
+export interface HistoryResult {
+  /** Newest first. */
+  entries: HistoryEntry[];
+  /**
+   * True when `limit` cut the list. Without it, the oldest entry of a cut
+   * list would read as the commit that introduced the text, which is the one
+   * claim `history` exists to make.
+   */
   truncated: boolean;
 }
 
@@ -86,26 +97,38 @@ export interface HistoryEntry {
 
 And `GitBaseSource.snapshot` does, in order:
 
-1. `git fetch origin <base>`. This updates only the remote-tracking ref.
-   [`git fetch`](https://git-scm.com/docs/git-fetch) updates remote-tracking
-   branches and leaves local branches and the working tree alone, so it keeps
+1. `git fetch origin +refs/heads/<base>:refs/remotes/origin/<base>`, with the
+   destination named. A bare `git fetch origin <base>` updates
+   `origin/<base>` only if the checkout's `remote.origin.fetch` maps that
+   branch: [the refspecs given on the command line decide what is fetched, and
+   the configured ones only decide where it is stored](https://git-scm.com/docs/git-fetch#_configured_remote_tracking_branches).
+   In a checkout whose refspec was narrowed, the fetch would succeed and step 2
+   would still resolve the old ref. This writes only the remote-tracking ref.
+   `git fetch` leaves local branches and the working tree alone, so it keeps
    the design doc's promise that the standing checkout stays where its owner
    left it. A failed fetch is refused, naming the repository and git's own
    words. A stale answer to *"does this exist"* is the defect this plan is
    about, so serving one quietly is not a fallback.
-2. `git rev-parse --verify origin/<base>^{commit}`, kept as `revision`. Every
-   later call names that id, never `origin/<base>`.
+2. `git log -1 --format=%H%x00%cI origin/<base>`, which gives the commit id
+   and its committer date in one call against one ref. They are kept as
+   `revision` and `committedAt`. Every later call names that id, never
+   `origin/<base>`, so nothing after this step reads the moving branch.
 3. `read(path)` becomes `git show <revision>:<path>`.
 4. `search` becomes [`git grep`](https://git-scm.com/docs/git-grep) against
    the tree of `revision` (*"instead of searching tracked files in the working
    tree, search blobs in the given trees"*), with `-F` unless `regex` is set,
-   `-n`, and the paths after `--`. The tree prefix git adds to every line is
-   stripped, so `path` is a repository path a later `read` accepts.
+   `-n`, `-I` and `-z`, and the paths after `--`. `-I` skips binary blobs,
+   which git would otherwise report as `Binary file … matches` with no line or
+   text to put in a match. Grooming searches source, so a binary is not a
+   match. `-z` ends the path with a NUL, so a path containing `:` still
+   parses. The tree prefix git adds to every path is stripped, so `path` is a
+   repository path a later `read` accepts.
 5. `history` becomes [`git log -S<text>`](https://git-scm.com/docs/git-log)
    ending at `revision`: the commits where the number of occurrences of the
    text changed, which is how the fifteen-day gap in the exhibit was found by
    hand. Whether a commit added or removed is read from the count on each side
-   of the commit, not guessed from the subject.
+   of the commit, not guessed from the subject. `limit` asks git for one more
+   than it returns, and the extra entry is what sets `truncated`.
 
 Every argument reaches git as an argv element. Nothing goes through a shell,
 and a `text` that starts with `-` is passed after `-e` (grep) or bound to
@@ -119,8 +142,27 @@ and a `text` that starts with `-` is passed after `-e` (grep) or bound to
 - **The core still parses no section.** It returns matches and commits. What
   counts as *"already exists"*, and whether a ticket is cut, stays with the
   workflow.
-- **`groomFeature` needs no change to keep working.** It only reads, and every
-  added member is additive. A groomer that wants the revision now has it.
+- **`groomFeature` needs no change to keep working.** It only consumes
+  snapshots, and a consumer is unaffected by members it does not read.
+
+## This is a breaking change for implementers
+
+It is additive for a consumer and not for an implementer. A type that
+structurally implements `BaseSourceSnapshot` stops compiling, and the
+interface is exported, so a plugin outside this repository can be one. Inside
+it, the only other implementer is the literal in
+`packages/workflow-feature-grooming/tests/groom.test.ts:48`.
+
+The members stay required. Making `search` and `history` optional would push
+an `if` into every groomer, and a groomer that skipped the check would answer
+*"nothing found"* from a source that cannot search, which is the stale answer
+this plan exists to remove. So:
+
+- `@amykit/core` takes a `minor` changeset, which is how this repository marks
+  a breaking change below 1.0, as *the workflow contract changes once* did.
+  The changeset names the members to implement.
+- Every implementer in this repository is migrated in the same pull request,
+  and the build is what proves none was missed.
 
 ## What is not in this
 
@@ -156,6 +198,14 @@ mistake the design doc already refuses.
 - [ ] `history` names the commit that introduced a text, and the one that
       removed it, up to the snapshot's commit and no further
       (proof: assertion:groom.history_names_the_commit_that_added_it)
+- [ ] A history cut by its limit says so, and an uncut one does not
+      (proof: test:packages/core/tests/BaseSource.test.ts)
+- [ ] A fetch updates `origin/<base>` in a checkout whose `remote.origin.fetch`
+      does not map the base branch
+      (proof: assertion:groom.the_fetch_names_its_destination)
+- [ ] A binary blob that contains the text is not returned as a match, and a
+      path containing `:` is returned whole
+      (proof: test:packages/core/tests/BaseSource.test.ts)
 - [ ] A text beginning with `-` is searched for, never read as a flag
       (proof: test:packages/core/tests/BaseSource.test.ts)
 - [ ] The grooming step still receives no checkout path, branch, worktree or
