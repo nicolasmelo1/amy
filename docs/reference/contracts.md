@@ -49,21 +49,21 @@ explains why for each.
 | Action | Port | Method | Shipped by | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `acquire-worktree` | `worktree` | `acquire()` | `@amykit/core` | An isolated checkout for one piece of work, created or reused. |
-| `address-threads` | `agent` | `addressThreads()` | `@amykit/core` |  |
+| `address-threads` | `agent` | `ask()` | `@amykit/core` |  |
 | `announce` | `notifier` | `announce()` | `@amykit/core` |  |
 | `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |
 | `assign-reviewer` | `code-host` | `requestReview()` | `@amykit/core` |  |
 | `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
 | `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
 | `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |
-| `implement` | `agent` | `implement()` | `@amykit/core` |  |
+| `implement` | `agent` | `ask()` | `@amykit/core` |  |
 | `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
 | `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |
 | `resolve-review-thread` | `code-host` | `resolveReviewThread()` | `@amykit/core` | Close one review thread, by its id. |
 | `run-errand` | `agent` | `ask()` | `@amykit/core` | Do the thing somebody asked for, in their own words. |
 | `run-gate` | `gate` | `run()` | `@amykit/core` |  |
 | `self-review` | `agent` | `ask()` | `@amykit/core` | A workflow-declared half-step: the work reviews itself before a person is asked to. |
-| `triage` | `agent` | `triage()` | `@amykit/core` |  |
+| `triage` | `agent` | `ask()` | `@amykit/core` |  |
 | `check-plan` | `plan-check` | `check()` | `@amykit/plugin-plan-check` | Registered by the plugin that brings the port behind it. |
 | `run-command` | `commands` | `run()` | `@amykit/plugin-command` | Registered by the plugin that brings the port behind it. |
 
@@ -90,13 +90,11 @@ explains why for each.
 
 The coding agent, and the only probabilistic thing in the system.
 
-Declared in `packages/core/src/ports/Ticketing.ts`.
+Declared in `packages/core/src/ports/Agent.ts`.
 
 | Method | What it does |
 | :-- | :-- |
-| `triage(ticket: Ticket, conversation?: readonly string[]): Promise<AgentResult<TriageOutcome>>` | Reads the ticket and says whether it can be implemented as written. |
-| `implement(ticket: Ticket, retryContext?: string, conversation?: readonly string[]): Promise<AgentResult<AttemptOutcome>>` | Writes the change, or the next attempt after one that did not hold. |
-| `addressThreads(ticket: Ticket, threads: readonly ReviewThread[], from: "automated" \| "human"): Promise<AgentResult<ThreadVerdict[]>>` | Judges review comments one by one. A comment it agrees with is fixed, a comment it disagrees with comes back as a disagreement for the owner rather than being argued with on the pull request. |
+| `ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>` |  |
 
 ### `BaseSource`
 
@@ -239,11 +237,11 @@ Declared in `packages/core/src/ports/Ticketing.ts`.
 
 The gate: the check that decides whether an implementation holds, before anything is published for a person to read.
 
-Declared in `packages/core/src/ports/Ticketing.ts`.
+Declared in `packages/core/src/ports/Gate.ts`.
 
 | Method | What it does |
 | :-- | :-- |
-| `run(ticket: Ticket): Promise<AttemptOutcome>` | Runs the gate against the ticket's own checkout, and says what happened. |
+| `run(workplace: Workplace): Promise<AttemptOutcome>` | Runs the gate in the work's own tree, and says what happened. |
 
 ### `GraphQLClient`
 

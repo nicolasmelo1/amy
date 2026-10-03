@@ -1,19 +1,17 @@
 import { describe, it } from "vitest";
 import {
-  AgentResult,
+  Agent,
+  AskContext,
   AttemptOutcome,
   CodeHost,
   Comment,
-  CommandRunner,
-  Git,
+  HarnessReply,
   PullRequestView,
-  ReviewThread,
-  ThreadVerdict,
   Tracker,
 } from "@amykit/core";
 import { World, conforms } from "@amykit/workflow-testkit";
 import { fakeHost, fakeRun, fakeTracker, pullRequest, roster, runtimeConfig, thread, ticket } from "@amykit/test-fixtures";
-import { DEFAULT_POLICY, ticketRuntime, ticketToQa } from "../src/index.js";
+import { DEFAULT_POLICY, ThreadVerdict, TicketGit, ticketRuntime, ticketToQa } from "../src/index.js";
 
 const BOT = "copilot-pull-request-reviewer[bot]";
 
@@ -51,10 +49,6 @@ class TicketWorld implements World {
 
   runtime(now: () => Date) {
     this.now = now;
-    const git = new Git({ run: () => Promise.reject(new Error("no git in this world")) } as CommandRunner, {
-      workspaceRoot: "/tmp/amy-conformance",
-      defaultBranch: "main",
-    });
     return ticketRuntime({
       tracker: this.tracker(),
       host: this.host(),
@@ -63,7 +57,7 @@ class TicketWorld implements World {
       notifier: { announce: async () => {} },
       roster: () => roster({ confirmedOn: now().toISOString().slice(0, 10) }),
       now,
-      git,
+      git: this.git(),
       layout: { workspaceRoot: "/tmp/amy-conformance", defaultBranch: "main" },
       config: runtimeConfig,
       policy: DEFAULT_POLICY,
@@ -146,27 +140,42 @@ class TicketWorld implements World {
     });
   }
 
-  private agent() {
-    const done = <T>(value: T): AgentResult<T> => ({ value, run: fakeRun() });
+  /**
+   * The agent, which only answers: each step is a prompt named in the
+   * context, and it answers the way a harness would. The review step reads
+   * which threads it was asked about off the prompt, as a reviewer would.
+   */
+  private agent(): Agent {
     return {
-      triage: async () => {
-        this.triaged += 1;
-        const clear = this.triaged > 1;
-        const questions = clear ? [] : ["Which invoice is wrong?"];
-        return done({ clear, questions, askedQuestions: questions, at: this.now().toISOString() });
+      ask: async (prompt: string, _cwd: string, context?: AskContext): Promise<HarnessReply> => {
+        if (context?.step === "triage") {
+          this.triaged += 1;
+          const clear = this.triaged > 1;
+          return { text: JSON.stringify({ clear, questions: clear ? [] : ["Which invoice is wrong?"] }), run: fakeRun() };
+        }
+        if (context?.step === "address-threads") {
+          const ids = [...prompt.matchAll(/^\[([^\]]+)\] /gm)].map((match) => match[1]!);
+          const verdicts: ThreadVerdict[] = ids.map((id) => {
+            // The first human comment is one the agent will not change without
+            // the owner, which is the road through `ESCALATED`.
+            const disagrees = id === "H1" && this.humanThreadAnswered++ === 0;
+            return { threadId: id, verdict: disagrees ? "disagreed" : "fixed", note: disagrees ? "the index is load-bearing" : "done" };
+          });
+          if (verdicts.some((v) => v.verdict === "fixed")) this.push();
+          return { text: JSON.stringify({ verdicts }), run: fakeRun() };
+        }
+        return { text: "looks right against the ticket", run: fakeRun() };
       },
-      implement: async () => done<AttemptOutcome>({ ok: true, output: "", at: this.now().toISOString() }),
-      addressThreads: async (_ticket: unknown, threads: readonly ReviewThread[]) => {
-        const verdicts: ThreadVerdict[] = threads.map((t) => {
-          // The first human comment is one the agent will not change without
-          // the owner, which is the road through `ESCALATED`.
-          const disagrees = t.id === "H1" && this.humanThreadAnswered++ === 0;
-          return { threadId: t.id, verdict: disagrees ? "disagreed" : "fixed", note: disagrees ? "the index is load-bearing" : "done" };
-        });
-        if (verdicts.some((v) => v.verdict === "fixed")) this.push();
-        return done(verdicts);
-      },
-      ask: async () => ({ text: "looks right against the ticket", run: fakeRun() }),
+    };
+  }
+
+  /** A tree for the ticket and a branch that always takes the commit. */
+  private git(): TicketGit {
+    return {
+      pathFor: () => "/tmp/amy-conformance/tree",
+      acquire: async () => "/tmp/amy-conformance/tree",
+      prepareBranch: async () => {},
+      commitAndPush: async () => true,
     };
   }
 

@@ -122,7 +122,7 @@ packages/cli             the command. Nothing depends on it
 ```
 
 Four more follow from it, each a local rule that fails the build, all from
-[an agent only answers](plans/an-agent-only-answers.md):
+[an agent only answers](docs/design/an-agent-only-answers.md):
 
 - **The agent port is `ask`.** A step (triage, implement, a review) is built
   on `ask` in the workflow, or with a helper from `agent-kit`. Never as a new

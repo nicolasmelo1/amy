@@ -17,8 +17,19 @@ import {
   WorkflowRuntime,
   ProgressPolicy,
 } from "@amykit/core";
-import { Agent, Gate, Tracker, HarnessReply } from "@amykit/core";
-import type { AskContext, Git } from "@amykit/core";
+import { Agent, Gate, Tracker } from "@amykit/core";
+import type { Git } from "@amykit/core";
+import { implementStep, judgeStep } from "@amykit/agent-kit";
+import {
+  ReviewerHints,
+  branchOf,
+  implementPrompt,
+  readTriage,
+  readVerdicts,
+  threadPrompt,
+  triagePrompt,
+  unreadTriage,
+} from "./agent-steps.js";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes, applyTransition } from "./outcomes.js";
@@ -31,6 +42,8 @@ export interface TicketRuntimeConfig {
   repos: readonly string[];
   /** The status a ticket moves to when it is handed to QA. */
   qaStatusName: string;
+  /** Guidance appended when answering a particular reviewer, by host login. */
+  reviewerHints?: ReviewerHints;
 }
 
 export interface TicketRuntimeDeps {
@@ -39,15 +52,11 @@ export interface TicketRuntimeDeps {
   conversation?: Conversation;
   host: CodeHost;
   /**
-   * The relay's port, at both of its levels: the ticket-shaped half this
-   * workflow's prompts were written for, and the `ask` half a
-   * workflow-declared half-step runs on, on the same ladder and under the
-   * same ceiling. `AskContext` is what lets the second half carry a brief
-   * without the workflow's vocabulary leaking into the relay's.
+   * The agent, which only answers. Every step here is a prompt on `ask`,
+   * named in the context so the relay's ladders and skills key on it, and
+   * this workflow decides when what it wrote is committed and pushed.
    */
-  agent: Agent & {
-    ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
-  };
+  agent: Agent;
   gate: Gate;
   notifier: Notifier;
   roster: () => Roster;
@@ -56,8 +65,12 @@ export interface TicketRuntimeDeps {
   policy: Policy;
   /** Evidence-progress policy, when this install opted in. */
   progress?: ProgressPolicy;
-  /** The checkout half of the ports, for the self-review's working tree. */
-  git: Git;
+  /**
+   * The checkout half of the ports: the tree each step runs in, and the
+   * branch this workflow prepares, commits and pushes. Only what it uses, so
+   * a test hands a fake rather than a git.
+   */
+  git: TicketGit;
   /**
    * The layout the `Git` above resolves, named for the one question `Git`
    * does not answer: what a repository's pull request opens against. Handed
@@ -73,6 +86,9 @@ export interface TicketRuntimeDeps {
    */
   briefs?: BriefStore;
 }
+
+/** The part of `Git` this workflow drives. */
+export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commitAndPush">;
 
 type Context = ActionContext<TicketRecord, Observation>;
 
@@ -194,7 +210,15 @@ export function ticketRuntime(
 
   const handlers: TicketHandlers = {
     "triage": async (effect, ctx) => {
-      const { value, run } = await deps.agent.triage(ctx.observation.ticket, effect.conversation);
+      const ticket = ctx.observation.ticket;
+      const at = deps.now().toISOString();
+      const { value, run } = await judgeStep(deps.agent, {
+        prompt: triagePrompt(ticket, effect.conversation),
+        cwd: await deps.git.acquire(ticket.repo, ticket.id),
+        context: { workId: ticket.id, step: "triage" },
+        read: (answer) => readTriage(answer, at),
+        fallback: unreadTriage(at),
+      });
       recordAgentRun(ctx, run);
       refuseAnIncompleteRun("triage", run);
       outcomesOf(ctx).triage = value;
@@ -229,16 +253,22 @@ export function ticketRuntime(
     },
 
     "implement": async (effect, ctx) => {
-      const { value, run } = await deps.agent.implement(
-        ctx.observation.ticket,
-        effect.retryContext,
-      );
+      const ticket = ctx.observation.ticket;
+      const branch = branchOf(ticket);
+      await deps.git.prepareBranch(ticket.repo, branch, ticket.id);
+      const { value, run } = await implementStep(deps.agent, {
+        prompt: implementPrompt(ticket, effect.retryContext),
+        cwd: await deps.git.acquire(ticket.repo, ticket.id),
+        context: { workId: ticket.id, step: "implement" },
+        commit: () => deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: ${ticket.title}`, ticket.id),
+        now: deps.now,
+      });
       recordAgentRun(ctx, run);
       outcomesOf(ctx).implementation = value;
     },
 
     "run-gate": async (_effect, ctx) => {
-      outcomesOf(ctx).gate = await deps.gate.run(ctx.observation.ticket);
+      outcomesOf(ctx).gate = await deps.gate.run({ repo: ctx.observation.ticket.repo, workId: ctx.observation.ticket.id });
     },
 
     "self-review": async (_effect, ctx) => {
@@ -275,7 +305,7 @@ export function ticketRuntime(
       // was named — an absent base keeps the forge's own default.
       outcomesOf(ctx).pullRequestNumber = await deps.host.openPullRequest({
         repo: ctx.observation.ticket.repo,
-        branch: ctx.observation.ticket.branchName,
+        branch: branchOf(ctx.observation.ticket),
         title: pullRequestTitle(ctx.observation.ticket),
         base: baseBranchFor(deps.layout, ctx.observation.ticket.repo),
         // Empty by convention. The ticket is the description.
@@ -293,13 +323,21 @@ export function ticketRuntime(
       const threads = (ctx.observation.pullRequest?.threads ?? []).filter((thread) =>
         effect.threadIds.includes(thread.id),
       );
-      const { value, run } = await deps.agent.addressThreads(
-        ctx.observation.ticket,
-        threads,
-        effect.from,
-      );
+      const ticket = ctx.observation.ticket;
+      const branch = branchOf(ticket);
+      await deps.git.prepareBranch(ticket.repo, branch, ticket.id);
+      const { value, run } = await judgeStep(deps.agent, {
+        prompt: threadPrompt(ticket, threads, effect.from, deps.config.reviewerHints),
+        cwd: await deps.git.acquire(ticket.repo, ticket.id),
+        context: { workId: ticket.id, step: "address-threads" },
+        read: (answer) => readVerdicts(answer, threads),
+        // An empty list is never read as "no comment needed answering": the
+        // run did not complete, and the engine fails the action below.
+        fallback: [],
+      });
       recordAgentRun(ctx, run);
       refuseAnIncompleteRun("address-threads", run);
+      await deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: address review comments`, ticket.id);
       outcomesOf(ctx).verdicts = value;
     },
 
@@ -350,7 +388,9 @@ export function ticketRuntime(
 
     async observe(current) {
       const ticket = await requireTicketWithBrief(current.id);
-      const pullRequest = await deps.host.findPullRequest(ticket.repo, ticket.branchName);
+      // A ticket whose tracker derived no branch is refused here, on its
+      // first look, before any branch is prepared for it.
+      const pullRequest = await deps.host.findPullRequest(ticket.repo, branchOf(ticket));
 
       // Only fetched where it is used, so a poll that is only waiting for a
       // review does not hammer the code host counting everybody's workload.

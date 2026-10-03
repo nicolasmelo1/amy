@@ -80,9 +80,9 @@ correction.
       without fetching anything the view did not already carry
       (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
 - [x] The prompt an agent receives shows the whole conversation, attributed
-      (proof: test:packages/agent-kit/tests/HarnessAgent.test.ts)
+      (proof: test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts)
 - [x] A prompt never presents a reply as part of the original objection
-      (proof: test:packages/agent-kit/tests/HarnessAgent.test.ts)
+      (proof: test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts)
 
 **Exit condition:** a reply written inside a thread is read by the agent
 answering that thread, and a workflow can tell whose turn a thread is from

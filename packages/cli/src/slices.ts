@@ -97,6 +97,9 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
       qaStatusName: config.qaStatusName,
+      // Written under `agent:` in config.yaml, because it is how a reviewer
+      // is answered, and read by the workflow whose review prompt it is.
+      reviewerHints: reviewerHintsFor(config, profile),
       policy: config.policy,
     },
     // The workplace: where the trees live and how long finished ones stay.
@@ -227,6 +230,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** The profile can narrow cost and model choices without changing any other host setting. */
+/** The reviewer hints written under `agent:`, for the workflow whose review prompt they are. */
+function reviewerHintsFor(config: AmyConfig, profile: Profile): Record<string, string> {
+  return effectiveAgent(config, profile).reviewerHints ?? {};
+}
+
 function effectiveAgent(config: AmyConfig, profile: Profile): AmyConfig["agent"] {
   return { ...config.agent, ...(profile.agent ?? {}) };
 }
@@ -275,18 +283,11 @@ function harnessSlice(config: AmyConfig, profile: Profile, harness: string): Rec
   const agent = effectiveAgent(config, profile);
   const fromLadder = tiersFor(everyLadderEntry(agent), harness);
 
+  // A harness is told how to run and nothing about where work lives: the
+  // agent only answers, in the directory its caller hands it.
   return {
-    defaultBranch: config.defaultBranch,
-    // The per-repository map rides beside the branch: both are the layout a
-    // `Git` needs to find a checkout, and the shim is how they reach it.
-    checkouts: config.checkouts,
-    // And the map of base branches rides beside them both, for the same
-    // reason: the repository is known per piece of work, not when the slice
-    // is built.
-    baseBranch: config.baseBranch,
     model: agent.model ?? "",
     models: fromLadder.length > 0 ? fromLadder : (agent.models ?? []),
-    reviewerHints: agent.reviewerHints ?? {},
     ...(agent.timeoutMs === undefined ? {} : { timeoutMs: agent.timeoutMs }),
   };
 }

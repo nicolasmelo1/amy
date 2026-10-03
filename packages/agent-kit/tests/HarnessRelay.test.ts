@@ -151,6 +151,19 @@ describe("one harness made of several", () => {
     expect(second.asked[0]).toContain("Continue it; do not begin again.");
   });
 
+  it("keeps the caller's own words whole beside the handoff", async () => {
+    // A retry already carries what went wrong; the handoff is added to it,
+    // never instead of it.
+    const first = rung("claude", "sonnet", ["rate-limited"]);
+    const second = rung("codex", "gpt-5", ["completed"]);
+
+    await new HarnessRelay(oneLadder([first, second])).ask("A previous attempt did not hold: lint", "/x");
+
+    expect(first.asked[0]).toBe("A previous attempt did not hold: lint");
+    expect(second.asked[0]).toContain("A previous attempt did not hold: lint");
+    expect(second.asked[0]).toContain("ran out of quota partway through");
+  });
+
   it("hands back the last answer, rather than a summary of several", async () => {
     const first = rung("claude", "sonnet", ["failed"]);
     const second = rung("codex", "gpt-5", ["failed"]);
@@ -226,6 +239,22 @@ describe("handing the step to a skill", () => {
     );
 
     expect(only.asked[1]).toBe("/second\n\nwrite a plan");
+  });
+
+  it("exhausts the harnesses for one skill before trying the next", async () => {
+    // Two ladders, two questions: which skill should do the step, and what to
+    // do when the one asked could not.
+    const claude = rung("claude", "sonnet", ["failed", "failed"]);
+    const codex = rung("codex", "gpt-5", ["failed", "completed"]);
+
+    await new HarnessRelay(oneLadder([claude, codex]), { skills: { implement: ["first", "second"] } }).ask(
+      "do it",
+      "/x",
+      { step: "implement" },
+    );
+
+    expect(claude.asked.map((p) => p.split("\n")[0])).toEqual(["/first", "/second"]);
+    expect(codex.asked.map((p) => p.split("\n")[0])).toEqual(["/first", "/second"]);
   });
 
   it("stops asking skills once a run was abandoned", async () => {

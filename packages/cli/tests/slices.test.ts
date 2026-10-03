@@ -52,12 +52,36 @@ describe("pluginSlices", () => {
     ]);
   });
 
-  it("gives the agent and the gate the branch new work is cut from", () => {
+  it("gives the gate and the workflow the branch new work is cut from", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
     // Not always `main`, and branching off the wrong base is silent.
-    expect(slices["@amykit/plugin-claude"]?.defaultBranch).toBe("dev");
     expect(slices["@amykit/plugin-command-gate"]?.defaultBranch).toBe("dev");
+    expect(slices["@amykit/workflow-ticket-to-qa"]?.defaultBranch).toBe("dev");
+  });
+
+  it("tells a harness how to run and nothing about where work lives", () => {
+    // The agent only answers, in the directory its caller hands it: a branch
+    // or a checkout map in a harness's slice would be a git it should not have.
+    const slices = pluginSlices(
+      { ...CONFIG, baseBranch: { "acme/widgets": "trunk" }, checkouts: { "acme/widgets": "/work/widgets" } },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
+
+    for (const harness of ["@amykit/plugin-claude", "@amykit/plugin-codex", "@amykit/plugin-hermes-agent"]) {
+      expect(Object.keys(slices[harness] ?? {}).sort()).toEqual(["model", "models"]);
+    }
+  });
+
+  it("takes the reviewer hints written under agent: to the workflow whose review prompt they are", () => {
+    const hints = { edsger: "Delete anything that is not needed." };
+    const slices = pluginSlices(
+      { ...CONFIG, agent: { ...CONFIG.agent, reviewerHints: hints } },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(slices["@amykit/workflow-ticket-to-qa"]?.reviewerHints).toEqual(hints);
+    expect(slices["@amykit/plugin-claude"]?.reviewerHints).toBeUndefined();
   });
 
   it("hands no base-branch map when the config named none, so nothing resolves differently", () => {
@@ -66,7 +90,6 @@ describe("pluginSlices", () => {
     // `defaultBranch`.
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amykit/plugin-claude"]?.baseBranch).toEqual({});
     expect(slices["@amykit/plugin-command-gate"]?.baseBranch).toEqual({});
     expect(slices["@amykit/plugin-file-worktree"]?.baseBranch).toEqual({});
     expect(slices["@amykit/workflow-ticket-to-qa"]?.baseBranch).toEqual({});
@@ -85,9 +108,6 @@ describe("pluginSlices", () => {
     };
     const slices = pluginSlices(mapped, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amykit/plugin-claude"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
-    expect(slices["@amykit/plugin-codex"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
-    expect(slices["@amykit/plugin-hermes-agent"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
     expect(slices["@amykit/plugin-command-gate"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
     expect(slices["@amykit/plugin-file-worktree"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
     expect(slices["@amykit/workflow-ticket-to-qa"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
@@ -108,7 +128,6 @@ describe("pluginSlices", () => {
     // repository under the root it already joined.
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amykit/plugin-claude"]?.checkouts).toEqual({});
     expect(slices["@amykit/plugin-command-gate"]?.checkouts).toEqual({});
     expect(slices["@amykit/plugin-file-worktree"]?.checkouts).toEqual({});
   });
@@ -119,7 +138,6 @@ describe("pluginSlices", () => {
       TICKETS,
     ) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amykit/plugin-claude"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
     expect(slices["@amykit/plugin-command-gate"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
     expect(slices["@amykit/plugin-file-worktree"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
   });
@@ -185,10 +203,10 @@ describe("pluginSlices", () => {
     // written before plugins declared their own settings.
     const slices = pluginSlices({
       ...CONFIG,
-      plugins: { "@amykit/plugin-claude": { model: "opus", defaultBranch: "trunk" } },
+      plugins: { "@amykit/plugin-claude": { model: "opus", timeoutMs: 5 } },
     }, TICKETS) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amykit/plugin-claude"]).toMatchObject({ model: "opus", defaultBranch: "trunk" });
+    expect(slices["@amykit/plugin-claude"]).toMatchObject({ model: "opus", timeoutMs: 5 });
   });
 
   it("moves a legacy file-store briefsDirectory to the independent provider", () => {

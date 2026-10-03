@@ -21,7 +21,7 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/workflow-note-to-plan` | workflow | The note-to-plan workflow: friction becomes a plan in the repository it is about. | [npm](https://www.npmjs.com/package/@amykit/workflow-note-to-plan) |
 | `@amykit/workflow-ticket-to-qa` | workflow | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). | [npm](https://www.npmjs.com/package/@amykit/workflow-ticket-to-qa) |
 | `@amykit/plugin-agent-relay` | plugin | One agent made of several: swaps harness on a quota, escalates model on a failure. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-relay) |
-| `@amykit/plugin-claude` | plugin | The claude CLI as the agent, with git on the side. | [npm](https://www.npmjs.com/package/@amykit/plugin-claude) |
+| `@amykit/plugin-claude` | plugin | The claude CLI as the agent, over its JSON envelope. | [npm](https://www.npmjs.com/package/@amykit/plugin-claude) |
 | `@amykit/plugin-codex` | plugin | The codex CLI as the agent, over its JSONL event stream. | [npm](https://www.npmjs.com/package/@amykit/plugin-codex) |
 | `@amykit/plugin-command` | plugin | Any command line tool, reached by a name the config allows. | [npm](https://www.npmjs.com/package/@amykit/plugin-command) |
 | `@amykit/plugin-command-gate` | plugin | A gate that runs the target repository's own commands. | [npm](https://www.npmjs.com/package/@amykit/plugin-command-gate) |

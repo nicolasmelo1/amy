@@ -1,7 +1,7 @@
 {
   "name": "@amykit/plugin-claude",
   "version": "0.4.0",
-  "description": "The claude CLI as the agent, with git on the side.",
+  "description": "The claude CLI as the agent, over its JSON envelope.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",

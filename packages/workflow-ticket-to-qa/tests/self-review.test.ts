@@ -23,26 +23,21 @@ function recordingAgent(
 ): {
   agent: unknown;
 } {
+  const run = { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" } as const;
   return {
+    // Only `ask`, as the real agent: every step is recorded, triage answers
+    // the JSON its prompt asks for, and every other step answers in words.
     agent: {
-      triage: vi.fn(async () => ({
-        value: { clear: true, questions: [], askedQuestions: [], at: at() },
-        run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
-      })),
-      implement: vi.fn(async () => ({
-        value: { ok: true, output: "implemented", at: at() },
-        run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
-      })),
-      addressThreads: vi.fn(async () => ({ value: [], run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" } })),
       ask: vi.fn(async (prompt: string, _cwd: string, context?: AskContext) => {
         seen.push({ prompt, context });
-        return {
-          text: "look at the boundary first",
-          run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
-        };
+        at();
+        if (context?.step === "triage") return { text: '{"clear": true}', run };
+        if (context?.step === "address-threads") return { text: '{"verdicts": []}', run };
+        return { text: "look at the boundary first", run };
       }),
     },
   };
+
 }
 
 const trackerFor = (read: () => Ticket): Tracker =>
@@ -58,7 +53,7 @@ const trackerFor = (read: () => Ticket): Tracker =>
   }) as unknown as Tracker;
 
 async function driveToSelfReview(
-  overrides: { tracker: Tracker; agent: unknown; briefs?: BriefStore; gate?: unknown },
+  overrides: { tracker: Tracker; agent: unknown; briefs?: BriefStore; gate?: unknown; now?: () => Date },
   ticks = 8,
 ) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-self-review-"));
@@ -81,7 +76,10 @@ async function driveToSelfReview(
       agent: overrides.agent as never,
       briefs: overrides.briefs,
       gate: overrides.gate as never,
-      now: () => new Date((at += 1000)),
+      // The fakes' clock when the test has one: the implementation is stamped
+      // by the machine's clock and the gate by the fake's, and a gate that
+      // looks older than what it checked never vouches for it.
+      now: overrides.now ?? (() => new Date((at += 1000))),
     }),
   });
   for (let look = 0; look < ticks; look += 1) await worker.tick();
@@ -109,7 +107,7 @@ describe("the self-review half-step", () => {
 
     const withBrief = (): Ticket => ({ ...ticket(), briefId: "invoice-currency" });
     const { record } = await driveToSelfReview(
-      { tracker: trackerFor(withBrief), agent, briefs, gate: { run: async () => ({ ok: true, output: "", at: next() }) } },
+      { tracker: trackerFor(withBrief), agent, briefs, gate: { run: async () => ({ ok: true, output: "", at: next() }) }, now: () => new Date(next()) },
     );
     fs.rmSync(root, { recursive: true, force: true });
 
@@ -138,6 +136,7 @@ describe("the self-review half-step", () => {
       tracker: trackerFor(() => ticket()),
       agent,
       gate: { run: async () => ({ ok: true, output: "", at: next() }) },
+      now: () => new Date(next()),
     });
     const ask = seen.find((entry) => entry.context?.step === "self-review");
 

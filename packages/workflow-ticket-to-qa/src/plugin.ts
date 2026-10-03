@@ -77,6 +77,11 @@ export const configSchema: ConfigSchema = {
     required: true,
     description: "the status a ticket moves to when it is handed to QA",
   },
+  reviewerHints: {
+    type: "record",
+    description: "guidance appended to the review prompt when answering a particular reviewer, by host login",
+    default: {},
+  },
   policy: {
     type: "record",
     description:
@@ -152,6 +157,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
     config: {
       repos: ctx.config.repos as string[],
       qaStatusName: ctx.config.qaStatusName as string,
+      reviewerHints: ctx.config.reviewerHints as Record<string, string>,
     },
     progress: progressPolicy(ctx),
     policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },

@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { type Mock, vi } from "vitest";
 import { ticket } from "./builders.js";
 import {
   AgentResult,
@@ -18,8 +18,12 @@ import {
 import { WorkerConfig } from "@amykit/plugin-serial-engine";
 import {
   Agent,
+  AttemptOutcome,
   DEFAULT_POLICY,
   Gate,
+  TicketGit,
+  ThreadVerdict,
+  TriageOutcome,
   Ticket,
   TicketRecord,
   TicketRuntimeConfig,
@@ -97,32 +101,74 @@ export function agentResult<T>(value: T, run: Partial<AgentRun> = {}): AgentResu
   return { value, run: fakeRun(run) };
 }
 
+/** A step answered by the fake: what the prompt asked, and the context it ran under. */
+type Step<T> = (prompt: string, context?: AskContext) => Promise<AgentResult<T>>;
+
+/** The fake agent: `ask`, plus a mock per step that `ask` routes to. */
+export interface ScriptedAgent extends Agent {
+  ask: Mock<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>;
+  triage: Mock<Step<TriageOutcome>>;
+  implement: Mock<Step<AttemptOutcome>>;
+  addressThreads: Mock<Step<ThreadVerdict[]>>;
+}
+
 /**
- * The relay's port at both of its levels, which is the shape every runtime
- * and every test drives with: the ticket-shaped half answers as it always
- * did, and the `ask` half — the one a workflow-declared half-step like a
- * self-review runs on — answers as a completed run.
+ * An agent that only answers, as the real one does, scripted by step.
+ *
+ * `ask` routes on the step its caller named and answers the way a harness
+ * would: triage and review verdicts as the JSON their prompts ask for, an
+ * implementation as a completed run, or a failed one when the script says it
+ * did not hold. Any other step — a self-review — answers with what it was
+ * asked. The per-step mocks are what a test scripts and asserts on.
  */
-export function fakeAgent(overrides: Partial<Agent> = {}): Agent & {
-  ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
-} {
-  return {
-    triage: vi
-      .fn<Agent["triage"]>()
-      .mockResolvedValue(
-        agentResult({ clear: true, questions: [], askedQuestions: [], at: "2026-09-03T12:00:00.000Z" }),
-      ),
-    implement: vi
-      .fn<Agent["implement"]>()
-      .mockResolvedValue(agentResult({ ok: true, output: "", at: "2026-09-03T12:00:00.000Z" })),
-    addressThreads: vi.fn<Agent["addressThreads"]>().mockResolvedValue(agentResult([])),
-    ask: vi
-      .fn<(prompt: string, _cwd: string, context?: AskContext) => Promise<HarnessReply>>()
-      .mockImplementation(async (prompt, _cwd, context) => ({
+export function fakeAgent(steps: Partial<Pick<ScriptedAgent, "triage" | "implement" | "addressThreads" | "ask">> = {}): ScriptedAgent {
+  const triage = steps.triage ?? vi.fn<Step<TriageOutcome>>().mockResolvedValue(
+    agentResult({ clear: true, questions: [], askedQuestions: [], at: "2026-09-03T12:00:00.000Z" }),
+  );
+  const implement = steps.implement ?? vi.fn<Step<AttemptOutcome>>().mockResolvedValue(
+    agentResult({ ok: true, output: "", at: "2026-09-03T12:00:00.000Z" }),
+  );
+  const addressThreads = steps.addressThreads ?? vi.fn<Step<ThreadVerdict[]>>().mockResolvedValue(agentResult([]));
+
+  const ask = steps.ask ?? vi
+    .fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>()
+    .mockImplementation(async (prompt, _cwd, context) => {
+      if (context?.step === "triage") {
+        const { value, run } = await triage(prompt, context);
+        return { text: JSON.stringify({ clear: value.clear, questions: value.questions }), run };
+      }
+      if (context?.step === "implement") {
+        const { value, run } = await implement(prompt, context);
+        // An attempt that did not hold is a run that did not complete, with
+        // what went wrong as its output, which is what a harness reports.
+        return value.ok || run.outcome !== "completed"
+          ? { text: value.output, run }
+          : { text: value.output, run: { ...run, outcome: "failed", output: value.output } };
+      }
+      if (context?.step === "address-threads") {
+        const { value, run } = await addressThreads(prompt, context);
+        return { text: JSON.stringify({ verdicts: value }), run };
+      }
+      return {
         text: `reviewed${context?.brief ? " against the brief" : ""}: ${prompt.slice(0, 60)}`,
         run: fakeRun({ outcome: "completed", output: "" }),
-      })),
-    ...overrides,
+      };
+    });
+
+  return { ask, triage, implement, addressThreads } as ScriptedAgent;
+}
+
+/** A tree for every item and a branch that always commits, with every call recorded. */
+export function fakeGit(changed = true): TicketGit & {
+  prepareBranch: Mock<TicketGit["prepareBranch"]>;
+  commitAndPush: Mock<TicketGit["commitAndPush"]>;
+} {
+  const tree = (repo: string, workId?: string): string => `/tmp/amy-fixture/${workId ?? repo}`;
+  return {
+    pathFor: tree,
+    acquire: async (repo, workId) => tree(repo, workId),
+    prepareBranch: vi.fn<TicketGit["prepareBranch"]>().mockResolvedValue(undefined),
+    commitAndPush: vi.fn<TicketGit["commitAndPush"]>().mockResolvedValue(changed),
   };
 }
 

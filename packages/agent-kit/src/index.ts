@@ -1,10 +1,10 @@
-export { HarnessAgent } from "./HarnessAgent.js";
-export type { HarnessAgentConfig } from "./HarnessAgent.js";
 export { HarnessRelay } from "./HarnessRelay.js";
 export type { HarnessRelayDeps, SkillLadders } from "./HarnessRelay.js";
 export { extractJson } from "./json.js";
-export { AGENT_COLLECTION, HARNESS_COLLECTION } from "./collection.js";
-export type { NamedAgent, NamedHarness } from "./collection.js";
+export { HARNESS_COLLECTION } from "./collection.js";
+export type { NamedHarness } from "./collection.js";
+export { implementStep, judgeStep } from "./steps.js";
+export type { ImplementInput, JudgeInput, StepInput } from "./steps.js";
 export { handoffNote, recordHandoff, recordSkillHandoff } from "./handoff.js";
 export type { HandoffLog } from "./handoff.js";
 export { nextRung } from "./ladder.js";

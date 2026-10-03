@@ -5,7 +5,7 @@
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
     ".github/workflows/software-factory.yml": "19c3ef4f598e345e05fd8eb5c6c2a5f377825f382bde877eef3e3b175abd959f",
     ".software-factory/policy.yaml": "e5c82b49fa09b2aba6badf00f25d6f1498fe364ac31beb44eecdf2f3786b4ec6",
-    ".software-factory/ratchet.yaml": "86b8462f3f9856872a0cd5b6692d4c1eff37e130fb2b1cc85b86bb2d20787599",
+    ".software-factory/ratchet.yaml": "e0be45ffb042d35cb29274e8ad70a8ab1f82cb94ac21c1203e183a929158b8e2",
     ".software-factory/rules/a-ticket-requires-what-every-tracker-has.yaml": "37c7b2af6f9979e79617b492477ad2d66649b0f8f8af4ec5dd453bc53f0abcec",
     ".software-factory/rules/agent-actions-dispatch-to-ask.yaml": "31ffb4d3226dee0c465a7b5715981095e31ed52fd4799949b2ba71a8d77967b6",
     ".software-factory/rules/an-agent-never-touches-git.yaml": "86903862fcc5d4ae2599961080890e78ff91c80c97d30a5dc81f73f6655e53cc",

@@ -1,14 +1,9 @@
-import { WorkRecord } from "@amykit/core";
-import {
-  AttemptOutcome,
-  ThreadVerdict,
-  TriageOutcome,
-} from "@amykit/core";
+import { AttemptOutcome, WorkRecord } from "@amykit/core";
+import { ThreadVerdict, TriageOutcome } from "./agent-steps.js";
 import { TicketState } from "./state.js";
 
-// The outcome contracts moved to the core beside the ports that carry them;
-// re-exported here so the workflow's own consumers keep compiling, and so
-// the record's fields keep meaning the same thing everywhere.
+// Re-exported so the record's fields mean the same thing to every consumer:
+// the attempt from the core, the triage and verdicts from this workflow.
 export type { AttemptOutcome, ThreadVerdict, TriageOutcome };
 
 export interface Escalation {

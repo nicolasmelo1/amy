@@ -74,8 +74,8 @@ A page is markdown with markers in it:
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
 | `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
-| `@amykit/plugin-claude` | The claude CLI as the agent, with git on the side. |  | `agent:claude`<br>`harness:claude` |
-| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `agent:codex`<br>`harness:codex` |
+| `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude` |
+| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex` |
 | `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
 | `@amykit/plugin-file-brief-store` | Briefs kept as one file per item. | `brief` |  |
@@ -85,7 +85,7 @@ A page is markdown with markers in it:
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
 | `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
-| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `agent:hermes`<br>`harness:hermes` |
+| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes` |
 | `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `feature`<br>`tracker` |  |
 | `@amykit/plugin-notify-fanout` | Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted. | `notifier` |  |
 | `@amykit/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. | `notify` | `notify-channel:hermes` |

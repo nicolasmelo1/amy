@@ -21,7 +21,7 @@ set -eu
 report=${1:-.software-factory/evidence/plugin-agent-relay-run.json}
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 
-for pkg in plugins/agent-relay plugins/claude plugins/codex plugins/hermes-agent packages/core; do
+for pkg in plugins/agent-relay plugins/claude plugins/codex plugins/hermes-agent packages/core packages/agent-kit packages/workflow-ticket-to-qa; do
   test -f "$repo/$pkg/dist/index.js" ||
     { echo "build it first: npm run build ($pkg)" >&2; exit 1; }
 done
@@ -113,6 +113,8 @@ const { plugin: claude } = await import(dist("plugins", "claude"));
 const { plugin: codex } = await import(dist("plugins", "codex"));
 const { plugin: hermes } = await import(dist("plugins", "hermes-agent"));
 const { plugin: relay } = await import(dist("plugins", "agent-relay"));
+const { judgeStep } = await import(dist("packages", "agent-kit"));
+const { triagePrompt, readTriage, unreadTriage } = await import(dist("packages", "workflow-ticket-to-qa"));
 
 const assertions = [];
 const record = (type, ok) => assertions.push({ type, status: ok ? "passed" : "failed" });
@@ -128,6 +130,19 @@ const TICKET = {
   repo: "acme/widgets",
   branch: "proj-1239",
 };
+
+/**
+ * A triage, the way ticket-to-qa runs one: its prompt, on the agent's one
+ * method, named in the context so the ladders and skills key on it.
+ */
+const triage = (agent, ticket, conversation) =>
+  judgeStep(agent, {
+    prompt: triagePrompt(ticket, conversation),
+    cwd: path.join(work, "checkouts", "widgets"),
+    context: { workId: ticket.id, step: "triage" },
+    read: (answer) => readTriage(answer, "2026-09-03T12:00:00.000Z"),
+    fallback: unreadTriage("2026-09-03T12:00:00.000Z"),
+  });
 
 /** The prompt the fake claude was last handed, which is what a triage claim reads. */
 const lastPrompt = () => fs.readFileSync(path.join(work, "last-prompt.txt"), "utf-8");
@@ -149,9 +164,9 @@ async function hostWith(
   const outcome = await mount(
     [claude, codex, hermes, relay],
     {
-      "@amykit/plugin-claude": { defaultBranch: "main", models },
-      "@amykit/plugin-codex": { defaultBranch: "main", models: codexModels },
-      "@amykit/plugin-hermes-agent": { defaultBranch: "main", models: hermesModels },
+      "@amykit/plugin-claude": { models },
+      "@amykit/plugin-codex": { models: codexModels },
+      "@amykit/plugin-hermes-agent": { models: hermesModels },
       "@amykit/plugin-agent-relay": {
         ladder,
         ...(ladderByStep === undefined ? {} : { ladderByStep }),
@@ -220,7 +235,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
     models: ["sonnet", "opus", "haiku", "opus"],
     ladderByStep: { triage: ["claude:haiku"], implement: ["claude:opus"] },
   });
-  await stepped.triage(TICKET);
+  await triage(stepped, TICKET);
 
   // `triage` was handed to the rung its step's ladder names first, and the
   // default ladder's opening rungs were not consulted on the way: the order
@@ -238,8 +253,8 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   record("relay.mounts_the_agent_port", outcome.ok === true && Boolean(agent));
 
   const withoutRelay = await mount([claude, codex], {
-    "@amykit/plugin-claude": { defaultBranch: "main", models: ["sonnet"] },
-    "@amykit/plugin-codex": { defaultBranch: "main", models: ["gpt-5"] },
+    "@amykit/plugin-claude": { models: ["sonnet"] },
+    "@amykit/plugin-codex": { models: ["gpt-5"] },
   }, {
     runner: new NodeCommandRunner(),
     now: () => new Date(),
@@ -256,7 +271,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 {
   reset("fine");
   const { agent } = await hostWith(LADDER);
-  const result = await agent.triage(TICKET);
+  const result = await triage(agent, TICKET);
 
   record("relay.first_rung_answers_when_it_works", result.value.clear === true);
   record("relay.asks_nobody_else_when_the_first_rung_worked", called().length === 1);
@@ -268,7 +283,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 {
   reset("fine");
   const { agent } = await hostWith(LADDER);
-  await agent.triage({
+  await triage(agent, {
     ...TICKET,
     body: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
   });
@@ -287,7 +302,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   );
 
   reset("fine");
-  await agent.triage({ ...TICKET, body: undefined });
+  await triage(agent, { ...TICKET, body: undefined });
   record("prompt.says_so_when_a_ticket_has_none", lastPrompt().includes("(this ticket has no description)"));
 
   // The instruction nobody without a credential could obey is gone with the
@@ -301,7 +316,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   // part of the ticket. The relay is what hands a step its prompt, so the
   // attribution has to survive the ladder, not just the kit.
   reset("fine");
-  await agent.triage({
+  await triage(agent, {
     ...TICKET,
     body: "The total line must show the same currency as the rest of the invoice.",
   }, [
@@ -319,7 +334,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 {
   reset("weak-model-fails");
   const { agent, events } = await hostWith(LADDER);
-  const result = await agent.triage(TICKET);
+  const result = await triage(agent, TICKET);
 
   const asked = called();
   record("relay.escalates_the_model_after_a_failure", asked.join(",") === "claude:sonnet,claude:opus");
@@ -339,7 +354,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 {
   reset("throttled");
   const { agent, events } = await hostWith(LADDER);
-  const result = await agent.triage(TICKET);
+  const result = await triage(agent, TICKET);
 
   const asked = called();
   record("relay.changes_harness_after_a_rate_limit", result.run.harness === "codex");
@@ -363,7 +378,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   process.env.PATH = path.join(work, "empty");
   let outcome;
   try {
-    outcome = await agent.triage(TICKET).then((r) => r.run.outcome, () => "threw");
+    outcome = await triage(agent, TICKET).then((r) => r.run.outcome, () => "threw");
   } finally {
     process.env.PATH = previous;
   }
@@ -479,14 +494,14 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 
   reset("fine");
   const { agent } = await hostWith(["claude:sonnet"], { skills: SKILLS });
-  await agent.triage(TICKET);
+  await triage(agent, TICKET);
 
   record("relay.hands_the_step_to_the_skill_named_for_it", called()[0] === "claude:sonnet:first-skill");
   record("relay.asks_no_other_skill_once_one_answered", called().length === 1);
 
   reset("first-skill-fails");
   const second = await hostWith(["claude:sonnet"], { skills: SKILLS });
-  await second.agent.triage(TICKET);
+  await triage(second.agent, TICKET);
 
   record(
     "relay.moves_to_the_next_skill_when_the_first_did_not_answer",

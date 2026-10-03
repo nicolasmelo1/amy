@@ -7,9 +7,9 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**50 rules shipped**, 42 enabled here, 8 switched off, 42 carrying a mutation fixture, 17 violations frozen.
+**50 rules shipped**, 42 enabled here, 8 switched off, 42 carrying a mutation fixture, 2 violations frozen.
 
-Frozen, with a date the build fails on: `L0.AGENT_ACTIONS_DISPATCH_TO_ASK` by 2026-11-03, `L0.AN_AGENT_NEVER_TOUCHES_GIT` by 2026-11-03, `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` by 2026-11-03, `L0.PORTS_LIVE_IN_THEIR_OWN_FILE` by 2026-11-03, `L0.THE_AGENT_PORT_ONLY_ASKS` by 2026-11-03, `L0.THE_CORE_WORDS_NOTHING` by 2026-11-03, `L1.COMPLEXITY_CEILING` by 2027-03-03.
+Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
 
 What each layer is for, and how much of it this repository has switched on.

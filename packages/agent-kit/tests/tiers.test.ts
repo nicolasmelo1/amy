@@ -1,12 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Git, Harness, Registry } from "@amykit/core";
-import { ScriptedRunner, fakeRun, ticket } from "@amykit/test-fixtures";
-import {
-  AGENT_COLLECTION,
-  HARNESS_COLLECTION,
-  contributeTiers,
-  tierName,
-} from "../src/index.js";
+import { Harness, Registry } from "@amykit/core";
+import { HARNESS_COLLECTION, contributeTiers, tierName } from "../src/index.js";
 
 function fakeHarness(name: string): Harness {
   return {
@@ -34,8 +28,6 @@ function recordingRegistry() {
   return { registry, contributions, ports, named };
 }
 
-const git = () => new Git(new ScriptedRunner([]), { workspaceRoot: "/w", defaultBranch: "main" });
-
 describe("naming a tier", () => {
   it("joins harness and model, which is what a ladder in a config refers to", () => {
     expect(tierName("claude", "opus")).toBe("claude:opus");
@@ -49,33 +41,26 @@ describe("naming a tier", () => {
 });
 
 describe("contributing tiers", () => {
-  it("adds one agent per model, in the order given", () => {
+  it("adds one harness per model, in the order given", () => {
     const { registry, named } = recordingRegistry();
 
     contributeTiers(registry, {
       harness: "claude",
       models: ["sonnet", "opus"],
-      git: git(),
       make: fakeHarness,
     });
 
-    expect(named(AGENT_COLLECTION)).toEqual(["claude:sonnet", "claude:opus"]);
+    expect(named(HARNESS_COLLECTION)).toEqual(["claude:sonnet", "claude:opus"]);
   });
 
-  it("adds the bare harness under the same name, so one ladder names both", () => {
-    // The two collections are read at different levels — the ticket-shaped
-    // agent, and the CLI a second workflow asks its own questions through —
-    // and a ladder in a config file has to mean the same thing to each.
-    const { registry, named } = recordingRegistry();
+  it("contributes to the harness collection and nowhere else", () => {
+    // One collection: the agent only answers, so there is no ticket-shaped
+    // agent to contribute beside the harness any more.
+    const { registry, contributions } = recordingRegistry();
 
-    contributeTiers(registry, {
-      harness: "claude",
-      models: ["sonnet", "opus"],
-      git: git(),
-      make: fakeHarness,
-    });
+    contributeTiers(registry, { harness: "claude", models: ["sonnet"], make: fakeHarness });
 
-    expect(named(HARNESS_COLLECTION)).toEqual(named(AGENT_COLLECTION));
+    expect(contributions.map((c) => c.collection)).toEqual([HARNESS_COLLECTION]);
   });
 
   it("carries the harness's own accounting onto every rung of it", () => {
@@ -87,13 +72,11 @@ describe("contributing tiers", () => {
     const made = contributeTiers(registry, {
       harness: "hermes",
       models: ["llama-3.3", "hermes-4-405b"],
-      git: git(),
       make: fakeHarness,
       pricesItsOwnRuns: true,
     });
 
     expect(made.map((tier) => tier.pricesItsOwnRuns)).toEqual([true, true]);
-    // Onto the bare harness too, because a second workflow reads that one.
     const bare = contributions.find(
       (c) => c.collection === HARNESS_COLLECTION && c.name === "hermes:llama-3.3",
     );
@@ -110,7 +93,6 @@ describe("contributing tiers", () => {
     const made = contributeTiers(registry, {
       harness: "codex",
       models: ["gpt-5"],
-      git: git(),
       make: fakeHarness,
     });
 
@@ -125,7 +107,6 @@ describe("contributing tiers", () => {
     const made = contributeTiers(registry, {
       harness: "codex",
       models: ["gpt-5"],
-      git: git(),
       make: fakeHarness,
     });
 
@@ -133,12 +114,12 @@ describe("contributing tiers", () => {
     expect(contributions[0]?.impl).toBe(made[0]);
   });
 
-  it("contributes one agent when no model was configured", () => {
+  it("contributes one harness when no model was configured", () => {
     const { registry, named } = recordingRegistry();
 
-    contributeTiers(registry, { harness: "hermes", models: [], git: git(), make: fakeHarness });
+    contributeTiers(registry, { harness: "hermes", models: [], make: fakeHarness });
 
-    expect(named(AGENT_COLLECTION)).toEqual(["hermes"]);
+    expect(named(HARNESS_COLLECTION)).toEqual(["hermes"]);
   });
 
   it("mounts a rung named twice once, keeping the first mention", () => {
@@ -151,26 +132,10 @@ describe("contributing tiers", () => {
     contributeTiers(registry, {
       harness: "claude",
       models: ["sonnet", "opus", "haiku", "opus"],
-      git: git(),
       make: fakeHarness,
     });
 
-    expect(named(AGENT_COLLECTION)).toEqual(["claude:sonnet", "claude:opus", "claude:haiku"]);
-  });
-
-  it("names each surviving rung once in the harness collection too", () => {
-    // Two collections are written from the same list, so a dedupe that only
-    // fixed the agents would leave the harnesses refusing the same mount.
-    const { registry, named } = recordingRegistry();
-
-    contributeTiers(registry, {
-      harness: "claude",
-      models: ["opus", "opus"],
-      git: git(),
-      make: fakeHarness,
-    });
-
-    expect(named(HARNESS_COLLECTION)).toEqual(["claude:opus"]);
+    expect(named(HARNESS_COLLECTION)).toEqual(["claude:sonnet", "claude:opus", "claude:haiku"]);
   });
 
   it("never mounts the agent port itself", () => {
@@ -181,7 +146,6 @@ describe("contributing tiers", () => {
     contributeTiers(registry, {
       harness: "claude",
       models: ["sonnet"],
-      git: git(),
       make: fakeHarness,
     });
 
@@ -195,7 +159,6 @@ describe("contributing tiers", () => {
     contributeTiers(registry, {
       harness: "claude",
       models: ["sonnet", "opus"],
-      git: git(),
       make: (model) => {
         asked.push(model);
         return fakeHarness("claude");
@@ -203,57 +166,5 @@ describe("contributing tiers", () => {
     });
 
     expect(asked).toEqual(["sonnet", "opus"]);
-  });
-});
-
-describe("handing a step to a skill", () => {
-  /** A harness that records what it was asked and answers a clear triage. */
-  function recordingHarness(prompts: string[]): Harness {
-    return {
-      name: "claude",
-      ask: async (prompt: string) => {
-        prompts.push(prompt);
-        return { text: '{"clear": true}', run: fakeRun({ harness: "claude" }) };
-      },
-    };
-  }
-
-  function tierWith(prompts: string[]) {
-    const { registry } = recordingRegistry();
-    const [tier] = contributeTiers(registry, {
-      harness: "claude",
-      models: ["sonnet"],
-      git: git(),
-      make: () => recordingHarness(prompts),
-    });
-    return tier!;
-  }
-
-  it("invokes the skill and still asks for the same answer", async () => {
-    const prompts: string[] = [];
-
-    await tierWith(prompts).using("logion").triage(ticket());
-
-    // The invocation goes first and amy's own instructions follow, because
-    // the answer has to arrive in the same shape whoever does the work.
-    expect(prompts[0]?.startsWith("/logion\n\n")).toBe(true);
-    expect(prompts[0]).toContain("single JSON object");
-  });
-
-  it("asks in amy's own words when no skill was named", async () => {
-    const prompts: string[] = [];
-
-    await tierWith(prompts).agent.triage(ticket());
-
-    expect(prompts[0]?.startsWith("/")).toBe(false);
-  });
-
-  it("keeps the harness and the model it was contributed with", async () => {
-    // The skill is a third axis, not a replacement for the other two: the
-    // relay still needs to know where to go after a quota refusal.
-    const prompts: string[] = [];
-    const result = await tierWith(prompts).using("logion").triage(ticket());
-
-    expect(result.run.harness).toBe("claude");
   });
 });

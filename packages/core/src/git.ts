@@ -75,7 +75,7 @@ export class Git {
    * Where the work for one repository happens.
    *
    * The mode question is answered once, here, rather than by every caller:
-   * `HarnessAgent`, the gates and the workflow runtimes all read this, and
+   * the agent steps, the gates and the workflow runtimes all read this, and
    * none of them learns whether this install isolates its checkouts.
    */
   pathFor(repo: string, workId?: string): string {

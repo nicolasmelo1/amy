@@ -4,7 +4,7 @@
 
 The codex CLI as the agent, over its JSONL event stream.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `codex` in the `agent` collection and `codex` in the `harness` collection.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `codex` in the `harness` collection.
 
 ## Install
 
@@ -27,23 +27,15 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-codex":
-    baseBranch: {}
-    checkouts: {}
-    defaultBranch: "main"
     model: ""
     models: []
-    reviewerHints: {}
     timeoutMs: 1800000
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
-| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the agent is sent |
-| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to codex |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `codex:<model>`. Empty means a single agent named `codex` |
-| `reviewerHints` | `record` | no | `{}` | guidance appended when answering a particular reviewer, by host login |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 Every field is checked at boot against the schema this package declares. A key that is

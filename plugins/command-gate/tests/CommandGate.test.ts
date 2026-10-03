@@ -3,9 +3,11 @@ import { CommandGate } from "../src/CommandGate.js";
 import { Git } from "@amykit/core";
 import { CommandResult } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
-import { ticket } from "@amykit/test-fixtures";
 
 const layout = { workspaceRoot: "/w/northwind", defaultBranch: "main" };
+
+/** Where one piece of work happens: the gate needs nothing else to know. */
+const workplace = (repo = "Northwind/northwind-backend") => ({ repo, workId: "PROJ-1239" });
 
 const BACKEND_GATE = [
   "npm run --workspace @northwind/api lint",
@@ -31,7 +33,7 @@ describe("CommandGate", () => {
   it("runs the repository's own commands, in order, in its checkout", async () => {
     const { runner, gate } = gateFor({ "Northwind/northwind-backend": BACKEND_GATE });
 
-    const outcome = await gate.run(ticket());
+    const outcome = await gate.run(workplace());
 
     expect(outcome.ok).toBe(true);
     expect(runner.calls.map((call) => call.args[1])).toEqual(BACKEND_GATE);
@@ -44,7 +46,7 @@ describe("CommandGate", () => {
       [fails("lint", "3 problems")],
     );
 
-    const outcome = await gate.run(ticket());
+    const outcome = await gate.run(workplace());
 
     expect(outcome.ok).toBe(false);
     expect(runner.calls).toHaveLength(1);
@@ -58,7 +60,7 @@ describe("CommandGate", () => {
       [fails("typecheck", "src/invoice.ts(12,3): error TS2345")],
     );
 
-    const outcome = await gate.run(ticket());
+    const outcome = await gate.run(workplace());
 
     expect(outcome.output).toContain("$ npm run --workspace @northwind/api typecheck");
     expect(outcome.output).toContain("error TS2345");
@@ -67,7 +69,7 @@ describe("CommandGate", () => {
   it("falls back to the default commands for an unlisted repository", async () => {
     const { runner, gate } = gateFor({ default: ["npm test"] });
 
-    await gate.run(ticket({ repo: "Northwind/northwind-frontend" }));
+    await gate.run(workplace("Northwind/northwind-frontend"));
 
     expect(runner.calls[0]?.args[1]).toBe("npm test");
   });
@@ -76,7 +78,7 @@ describe("CommandGate", () => {
     // Reporting green here would let anything through unchecked.
     const { runner, gate } = gateFor({});
 
-    const outcome = await gate.run(ticket());
+    const outcome = await gate.run(workplace());
 
     expect(outcome.ok).toBe(false);
     expect(outcome.output).toContain("no gate is configured");
@@ -86,7 +88,7 @@ describe("CommandGate", () => {
   it("records what passed, for the transcript", async () => {
     const { gate } = gateFor({ "Northwind/northwind-backend": BACKEND_GATE });
 
-    const outcome = await gate.run(ticket());
+    const outcome = await gate.run(workplace());
 
     expect(outcome.output).toBe(
       "$ npm run --workspace @northwind/api lint\nok\n$ npm run --workspace @northwind/api typecheck\nok",

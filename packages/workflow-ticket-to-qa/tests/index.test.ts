@@ -58,8 +58,8 @@ describe("the workflow re-exports the core's contracts", () => {
     expect(capability).toBe("comment");
   });
 
-  it("re-exports pullRequestTitle as the same function the core ships", () => {
-    expect(pullRequestTitle).toBe(core.pullRequestTitle);
+  it("titles a pull request its own way, which the core no longer prescribes", () => {
+    expect("pullRequestTitle" in core).toBe(false);
     expect(pullRequestTitle({ id: "PROJ-1", title: "Fix it" } as Ticket)).toBe("PROJ-1: Fix it");
   });
 });

@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { HostServices, mount, Plugin } from "@amykit/core";
-import { AGENT_COLLECTION, NamedAgent } from "@amykit/agent-kit";
-import { agentResult, fakeAgent } from "@amykit/test-fixtures";
+import { AskContext, HarnessReply, HostServices, mount, Plugin } from "@amykit/core";
+import { HARNESS_COLLECTION, NamedHarness } from "@amykit/agent-kit";
+import { fakeRun } from "@amykit/test-fixtures";
 import { plugin as relay } from "../src/plugin.js";
 
 const host: HostServices = {
@@ -13,6 +13,9 @@ const host: HostServices = {
   paths: { workspace: "/w", checkouts: {}, state: "/w/.amy" },
 };
 
+/** Every prompt the stand-in harnesses were asked, with who answered it. */
+const asked: { prompt: string; by: string; context?: AskContext }[] = [];
+
 /** A stand-in harness plugin, contributing tiers without running anything. */
 function harnessPlugin(harness: string, models: string[]): Plugin {
   return {
@@ -20,27 +23,28 @@ function harnessPlugin(harness: string, models: string[]): Plugin {
     version: "0.0.0",
     register(registry) {
       for (const model of models) {
-        const named: NamedAgent = {
-          name: model ? `${harness}:${model}` : harness,
+        const name = model ? `${harness}:${model}` : harness;
+        const named: NamedHarness = {
+          name,
           harness,
           model,
-          agent: fakeAgent({
-            triage: async () =>
-              agentResult(
-                { clear: true, questions: [], askedQuestions: [], at: "2026-09-05T10:00:00.000Z" },
-                { outcome: "completed", harness, model },
-              ),
-          }),
-          // The same harness and model with a skill doing the step. A double
-          // that left it out was a `NamedAgent` the relay could not ask.
-          using: () => named.agent,
+          cli: {
+            name: harness,
+            ask: async (prompt: string, _cwd: string, context?: AskContext): Promise<HarnessReply> => {
+              asked.push({ prompt, by: name, context });
+              return { text: '{"clear": true}', run: fakeRun({ outcome: "completed", harness, model }) };
+            },
+          },
         };
 
-        registry.contribute(AGENT_COLLECTION, named.name, named);
+        registry.contribute(HARNESS_COLLECTION, named.name, named);
       }
     },
   };
 }
+
+/** The mounted agent port, as a workflow sees it. */
+type AgentPort = { ask: (prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply> };
 
 const ladder = (ladder: string[]) => ({ "@amykit/plugin-agent-relay": { ladder } });
 
@@ -100,11 +104,22 @@ describe("mounting the relay", () => {
 
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
-    const agent = outcome.mounted.ports.get("agent") as { triage: (t: unknown) => Promise<{ run: { harness: string } }> };
-    const result = await agent.triage({ id: "PROJ-1" });
+    const agent = outcome.mounted.ports.get("agent") as AgentPort;
+    const result = await agent.ask("judge PROJ-1", "/w/widgets", { workId: "PROJ-1", step: "triage" });
 
     // Mounting order decides the default ladder, and claude was first.
     expect(result.run.harness).toBe("claude");
+  });
+
+  it("mounts an agent port that only asks", async () => {
+    // The port every workflow shares carries no step of anybody's: a step
+    // is a prompt on `ask`, named in its context.
+    const outcome = await mount([relay, harnessPlugin("claude", ["sonnet"])], ladder([]), host);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    const port = outcome.mounted.ports.get("agent") as Record<string, unknown>;
+
+    expect(Object.keys(port).filter((key) => typeof port[key] === "function")).toEqual(["ask"]);
   });
 
   it("mounts a budget only when a ceiling was configured", async () => {
@@ -195,11 +210,10 @@ describe("mounting the relay", () => {
 
     if (!first.ok || !second.ok) throw new Error("both mounts should have worked");
 
-    const agentOf = (m: typeof first) =>
-      m.mounted.ports.get("agent") as { triage: (t: unknown) => Promise<{ run: { harness: string } }> };
+    const agentOf = (m: typeof first) => m.mounted.ports.get("agent") as AgentPort;
 
-    expect((await agentOf(first).triage({ id: "PROJ-1" })).run.harness).toBe("claude");
-    expect((await agentOf(second).triage({ id: "PROJ-1" })).run.harness).toBe("codex");
+    expect((await agentOf(first).ask("p", "/w", { step: "triage" })).run.harness).toBe("claude");
+    expect((await agentOf(second).ask("p", "/w", { step: "triage" })).run.harness).toBe("codex");
   });
 });
 
@@ -230,6 +244,23 @@ describe("mounting the skills", () => {
     );
 
     expect(outcome.ok).toBe(true);
+  });
+
+  it("hands a step named in the context to the skill configured for it", async () => {
+    // `implement` is still a step a skill can answer: the name travels in the
+    // context of `ask`, which is what the ladders and the skills key on.
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"])],
+      withSkills({ implement: ["/logion"] }),
+      host,
+    );
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    asked.length = 0;
+
+    await (outcome.mounted.ports.get("agent") as AgentPort).ask("write the change", "/w", { step: "implement" });
+    await (outcome.mounted.ports.get("agent") as AgentPort).ask("judge it", "/w", { step: "triage" });
+
+    expect(asked.map((call) => call.prompt)).toEqual(["/logion\n\nwrite the change", "judge it"]);
   });
 
   it("refuses a skill nobody installed, while boot can still refuse", async () => {

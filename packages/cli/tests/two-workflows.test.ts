@@ -263,13 +263,11 @@ describe("two workflows, one machine", () => {
     const ticket = await assemble(TICKETS);
     const note = await assemble(PLANS);
 
-    // One port, two levels of it. The ticket workflow reaches for `implement`,
-    // the plan workflow for `ask`, and both are the same ladder underneath.
-    expect(typeof (ticket.ports.get("agent") as { implement?: unknown }).implement).toBe(
-      "function",
-    );
+    // One port, one method: both workflows' steps are prompts on `ask`, and
+    // both go up the same ladder underneath.
     expect(typeof (note.ports.get("agent") as { ask?: unknown }).ask).toBe("function");
     expect(typeof (ticket.ports.get("agent") as { ask?: unknown }).ask).toBe("function");
+    expect((ticket.ports.get("agent") as { implement?: unknown }).implement).toBeUndefined();
   });
 
   it("gives each workflow its own records and its own queue under one .amy", async () => {

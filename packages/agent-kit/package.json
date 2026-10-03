@@ -1,7 +1,7 @@
 {
   "name": "@amykit/agent-kit",
   "version": "0.4.0",
-  "description": "What every agent does the same way: the prompts, the git dance, and the JSON.",
+  "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",

@@ -63,12 +63,12 @@ GitHub pull request, because GitHub is the forge for the foreseeable future.
 wrote it in `config.yaml`. It reaches ticket-to-qa instead of every harness
 plugin.
 
-## The gates come first
+## The gates came first
 
 Each decision is a local rule in `.software-factory/rules/`, with a mutation
-fixture that proves it fires. They land before the implementation, with
-today's violations frozen in the ratchet. Each implementation commit removes
-its own entries, and the change is finished when none are left. Every rule's
+fixture that proves it fires. They landed before the implementation, in their
+own commit, with the fifteen violations of that day frozen in the ratchet.
+The implementation removed every entry; none is left. Every rule's
 `fix` names this document, so whoever trips one is told why the rule exists
 before deciding what to do about it.
 
@@ -96,16 +96,16 @@ member and where it went.
 
 ## Acceptance criteria
 
-- [ ] The core's `Agent` declares `ask` and nothing else, and every catalogue action on the agent port dispatches to it (proof: test:packages/core/tests/architecture.test.ts)
-- [ ] `Gate.run` takes a workplace rather than a ticket, and `Ticket` requires only `id`, `title`, `url`, `status`, `labels` and `repo` (proof: test:packages/core/tests/architecture.test.ts)
-- [ ] The core exports no `pullRequestTitle` and names no vendor in code (proof: test:packages/core/tests/architecture.test.ts)
-- [ ] `implementStep` commits only through the commit its caller passed, and reports a run that changed nothing as `unchanged` (proof: test:packages/agent-kit/tests/steps.test.ts)
-- [ ] `judgeStep` parses the answer the caller describes, and a run that did not complete yields the caller's fallback with the run's account (proof: test:packages/agent-kit/tests/steps.test.ts)
-- [ ] ticket-to-qa walks its whole lifecycle on the generic agent, with triage, implement and review verdicts unchanged (proof: test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts)
-- [ ] The agent port `agent-relay` mounts is `ask` over the skill and harness ladders, and a skill named for `implement` still answers that step (proof: test:plugins/agent-relay/tests/plugin.test.ts)
-- [ ] `agent.reviewerHints` in `config.yaml` reaches ticket-to-qa's review prompt and no harness plugin (proof: test:packages/cli/tests/slices.test.ts)
-- [ ] A ticket without a tracker-derived branch is refused by ticket-to-qa naming the field, before any branch is prepared (proof: test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts)
+- [x] The core's `Agent` declares `ask` and nothing else, and every catalogue action on the agent port dispatches to it (proof: test:packages/core/tests/architecture.test.ts)
+- [x] `Gate.run` takes a workplace rather than a ticket, and `Ticket` requires only `id`, `title`, `url`, `status`, `labels` and `repo` (proof: test:packages/core/tests/architecture.test.ts)
+- [x] The core exports no `pullRequestTitle` and names no vendor in code (proof: test:packages/core/tests/architecture.test.ts)
+- [x] `implementStep` commits only through the commit its caller passed, and reports a run that changed nothing as `unchanged` (proof: test:packages/agent-kit/tests/steps.test.ts)
+- [x] `judgeStep` parses the answer the caller describes, and a run that did not complete yields the caller's fallback with the run's account (proof: test:packages/agent-kit/tests/steps.test.ts)
+- [x] ticket-to-qa reaches and leaves every one of its states on an agent that has only `ask`, with triage, implement and review verdicts unchanged (proof: test:packages/workflow-ticket-to-qa/tests/conformance.test.ts)
+- [x] The agent port `agent-relay` mounts is `ask` over the skill and harness ladders, and a skill named for `implement` still answers that step (proof: test:plugins/agent-relay/tests/plugin.test.ts)
+- [x] `agent.reviewerHints` in `config.yaml` reaches ticket-to-qa's review prompt and no harness plugin (proof: test:packages/cli/tests/slices.test.ts)
+- [x] A ticket without a tracker-derived branch is refused by ticket-to-qa naming the field, before any branch is prepared (proof: test:packages/workflow-ticket-to-qa/tests/branch.test.ts)
 
 **Exit condition:** the ratchet holds no entry for any of the eight rules
 above, `sf verify` shows each of them firing on its fixture, and ticket-to-qa's
-walkthrough passes on an `Agent` that has only `ask`.
+conformance suite passes on an `Agent` that has only `ask`.
