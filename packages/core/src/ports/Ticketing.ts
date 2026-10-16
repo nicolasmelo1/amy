@@ -86,6 +86,13 @@ export interface Ticket {
   repos?: readonly string[];
 
   /**
+   * Who the ticket is assigned to, as the identity `assign` takes. `null` is
+   * nobody; absent is a tracker that does not say, which a workflow cannot
+   * read as either.
+   */
+  assignee?: string | null;
+
+  /**
    * How urgent the tracker says it is, smaller first. Absent where the
    * tracker has no urgency or nobody set one.
    */

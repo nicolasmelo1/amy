@@ -215,6 +215,37 @@ machine that does not move before the operator's effect is there.
 - [x] Without the option, the queue keeps id order
       (proof: assertion:compose.without_the_option_the_queue_keeps_id_order)
 
+### What the first review found
+
+Each of these shipped in the first pass of this work and was caught in
+review. Each is now an assertion the gate requires, so it cannot come back
+unnoticed.
+
+- [x] A new branch cut at a commit another branch already pushed is published:
+      whether a push moved anything is git's answer about the named branch
+      (proof: assertion:compose.a_new_branch_at_a_pushed_commit_is_published)
+- [x] Reprioritizing never brings back an item a worker claimed after it was
+      listed: it takes the item by rename, the way a claim does
+      (proof: assertion:compose.reprioritizing_never_recreates_a_claimed_item)
+- [x] A review the operator was asked to request again is answered only by a
+      request, or a review submitted after the turn was said
+      (proof: assertion:compose.a_re_review_is_answered_only_after_it_was_asked)
+- [x] A QA handoff handed to the operator is done only when both the status
+      and the QA owner are seen
+      (proof: assertion:compose.qa_is_done_only_when_status_and_owner_are_both_seen)
+- [x] A work item that is not the first waits until it sees the handoff, so a
+      reordering of labels can still hand it over
+      (proof: assertion:compose.a_follower_waits_until_it_sees_the_handoff)
+- [x] Review fixes go to the branch the pull request was opened from, however
+      it was found
+      (proof: assertion:compose.review_fixes_land_on_the_pull_requests_own_branch)
+- [x] A ticket in several repositories is refused by name when the code host
+      cannot read whether each one merged, instead of waiting for ever
+      (proof: assertion:compose.a_host_that_cannot_read_merges_is_refused_by_name)
+- [x] Labelling a running ticket into more repositories keeps its work item:
+      the repository it started in keeps the ticket's own id
+      (proof: assertion:compose.labelling_a_running_ticket_keeps_its_work_item)
+
 ### The private workflow
 
 - [ ] The private workflow that prompted this deletes its checkout, readers,

@@ -17,6 +17,7 @@ const issue = (labels: string[], priority = 0) => ({
   url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
   branchName: "ada/proj-1239-total-is-wrong",
   priority,
+  assignee: null,
   parent: null,
   labels: { nodes: labels.map((name) => ({ name })) },
   state: { name: "In Progress" },
@@ -31,7 +32,8 @@ describe("LinearTracker, a ticket in more than one repository", () => {
     const ticket = await working(issue(["frontend", "Bug", "backend"]));
 
     expect(ticket?.repos).toEqual(["Northwind/northwind-frontend", "Northwind/northwind-backend"]);
-    expect(ticket?.repo).toBe("Northwind/northwind-frontend");
+    // The team's, still: the work a ticket started before its labels keeps its place.
+    expect(ticket?.repo).toBe("Northwind/northwind-backend");
   });
 
   it("keeps a ticket with no repository label in its team's repository, and says no more", async () => {
@@ -50,5 +52,12 @@ describe("LinearTracker, urgency", () => {
 
   it("reads Linear's 0 as no priority at all", async () => {
     expect(await working(issue([], 0))).not.toHaveProperty("priority");
+  });
+});
+
+describe("LinearTracker, who it is assigned to", () => {
+  it("names the assignee by the identity assign takes, and nobody as null", async () => {
+    expect((await working({ ...issue([]), assignee: { email: "grace@example.test" } } as never))?.assignee).toBe("grace@example.test");
+    expect((await working(issue([])))?.assignee).toBeNull();
   });
 });

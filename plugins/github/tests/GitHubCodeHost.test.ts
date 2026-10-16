@@ -24,6 +24,7 @@ const REAL_RESPONSE = {
             isDraft: false,
             reviewDecision: "CHANGES_REQUESTED",
             headRefOid: HEAD,
+            headRefName: "ada/proj-1241-link-table",
             changedFiles: 7,
             additions: 214,
             deletions: 31,
@@ -678,7 +679,9 @@ describe("GitHubCodeHost.pullRequest", () => {
     // The number is what the search cannot carry, so the document asks for
     // the pull request by it and never by a branch.
     expect(asked).toContain("number=4926");
-    expect(asked).not.toContain("headRefName");
+    // The filter, not the field: the view reads the head branch back, and
+    // only a `headRefName:` argument would be a search by it.
+    expect(asked).not.toContain("headRefName: $branch");
     expect(asked).toContain("pullRequest(number: $number)");
   });
 
@@ -1234,5 +1237,15 @@ describe("GitHubCodeHost.authoredWithChangesRequested", () => {
 
     await expect(host.authoredWithChangesRequested("ada", [])).resolves.toEqual([]);
     expect(asked()).toBe("");
+  });
+});
+
+describe("GitHubCodeHost, the branch a pull request is opened from", () => {
+  it("carries it, so a workflow that found the pull request by title pushes where it will see", async () => {
+    const { host } = hostFor(REAL_RESPONSE);
+
+    const view = await host.findPullRequest("Northwind/northwind-backend", "ada/proj-1241-link-table");
+
+    expect(view?.headBranch).toBe("ada/proj-1241-link-table");
   });
 });

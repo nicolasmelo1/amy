@@ -14,7 +14,7 @@ import {
   unresolvedThreads,
 } from "./review.js";
 import { isConfirmedFor, leastLoadedReviewer } from "./roster.js";
-import { handOver } from "./handover.js";
+import { handOver, handedToQa } from "./handover.js";
 
 /**
  * Decides the single next move for one ticket.
@@ -567,6 +567,10 @@ function planReReview(record: TicketRecord): Plan {
 }
 
 function planQaHandoff(record: TicketRecord, obs: Observation, policy: Policy): Plan {
+  // Somebody already handed it over — another repository's work item, or
+  // the operator — and handing it over twice is not a second handoff.
+  if (handedToQa(obs)) return advance("DONE", `${obs.ticket.id} is already in QA and owned by ${obs.roster.qa.tracker}`);
+
   const joined = joinRepositories(obs, policy);
   if (joined) return joined;
 
@@ -613,9 +617,12 @@ function planQaHandoff(record: TicketRecord, obs: Observation, policy: Policy): 
  * receives it once, when every one of them has merged.
  *
  * The first repository's item is the one that hands it over, so two items
- * reaching this state together cannot hand it over twice; the others finish
- * once the join is met, because their part is done. A repository added later
- * is read here like the rest, so the handoff waits for it too.
+ * reaching this state together cannot hand it over twice. The others wait
+ * until they see it handed over rather than finishing first: which one is
+ * first follows the labels, and an item that had already finished could not
+ * take the handoff over when the labels were reordered under it. A
+ * repository added later is read here like the rest, so the handoff waits
+ * for it too.
  */
 function joinRepositories(obs: Observation, policy: Policy): Plan | null {
   const repositories = obs.repositories ?? [];
@@ -628,7 +635,7 @@ function joinRepositories(obs: Observation, policy: Policy): Plan | null {
 
   const leader = repositories[0]!.repo;
   if (leader !== obs.ticket.repo) {
-    return advance("DONE", `every repository merged, and ${leader}'s work item hands ${obs.ticket.id} to QA`);
+    return wait(policy.pollBackoffMs, `every repository merged; waiting for ${leader}'s work item to hand ${obs.ticket.id} to QA`);
   }
   return null;
 }

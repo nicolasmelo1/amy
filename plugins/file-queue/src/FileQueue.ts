@@ -105,14 +105,31 @@ export class FileQueue implements Queue {
     return moved;
   }
 
+  /**
+   * Taken out of `ready/` by rename before it is rewritten, the same atomic
+   * step `claim` takes: whichever of the two renames first owns the item,
+   * and the other finds nothing. Rewriting in place could recreate a file a
+   * worker had just claimed, and two workers would then run one look. The
+   * rewrite goes to its own name and is renamed back whole, so no reader
+   * ever sees half of it.
+   */
   reprioritize(workId: string, priority: number | undefined): number {
     let changed = 0;
 
-    for (const item of this.read(READY)) {
-      if (item.workId !== workId || item.priority === priority) continue;
+    for (const listed of this.read(READY)) {
+      if (listed.workId !== workId || listed.priority === priority) continue;
+      const file = this.file(READY, listed);
+      const held = `${file}.reprioritizing`;
+      try {
+        fs.renameSync(file, held);
+      } catch {
+        // A worker claimed it between the listing and the rename.
+        continue;
+      }
+      const item = JSON.parse(fs.readFileSync(held, "utf-8")) as QueueItem;
       const { priority: _old, ...rest } = item;
-      // Written in place: the id is the due instant, and that did not move.
-      this.write(READY, priority === undefined ? rest : { ...rest, priority });
+      fs.writeFileSync(held, JSON.stringify(priority === undefined ? rest : { ...rest, priority }, null, 2), "utf-8");
+      fs.renameSync(held, file);
       changed += 1;
     }
 
@@ -188,10 +205,19 @@ export class FileQueue implements Queue {
     const full = path.join(this.root, dir);
     if (!fs.existsSync(full)) return [];
 
+    // An item can leave between the listing and the read — another worker
+    // claimed it — and an item that left is not one this listing holds.
     return fs
       .readdirSync(full)
       .filter((name) => name.endsWith(".json"))
-      .map((name) => JSON.parse(fs.readFileSync(path.join(full, name), "utf-8")) as QueueItem);
+      .flatMap((name) => {
+        try {
+          return [JSON.parse(fs.readFileSync(path.join(full, name), "utf-8")) as QueueItem];
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+          throw error;
+        }
+      });
   }
 }
 

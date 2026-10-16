@@ -3,7 +3,6 @@ import { Effect, HandOverTurn, WriteEffect, act, advance, isWrite, wait } from "
 import { Observation, Policy } from "./observation.js";
 import { TicketRecord } from "./record.js";
 import { TicketState } from "./state.js";
-import { hasReviewedHead } from "./review.js";
 
 /**
  * The same decision, with every write handed to the operator.
@@ -43,11 +42,11 @@ export function handOver(decided: Plan, record: TicketRecord, obs: Observation, 
 function turnOrWait(turns: HandOverTurn[], others: Effect[], record: TicketRecord, obs: Observation, policy: Policy): Plan {
   const said = new Set(record.handedOver ?? []);
   const write = turns[0]!.write;
-  if (write.type === "hand-off-to-qa" && obs.inQa) {
-    return advance("DONE", `${obs.ticket.id} is in QA, as the operator moved it`, ...others);
+  if (write.type === "hand-off-to-qa" && handedToQa(obs)) {
+    return advance("DONE", `${obs.ticket.id} is in QA and owned by ${obs.roster.qa.tracker}, as the operator left it`, ...others);
   }
   if (write.type === "request-rereview" && said.has(turns[0]!.key)) {
-    return observedReview(write.host, obs)
+    return observedReview(write.host, obs, record.handedOverAt?.[turns[0]!.key])
       ? advance("HUMAN_REVIEW", `${write.host} was asked to look again`, ...others)
       : wait(policy.pollBackoffMs, `waiting for the operator to ask ${write.host} to look again`, ...others);
   }
@@ -66,16 +65,35 @@ function turnOrWait(turns: HandOverTurn[], others: Effect[], record: TicketRecor
  */
 function pendingReview(record: TicketRecord, obs: Observation, policy: Policy): Plan | null {
   if (record.state !== "REVIEWER_ASSIGNED" || !record.reviewer) return null;
-  if (!(record.handedOver ?? []).includes(`request-review@${record.reviewer}`)) return null;
+  const key = `request-review@${record.reviewer}`;
+  if (!(record.handedOver ?? []).includes(key)) return null;
 
-  return observedReview(record.reviewer, obs)
+  return observedReview(record.reviewer, obs, record.handedOverAt?.[key])
     ? advance("HUMAN_REVIEW", `${record.reviewer} was asked to review`)
     : wait(policy.pollBackoffMs, `waiting for the operator to request a review from ${record.reviewer}`);
 }
 
-function observedReview(host: string, obs: Observation): boolean {
+/**
+ * The review the operator was asked to request: pending on the forge, or
+ * already submitted since they were asked. A review from before the turn is
+ * the round that sent the work back, not an answer to this one.
+ */
+function observedReview(host: string, obs: Observation, since: string | undefined): boolean {
   const pr: PullRequestView | null = obs.pullRequest;
-  return Boolean(pr && (pr.requestedReviewers.includes(host) || hasReviewedHead(pr, host)));
+  if (!pr) return false;
+  if (pr.requestedReviewers.includes(host)) return true;
+  return pr.reviews.some((review) => review.author === host && since !== undefined && review.submittedAt > since);
+}
+
+/**
+ * The QA handoff as it was asked for: the status moved and the QA owner
+ * assigned. A tracker that does not say who a ticket is assigned to leaves
+ * the status as the only thing there is to see.
+ */
+export function handedToQa(obs: Observation): boolean {
+  if (!obs.inQa) return false;
+  const assignee = obs.ticket.assignee;
+  return assignee === undefined || assignee?.toLowerCase() === obs.roster.qa.tracker.toLowerCase();
 }
 
 /** A question and an escalation move the state, and the state they reach waits for the answer. */

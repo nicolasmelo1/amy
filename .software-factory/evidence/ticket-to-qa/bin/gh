@@ -74,6 +74,7 @@ function pullRequestNode(repo, pull) {
     isDraft: pull.isDraft,
     reviewDecision: pull.reviewDecision,
     headRefOid: headOf(repo, pull.head),
+    headRefName: pull.head,
     changedFiles: pull.changedFiles,
     additions: pull.additions,
     deletions: pull.deletions,

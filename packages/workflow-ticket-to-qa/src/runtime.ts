@@ -237,14 +237,29 @@ export function ticketRuntime(
     ...(state === "QA_HANDOFF" && (ticket.repos?.length ?? 0) > 1 ? { repositories: await mergedIn(ticket) } : {}),
   });
 
-  /** Each of the ticket's repositories, and whether its pull request merged. */
-  const mergedIn = async (ticket: Ticket) =>
-    Promise.all(
-      (ticket.repos ?? []).map(async (repo) => ({
-        repo,
-        merged: Boolean((await deps.host.findPullRequestMentioning?.(repo, ticket.id))?.merged),
-      })),
+  /**
+   * Each of the ticket's repositories, and whether its pull request merged.
+   *
+   * Read by the ticket's id, because the other repositories' pull requests
+   * belong to other work items. A host that cannot find one that way is
+   * refused by name: reading "cannot tell" as "not merged" would hold the
+   * ticket at the handoff for ever.
+   */
+  const mergedIn = async (ticket: Ticket) => {
+    const find = requireMergeLookup(ticket);
+    return Promise.all(
+      (ticket.repos ?? []).map(async (repo) => ({ repo, merged: Boolean((await find(repo, ticket.id))?.merged) })),
     );
+  };
+
+  const requireMergeLookup = (ticket: Ticket) => {
+    if (!deps.host.findPullRequestMentioning) {
+      throw new Error(
+        `${ticket.id} is in ${(ticket.repos ?? []).join(" and ")}, and the mounted code host cannot find a pull request by a ticket's id, so it cannot say when every one has merged`,
+      );
+    }
+    return deps.host.findPullRequestMentioning.bind(deps.host);
+  };
 
   /** The outcomes bag, typed at the one boundary that knows what is in it. */
   const outcomesOf = (ctx: Context): EffectOutcomes => ctx.outcomes as EffectOutcomes;
@@ -365,7 +380,11 @@ export function ticketRuntime(
         effect.threadIds.includes(thread.id),
       );
       const ticket = ctx.observation.ticket;
-      const branch = branchOf(ticket);
+      // The pull request's own branch: one found by its title — a ticket
+      // renamed since, or opened by the operator from a branch of their
+      // choosing — is not on the branch the ticket names now, and a fix
+      // pushed there would never reach the threads it answered.
+      const branch = ctx.observation.pullRequest?.headBranch ?? branchOf(ticket);
       await deps.git.prepareBranch(ticket.repo, branch, ctx.record.id);
       const { value, run } = await judgeStep(deps.agent, {
         prompt: threadPrompt(ticket, threads, effect.from, deps.config.reviewerHints),
@@ -431,6 +450,7 @@ export function ticketRuntime(
       );
       const outcomes = outcomesOf(ctx);
       outcomes.handedOver = effect.turns.map((turn) => turn.key);
+      outcomes.handedOverAt = deps.now().toISOString();
       for (const { write } of effect.turns) {
         if (write.type === "assign-reviewer") outcomes.reviewer = write.host;
         if (write.type === "escalate") outcomes.escalation = { reason: write.reason, askedAt: deps.now().toISOString() };
@@ -462,14 +482,20 @@ export function ticketRuntime(
     policy: deps.policy,
     progress: deps.progress,
 
-    // One work item per repository for a ticket that names its
-    // repositories, and the ticket's own id for one that does not, so an
-    // install whose tracker never says keeps every id it had.
+    // One work item per repository. The ticket's own repository keeps the
+    // ticket's own id, so a ticket labelled into more repositories while its
+    // work is under way keeps that work item and gains one per new
+    // repository, instead of starting the same work again under a new name.
+    // A ticket in several is refused here, before any of it starts, when the
+    // host could never say they had all merged.
     async found() {
       return (await deps.tracker.inProgress()).flatMap((ticket) => {
         const priority = ticket.priority === undefined ? {} : { priority: ticket.priority };
-        if (!ticket.repos) return [{ workId: ticket.id, ...priority }];
-        return ticket.repos.map((repo) => ({ workId: workIdFor(ticket.id, repo), ...priority }));
+        if ((ticket.repos?.length ?? 0) > 1) requireMergeLookup(ticket);
+        return (ticket.repos ?? [ticket.repo]).map((repo) => ({
+          workId: repo === ticket.repo ? ticket.id : workIdFor(ticket.id, repo),
+          ...priority,
+        }));
       });
     },
 

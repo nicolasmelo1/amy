@@ -47,14 +47,39 @@ function runtime(overrides: Partial<TicketRuntimeDeps> = {}) {
 describe("a ticket in two repositories", () => {
   const spanning = ticket({ repo: BACKEND, repos: [BACKEND, FRONTEND], priority: 2 });
 
-  it("is discovered as one work item per repository, each with the ticket's urgency", async () => {
-    const found = await runtime({ tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([spanning, ticket({ id: "PROJ-1" })]) }) }).found();
+  const lookup = { findPullRequestMentioning: vi.fn().mockResolvedValue(null) };
+
+  it("is discovered as one work item per repository, the ticket's own keeping its id, each with its urgency", async () => {
+    const found = await runtime({
+      tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([spanning, ticket({ id: "PROJ-1" })]) }),
+      host: fakeHost(null, lookup),
+    }).found();
 
     expect(found).toEqual([
-      { workId: workIdFor("PROJ-1239", BACKEND), priority: 2 },
+      { workId: "PROJ-1239", priority: 2 },
       { workId: workIdFor("PROJ-1239", FRONTEND), priority: 2 },
       { workId: "PROJ-1" },
     ]);
+  });
+
+  it("keeps a running ticket's work item when it is labelled into more repositories", async () => {
+    const before = await runtime({ tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([ticket()]) }) }).found();
+    const after = await runtime({
+      tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([ticket({ repos: [FRONTEND, BACKEND] })]) }),
+      host: fakeHost(null, lookup),
+    }).found();
+
+    expect(before).toEqual([{ workId: "PROJ-1239" }]);
+    expect(after.map((found) => (typeof found === "string" ? found : found.workId))).toEqual([workIdFor("PROJ-1239", FRONTEND), "PROJ-1239"]);
+  });
+
+  it("refuses a ticket in several repositories when the host cannot say they merged", async () => {
+    const host = fakeHost();
+    delete (host as { findPullRequestMentioning?: unknown }).findPullRequestMentioning;
+
+    await expect(runtime({ tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([spanning]) }), host }).found()).rejects.toThrow(
+      /cannot find a pull request by a ticket's id/,
+    );
   });
 
   it("names each work item so it is a file name, and nothing is lost", () => {
@@ -93,6 +118,18 @@ describe("a ticket in two repositories", () => {
     ]);
   });
 
+  it("pushes review fixes to the pull request's own branch, wherever it was found", async () => {
+    const git = fakeGit();
+    const agent = fakeAgent();
+    await (runtime({ git, agent }).actions["address-threads"] as (e: unknown, c: unknown) => Promise<void>)(
+      { type: "address-threads", threadIds: [], from: "human" },
+      { record: record("HUMAN_FIX"), observation: observation({ pullRequest: pullRequest({ headBranch: "ops/opened-by-hand" }) }), outcomes: {} },
+    );
+
+    expect(git.prepareBranch).toHaveBeenCalledWith(expect.any(String), "ops/opened-by-hand", expect.any(String));
+    expect(git.commitAndPush.mock.calls[0]?.[1]).toBe("ops/opened-by-hand");
+  });
+
   it("reads whether every repository merged, at the QA handoff only", async () => {
     const findPullRequestMentioning = vi.fn(async (repo: string) => pullRequest({ merged: repo === BACKEND }));
     const built = runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(spanning) }), host: fakeHost(null, { findPullRequestMentioning }) });
@@ -120,8 +157,28 @@ describe("a ticket in two repositories", () => {
 
     expect(leader).toMatchObject({ kind: "advance", to: "DONE" });
     expect(actionsOf(leader).map((effect) => effect.type)).toEqual(["hand-off-to-qa"]);
+    // Behaviour changed: the other waits to see it handed over, so it can
+    // still take the handoff if the labels are reordered under it.
+    expect(other.kind).toBe("wait");
+    expect(actionsOf(other)).toEqual([]);
+  });
+
+  it("lets the others finish once they see it handed over", () => {
+    const merged = both({ [BACKEND]: true, [FRONTEND]: true });
+    const handed = observation({ ticket: { ...spanning, repo: FRONTEND, status: "In QA", assignee: "grace@example.test" }, repositories: merged, inQa: true });
+
+    const other = plan(record("QA_HANDOFF"), handed, policy);
+
     expect(other).toMatchObject({ kind: "advance", to: "DONE" });
     expect(actionsOf(other)).toEqual([]);
+  });
+
+  it("takes the handoff over when a reorder makes a waiting item the first", () => {
+    const reordered = [FRONTEND, BACKEND].map((repo) => ({ repo, merged: true }));
+
+    const now = plan(record("QA_HANDOFF"), observation({ ticket: { ...spanning, repo: FRONTEND }, repositories: reordered }), policy);
+
+    expect(actionsOf(now).map((effect) => effect.type)).toEqual(["hand-off-to-qa"]);
   });
 
   it("waits for a repository added after the first was under way", () => {

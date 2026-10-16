@@ -557,6 +557,17 @@ gates:
       - "compose.within_one_priority_the_queue_is_first_in_first_out"
       - "compose.a_priority_refreshed_on_discovery_reorders_the_queue"
       - "compose.without_the_option_the_queue_keeps_id_order"
+      # From the first review of this work: each is a mistake that shipped
+      # once in this pull request and is held to an observation here so it
+      # cannot ship again.
+      - "compose.a_new_branch_at_a_pushed_commit_is_published"
+      - "compose.reprioritizing_never_recreates_a_claimed_item"
+      - "compose.a_re_review_is_answered_only_after_it_was_asked"
+      - "compose.qa_is_done_only_when_status_and_owner_are_both_seen"
+      - "compose.a_follower_waits_until_it_sees_the_handoff"
+      - "compose.review_fixes_land_on_the_pull_requests_own_branch"
+      - "compose.a_host_that_cannot_read_merges_is_refused_by_name"
+      - "compose.labelling_a_running_ticket_keeps_its_work_item"
 
 rules:
   # L3 — A gate requires every check its plan's criteria name

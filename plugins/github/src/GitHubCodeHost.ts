@@ -23,6 +23,7 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
         isDraft
         reviewDecision
         headRefOid
+        headRefName
         changedFiles
         additions
         deletions
@@ -76,6 +77,7 @@ fragment PullRequestFields on PullRequest {
   isDraft
   reviewDecision
   headRefOid
+  headRefName
   changedFiles
   additions
   deletions
@@ -180,6 +182,7 @@ interface RawPullRequest {
   isDraft: boolean;
   reviewDecision: string | null;
   headRefOid: string;
+  headRefName: string;
   changedFiles: number;
   additions: number;
   deletions: number;
@@ -669,6 +672,7 @@ function toView(node: RawPullRequest): PullRequestView {
     // branch and one read by number agree about the same pull request.
     merged: node.merged,
     base: node.baseRefName,
+    headBranch: node.headRefName,
     requestedReviewers: node.reviewRequests.nodes
       .map((request) => request.requestedReviewer?.login ?? request.requestedReviewer?.slug)
       .filter((who): who is string => Boolean(who)),

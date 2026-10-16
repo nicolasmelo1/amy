@@ -157,6 +157,7 @@ describe("Git.commitAndPush", () => {
     ]);
     expect(runner.calls.find((c) => c.args[0] === "push")?.args).toEqual([
       "push",
+      "--porcelain",
       "--set-upstream",
       "origin",
       "ada/proj-1239",
@@ -171,9 +172,9 @@ describe("Git.commitAndPush", () => {
     const pushed = await new Git(runner, layout).commitAndPush("Northwind/northwind-backend", "b", "m");
 
     expect(pushed).toBe(false);
-    // Behaviour changed: a clean tree still asks whether an earlier commit
-    // was never pushed, and pushes nothing when none was.
-    expect(runner.calls.map((c) => c.args[0])).toEqual(["status", "rev-list"]);
+    // Behaviour changed: a clean tree asks git itself whether the branch
+    // has anything to publish, and git answering "up to date" is a no.
+    expect(runner.calls.map((c) => c.args[0])).toEqual(["status", "push"]);
   });
 });
 
@@ -255,7 +256,7 @@ describe("Git.commitAndPush, when an earlier push never arrived", () => {
   it("pushes the commit a clean tree still holds, and says so", async () => {
     const runner = new ScriptedRunner([
       { match: whenArgsInclude("status", "--porcelain"), result: { stdout: "" } },
-      { match: whenArgsInclude("rev-list", "--count"), result: { stdout: "1\n" } },
+      { match: whenArgsInclude("push"), result: { stdout: "To origin\n \trefs/heads/ada/proj-1239:refs/heads/ada/proj-1239\tabc..def\nDone\n" } },
     ]);
 
     const pushed = await new Git(runner, layout).commitAndPush("Northwind/northwind-backend", "ada/proj-1239", "m");
@@ -263,8 +264,7 @@ describe("Git.commitAndPush, when an earlier push never arrived", () => {
     expect(pushed).toBe(true);
     expect(runner.calls.map((c) => c.args.join(" "))).toEqual([
       "status --porcelain",
-      "rev-list --count HEAD --not --remotes=origin",
-      "push --set-upstream origin ada/proj-1239",
+      "push --porcelain --set-upstream origin ada/proj-1239",
     ]);
   });
 });

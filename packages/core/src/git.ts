@@ -197,22 +197,23 @@ export class Git {
    * Pushes what the branch holds that the remote does not, as a fast-forward
    * or not at all.
    *
-   * Returns false when there was nothing to push. A remote branch somebody
-   * else moved is refused by git, and the refusal is rethrown naming the
-   * branch, so the caller learns which one to fetch rather than reading
-   * git's own words about refs. Nothing local is touched by a refusal.
+   * Returns false when the remote branch already held exactly this. The
+   * answer is git's own, about the named branch: a count of commits missing
+   * from every remote ref said "nothing to push" for a new branch cut at a
+   * commit another branch had already pushed, and the branch never appeared.
+   *
+   * A remote branch somebody else moved is refused by git, and the refusal
+   * is rethrown naming the branch, so the caller learns which one to fetch
+   * rather than reading git's own words about refs. Nothing local is touched
+   * by a refusal.
    */
   async push(repo: string, branch: string, workId?: string): Promise<boolean> {
-    const cwd = this.cwdFor(repo, workId);
-    const unpushed = await this.gitIn(cwd, "rev-list", "--count", "HEAD", "--not", "--remotes=origin");
-    if (Number(unpushed.stdout.trim()) === 0) return false;
-    await this.pushIn(cwd, branch);
-    return true;
+    return this.pushIn(this.cwdFor(repo, workId), branch);
   }
 
-  private async pushIn(cwd: string, branch: string): Promise<void> {
-    const result = await this.runner.run("git", ["push", "--set-upstream", "origin", branch], { cwd });
-    if (result.ok) return;
+  private async pushIn(cwd: string, branch: string): Promise<boolean> {
+    const result = await this.runner.run("git", ["push", "--porcelain", "--set-upstream", "origin", branch], { cwd });
+    if (result.ok) return updated(result.stdout, branch);
     const said = `${result.stderr}\n${result.stdout}`;
     if (/non-fast-forward|fetch first|\[rejected\]/.test(said)) {
       throw new Error(
@@ -221,6 +222,7 @@ export class Git {
     }
     throw new Error(`git push --set-upstream origin ${branch} failed in ${cwd}: ${result.stderr || result.stdout}`);
   }
+
 
   /**
    * Commits and pushes whatever the agent left behind, in one call.
@@ -237,14 +239,11 @@ export class Git {
     message: string,
     workId?: string,
   ): Promise<boolean> {
-    // A commit just made is unpushed by definition, so it goes straight to
-    // the push; only a clean tree has to ask whether an earlier one never
-    // arrived.
-    if (await this.commit(repo, message, workId)) {
-      await this.pushIn(this.cwdFor(repo, workId), branch);
-      return true;
-    }
-    return this.push(repo, branch, workId);
+    // A clean tree still pushes: a commit an earlier push never delivered
+    // is something to push, and only git knows whether the branch has it.
+    const committed = await this.commit(repo, message, workId);
+    const pushed = await this.push(repo, branch, workId);
+    return committed || pushed;
   }
 
   /** The tree the work happens in, for the mode this install chose. */
@@ -268,4 +267,15 @@ export class Git {
     }
     return result;
   }
+}
+
+/**
+ * Whether `git push --porcelain` moved the named branch: a line for it
+ * flagged new (`*`) or fast-forwarded (a space), rather than up to date (`=`).
+ */
+function updated(porcelain: string, branch: string): boolean {
+  return porcelain.split("\n").some((line) => {
+    const [flag, refs] = line.split("\t");
+    return (flag === "*" || flag === " ") && (refs ?? "").endsWith(`:refs/heads/${branch}`);
+  });
 }

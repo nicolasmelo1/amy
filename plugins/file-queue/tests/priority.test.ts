@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -89,5 +89,62 @@ describe("FileQueue ordered by priority", () => {
     queue.enqueue({ workId: "URGENT", reason: "found", priority: 1 }, later(1));
 
     expect(claimAll(queue, later(10))).toEqual(["LOW", "URGENT"]);
+  });
+});
+
+describe("FileQueue reprioritizing while a worker claims", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-priority-race-"));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("never brings back an item a worker claimed after it was listed", () => {
+    const queue = new FileQueue(root, "priority");
+    const worker = new FileQueue(root, "priority");
+    queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+
+    // The worst interleaving, made certain: the worker claims the item after
+    // it was listed and read, at the instant it is about to be rewritten —
+    // whether the rewrite takes it by rename or writes over it.
+    let claimed: string | undefined;
+    const claimFirst = () => {
+      if (claimed !== undefined) return;
+      claimed = "";
+      claimed = worker.claim(later(10))?.workId ?? "";
+    };
+    const rename = fs.renameSync.bind(fs);
+    const writeFile = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
+      if (String(to).endsWith(".reprioritizing")) claimFirst();
+      rename(from, to);
+    });
+    vi.spyOn(fs, "writeFileSync").mockImplementation(((file: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
+      if (String(file).includes(`${path.sep}ready${path.sep}`) && String(file).endsWith(".json")) claimFirst();
+      (writeFile as (...a: unknown[]) => void)(file, ...rest);
+    }) as typeof fs.writeFileSync);
+
+    const changed = queue.reprioritize("A", 1);
+    vi.restoreAllMocks();
+
+    expect(claimed).toBe("A");
+    expect(changed).toBe(0);
+    expect(queue.pending()).toEqual([]);
+    expect(worker.claim(later(10))).toBeNull();
+  });
+
+  it("leaves no half-written item behind for a reader", () => {
+    const queue = new FileQueue(root, "priority");
+    queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+
+    queue.reprioritize("A", 1);
+
+    expect(fs.readdirSync(path.join(root, "ready")).every((name) => name.endsWith(".json"))).toBe(true);
+    expect(queue.pending()[0]?.priority).toBe(1);
   });
 });

@@ -26,6 +26,7 @@ const ISSUE_FIELDS = `
   url
   branchName
   priority
+  assignee { email }
   parent { id }
   labels { nodes { name } }
   state { name }
@@ -41,6 +42,7 @@ interface IssueNode {
   branchName: string;
   /** 0 is no priority, then 1 urgent to 4 low. */
   priority: number;
+  assignee: { email: string } | null;
   /** The parent is the tracker-native shared brief anchor for child work. */
   parent: { id: string } | null;
   labels: { nodes: { name: string }[] } | null;
@@ -355,6 +357,7 @@ export class LinearTracker implements Tracker, FeatureTracker {
       // none — a ticket without a label is a real ticket, not an error.
       labels: (node.labels?.nodes ?? []).map((label) => label.name),
       ...this.repositoriesOf(node),
+      assignee: node.assignee?.email ?? null,
       // Linear's 0 is "nobody set one", which is an absence, not the most
       // urgent value of all.
       ...(node.priority > 0 ? { priority: node.priority } : {}),
@@ -362,17 +365,20 @@ export class LinearTracker implements Tracker, FeatureTracker {
   }
 
   /**
-   * The team's repository, or — for a ticket labelled into more than one —
-   * every labelled repository, in label order.
+   * The team's repository, always, and — for a ticket labelled into
+   * repositories — every labelled one, in label order.
+   *
+   * `repo` stays the team's even when labels say more, because it is the
+   * repository a ticket's work started in before anybody labelled it, and a
+   * workflow keys that work on it: moving it would start the same work a
+   * second time under another name.
    */
   private repositoriesOf(node: IssueNode): { repo: string; repos?: string[] } {
+    const repo = this.config.repoByTeam[node.team.key] ?? this.config.defaultRepo;
     const byLabel = this.config.repoByLabel ?? {};
     const labelled = [
       ...new Set((node.labels?.nodes ?? []).flatMap((label) => byLabel[label.name] ?? [])),
     ];
-    if (labelled.length === 0) {
-      return { repo: this.config.repoByTeam[node.team.key] ?? this.config.defaultRepo };
-    }
-    return { repo: labelled[0]!, repos: labelled };
+    return labelled.length === 0 ? { repo } : { repo, repos: labelled };
   }
 }

@@ -53,6 +53,12 @@ export interface TicketRecord extends WorkRecord {
    * again.
    */
   handedOver?: string[];
+  /**
+   * When each of those was said, by key. A review the operator was asked to
+   * request counts only if it was requested, or submitted, after this: a
+   * review already on the head from the round before is not an answer.
+   */
+  handedOverAt?: Record<string, string>;
 }
 
 export function newRecord(id: string, now: Date): TicketRecord {

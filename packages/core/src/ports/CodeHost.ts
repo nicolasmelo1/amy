@@ -122,6 +122,13 @@ export interface PullRequestView {
   merged: boolean;
   /** The branch it is aimed at, as the forge names it. */
   base: string;
+  /**
+   * The branch it is opened from. Optional for a host that cannot say, and
+   * read by a workflow that found the pull request some other way than by
+   * its branch — by title, say — and has to push its fixes where the pull
+   * request will see them.
+   */
+  headBranch?: string;
   reviews: readonly ReviewSubmission[];
   threads: readonly ReviewThread[];
   requestedReviewers: readonly string[];

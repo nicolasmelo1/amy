@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PullRequestView, ReviewThread, actionsOf } from "@amykit/core";
-import { HEAD, WORKDAY, botReview, botThread, observation, policy as machinePolicy, pullRequest, record, review } from "@amykit/test-fixtures";
+import { HEAD, WORKDAY, botReview, botThread, observation, policy as machinePolicy, pullRequest, record, review, ticket } from "@amykit/test-fixtures";
 import { Effect, HandOverTurn, isWrite } from "../src/effects.js";
 import { plan } from "../src/machine.js";
 import { Observation, Policy } from "../src/observation.js";
@@ -55,7 +55,7 @@ class OperatorWorld {
         ...pr,
         reviewDecision: "APPROVED",
         requestedReviewers: pr.requestedReviewers.filter((r) => r !== reviewer),
-        reviews: [...pr.reviews, review({ author: reviewer, state: "APPROVED", commitSha: pr.headSha })],
+        reviews: [...pr.reviews, review({ author: reviewer, state: "APPROVED", commitSha: pr.headSha, submittedAt: new Date(this.clock).toISOString() })],
       };
     }
   }
@@ -121,6 +121,7 @@ class OperatorWorld {
             if (turn.write.type === "assign-reviewer") outcomes.reviewer = turn.write.host;
           }
           outcomes.handedOver = effect.turns.map((turn) => turn.key);
+          outcomes.handedOverAt = new Date(this.clock).toISOString();
           break;
         default:
           break;
@@ -238,5 +239,48 @@ describe("a handed-off write, one look at a time", () => {
     const decision = plan(record("PR_OPEN"), observation(), machinePolicy);
 
     expect(actionsOf(decision)).toEqual([{ type: "open-pull-request" }]);
+  });
+});
+
+describe("a review the operator was asked to request again", () => {
+  const asked = "2026-09-03T12:00:00.000Z";
+  const key = `request-review@edsger@${HEAD}`;
+  const reReview = (overrides: Partial<PullRequestView>) =>
+    plan(
+      record("RE_REVIEW", { reviewer: "edsger", handedOver: [key], handedOverAt: { [key]: asked } }),
+      observation({ pullRequest: pullRequest(overrides) }),
+      policy,
+    );
+
+  it("is not answered by the review that sent the work back, on the same head", () => {
+    const decision = reReview({ reviews: [review({ author: "edsger", state: "CHANGES_REQUESTED", commitSha: HEAD, submittedAt: "2026-09-03T11:00:00.000Z" })] });
+
+    expect(decision.kind).toBe("wait");
+  });
+
+  it("is answered by a request pending on the forge", () => {
+    expect(reReview({ requestedReviewers: ["edsger"] })).toMatchObject({ kind: "advance", to: "HUMAN_REVIEW" });
+  });
+
+  it("is answered by a review submitted after it was asked", () => {
+    const decision = reReview({ reviews: [review({ author: "edsger", state: "APPROVED", commitSha: HEAD, submittedAt: "2026-09-03T12:30:00.000Z" })] });
+
+    expect(decision).toMatchObject({ kind: "advance", to: "HUMAN_REVIEW" });
+  });
+});
+
+describe("a QA handoff the operator was asked to make", () => {
+  const said = record("QA_HANDOFF", { handedOver: ["hand-off-to-qa"] });
+
+  it("is not done while the status moved and the owner did not", () => {
+    const decision = plan(said, observation({ inQa: true, ticket: ticket({ status: "In QA", assignee: "ada@example.test" }) }), policy);
+
+    expect(decision.kind).toBe("wait");
+  });
+
+  it("is done once both are there", () => {
+    const decision = plan(said, observation({ inQa: true, ticket: ticket({ status: "In QA", assignee: "Grace@Example.test" }) }), policy);
+
+    expect(decision).toMatchObject({ kind: "advance", to: "DONE" });
   });
 });

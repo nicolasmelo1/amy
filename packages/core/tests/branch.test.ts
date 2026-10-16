@@ -183,6 +183,18 @@ describe("a commit is not a push", () => {
     expect(remoteTip("amy/item-1")).toBe(theirs);
   });
 
+  it("publishes a new branch cut at a commit another branch already pushed", async () => {
+    await git().prepareBranch("acme/widgets", "amy/parent");
+    fs.writeFileSync(path.join(checkout, "parent.md"), "parent\n");
+    await git().commitAndPush("acme/widgets", "amy/parent", "the parent");
+    run(checkout, "checkout", "-q", "-b", "amy/child");
+
+    expect(await git().push("acme/widgets", "amy/child")).toBe(true);
+
+    expect(remoteTip("amy/child")).toBe(remoteTip("amy/parent"));
+    expect(await git().push("acme/widgets", "amy/child")).toBe(false);
+  });
+
   it("still commits and pushes in one call", async () => {
     await git().prepareBranch("acme/widgets", "amy/item-1");
     fs.writeFileSync(path.join(checkout, "work.md"), "work\n");
