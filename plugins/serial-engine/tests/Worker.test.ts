@@ -317,13 +317,19 @@ describe("Worker", () => {
 
   it("sweeps finished queue items as it goes", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "old work" }, clock);
-    queue.complete(queue.claim(clock)!);
+    const done = queue.claim(clock)!;
+    queue.complete(done);
+    // The queue ages a finished item by its file's mtime, which is the real
+    // clock; pin it to the test's, or this passes only near WORKDAY. The item
+    // the tick itself finishes keeps a real mtime, so only the old one is asked
+    // about.
+    fs.utimesSync(path.join(root, "queue", "done", `${done.id}.json`), clock, clock);
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
     clock = new Date(WORKDAY.getTime() + 40 * 24 * 60 * 60 * 1000);
     await build().tick();
 
-    expect(queue.completed()).toHaveLength(0);
+    expect(queue.completed().map((item) => item.id)).not.toContain(done.id);
   });
 });
 
