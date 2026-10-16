@@ -117,7 +117,9 @@ printf '1.0.0' > "$work/registry-answer"
 # first install left there — the same ranges, already on disk.
 cli_registry="$work/cli-registry"
 mkdir -p "$cli_registry/contents"
-tar xzf "$work/lib/packages/amykit-cli-0.4.0.tgz" -C "$cli_registry/contents"
+# By glob, not by version: a release moves the version and this must not.
+set -- "$work/lib/packages/amykit-cli-"*.tgz
+tar xzf "$1" -C "$cli_registry/contents"
 node - "$cli_registry/contents/package" <<'NODE'
 const fs = require("node:fs");
 const path = require("node:path");
