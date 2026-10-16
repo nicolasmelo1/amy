@@ -233,6 +233,11 @@
           "description": ""
         },
         {
+          "title": "A private workflow composes the shipped one",
+          "path": "/design/a-private-workflow-composes-the-shipped-one",
+          "description": ""
+        },
+        {
           "title": "A project is three phases, and amy reads them",
           "path": "/design/a-project-is-three-phases",
           "description": ""
@@ -831,6 +836,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "What a private workflow had to write for itself, the shipped one now does.",
+          "slug": "what-a-private-workflow-had-to-write-for-itself-the-shipped-one-now-does"
         },
         {
           "depth": 2,
@@ -1532,6 +1542,113 @@
           "depth": 2,
           "title": "Acceptance criteria",
           "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-private-workflow-composes-the-shipped-one",
+      "file": "docs/design/a-private-workflow-composes-the-shipped-one.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-private-workflow-composes-the-shipped-one.md",
+      "title": "A private workflow composes the shipped one",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The rows",
+          "slug": "the-rows"
+        },
+        {
+          "depth": 3,
+          "title": "A status reads the way the host writes it",
+          "slug": "a-status-reads-the-way-the-host-writes-it"
+        },
+        {
+          "depth": 3,
+          "title": "A commit is not a push",
+          "slug": "a-commit-is-not-a-push"
+        },
+        {
+          "depth": 3,
+          "title": "A thread knows its file",
+          "slug": "a-thread-knows-its-file"
+        },
+        {
+          "depth": 3,
+          "title": "The code host finds work by its ticket",
+          "slug": "the-code-host-finds-work-by-its-ticket"
+        },
+        {
+          "depth": 3,
+          "title": "The shipped ticket workflow can hand its writes to you",
+          "slug": "the-shipped-ticket-workflow-can-hand-its-writes-to-you"
+        },
+        {
+          "depth": 3,
+          "title": "A ticket can span repositories",
+          "slug": "a-ticket-can-span-repositories"
+        },
+        {
+          "depth": 3,
+          "title": "A queue can be ordered",
+          "slug": "a-queue-can-be-ordered"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        },
+        {
+          "depth": 3,
+          "title": "A status reads the way the host writes it",
+          "slug": "a-status-reads-the-way-the-host-writes-it"
+        },
+        {
+          "depth": 3,
+          "title": "A commit is not a push",
+          "slug": "a-commit-is-not-a-push"
+        },
+        {
+          "depth": 3,
+          "title": "A thread knows its file",
+          "slug": "a-thread-knows-its-file"
+        },
+        {
+          "depth": 3,
+          "title": "The code host finds work by its ticket",
+          "slug": "the-code-host-finds-work-by-its-ticket"
+        },
+        {
+          "depth": 3,
+          "title": "The shipped ticket workflow can hand its writes to you",
+          "slug": "the-shipped-ticket-workflow-can-hand-its-writes-to-you"
+        },
+        {
+          "depth": 3,
+          "title": "A ticket can span repositories",
+          "slug": "a-ticket-can-span-repositories"
+        },
+        {
+          "depth": 3,
+          "title": "A queue can be ordered",
+          "slug": "a-queue-can-be-ordered"
+        },
+        {
+          "depth": 3,
+          "title": "The private workflow",
+          "slug": "the-private-workflow"
+        },
+        {
+          "depth": 2,
+          "title": "Not here",
+          "slug": "not-here"
         }
       ]
     },
@@ -3877,6 +3994,11 @@
         },
         {
           "depth": 3,
+          "title": "L6.A_PUSH_NEVER_FORCES",
+          "slug": "l6apushneverforces"
+        },
+        {
+          "depth": 3,
           "title": "L6.BRANCH_RESET_LOSES_COMMITS",
           "slug": "l6branchresetlosescommits"
         },
@@ -4345,6 +4467,12 @@
         "doc": ""
       },
       {
+        "name": "hand-over",
+        "port": "notifier",
+        "method": "announce",
+        "doc": "A write handed to the operator instead of made: said once, in the work's thread when there is one and the notifier otherwise, so the operator can make it where a team reads. Dispatched to the notifier, which every install mounts, because the thread is optional and the turn is not."
+      },
+      {
         "name": "implement",
         "port": "agent",
         "method": "ask",
@@ -4500,6 +4628,11 @@
             "doc": "The forge facts a stacked child needs to choose its base."
           },
           {
+            "name": "findPullRequestMentioning",
+            "signature": "findPullRequestMentioning(repo: string, id: string): Promise<PullRequestView | null>",
+            "doc": "The pull request whose title names this id as a whole word, open or merged, in one repository."
+          },
+          {
             "name": "openPullRequest",
             "signature": "openPullRequest(request: OpenPullRequestRequest): Promise<number>",
             "doc": ""
@@ -4533,6 +4666,11 @@
             "name": "changesRequestedOf",
             "signature": "changesRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>",
             "doc": "The open pull requests one login's review left changes requested on, in these repositories and no others."
+          },
+          {
+            "name": "authoredWithChangesRequested",
+            "signature": "authoredWithChangesRequested(login: string, repos: readonly string[]): Promise<ReviewRequest[]>",
+            "doc": "The open pull requests one login authored that somebody asked to change, in these repositories and no others."
           },
           {
             "name": "pullRequest",
@@ -4750,6 +4888,11 @@
             "name": "promote",
             "signature": "promote(workId: string, now: Date): number",
             "doc": "Brings every look at one piece of work that is still held back forward to now, and says how many moved."
+          },
+          {
+            "name": "reprioritize",
+            "signature": "reprioritize(workId: string, priority: number | undefined): number",
+            "doc": "Sets the urgency of every look at one piece of work still waiting, and says how many changed."
           },
           {
             "name": "recover",
@@ -6113,7 +6256,8 @@
       {
         "kind": "notifier",
         "actions": [
-          "announce"
+          "announce",
+          "hand-over"
         ],
         "mountedBy": [
           "@amykit/plugin-notify-fanout"
@@ -6616,6 +6760,13 @@
             "description": "where the queue is kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not claim each other's work"
           },
           {
+            "name": "order",
+            "type": "string",
+            "required": false,
+            "default": "id",
+            "description": "`id` takes due items in the order they became due; `priority` takes the most urgent first, as the workflow's discovery reported it, and the order they became due within one priority"
+          },
+          {
             "name": "retentionDays",
             "type": "number",
             "required": false,
@@ -6852,6 +7003,13 @@
             "required": false,
             "default": "https://api.linear.app/graphql",
             "description": "the GraphQL endpoint to talk to. Linear's own by default, and the one thing that has to move for a stand-in tracker to take its place in an end-to-end run"
+          },
+          {
+            "name": "repoByLabel",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "which repository a label puts a ticket's work in. A ticket labelled into two is two pieces of work, one per repository; a ticket with none of these labels stays in its team's repository"
           },
           {
             "name": "repoByTeam",
@@ -7279,7 +7437,7 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default"
+            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all. Anything left out keeps its default"
           },
           {
             "name": "qaStatusName",
@@ -7413,6 +7571,60 @@
   ],
   "factory": {
     "gates": [
+      {
+        "name": "a-private-workflow-composes",
+        "activation": [
+          "packages/core/src/git.ts",
+          "packages/core/src/mount.ts",
+          "packages/core/src/ports/CodeHost.ts",
+          "packages/core/src/ports/Conversation.ts",
+          "packages/core/src/ports/Notifier.ts",
+          "packages/core/src/ports/Queue.ts",
+          "packages/core/src/ports/Ticketing.ts",
+          "packages/core/src/operator.ts",
+          "packages/core/src/runtime.ts",
+          "packages/workflow-ticket-to-qa/src/**",
+          "plugins/linear/src/**",
+          "plugins/serial-engine/src/**",
+          "plugins/github/src/**",
+          "plugins/file-queue/src/**"
+        ],
+        "evidence": ".software-factory/evidence/a-private-workflow-composes.json",
+        "plan": "docs/design/a-private-workflow-composes-the-shipped-one.md",
+        "assertions": [
+          "compose.a_lower_case_success_reads_as_passing",
+          "compose.a_lower_case_failure_reads_as_failing",
+          "compose.work_waiting_on_a_status_moves_when_it_passes",
+          "compose.a_commit_without_a_push_leaves_the_remote_where_it_was",
+          "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
+          "compose.a_refused_push_keeps_the_local_commit",
+          "compose.commit_and_push_still_delivers_in_one_call",
+          "compose.a_review_thread_carries_the_file_it_is_on",
+          "compose.a_renamed_ticket_still_finds_its_pull_request",
+          "compose.a_merged_pull_request_is_found_by_its_ticket",
+          "compose.changes_requested_are_found_from_the_authors_side",
+          "compose.a_workflow_that_claims_no_writes_reads_ancestry",
+          "compose.a_workflow_that_claims_no_writes_still_reaches_none",
+          "compose.handed_off_nothing_is_written_on_the_tracker",
+          "compose.handed_off_nothing_is_written_on_the_code_host",
+          "compose.handed_off_the_ticket_still_reaches_qa",
+          "compose.a_handed_off_write_is_said_once",
+          "compose.a_handed_off_write_is_said_in_the_works_thread",
+          "compose.with_no_thread_a_handed_off_write_goes_to_the_notifier",
+          "compose.nothing_moves_until_the_handed_off_effect_is_observed",
+          "compose.handed_off_the_declaration_claims_no_writes",
+          "compose.a_ticket_in_two_repositories_is_two_work_items",
+          "compose.each_repository_walks_in_its_own_tree",
+          "compose.qa_waits_while_one_repository_is_unmerged",
+          "compose.qa_receives_the_ticket_once_when_every_repository_is_merged",
+          "compose.a_repository_added_late_is_a_new_work_item_qa_waits_for",
+          "compose.the_queue_takes_the_most_urgent_first",
+          "compose.within_one_priority_the_queue_is_first_in_first_out",
+          "compose.a_priority_refreshed_on_discovery_reorders_the_queue",
+          "compose.without_the_option_the_queue_keeps_id_order"
+        ],
+        "scenario": ".software-factory/evidence/a-private-workflow-composes-scenario.sh"
+      },
       {
         "name": "a-workflow-of-your-own",
         "activation": [
@@ -8108,6 +8320,13 @@
         "reason": ""
       },
       {
+        "id": "L6.A_PUSH_NEVER_FORCES",
+        "enabled": true,
+        "settings": {},
+        "title": "A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md)",
+        "reason": ""
+      },
+      {
         "id": "L6.BRANCH_RESET_LOSES_COMMITS",
         "enabled": true,
         "settings": {
@@ -8219,7 +8438,52 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "a-private-workflow-composes-the-shipped-one",
+        "title": "What a private workflow had to write for itself, the shipped one now does.",
+        "body": "- A commit status GitHub returns in lower case reads as passing or failing; every one used to read as running.\n- `Git` commits without pushing, and `push` refuses anything that is not a fast-forward, naming the branch. `commitAndPush` is built on the two.\n- A review thread carries the file it is on.\n- The code host finds a pull request by the id in its title, open or merged, and the author's pull requests somebody asked to change. A workflow that claims no writes is handed `pullRequestAncestry` and both of these.\n- `ticket-to-qa` takes `policy.writes: operator`: every tracker and code-host write is said once, in the work's thread or through the notifier, and the machine waits until it sees it made. The workflow then claims no writes at all.\n- A ticket Linear labels into several repositories (`repoByLabel`) is one work item per repository, `TICKET@owner%2Fname`, and QA receives it once, when every one has merged.\n- `file-queue` takes `order: priority`: the most urgent due item first, first in first out within one priority, refreshed on every discovery from the tracker's own urgency.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-queue",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

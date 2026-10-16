@@ -26,6 +26,8 @@ export interface EffectOutcomes {
   escalation?: Escalation;
   /** Set when the owner has settled an escalation. */
   escalationResolvedAt?: string;
+  /** The keys of the writes this look handed to the operator. */
+  handedOver?: string[];
 }
 
 /**
@@ -51,6 +53,10 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   if (outcomes.reviewer) next.reviewer = outcomes.reviewer;
 
   mergeVerdicts(next, outcomes.verdicts);
+
+  if (outcomes.handedOver?.length) {
+    next.handedOver = [...new Set([...(record.handedOver ?? []), ...outcomes.handedOver])];
+  }
 
   if (outcomes.escalation) next.escalation = outcomes.escalation;
 

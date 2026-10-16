@@ -18,11 +18,21 @@ const DONE = "done";
  * Claiming renames the file into `running/`. Rename is atomic on one
  * filesystem, so two workers cannot take the same item even though the
  * queue is only a directory.
+ *
+ * Due items are taken in id order — the instant each became due — unless
+ * the queue was told to order by priority: then the most urgent due item
+ * goes first, and id order breaks the tie, which is first in, first out
+ * within one priority.
  */
+export type QueueOrder = "id" | "priority";
+
 export class FileQueue implements Queue {
   private sequence = 0;
 
-  constructor(private readonly root: string) {
+  constructor(
+    private readonly root: string,
+    private readonly order: QueueOrder = "id",
+  ) {
     for (const dir of [READY, RUNNING, DONE]) {
       fs.mkdirSync(path.join(this.root, dir), { recursive: true });
     }
@@ -39,6 +49,7 @@ export class FileQueue implements Queue {
       notBefore: notBefore.toISOString(),
       attempt: request.attempt ?? 0,
       reason: request.reason,
+      ...(request.priority !== undefined ? { priority: request.priority } : {}),
       ...(request.progress ? { progress: request.progress } : {}),
     };
 
@@ -49,7 +60,7 @@ export class FileQueue implements Queue {
   claim(now: Date): QueueItem | null {
     // Item ids begin with the instant they became due, so the earliest due
     // item is simply the first name in sorted order.
-    const due = this.ready(now).sort((a, b) => a.id.localeCompare(b.id));
+    const due = this.ready(now).sort((a, b) => this.compare(a, b));
     const next = due[0];
     if (!next) return null;
 
@@ -87,11 +98,25 @@ export class FileQueue implements Queue {
       // Promotion is the operator's explicit release after changing the
       // world. A ceiling streak describes the old world, so it must not make
       // the released look park again before it can observe the new evidence.
-      this.enqueue({ workId, reason: item.reason, attempt: item.attempt }, now);
+      this.enqueue({ workId, reason: item.reason, attempt: item.attempt, priority: item.priority }, now);
       moved += 1;
     }
 
     return moved;
+  }
+
+  reprioritize(workId: string, priority: number | undefined): number {
+    let changed = 0;
+
+    for (const item of this.read(READY)) {
+      if (item.workId !== workId || item.priority === priority) continue;
+      const { priority: _old, ...rest } = item;
+      // Written in place: the id is the due instant, and that did not move.
+      this.write(READY, priority === undefined ? rest : { ...rest, priority });
+      changed += 1;
+    }
+
+    return changed;
   }
 
   recover(olderThanMs: number, now: Date): QueueItem[] {
@@ -137,6 +162,14 @@ export class FileQueue implements Queue {
 
   completed(): QueueItem[] {
     return this.read(DONE);
+  }
+
+  private compare(a: QueueItem, b: QueueItem): number {
+    if (this.order === "priority") {
+      const urgency = (a.priority ?? Infinity) - (b.priority ?? Infinity);
+      if (urgency !== 0 && !Number.isNaN(urgency)) return urgency;
+    }
+    return a.id.localeCompare(b.id);
   }
 
   private file(dir: string, item: QueueItem): string {

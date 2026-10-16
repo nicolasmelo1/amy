@@ -78,6 +78,20 @@ export interface Ticket {
   repo: string;
 
   /**
+   * Every repository the work spans, where the tracker can tell — `repo`
+   * first. Absent where it cannot, which is a ticket in `repo` alone. A
+   * workflow that splits work by repository reads this, and one that does
+   * not keeps reading `repo`.
+   */
+  repos?: readonly string[];
+
+  /**
+   * How urgent the tracker says it is, smaller first. Absent where the
+   * tracker has no urgency or nobody set one.
+   */
+  priority?: number;
+
+  /**
    * The brief this ticket's work belongs to, when a grooming workflow kept
    * one: its id, for the workflow's runtime to resolve against the mounted
    * brief store, and the rendered text beside it, so a step that never asks

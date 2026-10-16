@@ -449,6 +449,36 @@ describe("contributions", () => {
     expect(opened).toBe(0);
   });
 
+  it("hands a workflow that claims no writes every code-host reader, ancestry included", async () => {
+    let context: PluginContext | undefined;
+    let writes = 0;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [], codeHostWrites: [] });
+        context = ctx;
+      },
+    });
+    const host = plugin("@amykit/plugin-code-host", {
+      register: (r) => r.port("code-host", {
+        pullRequestAncestry: async () => ({ state: "merged", headBranch: "ada/parent", baseBranch: "main" }),
+        findPullRequestMentioning: async () => null,
+        authoredWithChangesRequested: async () => [],
+        openPullRequest: async () => { writes += 1; },
+        merge: async () => { writes += 1; },
+      }),
+    });
+
+    await mount([workflow, host], {}, HOST);
+
+    const port = context!.port("code-host") as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    await expect(port["pullRequestAncestry"]!("acme/widgets", 90)).resolves.toEqual({ state: "merged", headBranch: "ada/parent", baseBranch: "main" });
+    await expect(port["findPullRequestMentioning"]!("acme/widgets", "BILL-1")).resolves.toBeNull();
+    await expect(port["authoredWithChangesRequested"]!("ada", ["acme/widgets"])).resolves.toEqual([]);
+    await expect(port["openPullRequest"]!()).rejects.toThrow("open-pull-request");
+    await expect(port["merge"]!()).rejects.toThrow("merge");
+    expect(writes).toBe(0);
+  });
+
   it("does not expose adapter internals through a workflow's narrowed port", async () => {
     let context: PluginContext | undefined;
     const workflow = plugin("@amykit/workflow-toy", {

@@ -10,6 +10,12 @@ export interface LinearConfig {
   repoByTeam: Readonly<Record<string, string>>;
   /** Used for a team that is not in the map. */
   defaultRepo: string;
+  /**
+   * Which repository a label puts work in, for a ticket that spans more than
+   * one. A ticket carrying none of these labels is in its team's repository
+   * alone, exactly as before.
+   */
+  repoByLabel?: Readonly<Record<string, string>>;
 }
 
 const ISSUE_FIELDS = `
@@ -19,6 +25,7 @@ const ISSUE_FIELDS = `
   description
   url
   branchName
+  priority
   parent { id }
   labels { nodes { name } }
   state { name }
@@ -32,6 +39,8 @@ interface IssueNode {
   description: string | null;
   url: string;
   branchName: string;
+  /** 0 is no priority, then 1 urgent to 4 low. */
+  priority: number;
   /** The parent is the tracker-native shared brief anchor for child work. */
   parent: { id: string } | null;
   labels: { nodes: { name: string }[] } | null;
@@ -345,7 +354,25 @@ export class LinearTracker implements Tracker, FeatureTracker {
       // as given, in the order the tracker keeps them, empty where there are
       // none — a ticket without a label is a real ticket, not an error.
       labels: (node.labels?.nodes ?? []).map((label) => label.name),
-      repo: this.config.repoByTeam[node.team.key] ?? this.config.defaultRepo,
+      ...this.repositoriesOf(node),
+      // Linear's 0 is "nobody set one", which is an absence, not the most
+      // urgent value of all.
+      ...(node.priority > 0 ? { priority: node.priority } : {}),
     };
+  }
+
+  /**
+   * The team's repository, or — for a ticket labelled into more than one —
+   * every labelled repository, in label order.
+   */
+  private repositoriesOf(node: IssueNode): { repo: string; repos?: string[] } {
+    const byLabel = this.config.repoByLabel ?? {};
+    const labelled = [
+      ...new Set((node.labels?.nodes ?? []).flatMap((label) => byLabel[label.name] ?? [])),
+    ];
+    if (labelled.length === 0) {
+      return { repo: this.config.repoByTeam[node.team.key] ?? this.config.defaultRepo };
+    }
+    return { repo: labelled[0]!, repos: labelled };
   }
 }

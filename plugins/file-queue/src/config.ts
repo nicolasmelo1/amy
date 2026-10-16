@@ -13,6 +13,12 @@ export const configSchema: ConfigSchema = {
     description: "how long a finished queue item is kept before it is pruned",
     default: 7,
   },
+  order: {
+    type: "string",
+    description:
+      "`id` takes due items in the order they became due; `priority` takes the most urgent first, as the workflow's discovery reported it, and the order they became due within one priority",
+    default: "id",
+  },
   staleClaimMs: {
     type: "number",
     description: "how long a claimed item may sit before it counts as abandoned",

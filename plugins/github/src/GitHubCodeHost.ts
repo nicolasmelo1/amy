@@ -56,6 +56,7 @@ query PullRequest($owner: String!, $name: String!, $branch: String!) {
             id
             isResolved
             isOutdated
+            path
             comments(first: 50) { nodes { author { login } body createdAt } }
           }
         }
@@ -108,6 +109,7 @@ fragment PullRequestFields on PullRequest {
       id
       isResolved
       isOutdated
+      path
       comments(first: 50) { nodes { author { login } body createdAt } }
     }
   }
@@ -204,6 +206,7 @@ interface RawPullRequest {
       id: string;
       isResolved: boolean;
       isOutdated: boolean;
+      path?: string | null;
       comments: {
         nodes: { author: { login: string } | null; body: string; createdAt: string | null }[];
       };
@@ -276,6 +279,27 @@ export class GitHubCodeHost implements CodeHost {
 
     const node = raw.repository?.pullRequest;
     return node ? toView(node) : null;
+  }
+
+  /**
+   * GitHub's search finds candidates by the words in their titles and does
+   * not know a whole word from a prefix, so each candidate is read by number
+   * and its title checked here: `BILL-4021` must not answer for `BILL-40210`.
+   */
+  async findPullRequestMentioning(repo: string, id: string): Promise<PullRequestView | null> {
+    // Open first: a ticket reworked after a merge has a new pull request,
+    // and that one is the work. Closed-unmerged is never asked for.
+    for (const state of ["is:open", "is:merged"]) {
+      const data = await this.graphql<{ search: { nodes: RawReviewRequest[] } }>(REVIEW_REQUESTS_QUERY, {
+        search: `is:pr ${state} repo:${repo} in:title "${id}"`,
+      });
+      for (const request of data.search.nodes.flatMap(toReviewRequest)) {
+        if (!namesAsAWord(request.title, id)) continue;
+        const view = await this.pullRequest(repo, request.number);
+        if (view !== null) return view;
+      }
+    }
+    return null;
   }
 
   async openPullRequest(request: OpenPullRequestRequest): Promise<number> {
@@ -481,21 +505,7 @@ export class GitHubCodeHost implements CodeHost {
       { search: `is:pr is:open review-requested:${login} ${scope}` },
     );
 
-    return data.search.nodes.flatMap<ReviewRequest>((node) => {
-      // The search returns issues too, and the fragment leaves those empty.
-      if (node.number === undefined || !node.repository) return [];
-
-      return [
-        {
-          repo: node.repository.nameWithOwner,
-          number: node.number,
-          url: node.url ?? "",
-          title: node.title ?? "",
-          author: node.author?.login ?? "",
-          headSha: node.headRefOid ?? "",
-        },
-      ];
-    });
+    return data.search.nodes.flatMap(toReviewRequest);
   }
 
   /**
@@ -512,21 +522,7 @@ export class GitHubCodeHost implements CodeHost {
       { search: `is:pr is:open reviewed-by:${login} ${scope}` },
     );
 
-    const requested = data.search.nodes.flatMap<ReviewRequest>((node) => {
-      // The search returns issues too, and the fragment leaves those empty.
-      if (node.number === undefined || !node.repository) return [];
-
-      return [
-        {
-          repo: node.repository.nameWithOwner,
-          number: node.number,
-          url: node.url ?? "",
-          title: node.title ?? "",
-          author: node.author?.login ?? "",
-          headSha: node.headRefOid ?? "",
-        },
-      ];
-    });
+    const requested = data.search.nodes.flatMap(toReviewRequest);
 
     // The search cannot narrow on who left the changes requested, so the
     // adapter does: keep the ones this login's own review still stands as
@@ -540,6 +536,27 @@ export class GitHubCodeHost implements CodeHost {
       if (view?.reviews.some((review) => review.author === login && review.state === "CHANGES_REQUESTED")) {
         kept.push(request);
       }
+    }
+    return kept;
+  }
+
+  /**
+   * The author's side of a requested change. The search's `review:` qualifier
+   * reads the standing decision, and each candidate is read back by number so
+   * the answer is the view's decision, not the index's — the index lags.
+   */
+  async authoredWithChangesRequested(login: string, repos: readonly string[]): Promise<ReviewRequest[]> {
+    if (repos.length === 0) return [];
+
+    const scope = repos.map((repo) => `repo:${repo}`).join(" ");
+    const data = await this.graphql<{ search: { nodes: RawReviewRequest[] } }>(REVIEW_REQUESTS_QUERY, {
+      search: `is:pr is:open author:${login} review:changes_requested ${scope}`,
+    });
+
+    const kept = [] as ReviewRequest[];
+    for (const request of data.search.nodes.flatMap(toReviewRequest)) {
+      const view = await this.pullRequest(request.repo, request.number);
+      if (view?.reviewDecision === "CHANGES_REQUESTED" && !view.merged) kept.push(request);
     }
     return kept;
   }
@@ -574,6 +591,32 @@ export class GitHubCodeHost implements CodeHost {
     }
     return result.stdout;
   }
+}
+
+/** One search hit, or nothing for an issue the same search returned. */
+function toReviewRequest(node: RawReviewRequest): ReviewRequest[] {
+  if (node.number === undefined || !node.repository) return [];
+  return [
+    {
+      repo: node.repository.nameWithOwner,
+      number: node.number,
+      url: node.url ?? "",
+      title: node.title ?? "",
+      author: node.author?.login ?? "",
+      headSha: node.headRefOid ?? "",
+    },
+  ];
+}
+
+/** Whether `title` carries `id` with no letter or digit glued to either side. */
+function namesAsAWord(title: string, id: string): boolean {
+  const haystack = title.toLowerCase();
+  const needle = id.toLowerCase();
+  const glued = (char: string | undefined) => char !== undefined && /[a-z0-9]/.test(char);
+  for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
+    if (!glued(haystack[at - 1]) && !glued(haystack[at + needle.length])) return true;
+  }
+  return false;
 }
 
 function split(repo: string): { owner: string; name: string } {
@@ -654,6 +697,7 @@ function toView(node: RawPullRequest): PullRequestView {
           body: first.body,
           isResolved: thread.isResolved,
           isOutdated: thread.isOutdated,
+          ...(thread.path ? { path: thread.path } : {}),
           // GitHub already returns a thread's comments oldest first; the
           // type carries that order so a workflow never has to re-sort.
           comments: thread.comments.nodes.map((comment) => ({
@@ -700,12 +744,13 @@ function toChecksState(state: string): NonNullable<ChecksView>["state"] {
 /**
  * A commit status in the same three words the checks rollup is carried as.
  *
- * GitHub's own state vocabulary is the same alphabet here, and an
- * unrecognised state is waiting rather than a guess — the same rule
- * `toChecksState` keeps, in the words the port's vocabulary uses.
+ * The REST endpoint answers in lower case — `success`, as its own contract
+ * spells it — where the GraphQL rollup answers in upper. Matching one case
+ * read every real status as running, and work waiting on one waited for
+ * ever. An unrecognised state is still waiting rather than a guess.
  */
 function toStatusState(state: string | undefined): "passing" | "failing" | "running" {
-  switch (state) {
+  switch (state?.toUpperCase()) {
     case "SUCCESS":
       return "passing";
     case "FAILURE":

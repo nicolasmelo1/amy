@@ -47,6 +47,12 @@ export interface TicketRecord extends WorkRecord {
    * runs, `state` is already `ESCALATED` on every move into it.
    */
   resumeAt?: TicketState;
+  /**
+   * The writes already handed to the operator, by key, so each one is said
+   * once and the looks after it wait for its effect instead of saying it
+   * again.
+   */
+  handedOver?: string[];
 }
 
 export function newRecord(id: string, now: Date): TicketRecord {

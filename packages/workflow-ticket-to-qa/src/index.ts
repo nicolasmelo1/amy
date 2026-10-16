@@ -43,7 +43,7 @@ export type { EffectOutcomes } from "./outcomes.js";
 
 export { plan, ticketToQa } from "./machine.js";
 
-export { ticketRuntime } from "./runtime.js";
+export { ticketRuntime, workIdFor } from "./runtime.js";
 export type { TicketGit, TicketRuntimeConfig, TicketRuntimeDeps } from "./runtime.js";
 
 export { WORKFLOW_DATA, configSchema, plugin } from "./plugin.js";

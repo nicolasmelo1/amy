@@ -19,6 +19,13 @@ export interface ReviewThread {
   isResolved: boolean;
   isOutdated: boolean;
   /**
+   * The file the thread is on, as the forge names it from the repository
+   * root. Absent on a host that has none, or on a conversation about the
+   * pull request as a whole. Carried so a workflow can tell whether its
+   * change touched the file without asking the forge again per thread.
+   */
+  path?: string;
+  /**
    * The conversation the thread carries, oldest first, opening comment included.
    *
    * `author` and `body` above stay the opening comment's, so a consumer that
@@ -196,6 +203,19 @@ export interface CodeHost {
    */
   pullRequestAncestry?(repo: string, number: number): Promise<PullRequestAncestry | null>;
 
+  /**
+   * The pull request whose title names this id as a whole word, open or
+   * merged, in one repository.
+   *
+   * A branch is derived from a title somebody can rename, and a renamed one
+   * divorces the two: by branch, its pull request reads as never opened. An
+   * id in the title survives the rename. An open one is preferred over a
+   * merged one, and one closed without merging is not an answer at all.
+   * Optional, because a host whose search cannot do this says so by not
+   * offering it rather than by guessing.
+   */
+  findPullRequestMentioning?(repo: string, id: string): Promise<PullRequestView | null>;
+
   openPullRequest(request: OpenPullRequestRequest): Promise<number>;
 
   requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>;
@@ -256,6 +276,19 @@ export interface CodeHost {
    * is policy, and the port only says what the forge reports.
    */
   changesRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>;
+
+  /**
+   * The open pull requests one login authored that somebody asked to change,
+   * in these repositories and no others.
+   *
+   * `changesRequestedOf` answers from the reviewer's side. A workflow driving
+   * its own work needs the author's: those pull requests have usually left
+   * the tracker's working status, so discovery by status never sees them
+   * again. Scoped for the same account-wide reason as its twins, and decided
+   * by the pull request's standing decision rather than by any one review,
+   * because a later approval from the same reviewer settles it.
+   */
+  authoredWithChangesRequested?(login: string, repos: readonly string[]): Promise<ReviewRequest[]>;
 
   /**
    * One pull request by its number, merged or not.

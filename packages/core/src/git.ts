@@ -179,7 +179,51 @@ export class Git {
   }
 
   /**
-   * Commits and pushes whatever the agent left behind.
+   * Commits whatever the agent left behind, and goes no further.
+   *
+   * A workflow that wants no round of work ever lost commits after each one,
+   * and lets the remote see them once per cycle. Returns false when the tree
+   * was clean, which is a real outcome rather than a failure.
+   */
+  async commit(repo: string, message: string, workId?: string): Promise<boolean> {
+    const cwd = this.cwdFor(repo, workId);
+    if (!(await this.hasChangesIn(cwd))) return false;
+    await this.gitIn(cwd, "add", "-A");
+    await this.gitIn(cwd, "commit", "-m", message);
+    return true;
+  }
+
+  /**
+   * Pushes what the branch holds that the remote does not, as a fast-forward
+   * or not at all.
+   *
+   * Returns false when there was nothing to push. A remote branch somebody
+   * else moved is refused by git, and the refusal is rethrown naming the
+   * branch, so the caller learns which one to fetch rather than reading
+   * git's own words about refs. Nothing local is touched by a refusal.
+   */
+  async push(repo: string, branch: string, workId?: string): Promise<boolean> {
+    const cwd = this.cwdFor(repo, workId);
+    const unpushed = await this.gitIn(cwd, "rev-list", "--count", "HEAD", "--not", "--remotes=origin");
+    if (Number(unpushed.stdout.trim()) === 0) return false;
+    await this.pushIn(cwd, branch);
+    return true;
+  }
+
+  private async pushIn(cwd: string, branch: string): Promise<void> {
+    const result = await this.runner.run("git", ["push", "--set-upstream", "origin", branch], { cwd });
+    if (result.ok) return;
+    const said = `${result.stderr}\n${result.stdout}`;
+    if (/non-fast-forward|fetch first|\[rejected\]/.test(said)) {
+      throw new Error(
+        `refusing to push ${branch} from ${cwd}: origin/${branch} holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring ${branch} forward onto it before pushing again.`,
+      );
+    }
+    throw new Error(`git push --set-upstream origin ${branch} failed in ${cwd}: ${result.stderr || result.stdout}`);
+  }
+
+  /**
+   * Commits and pushes whatever the agent left behind, in one call.
    *
    * Returns false when there was nothing to commit and nothing to push, which
    * is a real outcome rather than a failure: an agent asked to address a
@@ -193,19 +237,14 @@ export class Git {
     message: string,
     workId?: string,
   ): Promise<boolean> {
-    const cwd = this.cwdFor(repo, workId);
-    if (await this.hasChangesIn(cwd)) {
-      await this.gitIn(cwd, "add", "-A");
-      await this.gitIn(cwd, "commit", "-m", message);
-      await this.gitIn(cwd, "push", "--set-upstream", "origin", branch);
+    // A commit just made is unpushed by definition, so it goes straight to
+    // the push; only a clean tree has to ask whether an earlier one never
+    // arrived.
+    if (await this.commit(repo, message, workId)) {
+      await this.pushIn(this.cwdFor(repo, workId), branch);
       return true;
     }
-    const unpushed = await this.gitIn(cwd, "rev-list", "--count", "HEAD", "--not", "--remotes=origin");
-    if (Number(unpushed.stdout.trim()) > 0) {
-      await this.gitIn(cwd, "push", "--set-upstream", "origin", branch);
-      return true;
-    }
-    return false;
+    return this.push(repo, branch, workId);
   }
 
   /** The tree the work happens in, for the mode this install chose. */

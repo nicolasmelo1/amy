@@ -14,8 +14,10 @@ import {
   Plan,
   RepoLayout,
   renderBrief,
+  sayToOperator,
   WorkflowRuntime,
   ProgressPolicy,
+  PullRequestView,
 } from "@amykit/core";
 import { Agent, Gate, Tracker } from "@amykit/core";
 import type { Git } from "@amykit/core";
@@ -30,7 +32,7 @@ import {
   triagePrompt,
   unreadTriage,
 } from "./agent-steps.js";
-import { Effect } from "./effects.js";
+import { Effect, WRITE_EFFECTS, WriteEffect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes, applyTransition } from "./outcomes.js";
 import { Roster } from "./roster.js";
@@ -169,12 +171,20 @@ export function ticketRuntime(
     });
   };
 
+  /**
+   * The ticket a work id stands for, in the repository the id names.
+   *
+   * A ticket in several repositories is one work item per repository, and
+   * the id says which: `PROJ-1@owner/name`. Every tracker call still uses the
+   * ticket's own id; only the repository the work happens in changes.
+   */
   const requireTicket = async (workId: string): Promise<Ticket> => {
-    const found = await deps.tracker.get(workId);
+    const { ticketId, repo } = splitWorkId(workId);
+    const found = await deps.tracker.get(ticketId);
     if (!found) {
-      throw new Error(`${workId} is not in the tracker any more`);
+      throw new Error(`${ticketId} is not in the tracker any more`);
     }
-    return found;
+    return repo ? { ...found, repo } : found;
   };
 
   /**
@@ -205,6 +215,37 @@ export function ticketRuntime(
     await deps.host.requestReview(ctx.observation.ticket.repo, number, host);
   };
 
+  /**
+   * The ticket's pull request: by its branch, and — once one exists — by the
+   * id in its title, so a ticket renamed since is still found. At `PR_OPEN`
+   * only when the operator opens it, because they may open it from another
+   * branch; the machine opens it from this one and has nothing to search for.
+   */
+  const pullRequestFor = async (ticket: Ticket, state: TicketRecord["state"]) => {
+    const byBranch = await deps.host.findPullRequest(ticket.repo, branchOf(ticket));
+    if (byBranch || BEFORE_A_PULL_REQUEST.includes(state)) return byBranch;
+    if (state === "PR_OPEN" && deps.policy.writes !== "operator") return byBranch;
+    return (await deps.host.findPullRequestMentioning?.(ticket.repo, ticket.id)) ?? null;
+  };
+
+  /**
+   * Whether the ticket already sits in QA, and — at the handoff, for a ticket
+   * in several repositories — whether each one merged.
+   */
+  const whereItStands = async (ticket: Ticket, state: TicketRecord["state"]) => ({
+    inQa: ticket.status === deps.config.qaStatusName,
+    ...(state === "QA_HANDOFF" && (ticket.repos?.length ?? 0) > 1 ? { repositories: await mergedIn(ticket) } : {}),
+  });
+
+  /** Each of the ticket's repositories, and whether its pull request merged. */
+  const mergedIn = async (ticket: Ticket) =>
+    Promise.all(
+      (ticket.repos ?? []).map(async (repo) => ({
+        repo,
+        merged: Boolean((await deps.host.findPullRequestMentioning?.(repo, ticket.id))?.merged),
+      })),
+    );
+
   /** The outcomes bag, typed at the one boundary that knows what is in it. */
   const outcomesOf = (ctx: Context): EffectOutcomes => ctx.outcomes as EffectOutcomes;
 
@@ -214,8 +255,8 @@ export function ticketRuntime(
       const at = deps.now().toISOString();
       const { value, run } = await judgeStep(deps.agent, {
         prompt: triagePrompt(ticket, effect.conversation),
-        cwd: await deps.git.acquire(ticket.repo, ticket.id),
-        context: { workId: ticket.id, step: "triage" },
+        cwd: await deps.git.acquire(ticket.repo, ctx.record.id),
+        context: { workId: ctx.record.id, step: "triage" },
         read: (answer) => readTriage(answer, at),
         fallback: unreadTriage(at),
       });
@@ -255,12 +296,12 @@ export function ticketRuntime(
     "implement": async (effect, ctx) => {
       const ticket = ctx.observation.ticket;
       const branch = branchOf(ticket);
-      await deps.git.prepareBranch(ticket.repo, branch, ticket.id);
+      await deps.git.prepareBranch(ticket.repo, branch, ctx.record.id);
       const { value, run } = await implementStep(deps.agent, {
         prompt: implementPrompt(ticket, effect.retryContext),
-        cwd: await deps.git.acquire(ticket.repo, ticket.id),
-        context: { workId: ticket.id, step: "implement" },
-        commit: () => deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: ${ticket.title}`, ticket.id),
+        cwd: await deps.git.acquire(ticket.repo, ctx.record.id),
+        context: { workId: ctx.record.id, step: "implement" },
+        commit: () => deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: ${ticket.title}`, ctx.record.id),
         now: deps.now,
       });
       recordAgentRun(ctx, run);
@@ -268,7 +309,7 @@ export function ticketRuntime(
     },
 
     "run-gate": async (_effect, ctx) => {
-      outcomesOf(ctx).gate = await deps.gate.run({ repo: ctx.observation.ticket.repo, workId: ctx.observation.ticket.id });
+      outcomesOf(ctx).gate = await deps.gate.run({ repo: ctx.observation.ticket.repo, workId: ctx.record.id });
     },
 
     "self-review": async (_effect, ctx) => {
@@ -325,11 +366,11 @@ export function ticketRuntime(
       );
       const ticket = ctx.observation.ticket;
       const branch = branchOf(ticket);
-      await deps.git.prepareBranch(ticket.repo, branch, ticket.id);
+      await deps.git.prepareBranch(ticket.repo, branch, ctx.record.id);
       const { value, run } = await judgeStep(deps.agent, {
         prompt: threadPrompt(ticket, threads, effect.from, deps.config.reviewerHints),
-        cwd: await deps.git.acquire(ticket.repo, ticket.id),
-        context: { workId: ticket.id, step: "address-threads" },
+        cwd: await deps.git.acquire(ticket.repo, ctx.record.id),
+        context: { workId: ctx.record.id, step: "address-threads" },
         read: (answer) => readVerdicts(answer, threads),
         // An empty list is never read as "no comment needed answering": the
         // run did not complete, and the engine fails the action below.
@@ -337,7 +378,7 @@ export function ticketRuntime(
       });
       recordAgentRun(ctx, run);
       refuseAnIncompleteRun("address-threads", run);
-      await deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: address review comments`, ticket.id);
+      await deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: address review comments`, ctx.record.id);
       outcomesOf(ctx).verdicts = value;
     },
 
@@ -374,14 +415,62 @@ export function ticketRuntime(
     "announce": async (effect, ctx) => {
       await announce(effect.text, ctx);
     },
+
+    // Not swallowed the way an announcement is: a turn nobody heard is a
+    // write nobody makes, so a failure here fails the action and the look is
+    // tried again. Only a turn that was said is recorded as said.
+    "hand-over": async (effect, ctx) => {
+      await sayToOperator(
+        { conversation: deps.conversation, notifier: deps.notifier },
+        {
+          text: effect.turns.map((turn) => describeWrite(turn.write, ctx)).join("\n\n"),
+          workId: ctx.record.id,
+          title: ctx.observation.ticket.title,
+          state: ctx.record.state,
+        },
+      );
+      const outcomes = outcomesOf(ctx);
+      outcomes.handedOver = effect.turns.map((turn) => turn.key);
+      for (const { write } of effect.turns) {
+        if (write.type === "assign-reviewer") outcomes.reviewer = write.host;
+        if (write.type === "escalate") outcomes.escalation = { reason: write.reason, askedAt: deps.now().toISOString() };
+      }
+    },
   };
+
+  /** What the operator is asked to do, in words they can act on from a phone. */
+  const describeWrite = (write: WriteEffect, ctx: Context): string => {
+    const ticket = ctx.observation.ticket;
+    const words = {
+      ticket,
+      pr: ctx.observation.pullRequest,
+      where: deps.conversation ? "in this thread" : `on ${ticket.url}`,
+      base: baseBranchFor(deps.layout, ticket.repo),
+      qaStatusName: deps.config.qaStatusName,
+    };
+    return (WRITE_WORDS[write.type] as (write: WriteEffect, words: Words) => string)(write, words);
+  };
+
+  // With the writes handed to the operator, the runtime does not declare a
+  // single action that writes, so the mount can hold the empty claim to its
+  // word: nothing here could reach a write even by mistake.
+  const declared = deps.policy.writes === "operator"
+    ? Object.fromEntries(Object.entries(handlers).filter(([name]) => !(WRITE_EFFECTS as readonly string[]).includes(name)))
+    : Object.fromEntries(Object.entries(handlers).filter(([name]) => name !== "hand-over"));
 
   return {
     policy: deps.policy,
     progress: deps.progress,
 
+    // One work item per repository for a ticket that names its
+    // repositories, and the ticket's own id for one that does not, so an
+    // install whose tracker never says keeps every id it had.
     async found() {
-      return (await deps.tracker.inProgress()).map((ticket) => ticket.id);
+      return (await deps.tracker.inProgress()).flatMap((ticket) => {
+        const priority = ticket.priority === undefined ? {} : { priority: ticket.priority };
+        if (!ticket.repos) return [{ workId: ticket.id, ...priority }];
+        return ticket.repos.map((repo) => ({ workId: workIdFor(ticket.id, repo), ...priority }));
+      });
     },
 
     newRecord,
@@ -390,7 +479,7 @@ export function ticketRuntime(
       const ticket = await requireTicketWithBrief(current.id);
       // A ticket whose tracker derived no branch is refused here, on its
       // first look, before any branch is prepared for it.
-      const pullRequest = await deps.host.findPullRequest(ticket.repo, branchOf(ticket));
+      const pullRequest = await pullRequestFor(ticket, current.state);
 
       // Only fetched where it is used, so a poll that is only waiting for a
       // review does not hammer the code host counting everybody's workload.
@@ -420,6 +509,7 @@ export function ticketRuntime(
             ? conversation.length > 0
             : await deps.tracker.hasReplyAfter(ticket.id, current.escalation!.askedAt)
           : false,
+        ...(await whereItStands(ticket, current.state)),
         now: deps.now(),
       };
     },
@@ -429,7 +519,7 @@ export function ticketRuntime(
     // compile until something runs it, and the engine only ever hands back an
     // action it was given by the plan that typed it.
     actions: Object.fromEntries(
-      Object.entries(handlers).map(([name, handler]) => [
+      Object.entries(declared).map(([name, handler]) => [
         name,
         handler as ActionHandler<TicketRecord, Observation>,
       ]),
@@ -458,6 +548,57 @@ export function ticketRuntime(
       return applyTransition(applyOutcomes(current, settled), moved);
     },
   };
+}
+
+interface Words {
+  ticket: Ticket;
+  pr: PullRequestView | null;
+  where: string;
+  base: string;
+  qaStatusName: string;
+}
+
+/** One sentence per write, so a new write does not build until it can be said. */
+const WRITE_WORDS: { [K in WriteEffect["type"]]: (write: Extract<WriteEffect, { type: K }>, words: Words) => string } = {
+  "ask-question": (write, { ticket, where }) =>
+    [`${ticket.id} needs an answer before I can start. Answer ${where}:`, ...write.questions.map((q) => `- ${q}`)].join("\n"),
+  "escalate": (write, { ticket, where }) => `${ticket.id} needs your call, answer ${where}: ${write.reason}`,
+  "open-pull-request": (_write, { ticket, base }) =>
+    `Open a pull request for ${ticket.id} in ${ticket.repo}, from ${branchOf(ticket)} into ${base}, titled "${pullRequestTitle(ticket)}". I carry on once I see it.`,
+  "resolve-review-thread": (write, { ticket, pr }) => {
+    const thread = pr?.threads.find((candidate) => candidate.id === write.threadId);
+    const on = thread?.path ? `on ${thread.path} ` : "";
+    const about = thread ? ` (${thread.body.split("\n")[0]})` : "";
+    return `Resolve the review thread ${on}in ${pr?.url ?? ticket.repo}: the change answered it.${about}`;
+  },
+  "assign-reviewer": (write, { ticket, pr }) => `Request a review of ${pr?.url ?? ticket.id} from ${write.host}.`,
+  "request-rereview": (write, { ticket, pr }) => `Ask ${write.host} to review ${pr?.url ?? ticket.id} again: every comment is addressed.`,
+  "hand-off-to-qa": (write, { ticket, qaStatusName }) => `Move ${ticket.id} to ${qaStatusName} and assign it to ${write.tracker}: ${ticket.url}`,
+};
+
+/** The states before a pull request is expected, where none is found by title either. */
+const BEFORE_A_PULL_REQUEST: readonly TicketRecord["state"][] = [
+  "DISCOVERED",
+  "CLARIFYING",
+  "READY",
+  "IMPLEMENTING",
+  "CHECKED",
+  "SELF_REVIEW",
+];
+
+/**
+ * `PROJ-1@owner%2Fname` is PROJ-1 in owner/name; a bare id names no
+ * repository. The repository is encoded because a work id is a file name in
+ * the store, the queue and the inbox, and a slash in one is a directory.
+ */
+export function workIdFor(ticketId: string, repo: string): string {
+  return `${ticketId}@${encodeURIComponent(repo)}`;
+}
+
+function splitWorkId(workId: string): { ticketId: string; repo?: string } {
+  const at = workId.indexOf("@");
+  if (at === -1) return { ticketId: workId };
+  return { ticketId: workId.slice(0, at), repo: decodeURIComponent(workId.slice(at + 1)) };
 }
 
 function repliesFor(conversation: Conversation, workId: string, title: string, since: string): Promise<Comment[]> {

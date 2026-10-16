@@ -19,6 +19,7 @@ const feature = {
   description: "Every invoice shows a total the database computed.",
   url: "https://linear.app/northwind/issue/PROJ-1200/invoices-carry-their-own-totals",
   branchName: "ada/proj-1200-invoices-carry-their-own-totals",
+  priority: 0,
   parent: null,
   labels: { nodes: [{ name: "Feature" }] },
   state: { name: "Todo" },

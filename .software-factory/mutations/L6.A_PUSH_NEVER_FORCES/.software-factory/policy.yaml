@@ -1,0 +1,11 @@
+# Mutation fixture for L6.A_PUSH_NEVER_FORCES. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L6.A_PUSH_NEVER_FORCES
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L6.A_PUSH_NEVER_FORCES:
+    enabled: true

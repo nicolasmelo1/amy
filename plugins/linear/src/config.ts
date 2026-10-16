@@ -24,6 +24,12 @@ export const configSchema: ConfigSchema = {
     description: "the repository used for a team that is not in repoByTeam",
     default: "",
   },
+  repoByLabel: {
+    type: "record",
+    description:
+      "which repository a label puts a ticket's work in. A ticket labelled into two is two pieces of work, one per repository; a ticket with none of these labels stays in its team's repository",
+    default: {},
+  },
   endpoint: {
     type: "string",
     description:

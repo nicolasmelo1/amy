@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { GitHubCodeHost } from "../src/GitHubCodeHost.js";
-import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
+import { assertValidGhAnswer, assertValidGhInvocation, restExample, ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 // The adapter no longer depends on this workflow — CodeHost is the core's
 // now — but the predicates that decide what a review *means* are still the
 // ticket workflow's, and the point of this fixture is that the two agree.
@@ -68,6 +68,7 @@ const REAL_RESPONSE = {
                   id: "T_resolved_bot",
                   isResolved: true,
                   isOutdated: true,
+                  path: "src/invoices/link.ts",
                   comments: {
                     nodes: [
                       { author: { login: "copilot-pull-request-reviewer" }, body: "the active mapping", createdAt: "2026-08-20T12:00:00Z" },
@@ -78,6 +79,7 @@ const REAL_RESPONSE = {
                   id: "T_open_human",
                   isResolved: false,
                   isOutdated: true,
+                  path: "src/invoices/link.ts",
                   comments: {
                     nodes: [{ author: { login: "edsger" }, body: "I need a little more context", createdAt: "2026-08-20T12:00:00Z" }],
                   },
@@ -86,6 +88,7 @@ const REAL_RESPONSE = {
                   id: "T_open_bot",
                   isResolved: false,
                   isOutdated: false,
+                  path: "src/invoices/external.ts",
                   comments: {
                     nodes: [
                       { author: { login: "copilot-pull-request-reviewer" }, body: "external_invoice_id is free-form", createdAt: "2026-08-20T12:00:00Z" },
@@ -99,6 +102,7 @@ const REAL_RESPONSE = {
                   id: "T_replied_bot",
                   isResolved: false,
                   isOutdated: false,
+                  path: "src/invoices/external.ts",
                   comments: {
                     nodes: [
                       { author: { login: "copilot-pull-request-reviewer" }, body: "external_invoice_id is free-form", createdAt: "2026-08-24T10:00:00Z" },
@@ -112,6 +116,7 @@ const REAL_RESPONSE = {
                   id: "T_answered_then_human",
                   isResolved: false,
                   isOutdated: false,
+                  path: "src/invoices/variables.ts",
                   comments: {
                     nodes: [
                       { author: { login: "edsger" }, body: "why a new variable?", createdAt: "2026-08-23T09:00:00Z" },
@@ -877,6 +882,70 @@ describe("GitHubCodeHost.commitStatuses", () => {
   });
 });
 
+describe("GitHubCodeHost review threads", () => {
+  it("carries the file each thread is on, as the forge returned it", async () => {
+    const withPaths = structuredClone(REAL_RESPONSE);
+    const threads = withPaths.data.repository.pullRequests.nodes[0]!.reviewThreads.nodes as { path?: string }[];
+    threads[0]!.path = "src/invoices/total.ts";
+    threads[1]!.path = "src/invoices/currency.ts";
+    const { host } = hostFor(withPaths);
+
+    const view = await host.findPullRequest("Northwind/northwind-backend", "ada/proj-1241-link-table");
+
+    expect(view?.threads[0]?.path).toBe("src/invoices/total.ts");
+    expect(view?.threads[1]?.path).toBe("src/invoices/currency.ts");
+  });
+
+  it("asks for the path in both the by-branch and the by-number read", async () => {
+    const { runner, host } = hostFor(REAL_RESPONSE);
+
+    await host.findPullRequest("Northwind/northwind-backend", "ada/proj-1241-link-table");
+    await host.pullRequest("Northwind/northwind-backend", 4926).catch(() => null);
+
+    const queries = runner.calls.map((call) => call.args.find((arg) => arg.startsWith("query=")) ?? "");
+    expect(queries.filter((query) => /reviewThreads[\s\S]*\bpath\b/.test(query))).toHaveLength(2);
+  });
+});
+
+describe("GitHubCodeHost.commitStatuses, as the forge writes them", () => {
+  it("reads the contract's own combined-status example, in lower case, as passing", async () => {
+    const example = restExample("combined-commit-status") as { statuses: { state: string }[] };
+    expect(example.statuses.every((status) => status.state === "success")).toBe(true);
+    const { host } = hostFor(REAL_RESPONSE, [
+      { match: whenArgsInclude("/status"), result: { stdout: JSON.stringify(example) } },
+    ]);
+
+    const statuses = await host.commitStatuses("Northwind/northwind-backend", HEAD);
+
+    expect(statuses.length).toBeGreaterThan(0);
+    expect(statuses.every((status) => status.state === "passing")).toBe(true);
+  });
+
+  it("reads failure and error in lower case as failing, and pending as running", async () => {
+    const { host } = hostFor(REAL_RESPONSE, [
+      {
+        match: whenArgsInclude("/status"),
+        result: {
+          stdout: JSON.stringify({
+            state: "failure",
+            statuses: [
+              { context: "ci/build", state: "failure" },
+              { context: "ci/lint", state: "error" },
+              { context: "deploy", state: "pending" },
+            ],
+          }),
+        },
+      },
+    ]);
+
+    await expect(host.commitStatuses("Northwind/northwind-backend", HEAD)).resolves.toEqual([
+      { context: "ci/build", state: "failing" },
+      { context: "ci/lint", state: "failing" },
+      { context: "deploy", state: "running" },
+    ]);
+  });
+});
+
 describe("GitHubCodeHost.changesRequestedOf", () => {
   const REVIEWED = {
     ...SEARCH_RESPONSE,
@@ -1071,5 +1140,99 @@ describe("GitHubCodeHost: a GraphQL call never claims the document's own field t
     const argv = runner.argvFor("gh");
     expect(argv).not.toContainEqual(expect.stringMatching(/^query=is:pr/));
     expect(argv).toContainEqual(expect.stringMatching(/^search=is:pr is:open review-requested:edsger/));
+  });
+});
+
+/** A forge that answers a search by its qualifier and a read by its number. */
+function searchingHost(searches: Record<string, unknown[]>, views: Record<number, Record<string, unknown>>) {
+  const node = REAL_RESPONSE.data.repository.pullRequests.nodes[0]!;
+  const asked: string[][] = [];
+  const answer = (args: readonly string[]): unknown => {
+    if (args.some((arg) => arg.startsWith("query=") && arg.includes("PullRequestByNumber"))) {
+      const number = Number(args.find((arg) => arg.startsWith("number="))!.slice("number=".length));
+      const view = views[number];
+      return { data: { repository: { pullRequest: view ? { ...node, number, ...view } : null } } };
+    }
+    const search = args.find((arg) => arg.startsWith("search=")) ?? "";
+    const key = Object.keys(searches).find((qualifier) => search.includes(qualifier));
+    return { data: { search: { nodes: key ? searches[key] : [] } } };
+  };
+  const runner = {
+    async run(_command: string, args: readonly string[]) {
+      asked.push([...args]);
+      const request = assertValidGhInvocation(args);
+      const stdout = JSON.stringify(answer(args));
+      assertValidGhAnswer(request, stdout);
+      return { ok: true, exitCode: 0, stdout, stderr: "" };
+    },
+  };
+  return { asked: () => asked.flat().join(" "), host: new GitHubCodeHost(runner as never) };
+}
+
+const hit = (number: number, title: string) => ({ ...SEARCH_RESPONSE.data.search.nodes[0], number, title });
+
+describe("GitHubCodeHost.findPullRequestMentioning", () => {
+  it("finds a pull request whose branch no longer matches, by the id in its title", async () => {
+    const { asked, host } = searchingHost(
+      { "is:open": [hit(4950, "BILL-4021: show the currency on the invoice total")] },
+      { 4950: { headRefOid: HEAD } },
+    );
+
+    const view = await host.findPullRequestMentioning("Northwind/northwind-backend", "BILL-4021");
+
+    expect(view?.number).toBe(4950);
+    expect(asked()).toContain("repo:Northwind/northwind-backend");
+    expect(asked()).toContain('in:title "BILL-4021"');
+  });
+
+  it("finds a merged one when nothing open names the id", async () => {
+    const { host } = searchingHost(
+      { "is:merged": [hit(4951, "BILL-4021 show the currency")] },
+      { 4951: { merged: true } },
+    );
+
+    const view = await host.findPullRequestMentioning("Northwind/northwind-backend", "BILL-4021");
+
+    expect(view).toMatchObject({ number: 4951, merged: true });
+  });
+
+  it("prefers the open one over a merged one", async () => {
+    const { host } = searchingHost(
+      { "is:open": [hit(4960, "BILL-4021: rework")], "is:merged": [hit(4951, "BILL-4021: first")] },
+      { 4960: {}, 4951: { merged: true } },
+    );
+
+    await expect(host.findPullRequestMentioning("Northwind/northwind-backend", "BILL-4021")).resolves.toMatchObject({ number: 4960 });
+  });
+
+  it("does not answer for an id that only shares a prefix", async () => {
+    const { asked, host } = searchingHost({ "is:open": [hit(4970, "BILL-40210: something else")] }, { 4970: {} });
+
+    await expect(host.findPullRequestMentioning("Northwind/northwind-backend", "BILL-4021")).resolves.toBeNull();
+    expect(asked()).not.toContain("PullRequestByNumber");
+  });
+});
+
+describe("GitHubCodeHost.authoredWithChangesRequested", () => {
+  it("finds pull requests this login authored that somebody asked to change, in the repositories given", async () => {
+    const { asked, host } = searchingHost(
+      { "author:ada": [hit(4980, "BILL-4021: total"), hit(4981, "BILL-4022: since approved")] },
+      { 4980: { reviewDecision: "CHANGES_REQUESTED" }, 4981: { reviewDecision: "APPROVED" } },
+    );
+
+    const found = await host.authoredWithChangesRequested("ada", ["Northwind/northwind-backend"]);
+
+    expect(found.map((request) => request.number)).toEqual([4980]);
+    expect(asked()).toContain("author:ada");
+    expect(asked()).toContain("review:changes_requested");
+    expect(asked()).toContain("is:open");
+    expect(asked()).toContain("repo:Northwind/northwind-backend");
+  });
+
+  it("searches nothing when it was given no repository", async () => {
+    const { asked, host } = searchingHost({}, {});
+
+    await expect(host.authoredWithChangesRequested("ada", [])).resolves.toEqual([]);
+    expect(asked()).toBe("");
   });
 });

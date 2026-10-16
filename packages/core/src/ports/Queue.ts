@@ -6,6 +6,8 @@ export interface EnqueueRequest {
   /** Milliseconds to hold the item back. Zero means the next look is immediate. */
   delayMs?: number;
   attempt?: number;
+  /** How urgent, smaller first. A queue that does not order by it keeps it and ignores it. */
+  priority?: number;
   progress?: Record<string, { count: number; detail: string }>;
 }
 
@@ -38,6 +40,16 @@ export interface Queue {
    * is nothing to bring forward.
    */
   promote(workId: string, now: Date): number;
+
+  /**
+   * Sets the urgency of every look at one piece of work still waiting, and
+   * says how many changed.
+   *
+   * Discovery reads urgency fresh each time, and a ticket somebody raised to
+   * urgent this morning must not wait behind what was urgent yesterday.
+   * Optional, because a queue that keeps no order has nothing to refresh.
+   */
+  reprioritize?(workId: string, priority: number | undefined): number;
 
   /** Returns items abandoned by a dead worker so they get picked up again. */
   recover(olderThanMs: number, now: Date): QueueItem[];

@@ -103,6 +103,97 @@ describe("a commit the machine made and could not push", () => {
   });
 });
 
+/**
+ * The same real repositories, for the other half: a commit that stays local
+ * until asked, and a push that is a fast-forward or nothing.
+ */
+describe("a commit is not a push", () => {
+  let root: string;
+  let checkout: string;
+  let bare: string;
+  let saved: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    saved = { ...process.env };
+    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
+
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-push-"));
+    bare = path.join(root, "widgets.git");
+    checkout = path.join(root, "checkouts", "widgets");
+    run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
+    run(root, "clone", "-q", bare, checkout);
+    run(checkout, "config", "user.email", "amy@example.test");
+    run(checkout, "config", "user.name", "amy");
+    commit(checkout, "the first commit");
+    run(checkout, "push", "-q", "origin", "main");
+  });
+
+  afterEach(() => {
+    process.env = saved;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  const git = () => new Git(new NodeCommandRunner(), { workspaceRoot: path.join(root, "checkouts"), defaultBranch: "main" });
+  const remoteTip = (branch: string) => {
+    try {
+      return run(bare, "rev-parse", `refs/heads/${branch}`);
+    } catch {
+      return null;
+    }
+  };
+
+  it("commits without pushing, and the remote stays where it was", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    fs.writeFileSync(path.join(checkout, "round-1.md"), "one\n");
+
+    expect(await git().commit("acme/widgets", "round 1")).toBe(true);
+
+    expect(run(checkout, "log", "-1", "--format=%s")).toBe("round 1");
+    expect(remoteTip("amy/item-1")).toBeNull();
+    expect(await git().commit("acme/widgets", "nothing")).toBe(false);
+  });
+
+  it("pushes every round the remote has not seen, once", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    fs.writeFileSync(path.join(checkout, "round-1.md"), "one\n");
+    await git().commit("acme/widgets", "round 1");
+    fs.writeFileSync(path.join(checkout, "round-2.md"), "two\n");
+    await git().commit("acme/widgets", "round 2");
+
+    expect(await git().push("acme/widgets", "amy/item-1")).toBe(true);
+    expect(remoteTip("amy/item-1")).toBe(run(checkout, "rev-parse", "HEAD"));
+    expect(await git().push("acme/widgets", "amy/item-1")).toBe(false);
+  });
+
+  it("refuses a push that is not a fast-forward, naming the branch, and keeps the local commit", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    commit(checkout, "the work that was pushed");
+    run(checkout, "push", "-q", "origin", "amy/item-1");
+    const elsewhere = path.join(root, "elsewhere");
+    run(root, "clone", "-q", "--branch", "amy/item-1", bare, elsewhere);
+    const theirs = commit(elsewhere, "a suggestion committed on the forge");
+    run(elsewhere, "push", "-q", "origin", "amy/item-1");
+    fs.writeFileSync(path.join(checkout, "round-2.md"), "two\n");
+    await git().commit("acme/widgets", "round 2");
+    const ours = run(checkout, "rev-parse", "HEAD");
+
+    await expect(git().push("acme/widgets", "amy/item-1")).rejects.toThrow(/refusing to push amy\/item-1.*not a fast-forward/);
+
+    expect(run(checkout, "rev-parse", "HEAD")).toBe(ours);
+    expect(remoteTip("amy/item-1")).toBe(theirs);
+  });
+
+  it("still commits and pushes in one call", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    fs.writeFileSync(path.join(checkout, "work.md"), "work\n");
+
+    expect(await git().commitAndPush("acme/widgets", "amy/item-1", "the work")).toBe(true);
+
+    expect(remoteTip("amy/item-1")).toBe(run(checkout, "rev-parse", "HEAD"));
+    expect(run(checkout, "log", "-1", "--format=%s")).toBe("the work");
+  });
+});
+
 function run(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }

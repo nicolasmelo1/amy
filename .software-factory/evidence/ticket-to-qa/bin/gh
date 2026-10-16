@@ -109,6 +109,7 @@ function pullRequestNode(repo, pull) {
         id: thread.id,
         isResolved: thread.isResolved,
         isOutdated: thread.isOutdated,
+        path: thread.path ?? "src/index.ts",
         comments: { nodes: [{ author: { login: thread.author }, body: thread.body }] },
       })),
     },
@@ -145,6 +146,12 @@ function graphql(state, args) {
     };
   }
 
+  // A search, in the slice of GitHub's grammar the adapter speaks: state,
+  // repositories, words in the title, author and review state.
+  if (/search\(query: \$search/.test(args.join(" "))) {
+    return { data: { search: { nodes: search(state, fields(args).search ?? "") } } };
+  }
+
   // A pull request read by number, merged or not: the branch the adapter's
   // by-branch search keeps for itself does not belong here, and the
   // fragment this query shares is what the node answers with.
@@ -170,6 +177,49 @@ function graphql(state, args) {
       },
     },
   };
+}
+
+function search(state, query) {
+  const words = query.match(/"[^"]*"|\S+/g) ?? [];
+  const value = (prefix) => words.filter((word) => word.startsWith(prefix)).map((word) => word.slice(prefix.length));
+  const repos = value("repo:");
+  const title = words.find((word, index) => word.startsWith('"') && words[index - 1] === "in:title")?.replaceAll('"', "") ??
+    words.filter((word) => word.startsWith('"')).map((word) => word.replaceAll('"', ""))[0];
+  const [author] = value("author:");
+  const [requested] = value("review-requested:");
+  const [reviewedBy] = value("reviewed-by:");
+
+  return Object.entries(state.repos)
+    .filter(([repo]) => repos.length === 0 || repos.includes(repo))
+    .flatMap(([repo, entry]) => entry.pulls.map((pull) => ({ repo, pull })))
+    .filter(({ pull }) => !words.includes("is:open") || pull.state === "open")
+    .filter(({ pull }) => !words.includes("is:merged") || pull.merged === true)
+    .filter(({ pull }) => !words.includes("in:title") || (pull.title ?? "").toLowerCase().includes((title ?? "").toLowerCase()))
+    .filter(({ pull }) => !author || (pull.author ?? "amy") === author)
+    .filter(({ pull }) => !words.includes("review:changes_requested") || pull.reviewDecision === "CHANGES_REQUESTED")
+    .filter(({ pull }) => !requested || pull.requestedReviewers.includes(requested))
+    .filter(({ pull }) => !reviewedBy || pull.reviews.some((review) => review.author === reviewedBy))
+    .map(({ repo, pull }) => ({
+      number: pull.number,
+      title: pull.title ?? "",
+      url: `https://code.test/${repo}/pull/${pull.number}`,
+      headRefOid: headOf(repo, pull.head),
+      author: { login: pull.author ?? "amy" },
+      repository: { nameWithOwner: repo },
+    }));
+}
+
+/**
+ * The combined status of one commit, as the REST endpoint answers it: in
+ * lower case, which is the case the real one uses and the one an adapter
+ * once failed to read.
+ */
+function combinedStatus(state, endpoint) {
+  const sha = /\/commits\/([^/]+)\/status$/.exec(endpoint)[1];
+  const statuses = (state.statuses ?? {})[sha] ?? [];
+  const states = statuses.map((status) => status.state);
+  const combined = states.length === 0 ? "pending" : states.includes("failure") || states.includes("error") ? "failure" : states.every((s) => s === "success") ? "success" : "pending";
+  return { state: combined, sha, total_count: statuses.length, statuses };
 }
 
 function openPullRequest(state, repoPath, args) {
@@ -226,6 +276,10 @@ function api(state, args) {
   const method = flag(args, "--method") ?? "GET";
   const endpoint = args.find((arg) => arg.startsWith("/repos/"));
   if (!endpoint) fail(`no endpoint in: gh api ${args.join(" ")}`);
+
+  if (method === "GET" && /\/commits\/[^/]+\/status$/.test(endpoint)) {
+    return JSON.stringify(combinedStatus(state, endpoint));
+  }
 
   if (method === "GET") {
     // `--jq .default_branch` returns the bare value, not an object, which is

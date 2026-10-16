@@ -80,6 +80,13 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
   "escalate": { port: "tracker", method: "createFollowUp" },
   "hand-off-to-qa": { port: "tracker", method: "setStatus" },
   "announce": { port: "notifier", method: "announce" },
+  /**
+   * A write handed to the operator instead of made: said once, in the work's
+   * thread when there is one and the notifier otherwise, so the operator can
+   * make it where a team reads. Dispatched to the notifier, which every
+   * install mounts, because the thread is optional and the turn is not.
+   */
+  "hand-over": { port: "notifier", method: "announce" },
 };
 
 /**

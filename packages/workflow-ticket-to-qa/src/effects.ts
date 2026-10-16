@@ -23,7 +23,47 @@ export type Effect =
   | { type: "request-rereview"; host: string }
   | { type: "escalate"; reason: string; threadIds: string[] }
   | { type: "hand-off-to-qa"; tracker: string }
-  | { type: "announce"; text: string };
+  | { type: "announce"; text: string }
+  /**
+   * Writes handed to the operator instead of made, said in one message. Each
+   * turn carries the write it stands for, so the runtime can say exactly
+   * what to do, and a key, so the machine says each one once.
+   */
+  | { type: "hand-over"; turns: HandOverTurn[] };
+
+/** The writes this workflow makes on the tracker or the code host. */
+export type WriteEffect = Extract<
+  Effect,
+  {
+    type:
+      | "ask-question"
+      | "escalate"
+      | "open-pull-request"
+      | "resolve-review-thread"
+      | "assign-reviewer"
+      | "request-rereview"
+      | "hand-off-to-qa";
+  }
+>;
+
+export interface HandOverTurn {
+  key: string;
+  write: WriteEffect;
+}
+
+export const WRITE_EFFECTS: readonly WriteEffect["type"][] = [
+  "ask-question",
+  "escalate",
+  "open-pull-request",
+  "resolve-review-thread",
+  "assign-reviewer",
+  "request-rereview",
+  "hand-off-to-qa",
+];
+
+export function isWrite(effect: Effect): effect is WriteEffect {
+  return (WRITE_EFFECTS as readonly string[]).includes(effect.type);
+}
 
 export function act(why: string, ...effects: Effect[]): Plan {
   return { kind: "act", effects, why };

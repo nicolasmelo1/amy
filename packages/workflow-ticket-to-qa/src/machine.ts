@@ -14,6 +14,7 @@ import {
   unresolvedThreads,
 } from "./review.js";
 import { isConfirmedFor, leastLoadedReviewer } from "./roster.js";
+import { handOver } from "./handover.js";
 
 /**
  * Decides the single next move for one ticket.
@@ -23,43 +24,36 @@ import { isConfirmedFor, leastLoadedReviewer } from "./roster.js";
  * tracker, a code host, a repository or an agent.
  */
 export function plan(record: TicketRecord, obs: Observation, policy: Policy): Plan {
-  switch (record.state) {
-    case "DISCOVERED":
-      return planDiscovered(record);
-    case "CLARIFYING":
-      return planClarifying(record, obs, policy);
-    case "READY":
-      return advance("IMPLEMENTING", "nothing is blocking the implementation");
-    case "IMPLEMENTING":
-      return planImplementing(record, policy);
-    case "CHECKED":
-      return planChecked(record, policy);
-    case "SELF_REVIEW":
-      return planSelfReview(record);
-    case "PR_OPEN":
-      return planPullRequestOpen(obs);
-    case "COPILOT_WAIT":
-      return planAutomatedReviewWait(record, obs, policy);
-    case "COPILOT_FIX":
-      return planAutomatedReviewFix(record, obs, policy);
-    case "REVIEWER_ASSIGNED":
-      return planReviewerAssignment(record, obs, policy);
-    case "HUMAN_REVIEW":
-      return planHumanReview(record, obs, policy);
-    case "HUMAN_FIX":
-      return planHumanFix(record, obs, policy);
-    case "ESCALATED":
-      return planEscalated(record, obs, policy);
-    case "RE_REVIEW":
-      return planReReview(record);
-    case "APPROVED":
-      return advance("QA_HANDOFF", "a human approved the current head");
-    case "QA_HANDOFF":
-      return planQaHandoff(record, obs, policy);
-    case "DONE":
-      return settled("the ticket is in QA and owned by somebody else");
-  }
+  const decided = PLANNERS[record.state](record, obs, policy);
+  return policy.writes === "operator" ? handOver(decided, record, obs, policy) : decided;
 }
+
+type Planner = (record: TicketRecord, obs: Observation, policy: Policy) => Plan;
+
+/**
+ * One planner per state. A record rather than a switch, so the compiler is
+ * what proves no state was forgotten: a state added to `TICKET_STATES` and
+ * not here does not build.
+ */
+const PLANNERS: Record<TicketState, Planner> = {
+  DISCOVERED: (record) => planDiscovered(record),
+  CLARIFYING: planClarifying,
+  READY: () => advance("IMPLEMENTING", "nothing is blocking the implementation"),
+  IMPLEMENTING: (record, _obs, policy) => planImplementing(record, policy),
+  CHECKED: (record, _obs, policy) => planChecked(record, policy),
+  SELF_REVIEW: (record) => planSelfReview(record),
+  PR_OPEN: (_record, obs) => planPullRequestOpen(obs),
+  COPILOT_WAIT: planAutomatedReviewWait,
+  COPILOT_FIX: planAutomatedReviewFix,
+  REVIEWER_ASSIGNED: planReviewerAssignment,
+  HUMAN_REVIEW: planHumanReview,
+  HUMAN_FIX: planHumanFix,
+  ESCALATED: planEscalated,
+  RE_REVIEW: (record) => planReReview(record),
+  APPROVED: () => advance("QA_HANDOFF", "a human approved the current head"),
+  QA_HANDOFF: planQaHandoff,
+  DONE: () => settled("the ticket is in QA and owned by somebody else"),
+};
 
 function planDiscovered(record: TicketRecord): Plan {
   if (!record.triage) {
@@ -573,6 +567,9 @@ function planReReview(record: TicketRecord): Plan {
 }
 
 function planQaHandoff(record: TicketRecord, obs: Observation, policy: Policy): Plan {
+  const joined = joinRepositories(obs, policy);
+  if (joined) return joined;
+
   const firstLook = attemptsIn(record, "QA_HANDOFF") === 0;
 
   if (!isConfirmedFor(obs.roster, obs.now)) {
@@ -609,6 +606,31 @@ function planQaHandoff(record: TicketRecord, obs: Observation, policy: Policy): 
     type: "hand-off-to-qa",
     tracker: obs.roster.qa.tracker,
   });
+}
+
+/**
+ * One ticket in several repositories is one work item per repository, and QA
+ * receives it once, when every one of them has merged.
+ *
+ * The first repository's item is the one that hands it over, so two items
+ * reaching this state together cannot hand it over twice; the others finish
+ * once the join is met, because their part is done. A repository added later
+ * is read here like the rest, so the handoff waits for it too.
+ */
+function joinRepositories(obs: Observation, policy: Policy): Plan | null {
+  const repositories = obs.repositories ?? [];
+  if (repositories.length < 2) return null;
+
+  const open = repositories.filter((repository) => !repository.merged).map((repository) => repository.repo);
+  if (open.length > 0) {
+    return wait(policy.pollBackoffMs, `${obs.ticket.id} waits for ${open.join(", ")} to merge before QA`);
+  }
+
+  const leader = repositories[0]!.repo;
+  if (leader !== obs.ticket.repo) {
+    return advance("DONE", `every repository merged, and ${leader}'s work item hands ${obs.ticket.id} to QA`);
+  }
+  return null;
 }
 
 /**

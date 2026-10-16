@@ -5,3 +5,4 @@ export * from "./worker.js";
 export * from "./exercised.js";
 export { ContractViolation } from "./contracts/violation.js";
 export { assertValidGhAnswer, assertValidGhInvocation } from "./contracts/gh.js";
+export { restExample } from "./contracts/openapi.js";
