@@ -5,21 +5,21 @@
       "file": "github.graphql",
       "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
       "publisher": "GitHub — the public GraphQL schema for github.com",
-      "sha256": "2e1ddaaa59fcc4f427cfc63b8add318b5268e386b80984eb9fe939204857bc1a"
+      "sha256": "489d255a212bf5fecc0d31e9307adbaff2dbfdde6f92b5dc8537f9d4c74ff783"
     },
     {
       "name": "github-rest",
       "file": "github-rest.json.gz",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
       "publisher": "GitHub — the OpenAPI description of the github.com REST API",
-      "sha256": "f3efa055b46b43f5f133ecf792a36a7f50cf8a4378cbd177390bc2bf8c6097cd"
+      "sha256": "65ca6210f72021d07e4608fc26787c8132d77f8f3a475d8c065f0d7f5f02f6dc"
     },
     {
       "name": "linear-graphql",
       "file": "linear.graphql",
       "url": "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql",
       "publisher": "Linear — the GraphQL schema its own SDK is generated from",
-      "sha256": "cc4263f66d6e79f188b1e6b08af5f0fe8dd32dd3c0cdae3c070606e8d1e5e0eb"
+      "sha256": "3a98f6dcca0140d7d50c3989dbcf8fb73485714f7ef2345e31044fd9d3775f0e"
     }
   ],
   "gh": {
