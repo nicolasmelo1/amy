@@ -6,6 +6,8 @@ import { QueueItem, isReady } from "@amykit/core";
 const READY = "ready";
 const RUNNING = "running";
 const DONE = "done";
+/** What an item held for reprioritizing is called while it is held. */
+const HELD = ".reprioritizing";
 
 /**
  * A queue kept as one file per item.
@@ -109,9 +111,12 @@ export class FileQueue implements Queue {
    * Taken out of `ready/` by rename before it is rewritten, the same atomic
    * step `claim` takes: whichever of the two renames first owns the item,
    * and the other finds nothing. Rewriting in place could recreate a file a
-   * worker had just claimed, and two workers would then run one look. The
-   * rewrite goes to its own name and is renamed back whole, so no reader
-   * ever sees half of it.
+   * worker had just claimed, and two workers would then run one look.
+   *
+   * While it is held, the held file is always a whole item — the original,
+   * or the replacement renamed over it — so a failure puts back something
+   * valid, and a process that dies holding it leaves something `recover`
+   * can put back.
    */
   reprioritize(workId: string, priority: number | undefined): number {
     let changed = 0;
@@ -119,17 +124,23 @@ export class FileQueue implements Queue {
     for (const listed of this.read(READY)) {
       if (listed.workId !== workId || listed.priority === priority) continue;
       const file = this.file(READY, listed);
-      const held = `${file}.reprioritizing`;
+      const held = `${file}${HELD}`;
       try {
         fs.renameSync(file, held);
       } catch {
         // A worker claimed it between the listing and the rename.
         continue;
       }
-      const item = JSON.parse(fs.readFileSync(held, "utf-8")) as QueueItem;
-      const { priority: _old, ...rest } = item;
-      fs.writeFileSync(held, JSON.stringify(priority === undefined ? rest : { ...rest, priority }, null, 2), "utf-8");
-      fs.renameSync(held, file);
+      try {
+        const item = JSON.parse(fs.readFileSync(held, "utf-8")) as QueueItem;
+        const { priority: _old, ...rest } = item;
+        const next = `${held}.next`;
+        fs.writeFileSync(next, JSON.stringify(priority === undefined ? rest : { ...rest, priority }, null, 2), "utf-8");
+        fs.renameSync(next, held);
+      } finally {
+        // Back where a claim can find it, rewritten or not.
+        fs.renameSync(held, file);
+      }
       changed += 1;
     }
 
@@ -137,7 +148,7 @@ export class FileQueue implements Queue {
   }
 
   recover(olderThanMs: number, now: Date): QueueItem[] {
-    const stale: QueueItem[] = [];
+    const stale: QueueItem[] = [...this.restoreHeld(olderThanMs, now)];
 
     for (const item of this.read(RUNNING)) {
       const age = now.getTime() - fs.statSync(this.file(RUNNING, item)).mtimeMs;
@@ -179,6 +190,25 @@ export class FileQueue implements Queue {
 
   completed(): QueueItem[] {
     return this.read(DONE);
+  }
+
+  /**
+   * Items a reprioritization held when its process died, put back once they
+   * are as old as an abandoned claim, so a writer that is merely slow keeps
+   * what it holds. Its half-written replacement, if any, is dropped.
+   */
+  private restoreHeld(olderThanMs: number, now: Date): QueueItem[] {
+    const dir = path.join(this.root, READY);
+    const restored: QueueItem[] = [];
+    for (const name of fs.readdirSync(dir)) {
+      const held = path.join(dir, name);
+      const age = () => now.getTime() - fs.statSync(held).mtimeMs;
+      if (name.endsWith(`${HELD}.next`) && age() >= olderThanMs) fs.rmSync(held, { force: true });
+      if (!name.endsWith(HELD) || age() < olderThanMs) continue;
+      fs.renameSync(held, held.slice(0, -HELD.length));
+      restored.push(JSON.parse(fs.readFileSync(held.slice(0, -HELD.length), "utf-8")) as QueueItem);
+    }
+    return restored;
   }
 
   private compare(a: QueueItem, b: QueueItem): number {

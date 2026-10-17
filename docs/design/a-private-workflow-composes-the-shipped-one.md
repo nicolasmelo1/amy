@@ -246,6 +246,28 @@ unnoticed.
       the repository it started in keeps the ticket's own id
       (proof: assertion:compose.labelling_a_running_ticket_keeps_its_work_item)
 
+### What the second review found
+
+- [x] A review the operator requested is read after the forge's own checks,
+      so red checks or a conflict still hand the work back instead of
+      reaching a reviewer
+      (proof: assertion:compose.a_requested_review_still_answers_to_the_forges_checks)
+- [x] A reprioritization that fails puts the original back, and one whose
+      process dies is put back by `recover`
+      (proof: assertion:compose.an_interrupted_reprioritization_is_put_back)
+- [x] A work item whose repository left the ticket is retired, once, and says
+      so, instead of handing the ticket over beside the ones that remain
+      (proof: assertion:compose.a_repository_that_leaves_the_ticket_retires_its_work_item)
+- [x] A requested review is recognised without regard to the login's case, and
+      against the turn as an instant rather than as text
+      (proof: assertion:compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them)
+- [x] A QA handoff answers to the owner the turn named, and a roster that
+      changes before it was made says the new one
+      (proof: assertion:compose.a_qa_handoff_answers_to_the_owner_it_named)
+- [x] With the writes handed over and no thread, the operator answers on the
+      ticket with their own account, and the machine hears it
+      (proof: assertion:compose.the_operator_answers_on_the_ticket_with_their_own_account)
+
 ### The private workflow
 
 - [ ] The private workflow that prompted this deletes its checkout, readers,

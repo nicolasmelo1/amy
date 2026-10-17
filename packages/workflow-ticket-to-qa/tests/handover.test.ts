@@ -270,7 +270,7 @@ describe("a review the operator was asked to request again", () => {
 });
 
 describe("a QA handoff the operator was asked to make", () => {
-  const said = record("QA_HANDOFF", { handedOver: ["hand-off-to-qa"] });
+  const said = record("QA_HANDOFF", { handedOver: ["hand-off-to-qa@grace@example.test"] });
 
   it("is not done while the status moved and the owner did not", () => {
     const decision = plan(said, observation({ inQa: true, ticket: ticket({ status: "In QA", assignee: "ada@example.test" }) }), policy);
@@ -280,6 +280,62 @@ describe("a QA handoff the operator was asked to make", () => {
 
   it("is done once both are there", () => {
     const decision = plan(said, observation({ inQa: true, ticket: ticket({ status: "In QA", assignee: "Grace@Example.test" }) }), policy);
+
+    expect(decision).toMatchObject({ kind: "advance", to: "DONE" });
+  });
+});
+
+describe("review 2 of the composed workflow", () => {
+  const key = "request-review@edsger";
+  const pending = (prOverrides: Partial<PullRequestView>, at = "2026-09-03T12:00:00.000Z") =>
+    plan(
+      record("REVIEWER_ASSIGNED", { reviewer: "edsger", handedOver: [key], handedOverAt: { [key]: at } }),
+      observation({ pullRequest: pullRequest(prOverrides) }),
+      policy,
+    );
+
+  it("does not let a review the operator requested carry red checks past the gate", () => {
+    const decision = pending({ requestedReviewers: ["edsger"], checks: { state: "failing", commitSha: HEAD } });
+
+    expect(decision).toMatchObject({ kind: "advance", to: "ESCALATED" });
+  });
+
+  it("does not let it carry a conflict past either", () => {
+    const decision = pending({ requestedReviewers: ["edsger"], mergeState: "conflicting" });
+
+    expect(decision).toMatchObject({ kind: "advance", to: "ESCALATED" });
+  });
+
+  it("matches the reviewer's login without case, as the forge does", () => {
+    expect(pending({ requestedReviewers: ["Edsger"] })).toMatchObject({ kind: "advance", to: "HUMAN_REVIEW" });
+  });
+
+  it("compares instants as instants, not as text", () => {
+    // Earlier than the turn, though it sorts after it as a string.
+    const decision = pending(
+      { reviews: [review({ author: "edsger", commitSha: HEAD, submittedAt: "2026-09-03T12:00:00Z" })] },
+      "2026-09-03T12:00:00.900Z",
+    );
+
+    expect(decision.kind).toBe("wait");
+  });
+
+  it("says the QA handoff again when the roster names a new owner before it was made", () => {
+    const decision = plan(
+      record("QA_HANDOFF", { handedOver: ["hand-off-to-qa@ada@example.test"] }),
+      observation(),
+      policy,
+    );
+
+    expect(actionsOf(decision)).toMatchObject([{ type: "hand-over", turns: [{ key: "hand-off-to-qa@grace@example.test" }] }]);
+  });
+
+  it("is done when the owner the turn named is assigned, whatever the roster says now", () => {
+    const decision = plan(
+      record("QA_HANDOFF", { handedOver: ["hand-off-to-qa@grace@example.test"] }),
+      observation({ inQa: true, ticket: ticket({ status: "In QA", assignee: "grace@example.test" }) }),
+      policy,
+    );
 
     expect(decision).toMatchObject({ kind: "advance", to: "DONE" });
   });

@@ -148,3 +148,50 @@ describe("FileQueue reprioritizing while a worker claims", () => {
     expect(queue.pending()[0]?.priority).toBe(1);
   });
 });
+
+describe("FileQueue, a reprioritization that does not finish", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-priority-crash-"));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("puts the original back when writing the replacement fails", () => {
+    const queue = new FileQueue(root, "priority");
+    queue.enqueue({ workId: "A", reason: "found", priority: 3, delayMs: 60_000 }, NOW);
+    const writeFile = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "writeFileSync").mockImplementation(((file: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
+      if (String(file).endsWith(".next")) throw new Error("ENOSPC: no space left on device");
+      (writeFile as (...a: unknown[]) => void)(file, ...rest);
+    }) as typeof fs.writeFileSync);
+
+    expect(() => queue.reprioritize("A", 1)).toThrow("ENOSPC");
+    vi.restoreAllMocks();
+
+    expect(queue.pending()).toMatchObject([{ workId: "A", priority: 3, notBefore: later(60).toISOString() }]);
+  });
+
+  it("puts back an item a dead process held, once it is as old as an abandoned claim", () => {
+    const queue = new FileQueue(root, "priority");
+    const item = queue.enqueue({ workId: "A", reason: "found", priority: 3, delayMs: 60_000 }, NOW);
+    const file = path.join(root, "ready", `${item.id}.json`);
+    // What a process that died between the two renames leaves behind.
+    fs.renameSync(file, `${file}.reprioritizing`);
+    fs.writeFileSync(`${file}.reprioritizing.next`, "{ half", "utf-8");
+    expect(queue.pending()).toEqual([]);
+
+    expect(queue.recover(30 * 60_000, NOW)).toEqual([]);
+    expect(queue.pending()).toEqual([]);
+
+    const recovered = queue.recover(30 * 60_000, new Date(Date.now() + 31 * 60_000));
+
+    expect(recovered.map((r) => r.workId)).toEqual(["A"]);
+    expect(queue.pending()).toMatchObject([{ workId: "A", priority: 3, notBefore: later(60).toISOString() }]);
+    expect(fs.readdirSync(path.join(root, "ready")).every((name) => name.endsWith(".json"))).toBe(true);
+  });
+});

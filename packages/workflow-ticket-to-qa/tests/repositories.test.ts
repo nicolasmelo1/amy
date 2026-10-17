@@ -173,6 +173,18 @@ describe("a ticket in two repositories", () => {
     expect(actionsOf(other)).toEqual([]);
   });
 
+  it("lets a follower finish on the status when the roster moved after the handoff", () => {
+    const merged = both({ [BACKEND]: true, [FRONTEND]: true });
+    const moved = observation({
+      ticket: { ...spanning, repo: FRONTEND, status: "In QA", assignee: "grace@example.test" },
+      repositories: merged,
+      inQa: true,
+      roster: roster({ qa: { tracker: "ada@example.test", host: "ada", available: true } }),
+    });
+
+    expect(plan(record("QA_HANDOFF"), moved, policy)).toMatchObject({ kind: "advance", to: "DONE" });
+  });
+
   it("takes the handoff over when a reorder makes a waiting item the first", () => {
     const reordered = [FRONTEND, BACKEND].map((repo) => ({ repo, merged: true }));
 
@@ -279,5 +291,58 @@ describe("finding the pull request by the ticket's id", () => {
   it("searches at PR_OPEN when the operator opens it, from whatever branch they chose", async () => {
     const { seen } = ask("PR_OPEN", { ...DEFAULT_POLICY, writes: "operator" });
     expect((await seen).pullRequest?.number).toBe(77);
+  });
+});
+
+describe("a repository that leaves the ticket", () => {
+  it("retires the work item started there, once, and says so", async () => {
+    // A backend ticket under way, then labelled into the frontend only.
+    const relabelled = ticket({ repo: BACKEND, repos: [FRONTEND] });
+    const seen = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(relabelled) }) }).observe(record("HUMAN_REVIEW"));
+
+    const decision = plan(record("HUMAN_REVIEW"), seen, policy);
+
+    expect(seen.retired).toBe(true);
+    expect(decision).toMatchObject({ kind: "advance", to: "DONE" });
+    expect(actionsOf(decision).map((effect) => effect.type)).toEqual(["announce"]);
+  });
+
+  it("keeps the ones still named", async () => {
+    const seen = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND, BACKEND] })) }) }).observe(record("HUMAN_REVIEW"));
+
+    expect(seen.retired).toBe(false);
+  });
+});
+
+describe("the operator answering on the ticket with their own account", () => {
+  const operator = { ...DEFAULT_POLICY, writes: "operator" as const };
+  const own = { author: "Nicolas", body: "In BRL.", at: "2026-09-03T12:30:00.000Z", fromAmy: true };
+
+  it("answers a question asked in operator mode", async () => {
+    const triage = { clear: false, questions: ["which currency?"], askedQuestions: [], at: "2026-09-03T12:00:00.000Z" };
+    const comments = vi.fn().mockResolvedValue([own]);
+    const built = runtime({ policy: operator, tracker: fakeTracker({ comments }) });
+
+    const seen = await built.observe(record("CLARIFYING", { triage }));
+
+    expect(seen.conversation).toEqual([{ ...own, fromAmy: false }]);
+    expect(plan(record("CLARIFYING", { triage }), seen, operator)).toMatchObject({ kind: "advance", to: "READY" });
+  });
+
+  it("settles an escalation in operator mode", async () => {
+    const hasReplyAfter = vi.fn().mockResolvedValue(false);
+    const built = runtime({ policy: operator, tracker: fakeTracker({ comments: vi.fn().mockResolvedValue([own]), hasReplyAfter }) });
+
+    const seen = await built.observe(record("ESCALATED", { escalation: { reason: "r", askedAt: "2026-09-03T12:00:00.000Z" } }));
+
+    expect(seen.escalationAnswered).toBe(true);
+    expect(hasReplyAfter).not.toHaveBeenCalled();
+  });
+
+  it("still reads its own comments as its own when the machine makes the writes", async () => {
+    const triage = { clear: false, questions: ["which currency?"], askedQuestions: [], at: "2026-09-03T12:00:00.000Z" };
+    const seen = await runtime({ tracker: fakeTracker({ comments: vi.fn().mockResolvedValue([own]) }) }).observe(record("CLARIFYING", { triage }));
+
+    expect(seen.conversation).toEqual([own]);
   });
 });

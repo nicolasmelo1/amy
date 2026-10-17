@@ -246,6 +246,22 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   try { changedRaced = mine.reprioritize("A", 1); } finally { fs.renameSync = renameSync; fs.writeFileSync = writeFileSync; }
   record("compose.reprioritizing_never_recreates_a_claimed_item", stolen === "A" && changedRaced === 0 && mine.pending().length === 0 && worker2.claim(at(60)) === null, { stolen, changedRaced, pending: mine.pending().length });
 
+  // Review 2: a reprioritization that fails, or dies, puts the item back.
+  const broken = path.join(dir, "broken");
+  const holder = new FileQueue(broken, "priority");
+  const heldItem = holder.enqueue({ workId: "H", reason: "found", priority: 3, delayMs: 60_000 }, now);
+  const writeFile2 = fs.writeFileSync;
+  fs.writeFileSync = (file, ...rest) => { if (String(file).endsWith(".next")) throw new Error("ENOSPC"); return writeFile2(file, ...rest); };
+  let threw = false;
+  try { holder.reprioritize("H", 1); } catch { threw = true; } finally { fs.writeFileSync = writeFile2; }
+  const afterFailure = holder.pending().map((item) => `${item.workId}:${item.priority}`);
+  const heldFile = path.join(broken, "ready", `${heldItem.id}.json`);
+  fs.renameSync(heldFile, `${heldFile}.reprioritizing`);
+  const hidden = holder.pending().length;
+  holder.recover(60_000, new Date(Date.now() + 120_000));
+  const afterDeath = holder.pending().map((item) => `${item.workId}:${item.priority}`);
+  record("compose.an_interrupted_reprioritization_is_put_back", threw && afterFailure.join() === "H:3" && hidden === 0 && afterDeath.join() === "H:3", { threw, afterFailure, hidden, afterDeath });
+
   const plain = new FileQueue(path.join(dir, "plain"));
   plain.enqueue({ workId: "LOW", reason: "found", priority: 4 }, now);
   plain.enqueue({ workId: "URGENT", reason: "found", priority: 1 }, at(1));
@@ -296,6 +312,31 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const handed = plan(rec("QA_HANDOFF"), obs({ repositories: merged, inQa: true, ticket: { ...obs({}).ticket, status: "In QA", assignee: "grace@example.test" } }), DEFAULT_POLICY);
   record("compose.a_follower_waits_until_it_sees_the_handoff", follower.kind === "wait" && handed.kind === "advance" && handed.to === "DONE" && (handed.effects ?? []).length === 0, { follower: follower.kind, handed: handed.kind });
 
+  // Review 2: a requested review never carries a broken branch past the
+  // checks; logins and instants are compared as the forge means them; the
+  // handoff answers to the owner it named; a repository that leaves the
+  // ticket retires its work item.
+  const rkey = "request-review@ada";
+  const requested = (extra, at = "2026-09-03T12:00:00.000Z") =>
+    plan(rec("REVIEWER_ASSIGNED", { reviewer: "ada", handedOver: [rkey], handedOverAt: { [rkey]: at } }), obs({ pullRequest: pr({ reviewDecision: "REVIEW_REQUIRED", ...extra }) }), operator);
+  const red = requested({ requestedReviewers: ["ada"], checks: { state: "failing", commitSha: head } });
+  const conflicting = requested({ requestedReviewers: ["ada"], mergeState: "conflicting" });
+  record("compose.a_requested_review_still_answers_to_the_forges_checks", red.to === "ESCALATED" && conflicting.to === "ESCALATED", { red: red.to ?? red.kind, conflicting: conflicting.to ?? conflicting.kind });
+  const cased = requested({ requestedReviewers: ["Ada"] });
+  const early = requested({ reviews: [{ author: "ada", state: "APPROVED", commitSha: head, submittedAt: "2026-09-03T12:00:00Z" }] }, "2026-09-03T12:00:00.900Z");
+  record("compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them", cased.to === "HUMAN_REVIEW" && early.kind === "wait", { cased: cased.to ?? cased.kind, early: early.kind });
+  const moved = { ...roster, qa: { tracker: "ada@example.test", host: "ada", available: true } };
+  const reSaid = plan(rec("QA_HANDOFF", { handedOver: ["hand-off-to-qa@grace@example.test"] }), obs({ roster: moved }), operator);
+  const named = plan(rec("QA_HANDOFF", { handedOver: ["hand-off-to-qa@grace@example.test"] }), obs({ inQa: true, ticket: { ...obs({}).ticket, status: "In QA", assignee: "grace@example.test" } }), operator);
+  record("compose.a_qa_handoff_answers_to_the_owner_it_named", reSaid.effects?.[0]?.turns?.[0]?.key === "hand-off-to-qa@ada@example.test" && named.to === "DONE", { reSaid: reSaid.effects?.[0]?.turns?.[0]?.key, named: named.to ?? named.kind });
+  const relabelled = await ticketToQa.ticketRuntime({
+    tracker: { get: async () => ({ ...obs({}).ticket, repo: REPO, repos: [OTHER_REPO] }) },
+    host: { findPullRequest: async () => null, findPullRequestMentioning: async () => null }, agent: {}, gate: {}, notifier: { announce: async () => {} }, roster: () => roster, git: {}, now: () => new Date(),
+    layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
+  }).observe(rec("HUMAN_REVIEW"));
+  const retired = plan(rec("HUMAN_REVIEW"), relabelled, DEFAULT_POLICY);
+  record("compose.a_repository_that_leaves_the_ticket_retires_its_work_item", relabelled.retired === true && retired.to === "DONE" && retired.effects.every((e) => e.type === "announce"), { retired: relabelled.retired, to: retired.to });
+
   const refused = await ticketToQa.ticketRuntime({
     tracker: { inProgress: async () => [{ ...obs({}).ticket, repos: [REPO, OTHER_REPO] }] },
     host: { findPullRequest: async () => null }, agent: {}, gate: {}, notifier: { announce: async () => {} }, roster: () => roster, git: {}, now: () => new Date(),
@@ -315,6 +356,7 @@ record("compose.nothing_moves_until_the_handed_off_effect_is_observed", lifecycl
 record("compose.a_ticket_in_two_repositories_is_two_work_items", lifecycle.ids.length === 2 && lifecycle.ids.every((id) => id.startsWith(TICKET)), lifecycle.ids);
 record("compose.labelling_a_running_ticket_keeps_its_work_item", JSON.stringify(lifecycle.ids.sort()) === JSON.stringify([TICKET, `${TICKET}@${OTHER_REPO}`].sort()), lifecycle.ids);
 record("compose.review_fixes_land_on_the_pull_requests_own_branch", lifecycle.fixOnOwnBranch && !lifecycle.fixOnTicketBranch, { own: lifecycle.fixOnOwnBranch, ticketBranch: lifecycle.fixOnTicketBranch });
+record("compose.the_operator_answers_on_the_ticket_with_their_own_account", lifecycle.answeredAsSelf >= 2 && lifecycle.states.every((s) => s === "DONE"), { answered: lifecycle.answeredAsSelf, states: lifecycle.states });
 record("compose.qa_is_done_only_when_status_and_owner_are_both_seen", lifecycle.heldForOwner >= 1 && lifecycle.ticketAssignee === "u-grace", { held: lifecycle.heldForOwner, assignee: lifecycle.ticketAssignee });
 record("compose.each_repository_walks_in_its_own_tree", lifecycle.ownTrees, lifecycle.trees);
 record("compose.qa_waits_while_one_repository_is_unmerged", lifecycle.heldForMerge >= 2, lifecycle.heldForMerge);
@@ -362,7 +404,7 @@ function installed() {
     for (const entry of Object.values(h.repos)) entry.pulls = [];
     write(hostFile, h);
 
-    const out = { said: [], saidTwice: [], made: [], premature: [], heldForMerge: 0, qaTurns: 0, qaBeforeEveryMerge: false, lateDiscovered: false, waitedForLate: false, heldForOwner: 0 };
+    const out = { said: [], saidTwice: [], made: [], premature: [], heldForMerge: 0, qaTurns: 0, qaBeforeEveryMerge: false, lateDiscovered: false, waitedForLate: false, heldForOwner: 0, answeredAsSelf: 0 };
     let ownerPending = false;
     const seen = new Set();
     const heard = new Set();
@@ -410,15 +452,16 @@ function installed() {
     out.states = finalIds.map((id) => recordOf(id)?.state);
     out.ticketStatus = read(trackerFile).issues[0].stateId === "s-qa" ? "In QA" : read(trackerFile).issues[0].stateId;
     out.ticketAssignee = read(trackerFile).issues[0].assigneeId;
-    const subjects = (branch) => git(root, "--git-dir", path.join(root, "origins", "widgets.git"), "log", "--format=%s", branch).split("\n");
+    // A run that never got as far as the branch is a finding, not a crash.
+    const subjects = (branch) => { try { return git(root, "--git-dir", path.join(root, "origins", "widgets.git"), "log", "--format=%s", branch).split("\n"); } catch { return []; } };
     out.fixOnOwnBranch = subjects(OPS_BRANCH).some((s) => s.includes("address review comments"));
     out.fixOnTicketBranch = subjects(BRANCH).some((s) => s.includes("address review comments"));
     out.trackerWrites = lines(path.join(root, "world", "tracker.log")).filter((l) => /mutation/i.test(l.query ?? "")).map((l) => l.operation);
     out.ghWrites = lines(path.join(root, "world", "gh.log")).map((l) => l.argv.join(" ")).filter((argv) => /--method (POST|PUT|PATCH|DELETE)|mutation /.test(argv));
     out.trees = [REPO, OTHER_REPO].map((r) => ({ repo: r, head: headOf(root, r.split("/")[1], BRANCH) }));
+    const files = (origin) => { try { return git(root, "--git-dir", path.join(root, "origins", origin), "ls-tree", "--name-only", BRANCH); } catch { return ""; } };
     out.ownTrees = out.trees.every((tree) => tree.head) && out.trees[0].head !== out.trees[1].head &&
-      git(root, "--git-dir", path.join(root, "origins", "widgets.git"), "ls-tree", "--name-only", BRANCH).includes("invoice.md") &&
-      git(root, "--git-dir", path.join(root, "origins", "gadgets.git"), "ls-tree", "--name-only", BRANCH).includes("credit-note.md");
+      files("widgets.git").includes("invoice.md") && files("gadgets.git").includes("credit-note.md");
     out.lateDiscovered &&= Boolean(recordOf(idFor(OTHER_REPO)));
     return out;
 
@@ -496,7 +539,11 @@ function installed() {
       const repoName = workId.includes("@") ? decodeURIComponent(workId.slice(workId.indexOf("@") + 1)) : REPO;
       if (said.includes("needs an answer")) {
         const t3 = read(trackerFile);
-        t3.issues[0].comments.push({ body: "In BRL, the same as the rest of the invoice.", createdAt: new Date().toISOString(), userId: "u-owner" });
+        // The operator answers with their own account — the one amy reads
+        // the tracker as — because with the writes handed over, nobody
+        // else's key is involved.
+        t3.issues[0].comments.push({ body: "In BRL, the same as the rest of the invoice.", createdAt: new Date().toISOString(), userId: t3.viewer.id });
+        out.answeredAsSelf += 1;
         write(trackerFile, t3);
         return "answered on the ticket";
       }

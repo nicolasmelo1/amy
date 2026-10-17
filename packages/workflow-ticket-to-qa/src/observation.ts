@@ -32,6 +32,13 @@ export interface Observation {
   /** Whether the owner has answered an escalation. */
   escalationAnswered: boolean;
   /**
+   * Whether this work item's repository has left the ticket — a label taken
+   * off, or a ticket that grew labels none of which is the repository its
+   * work started in. Discovery no longer offers it, so the item is retired
+   * rather than left to hand the ticket over beside the ones that remain.
+   */
+  retired?: boolean;
+  /**
    * Whether the ticket already sits in the QA status, as the tracker reports
    * it. Read so a QA handoff the operator made by hand is something the
    * machine can see; absent is no.

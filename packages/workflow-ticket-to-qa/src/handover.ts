@@ -16,9 +16,6 @@ import { TicketState } from "./state.js";
  * state it moves to already waits for the answer.
  */
 export function handOver(decided: Plan, record: TicketRecord, obs: Observation, policy: Policy): Plan {
-  const pending = pendingReview(record, obs, policy);
-  if (pending) return pending;
-
   if (decided.kind === "settled") return decided;
   // The plan carries this workflow's own effects; the core types them loosely.
   const effects = decided.effects as Effect[];
@@ -42,8 +39,8 @@ export function handOver(decided: Plan, record: TicketRecord, obs: Observation, 
 function turnOrWait(turns: HandOverTurn[], others: Effect[], record: TicketRecord, obs: Observation, policy: Policy): Plan {
   const said = new Set(record.handedOver ?? []);
   const write = turns[0]!.write;
-  if (write.type === "hand-off-to-qa" && handedToQa(obs)) {
-    return advance("DONE", `${obs.ticket.id} is in QA and owned by ${obs.roster.qa.tracker}, as the operator left it`, ...others);
+  if (write.type === "hand-off-to-qa" && handedToQa(obs, write.tracker)) {
+    return advance("DONE", `${obs.ticket.id} is in QA and owned by ${write.tracker}, as the operator left it`, ...others);
   }
   if (write.type === "request-rereview" && said.has(turns[0]!.key)) {
     return observedReview(write.host, obs, record.handedOverAt?.[turns[0]!.key])
@@ -62,9 +59,14 @@ function turnOrWait(turns: HandOverTurn[], others: Effect[], record: TicketRecor
  * A review the operator was asked to request, read off the forge until it is
  * there. Decided from the record, not the roster: the reviewer was chosen
  * when the turn was said, and the load that chose them has since moved.
+ *
+ * Asked by the reviewer-assignment planner after its own safety checks — red
+ * or unfinished checks, a conflict, no pull request — and before it picks a
+ * reviewer, so a request the operator made never carries a broken branch past
+ * them.
  */
-function pendingReview(record: TicketRecord, obs: Observation, policy: Policy): Plan | null {
-  if (record.state !== "REVIEWER_ASSIGNED" || !record.reviewer) return null;
+export function pendingReviewRequest(record: TicketRecord, obs: Observation, policy: Policy): Plan | null {
+  if (policy.writes !== "operator" || !record.reviewer) return null;
   const key = `request-review@${record.reviewer}`;
   if (!(record.handedOver ?? []).includes(key)) return null;
 
@@ -81,19 +83,24 @@ function pendingReview(record: TicketRecord, obs: Observation, policy: Policy): 
 function observedReview(host: string, obs: Observation, since: string | undefined): boolean {
   const pr: PullRequestView | null = obs.pullRequest;
   if (!pr) return false;
-  if (pr.requestedReviewers.includes(host)) return true;
-  return pr.reviews.some((review) => review.author === host && since !== undefined && review.submittedAt > since);
+  // Logins compared the way the forge treats them, without case, and
+  // instants as instants: `12:00:00Z` sorts after `12:00:00.900Z` as text.
+  const who = host.toLowerCase();
+  if (pr.requestedReviewers.some((requested) => requested.toLowerCase() === who)) return true;
+  const after = since === undefined ? Number.NaN : Date.parse(since);
+  return pr.reviews.some((review) => review.author.toLowerCase() === who && Date.parse(review.submittedAt) > after);
 }
 
 /**
- * The QA handoff as it was asked for: the status moved and the QA owner
- * assigned. A tracker that does not say who a ticket is assigned to leaves
- * the status as the only thing there is to see.
+ * The QA handoff as it was asked for: the status moved and the owner the
+ * handoff named assigned — the one in the turn that was said, not whoever
+ * the roster names today. A tracker that does not say who a ticket is
+ * assigned to leaves the status as the only thing there is to see.
  */
-export function handedToQa(obs: Observation): boolean {
+export function handedToQa(obs: Observation, owner: string = obs.roster.qa.tracker): boolean {
   if (!obs.inQa) return false;
   const assignee = obs.ticket.assignee;
-  return assignee === undefined || assignee?.toLowerCase() === obs.roster.qa.tracker.toLowerCase();
+  return assignee === undefined || assignee?.toLowerCase() === owner.toLowerCase();
 }
 
 /** A question and an escalation move the state, and the state they reach waits for the answer. */
@@ -115,8 +122,10 @@ function keyFor(write: WriteEffect, record: TicketRecord, obs: Observation): str
       return `request-review@${write.host}`;
     case "request-rereview":
       return `request-review@${write.host}@${obs.pullRequest?.headSha ?? ""}`;
+    // Keyed by its owner, so a roster that changes before the operator made
+    // it says the new handoff instead of waiting on the old one.
     case "hand-off-to-qa":
-      return "hand-off-to-qa";
+      return `hand-off-to-qa@${write.tracker}`;
   }
 }
 

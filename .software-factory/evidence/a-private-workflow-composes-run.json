@@ -7,7 +7,7 @@
     "entry": "the installed amy, and the built dist of core, github, file-queue, serial-engine and ticket-to-qa"
   },
   "observed": {
-    "assertions_run": 38,
+    "assertions_run": 44,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-8D2XcY/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-02XZS4/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "7c0812e406c47ac2b0c412895c083b236308de77",
-        "cut": "7c0812e406c47ac2b0c412895c083b236308de77"
+        "tip": "bef50afcafa06495035bd21251b243efd7987de4",
+        "cut": "bef50afcafa06495035bd21251b243efd7987de4"
       }
     },
     {
@@ -146,6 +146,20 @@
         "stolen": "A",
         "changedRaced": 0,
         "pending": 0
+      }
+    },
+    {
+      "type": "compose.an_interrupted_reprioritization_is_put_back",
+      "status": "passed",
+      "detail": {
+        "threw": true,
+        "afterFailure": [
+          "H:3"
+        ],
+        "hidden": 0,
+        "afterDeath": [
+          "H:3"
+        ]
       }
     },
     {
@@ -177,6 +191,38 @@
       "detail": {
         "follower": "wait",
         "handed": "advance"
+      }
+    },
+    {
+      "type": "compose.a_requested_review_still_answers_to_the_forges_checks",
+      "status": "passed",
+      "detail": {
+        "red": "ESCALATED",
+        "conflicting": "ESCALATED"
+      }
+    },
+    {
+      "type": "compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them",
+      "status": "passed",
+      "detail": {
+        "cased": "HUMAN_REVIEW",
+        "early": "wait"
+      }
+    },
+    {
+      "type": "compose.a_qa_handoff_answers_to_the_owner_it_named",
+      "status": "passed",
+      "detail": {
+        "reSaid": "hand-off-to-qa@ada@example.test",
+        "named": "DONE"
+      }
+    },
+    {
+      "type": "compose.a_repository_that_leaves_the_ticket_retires_its_work_item",
+      "status": "passed",
+      "detail": {
+        "retired": true,
+        "to": "DONE"
       }
     },
     {
@@ -268,6 +314,17 @@
       }
     },
     {
+      "type": "compose.the_operator_answers_on_the_ticket_with_their_own_account",
+      "status": "passed",
+      "detail": {
+        "answered": 2,
+        "states": [
+          "DONE",
+          "DONE"
+        ]
+      }
+    },
+    {
       "type": "compose.qa_is_done_only_when_status_and_owner_are_both_seen",
       "status": "passed",
       "detail": {
@@ -281,11 +338,11 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "a7dbfbe3d7ba5f212b4c08badaedaa7577ceb5aa"
+          "head": "2b6a3fca648ef6caa6a94a6888b4cc9d4c0b1d3c"
         },
         {
           "repo": "acme/gadgets",
-          "head": "ee523c1d10dffacb2d9a7f78b902762271778aba"
+          "head": "c7824e634492750f36de1b09c6b50f17665c4357"
         }
       ]
     },

@@ -14,7 +14,7 @@ import {
   unresolvedThreads,
 } from "./review.js";
 import { isConfirmedFor, leastLoadedReviewer } from "./roster.js";
-import { handOver, handedToQa } from "./handover.js";
+import { handOver, handedToQa, pendingReviewRequest } from "./handover.js";
 
 /**
  * Decides the single next move for one ticket.
@@ -24,11 +24,31 @@ import { handOver, handedToQa } from "./handover.js";
  * tracker, a code host, a repository or an agent.
  */
 export function plan(record: TicketRecord, obs: Observation, policy: Policy): Plan {
+  if (obs.retired && record.state !== "DONE") return retire(record, obs);
   const decided = PLANNERS[record.state](record, obs, policy);
   return policy.writes === "operator" ? handOver(decided, record, obs, policy) : decided;
 }
 
 type Planner = (record: TicketRecord, obs: Observation, policy: Policy) => Plan;
+
+/**
+ * Stops a work item whose repository left the ticket, once, and says so.
+ *
+ * Whatever it already pushed or opened is left as it is: the ticket no
+ * longer says the work belongs in that repository, and undoing it is a
+ * person's call. Retiring is what keeps it from joining — or skipping — the
+ * QA handoff of the repositories that remain.
+ */
+function retire(record: TicketRecord, obs: Observation): Plan {
+  return advance(
+    "DONE",
+    `${obs.ticket.repo} is no longer one of ${obs.ticket.id}'s repositories`,
+    {
+      type: "announce",
+      text: `${record.id}: ${obs.ticket.repo} is no longer one of ${obs.ticket.id}'s repositories, so I stopped working on it there. Anything already pushed or opened is left as it is.`,
+    },
+  );
+}
 
 /**
  * One planner per state. A record rather than a switch, so the compiler is
@@ -423,6 +443,9 @@ function planReviewerAssignment(
   const broken = whatTheForgeSays(pr);
   if (broken) return handBackBroken(record, pr, policy, broken);
 
+  const requested = pendingReviewRequest(record, obs, policy);
+  if (requested) return requested;
+
   const firstLook = attemptsIn(record, "REVIEWER_ASSIGNED") === 0;
 
   if (!isConfirmedFor(obs.roster, obs.now)) {
@@ -633,9 +656,13 @@ function joinRepositories(obs: Observation, policy: Policy): Plan | null {
     return wait(policy.pollBackoffMs, `${obs.ticket.id} waits for ${open.join(", ")} to merge before QA`);
   }
 
+  // The others finish on the status alone: the owner the first one assigned
+  // is the first one's to check, and the roster may have moved since.
   const leader = repositories[0]!.repo;
   if (leader !== obs.ticket.repo) {
-    return wait(policy.pollBackoffMs, `every repository merged; waiting for ${leader}'s work item to hand ${obs.ticket.id} to QA`);
+    return obs.inQa
+      ? advance("DONE", `${leader}'s work item handed ${obs.ticket.id} to QA`)
+      : wait(policy.pollBackoffMs, `every repository merged; waiting for ${leader}'s work item to hand ${obs.ticket.id} to QA`);
   }
   return null;
 }

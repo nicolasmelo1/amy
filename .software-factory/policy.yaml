@@ -568,6 +568,13 @@ gates:
       - "compose.review_fixes_land_on_the_pull_requests_own_branch"
       - "compose.a_host_that_cannot_read_merges_is_refused_by_name"
       - "compose.labelling_a_running_ticket_keeps_its_work_item"
+      # From the second review: the same promise, for the next six.
+      - "compose.a_requested_review_still_answers_to_the_forges_checks"
+      - "compose.an_interrupted_reprioritization_is_put_back"
+      - "compose.a_repository_that_leaves_the_ticket_retires_its_work_item"
+      - "compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them"
+      - "compose.a_qa_handoff_answers_to_the_owner_it_named"
+      - "compose.the_operator_answers_on_the_ticket_with_their_own_account"
 
 rules:
   # L3 — A gate requires every check its plan's criteria name

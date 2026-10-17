@@ -229,10 +229,46 @@ export function ticketRuntime(
   };
 
   /**
+   * What was said back to a question or an escalation, read where it was
+   * asked: the work's thread, or the ticket.
+   *
+   * With the writes handed to the operator and no thread, the operator
+   * answers on the ticket with their own account — the same account this
+   * machine reads the tracker as, which the tracker reports as the machine's
+   * own. In that mode the machine wrote nothing on the ticket, so every
+   * comment there is the operator's, and is read as one.
+   */
+  const answersFor = async (current: TicketRecord, ticket: Ticket) => {
+    const awaitingAnswer = current.state === "CLARIFYING" && Boolean(current.triage);
+    const awaitingOwner = Boolean(current.escalation && !current.escalation.resolvedAt);
+    if (!awaitingAnswer && !awaitingOwner) return { conversation: [], escalationAnswered: false };
+
+    const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
+    const said = await saidSince(current.id, ticket, since);
+    return {
+      conversation: awaitingAnswer ? said ?? (await deps.tracker.comments(ticket.id, since)) : [],
+      escalationAnswered: awaitingOwner && (said ? said.length > 0 : await deps.tracker.hasReplyAfter(ticket.id, since)),
+    };
+  };
+
+  /**
+   * Everything said back since a turn, where only the operator can have
+   * said it: the work's thread, or — with the writes handed over — the
+   * ticket. Null where the machine comments on the ticket too, and the
+   * tracker's own reading of who wrote what is the one to trust.
+   */
+  const saidSince = async (workId: string, ticket: Ticket, since: string): Promise<Comment[] | null> => {
+    if (deps.conversation) return repliesFor(deps.conversation, workId, ticket.title, since);
+    if (deps.policy.writes !== "operator") return null;
+    return (await deps.tracker.comments(ticket.id, since)).map((comment) => ({ ...comment, fromAmy: false }));
+  };
+
+  /**
    * Whether the ticket already sits in QA, and — at the handoff, for a ticket
    * in several repositories — whether each one merged.
    */
   const whereItStands = async (ticket: Ticket, state: TicketRecord["state"]) => ({
+    retired: !(ticket.repos ?? [ticket.repo]).includes(ticket.repo),
     inQa: ticket.status === deps.config.qaStatusName,
     ...(state === "QA_HANDOFF" && (ticket.repos?.length ?? 0) > 1 ? { repositories: await mergedIn(ticket) } : {}),
   });
@@ -514,27 +550,12 @@ export function ticketRuntime(
           ? await deps.host.reviewLoad(deps.config.repos)
           : {};
 
-      const awaitingAnswer = current.state === "CLARIFYING" && Boolean(current.triage);
-      const awaitingOwner = current.escalation && !current.escalation.resolvedAt;
-      const conversation = deps.conversation && (awaitingAnswer || awaitingOwner)
-        ? await repliesFor(deps.conversation, current.id, ticket.title, awaitingAnswer ? current.triage!.at : current.escalation!.askedAt)
-        : [];
-
       return {
         ticket,
         pullRequest,
         reviewLoad,
         roster: deps.roster(),
-        conversation: awaitingAnswer
-          ? deps.conversation
-            ? conversation
-            : await deps.tracker.comments(ticket.id, current.triage!.at)
-          : [],
-        escalationAnswered: awaitingOwner
-          ? deps.conversation
-            ? conversation.length > 0
-            : await deps.tracker.hasReplyAfter(ticket.id, current.escalation!.askedAt)
-          : false,
+        ...(await answersFor(current, ticket)),
         ...(await whereItStands(ticket, current.state)),
         now: deps.now(),
       };
