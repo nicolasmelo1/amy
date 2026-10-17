@@ -7,7 +7,7 @@
     "entry": "the installed amy, and the built dist of core, github, file-queue, serial-engine and ticket-to-qa"
   },
   "observed": {
-    "assertions_run": 50,
+    "assertions_run": 51,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-UMMBSe/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-Hxk31p/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "49860ac4ce9449cd13e8dc2eb6071947b3dfcafe",
-        "cut": "49860ac4ce9449cd13e8dc2eb6071947b3dfcafe"
+        "tip": "31df9d60b42b6903fae5038307f10bcce3d1a87c",
+        "cut": "31df9d60b42b6903fae5038307f10bcce3d1a87c"
       }
     },
     {
@@ -196,6 +196,13 @@
         "restoredRace": [
           "R"
         ]
+      }
+    },
+    {
+      "type": "compose.a_half_written_replacement_leaves_nothing_behind",
+      "status": "passed",
+      "detail": {
+        "leftovers": []
       }
     },
     {
@@ -389,11 +396,11 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "625b576dd9434ccf58dfc9281c847010fc77b026"
+          "head": "9cb857c99c1b38dcc2b6de1a2c0b10098e1e7ad0"
         },
         {
           "repo": "acme/gadgets",
-          "head": "f8405b498a043798f30253baeb63e40873ec479d"
+          "head": "db3a92d56f03fda7197453dd7cd85b517808526a"
         }
       ]
     },

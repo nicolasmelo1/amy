@@ -325,3 +325,50 @@ describe("FileQueue, an item between its two names", () => {
     expect(recovered.map((r) => r.workId)).toEqual(["A"]);
   });
 });
+
+describe("FileQueue, a replacement that fails half-written", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-priority-partial-"));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("leaves nothing behind in ready/ but the original", () => {
+    const queue = new FileQueue(root, "priority");
+    queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    const writeFile = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "writeFileSync").mockImplementation(((target: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
+      if (String(target).endsWith(".next")) {
+        // The disk fills after part of it is written.
+        (writeFile as (...a: unknown[]) => void)(target, "{ \"workId\": \"A\", ");
+        throw new Error("ENOSPC: no space left on device");
+      }
+      (writeFile as (...a: unknown[]) => void)(target, ...rest);
+    }) as typeof fs.writeFileSync);
+
+    expect(() => queue.reprioritize("A", 1)).toThrow("ENOSPC");
+    vi.restoreAllMocks();
+
+    expect(fs.readdirSync(path.join(root, "ready")).every((name) => name.endsWith(".json"))).toBe(true);
+    expect(queue.pending()).toMatchObject([{ workId: "A", priority: 3 }]);
+  });
+
+  it("has recovery drop a replacement whose hold is already gone", () => {
+    const queue = new FileQueue(root, "priority");
+    const item = queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    const orphan = path.join(root, "ready", `${item.id}.json.reprioritizing.${Date.now()}.next`);
+    fs.writeFileSync(orphan, "{ half", "utf-8");
+
+    queue.recover(30 * 60_000, new Date(Date.now() + 60_000));
+    expect(fs.existsSync(orphan)).toBe(true);
+
+    queue.recover(30 * 60_000, new Date(Date.now() + 31 * 60_000));
+    expect(fs.existsSync(orphan)).toBe(false);
+    expect(queue.pending()).toMatchObject([{ workId: "A", priority: 3 }]);
+  });
+});

@@ -323,6 +323,18 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   try { restoredRace = racingQueue.recover(1_800_000, new Date()).map((item) => item.workId); } catch (error) { restoredRace = String(error); } finally { fs.renameSync = renameSync; }
   record("compose.recovery_survives_a_claim_racing_its_restore", racedClaim === "R" && JSON.stringify(restoredRace) === '["R"]', { racedClaim, restoredRace });
 
+  // Review 5: a replacement that fails half-written leaves only the original.
+  const partial = path.join(dir, "partial");
+  const partialQueue = new FileQueue(partial, "priority");
+  partialQueue.enqueue({ workId: "P", reason: "found", priority: 3 }, now);
+  fs.writeFileSync = (file, ...rest) => {
+    if (String(file).endsWith(".next")) { writeFileSync(file, "{ half"); throw new Error("ENOSPC"); }
+    return writeFileSync(file, ...rest);
+  };
+  try { partialQueue.reprioritize("P", 1); } catch { /* the disk filled */ } finally { fs.writeFileSync = writeFileSync; }
+  const leftovers = fs.readdirSync(path.join(partial, "ready")).filter((name) => !name.endsWith(".json"));
+  record("compose.a_half_written_replacement_leaves_nothing_behind", leftovers.length === 0 && partialQueue.pending().map((item) => `${item.workId}:${item.priority}`).join() === "P:3", { leftovers });
+
   const plain = new FileQueue(path.join(dir, "plain"));
   plain.enqueue({ workId: "LOW", reason: "found", priority: 4 }, now);
   plain.enqueue({ workId: "URGENT", reason: "found", priority: 1 }, at(1));

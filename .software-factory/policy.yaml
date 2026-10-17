@@ -583,6 +583,8 @@ gates:
       - "compose.an_item_between_its_two_names_is_still_pending"
       - "compose.recovery_survives_a_claim_racing_its_restore"
       - "compose.a_retired_work_item_resumes_when_its_repository_returns"
+      # From the fifth review.
+      - "compose.a_half_written_replacement_leaves_nothing_behind"
 
 rules:
   # L3 — A gate requires every check its plan's criteria name

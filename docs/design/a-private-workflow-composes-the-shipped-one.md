@@ -295,6 +295,13 @@ unnoticed.
       the repository's label coming back resumes it
       (proof: assertion:compose.a_retired_work_item_resumes_when_its_repository_returns)
 
+### What the fifth review found
+
+- [x] A replacement that fails half-written is removed before the original
+      goes back, and recovery drops one whose hold is already gone, so
+      `ready/` holds nothing a reader cannot read
+      (proof: assertion:compose.a_half_written_replacement_leaves_nothing_behind)
+
 ### The private workflow
 
 - [ ] The private workflow that prompted this deletes its checkout, readers,

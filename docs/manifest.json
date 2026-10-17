@@ -1662,6 +1662,11 @@
         },
         {
           "depth": 3,
+          "title": "What the fifth review found",
+          "slug": "what-the-fifth-review-found"
+        },
+        {
+          "depth": 3,
           "title": "The private workflow",
           "slug": "the-private-workflow"
         },
@@ -7661,7 +7666,8 @@
           "compose.a_repository_whose_last_label_went_retires_its_work_item",
           "compose.an_item_between_its_two_names_is_still_pending",
           "compose.recovery_survives_a_claim_racing_its_restore",
-          "compose.a_retired_work_item_resumes_when_its_repository_returns"
+          "compose.a_retired_work_item_resumes_when_its_repository_returns",
+          "compose.a_half_written_replacement_leaves_nothing_behind"
         ],
         "scenario": ".software-factory/evidence/a-private-workflow-composes-scenario.sh"
       },

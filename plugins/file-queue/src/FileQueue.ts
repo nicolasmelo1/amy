@@ -137,15 +137,20 @@ export class FileQueue implements Queue {
         // A worker claimed it between the listing and the rename.
         continue;
       }
+      const next = `${held}.next`;
       try {
         const item = JSON.parse(fs.readFileSync(held, "utf-8")) as QueueItem;
         const { priority: _old, ...rest } = item;
-        const next = `${held}.next`;
         fs.writeFileSync(next, JSON.stringify(priority === undefined ? rest : { ...rest, priority }, null, 2), "utf-8");
         fs.renameSync(next, held);
       } finally {
-        // Back where a claim can find it, rewritten or not.
-        fs.renameSync(held, file);
+        // A replacement that failed half-written goes first — and whether or
+        // not that works, the original goes back where a claim can find it.
+        try {
+          fs.rmSync(next, { force: true });
+        } finally {
+          fs.renameSync(held, file);
+        }
       }
       changed += 1;
     }
@@ -245,6 +250,7 @@ export class FileQueue implements Queue {
    * Its half-written replacement, if any, is dropped.
    */
   private restoreHeld(olderThanMs: number, now: Date): QueueItem[] {
+    this.dropOrphanedReplacements(olderThanMs, now);
     const restored: QueueItem[] = [];
     for (const { held, takenAt } of this.holds()) {
       if (now.getTime() - takenAt < olderThanMs) continue;
@@ -263,6 +269,24 @@ export class FileQueue implements Queue {
       restored.push(item);
     }
     return restored;
+  }
+
+  /**
+   * Half-written replacements whose hold is gone — the writer died after
+   * releasing it, or a cleanup failed — once they are as old as an
+   * abandoned claim. Nothing reads them, and nothing else would remove them.
+   */
+  private dropOrphanedReplacements(olderThanMs: number, now: Date): void {
+    const dir = path.join(this.root, READY);
+    if (!fs.existsSync(dir)) return;
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith(".next")) continue;
+      const replacement = path.join(dir, name);
+      const hold = replacement.slice(0, -".next".length);
+      const takenAt = Number(name.slice(name.indexOf(HELD) + HELD.length, -".next".length));
+      if (fs.existsSync(hold) || !(now.getTime() - takenAt >= olderThanMs)) continue;
+      fs.rmSync(replacement, { force: true });
+    }
   }
 
   /** Every item a reprioritization is holding, and when it took each. */
