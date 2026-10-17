@@ -372,3 +372,30 @@ describe("FileQueue, a replacement that fails half-written", () => {
     expect(queue.pending()).toMatchObject([{ workId: "A", priority: 3 }]);
   });
 });
+
+describe("FileQueue, a claim racing a reprioritization", () => {
+  it("returns the priority the item arrived in running/ with, not the one it was listed with", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-priority-claim-"));
+    const worker = new FileQueue(root, "priority");
+    const discovery = new FileQueue(root, "priority");
+    worker.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    const rename = fs.renameSync.bind(fs);
+    let refreshed = false;
+    vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
+      // Discovery finishes a refresh after the claim listed the item and
+      // before its rename into running/.
+      if (!refreshed && String(to).includes(`${path.sep}running${path.sep}`)) {
+        refreshed = true;
+        discovery.reprioritize("A", 1);
+      }
+      rename(from, to);
+    });
+
+    const claimed = worker.claim(later(10));
+    vi.restoreAllMocks();
+
+    expect(refreshed).toBe(true);
+    expect(claimed?.priority).toBe(1);
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+});

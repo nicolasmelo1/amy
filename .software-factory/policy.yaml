@@ -585,6 +585,8 @@ gates:
       - "compose.a_retired_work_item_resumes_when_its_repository_returns"
       # From the fifth review.
       - "compose.a_half_written_replacement_leaves_nothing_behind"
+      # From the sixth review.
+      - "compose.a_claim_carries_the_priority_it_arrived_with"
 
 rules:
   # L3 — A gate requires every check its plan's criteria name

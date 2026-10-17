@@ -335,6 +335,21 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const leftovers = fs.readdirSync(path.join(partial, "ready")).filter((name) => !name.endsWith(".json"));
   record("compose.a_half_written_replacement_leaves_nothing_behind", leftovers.length === 0 && partialQueue.pending().map((item) => `${item.workId}:${item.priority}`).join() === "P:3", { leftovers });
 
+  // Review 6: a claim returns the item as it arrived in running/, so a
+  // refresh that finished in between is not undone by the next look.
+  const claimRace = path.join(dir, "claim-race");
+  const claimer = new FileQueue(claimRace, "priority");
+  const refresher = new FileQueue(claimRace, "priority");
+  claimer.enqueue({ workId: "C", reason: "found", priority: 3 }, now);
+  let refreshedMidClaim = false;
+  fs.renameSync = (from, to) => {
+    if (!refreshedMidClaim && String(to).includes(`${path.sep}running${path.sep}`)) { refreshedMidClaim = true; refresher.reprioritize("C", 1); }
+    return renameSync(from, to);
+  };
+  let claimedItem;
+  try { claimedItem = claimer.claim(at(60)); } finally { fs.renameSync = renameSync; }
+  record("compose.a_claim_carries_the_priority_it_arrived_with", refreshedMidClaim && claimedItem?.priority === 1, { refreshedMidClaim, priority: claimedItem?.priority });
+
   const plain = new FileQueue(path.join(dir, "plain"));
   plain.enqueue({ workId: "LOW", reason: "found", priority: 4 }, now);
   plain.enqueue({ workId: "URGENT", reason: "found", priority: 1 }, at(1));

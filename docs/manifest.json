@@ -1667,6 +1667,11 @@
         },
         {
           "depth": 3,
+          "title": "What the sixth review found",
+          "slug": "what-the-sixth-review-found"
+        },
+        {
+          "depth": 3,
           "title": "The private workflow",
           "slug": "the-private-workflow"
         },
@@ -7667,7 +7672,8 @@
           "compose.an_item_between_its_two_names_is_still_pending",
           "compose.recovery_survives_a_claim_racing_its_restore",
           "compose.a_retired_work_item_resumes_when_its_repository_returns",
-          "compose.a_half_written_replacement_leaves_nothing_behind"
+          "compose.a_half_written_replacement_leaves_nothing_behind",
+          "compose.a_claim_carries_the_priority_it_arrived_with"
         ],
         "scenario": ".software-factory/evidence/a-private-workflow-composes-scenario.sh"
       },

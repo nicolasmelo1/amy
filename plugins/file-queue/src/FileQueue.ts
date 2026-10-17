@@ -76,7 +76,10 @@ export class FileQueue implements Queue {
       return null;
     }
 
-    return next;
+    // Read again once it is ours: a reprioritization can finish between the
+    // listing and the rename, and the item to carry forward is the one that
+    // arrived in `running/`, not the one listed before it changed.
+    return readItem(this.file(RUNNING, next)) ?? next;
   }
 
   complete(item: QueueItem): void {

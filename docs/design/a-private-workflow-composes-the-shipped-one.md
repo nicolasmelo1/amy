@@ -302,6 +302,12 @@ unnoticed.
       `ready/` holds nothing a reader cannot read
       (proof: assertion:compose.a_half_written_replacement_leaves_nothing_behind)
 
+### What the sixth review found
+
+- [x] A claim returns the item as it arrived in `running/`, so a refresh that
+      finished between the listing and the rename is what the next look carries
+      (proof: assertion:compose.a_claim_carries_the_priority_it_arrived_with)
+
 ### The private workflow
 
 - [ ] The private workflow that prompted this deletes its checkout, readers,
