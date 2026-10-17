@@ -6,8 +6,11 @@ import { QueueItem, isReady } from "@amykit/core";
 const READY = "ready";
 const RUNNING = "running";
 const DONE = "done";
-/** What an item held for reprioritizing is called while it is held. */
-const HELD = ".reprioritizing";
+/**
+ * What an item held for reprioritizing is called while it is held, followed
+ * by the instant the hold was taken.
+ */
+const HELD = ".reprioritizing.";
 
 /**
  * A queue kept as one file per item.
@@ -124,7 +127,10 @@ export class FileQueue implements Queue {
     for (const listed of this.read(READY)) {
       if (listed.workId !== workId || listed.priority === priority) continue;
       const file = this.file(READY, listed);
-      const held = `${file}${HELD}`;
+      // When the hold was taken is in its name, set by the same rename that
+      // takes it: a file keeps the mtime it had while it waited, and an item
+      // that waited long would read as abandoned the instant it was held.
+      const held = `${file}${HELD}${Date.now()}`;
       try {
         fs.renameSync(file, held);
       } catch {
@@ -180,8 +186,20 @@ export class FileQueue implements Queue {
     return this.read(READY).filter((item) => isReady(item, now));
   }
 
+  /**
+   * Every look still to come, the ones a reprioritization is holding
+   * included: they are not claimable while held, but they exist, and a
+   * discovery that did not see them would queue the same work a second time.
+   */
   pending(): QueueItem[] {
-    return this.read(READY);
+    const held = this.holds().flatMap(({ held: file }) => {
+      try {
+        return [JSON.parse(fs.readFileSync(file, "utf-8")) as QueueItem];
+      } catch {
+        return [];
+      }
+    });
+    return [...this.read(READY), ...held];
   }
 
   running(): QueueItem[] {
@@ -193,22 +211,39 @@ export class FileQueue implements Queue {
   }
 
   /**
-   * Items a reprioritization held when its process died, put back once they
-   * are as old as an abandoned claim, so a writer that is merely slow keeps
-   * what it holds. Its half-written replacement, if any, is dropped.
+   * Items a reprioritization held when its process died, put back once the
+   * hold is as old as an abandoned claim, so a writer that is merely slow
+   * keeps what it holds. The age is the hold's own — the instant in its name
+   * — never the item's, which may have waited for hours before it was taken.
+   * Its half-written replacement, if any, is dropped.
    */
   private restoreHeld(olderThanMs: number, now: Date): QueueItem[] {
-    const dir = path.join(this.root, READY);
     const restored: QueueItem[] = [];
-    for (const name of fs.readdirSync(dir)) {
-      const held = path.join(dir, name);
-      const age = () => now.getTime() - fs.statSync(held).mtimeMs;
-      if (name.endsWith(`${HELD}.next`) && age() >= olderThanMs) fs.rmSync(held, { force: true });
-      if (!name.endsWith(HELD) || age() < olderThanMs) continue;
-      fs.renameSync(held, held.slice(0, -HELD.length));
-      restored.push(JSON.parse(fs.readFileSync(held.slice(0, -HELD.length), "utf-8")) as QueueItem);
+    for (const { held, takenAt } of this.holds()) {
+      if (now.getTime() - takenAt < olderThanMs) continue;
+      fs.rmSync(`${held}.next`, { force: true });
+      const file = held.slice(0, held.indexOf(HELD));
+      try {
+        fs.renameSync(held, file);
+      } catch {
+        // Its writer finished between the listing and the rename.
+        continue;
+      }
+      restored.push(JSON.parse(fs.readFileSync(file, "utf-8")) as QueueItem);
     }
     return restored;
+  }
+
+  /** Every item a reprioritization is holding, and when it took each. */
+  private holds(): { held: string; takenAt: number }[] {
+    const dir = path.join(this.root, READY);
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir).flatMap((name) => {
+      const at = name.indexOf(HELD);
+      if (at === -1 || name.endsWith(".next")) return [];
+      const takenAt = Number(name.slice(at + HELD.length));
+      return Number.isFinite(takenAt) ? [{ held: path.join(dir, name), takenAt }] : [];
+    });
   }
 
   private compare(a: QueueItem, b: QueueItem): number {

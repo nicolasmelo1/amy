@@ -7,7 +7,7 @@
     "entry": "the installed amy, and the built dist of core, github, file-queue, serial-engine and ticket-to-qa"
   },
   "observed": {
-    "assertions_run": 44,
+    "assertions_run": 47,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-02XZS4/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-ge58ly/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "bef50afcafa06495035bd21251b243efd7987de4",
-        "cut": "bef50afcafa06495035bd21251b243efd7987de4"
+        "tip": "4aa50ca272590d1e62b137cf412491a2a521bac0",
+        "cut": "4aa50ca272590d1e62b137cf412491a2a521bac0"
       }
     },
     {
@@ -156,10 +156,26 @@
         "afterFailure": [
           "H:3"
         ],
-        "hidden": 0,
+        "claimableWhileHeld": null,
         "afterDeath": [
           "H:3"
         ]
+      }
+    },
+    {
+      "type": "compose.recovery_never_takes_a_live_reprioritization",
+      "status": "passed",
+      "detail": {
+        "tookLive": 0,
+        "pending": 1
+      }
+    },
+    {
+      "type": "compose.discovery_sees_work_a_reprioritization_holds",
+      "status": "passed",
+      "detail": {
+        "requeued": [],
+        "pending": 1
       }
     },
     {
@@ -223,6 +239,13 @@
       "detail": {
         "retired": true,
         "to": "DONE"
+      }
+    },
+    {
+      "type": "compose.a_repository_whose_last_label_went_retires_its_work_item",
+      "status": "passed",
+      "detail": {
+        "retired": true
       }
     },
     {
@@ -338,11 +361,11 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "2b6a3fca648ef6caa6a94a6888b4cc9d4c0b1d3c"
+          "head": "ba43f7ad78858ecae566a0c28ee43c7f89c01749"
         },
         {
           "repo": "acme/gadgets",
-          "head": "c7824e634492750f36de1b09c6b50f17665c4357"
+          "head": "c7a97a7cea71911b6f1848e526170811c1b7ea5c"
         }
       ]
     },

@@ -184,7 +184,10 @@ export function ticketRuntime(
     if (!found) {
       throw new Error(`${ticketId} is not in the tracker any more`);
     }
-    return repo ? { ...found, repo } : found;
+    // The tracker's membership is kept before the repository is overridden:
+    // a ticket whose last label went is back in its team's repository alone,
+    // and an item for another repository must still see that it left.
+    return repo ? { ...found, repo, repos: found.repos ?? [found.repo] } : found;
   };
 
   /**

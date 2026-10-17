@@ -268,6 +268,20 @@ unnoticed.
       ticket with their own account, and the machine hears it
       (proof: assertion:compose.the_operator_answers_on_the_ticket_with_their_own_account)
 
+### What the third review found
+
+- [x] Recovery never takes a reprioritization that is still at work: a hold's
+      age is the instant in its own name, never the item's, which may have
+      waited for hours before it was taken
+      (proof: assertion:compose.recovery_never_takes_a_live_reprioritization)
+- [x] Discovery sees work a dead reprioritization still holds, so it does not
+      queue it a second time before recovery puts it back
+      (proof: assertion:compose.discovery_sees_work_a_reprioritization_holds)
+- [x] A work item for a repository whose last label was taken off is retired,
+      because the tracker's membership is read before the work id overrides
+      the repository
+      (proof: assertion:compose.a_repository_whose_last_label_went_retires_its_work_item)
+
 ### The private workflow
 
 - [ ] The private workflow that prompted this deletes its checkout, readers,

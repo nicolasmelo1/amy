@@ -121,7 +121,7 @@ describe("FileQueue reprioritizing while a worker claims", () => {
     const rename = fs.renameSync.bind(fs);
     const writeFile = fs.writeFileSync.bind(fs);
     vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
-      if (String(to).endsWith(".reprioritizing")) claimFirst();
+      if (String(to).includes(".reprioritizing.")) claimFirst();
       rename(from, to);
     });
     vi.spyOn(fs, "writeFileSync").mockImplementation(((file: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
@@ -181,17 +181,74 @@ describe("FileQueue, a reprioritization that does not finish", () => {
     const item = queue.enqueue({ workId: "A", reason: "found", priority: 3, delayMs: 60_000 }, NOW);
     const file = path.join(root, "ready", `${item.id}.json`);
     // What a process that died between the two renames leaves behind.
-    fs.renameSync(file, `${file}.reprioritizing`);
-    fs.writeFileSync(`${file}.reprioritizing.next`, "{ half", "utf-8");
-    expect(queue.pending()).toEqual([]);
+    const held = `${file}.reprioritizing.${Date.now()}`;
+    fs.renameSync(file, held);
+    fs.writeFileSync(`${held}.next`, "{ half", "utf-8");
+    // Still there to discovery, and nobody can claim it while it is held.
+    expect(queue.pending().map((p) => p.workId)).toEqual(["A"]);
+    expect(queue.claim(later(120))).toBeNull();
 
-    expect(queue.recover(30 * 60_000, NOW)).toEqual([]);
-    expect(queue.pending()).toEqual([]);
+    expect(queue.recover(30 * 60_000, new Date(Date.now() + 60_000))).toEqual([]);
+    expect(queue.claim(later(120))).toBeNull();
 
     const recovered = queue.recover(30 * 60_000, new Date(Date.now() + 31 * 60_000));
 
     expect(recovered.map((r) => r.workId)).toEqual(["A"]);
     expect(queue.pending()).toMatchObject([{ workId: "A", priority: 3, notBefore: later(60).toISOString() }]);
     expect(fs.readdirSync(path.join(root, "ready")).every((name) => name.endsWith(".json"))).toBe(true);
+  });
+});
+
+describe("FileQueue, a hold on an item that had waited a long time", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-priority-old-"));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("is never taken by recovery while its writer is still at work", () => {
+    const queue = new FileQueue(root, "priority");
+    const item = queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    // Waited an hour before anybody reprioritized it.
+    const file = path.join(root, "ready", `${item.id}.json`);
+    const hourAgo = new Date(Date.now() - 60 * 60_000);
+    fs.utimesSync(file, hourAgo, hourAgo);
+
+    // Recovery runs at the worst moment: after the hold, before the rewrite.
+    const recovery = new FileQueue(root, "priority");
+    const writeFile = fs.writeFileSync.bind(fs);
+    let recovered: unknown[] = [];
+    vi.spyOn(fs, "writeFileSync").mockImplementation(((target: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
+      if (String(target).endsWith(".next")) recovered = recovery.recover(30 * 60_000, new Date());
+      (writeFile as (...a: unknown[]) => void)(target, ...rest);
+    }) as typeof fs.writeFileSync);
+
+    expect(queue.reprioritize("A", 1)).toBe(1);
+    vi.restoreAllMocks();
+
+    expect(recovered).toEqual([]);
+    expect(queue.pending()).toMatchObject([{ workId: "A", priority: 1 }]);
+  });
+});
+
+describe("FileQueue and discovery, after a reprioritization died", () => {
+  it("does not let discovery queue the held work again", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-priority-rediscover-"));
+    const queue = new FileQueue(root, "priority");
+    const item = queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    const file = path.join(root, "ready", `${item.id}.json`);
+    fs.renameSync(file, `${file}.reprioritizing.${Date.now()}`);
+
+    // What discovery asks before it queues anything.
+    expect(queue.pending().some((pending) => pending.workId === "A")).toBe(true);
+
+    queue.recover(30 * 60_000, new Date(Date.now() + 31 * 60_000));
+    expect(queue.pending().filter((pending) => pending.workId === "A")).toHaveLength(1);
+    fs.rmSync(root, { recursive: true, force: true });
   });
 });

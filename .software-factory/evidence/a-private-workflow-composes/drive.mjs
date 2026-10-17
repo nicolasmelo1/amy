@@ -25,6 +25,7 @@ const { build, configure, headOf, lines, read, write, REPO, OTHER_REPO, TICKET, 
 const core = await dist("packages/core/dist/index.js");
 const { GitHubCodeHost } = await dist("plugins/github/dist/index.js");
 const { FileQueue } = await dist("plugins/file-queue/dist/index.js");
+const { Worker } = await dist("plugins/serial-engine/dist/index.js");
 const ticketToQa = await dist("packages/workflow-ticket-to-qa/dist/index.js");
 
 const assertions = [];
@@ -213,7 +214,6 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
 
   // Refreshed the way discovery refreshes it: the engine, built, asking the
   // runtime what it found.
-  const { Worker } = await dist("plugins/serial-engine/dist/index.js");
   const refreshed = new FileQueue(path.join(dir, "refreshed"), "priority");
   let found = [{ workId: "A", priority: 2 }, { workId: "B", priority: 3 }];
   const records = new Map();
@@ -240,7 +240,7 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const { renameSync, writeFileSync } = fs;
   let stolen;
   const steal = () => { if (stolen === undefined) { stolen = ""; stolen = worker2.claim(at(60))?.workId ?? ""; } };
-  fs.renameSync = (from, to) => { if (String(to).endsWith(".reprioritizing")) steal(); return renameSync(from, to); };
+  fs.renameSync = (from, to) => { if (String(to).includes(".reprioritizing.")) steal(); return renameSync(from, to); };
   fs.writeFileSync = (file, ...rest) => { if (String(file).includes(`${path.sep}ready${path.sep}`) && String(file).endsWith(".json")) steal(); return writeFileSync(file, ...rest); };
   let changedRaced;
   try { changedRaced = mine.reprioritize("A", 1); } finally { fs.renameSync = renameSync; fs.writeFileSync = writeFileSync; }
@@ -256,11 +256,44 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   try { holder.reprioritize("H", 1); } catch { threw = true; } finally { fs.writeFileSync = writeFile2; }
   const afterFailure = holder.pending().map((item) => `${item.workId}:${item.priority}`);
   const heldFile = path.join(broken, "ready", `${heldItem.id}.json`);
-  fs.renameSync(heldFile, `${heldFile}.reprioritizing`);
-  const hidden = holder.pending().length;
+  fs.renameSync(heldFile, `${heldFile}.reprioritizing.${Date.now()}`);
+  const claimableWhileHeld = holder.claim(at(120));
   holder.recover(60_000, new Date(Date.now() + 120_000));
   const afterDeath = holder.pending().map((item) => `${item.workId}:${item.priority}`);
-  record("compose.an_interrupted_reprioritization_is_put_back", threw && afterFailure.join() === "H:3" && hidden === 0 && afterDeath.join() === "H:3", { threw, afterFailure, hidden, afterDeath });
+  record("compose.an_interrupted_reprioritization_is_put_back", threw && afterFailure.join() === "H:3" && claimableWhileHeld === null && afterDeath.join() === "H:3", { threw, afterFailure, claimableWhileHeld, afterDeath });
+
+  // Review 3: a hold's age is the hold's, not the item's; and discovery sees
+  // what a dead reprioritization held.
+  const aged = path.join(dir, "aged");
+  const agedQueue = new FileQueue(aged, "priority");
+  const agedItem = agedQueue.enqueue({ workId: "OLD", reason: "found", priority: 3 }, now);
+  const agedFile = path.join(aged, "ready", `${agedItem.id}.json`);
+  const hourAgo = new Date(Date.now() - 3_600_000);
+  fs.utimesSync(agedFile, hourAgo, hourAgo);
+  const recovery = new FileQueue(aged, "priority");
+  let tookLive = [];
+  const writeFile3 = fs.writeFileSync;
+  fs.writeFileSync = (file, ...rest) => { if (String(file).endsWith(".next")) tookLive = recovery.recover(1_800_000, new Date()); return writeFile3(file, ...rest); };
+  try { agedQueue.reprioritize("OLD", 1); } finally { fs.writeFileSync = writeFile3; }
+  record("compose.recovery_never_takes_a_live_reprioritization", tookLive.length === 0 && agedQueue.pending().length === 1 && agedQueue.pending()[0].priority === 1, { tookLive: tookLive.length, pending: agedQueue.pending().length });
+
+  const dead = path.join(dir, "dead");
+  const deadQueue = new FileQueue(dead, "priority");
+  const deadItem = deadQueue.enqueue({ workId: "D", reason: "found", priority: 3 }, now);
+  const deadFile = path.join(dead, "ready", `${deadItem.id}.json`);
+  fs.renameSync(deadFile, `${deadFile}.reprioritizing.${Date.now()}`);
+  const engine = new Worker({
+    queue: deadQueue,
+    records: { load: () => null, save: () => {}, all: () => [] },
+    workflow: { name: "toy", states: ["NEW"], waitingStates: [], initialState: "NEW", terminalStates: ["DONE"], usesObservers: [], plan: () => ({ kind: "settled", why: "" }) },
+    runtime: { policy: {}, found: async () => [{ workId: "D", priority: 3 }], newRecord: (id, t) => ({ id, state: "NEW", updatedAt: t.toISOString(), attempts: {}, history: [] }), observe: async () => ({}), actions: {}, apply: (r) => r },
+    notifier: { announce: async () => {} },
+    now: () => now,
+    config: { staleClaimMs: 60000, retentionDays: 7, maxItemAttempts: 3, retryDelayMs: 0 },
+  });
+  const requeued = await engine.discover();
+  deadQueue.recover(60_000, new Date(Date.now() + 120_000));
+  record("compose.discovery_sees_work_a_reprioritization_holds", requeued.length === 0 && deadQueue.pending().filter((item) => item.workId === "D").length === 1, { requeued, pending: deadQueue.pending().length });
 
   const plain = new FileQueue(path.join(dir, "plain"));
   plain.enqueue({ workId: "LOW", reason: "found", priority: 4 }, now);
@@ -336,6 +369,13 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   }).observe(rec("HUMAN_REVIEW"));
   const retired = plan(rec("HUMAN_REVIEW"), relabelled, DEFAULT_POLICY);
   record("compose.a_repository_that_leaves_the_ticket_retires_its_work_item", relabelled.retired === true && retired.to === "DONE" && retired.effects.every((e) => e.type === "announce"), { retired: relabelled.retired, to: retired.to });
+
+  const unlabelled = await ticketToQa.ticketRuntime({
+    tracker: { get: async () => ({ ...obs({}).ticket, repo: REPO }) },
+    host: { findPullRequest: async () => null, findPullRequestMentioning: async () => null }, agent: {}, gate: {}, notifier: { announce: async () => {} }, roster: () => roster, git: {}, now: () => new Date(),
+    layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
+  }).observe({ ...rec("IMPLEMENTING"), id: ticketToQa.workIdFor(TICKET, OTHER_REPO) });
+  record("compose.a_repository_whose_last_label_went_retires_its_work_item", unlabelled.retired === true && unlabelled.ticket.repo === OTHER_REPO, { retired: unlabelled.retired });
 
   const refused = await ticketToQa.ticketRuntime({
     tracker: { inProgress: async () => [{ ...obs({}).ticket, repos: [REPO, OTHER_REPO] }] },

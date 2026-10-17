@@ -575,6 +575,10 @@ gates:
       - "compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them"
       - "compose.a_qa_handoff_answers_to_the_owner_it_named"
       - "compose.the_operator_answers_on_the_ticket_with_their_own_account"
+      # From the third review.
+      - "compose.recovery_never_takes_a_live_reprioritization"
+      - "compose.discovery_sees_work_a_reprioritization_holds"
+      - "compose.a_repository_whose_last_label_went_retires_its_work_item"
 
 rules:
   # L3 — A gate requires every check its plan's criteria name

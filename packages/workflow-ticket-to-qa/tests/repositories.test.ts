@@ -346,3 +346,16 @@ describe("the operator answering on the ticket with their own account", () => {
     expect(seen.conversation).toEqual([own]);
   });
 });
+
+describe("a ticket whose last repository label is taken off", () => {
+  it("retires the work item for the repository it named", async () => {
+    // Labelled into the frontend once; the tracker now names its team's alone.
+    const unlabelled = ticket({ repo: BACKEND });
+    const seen = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(unlabelled) }) }).observe(
+      { ...record("IMPLEMENTING"), id: workIdFor("PROJ-1239", FRONTEND) } as TicketRecord,
+    );
+
+    expect(seen.ticket.repo).toBe(FRONTEND);
+    expect(seen.retired).toBe(true);
+  });
+});
