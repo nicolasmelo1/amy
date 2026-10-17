@@ -16,7 +16,7 @@ import {
   runtimeConfig,
   ticket,
 } from "@amykit/test-fixtures";
-import { plan } from "../src/machine.js";
+import { plan, ticketToQa } from "../src/machine.js";
 import { DEFAULT_POLICY } from "../src/observation.js";
 import { TicketRecord } from "../src/record.js";
 import { ticketRuntime, TicketRuntimeDeps, workIdFor } from "../src/runtime.js";
@@ -295,7 +295,7 @@ describe("finding the pull request by the ticket's id", () => {
 });
 
 describe("a repository that leaves the ticket", () => {
-  it("retires the work item started there, once, and says so", async () => {
+  it("retires the work item started there, where it stands", async () => {
     // A backend ticket under way, then labelled into the frontend only.
     const relabelled = ticket({ repo: BACKEND, repos: [FRONTEND] });
     const seen = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(relabelled) }) }).observe(record("HUMAN_REVIEW"));
@@ -303,8 +303,22 @@ describe("a repository that leaves the ticket", () => {
     const decision = plan(record("HUMAN_REVIEW"), seen, policy);
 
     expect(seen.retired).toBe(true);
-    expect(decision).toMatchObject({ kind: "advance", to: "DONE" });
-    expect(actionsOf(decision).map((effect) => effect.type)).toEqual(["announce"]);
+    // Behaviour changed: settled, not DONE, so the label coming back resumes it.
+    expect(decision.kind).toBe("settled");
+  });
+
+  it("resumes from where it stopped when the repository's label comes back", async () => {
+    const stopped = record("HUMAN_FIX", { reviewer: "edsger" });
+    const removed = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND] })) }) }).observe(stopped);
+    expect(plan(stopped, removed, policy).kind).toBe("settled");
+
+    const restored = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND, BACKEND] })) }) }).observe(stopped);
+    const decision = plan(stopped, restored, policy);
+
+    expect(restored.retired).toBe(false);
+    expect(decision.kind).not.toBe("settled");
+    // And discovery offers it again: it is not a terminal state.
+    expect(ticketToQa.terminalStates).not.toContain(stopped.state);
   });
 
   it("keeps the ones still named", async () => {

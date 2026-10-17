@@ -252,3 +252,76 @@ describe("FileQueue and discovery, after a reprioritization died", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 });
+
+describe("FileQueue, an item between its two names", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-priority-names-"));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("is still pending when a hold is taken between the listing and the read", () => {
+    const queue = new FileQueue(root, "priority");
+    const item = queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    const file = path.join(root, "ready", `${item.id}.json`);
+    const read = fs.readFileSync.bind(fs);
+    let moved = false;
+    vi.spyOn(fs, "readFileSync").mockImplementation(((target: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
+      // Another process takes the hold the moment this one goes to read it.
+      if (!moved && String(target) === file) {
+        moved = true;
+        fs.renameSync(file, `${file}.reprioritizing.${Date.now()}`);
+      }
+      return (read as (...a: unknown[]) => unknown)(target, ...rest);
+    }) as typeof fs.readFileSync);
+
+    expect(queue.pending().map((pending) => pending.workId)).toEqual(["A"]);
+  });
+
+  it("is still pending when a hold is released between the listing and the read", () => {
+    const queue = new FileQueue(root, "priority");
+    const item = queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    const file = path.join(root, "ready", `${item.id}.json`);
+    const held = `${file}.reprioritizing.${Date.now()}`;
+    fs.renameSync(file, held);
+    const read = fs.readFileSync.bind(fs);
+    let released = false;
+    vi.spyOn(fs, "readFileSync").mockImplementation(((target: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
+      if (!released && String(target) === held) {
+        released = true;
+        fs.renameSync(held, file);
+      }
+      return (read as (...a: unknown[]) => unknown)(target, ...rest);
+    }) as typeof fs.readFileSync);
+
+    expect(queue.pending().map((pending) => pending.workId)).toEqual(["A"]);
+  });
+
+  it("survives a recovery whose restored item is claimed before it could be read again", () => {
+    const queue = new FileQueue(root, "priority");
+    const worker = new FileQueue(root, "priority");
+    const item = queue.enqueue({ workId: "A", reason: "found", priority: 3 }, NOW);
+    const file = path.join(root, "ready", `${item.id}.json`);
+    fs.renameSync(file, `${file}.reprioritizing.${Date.now() - 60 * 60_000}`);
+    const rename = fs.renameSync.bind(fs);
+    let claimed: string | undefined;
+    vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
+      rename(from, to);
+      // A worker claims it the instant it is back in ready/.
+      if (claimed === undefined && String(to) === file) {
+        claimed = "";
+        claimed = worker.claim(later(10))?.workId ?? "";
+      }
+    });
+
+    const recovered = queue.recover(30 * 60_000, new Date());
+
+    expect(claimed).toBe("A");
+    expect(recovered.map((r) => r.workId)).toEqual(["A"]);
+  });
+});

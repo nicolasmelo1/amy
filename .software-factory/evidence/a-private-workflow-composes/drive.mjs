@@ -295,6 +295,34 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   deadQueue.recover(60_000, new Date(Date.now() + 120_000));
   record("compose.discovery_sees_work_a_reprioritization_holds", requeued.length === 0 && deadQueue.pending().filter((item) => item.workId === "D").length === 1, { requeued, pending: deadQueue.pending().length });
 
+  // Review 4: an item between its two names is still pending, and recovery
+  // survives a claim landing between its restore and a second read.
+  const names = path.join(dir, "names");
+  const namesQueue = new FileQueue(names, "priority");
+  const namesItem = namesQueue.enqueue({ workId: "N", reason: "found", priority: 3 }, now);
+  const namesFile = path.join(names, "ready", `${namesItem.id}.json`);
+  const readFile = fs.readFileSync;
+  let movedMidRead = false;
+  fs.readFileSync = (target, ...rest) => {
+    if (!movedMidRead && String(target) === namesFile) { movedMidRead = true; renameSync(namesFile, `${namesFile}.reprioritizing.${Date.now()}`); }
+    return readFile(target, ...rest);
+  };
+  let seenMidHold;
+  try { seenMidHold = namesQueue.pending().map((item) => item.workId); } finally { fs.readFileSync = readFile; }
+  record("compose.an_item_between_its_two_names_is_still_pending", movedMidRead && JSON.stringify(seenMidHold) === '["N"]', { movedMidRead, seenMidHold });
+
+  const racing = path.join(dir, "racing");
+  const racingQueue = new FileQueue(racing, "priority");
+  const racingWorker = new FileQueue(racing, "priority");
+  const racingItem = racingQueue.enqueue({ workId: "R", reason: "found", priority: 3 }, now);
+  const racingFile = path.join(racing, "ready", `${racingItem.id}.json`);
+  renameSync(racingFile, `${racingFile}.reprioritizing.${Date.now() - 3_600_000}`);
+  let racedClaim;
+  fs.renameSync = (from, to) => { const done = renameSync(from, to); if (racedClaim === undefined && String(to) === racingFile) { racedClaim = ""; racedClaim = racingWorker.claim(at(60))?.workId ?? ""; } return done; };
+  let restoredRace;
+  try { restoredRace = racingQueue.recover(1_800_000, new Date()).map((item) => item.workId); } catch (error) { restoredRace = String(error); } finally { fs.renameSync = renameSync; }
+  record("compose.recovery_survives_a_claim_racing_its_restore", racedClaim === "R" && JSON.stringify(restoredRace) === '["R"]', { racedClaim, restoredRace });
+
   const plain = new FileQueue(path.join(dir, "plain"));
   plain.enqueue({ workId: "LOW", reason: "found", priority: 4 }, now);
   plain.enqueue({ workId: "URGENT", reason: "found", priority: 1 }, at(1));
@@ -368,7 +396,8 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
     layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
   }).observe(rec("HUMAN_REVIEW"));
   const retired = plan(rec("HUMAN_REVIEW"), relabelled, DEFAULT_POLICY);
-  record("compose.a_repository_that_leaves_the_ticket_retires_its_work_item", relabelled.retired === true && retired.to === "DONE" && retired.effects.every((e) => e.type === "announce"), { retired: relabelled.retired, to: retired.to });
+  // Settled where it stands, not DONE: review 4 found DONE could never resume.
+  record("compose.a_repository_that_leaves_the_ticket_retires_its_work_item", relabelled.retired === true && retired.kind === "settled", { retired: relabelled.retired, kind: retired.kind });
 
   const unlabelled = await ticketToQa.ticketRuntime({
     tracker: { get: async () => ({ ...obs({}).ticket, repo: REPO }) },
@@ -376,6 +405,15 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
     layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
   }).observe({ ...rec("IMPLEMENTING"), id: ticketToQa.workIdFor(TICKET, OTHER_REPO) });
   record("compose.a_repository_whose_last_label_went_retires_its_work_item", unlabelled.retired === true && unlabelled.ticket.repo === OTHER_REPO, { retired: unlabelled.retired });
+
+  const observeAs = (repos) => ticketToQa.ticketRuntime({
+    tracker: { get: async () => ({ ...obs({}).ticket, repo: REPO, repos }) },
+    host: { findPullRequest: async () => null, findPullRequestMentioning: async () => null }, agent: {}, gate: {}, notifier: { announce: async () => {} }, roster: () => roster, git: {}, now: () => new Date(),
+    layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
+  }).observe(rec("HUMAN_FIX", { reviewer: "ada" }));
+  const stopped = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO]), DEFAULT_POLICY);
+  const resumed = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO, REPO]), DEFAULT_POLICY);
+  record("compose.a_retired_work_item_resumes_when_its_repository_returns", stopped.kind === "settled" && resumed.kind !== "settled" && !ticketToQa.ticketToQa.terminalStates.includes("HUMAN_FIX"), { stopped: stopped.kind, resumed: resumed.kind });
 
   const refused = await ticketToQa.ticketRuntime({
     tracker: { inProgress: async () => [{ ...obs({}).ticket, repos: [REPO, OTHER_REPO] }] },

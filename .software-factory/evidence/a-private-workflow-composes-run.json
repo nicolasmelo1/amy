@@ -7,7 +7,7 @@
     "entry": "the installed amy, and the built dist of core, github, file-queue, serial-engine and ticket-to-qa"
   },
   "observed": {
-    "assertions_run": 47,
+    "assertions_run": 50,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-ge58ly/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-UMMBSe/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "4aa50ca272590d1e62b137cf412491a2a521bac0",
-        "cut": "4aa50ca272590d1e62b137cf412491a2a521bac0"
+        "tip": "49860ac4ce9449cd13e8dc2eb6071947b3dfcafe",
+        "cut": "49860ac4ce9449cd13e8dc2eb6071947b3dfcafe"
       }
     },
     {
@@ -176,6 +176,26 @@
       "detail": {
         "requeued": [],
         "pending": 1
+      }
+    },
+    {
+      "type": "compose.an_item_between_its_two_names_is_still_pending",
+      "status": "passed",
+      "detail": {
+        "movedMidRead": true,
+        "seenMidHold": [
+          "N"
+        ]
+      }
+    },
+    {
+      "type": "compose.recovery_survives_a_claim_racing_its_restore",
+      "status": "passed",
+      "detail": {
+        "racedClaim": "R",
+        "restoredRace": [
+          "R"
+        ]
       }
     },
     {
@@ -238,7 +258,7 @@
       "status": "passed",
       "detail": {
         "retired": true,
-        "to": "DONE"
+        "kind": "settled"
       }
     },
     {
@@ -246,6 +266,14 @@
       "status": "passed",
       "detail": {
         "retired": true
+      }
+    },
+    {
+      "type": "compose.a_retired_work_item_resumes_when_its_repository_returns",
+      "status": "passed",
+      "detail": {
+        "stopped": "settled",
+        "resumed": "advance"
       }
     },
     {
@@ -361,11 +389,11 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "ba43f7ad78858ecae566a0c28ee43c7f89c01749"
+          "head": "625b576dd9434ccf58dfc9281c847010fc77b026"
         },
         {
           "repo": "acme/gadgets",
-          "head": "c7a97a7cea71911b6f1848e526170811c1b7ea5c"
+          "head": "f8405b498a043798f30253baeb63e40873ec479d"
         }
       ]
     },

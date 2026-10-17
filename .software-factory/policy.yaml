@@ -579,6 +579,10 @@ gates:
       - "compose.recovery_never_takes_a_live_reprioritization"
       - "compose.discovery_sees_work_a_reprioritization_holds"
       - "compose.a_repository_whose_last_label_went_retires_its_work_item"
+      # From the fourth review.
+      - "compose.an_item_between_its_two_names_is_still_pending"
+      - "compose.recovery_survives_a_claim_racing_its_restore"
+      - "compose.a_retired_work_item_resumes_when_its_repository_returns"
 
 rules:
   # L3 — A gate requires every check its plan's criteria name

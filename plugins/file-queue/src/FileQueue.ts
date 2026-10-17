@@ -190,16 +190,43 @@ export class FileQueue implements Queue {
    * Every look still to come, the ones a reprioritization is holding
    * included: they are not claimable while held, but they exist, and a
    * discovery that did not see them would queue the same work a second time.
+   *
+   * One listing, and an item read under either of its two names: a hold or
+   * its release can land between the listing and the read, and an item seen
+   * in neither place would be one discovery queues again.
    */
   pending(): QueueItem[] {
-    const held = this.holds().flatMap(({ held: file }) => {
-      try {
-        return [JSON.parse(fs.readFileSync(file, "utf-8")) as QueueItem];
-      } catch {
-        return [];
-      }
+    const dir = path.join(this.root, READY);
+    if (!fs.existsSync(dir)) return [];
+    const bases = new Set(
+      fs.readdirSync(dir).flatMap((name) => {
+        if (name.endsWith(".json")) return [name];
+        const at = name.indexOf(HELD);
+        return at === -1 || name.endsWith(".next") ? [] : [name.slice(0, at)];
+      }),
+    );
+    return [...bases].flatMap((base) => {
+      const item = this.readUnderEitherName(dir, base);
+      return item ? [item] : [];
     });
-    return [...this.read(READY), ...held];
+  }
+
+  /**
+   * The item as `ready/` holds it, as itself or as a hold. A hold and its
+   * release are renames, so a few tries see it in one of the two unless a
+   * worker claimed it, which takes it out of what is still to come.
+   */
+  private readUnderEitherName(dir: string, base: string): QueueItem | null {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const direct = readItem(path.join(dir, base));
+      if (direct) return direct;
+      for (const name of fs.readdirSync(dir)) {
+        if (!name.startsWith(`${base}${HELD}`) || name.endsWith(".next")) continue;
+        const held = readItem(path.join(dir, name));
+        if (held) return held;
+      }
+    }
+    return null;
   }
 
   running(): QueueItem[] {
@@ -222,14 +249,18 @@ export class FileQueue implements Queue {
     for (const { held, takenAt } of this.holds()) {
       if (now.getTime() - takenAt < olderThanMs) continue;
       fs.rmSync(`${held}.next`, { force: true });
-      const file = held.slice(0, held.indexOf(HELD));
+      // Read while it is still held: once it is back in `ready/`, a worker
+      // may claim it before a second read, and that is not a failure.
+      const item = readItem(held);
+      if (!item) continue;
       try {
-        fs.renameSync(held, file);
-      } catch {
-        // Its writer finished between the listing and the rename.
-        continue;
+        fs.renameSync(held, held.slice(0, held.indexOf(HELD)));
+      } catch (error) {
+        // Its writer finished, or another recovery got there first.
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw error;
       }
-      restored.push(JSON.parse(fs.readFileSync(file, "utf-8")) as QueueItem);
+      restored.push(item);
     }
     return restored;
   }
@@ -289,4 +320,14 @@ export class FileQueue implements Queue {
 /** A sortable, filename-safe instant. */
 function stamp(date: Date): string {
   return date.toISOString().replace(/[:.]/g, "");
+}
+
+/** One item from its file, or null for a file that left before it was read. */
+function readItem(file: string): QueueItem | null {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf-8")) as QueueItem;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
 }

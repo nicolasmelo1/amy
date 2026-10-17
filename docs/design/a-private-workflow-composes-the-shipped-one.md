@@ -255,8 +255,8 @@ unnoticed.
 - [x] A reprioritization that fails puts the original back, and one whose
       process dies is put back by `recover`
       (proof: assertion:compose.an_interrupted_reprioritization_is_put_back)
-- [x] A work item whose repository left the ticket is retired, once, and says
-      so, instead of handing the ticket over beside the ones that remain
+- [x] A work item whose repository left the ticket is retired — settled where
+      it stands — instead of handing the ticket over beside the ones that remain
       (proof: assertion:compose.a_repository_that_leaves_the_ticket_retires_its_work_item)
 - [x] A requested review is recognised without regard to the login's case, and
       against the turn as an instant rather than as text
@@ -281,6 +281,19 @@ unnoticed.
       because the tracker's membership is read before the work id overrides
       the repository
       (proof: assertion:compose.a_repository_whose_last_label_went_retires_its_work_item)
+
+### What the fourth review found
+
+- [x] An item a hold is taken from, or released to, between the listing and
+      the read is still pending: one listing, and each item read under either
+      of its two names
+      (proof: assertion:compose.an_item_between_its_two_names_is_still_pending)
+- [x] Recovery reads a held item before it publishes it, so a worker claiming
+      it the instant it is back does not abort the tick
+      (proof: assertion:compose.recovery_survives_a_claim_racing_its_restore)
+- [x] A retired work item settles where it stands rather than finishing, so
+      the repository's label coming back resumes it
+      (proof: assertion:compose.a_retired_work_item_resumes_when_its_repository_returns)
 
 ### The private workflow
 

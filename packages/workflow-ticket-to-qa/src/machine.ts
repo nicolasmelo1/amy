@@ -24,7 +24,7 @@ import { handOver, handedToQa, pendingReviewRequest } from "./handover.js";
  * tracker, a code host, a repository or an agent.
  */
 export function plan(record: TicketRecord, obs: Observation, policy: Policy): Plan {
-  if (obs.retired && record.state !== "DONE") return retire(record, obs);
+  if (obs.retired && record.state !== "DONE") return retire(obs);
   const decided = PLANNERS[record.state](record, obs, policy);
   return policy.writes === "operator" ? handOver(decided, record, obs, policy) : decided;
 }
@@ -32,22 +32,16 @@ export function plan(record: TicketRecord, obs: Observation, policy: Policy): Pl
 type Planner = (record: TicketRecord, obs: Observation, policy: Policy) => Plan;
 
 /**
- * Stops a work item whose repository left the ticket, once, and says so.
+ * Stops a work item whose repository left the ticket, where it stands.
  *
- * Whatever it already pushed or opened is left as it is: the ticket no
- * longer says the work belongs in that repository, and undoing it is a
- * person's call. Retiring is what keeps it from joining — or skipping — the
- * QA handoff of the repositories that remain.
+ * Settled rather than DONE: a terminal record is one discovery never offers
+ * again, and the label may come back. Settling takes the item off the queue
+ * and leaves its record mid-lifecycle, so while discovery does not offer it
+ * nothing moves it, and the day it does the work resumes from where it was.
+ * Whatever it already pushed or opened is left as it is.
  */
-function retire(record: TicketRecord, obs: Observation): Plan {
-  return advance(
-    "DONE",
-    `${obs.ticket.repo} is no longer one of ${obs.ticket.id}'s repositories`,
-    {
-      type: "announce",
-      text: `${record.id}: ${obs.ticket.repo} is no longer one of ${obs.ticket.id}'s repositories, so I stopped working on it there. Anything already pushed or opened is left as it is.`,
-    },
-  );
+function retire(obs: Observation): Plan {
+  return settled(`${obs.ticket.repo} is no longer one of ${obs.ticket.id}'s repositories; the work there stops where it is until it is again`);
 }
 
 /**

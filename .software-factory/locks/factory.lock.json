@@ -4,7 +4,7 @@
     ".allowed-root-files": "6b96c6cde21f0a325b44a460c9d46632b09ea60876b9ac0f05e78f0254104a10",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
     ".github/workflows/software-factory.yml": "19c3ef4f598e345e05fd8eb5c6c2a5f377825f382bde877eef3e3b175abd959f",
-    ".software-factory/policy.yaml": "cca36acc87db0645907ea9f418366bbcd04b685265d8419a2b2270c48c944f53",
+    ".software-factory/policy.yaml": "4e14f2c940d49a4e02412d38f7af95b33aa00182985fece1ac3ca73ebc64be86",
     ".software-factory/ratchet.yaml": "0651675579468787302ac0cc38d8ead6bdb3555a731819a80b0ef63a2fa86c0f",
     ".software-factory/rules/a-push-never-forces.yaml": "5ea760d7ad8a4f2637d49c6c6d8b4292bd14956527280ed811fe9e6767ae47e6",
     ".software-factory/rules/a-ticket-requires-what-every-tracker-has.yaml": "37c7b2af6f9979e79617b492477ad2d66649b0f8f8af4ec5dd453bc53f0abcec",
