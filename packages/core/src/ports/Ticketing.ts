@@ -78,10 +78,15 @@ export interface Ticket {
   repo: string;
 
   /**
-   * Every repository the work spans, where the tracker can tell — `repo`
-   * first. Absent where it cannot, which is a ticket in `repo` alone. A
-   * workflow that splits work by repository reads this, and one that does
-   * not keeps reading `repo`.
+   * Every repository the work spans, where the tracker can tell, in the
+   * order the tracker keeps them — Linear's is label order. Absent where it
+   * cannot, which is a ticket in `repo` alone.
+   *
+   * `repo` is not necessarily in it, nor first: `repo` is where the ticket's
+   * work started before anybody named repositories, and the list is what
+   * the ticket names now, which may have moved on. A workflow that splits
+   * work by repository reads this for membership and order, and one that
+   * does not keeps reading `repo`.
    */
   repos?: readonly string[];
 

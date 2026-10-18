@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-gEPVAZ/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-LNuLKy/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "9cd56fa8789378a30cc0c9d3dccd21b67492081b",
-        "cut": "9cd56fa8789378a30cc0c9d3dccd21b67492081b"
+        "tip": "7f787b509982a3d7102bff06f8fd1f9694d97303",
+        "cut": "7f787b509982a3d7102bff06f8fd1f9694d97303"
       }
     },
     {
@@ -411,11 +411,11 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "cb2de98a8666ad9fb6e56bef6092a8c82d9ac861"
+          "head": "bba6bd986b76a340d0d725a834ca0fe114a2fb8b"
         },
         {
           "repo": "acme/gadgets",
-          "head": "4e90c0829e35a7ef558472056c553d09d137502e"
+          "head": "0493156d774d897f008b7b3aa320061912b2612c"
         }
       ]
     },
