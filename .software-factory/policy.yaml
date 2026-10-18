@@ -500,6 +500,96 @@ gates:
       - "project.a_phase_never_reads_an_old_profiles_records"
       - "project.a_phase_without_a_workflow_is_refused_by_name"
 
+  # A private workflow should be its policy, prompts and gate commands, and
+  # import the rest. This gate holds every gap that stopped one doing so to
+  # an observation: the built adapters and real git for the reads and the
+  # push, and the installed machine against ticket-to-qa's stand-in world for
+  # handing the writes to the operator and splitting a ticket by repository.
+  #
+  # The activation is every file a row of the plan changes, the core's one
+  # "the thread if there is one, the notifier otherwise" helper included.
+  a-private-workflow-composes:
+    activation:
+      - "packages/core/src/git.ts"
+      - "packages/core/src/mount.ts"
+      - "packages/core/src/ports/CodeHost.ts"
+      - "packages/core/src/ports/Conversation.ts"
+      - "packages/core/src/ports/Notifier.ts"
+      - "packages/core/src/ports/Queue.ts"
+      - "packages/core/src/ports/Ticketing.ts"
+      - "packages/core/src/operator.ts"
+      - "packages/core/src/runtime.ts"
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "plugins/linear/src/**"
+      - "plugins/serial-engine/src/**"
+      - "plugins/github/src/**"
+      - "plugins/file-queue/src/**"
+    evidence: ".software-factory/evidence/a-private-workflow-composes.json"
+    plan: "docs/design/a-private-workflow-composes-the-shipped-one.md"
+    required_assertions:
+      - "compose.a_lower_case_success_reads_as_passing"
+      - "compose.a_lower_case_failure_reads_as_failing"
+      - "compose.work_waiting_on_a_status_moves_when_it_passes"
+      - "compose.a_commit_without_a_push_leaves_the_remote_where_it_was"
+      - "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch"
+      - "compose.a_refused_push_keeps_the_local_commit"
+      - "compose.commit_and_push_still_delivers_in_one_call"
+      - "compose.a_review_thread_carries_the_file_it_is_on"
+      - "compose.a_renamed_ticket_still_finds_its_pull_request"
+      - "compose.a_merged_pull_request_is_found_by_its_ticket"
+      - "compose.changes_requested_are_found_from_the_authors_side"
+      - "compose.a_workflow_that_claims_no_writes_reads_ancestry"
+      - "compose.a_workflow_that_claims_no_writes_still_reaches_none"
+      - "compose.handed_off_nothing_is_written_on_the_tracker"
+      - "compose.handed_off_nothing_is_written_on_the_code_host"
+      - "compose.handed_off_the_ticket_still_reaches_qa"
+      - "compose.a_handed_off_write_is_said_once"
+      - "compose.a_handed_off_write_is_said_in_the_works_thread"
+      - "compose.with_no_thread_a_handed_off_write_goes_to_the_notifier"
+      - "compose.nothing_moves_until_the_handed_off_effect_is_observed"
+      - "compose.handed_off_the_declaration_claims_no_writes"
+      - "compose.a_ticket_in_two_repositories_is_two_work_items"
+      - "compose.each_repository_walks_in_its_own_tree"
+      - "compose.qa_waits_while_one_repository_is_unmerged"
+      - "compose.qa_receives_the_ticket_once_when_every_repository_is_merged"
+      - "compose.a_repository_added_late_is_a_new_work_item_qa_waits_for"
+      - "compose.the_queue_takes_the_most_urgent_first"
+      - "compose.within_one_priority_the_queue_is_first_in_first_out"
+      - "compose.a_priority_refreshed_on_discovery_reorders_the_queue"
+      - "compose.without_the_option_the_queue_keeps_id_order"
+      # From the first review of this work: each is a mistake that shipped
+      # once in this pull request and is held to an observation here so it
+      # cannot ship again.
+      - "compose.a_new_branch_at_a_pushed_commit_is_published"
+      - "compose.reprioritizing_never_recreates_a_claimed_item"
+      - "compose.a_re_review_is_answered_only_after_it_was_asked"
+      - "compose.qa_is_done_only_when_status_and_owner_are_both_seen"
+      - "compose.a_follower_waits_until_it_sees_the_handoff"
+      - "compose.review_fixes_land_on_the_pull_requests_own_branch"
+      - "compose.a_host_that_cannot_read_merges_is_refused_by_name"
+      - "compose.labelling_a_running_ticket_keeps_its_work_item"
+      # From the second review: the same promise, for the next six.
+      - "compose.a_requested_review_still_answers_to_the_forges_checks"
+      - "compose.an_interrupted_reprioritization_is_put_back"
+      - "compose.a_repository_that_leaves_the_ticket_retires_its_work_item"
+      - "compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them"
+      - "compose.a_qa_handoff_answers_to_the_owner_it_named"
+      - "compose.the_operator_answers_on_the_ticket_with_their_own_account"
+      # From the third review.
+      - "compose.recovery_never_takes_a_live_reprioritization"
+      - "compose.discovery_sees_work_a_reprioritization_holds"
+      - "compose.a_repository_whose_last_label_went_retires_its_work_item"
+      # From the fourth review.
+      - "compose.an_item_between_its_two_names_is_still_pending"
+      - "compose.recovery_survives_a_claim_racing_its_restore"
+      - "compose.a_retired_work_item_resumes_when_its_repository_returns"
+      # From the fifth review.
+      - "compose.a_half_written_replacement_leaves_nothing_behind"
+      # From the sixth review.
+      - "compose.a_claim_carries_the_priority_it_arrived_with"
+      # From the seventh review.
+      - "compose.a_second_review_round_on_one_head_is_said_again"
+
 rules:
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:
@@ -641,6 +731,9 @@ rules:
     enabled: true
   # L6 — Something scans the code for known-insecure patterns
   L6.INSECURE_PATTERNS_ARE_SCANNED:
+    enabled: true
+  # L6 — A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md)
+  L6.A_PUSH_NEVER_FORCES:
     enabled: true
   # L6 — An address in a fixture belongs to nobody
   # L6 — A branch is never reset with checkout -B. The same rule every

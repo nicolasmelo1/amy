@@ -66,7 +66,7 @@ plugins:
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `budget` | `record` | no | `{}` | agent budget, including an optional progress block that stops repeated no-evidence runs |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
-| `policy` | `record` | no | `{}` | maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default |
+| `policy` | `record` | no | `{}` | maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all. Anything left out keeps its default |
 | `qaStatusName` | `string` | **yes** |  | the status a ticket moves to when it is handed to QA |
 | `repos` | `string[]` | **yes** |  | every repository review load is counted across |
 | `reviewerHints` | `record` | no | `{}` | guidance appended to the review prompt when answering a particular reviewer, by host login |

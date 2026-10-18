@@ -252,6 +252,7 @@ A queue kept as one file per item, claimed by rename.
 plugins:
   "@amykit/plugin-file-queue":
     directory: queue
+    order: id
     retentionDays: 7
     staleClaimMs: 1800000
 ```
@@ -259,6 +260,7 @@ plugins:
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `directory` | `string` | no | `queue` | where the queue is kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not claim each other's work |
+| `order` | `string` | no | `id` | `id` takes due items in the order they became due; `priority` takes the most urgent first, as the workflow's discovery reported it, and the order they became due within one priority |
 | `retentionDays` | `number` | no | `7` | how long a finished queue item is kept before it is pruned |
 | `staleClaimMs` | `number` | no | `1800000` | how long a claimed item may sit before it counts as abandoned |
 
@@ -409,6 +411,7 @@ plugins:
   "@amykit/plugin-linear":
     defaultRepo: ""
     endpoint: https://api.linear.app/graphql
+    repoByLabel: {}
     repoByTeam: {}
     workingStatusName: …
 ```
@@ -417,6 +420,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `defaultRepo` | `string` | no | `""` | the repository used for a team that is not in repoByTeam |
 | `endpoint` | `string` | no | `https://api.linear.app/graphql` | the GraphQL endpoint to talk to. Linear's own by default, and the one thing that has to move for a stand-in tracker to take its place in an end-to-end run |
+| `repoByLabel` | `record` | no | `{}` | which repository a label puts a ticket's work in. A ticket labelled into two is two pieces of work, one per repository; a ticket with none of these labels stays in its team's repository |
 | `repoByTeam` | `record` | no | `{}` | which repository a team's tickets land in, by team key |
 | `workingStatusName` | `string` | **yes** |  | the exact status name a ticket must be in to be picked up |
 

@@ -1,0 +1,443 @@
+{
+  "scenario": "a-private-workflow-composes",
+  "status": "passed",
+  "goal": "Prove a private workflow can compose the shipped one: statuses read as written, a commit that is not a push, threads that know their file, lookups by ticket, a workflow that claims no writes still reads, a queue in priority order, and ticket-to-qa walking a ticket across two repositories to QA with every write handed to the operator.",
+  "artifact": {
+    "package": "@amykit/cli",
+    "entry": "the installed amy, and the built dist of core, github, file-queue, serial-engine and ticket-to-qa"
+  },
+  "observed": {
+    "assertions_run": 53,
+    "assertions_failed": 0,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "compose.a_lower_case_success_reads_as_passing",
+      "status": "passed",
+      "detail": [
+        {
+          "context": "ci/build",
+          "state": "passing"
+        }
+      ]
+    },
+    {
+      "type": "compose.a_lower_case_failure_reads_as_failing",
+      "status": "passed",
+      "detail": [
+        {
+          "context": "ci/build",
+          "state": "failing"
+        },
+        {
+          "context": "ci/lint",
+          "state": "failing"
+        }
+      ]
+    },
+    {
+      "type": "compose.work_waiting_on_a_status_moves_when_it_passes",
+      "status": "passed",
+      "detail": [
+        "held",
+        "held",
+        "moved"
+      ]
+    },
+    {
+      "type": "compose.a_renamed_ticket_still_finds_its_pull_request",
+      "status": "passed",
+      "detail": {
+        "byBranch": null,
+        "byId": 81
+      }
+    },
+    {
+      "type": "compose.a_review_thread_carries_the_file_it_is_on",
+      "status": "passed",
+      "detail": [
+        {
+          "id": "T-1",
+          "author": "ada",
+          "body": "Name the currency.",
+          "isResolved": false,
+          "isOutdated": false,
+          "path": "src/invoice/total.ts",
+          "comments": [
+            {
+              "author": "ada",
+              "body": "Name the currency.",
+              "createdAt": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "compose.a_merged_pull_request_is_found_by_its_ticket",
+      "status": "passed",
+      "detail": 80
+    },
+    {
+      "type": "compose.changes_requested_are_found_from_the_authors_side",
+      "status": "passed",
+      "detail": [
+        83
+      ]
+    },
+    {
+      "type": "compose.a_workflow_that_claims_no_writes_reads_ancestry",
+      "status": "passed",
+      "detail": {
+        "state": "merged",
+        "headBranch": "amy/bill-4021-renamed",
+        "baseBranch": "main"
+      }
+    },
+    {
+      "type": "compose.a_workflow_that_claims_no_writes_still_reaches_none",
+      "status": "passed",
+      "detail": []
+    },
+    {
+      "type": "compose.a_commit_without_a_push_leaves_the_remote_where_it_was",
+      "status": "passed"
+    },
+    {
+      "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
+      "status": "passed",
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-LNuLKy/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+    },
+    {
+      "type": "compose.a_refused_push_keeps_the_local_commit",
+      "status": "passed"
+    },
+    {
+      "type": "compose.a_new_branch_at_a_pushed_commit_is_published",
+      "status": "passed",
+      "detail": {
+        "published": true,
+        "again": false,
+        "tip": "7f787b509982a3d7102bff06f8fd1f9694d97303",
+        "cut": "7f787b509982a3d7102bff06f8fd1f9694d97303"
+      }
+    },
+    {
+      "type": "compose.commit_and_push_still_delivers_in_one_call",
+      "status": "passed"
+    },
+    {
+      "type": "compose.the_queue_takes_the_most_urgent_first",
+      "status": "passed"
+    },
+    {
+      "type": "compose.within_one_priority_the_queue_is_first_in_first_out",
+      "status": "passed"
+    },
+    {
+      "type": "compose.a_priority_refreshed_on_discovery_reorders_the_queue",
+      "status": "passed"
+    },
+    {
+      "type": "compose.reprioritizing_never_recreates_a_claimed_item",
+      "status": "passed",
+      "detail": {
+        "stolen": "A",
+        "changedRaced": 0,
+        "pending": 0
+      }
+    },
+    {
+      "type": "compose.an_interrupted_reprioritization_is_put_back",
+      "status": "passed",
+      "detail": {
+        "threw": true,
+        "afterFailure": [
+          "H:3"
+        ],
+        "claimableWhileHeld": null,
+        "afterDeath": [
+          "H:3"
+        ]
+      }
+    },
+    {
+      "type": "compose.recovery_never_takes_a_live_reprioritization",
+      "status": "passed",
+      "detail": {
+        "tookLive": 0,
+        "pending": 1
+      }
+    },
+    {
+      "type": "compose.discovery_sees_work_a_reprioritization_holds",
+      "status": "passed",
+      "detail": {
+        "requeued": [],
+        "pending": 1
+      }
+    },
+    {
+      "type": "compose.an_item_between_its_two_names_is_still_pending",
+      "status": "passed",
+      "detail": {
+        "movedMidRead": true,
+        "seenMidHold": [
+          "N"
+        ]
+      }
+    },
+    {
+      "type": "compose.recovery_survives_a_claim_racing_its_restore",
+      "status": "passed",
+      "detail": {
+        "racedClaim": "R",
+        "restoredRace": [
+          "R"
+        ]
+      }
+    },
+    {
+      "type": "compose.a_half_written_replacement_leaves_nothing_behind",
+      "status": "passed",
+      "detail": {
+        "leftovers": []
+      }
+    },
+    {
+      "type": "compose.a_claim_carries_the_priority_it_arrived_with",
+      "status": "passed",
+      "detail": {
+        "refreshedMidClaim": true,
+        "priority": 1
+      }
+    },
+    {
+      "type": "compose.without_the_option_the_queue_keeps_id_order",
+      "status": "passed"
+    },
+    {
+      "type": "compose.a_handed_off_write_is_said_in_the_works_thread",
+      "status": "passed",
+      "detail": [
+        "Open a pull request for BILL-4021 in acme/widgets, from amy/bill-4021-show-the-currency-on-the-invoice-total into main, titled \"BILL-4021: t\". I carry on once I see it."
+      ]
+    },
+    {
+      "type": "compose.handed_off_the_declaration_claims_no_writes",
+      "status": "passed"
+    },
+    {
+      "type": "compose.a_second_review_round_on_one_head_is_said_again",
+      "status": "passed",
+      "detail": {
+        "kind": "act"
+      }
+    },
+    {
+      "type": "compose.a_re_review_is_answered_only_after_it_was_asked",
+      "status": "passed",
+      "detail": {
+        "stale": "wait",
+        "fresh": "advance"
+      }
+    },
+    {
+      "type": "compose.a_follower_waits_until_it_sees_the_handoff",
+      "status": "passed",
+      "detail": {
+        "follower": "wait",
+        "handed": "advance"
+      }
+    },
+    {
+      "type": "compose.a_requested_review_still_answers_to_the_forges_checks",
+      "status": "passed",
+      "detail": {
+        "red": "ESCALATED",
+        "conflicting": "ESCALATED"
+      }
+    },
+    {
+      "type": "compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them",
+      "status": "passed",
+      "detail": {
+        "cased": "HUMAN_REVIEW",
+        "early": "wait"
+      }
+    },
+    {
+      "type": "compose.a_qa_handoff_answers_to_the_owner_it_named",
+      "status": "passed",
+      "detail": {
+        "reSaid": "hand-off-to-qa@ada@example.test",
+        "named": "DONE"
+      }
+    },
+    {
+      "type": "compose.a_repository_that_leaves_the_ticket_retires_its_work_item",
+      "status": "passed",
+      "detail": {
+        "retired": true,
+        "kind": "settled"
+      }
+    },
+    {
+      "type": "compose.a_repository_whose_last_label_went_retires_its_work_item",
+      "status": "passed",
+      "detail": {
+        "retired": true
+      }
+    },
+    {
+      "type": "compose.a_retired_work_item_resumes_when_its_repository_returns",
+      "status": "passed",
+      "detail": {
+        "stopped": "settled",
+        "resumed": "advance"
+      }
+    },
+    {
+      "type": "compose.a_host_that_cannot_read_merges_is_refused_by_name",
+      "status": "passed",
+      "detail": "Error: BILL-4021 is in acme/widgets and acme/gadgets, and the mounted code host cannot find a pull request by a ticket's id, so it cannot say when every one has merged"
+    },
+    {
+      "type": "compose.handed_off_nothing_is_written_on_the_tracker",
+      "status": "passed",
+      "detail": []
+    },
+    {
+      "type": "compose.handed_off_nothing_is_written_on_the_code_host",
+      "status": "passed",
+      "detail": []
+    },
+    {
+      "type": "compose.handed_off_the_ticket_still_reaches_qa",
+      "status": "passed",
+      "detail": {
+        "states": [
+          "DONE",
+          "DONE"
+        ],
+        "status": "In QA"
+      }
+    },
+    {
+      "type": "compose.a_handed_off_write_is_said_once",
+      "status": "passed",
+      "detail": {
+        "said": [
+          "BILL-4021 needs an answer before I can start. Answer on https://tracker.test/issue/BILL-4021:\n- Which currency should the invoice total be shown in?",
+          "Open a pull request for BILL-4021 in acme/widgets, from amy/bill-4021-show-the-currency-on-the-invoice-total into main, titled \"BILL-4021: Show the currency on the invoice total\". I carry on once I see it.",
+          "BILL-4021 needs an answer before I can start. Answer on https://tracker.test/issue/BILL-4021:\n- Which currency should the credit note total be shown in?",
+          "Resolve the review thread on invoice.md in acme/widgets: the change answered it. (This file has no trailing newline.)",
+          "Request a review of BILL-4021 from ada.",
+          "Open a pull request for BILL-4021 in acme/gadgets, from amy/bill-4021-show-the-currency-on-the-invoice-total into main, titled \"BILL-4021: Show the currency on the invoice total\". I carry on once I see it.",
+          "Request a review of BILL-4021 from ada.",
+          "Move BILL-4021 to In QA and assign it to grace@example.test: https://tracker.test/issue/BILL-4021"
+        ],
+        "twice": []
+      }
+    },
+    {
+      "type": "compose.with_no_thread_a_handed_off_write_goes_to_the_notifier",
+      "status": "passed"
+    },
+    {
+      "type": "compose.nothing_moves_until_the_handed_off_effect_is_observed",
+      "status": "passed",
+      "detail": {
+        "made": [
+          "BILL-4021 CLARIFYING: answered on the ticket",
+          "BILL-4021 PR_OPEN: opened the pull request",
+          "BILL-4021@acme%2Fgadgets CLARIFYING: answered on the ticket",
+          "BILL-4021 COPILOT_FIX: resolved the thread",
+          "BILL-4021 REVIEWER_ASSIGNED: requested a review from ada",
+          "BILL-4021@acme%2Fgadgets PR_OPEN: opened the pull request",
+          "BILL-4021@acme%2Fgadgets REVIEWER_ASSIGNED: requested a review from ada",
+          "BILL-4021 QA_HANDOFF: moved the ticket to QA, and will assign the owner next"
+        ],
+        "premature": []
+      }
+    },
+    {
+      "type": "compose.a_ticket_in_two_repositories_is_two_work_items",
+      "status": "passed",
+      "detail": [
+        "BILL-4021",
+        "BILL-4021@acme/gadgets"
+      ]
+    },
+    {
+      "type": "compose.labelling_a_running_ticket_keeps_its_work_item",
+      "status": "passed",
+      "detail": [
+        "BILL-4021",
+        "BILL-4021@acme/gadgets"
+      ]
+    },
+    {
+      "type": "compose.review_fixes_land_on_the_pull_requests_own_branch",
+      "status": "passed",
+      "detail": {
+        "own": true,
+        "ticketBranch": false
+      }
+    },
+    {
+      "type": "compose.the_operator_answers_on_the_ticket_with_their_own_account",
+      "status": "passed",
+      "detail": {
+        "answered": 2,
+        "states": [
+          "DONE",
+          "DONE"
+        ]
+      }
+    },
+    {
+      "type": "compose.qa_is_done_only_when_status_and_owner_are_both_seen",
+      "status": "passed",
+      "detail": {
+        "held": 1,
+        "assignee": "u-grace"
+      }
+    },
+    {
+      "type": "compose.each_repository_walks_in_its_own_tree",
+      "status": "passed",
+      "detail": [
+        {
+          "repo": "acme/widgets",
+          "head": "bba6bd986b76a340d0d725a834ca0fe114a2fb8b"
+        },
+        {
+          "repo": "acme/gadgets",
+          "head": "0493156d774d897f008b7b3aa320061912b2612c"
+        }
+      ]
+    },
+    {
+      "type": "compose.qa_waits_while_one_repository_is_unmerged",
+      "status": "passed",
+      "detail": 7
+    },
+    {
+      "type": "compose.qa_receives_the_ticket_once_when_every_repository_is_merged",
+      "status": "passed",
+      "detail": {
+        "qaTurns": 1
+      }
+    },
+    {
+      "type": "compose.a_repository_added_late_is_a_new_work_item_qa_waits_for",
+      "status": "passed",
+      "detail": {
+        "late": true,
+        "waited": true
+      }
+    }
+  ]
+}

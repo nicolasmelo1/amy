@@ -112,18 +112,28 @@ export type TickResult =
 export class Worker {
   constructor(private readonly deps: WorkerDeps) {}
 
-  /** Puts every piece of work the runtime can find onto the queue. */
+  /**
+   * Puts every piece of work the runtime can find onto the queue.
+   *
+   * Work already waiting is not queued twice, but its urgency is refreshed:
+   * discovery is the one moment the source is asked, so it is the one moment
+   * a priority somebody changed can reach what is already queued.
+   */
   async discover(): Promise<string[]> {
     const now = this.deps.now();
     const enqueued: string[] = [];
     const terminal = this.deps.workflow.terminalStates;
 
-    for (const workId of await this.deps.runtime.found()) {
+    for (const found of await this.deps.runtime.found()) {
+      const { workId, priority } = typeof found === "string" ? { workId: found, priority: undefined } : found;
       const existing = this.deps.records.load(workId);
       if (existing && terminal.includes(existing.state)) continue;
-      if (this.deps.queue.pending().some((item) => item.workId === workId)) continue;
+      if (this.deps.queue.pending().some((item) => item.workId === workId)) {
+        this.deps.queue.reprioritize?.(workId, priority);
+        continue;
+      }
 
-      this.deps.queue.enqueue({ workId, reason: "found by the workflow" }, now);
+      this.deps.queue.enqueue({ workId, reason: "found by the workflow", priority }, now);
       enqueued.push(workId);
     }
 
@@ -223,6 +233,7 @@ export class Worker {
         reason: decision.why,
         delayMs: decision.kind === "wait" ? decision.retryAfterMs : 0,
         progress: progress.next,
+        priority: item.priority,
       },
       now,
     );
@@ -369,6 +380,7 @@ export class Worker {
       delayMs: parked.retryAfterMs,
       attempt: item.attempt,
       progress: item.progress,
+      priority: item.priority,
     }, now);
     this.deps.queue.complete(item);
     this.maybePrune(now);
@@ -408,6 +420,7 @@ export class Worker {
           // no-evidence streak so a transient dependency failure cannot
           // spend an extra agent run past the configured ceiling.
           progress: item.progress,
+          priority: item.priority,
         },
         now,
       );

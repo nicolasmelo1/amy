@@ -8,6 +8,10 @@ export const plugin: Plugin = {
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {
-    registry.queue(new FileQueue(path.join(ctx.paths.state, ctx.config.directory as string)));
+    const order = ctx.config.order ?? "id";
+    if (order !== "id" && order !== "priority") {
+      throw new Error(`file-queue order must be "id" or "priority", not ${JSON.stringify(order)}`);
+    }
+    registry.queue(new FileQueue(path.join(ctx.paths.state, ctx.config.directory as string), order));
   },
 };

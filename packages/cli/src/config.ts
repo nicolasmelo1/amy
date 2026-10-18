@@ -601,6 +601,11 @@ policy:
   maxOpenReviewsPerReviewer: 2
   maxPullRequestFiles: 60
   maxPullRequestLines: 2000
+  # machine: amy comments, opens pull requests, requests reviews and moves the
+  # ticket to QA. operator: each of those is said to you once instead, and amy
+  # waits until it sees you made it. Nothing is written on the tracker or the
+  # code host.
+  writes: machine
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it, so leaving codex and hermes out means they are never required to be

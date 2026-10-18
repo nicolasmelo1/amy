@@ -23,6 +23,7 @@ export const plugin: Plugin = {
       workingStatusName: ctx.config.workingStatusName as string,
       repoByTeam: ctx.config.repoByTeam as Record<string, string>,
       defaultRepo: ctx.config.defaultRepo as string,
+      repoByLabel: ctx.config.repoByLabel as Record<string, string> | undefined,
     });
 
     registry.port("tracker", tracker);

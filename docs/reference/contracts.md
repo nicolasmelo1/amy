@@ -31,7 +31,7 @@ explains why for each.
 | `grooming-source` | `@amykit/workflow-feature-grooming` | _reached directly_ |
 | `grooming-tracker` | `@amykit/workflow-feature-grooming` | _reached directly_ |
 | `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
-| `notifier` | `@amykit/plugin-notify-fanout` | `announce` |
+| `notifier` | `@amykit/plugin-notify-fanout` | `announce`, `hand-over` |
 | `notify` | `@amykit/plugin-notify-hermes` | _reached directly_ |
 | `plan-check` | `@amykit/plugin-plan-check` | `check-plan` |
 | `queue` | `@amykit/plugin-file-queue` | _reached directly_ |
@@ -56,6 +56,7 @@ explains why for each.
 | `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
 | `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
 | `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |
+| `hand-over` | `notifier` | `announce()` | `@amykit/core` | A write handed to the operator instead of made: said once, in the work's thread when there is one and the notifier otherwise, so the operator can make it where a team reads. Dispatched to the notifier, which every install mounts, because the thread is optional and the turn is not. |
 | `implement` | `agent` | `ask()` | `@amykit/core` |  |
 | `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
 | `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |
@@ -152,6 +153,7 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | :-- | :-- |
 | `findPullRequest(repo: string, branch: string): Promise<PullRequestView \| null>` |  |
 | `pullRequestAncestry(repo: string, number: number): Promise<PullRequestAncestry \| null>` | The forge facts a stacked child needs to choose its base. |
+| `findPullRequestMentioning(repo: string, id: string): Promise<PullRequestView \| null>` | The pull request whose title names this id as a whole word, open or merged, in one repository. |
 | `openPullRequest(request: OpenPullRequestRequest): Promise<number>` |  |
 | `requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>` |  |
 | `resolveReviewThread(threadId: string): Promise<void>` | Closes one review thread, by its own id, in one act. |
@@ -159,6 +161,7 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | `reviewLoad(repos: readonly string[]): Promise<Record<string, number>>` | Open reviews per login, counted across every given repository. |
 | `reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests waiting on one login's review, in these repositories and no others. |
 | `changesRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests one login's review left changes requested on, in these repositories and no others. |
+| `authoredWithChangesRequested(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests one login authored that somebody asked to change, in these repositories and no others. |
 | `pullRequest(repo: string, number: number): Promise<PullRequestView \| null>` | One pull request by its number, merged or not. |
 | `merge(repo: string, number: number, method: "merge" \| "squash" \| "rebase"): Promise<void>` | Merges it, by the method the caller named. |
 | `submitReview(repo: string, number: number, review: { state: ReviewState; body: string }): Promise<void>` | Submits a review of it, in the state the caller decided on. |
@@ -286,6 +289,7 @@ Declared in `packages/core/src/ports/Queue.ts`.
 | `complete(item: QueueItem): void` |  |
 | `release(item: QueueItem): void` | Puts a claimed item back, for a worker that could not finish it. |
 | `promote(workId: string, now: Date): number` | Brings every look at one piece of work that is still held back forward to now, and says how many moved. |
+| `reprioritize(workId: string, priority: number \| undefined): number` | Sets the urgency of every look at one piece of work still waiting, and says how many changed. |
 | `recover(olderThanMs: number, now: Date): QueueItem[]` | Returns items abandoned by a dead worker so they get picked up again. |
 | `prune(retentionDays: number, now: Date): number` | Deletes finished items past their retention, so the directory stays small. |
 | `ready(now: Date): QueueItem[]` |  |

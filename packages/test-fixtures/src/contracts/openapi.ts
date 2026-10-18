@@ -44,6 +44,19 @@ function openapi(): Description {
   return description;
 }
 
+/**
+ * One example the description itself carries, by name.
+ *
+ * A fixture written by hand carries what its author believed the service
+ * sends; the description's example is what the service documents, and the
+ * two disagreed once about the case of a commit status.
+ */
+export function restExample(name: string): unknown {
+  const example = openapi().components["examples"]?.[name] as { value?: unknown } | undefined;
+  if (example?.value === undefined) throw new ContractViolation(CONTRACT, `the description has no example named ${name}`);
+  return example.value;
+}
+
 function resolve<T extends { $ref?: string }>(node: T): T {
   let current: T = node;
   while (current.$ref) {

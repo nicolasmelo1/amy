@@ -123,7 +123,7 @@ export const plugin: Plugin = {
       get policy(): unknown {
         return lazily().policy;
       },
-      found: (): Promise<string[]> => lazily().found(),
+      found: () => lazily().found(),
       newRecord: (workId: string, now: Date): PlanRecord => lazily().newRecord(workId, now),
       observe: (record: PlanRecord): Promise<Observation> => lazily().observe(record),
       get actions() {

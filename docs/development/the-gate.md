@@ -65,6 +65,7 @@ held to a gate that is proven to work.
 | `L4.RULE_PROSE_NAMES_A_REAL_COMMAND` | Every command a rule's prose quotes is one this `sf` accepts |
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |
+| `L6.A_PUSH_NEVER_FORCES` | A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md) |
 | `L6.BRANCH_RESET_LOSES_COMMITS` | scaffolded workflow ships with, here because the core drives git too. |
 | `L6.DEAD_CODE_IS_DETECTED` | Something detects code nothing reaches |
 | `L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED` | Something audits dependencies for known vulnerabilities |
@@ -139,6 +140,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 
 | Gate | What expires it | Assertions |
 | :-- | :-- | :-- |
+| `a-private-workflow-composes` | `packages/core/src/git.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/ports/CodeHost.ts`<br>`packages/core/src/ports/Conversation.ts`<br>`packages/core/src/ports/Notifier.ts`<br>`packages/core/src/ports/Queue.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`packages/core/src/operator.ts`<br>`packages/core/src/runtime.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`plugins/linear/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**`<br>`plugins/file-queue/src/**` | 53 |
 | `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md`<br>`packages/cli/guardrails/**` | 10 |
 | `amy-add-remove` | `packages/cli/src/index.ts`<br>`packages/cli/src/spec.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/remove.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/config.ts` | 5 |
 | `amy-update` | `packages/cli/src/update.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/skills-record.ts`<br>`packages/cli/src/harnesses.ts`<br>`packages/cli/src/auto-update.ts`<br>`packages/cli/src/daemon.ts`<br>`packages/cli/src/config.ts` | 30 |

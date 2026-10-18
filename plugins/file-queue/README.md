@@ -28,6 +28,7 @@ workflows:
 plugins:
   "@amykit/plugin-file-queue":
     directory: "queue"
+    order: "id"
     retentionDays: 7
     staleClaimMs: 1800000
 ```
@@ -35,6 +36,7 @@ plugins:
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `directory` | `string` | no | `queue` | where the queue is kept, relative to the state directory. One per workflow, so two profiles under one `.amy` do not claim each other's work |
+| `order` | `string` | no | `id` | `id` takes due items in the order they became due; `priority` takes the most urgent first, as the workflow's discovery reported it, and the order they became due within one priority |
 | `retentionDays` | `number` | no | `7` | how long a finished queue item is kept before it is pruned |
 | `staleClaimMs` | `number` | no | `1800000` | how long a claimed item may sit before it counts as abandoned |
 

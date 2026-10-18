@@ -29,6 +29,7 @@ plugins:
   "@amykit/plugin-linear":
     defaultRepo: ""
     endpoint: "https://api.linear.app/graphql"
+    repoByLabel: {}
     repoByTeam: {}
     workingStatusName: <string>
 ```
@@ -37,6 +38,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `defaultRepo` | `string` | no | `""` | the repository used for a team that is not in repoByTeam |
 | `endpoint` | `string` | no | `https://api.linear.app/graphql` | the GraphQL endpoint to talk to. Linear's own by default, and the one thing that has to move for a stand-in tracker to take its place in an end-to-end run |
+| `repoByLabel` | `record` | no | `{}` | which repository a label puts a ticket's work in. A ticket labelled into two is two pieces of work, one per repository; a ticket with none of these labels stays in its team's repository |
 | `repoByTeam` | `record` | no | `{}` | which repository a team's tickets land in, by team key |
 | `workingStatusName` | `string` | **yes** |  | the exact status name a ticket must be in to be picked up |
 
