@@ -213,6 +213,9 @@ function contextFor(
 const TRACKER_READ_METHODS = new Set(["inProgress", "get", "comments", "hasReplyAfter"]);
 const CODE_HOST_READ_METHODS = new Set([
   "findPullRequest",
+  "findPullRequestMentioning",
+  "pullRequestAncestry",
+  "authoredWithChangesRequested",
   "reviewLoad",
   "reviewsRequestedOf",
   "changesRequestedOf",

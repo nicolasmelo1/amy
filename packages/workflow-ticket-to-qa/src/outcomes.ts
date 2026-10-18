@@ -26,6 +26,10 @@ export interface EffectOutcomes {
   escalation?: Escalation;
   /** Set when the owner has settled an escalation. */
   escalationResolvedAt?: string;
+  /** The keys of the writes this look handed to the operator. */
+  handedOver?: string[];
+  /** When this look said them. */
+  handedOverAt?: string;
 }
 
 /**
@@ -51,6 +55,8 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   if (outcomes.reviewer) next.reviewer = outcomes.reviewer;
 
   mergeVerdicts(next, outcomes.verdicts);
+
+  mergeHandedOver(next, outcomes);
 
   if (outcomes.escalation) next.escalation = outcomes.escalation;
 
@@ -88,6 +94,14 @@ export function applyTransition(record: TicketRecord, moved: Moved | null): Tick
     return { ...rest, attempts: {} };
   }
   return record;
+}
+
+/** Adds the writes this look handed to the operator, and when it said them. */
+function mergeHandedOver(record: TicketRecord, outcomes: EffectOutcomes): void {
+  if (!outcomes.handedOver?.length) return;
+  record.handedOver = [...new Set([...(record.handedOver ?? []), ...outcomes.handedOver])];
+  const at = outcomes.handedOverAt;
+  if (at) record.handedOverAt = { ...record.handedOverAt, ...Object.fromEntries(outcomes.handedOver.map((key) => [key, at])) };
 }
 
 /** Replace a judgement by thread id, preserving unrelated prior verdicts. */

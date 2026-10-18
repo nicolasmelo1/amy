@@ -85,7 +85,7 @@ export const configSchema: ConfigSchema = {
   policy: {
     type: "record",
     description:
-      "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles and maxPullRequestLines. Anything left out keeps its default",
+      "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all. Anything left out keeps its default",
     default: {},
   },
   budget: {
@@ -160,7 +160,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
       reviewerHints: ctx.config.reviewerHints as Record<string, string>,
     },
     progress: progressPolicy(ctx),
-    policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
+    policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>), writes: writesOf(ctx) },
   });
 
   runtimes.set(ctx, built);
@@ -181,7 +181,9 @@ export const plugin: Plugin = {
   version: "0.1.0",
   configSchema,
   register(registry, ctx) {
-    registry.workflow(ticketToQa);
+    // The claim follows the switch, so a workflow handing its writes to the
+    // operator is mounted claiming none, and the mount refuses it any writer.
+    registry.workflow(writesOf(ctx) === "operator" ? { ...ticketToQa, trackerWrites: [], codeHostWrites: [] } : ticketToQa);
 
     // Not built now: the ports it needs are mounted by plugins that may be
     // listed after this one, and mounting order should not be something an
@@ -197,7 +199,7 @@ export const plugin: Plugin = {
       get progress() {
         return lazily().progress;
       },
-      found: (): Promise<string[]> => lazily().found(),
+      found: () => lazily().found(),
       newRecord: (workId: string, now: Date): TicketRecord => lazily().newRecord(workId, now),
       observe: (record: TicketRecord): Promise<Observation> => lazily().observe(record),
       get actions() {
@@ -224,6 +226,14 @@ export const plugin: Plugin = {
     runtimeFor(ctx);
   },
 };
+
+function writesOf(ctx: PluginContext): Policy["writes"] {
+  const writes = (ctx.config.policy as Partial<Policy> | undefined)?.writes ?? "machine";
+  if (writes !== "machine" && writes !== "operator") {
+    throw new Error(`ticket-to-qa policy.writes must be "machine" or "operator", not ${JSON.stringify(writes)}`);
+  }
+  return writes;
+}
 
 /** A port this workflow cannot work without. */
 function required<T>(ctx: PluginContext, kind: string): T {

@@ -8,6 +8,14 @@ export interface QueueItem {
   attempt: number;
   /** Why this item exists, for reading the log later. */
   reason: string;
+  /**
+   * How urgent the work is, smaller first, where whoever found it said.
+   *
+   * Carried on the item rather than looked up at claim time, so a queue that
+   * orders by it reads one directory and asks nobody. Absent is after every
+   * item that has one.
+   */
+  priority?: number;
   /** Consecutive no-evidence attempts, durable across worker processes. */
   progress?: Record<string, { count: number; detail: string }>;
 }

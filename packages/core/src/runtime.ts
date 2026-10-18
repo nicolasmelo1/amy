@@ -48,6 +48,13 @@ export type ActionImplementation<R extends WorkRecord = WorkRecord, O = unknown>
   | ActionHandler<R, O>
   | ActionSpec;
 
+/** One piece of work discovery found, with how urgent its source says it is. */
+export interface FoundWork {
+  workId: string;
+  /** Smaller first; absent is after every piece of work that has one. */
+  priority?: number;
+}
+
 /**
  * How a workflow's actions actually run.
  *
@@ -72,8 +79,12 @@ export interface WorkflowRuntime<R extends WorkRecord = WorkRecord, O = unknown>
   readonly policy: unknown;
   /** Opt-in evidence accounting; omitted means the workflow behaves as before. */
   readonly progress?: ProgressPolicy;
-  /** Work that exists and is not on the queue yet, by id. */
-  found(): Promise<string[]>;
+  /**
+   * Work that exists and is not on the queue yet, by id — or by id with how
+   * urgent it is, for a runtime whose source says. A plain id is work with
+   * no urgency, which is every runtime that never heard of one.
+   */
+  found(): Promise<readonly (string | FoundWork)[]>;
   /** The record a work id starts with, before anything has happened to it. */
   newRecord(workId: string, now: Date): R;
   /** A snapshot of the outside world for one record, gathered before deciding. */

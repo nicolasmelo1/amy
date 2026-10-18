@@ -1,11 +1,13 @@
 export { CORE_ACTIONS, dispatchesTo, isCoreAction } from "./actions.js";
+export { sayToOperator } from "./operator.js";
+export type { OperatorChannel, OperatorChannels } from "./operator.js";
 export type { ActionSpec, PortKind } from "./actions.js";
 
 export { actionsOf, applyPlan, movedBy } from "./work.js";
 export type { Action, Moved, Plan, Transition, WorkRecord } from "./work.js";
 
 export { WORKFLOW_RUNTIME } from "./runtime.js";
-export type { ProgressPolicy } from "./runtime.js";
+export type { FoundWork, ProgressPolicy } from "./runtime.js";
 export type {
   ActionContext,
   ActionHandler,

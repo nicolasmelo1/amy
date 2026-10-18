@@ -46,6 +46,7 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 | `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
 | `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
 | `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |
+| `hand-over` | `notifier` | `announce()` | `@amykit/core` | A write handed to the operator instead of made: said once, in the work's thread when there is one and the notifier otherwise, so the operator can make it where a team reads. Dispatched to the notifier, which every install mounts, because the thread is optional and the turn is not. |
 | `implement` | `agent` | `ask()` | `@amykit/core` |  |
 | `open-pull-request` | `code-host` | `openPullRequest()` | `@amykit/core` |  |
 | `request-rereview` | `code-host` | `requestReview()` | `@amykit/core` |  |

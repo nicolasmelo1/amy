@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**50 rules shipped**, 42 enabled here, 8 switched off, 42 carrying a mutation fixture, 2 violations frozen.
+**51 rules shipped**, 43 enabled here, 8 switched off, 43 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -25,7 +25,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
 | **L4** | Cadence | docs, plans and rules stay attached | 8 | 7 |
 | **L5** | Meta | the guardrail is proven to fire | 2 | 2 |
-| **L6** | Hazard | the defect classes this repository hunts | 11 | 8 |
+| **L6** | Hazard | the defect classes this repository hunts | 12 | 9 |
 
 <!-- sf:end layer-index -->
 
@@ -382,6 +382,16 @@ A rule that is switched on must be configured to look at something: a lock rule 
 **Fix.** Give the rule something to look at, or switch it off in policy and say why in the rules document. Disabled and documented is honest; enabled and inert is a rule that lies about its own coverage. A rule whose `when` went false is the one case with nothing to configure: repoint it at the version this repository installs, or remove it along with the version it described.
 
 ## L6 — Hazard: the defect classes this repository hunts
+
+### L6.A_PUSH_NEVER_FORCES
+
+**A push is a fast-forward or nothing**
+
+Nothing amy runs pushes with `--force`, `--force-with-lease`, `-f` or a `+` refspec.
+
+**Why.** A workflow that commits after every round and pushes once per cycle is only safe while the remote refuses anything that is not a fast-forward of what it already holds. A forced push replaces the remote branch with the local one, so a reviewer's suggestion committed on the forge, or the other half of a stacked change, is gone with no record it was there. Git already refuses a non-fast-forward push and says why; the only way to lose that refusal is to ask for it, and one flag is enough to ask.
+
+**Fix.** Push without forcing and let git refuse. When the refusal arrives, it is the information: fetch, and either fast-forward onto what the remote holds or stop and say which branch moved. A line cannot prove that what it overwrites was worthless, so there is no exemption to write on it.
 
 ### L6.BRANCH_RESET_LOSES_COMMITS
 

@@ -31,6 +31,25 @@ export interface Observation {
   conversation: Comment[];
   /** Whether the owner has answered an escalation. */
   escalationAnswered: boolean;
+  /**
+   * Whether this work item's repository has left the ticket — a label taken
+   * off, or a ticket that grew labels none of which is the repository its
+   * work started in. Discovery no longer offers it, so the item is retired
+   * rather than left to hand the ticket over beside the ones that remain.
+   */
+  retired?: boolean;
+  /**
+   * Whether the ticket already sits in the QA status, as the tracker reports
+   * it. Read so a QA handoff the operator made by hand is something the
+   * machine can see; absent is no.
+   */
+  inQa?: boolean;
+  /**
+   * For a ticket in more than one repository, each one and whether its pull
+   * request has merged, in the tracker's order. Read only at the QA handoff,
+   * which is the one state that joins them; absent everywhere else.
+   */
+  repositories?: readonly { repo: string; merged: boolean }[];
   now: Date;
 }
 
@@ -62,6 +81,12 @@ export interface Policy {
    */
   maxPullRequestFiles: number;
   maxPullRequestLines: number;
+  /**
+   * Who makes the tracker and code-host writes: this machine, or the
+   * operator. With `operator`, every write is said once instead of made, and
+   * the machine waits until it sees the effect.
+   */
+  writes: "machine" | "operator";
 }
 
 export const DEFAULT_POLICY: Policy = {
@@ -72,4 +97,5 @@ export const DEFAULT_POLICY: Policy = {
   maxOpenReviewsPerReviewer: 2,
   maxPullRequestFiles: 60,
   maxPullRequestLines: 2000,
+  writes: "machine",
 };

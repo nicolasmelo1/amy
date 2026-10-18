@@ -1,0 +1,28 @@
+id: L6.A_PUSH_NEVER_FORCES
+layer: L6
+title: A push is a fast-forward or nothing
+severity: high
+statement: >-
+  Nothing amy runs pushes with `--force`, `--force-with-lease`, `-f` or a `+`
+  refspec.
+why: >-
+  A workflow that commits after every round and pushes once per cycle is only
+  safe while the remote refuses anything that is not a fast-forward of what it
+  already holds. A forced push replaces the remote branch with the local one,
+  so a reviewer's suggestion committed on the forge, or the other half of a
+  stacked change, is gone with no record it was there. Git already refuses a
+  non-fast-forward push and says why; the only way to lose that refusal is to
+  ask for it, and one flag is enough to ask.
+fix: >-
+  Push without forcing and let git refuse. When the refusal arrives, it is the
+  information: fetch, and either fast-forward onto what the remote holds or
+  stop and say which branch moved. A line cannot prove that what it overwrites
+  was worthless, so there is no exemption to write on it.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.mts", "**/*.cts", "**/*.sh"]
+  forbidden:
+    - regex: '(^|["''\s])push["''\s][^#\n]*(--force\b|--force-with-lease|--force-if-includes|["''\s]-f\b|["''`\s]\+[A-Za-z0-9_$`{/])'
+      message: "A forced push replaces what the remote holds, and whatever somebody else put there goes with it. Push without forcing; a refusal means fetch and fast-forward, or stop and name the branch."

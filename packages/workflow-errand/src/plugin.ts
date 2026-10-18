@@ -111,7 +111,7 @@ export const plugin: Plugin = {
       get policy(): unknown {
         return lazily().policy;
       },
-      found: (): Promise<string[]> => lazily().found(),
+      found: () => lazily().found(),
       newRecord: (workId: string, now: Date): ErrandRecord => lazily().newRecord(workId, now),
       observe: (record: ErrandRecord): Promise<Observation> => lazily().observe(record),
       get actions() {

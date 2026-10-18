@@ -15,6 +15,8 @@ const issue = {
   description: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
   url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
   branchName: "ada/proj-1239-total-is-wrong",
+  priority: 0,
+  assignee: null,
   parent: null,
   labels: { nodes: [{ name: "Bug" }] },
   state: { name: "In Progress" },
