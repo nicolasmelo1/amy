@@ -244,7 +244,8 @@ describe("a handed-off write, one look at a time", () => {
 
 describe("a review the operator was asked to request again", () => {
   const asked = "2026-09-03T12:00:00.000Z";
-  const key = `request-review@edsger@${HEAD}`;
+  const sentBack = "2026-09-03T11:00:00.000Z";
+  const key = "request-review@edsger@round0";
   const reReview = (overrides: Partial<PullRequestView>) =>
     plan(
       record("RE_REVIEW", { reviewer: "edsger", handedOver: [key], handedOverAt: { [key]: asked } }),
@@ -253,7 +254,7 @@ describe("a review the operator was asked to request again", () => {
     );
 
   it("is not answered by the review that sent the work back, on the same head", () => {
-    const decision = reReview({ reviews: [review({ author: "edsger", state: "CHANGES_REQUESTED", commitSha: HEAD, submittedAt: "2026-09-03T11:00:00.000Z" })] });
+    const decision = reReview({ reviews: [review({ author: "edsger", state: "CHANGES_REQUESTED", commitSha: HEAD, submittedAt: sentBack })] });
 
     expect(decision.kind).toBe("wait");
   });
@@ -263,7 +264,7 @@ describe("a review the operator was asked to request again", () => {
   });
 
   it("is answered by a review submitted after it was asked", () => {
-    const decision = reReview({ reviews: [review({ author: "edsger", state: "APPROVED", commitSha: HEAD, submittedAt: "2026-09-03T12:30:00.000Z" })] });
+    const decision = reReview({ reviews: [review({ author: "edsger", state: "CHANGES_REQUESTED", commitSha: HEAD, submittedAt: sentBack }), review({ author: "edsger", state: "APPROVED", commitSha: HEAD, submittedAt: "2026-09-03T12:30:00.000Z" })] });
 
     expect(decision).toMatchObject({ kind: "advance", to: "HUMAN_REVIEW" });
   });
@@ -338,5 +339,34 @@ describe("review 2 of the composed workflow", () => {
     );
 
     expect(decision).toMatchObject({ kind: "advance", to: "DONE" });
+  });
+});
+
+describe("a second re-review round on the same head", () => {
+  it("is said again rather than answered by the first round's review", () => {
+    const toReReview = (at: string) => ({ at, from: "HUMAN_FIX", to: "RE_REVIEW", why: "every comment was addressed" });
+    // Round one was said at noon under whatever key that round had; the
+    // reviewer sent it back again at 13:00 without anything being pushed,
+    // and the work has come back to ask a second time.
+    const roundOne = ["request-review@edsger@round1", `request-review@edsger@${HEAD}`];
+    const decision = plan(
+      record("RE_REVIEW", {
+        reviewer: "edsger",
+        history: [toReReview("2026-09-03T11:30:00.000Z"), toReReview("2026-09-03T13:30:00.000Z")],
+        handedOver: roundOne,
+        handedOverAt: Object.fromEntries(roundOne.map((k) => [k, "2026-09-03T12:00:00.000Z"])),
+      }),
+      observation({
+        pullRequest: pullRequest({
+          reviews: [
+            review({ author: "edsger", state: "CHANGES_REQUESTED", commitSha: HEAD, submittedAt: "2026-09-03T11:00:00.000Z" }),
+            review({ author: "edsger", state: "CHANGES_REQUESTED", commitSha: HEAD, submittedAt: "2026-09-03T13:00:00.000Z" }),
+          ],
+        }),
+      }),
+      policy,
+    );
+
+    expect(actionsOf(decision)).toMatchObject([{ type: "hand-over", turns: [{ key: "request-review@edsger@round2", write: { type: "request-rereview" } }] }]);
   });
 });

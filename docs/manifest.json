@@ -1672,6 +1672,11 @@
         },
         {
           "depth": 3,
+          "title": "What the seventh review found",
+          "slug": "what-the-seventh-review-found"
+        },
+        {
+          "depth": 3,
           "title": "The private workflow",
           "slug": "the-private-workflow"
         },
@@ -7673,7 +7678,8 @@
           "compose.recovery_survives_a_claim_racing_its_restore",
           "compose.a_retired_work_item_resumes_when_its_repository_returns",
           "compose.a_half_written_replacement_leaves_nothing_behind",
-          "compose.a_claim_carries_the_priority_it_arrived_with"
+          "compose.a_claim_carries_the_priority_it_arrived_with",
+          "compose.a_second_review_round_on_one_head_is_said_again"
         ],
         "scenario": ".software-factory/evidence/a-private-workflow-composes-scenario.sh"
       },

@@ -308,6 +308,13 @@ unnoticed.
       finished between the listing and the rename is what the next look carries
       (proof: assertion:compose.a_claim_carries_the_priority_it_arrived_with)
 
+### What the seventh review found
+
+- [x] A second re-review round on the same head — comments refused, nothing
+      pushed — is a second turn, keyed by the round rather than the head, and
+      not answered by the review the first round drew
+      (proof: assertion:compose.a_second_review_round_on_one_head_is_said_again)
+
 ### The private workflow
 
 - [ ] The private workflow that prompted this deletes its checkout, readers,

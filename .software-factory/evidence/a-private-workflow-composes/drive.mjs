@@ -389,10 +389,22 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const obs = (extra) => ({ ticket: { id: TICKET, title: "t", url: "u", status: "In Progress", labels: [], repo: REPO, branchName: BRANCH }, pullRequest: null, reviewLoad: {}, roster, conversation: [], escalationAnswered: false, now: new Date(), ...extra });
   const rec = (state, extra) => ({ ...newRecord(TICKET, new Date()), state, ...extra });
 
-  const key = `request-review@ada@${head}`;
+  const key = "request-review@ada@round0";
   const asked = rec("RE_REVIEW", { reviewer: "ada", handedOver: [key], handedOverAt: { [key]: "2026-09-03T12:00:00.000Z" } });
   const stale = plan(asked, obs({ pullRequest: pr({ reviews: [{ author: "ada", state: "CHANGES_REQUESTED", commitSha: head, submittedAt: "2026-09-03T11:00:00.000Z" }] }) }), operator);
   const fresh = plan(asked, obs({ pullRequest: pr({ reviews: [{ author: "ada", state: "APPROVED", commitSha: head, submittedAt: "2026-09-03T12:30:00.000Z" }] }) }), operator);
+  // Review 7: a second round on the same head is a second turn.
+  const toReReview = (at) => ({ at, from: "HUMAN_FIX", to: "RE_REVIEW", why: "every comment was addressed" });
+  const roundOne = ["request-review@ada@round1", `request-review@ada@${head}`];
+  const secondRound = plan(
+    rec("RE_REVIEW", { reviewer: "ada", history: [toReReview("2026-09-03T11:30:00.000Z"), toReReview("2026-09-03T13:30:00.000Z")], handedOver: roundOne, handedOverAt: Object.fromEntries(roundOne.map((k) => [k, "2026-09-03T12:00:00.000Z"])) }),
+    obs({ pullRequest: pr({ reviews: [
+      { author: "ada", state: "CHANGES_REQUESTED", commitSha: head, submittedAt: "2026-09-03T11:00:00.000Z" },
+      { author: "ada", state: "CHANGES_REQUESTED", commitSha: head, submittedAt: "2026-09-03T13:00:00.000Z" },
+    ] }) }),
+    operator,
+  );
+  record("compose.a_second_review_round_on_one_head_is_said_again", secondRound.effects?.[0]?.type === "hand-over" && secondRound.effects[0].turns[0].key === "request-review@ada@round2", { kind: secondRound.kind, to: secondRound.to });
   record("compose.a_re_review_is_answered_only_after_it_was_asked", stale.kind === "wait" && fresh.kind === "advance" && fresh.to === "HUMAN_REVIEW", { stale: stale.kind, fresh: fresh.kind });
 
   const merged = [OTHER_REPO, REPO].map((repo) => ({ repo, merged: true }));

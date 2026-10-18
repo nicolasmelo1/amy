@@ -120,8 +120,12 @@ function keyFor(write: WriteEffect, record: TicketRecord, obs: Observation): str
       return `resolve@${write.threadId}`;
     case "assign-reviewer":
       return `request-review@${write.host}`;
+    // Keyed by the round — how many times the work has come back to ask
+    // again — not by the head: two rounds on one head, comments refused and
+    // nothing pushed, are two turns, and the second must be said rather than
+    // answered by the review the first one drew.
     case "request-rereview":
-      return `request-review@${write.host}@${obs.pullRequest?.headSha ?? ""}`;
+      return `request-review@${write.host}@round${record.history.filter((moved) => moved.to === "RE_REVIEW").length}`;
     // Keyed by its owner, so a roster that changes before the operator made
     // it says the new handoff instead of waiting on the old one.
     case "hand-off-to-qa":

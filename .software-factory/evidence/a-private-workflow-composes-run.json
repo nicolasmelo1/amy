@@ -7,7 +7,7 @@
     "entry": "the installed amy, and the built dist of core, github, file-queue, serial-engine and ticket-to-qa"
   },
   "observed": {
-    "assertions_run": 52,
+    "assertions_run": 53,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-IFoSBc/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-gEPVAZ/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "af00f7dc3c67f12721ebf18ae181118b328672f7",
-        "cut": "af00f7dc3c67f12721ebf18ae181118b328672f7"
+        "tip": "9cd56fa8789378a30cc0c9d3dccd21b67492081b",
+        "cut": "9cd56fa8789378a30cc0c9d3dccd21b67492081b"
       }
     },
     {
@@ -227,6 +227,13 @@
     {
       "type": "compose.handed_off_the_declaration_claims_no_writes",
       "status": "passed"
+    },
+    {
+      "type": "compose.a_second_review_round_on_one_head_is_said_again",
+      "status": "passed",
+      "detail": {
+        "kind": "act"
+      }
     },
     {
       "type": "compose.a_re_review_is_answered_only_after_it_was_asked",
@@ -404,11 +411,11 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "eb20e1f112e134b2ed8e12ae7a79ae4ea8d9b757"
+          "head": "cb2de98a8666ad9fb6e56bef6092a8c82d9ac861"
         },
         {
           "repo": "acme/gadgets",
-          "head": "1fbe3aab34947481dbf5791260e52b9b280c340e"
+          "head": "4e90c0829e35a7ef558472056c553d09d137502e"
         }
       ]
     },
