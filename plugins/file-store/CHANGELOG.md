@@ -1,5 +1,13 @@
 # @amykit/plugin-file-store
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [9e3cb22]
+  - @amykit/core@0.6.0
+  - @amykit/plugin-file-brief-store@0.6.0
+
 ## 0.5.0
 
 ### Patch Changes

@@ -838,11 +838,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "What a private workflow had to write for itself, the shipped one now does.",
-          "slug": "what-a-private-workflow-had-to-write-for-itself-the-shipped-one-now-does"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -6421,7 +6416,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
         "directory": "packages/agent-kit",
@@ -6435,7 +6430,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -6449,7 +6444,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -6463,7 +6458,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -6477,7 +6472,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -6529,7 +6524,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "The claude CLI as the agent, over its JSON envelope.",
         "directory": "plugins/claude",
@@ -6570,7 +6565,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -6611,7 +6606,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -6648,7 +6643,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -6699,7 +6694,7 @@
       },
       {
         "name": "@amykit/plugin-file-brief-store",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Briefs kept as one file per item.",
         "directory": "plugins/file-brief-store",
@@ -6723,7 +6718,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -6737,7 +6732,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -6775,7 +6770,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -6820,7 +6815,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -6850,7 +6845,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -6881,7 +6876,7 @@
       },
       {
         "name": "@amykit/plugin-file-worktree",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
         "directory": "plugins/file-worktree",
@@ -6947,7 +6942,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -6971,7 +6966,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -7012,7 +7007,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -7066,7 +7061,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
         "directory": "plugins/notify-fanout",
@@ -7082,7 +7077,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -7110,7 +7105,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -7137,7 +7132,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -7179,7 +7174,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -7222,7 +7217,7 @@
       },
       {
         "name": "@amykit/plugin-slack",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "A Slack thread per piece of work, over the Web API, as the conversation port.",
         "directory": "plugins/slack",
@@ -7285,7 +7280,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
@@ -7332,7 +7327,7 @@
       },
       {
         "name": "@amykit/workflow-feature-grooming",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "packages/workflow-feature-grooming",
@@ -7370,7 +7365,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
@@ -7417,7 +7412,7 @@
       },
       {
         "name": "@amykit/workflow-testkit",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
         "directory": "packages/workflow-testkit",
@@ -7431,7 +7426,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
@@ -8496,52 +8491,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "a-private-workflow-composes-the-shipped-one",
-        "title": "What a private workflow had to write for itself, the shipped one now does.",
-        "body": "- A commit status GitHub returns in lower case reads as passing or failing; every one used to read as running.\n- `Git` commits without pushing, and `push` refuses anything that is not a fast-forward, naming the branch. `commitAndPush` is built on the two.\n- A review thread carries the file it is on.\n- The code host finds a pull request by the id in its title, open or merged, and the author's pull requests somebody asked to change. A workflow that claims no writes is handed `pullRequestAncestry` and both of these.\n- `ticket-to-qa` takes `policy.writes: operator`: every tracker and code-host write is said once, in the work's thread or through the notifier, and the machine waits until it sees it made. The workflow then claims no writes at all.\n- A ticket Linear labels into several repositories (`repoByLabel`) is one work item per repository, `TICKET@owner%2Fname`, and QA receives it once, when every one has merged.\n- `file-queue` takes `order: priority`: the most urgent due item first, first in first out within one priority, refreshed on every discovery from the tracker's own urgency.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-queue",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
