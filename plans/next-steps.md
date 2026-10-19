@@ -94,6 +94,14 @@ after *a phase is proven, not asserted* because it is the release after that
 one, and its rows are independent of each other — the first is a bug fix and
 can go any time.
 
+**From the first machine to move from 0.5.0 to 0.6.0.** *An update reaches
+the release* is [#110](https://github.com/nicolasmelo1/amy/issues/110): `amy
+update` reported `nothing to move` with the release published, because a 0.x
+caret never crosses a minor and a global CLI read as a checkout. It is last only
+because it is new; it depends on nothing above it, and its gate is the same
+defect as *the performance guard can fail* — a scenario that stubs out the very
+thing it claims to prove.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [A skill ladder for your own steps](a-skill-ladder-for-your-own-steps.md) | A workflow somebody wrote gives one of its own steps a cheaper model and a skill, from `config.yaml` |
@@ -111,6 +119,7 @@ can go any time.
 | 13 | [The performance guard can fail](the-performance-guard-can-fail.md) | A commit that makes the budget ledger twenty times slower turns this repository's build red naming the benchmark, and the same gate goes red the day somebody replaces the comparison with a command that only reports. |
 | 14 | [The errand is proven end to end](the-errand-is-proven-end-to-end.md) | Editing the errand workflow or the task store turns `sf check` red until the errand scenario is run again and resealed, the same way the other two shipped workflows already behave |
 | 15 | [A phase is proven, not asserted](a-phase-is-proven-not-asserted.md) | A unit of work whose scenario names no example cannot leave planning, a phase whose run left one assertion unevaluated is refused with that assertion named, a person's manual run locks a unit as proven, and a proof whose code or brief has since changed goes red without anybody looking. |
+| 16 | [An update reaches the release](an-update-reaches-the-release.md) | A machine on the last release, its CLI installed with `npm install -g`, runs `amy update` once and ends on the current release in both roots, one version throughout — proven against a registry that resolves ranges for real |
 
 **Delivered:** *A private workflow composes the shipped one* now lives at `docs/design/a-private-workflow-composes-the-shipped-one.md`. Its last criterion is the private workflow's own to measure.
 
