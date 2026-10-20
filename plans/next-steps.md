@@ -94,6 +94,18 @@ after *a phase is proven, not asserted* because it is the release after that
 one, and its rows are independent of each other — the first is a bug fix and
 can go any time.
 
+**From planning a workflow that drives plans, not tickets.** One operator
+wants a private workflow to walk the rows of `next-steps.md` across three
+repositories, on two subscriptions, asking them once and over Telegram. Five
+seams stand in the way, and each is useful to anybody else. *A usage limit is
+not an attempt* comes first because it is a defect today: a workflow allowing
+two attempts loses them to the clock. *Decisions are asked in a batch* is a
+policy on the review loop that already exists. *A row of next steps is a
+ticket* is what lets `ticket-to-qa` walk a plan at all. *Grooming reads the
+sections its workflow declares* is what fills the brief that walk needs, and
+*Telegram is a conversation* is the last because GitHub already carries every
+question while it is missing.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [A skill ladder for your own steps](a-skill-ladder-for-your-own-steps.md) | A workflow somebody wrote gives one of its own steps a cheaper model and a skill, from `config.yaml` |
@@ -111,6 +123,11 @@ can go any time.
 | 13 | [The performance guard can fail](the-performance-guard-can-fail.md) | A commit that makes the budget ledger twenty times slower turns this repository's build red naming the benchmark, and the same gate goes red the day somebody replaces the comparison with a command that only reports. |
 | 14 | [The errand is proven end to end](the-errand-is-proven-end-to-end.md) | Editing the errand workflow or the task store turns `sf check` red until the errand scenario is run again and resealed, the same way the other two shipped workflows already behave |
 | 15 | [A phase is proven, not asserted](a-phase-is-proven-not-asserted.md) | A unit of work whose scenario names no example cannot leave planning, a phase whose run left one assertion unevaluated is refused with that assertion named, a person's manual run locks a unit as proven, and a proof whose code or brief has since changed goes red without anybody looking. |
+| 16 | [A usage limit is not an attempt](a-usage-limit-is-not-an-attempt.md) | A workflow allowing two attempts, on a single Codex rung, survives any number of usage limits and escalates only after two runs that actually failed |
+| 17 | [Decisions are asked in a batch](decisions-are-asked-in-a-batch.md) | Under `policy.decisions: batch`, three review rounds that find one, one and zero decisions reach the owner as one message carrying the two that still apply, after the third round and not before |
+| 18 | [A row of next steps is a ticket](a-row-of-next-steps-is-a-ticket.md) | `ticket-to-qa`, mounted on a `next-steps.md` table, takes its first row from the base branch, walks it to a pull request in the repository the row's plan lives in, and writes nothing anywhere a tracker would have been |
+| 19 | [Grooming reads the sections its workflow declares](grooming-reads-the-sections-its-workflow-declares.md) | A workflow declaring four sections and a check gets a brief groomed by the shipped `amy-groom` from an agent that is not the one running amy, stored through the brief port, and `amy brief check` green on it |
+| 20 | [Telegram is a conversation](telegram-is-a-conversation.md) | A work item's question reaches its own Telegram topic, the process restarts, the operator answers in that topic, and the same work item — and no other — reads the answer and moves on |
 
 **Delivered:** *A private workflow composes the shipped one* now lives at `docs/design/a-private-workflow-composes-the-shipped-one.md`. Its last criterion is the private workflow's own to measure.
 

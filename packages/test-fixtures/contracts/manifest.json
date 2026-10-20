@@ -5,7 +5,7 @@
       "file": "github.graphql",
       "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
       "publisher": "GitHub — the public GraphQL schema for github.com",
-      "sha256": "489d255a212bf5fecc0d31e9307adbaff2dbfdde6f92b5dc8537f9d4c74ff783"
+      "sha256": "ee690896ae7d9126765c6a660174b40c9d1974b70db36af8559117b9c4a7b7a6"
     },
     {
       "name": "github-rest",
@@ -23,7 +23,7 @@
     }
   ],
   "gh": {
-    "version": "2.102.0",
+    "version": "2.102.1",
     "releases": "https://api.github.com/repos/cli/cli/releases",
     "reference": {
       "file": "gh-reference.md",
