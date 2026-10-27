@@ -85,7 +85,7 @@ export const configSchema: ConfigSchema = {
   policy: {
     type: "record",
     description:
-      "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all. Anything left out keeps its default",
+      "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all — and conversation — `answer` reads a reply nobody marked as the decision, `discuss` reads it as a turn in a discussion, answered in the thread while the work waits for a reply marked as the decision. Anything left out keeps its default",
     default: {},
   },
   budget: {
@@ -160,7 +160,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
       reviewerHints: ctx.config.reviewerHints as Record<string, string>,
     },
     progress: progressPolicy(ctx),
-    policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>), writes: writesOf(ctx) },
+    policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>), writes: writesOf(ctx), conversation: conversationOf(ctx) },
   });
 
   runtimes.set(ctx, built);
@@ -233,6 +233,14 @@ function writesOf(ctx: PluginContext): Policy["writes"] {
     throw new Error(`ticket-to-qa policy.writes must be "machine" or "operator", not ${JSON.stringify(writes)}`);
   }
   return writes;
+}
+
+function conversationOf(ctx: PluginContext): Policy["conversation"] {
+  const conversation = (ctx.config.policy as Partial<Policy> | undefined)?.conversation ?? "answer";
+  if (conversation !== "answer" && conversation !== "discuss") {
+    throw new Error(`ticket-to-qa policy.conversation must be "answer" or "discuss", not ${JSON.stringify(conversation)}`);
+  }
+  return conversation;
 }
 
 /** A port this workflow cannot work without. */

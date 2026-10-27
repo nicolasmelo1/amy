@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { AgentOutcome, AgentRun, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amykit/core";
+import { AgentOutcome, AgentRun, AskContext, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amykit/core";
 import { costOf, specFor } from "@amykit/model-specs";
 
 export interface HermesHarnessConfig {
@@ -41,7 +41,17 @@ export class HermesHarness implements Harness {
     private readonly tmpDir: string = os.tmpdir(),
   ) {}
 
-  async ask(prompt: string, cwd: string): Promise<HarnessReply> {
+  async ask(prompt: string, cwd: string, context: AskContext = {}): Promise<HarnessReply> {
+    // `-z` has no mode that keeps the agent's tools off the checkout, so a run
+    // that must change nothing is refused before it starts, and a relay hands
+    // it to a harness that can enforce it.
+    if (context.readOnly) {
+      const output = "hermes -z cannot run without write access to the checkout, so it does not take a read-only step";
+      return {
+        text: "",
+        run: { outcome: "failed", harness: this.name, model: this.config.model ?? "", durationMs: 0, costSource: "unknown", output },
+      };
+    }
     const report = path.join(this.tmpDir, `amy-hermes-${process.pid}-${Date.now()}.json`);
     const args = ["-z", prompt, "--usage-file", report];
     if (this.config.model) {

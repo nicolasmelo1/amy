@@ -143,4 +143,38 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     // silently arrived empty would turn every ceiling into zero.
     expect(runtime.policy).toMatchObject({ maxImplementAttempts: 3, maxGateAttempts: 3 });
   });
+
+  it("refuses an unknown policy.conversation at boot, naming the setting and the value", async () => {
+    const outcome = await mount(
+      [plugin, world],
+      { "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], policy: { conversation: "chat" } } },
+      HOST,
+    );
+
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.problems.join("; ")).toMatch(/policy\.conversation must be "answer" or "discuss", not "chat"/);
+  });
+
+  it("keeps discuss where a thread is mounted, and reads a reply as the decision where none is", async () => {
+    const policyOf = async (plugins: Plugin[]) => {
+      const outcome = await mount(
+        plugins,
+        { "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], policy: { conversation: "discuss" } } },
+        HOST,
+      );
+      if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+      const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("ticket-to-qa") as WorkflowRuntime;
+      return (runtime.policy as { conversation: string }).conversation;
+    };
+    const thread: Plugin = {
+      name: "@amykit/plugin-thread",
+      version: "0.1.0",
+      register: (registry) =>
+        registry.port("conversation", { open: async () => ({ id: "t" }), post: async () => "m", replies: async () => [] }),
+    };
+
+    expect(await policyOf([plugin, world, thread])).toBe("discuss");
+    expect(await policyOf([plugin, world])).toBe("answer");
+  });
 });

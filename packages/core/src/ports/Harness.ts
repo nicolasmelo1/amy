@@ -38,6 +38,12 @@ export interface AskContext {
    * outcome to `failed` gets the stronger model or the next skill.
    */
   verify?: (reply: HarnessReply) => Promise<HarnessReply>;
+  /**
+   * The run may read the checkout and must change nothing in it. A harness
+   * that can enforce this does, through its own sandbox; one that cannot
+   * refuses the run rather than relying on the prompt asking nicely.
+   */
+  readOnly?: boolean;
 }
 
 /**

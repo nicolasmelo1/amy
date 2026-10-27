@@ -1,0 +1,48 @@
+{
+  "scenario": "a-question-is-not-an-answer",
+  "status": "passed",
+  "goal": "Prove that a reply in an escalated record's Slack thread is answered there and moves nothing until the owner decides, and that the decision resumes the work carrying the whole discussion.",
+  "artifact": {
+    "package": "@amykit/workflow-ticket-to-qa",
+    "entry": "the built dist of core, slack, file-queue, serial-engine and ticket-to-qa"
+  },
+  "observed": {
+    "assertions_run": 8,
+    "assertions_failed": 0,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "escalated.a_question_does_not_resume",
+      "status": "passed"
+    },
+    {
+      "type": "escalated.a_discussion_counts_no_attempt",
+      "status": "passed"
+    },
+    {
+      "type": "escalated.a_discussion_runs_read_only",
+      "status": "passed"
+    },
+    {
+      "type": "escalated.a_discussion_is_charged_to_the_agent",
+      "status": "passed"
+    },
+    {
+      "type": "escalated.a_decision_resumes",
+      "status": "passed"
+    },
+    {
+      "type": "conversation.decision_carries_the_discussion",
+      "status": "passed"
+    },
+    {
+      "type": "escalated.a_marked_discussion_never_resumes",
+      "status": "passed"
+    },
+    {
+      "type": "escalated.an_unmarked_reply_under_answer_is_the_decision",
+      "status": "passed"
+    }
+  ]
+}

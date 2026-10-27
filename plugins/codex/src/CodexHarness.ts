@@ -1,4 +1,4 @@
-import { AgentOutcome, AgentRun, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amykit/core";
+import { AgentOutcome, AgentRun, AskContext, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amykit/core";
 import { costOf, specFor } from "@amykit/model-specs";
 
 export interface CodexHarnessConfig {
@@ -32,8 +32,8 @@ export class CodexHarness implements Harness {
     private readonly config: CodexHarnessConfig = {},
   ) {}
 
-  async ask(prompt: string, cwd: string): Promise<HarnessReply> {
-    const args = ["exec", "--json", "--sandbox", "workspace-write"];
+  async ask(prompt: string, cwd: string, context: AskContext = {}): Promise<HarnessReply> {
+    const args = ["exec", "--json", "--sandbox", context.readOnly ? "read-only" : "workspace-write"];
     if (this.config.model) {
       args.push("--model", this.config.model);
     }

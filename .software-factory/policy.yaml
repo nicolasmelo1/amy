@@ -590,6 +590,34 @@ gates:
       # From the seventh review.
       - "compose.a_second_review_round_on_one_head_is_said_again"
 
+  # A reply in the work's thread is a turn in a discussion or the decision
+  # that ends one, and only the decision moves the work. What no unit test can
+  # say is that the built Slack adapter, workflow and engine agree on it end
+  # to end: three questions answered in the thread and no move, then a
+  # reaction that decides, and the resumed step prompted with all of it.
+  #
+  # The activation is the reply's contract, the action that answers it, the
+  # adapter that marks it and the workflow that reads it, because a change to
+  # any of them means the last run proved a discussion that no longer exists.
+  a-question-is-not-an-answer:
+    activation:
+      - "packages/core/src/ports/Conversation.ts"
+      - "packages/core/src/actions.ts"
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "plugins/slack/src/**"
+      - "plugins/serial-engine/src/**"
+    evidence: ".software-factory/evidence/a-question-is-not-an-answer.json"
+    plan: "docs/design/a-question-is-not-an-answer.md"
+    required_assertions:
+      - "escalated.a_question_does_not_resume"
+      - "escalated.a_decision_resumes"
+      - "conversation.decision_carries_the_discussion"
+      - "escalated.a_marked_discussion_never_resumes"
+      - "escalated.a_discussion_counts_no_attempt"
+      - "escalated.a_discussion_is_charged_to_the_agent"
+      - "escalated.a_discussion_runs_read_only"
+      - "escalated.an_unmarked_reply_under_answer_is_the_decision"
+
 rules:
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:

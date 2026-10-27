@@ -243,6 +243,11 @@
           "description": ""
         },
         {
+          "title": "A question is not an answer",
+          "path": "/design/a-question-is-not-an-answer",
+          "description": ""
+        },
+        {
           "title": "A reply inside a thread reaches the agent",
           "path": "/design/a-reply-inside-a-thread-reaches-the-agent",
           "description": ""
@@ -836,6 +841,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "**A reply in a work's thread can be a question, not only an answer.**",
+          "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
         },
         {
           "depth": 2,
@@ -1706,6 +1716,43 @@
           "depth": 2,
           "title": "Acceptance",
           "slug": "acceptance"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-question-is-not-an-answer",
+      "file": "docs/design/a-question-is-not-an-answer.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-question-is-not-an-answer.md",
+      "title": "A question is not an answer",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "What does not change",
+          "slug": "what-does-not-change"
+        },
+        {
+          "depth": 2,
+          "title": "What was built",
+          "slug": "what-was-built"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
         }
       ]
     },
@@ -4479,6 +4526,12 @@
         "doc": ""
       },
       {
+        "name": "discuss",
+        "port": "agent",
+        "method": "ask",
+        "doc": "Answer a person's turn in a discussion, before anything is decided."
+      },
+      {
         "name": "draft-plan",
         "port": "agent",
         "method": "ask",
@@ -6201,6 +6254,7 @@
         "kind": "agent",
         "actions": [
           "address-threads",
+          "discuss",
           "draft-plan",
           "implement",
           "run-errand",
@@ -7236,6 +7290,13 @@
             "description": "the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name"
           },
           {
+            "name": "decisionReaction",
+            "type": "string",
+            "required": false,
+            "default": "white_check_mark",
+            "description": "the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work. A reaction Slack lists only in part is read again in full with reactions.get, which needs reactions:read"
+          },
+          {
             "name": "defaultRetryAfterSeconds",
             "type": "number",
             "required": false,
@@ -7248,6 +7309,13 @@
             "required": false,
             "default": "slack",
             "description": "where each work item's thread is remembered, relative to the state directory"
+          },
+          {
+            "name": "discussionReaction",
+            "type": "string",
+            "required": false,
+            "default": "speech_balloon",
+            "description": "the reaction, by emoji name, the operator puts on their own reply to mark it as a turn in a discussion, answered in the thread while the work waits"
           },
           {
             "name": "maxRateLimitRetries",
@@ -7467,7 +7535,7 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all. Anything left out keeps its default"
+            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all — and conversation — `answer` reads a reply nobody marked as the decision, `discuss` reads it as a turn in a discussion, answered in the thread while the work waits for a reply marked as the decision. Anything left out keeps its default"
           },
           {
             "name": "qaStatusName",
@@ -7586,6 +7654,7 @@
         "announce",
         "ask-question",
         "assign-reviewer",
+        "discuss",
         "escalate",
         "hand-off-to-qa",
         "implement",
@@ -7677,6 +7746,29 @@
           "compose.a_second_review_round_on_one_head_is_said_again"
         ],
         "scenario": ".software-factory/evidence/a-private-workflow-composes-scenario.sh"
+      },
+      {
+        "name": "a-question-is-not-an-answer",
+        "activation": [
+          "packages/core/src/ports/Conversation.ts",
+          "packages/core/src/actions.ts",
+          "packages/workflow-ticket-to-qa/src/**",
+          "plugins/slack/src/**",
+          "plugins/serial-engine/src/**"
+        ],
+        "evidence": ".software-factory/evidence/a-question-is-not-an-answer.json",
+        "plan": "docs/design/a-question-is-not-an-answer.md",
+        "assertions": [
+          "escalated.a_question_does_not_resume",
+          "escalated.a_decision_resumes",
+          "conversation.decision_carries_the_discussion",
+          "escalated.a_marked_discussion_never_resumes",
+          "escalated.a_discussion_counts_no_attempt",
+          "escalated.a_discussion_is_charged_to_the_agent",
+          "escalated.a_discussion_runs_read_only",
+          "escalated.an_unmarked_reply_under_answer_is_the_decision"
+        ],
+        "scenario": ".software-factory/evidence/a-question-is-not-an-answer-scenario.sh"
       },
       {
         "name": "a-workflow-of-your-own",
@@ -8491,7 +8583,44 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "a-question-is-not-an-answer",
+        "title": "**A reply in a work's thread can be a question, not only an answer.**",
+        "body": "When `ticket-to-qa` escalated, or asked a question before starting, the owner's\nfirst message in the thread ended the wait and the work resumed on it. A person\nwho replied \"why do you think that comment is wrong?\" had not decided anything,\nand watched their question turn into work.\n\n- `Reply` gains an optional `kind`, `discussion` or `decision`, set only when\n  the person marked the reply. The catalogue gains `discuss`, on the `agent`\n  port, so it is charged to the budget like every other run.\n- `policy.conversation` on `ticket-to-qa`: `answer`, the default, reads a reply\n  nobody marked as the decision, exactly as before. `discuss` reads it as a turn\n  in a discussion: answered in the thread, read-only, with no state change, no\n  commit and no attempt counted, while the work waits for a reply marked as the\n  decision. A marked reply reads as marked under either. An unknown value is\n  refused at boot by name.\n- `AskContext` gains `readOnly`, and a discussion is asked with it. The\n  harness enforces it rather than the prompt: Claude runs with\n  `--permission-mode plan`, Codex with `--sandbox read-only`, and Hermes, whose\n  one-shot mode cannot keep its tools off the checkout, refuses the run so a\n  relay hands it to a harness that can.\n- On the decision, the step the work resumes is prompted with the whole\n  discussion, attributed, with the decision last.\n- The Slack plugin marks a reply by the operator's own reaction on it: ✅\n  (`white_check_mark`) decides, 💬 (`speech_balloon`) discusses. Both names are\n  settings, `decisionReaction` and `discussionReaction`. A reaction Slack lists\n  only in part is read again in full with `reactions.get`, which needs the\n  `reactions:read` scope; without it, that one read fails and says so.\n- Without a conversation port, a comment on the ticket is still the decision,\n  whatever the policy says.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

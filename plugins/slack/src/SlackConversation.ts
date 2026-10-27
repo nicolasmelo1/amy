@@ -23,6 +23,12 @@ export interface SlackConversationOptions {
    * pruned; `0` keeps everything.
    */
   retentionDays?: number;
+  /**
+   * The reactions the operator puts on their own reply to mark what it is,
+   * by emoji name. A reply without one carries no kind, and the workflow's
+   * policy reads it.
+   */
+  marks?: { decision: string; discussion: string };
   now?: () => Date;
 }
 
@@ -41,6 +47,12 @@ interface SlackFile {
   url_private_download?: string;
 }
 
+interface SlackReaction {
+  name?: string;
+  users?: string[];
+  count?: number;
+}
+
 interface SlackMessage {
   ts?: string;
   thread_ts?: string;
@@ -50,6 +62,7 @@ interface SlackMessage {
   subtype?: string;
   text?: string;
   files?: SlackFile[];
+  reactions?: SlackReaction[];
 }
 
 /**
@@ -70,6 +83,12 @@ export const DEFAULT_RETENTION_DAYS = 30;
 const PRUNE_EVERY_MS = 60 * 60 * 1000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** A reaction whose list of users is too short to say who is on it. */
+const UNKNOWN = Symbol("unknown");
+
+/** ✅ settles it, 💬 asks something first. */
+export const DEFAULT_MARKS = { decision: "white_check_mark", discussion: "speech_balloon" } as const;
 
 /** What marks a root as amy's, and whose work it opened. */
 const ROOT_EVENT = "amy_work_thread";
@@ -148,11 +167,13 @@ export class SlackConversation implements Conversation {
       const at = tsToMicros(message.ts!);
       if (at <= after) continue;
       const { paths, skipped } = await this.downloadAll(thread.id, message.files ?? []);
+      const kind = await this.kindOf(message);
       answers.push({
         at: microsToInstant(at),
         author: message.user!,
         text: [message.text ?? "", ...skipped].filter(Boolean).join("\n"),
         files: paths,
+        ...(kind ? { kind } : {}),
       });
     }
     return answers.sort((a, b) => a.at.localeCompare(b.at));
@@ -332,6 +353,53 @@ export class SlackConversation implements Conversation {
       cursor = body.has_more === true && next ? next : undefined;
     } while (cursor);
     return messages;
+  }
+
+  /**
+   * What the operator marked their reply as, by their own reaction on it and
+   * nobody else's — never by its text. Both marks read as the decision, the
+   * one that moves the work, because a person who put both meant to be done.
+   * Re-read on every look, so marking a reply after it was answered counts.
+   *
+   * Slack may list only some of a reaction's users while `count` holds them
+   * all. Only a mark whose answer could still change the kind is asked again
+   * in full, and a reply the operator may have marked is never read as
+   * unmarked: if the full list still cannot say, the read fails and says why.
+   */
+  private async kindOf(message: SlackMessage): Promise<Reply["kind"]> {
+    const listed = this.kindFrom(message.reactions ?? []);
+    if (listed !== UNKNOWN) return listed;
+    const full = this.kindFrom(await this.allReactions(message.ts!));
+    if (full !== UNKNOWN) return full;
+    throw new Error(`cannot tell whether the operator marked reply ${message.ts}: Slack lists only part of who reacted to it`);
+  }
+
+  /** The kind these reactions say, or UNKNOWN when a list too short to tell could change it. */
+  private kindFrom(reactions: readonly SlackReaction[]): Reply["kind"] | typeof UNKNOWN {
+    const marks = this.options.marks ?? DEFAULT_MARKS;
+    const decision = this.marked(reactions, marks.decision);
+    if (decision === true) return "decision";
+    const discussion = this.marked(reactions, marks.discussion);
+    if (decision === UNKNOWN || discussion === UNKNOWN) return UNKNOWN;
+    return discussion ? "discussion" : undefined;
+  }
+
+  /** Whether the operator put this reaction on, or UNKNOWN when Slack's list is short and leaves them out. */
+  private marked(reactions: readonly SlackReaction[], name: string): boolean | typeof UNKNOWN {
+    const reaction = reactions.find((candidate) => candidate.name === name);
+    if (!reaction) return false;
+    const users = reaction.users ?? [];
+    if (users.includes(this.options.operator)) return true;
+    return (reaction.count ?? users.length) > users.length ? UNKNOWN : false;
+  }
+
+  private async allReactions(ts: string): Promise<SlackReaction[]> {
+    try {
+      const { body } = await this.api.call("reactions.get", { channel: this.options.channel, timestamp: ts, full: "true" });
+      return ((body.message as { reactions?: SlackReaction[] } | undefined)?.reactions ?? []);
+    } catch (error) {
+      throw new Error(`cannot tell whether the operator marked reply ${ts}: ${messageOf(error)}`, { cause: error });
+    }
   }
 
   /** By author id, never by a marker in the text. */

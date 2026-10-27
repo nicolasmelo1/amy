@@ -1,6 +1,7 @@
 import { Moved, Plan, applyPlan, movedBy } from "@amykit/core";
 import {
   AttemptOutcome,
+  Discussion,
   Escalation,
   ThreadVerdict,
   TicketRecord,
@@ -16,6 +17,8 @@ import { TicketState } from "./state.js";
  */
 export interface EffectOutcomes {
   triage?: TriageOutcome;
+  /** The conversation a triage read, when it was reading an answer. */
+  clarification?: string[];
   implementation?: AttemptOutcome;
   gate?: AttemptOutcome;
   /** What the self-review said, so the record holds the latest one. */
@@ -26,6 +29,10 @@ export interface EffectOutcomes {
   escalation?: Escalation;
   /** Set when the owner has settled an escalation. */
   escalationResolvedAt?: string;
+  /** The discussion that settled it, with the decision last. */
+  escalationDecision?: string[];
+  /** The turns a discussion answered this look, and the answer. */
+  discussed?: Discussion;
   /** The keys of the writes this look handed to the operator. */
   handedOver?: string[];
   /** When this look said them. */
@@ -44,6 +51,7 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   const next: TicketRecord = { ...record, judged: [...record.judged] };
 
   if (outcomes.triage) next.triage = outcomes.triage;
+  if (outcomes.clarification?.length) next.clarification = outcomes.clarification;
   if (outcomes.implementation) next.lastImplementation = outcomes.implementation;
   if (outcomes.gate) next.lastGate = outcomes.gate;
   // The newest review of itself, exactly like the newest gate output: the
@@ -60,8 +68,14 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
 
   if (outcomes.escalation) next.escalation = outcomes.escalation;
 
+  mergeDiscussion(next, outcomes.discussed);
+
   if (outcomes.escalationResolvedAt && next.escalation) {
-    next.escalation = { ...next.escalation, resolvedAt: outcomes.escalationResolvedAt };
+    next.escalation = {
+      ...next.escalation,
+      resolvedAt: outcomes.escalationResolvedAt,
+      ...(outcomes.escalationDecision?.length ? { decision: outcomes.escalationDecision } : {}),
+    };
 
     // The owner's answer changes the judgement, so every comment that was
     // parked as a disagreement has to be looked at again rather than staying
@@ -102,6 +116,19 @@ function mergeHandedOver(record: TicketRecord, outcomes: EffectOutcomes): void {
   record.handedOver = [...new Set([...(record.handedOver ?? []), ...outcomes.handedOver])];
   const at = outcomes.handedOverAt;
   if (at) record.handedOverAt = { ...record.handedOverAt, ...Object.fromEntries(outcomes.handedOver.map((key) => [key, at])) };
+}
+
+/**
+ * Adds what one look discussed to the wait it belongs to, and takes back the
+ * attempt the look was counted as: a discussion is not work done in the
+ * state, and must never be what spends a state's retries.
+ */
+function mergeDiscussion(record: TicketRecord, discussed: Discussion | undefined): void {
+  if (!discussed) return;
+  const before = record.discussion?.since === discussed.since ? record.discussion.lines : [];
+  record.discussion = { since: discussed.since, upTo: discussed.upTo, lines: [...before, ...discussed.lines] };
+  const counted = record.attempts[record.state] ?? 0;
+  record.attempts = { ...record.attempts, [record.state]: Math.max(0, counted - 1) };
 }
 
 /** Replace a judgement by thread id, preserving unrelated prior verdicts. */
