@@ -1340,3 +1340,46 @@ describe("a discussion, driven through the engine", () => {
     expect(w.state().escalation?.decision).toEqual(["ada decided, and this settles it: change the test"]);
   });
 });
+
+describe("what a clarification settled", () => {
+  it("reaches the implementation, not only the triage that cleared it", async () => {
+    const ASKED = "2026-09-03T10:00:00.000Z";
+    let clock = new Date("2026-09-03T10:10:00.000Z");
+    const replies: Reply[] = [
+      { at: "2026-09-03T10:05:00.000Z", author: "ada", text: "the invoice is in USD", files: [] },
+      { at: "2026-09-03T10:06:00.000Z", author: "ada", text: "use that", files: [], kind: "decision" },
+    ];
+    const conversation: Conversation = {
+      open: async () => ({ id: "t" }),
+      post: async () => "m",
+      replies: async (_thread, since) => replies.filter((reply) => reply.at > since),
+    };
+    const prompts: { step?: string; prompt: string }[] = [];
+    const run = { outcome: "completed" as const, harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown" as const, output: "" };
+    const agent = fakeAgent({
+      ask: vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>().mockImplementation(async (prompt, _cwd, context) => {
+        prompts.push({ step: context?.step, prompt });
+        return { text: context?.step === "triage" ? JSON.stringify({ clear: true }) : "done", run };
+      }),
+    });
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-clarified-"));
+    const queue = new FileQueue(path.join(root, "queue"));
+    const records = new InMemoryStore();
+    records.save(record("CLARIFYING", { triage: { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: ASKED } }));
+    const worker = new Worker({
+      queue,
+      records,
+      ...ticketWorkerDeps({ conversation, agent, policy: { ...policy, conversation: "discuss" }, now: () => clock }),
+    });
+    for (let look = 0; look < 4 && !prompts.some((p) => p.step === "implement"); look += 1) {
+      clock = new Date(clock.getTime() + 60_000);
+      queue.enqueue({ workId: "PROJ-1239", reason: "poke" }, clock);
+      await worker.tick();
+    }
+    fs.rmSync(root, { recursive: true, force: true });
+
+    const implement = prompts.find((p) => p.step === "implement")?.prompt ?? "";
+    expect(implement).toContain("- ada asked: the invoice is in USD");
+    expect(implement).toContain("- ada answered: use that");
+  });
+});

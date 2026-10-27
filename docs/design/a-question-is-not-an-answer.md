@@ -80,7 +80,10 @@ a decision and inventing a syntax for one is worse than the current default.
   the wait began, so a later wait starts its own. On the decision the
   escalation keeps the whole discussion, attributed, with the decision last
   and marked as the one that settled it, and the `implement` or
-  `address-threads` step it resumes is prompted with it.
+  `address-threads` step it resumes is prompted with it. A clarification
+  is kept the same way: the conversation the triage cleared on is stored as
+  the record's `clarification`, and the implementation is prompted with it,
+  so a decision that says "use that" reaches the step that writes the code.
 - **Read-only, enforced.** The `discuss` step asks with `readOnly` on its
   `AskContext`, and the harness enforces it rather than the prompt: Claude
   runs with `--permission-mode plan`, Codex with `--sandbox read-only`, and

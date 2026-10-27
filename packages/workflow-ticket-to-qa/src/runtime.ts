@@ -323,6 +323,7 @@ export function ticketRuntime(
       recordAgentRun(ctx, run);
       refuseAnIncompleteRun("triage", run);
       outcomesOf(ctx).triage = value;
+      if (effect.conversation?.length) outcomesOf(ctx).clarification = effect.conversation;
     },
 
     "ask-question": async (effect, ctx) => {
@@ -358,7 +359,7 @@ export function ticketRuntime(
       const branch = branchOf(ticket);
       await deps.git.prepareBranch(ticket.repo, branch, ctx.record.id);
       const { value, run } = await implementStep(deps.agent, {
-        prompt: implementPrompt(ticket, effect.retryContext, undefined, effect.discussion),
+        prompt: implementPrompt(ticket, effect.retryContext, effect.conversation, effect.discussion),
         cwd: await deps.git.acquire(ticket.repo, ctx.record.id),
         context: { workId: ctx.record.id, step: "implement" },
         commit: () => deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: ${ticket.title}`, ctx.record.id),

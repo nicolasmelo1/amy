@@ -44,6 +44,12 @@ export interface TicketRecord extends WorkRecord {
   /** Narrowed from the core's plain label to this workflow's own states. */
   state: TicketState;
   triage?: TriageOutcome;
+  /**
+   * What the questions before the work were answered with, and what was
+   * discussed on the way — the conversation the triage read when it cleared,
+   * kept so the implementation is told it too.
+   */
+  clarification?: string[];
   lastImplementation?: AttemptOutcome;
   lastGate?: AttemptOutcome;
   /**

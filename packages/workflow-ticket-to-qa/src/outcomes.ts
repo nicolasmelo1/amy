@@ -17,6 +17,8 @@ import { TicketState } from "./state.js";
  */
 export interface EffectOutcomes {
   triage?: TriageOutcome;
+  /** The conversation a triage read, when it was reading an answer. */
+  clarification?: string[];
   implementation?: AttemptOutcome;
   gate?: AttemptOutcome;
   /** What the self-review said, so the record holds the latest one. */
@@ -49,6 +51,7 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   const next: TicketRecord = { ...record, judged: [...record.judged] };
 
   if (outcomes.triage) next.triage = outcomes.triage;
+  if (outcomes.clarification?.length) next.clarification = outcomes.clarification;
   if (outcomes.implementation) next.lastImplementation = outcomes.implementation;
   if (outcomes.gate) next.lastGate = outcomes.gate;
   // The newest review of itself, exactly like the newest gate output: the
