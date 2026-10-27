@@ -42,6 +42,40 @@ A new package, `@amykit/ui`, depending on the core only:
 Ephemeral state — which tab is open, what is typed in a box — is the
 renderer's. Everything else is amy's, and comes in the snapshot.
 
+## Why not a framework, and not a standard yet
+
+**CopilotKit** solves a different problem: a copilot inside somebody's React
+app, built from client-side components and hooks. It is the model this row
+exists to refuse — a plugin that renders — and it has no terminal renderer.
+Its human-in-the-loop is a pause inside the app; amy's is the work's thread,
+which the window shows rather than replaces.
+
+**A2UI** is close to this row's own answer, and standardised: an agent sends
+declarative JSON, the client draws it from a catalogue of approved
+components, custom catalogues are allowed, and renderers exist for several
+platforms. Adopting it today would put an external, still-moving
+specification under `frame.yaml` and the locked goldens — the site and the
+repository do not yet agree on which version is current — and it has no
+terminal renderer.
+
+**AG-UI**, the event stream CopilotKit runs on, could carry `mod+k`'s ask. It
+calls its own specification an unratified draft, and the sources do not agree
+on how many event types it has.
+
+So none of them is a dependency of this row, and the door stays open on
+purpose:
+
+- **The vocabulary is written to fit an A2UI catalogue.** Every primitive maps
+  to one catalogue component with JSON-only properties, and no primitive needs
+  a feature A2UI's catalogue model cannot express.
+- **Exporting the tree is a later plugin, not a change here.** When A2UI
+  reaches 1.0, a plugin translates the tree into it, against its schema
+  vendored and watched the way `check:contracts` already watches the GitHub
+  and Linear contracts — so an A2UI renderer, a phone included, becomes one
+  more renderer *the frame is closed* measures.
+- **AG-UI waits for ratification.** Until then the ask streams over the
+  window's own socket.
+
 ## The gates
 
 `a-view-draws-nothing` lands with this row, before the package has a line of
@@ -61,6 +95,11 @@ renderer the conformance script of *the frame is closed* will measure.
       (proof: deferred:test:packages/ui/tests/tree.test.ts)
 - [ ] A view importing `react` is refused, and the rule trips on its fixture
       under `sf verify` (proof: deferred:test:mutation fixture for a-view-draws-nothing)
+- [ ] Every primitive's properties are JSON values only, so the vocabulary
+      maps one to one onto a component catalogue
+      (proof: deferred:test:packages/ui/tests/vocabulary.test.ts)
+- [ ] Nothing under `packages/ui` depends on CopilotKit, A2UI or AG-UI
+      (proof: deferred:test:packages/core/tests/architecture.test.ts)
 - [ ] The same snapshot rendered twice is byte-identical text
       (proof: deferred:test:packages/ui/tests/text-renderer.test.ts)
 
