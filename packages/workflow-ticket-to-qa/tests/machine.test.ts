@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { AskContext, Budget, Conversation, HarnessReply, Plan, Reply, dispatchesTo } from "@amykit/core";
+import { AskContext, Budget, Conversation, HarnessReply, Plan, Reply, Tracker, dispatchesTo } from "@amykit/core";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { Worker } from "@amykit/plugin-serial-engine";
 import { plan } from "../src/machine.js";
@@ -23,6 +23,7 @@ import {
   InMemoryStore,
   fakeAgent,
   fakeGit,
+  fakeTracker,
   ticketWorkerDeps,
 } from "@amykit/test-fixtures";
 
@@ -1381,5 +1382,45 @@ describe("what a clarification settled", () => {
     const implement = prompts.find((p) => p.step === "implement")?.prompt ?? "";
     expect(implement).toContain("- ada asked: the invoice is in USD");
     expect(implement).toContain("- ada answered: use that");
+  });
+});
+
+describe("an escalation answered on the ticket", () => {
+  it("carries the owner's comment into the step it resumes, read only once there is one", async () => {
+    const ASKED = "2026-09-03T10:00:00.000Z";
+    let clock = new Date("2026-09-03T10:10:00.000Z");
+    let replied = false;
+    const comments = vi.fn<Tracker["comments"]>().mockImplementation(async () =>
+      replied ? [{ author: "ada", body: "use USD instead", at: "2026-09-03T10:20:00.000Z", fromAmy: false }] : [],
+    );
+    const tracker: Tracker = { ...fakeTracker(), comments, hasReplyAfter: async () => replied };
+    const prompts: { step?: string; prompt: string }[] = [];
+    const run = { outcome: "completed" as const, harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown" as const, output: "" };
+    const agent = fakeAgent({
+      ask: vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>().mockImplementation(async (prompt, _cwd, context) => {
+        prompts.push({ step: context?.step, prompt });
+        return { text: "done", run };
+      }),
+    });
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-ticket-answer-"));
+    const queue = new FileQueue(path.join(root, "queue"));
+    const records = new InMemoryStore();
+    records.save(record("ESCALATED", { resumeAt: "IMPLEMENTING", escalation: { reason: "r", askedAt: ASKED } }));
+    const worker = new Worker({ queue, records, ...ticketWorkerDeps({ tracker, agent, now: () => clock }) });
+    const look = async () => {
+      clock = new Date(clock.getTime() + policy.pollBackoffMs);
+      queue.enqueue({ workId: "PROJ-1239", reason: "poke" }, clock);
+      await worker.tick();
+    };
+
+    await look();
+    expect(comments).not.toHaveBeenCalled();
+    replied = true;
+    await look();
+    await look();
+    fs.rmSync(root, { recursive: true, force: true });
+
+    expect(records.load("PROJ-1239")?.escalation?.decision).toEqual(["ada decided, and this settles it: use USD instead"]);
+    expect(prompts.find((p) => p.step === "implement")?.prompt).toContain("- ada decided, and this settles it: use USD instead");
   });
 });

@@ -254,9 +254,12 @@ export function ticketRuntime(
 
     const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
     const said = await saidSince(current.id, ticket, since);
+    const escalationAnswered = awaitingOwner && (said ? decided(said, policy) : await deps.tracker.hasReplyAfter(ticket.id, since));
+    // The ticket's comments are read once there is an answer in them, not on
+    // every poll of a wait: the owner's words are what the resumed step acts on.
     return {
-      conversation: said ?? (awaitingAnswer ? await deps.tracker.comments(ticket.id, since) : []),
-      escalationAnswered: awaitingOwner && (said ? decided(said, policy) : await deps.tracker.hasReplyAfter(ticket.id, since)),
+      conversation: said ?? (awaitingAnswer || escalationAnswered ? await deps.tracker.comments(ticket.id, since) : []),
+      escalationAnswered,
     };
   };
 

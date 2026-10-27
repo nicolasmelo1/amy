@@ -99,7 +99,9 @@ a decision and inventing a syntax for one is worse than the current default.
   state still counts, as it always did.
 - **Without a thread.** The runtime reads every reply as the decision when no
   conversation port is mounted, whatever the policy says: a comment on the
-  ticket cannot be marked, and only a thread can hold a discussion.
+  ticket cannot be marked, and only a thread can hold a discussion. Once
+  the tracker reports a reply, its comments are read so the owner's words
+  reach the resumed step as the decision — read then, not on every poll.
 
 ## The gate
 
