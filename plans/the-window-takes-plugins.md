@@ -62,4 +62,4 @@ and the refusals are unit tests on `mount()`.
 **Exit condition:** a plugin written outside this repository adds a nav 1
 section, a canvas tab and a `⋯` action, installed with `amy plugin add`, and
 none of the three appears until it is mounted — and each lands in the same
-place in the browser and the terminal.
+place in the browser and the text renderer.

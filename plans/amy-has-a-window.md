@@ -29,9 +29,13 @@ everything beyond that is a plugin.
   (*the window takes plugins*).
 - **Nav 2**: a search box and the list for the section. Under `Work`, every
   record of every profile, grouped by profile, with its state and the harness
-  that last ran it. Under `Workflows`, the profiles. A `⋯` on each row runs the
-  operator commands that already exist — `poke`, `pause`, `resume`, `remove` —
-  and nothing else.
+  that last ran it. Under `Workflows`, the profiles. A `⋯` acts on its own row
+  and nothing wider, through a command that already exists: a record's offers
+  `poke`; a workflow's offers `remove <name>`, with the refusal `amy remove`
+  already gives when the machine would not survive it. The handbrake —
+  `pause` and `resume` — stops every workflow at once, so it is not on any
+  row: it sits in the `Workflows` canvas, saying what it stops. Retiring one
+  record waits for *work that is over goes away*, which adds the command.
 - **Canvas**: the selected item. For a record, the state machine strip with
   the current state marked, and its timeline: the record's history joined to
   the events that mention it.
@@ -85,6 +89,8 @@ a command already calls, so the window is never a second road to the tracker.
       (proof: deferred:assertion:window.it_listens_only_on_loopback)
 - [ ] Every `⋯` action leaves the same record, queue and log a run of its
       command leaves (proof: deferred:assertion:window.an_action_is_its_command)
+- [ ] No row's `⋯` offers an action wider than its row: no record row pauses
+      the machine or removes a plugin (proof: deferred:test:packages/cli/tests/ui-actions.test.ts)
 - [ ] The fake tracker's and forge's call logs hold no write the window made
       (proof: deferred:assertion:window.the_window_writes_nothing_the_cli_cannot)
 

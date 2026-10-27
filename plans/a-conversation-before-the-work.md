@@ -35,15 +35,45 @@ the source of truth, so changing harness mid-conversation works.
 unless a person copies it there.
 
 **The work thread opens in the right panel**, beside the record, whenever the
-record is waiting on its owner. It reads and posts through the mounted
-`conversation` port, so the window and Slack show the same thread and neither
-is a copy. Its composer says which conversation it is — "discussing with
-TKT-11" — and has the decision as a separate button, never the default of
-pressing enter. With no conversation port mounted, the window mounts its own.
+record is waiting on its owner. Its composer says which conversation it is —
+"discussing with TKT-11" — and has the decision as a separate button, never
+the default of pressing enter. A turn from the panel is always marked, so it
+reads as what the person pressed under either `policy.conversation`
+(*a question is not an answer*).
+
+The `conversation` port as it stands cannot carry this, in either direction.
+`post` writes as amy's own account, and `replies` keeps only the operator's
+messages and drops everything amy wrote
+(`isOperatorAnswer` in `plugins/slack/src/SlackConversation.ts`). So a turn the
+panel posted through `post` would never reach the daemon as the operator's,
+and the panel reading through `replies` would never show the agent's answers.
+The port gains two members:
+
+```ts
+submit(thread: ThreadRef, turn: { text: string; kind: "discussion" | "decision"; author: string }): Promise<string>;
+transcript(thread: ThreadRef, since?: string): Promise<{ at: string; from: "operator" | "amy"; author: string; text: string; kind?: "discussion" | "decision" }[]>;
+```
+
+`submit` is a turn the operator made **through amy**. The Slack adapter posts
+it as the bot — the only account amy writes with — carrying message metadata
+of its own event type with the kind and the author, and `replies` returns a
+bot message only when it carries that event type. The metadata is a marker,
+not the authentication: any member of a workspace can read message metadata,
+so what makes a submitted turn the operator's is that only amy holds the bot
+token and only the window host, behind its token, calls `submit`. Every other
+message amy wrote stays excluded, as today. `transcript` is every message in
+the thread, attributed, which is what the panel draws.
+
+With no conversation port mounted, the window mounts its own, and it
+implements the same two members.
 
 ## The gates
 
-`ui-window` gains the two conversations. The conformance world's conversation
+`submit` and `transcript` are new port members, so they go through *no port
+method ships unproven* on arrival, and the Slack adapter's half is proven
+against Slack's recorded answers, not against a fake: a fake call log shows
+that the window called the port, not that the adapter turns it into the
+operator's reply. `ui-window` gains the two conversations. The conformance world's conversation
 port is a fake Slack whose call log the scenario reads, and its harnesses are
 fake CLIs that record the prompt they were given, so what an ask carried is a
 fact a test reads rather than a property of a model.
@@ -54,6 +84,14 @@ fact a test reads rather than a property of a model.
       (proof: deferred:assertion:frame.every_key_does_what_it_is_declared_to)
 - [ ] Enter in the thread panel posts a discussion turn, never a decision, in
       every renderer (proof: deferred:assertion:frame.every_key_does_what_it_is_declared_to)
+- [ ] A decision submitted through the Slack adapter comes back from
+      `replies` as the operator's decision, and a message amy posted with
+      `post` still does not (proof: deferred:test:plugins/slack/tests/SlackConversation.test.ts)
+- [ ] `transcript` returns the operator's turns and amy's answers, attributed,
+      in order (proof: deferred:test:plugins/slack/tests/SlackConversation.test.ts)
+- [ ] A discussion turn from the panel is answered in the thread and moves
+      nothing, under `answer` as under `discuss`
+      (proof: deferred:assertion:window.a_discussion_from_the_window_moves_nothing)
 - [ ] An ask runs with no mutating port reachable, and a harness that tries to
       commit is refused (proof: deferred:assertion:window.an_ask_writes_nothing)
 - [ ] The third turn of an ask carries the first two, and after switching
@@ -61,9 +99,11 @@ fact a test reads rather than a property of a model.
       (proof: deferred:assertion:window.an_ask_carries_its_turns_across_harnesses)
 - [ ] An ask about a record runs in that record's worktree
       (proof: deferred:assertion:window.an_ask_runs_where_its_record_is)
-- [ ] A message sent from the panel is in the fake Slack's call log, and one
-      Slack delivers is in the panel (proof: deferred:assertion:window.the_thread_is_one_thread)
-- [ ] The record moves on the decision and not before
+- [ ] A turn sent from the panel is in the Slack thread, and one the operator
+      writes in Slack is in the panel, both through the installed Slack
+      adapter (proof: deferred:assertion:window.the_thread_is_one_thread)
+- [ ] A decision pressed in the panel reaches the daemon through the Slack
+      adapter, and the record moves on it and not before
       (proof: deferred:assertion:window.only_a_decision_moves_the_work)
 
 **Exit condition:** a person asks four questions about an escalated record in

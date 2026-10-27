@@ -40,9 +40,15 @@ becomes "a decision arrived". The prompt the next step gets carries the whole
 thread, attributed, with the decision last and marked as the one that settled
 it — so the agent acts on what was concluded, not on the first thing said.
 
-**Opt-in.** `policy.conversation: answer | discuss`, `answer` by default, so
-nothing changes for anybody who does not ask. Under `answer` a reply is a
-decision, which is today.
+**Opt-in, for what nobody marked.** `policy.conversation: answer | discuss`,
+`answer` by default, so nothing changes for anybody who does not ask. The
+policy decides one thing: how a reply that arrives **unmarked** reads — plain
+text in a Slack thread is a decision under `answer`, which is today, and a
+discussion under `discuss`. A reply whose adapter marked its kind is read as
+marked under either policy: a turn the window posts as a discussion is a
+discussion even under `answer`, and gets its answer in the thread. That is
+what lets a person discuss from the window without changing how everybody
+else's Slack replies are read.
 
 ## What does not change
 
@@ -61,7 +67,10 @@ a decision and inventing a syntax for one is worse than the current default.
       decision marked last (proof: deferred:assertion:conversation.decision_carries_the_discussion)
 - [ ] A `discuss` run commits nothing and counts no attempt, and is charged to
       the budget (proof: deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
-- [ ] Under `answer`, the first reply resumes the work, as today
+- [ ] Under `answer`, a reply marked as a discussion is answered in the
+      thread and does not resume the work
+      (proof: deferred:assertion:escalated.a_marked_discussion_never_resumes)
+- [ ] Under `answer`, the first unmarked reply resumes the work, as today
       (proof: deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
 - [ ] The Slack adapter reports a reply as a decision only when the person
       marked it one (proof: deferred:test:plugins/slack/tests/SlackConversation.test.ts)

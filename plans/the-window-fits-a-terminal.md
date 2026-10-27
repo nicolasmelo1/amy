@@ -13,6 +13,11 @@ sections, nav 2 as a list, the canvas, and the right panel toggled by a key.
 as one line with the current state marked, `Diff` as a coloured unified diff,
 `Timeline` as a list.
 
+It also brings the terminal half of the opener *the workplace opens where
+you work* ships for the browser: the window is suspended, the person's
+`$EDITOR` or a shell runs in the record's checkout, and the window comes back
+on the same record when it exits.
+
 The renderer only translates primitives. It holds no view, no snapshot and no
 rule a browser renderer does not also hold, so the two cannot disagree about
 what a record says.
@@ -34,6 +39,11 @@ projections are compared on every step.
       without it fails the build (proof: deferred:test:plugins/ui-ink/tests/primitives.test.ts)
 - [ ] A plugin's canvas tab appears in the terminal with no change to the
       plugin (proof: deferred:assertion:frame.a_slot_takes_only_what_it_declares)
+- [ ] The editor opener suspends the window, starts in the record's checkout,
+      and returns to the same record when the editor exits
+      (proof: deferred:assertion:window.the_editor_returns_to_the_same_record)
+- [ ] A plugin installed from outside the workspace lands in the same place in
+      the terminal as in the browser (proof: deferred:assertion:frame.a_slot_takes_only_what_it_declares)
 - [ ] The narrowest width the frame allows still draws every region
       (proof: deferred:assertion:frame.no_region_is_lost_at_the_narrowest_width)
 

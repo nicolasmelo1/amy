@@ -125,8 +125,11 @@ because every row behind it adds a tab, a panel or an opener through the collect
 *Grooming reads the sections its workflow declares* is pulled forward from the
 plan-driven block into this one, because *grooming happens in the window* runs
 the skill it ships and cannot come before it. *The workplace opens where you
-work*, *looks are configuration* and *the window fits a terminal* are
-independent of each other and last only because each is additive. A phone is
+work* and *looks are configuration* are independent of each other and
+additive. *The window fits a terminal* is last because it is the one row that
+depends on everything before it: until it lands, the rows prove renderer
+agreement against the text renderer *a view is data* ships, and the
+terminal-only behaviour — suspending the window for an editor — is its own. A phone is
 not a row yet: it is a third renderer over the same views, and costs nothing
 to plan until two renderers have proven the views are renderer-free.
 
@@ -137,11 +140,11 @@ to plan until two renderers have proven the views are renderer-free.
 | 3 | [A view is data](a-view-is-data.md) | `amy status` is rewritten as a view, and its text rendering is the output `amy status` prints today, byte for byte |
 | 4 | [The frame is closed](the-frame-is-closed.md) | With only `frame.yaml`, the conformance world and the rules in place — no window yet — `sf verify` shows each rule tripping on its broken renderer fixture, and a stub renderer that draws exactly the frame passes the script twice with identical projections |
 | 5 | [amy has a window](amy-has-a-window.md) | With the daemon running, a person opens `amy ui`, watches a ticket go from `DISCOVERED` to `IMPLEMENTING` without touching anything, pokes another from its `⋯`, and breaks `config.yaml` in Settings without breaking the install — and `sf check` is green on `ui-frame` and `ui-window` |
-| 6 | [The window takes plugins](the-window-takes-plugins.md) | A plugin written outside this repository adds a nav 1 section, a canvas tab and a `⋯` action, installed with `amy plugin add`, and none of the three appears until it is mounted — and each lands in the same place in the browser and the terminal |
+| 6 | [The window takes plugins](the-window-takes-plugins.md) | A plugin written outside this repository adds a nav 1 section, a canvas tab and a `⋯` action, installed with `amy plugin add`, and none of the three appears until it is mounted — and each lands in the same place in the browser and the text renderer |
 | 7 | [A conversation before the work](a-conversation-before-the-work.md) | A person asks four questions about an escalated record in `⌘K` on one harness and a fifth on another, then discusses it in the thread panel, decides, and the record moves only at the decision |
 | 8 | [Grooming reads the sections its workflow declares](grooming-reads-the-sections-its-workflow-declares.md) | A workflow declaring four sections and a check gets a brief groomed by the shipped `amy-groom` from an agent that is not the one running amy, stored through the brief port, and `amy brief check` green on it |
 | 9 | [Grooming happens in the window](grooming-happens-in-the-window.md) | A person picks an existing ticket in the window, is asked about each declared section until `amy brief check` is green, moves it to the working status by hand, and amy builds it with that brief — no tracker write made by amy anywhere in the call log |
-| 10 | [The workplace opens where you work](the-workplace-opens-where-you-work.md) | From one record, a person reads its diff in the window, opens `nvim` on its checkout in the terminal, and a second person on the same install opens the same checkout in VS Code — with neither of them typing a path |
+| 10 | [The workplace opens where you work](the-workplace-opens-where-you-work.md) | From one record, a person reads its diff in the window, opens `nvim` on its checkout in the browser terminal, and a second person on the same install opens the same checkout in VS Code — with neither of them typing a path |
 | 11 | [Looks are configuration](looks-are-configuration.md) | A person switches the window to a theme a plugin contributed, recolours one state of one workflow, and the escalated records are still the ones that stand out |
 | 12 | [The window fits a terminal](the-window-fits-a-terminal.md) | A person runs `amy ui --terminal`, follows a record to `ESCALATED`, discusses it in the right panel, decides, and opens its checkout in `nvim` — without a browser — and the projection of every step is the browser's |
 | 13 | [A skill ladder for your own steps](a-skill-ladder-for-your-own-steps.md) | A workflow somebody wrote gives one of its own steps a cheaper model and a skill, from `config.yaml` |
