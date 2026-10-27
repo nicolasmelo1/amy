@@ -155,6 +155,22 @@ describe("a log nobody can watch is still watched", () => {
     expect(seen).toEqual([]);
   });
 
+  it("delivers nothing more of a batch once a callback stops the watch", () => {
+    vi.useFakeTimers();
+    const log = sink();
+    const seen: Event[] = [];
+
+    const stop = watchEvents(log, new Date(0), (e) => {
+      seen.push(e);
+      stop();
+    });
+    log.append({ at: "2026-09-03T12:00:00.000Z", kind: "run.claimed", workId: "W-1" });
+    log.append({ at: "2026-09-03T12:00:01.000Z", kind: "run.claimed", workId: "W-2" });
+    vi.advanceTimersByTime(5_000);
+
+    expect(seen.map((e) => e.workId)).toEqual(["W-1"]);
+  });
+
   it("uses the log's own watch when it has one, and never polls it", () => {
     const watched: Date[] = [];
     const log: EventLog = {

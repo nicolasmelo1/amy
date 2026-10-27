@@ -53,7 +53,12 @@ export class FileEventLog implements EventLog {
         if (new Date(event.at).getTime() >= cutoff) onEvent(event);
       }
     };
-    const drain = (): Event[] => this.days().flatMap((file) => this.tail(file, offsets));
+    // A line with no readable instant is left out, as `read` leaves it out,
+    // rather than reaching the sort below and stopping the watch.
+    const drain = (): Event[] =>
+      this.days()
+        .flatMap((file) => this.tail(file, offsets))
+        .filter((event) => !Number.isNaN(new Date(event.at).getTime()));
 
     // What is already there arrives sorted, as `read` would hand it over.
     deliver(drain().sort((a, b) => a.at.localeCompare(b.at)));

@@ -157,9 +157,12 @@ export function watchEvents(
 
   let cursor = since.getTime();
   let atCursor = new Map<string, number>();
+  let stopped = false;
   const poll = (): void => {
     const already = new Map(atCursor);
     for (const event of log.read(new Date(cursor))) {
+      // A callback that stops the watch stops the rest of this batch too.
+      if (stopped) return;
       const line = JSON.stringify(event);
       const at = new Date(event.at).getTime();
       const left = at === cursor ? (already.get(line) ?? 0) : 0;
@@ -178,7 +181,10 @@ export function watchEvents(
 
   poll();
   const timer = setInterval(poll, everyMs);
-  return () => clearInterval(timer);
+  return () => {
+    stopped = true;
+    clearInterval(timer);
+  };
 }
 
 const DEFAULT_POLL_MS = 1_000;

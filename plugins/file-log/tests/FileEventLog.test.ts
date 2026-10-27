@@ -206,6 +206,14 @@ describe("FileEventLog: watching", () => {
     await vi.waitFor(() => expect(seen.map((e) => e.kind)).toEqual(["run.idle"]), { timeout: 2_000 });
   });
 
+  it("leaves out a line with no instant instead of failing to start", () => {
+    log.append({ at: DAY_ONE, kind: "run.claimed" });
+    fs.appendFileSync(path.join(root, "2026-09-03.jsonl"), `${JSON.stringify({ kind: "run.idle" })}\n`);
+    log.append({ at: DAY_TWO, kind: "run.idle" });
+
+    expect(watching().map((e) => e.at)).toEqual([DAY_ONE, DAY_TWO]);
+  });
+
   it("stops delivering, and lets go of what it held, once told to", async () => {
     // What a watch holds is a filesystem watcher and a timer. Earlier tests'
     // are let go first, so the count is this watch's alone.
