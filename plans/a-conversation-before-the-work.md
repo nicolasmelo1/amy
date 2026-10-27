@@ -64,8 +64,24 @@ token and only the window host, behind its token, calls `submit`. Every other
 message amy wrote stays excluded, as today. `transcript` is every message in
 the thread, attributed, which is what the panel draws.
 
-With no conversation port mounted, the window mounts its own, and it
-implements the same two members.
+**Without Slack, the conversation is a plugin, not the window.** The window
+and the daemon are two processes, and the daemon reads answers only through
+the `conversation` port it mounted at start — without one, `answersFor` reads
+the tracker (`packages/workflow-ticket-to-qa/src/runtime.ts:244`). A thread the
+window kept for itself would be a thread the daemon never reads. So this row
+ships `@amykit/plugin-file-conversation`: one file per thread under the state
+directory, written by rename like the queue, mounted from `config.yaml` like
+any port. Both processes assemble the same profile, so both mount the same
+plugin and read the same files. It implements all of the port, `submit` and
+`transcript` included.
+
+The daemon mounts once, at start, and nothing restarts it when the config
+changes. The window compares the running loop's start with the config it
+read: when the conversation the window would use is not the one the loop
+mounted — none at all, or a different one — the panel says the loop has to be
+restarted for an answer to reach the work, and offers no decision until it
+has. With no conversation port mounted anywhere, the panel is read-only and
+names the plugin that would give it one.
 
 ## The gates
 
@@ -102,6 +118,12 @@ fact a test reads rather than a property of a model.
 - [ ] A turn sent from the panel is in the Slack thread, and one the operator
       writes in Slack is in the panel, both through the installed Slack
       adapter (proof: deferred:assertion:window.the_thread_is_one_thread)
+- [ ] With only `plugin-file-conversation` mounted, a decision pressed in the
+      panel resumes the record in the running daemon, and a discussion turn
+      does not (proof: deferred:assertion:window.a_decision_without_slack_resumes_the_record)
+- [ ] A loop started before its conversation plugin was mounted makes the
+      panel say it must restart, and offer no decision
+      (proof: deferred:assertion:window.a_stale_loop_is_named_not_answered)
 - [ ] A decision pressed in the panel reaches the daemon through the Slack
       adapter, and the record moves on it and not before
       (proof: deferred:assertion:window.only_a_decision_moves_the_work)

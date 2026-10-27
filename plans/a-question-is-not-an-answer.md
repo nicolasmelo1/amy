@@ -21,11 +21,12 @@ discussion is over, and only when somebody says it is.
 
 ## What changes
 
-**A reply is a turn in a discussion, or a decision.** `Reply` gains
-`kind: "discussion" | "decision"`, and the adapter decides which, because only
-the adapter knows how its medium marks one: a button or a reaction in a Slack
-thread, a command in a Telegram topic, a "decide and continue" in the window.
-Text alone is a discussion.
+**A reply is a turn in a discussion, or a decision — or unmarked.** `Reply`
+gains an optional `kind?: "discussion" | "decision"`, and the adapter sets it
+only when its medium marked one: a button or a reaction in a Slack thread, a
+command in a Telegram topic, a "decide and continue" in the window. Text alone
+carries no kind. The adapter never guesses one for it, because what unmarked
+text means is the workflow's policy, below, and not the adapter's call.
 
 **A discussion is answered in the thread, and moves nothing.** A new catalogue
 action, `discuss`, on the `agent` port, dispatching to `ask` like the others.
@@ -72,8 +73,8 @@ a decision and inventing a syntax for one is worse than the current default.
       (proof: deferred:assertion:escalated.a_marked_discussion_never_resumes)
 - [ ] Under `answer`, the first unmarked reply resumes the work, as today
       (proof: deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
-- [ ] The Slack adapter reports a reply as a decision only when the person
-      marked it one (proof: deferred:test:plugins/slack/tests/SlackConversation.test.ts)
+- [ ] The Slack adapter leaves `kind` unset on plain text, and sets it only
+      on a reply the person marked (proof: deferred:test:plugins/slack/tests/SlackConversation.test.ts)
 - [ ] An unknown `policy.conversation` value is refused at boot by name
       (proof: deferred:test:packages/workflow-ticket-to-qa/tests/plugin.test.ts)
 
