@@ -20,7 +20,7 @@ export function decided(said: readonly Said[], policy: Policy): boolean {
 }
 
 /** What was discussed in the wait that began at `since`; another wait's is not this one's. */
-export function discussedSince(record: TicketRecord, since: string): Discussion | undefined {
+function discussedSince(record: TicketRecord, since: string): Discussion | undefined {
   return record.discussion?.since === since ? record.discussion : undefined;
 }
 
@@ -41,25 +41,33 @@ export function discussing(
   return { type: "discuss", since, about, thread: discussed?.lines ?? [], turns: turns.map(turnOf) };
 }
 
-/**
- * The whole discussion of a wait, attributed, with the decision last and
- * marked as the one that settled it. A turn asked in the same breath as the
- * decision is carried unanswered rather than dropped.
- */
+/** The whole discussion of a wait, attributed, with the decision last and marked as the one that settled it. */
 export function decisionLines(record: TicketRecord, said: readonly Said[], policy: Policy, since: string): string[] {
-  const discussed = discussedSince(record, since);
-  const owner = turnsOf(said);
-  const open = owner
-    .filter((reply) => readAs(reply, policy) === "discussion" && reply.at > (discussed?.upTo ?? ""))
-    .map((reply) => `${reply.author} asked: ${reply.body}`);
-  const decisions = owner.filter((reply) => readAs(reply, policy) === "decision");
+  const decisions = turnsOf(said).filter((reply) => readAs(reply, policy) === "decision");
   const last = decisions.at(-1);
   return [
-    ...(discussed?.lines ?? []),
-    ...open,
+    ...discussionBefore(record, { conversation: said }, policy, since),
     ...decisions.slice(0, -1).map((reply) => `${reply.author} said: ${reply.body}`),
     ...(last ? [`${last.author} decided, and this settles it: ${last.body}`] : []),
   ];
+}
+
+/**
+ * Everything discussed in this wait: what was answered, then the turns not
+ * answered yet, attributed. A turn asked in the same breath as the decision
+ * is carried unanswered rather than dropped.
+ */
+export function discussionBefore(
+  record: TicketRecord,
+  obs: { conversation: readonly Said[] },
+  policy: Policy,
+  since: string,
+): string[] {
+  const discussed = discussedSince(record, since);
+  const open = turnsOf(obs.conversation)
+    .filter((reply) => readAs(reply, policy) === "discussion" && reply.at > (discussed?.upTo ?? ""))
+    .map((reply) => `${reply.author} asked: ${reply.body}`);
+  return [...(discussed?.lines ?? []), ...open];
 }
 
 /** What a person said, oldest first; a reply nobody can attribute is not a turn. */

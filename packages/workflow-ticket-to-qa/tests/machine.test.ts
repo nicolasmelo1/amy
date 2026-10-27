@@ -1133,6 +1133,35 @@ describe("a question is not an answer", () => {
   });
 });
 
+describe("a discussion while a question is open", () => {
+  const ASKED = "2026-09-03T10:00:00.000Z";
+  const asked = { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: ASKED };
+  const discuss = { ...policy, conversation: "discuss" as const };
+  const turn = (at: string, body: string, kind?: "discussion" | "decision") => ({ author: "ada", body, at, fromAmy: false, ...(kind ? { kind } : {}) });
+
+  it("does not read its own answer to a discussion as the decision", () => {
+    const question = turn("2026-09-03T10:05:00.000Z", "what does it show today?");
+    const r = record("CLARIFYING", {
+      triage: asked,
+      discussion: { since: ASKED, upTo: question.at, lines: ["ada asked: what does it show today?", "You answered: euros."] },
+    });
+
+    expect(expectWait(plan(r, observation({ conversation: [question] }), discuss)).why).toContain("answer");
+  });
+
+  it("carries a turn said in the same breath as the decision into the triage", () => {
+    const requirement = turn("2026-09-03T10:05:00.000Z", "it has to be the customer's currency");
+    const decision = turn("2026-09-03T10:05:30.000Z", "use that", "decision");
+
+    const p = expectAdvance(plan(record("CLARIFYING", { triage: asked }), observation({ conversation: [requirement, decision] }), discuss));
+
+    expect(p.to).toBe("READY");
+    expect(p.effects[0]).toMatchObject({
+      conversation: ["ada asked: it has to be the customer's currency", "ada answered: use that"],
+    });
+  });
+});
+
 describe("under answer, the first unmarked reply", () => {
   it("still resumes escalated work, as it always did", () => {
     const r = record("ESCALATED", { resumeAt: "CHECKED", escalation: { reason: "r", askedAt: "2026-09-03T10:00:00.000Z" } });
@@ -1165,10 +1194,12 @@ describe("a discussion, driven through the engine", () => {
       replies: async (_thread, since) => said.filter((reply) => reply.at > since),
     };
     const prompts: { step?: string; prompt: string }[] = [];
+    const contexts: (AskContext | undefined)[] = [];
     const run = { outcome: "completed" as const, harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown" as const, output: "" };
     const agent = fakeAgent({
       ask: vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>().mockImplementation(async (prompt, _cwd, context) => {
         prompts.push({ step: context?.step, prompt });
+        contexts.push(context);
         const discussed = prompts.filter((p) => p.step === "discuss").length;
         return { text: context?.step === "discuss" ? `answer ${discussed}` : "done", run };
       }),
@@ -1198,6 +1229,7 @@ describe("a discussion, driven through the engine", () => {
     });
     return {
       prompts,
+      contexts,
       post,
       git,
       records,
@@ -1257,6 +1289,7 @@ describe("a discussion, driven through the engine", () => {
     expect(w.git.prepareBranch).not.toHaveBeenCalled();
     expect(w.state().attempts).toEqual({ IMPLEMENTING: 3, ESCALATED: 0 });
     expect(w.state().discussion?.lines).toEqual(["ada asked: why did it fail?", "You answered: answer 1"]);
+    expect(w.contexts.find((context) => context?.step === "discuss")).toMatchObject({ readOnly: true });
   });
 
   it("charges a discussion to the agent's budget, and parks it at the ceiling", async () => {

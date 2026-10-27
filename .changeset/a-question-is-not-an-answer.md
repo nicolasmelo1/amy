@@ -2,6 +2,9 @@
 "@amykit/core": minor
 "@amykit/workflow-ticket-to-qa": minor
 "@amykit/plugin-slack": minor
+"@amykit/plugin-claude": minor
+"@amykit/plugin-codex": minor
+"@amykit/plugin-hermes-agent": minor
 "@amykit/cli": patch
 ---
 
@@ -21,6 +24,11 @@ and watched their question turn into work.
   commit and no attempt counted, while the work waits for a reply marked as the
   decision. A marked reply reads as marked under either. An unknown value is
   refused at boot by name.
+- `AskContext` gains `readOnly`, and a discussion is asked with it. The
+  harness enforces it rather than the prompt: Claude runs with
+  `--permission-mode plan`, Codex with `--sandbox read-only`, and Hermes, whose
+  one-shot mode cannot keep its tools off the checkout, refuses the run so a
+  relay hands it to a harness that can.
 - On the decision, the step the work resumes is prompted with the whole
   discussion, attributed, with the decision last.
 - The Slack plugin marks a reply by the operator's own reaction on it: ✅

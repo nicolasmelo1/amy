@@ -185,3 +185,17 @@ describe("how it classifies a run", () => {
     expect(runner.calls.every((call) => call.command === "claude")).toBe(true);
   });
 });
+
+describe("a step that must change nothing", () => {
+  it("runs in plan mode, which the CLI enforces, only when the step asks to", async () => {
+    const runner = new ScriptedRunner([claudeReturns(envelope()), claudeReturns(envelope())]);
+    const harness = new ClaudeHarness(runner);
+
+    await harness.ask("why did it fail?", "/w", { readOnly: true });
+    await harness.ask("implement it", "/w");
+
+    const [readOnly, writing] = runner.callsTo("claude");
+    expect(readOnly!.args.join(" ")).toContain("--permission-mode plan");
+    expect(writing!.args).not.toContain("--permission-mode");
+  });
+});

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { thread, ticket } from "@amykit/test-fixtures";
 import {
   branchOf,
+  discussPrompt,
   implementPrompt,
   readTriage,
   readVerdicts,
@@ -164,5 +165,20 @@ describe("reading ticket-to-qa's answers", () => {
   it("refuses a ticket whose tracker derived no branch, naming the field", () => {
     expect(branchOf(ticket({ branchName: "ada/proj-1-x" }))).toBe("ada/proj-1-x");
     expect(() => branchOf(ticket({ id: "PROJ-9", branchName: undefined }))).toThrow(/PROJ-9 has no `branchName`/);
+  });
+});
+
+describe("the prompt a discussion is answered from", () => {
+  it("carries the ticket's body and labels, as every other step's prompt does", () => {
+    const prompt = discussPrompt(
+      ticket({ body: "Show the customer's currency on the total.", labels: ["billing"] }),
+      "The gate stayed red.",
+      [],
+      [{ author: "ada", text: "why?" }],
+    );
+
+    expect(prompt).toContain("Show the customer's currency on the total.");
+    expect(prompt).toContain("Labels: billing");
+    expect(prompt).toContain("- ada: why?");
   });
 });

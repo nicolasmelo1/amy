@@ -24,7 +24,7 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 ### **A reply in a work's thread can be a question, not only an answer.**
 
-`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-slack`, `@amykit/workflow-ticket-to-qa`
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-slack`, `@amykit/workflow-ticket-to-qa`
 
 When `ticket-to-qa` escalated, or asked a question before starting, the owner's
 first message in the thread ended the wait and the work resumed on it. A person
@@ -40,6 +40,11 @@ and watched their question turn into work.
   commit and no attempt counted, while the work waits for a reply marked as the
   decision. A marked reply reads as marked under either. An unknown value is
   refused at boot by name.
+- `AskContext` gains `readOnly`, and a discussion is asked with it. The
+  harness enforces it rather than the prompt: Claude runs with
+  `--permission-mode plan`, Codex with `--sandbox read-only`, and Hermes, whose
+  one-shot mode cannot keep its tools off the checkout, refuses the run so a
+  relay hands it to a harness that can.
 - On the decision, the step the work resumes is prompted with the whole
   discussion, attributed, with the decision last.
 - The Slack plugin marks a reply by the operator's own reaction on it: ✅

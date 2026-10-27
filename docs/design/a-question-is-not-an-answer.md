@@ -81,6 +81,11 @@ a decision and inventing a syntax for one is worse than the current default.
   escalation keeps the whole discussion, attributed, with the decision last
   and marked as the one that settled it, and the `implement` or
   `address-threads` step it resumes is prompted with it.
+- **Read-only, enforced.** The `discuss` step asks with `readOnly` on its
+  `AskContext`, and the harness enforces it rather than the prompt: Claude
+  runs with `--permission-mode plan`, Codex with `--sandbox read-only`, and
+  Hermes, whose one-shot `-z` has no mode that keeps its tools off the
+  checkout, refuses the run so a relay hands it to a harness that can.
 - **The attempt.** A look that only discussed takes back the attempt the
   engine counted for it, in the workflow's fold. Every other look in a waiting
   state still counts, as it always did.
@@ -95,10 +100,11 @@ adapter against an in-process Slack Web API: three questions in the thread
 answered there with no move and no attempt counted, then a reaction that
 decides, and the resumed step's prompt holding all six messages with the
 decision last; then the same under `answer`, where only a reply marked as a
-discussion is held back. Beyond the criteria below it holds three more
+discussion is held back. Beyond the criteria below it holds four more
 observations: the look that only discussed counted no attempt
 (`escalated.a_discussion_counts_no_attempt`), every discussion ran on the
-agent port (`escalated.a_discussion_is_charged_to_the_agent`), and under
+agent port (`escalated.a_discussion_is_charged_to_the_agent`) and asked it
+for a read-only run (`escalated.a_discussion_runs_read_only`), and under
 `answer` the first unmarked reply still resumes the work
 (`escalated.an_unmarked_reply_under_answer_is_the_decision`).
 

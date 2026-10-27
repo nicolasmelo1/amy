@@ -615,6 +615,7 @@ gates:
       - "escalated.a_marked_discussion_never_resumes"
       - "escalated.a_discussion_counts_no_attempt"
       - "escalated.a_discussion_is_charged_to_the_agent"
+      - "escalated.a_discussion_runs_read_only"
       - "escalated.an_unmarked_reply_under_answer_is_the_decision"
 
 rules:

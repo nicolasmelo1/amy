@@ -457,7 +457,7 @@ export function ticketRuntime(
       const reply = await deps.agent.ask(
         discussPrompt(ticket, effect.about, effect.thread, effect.turns),
         await deps.git.acquire(ticket.repo, ctx.record.id),
-        { workId: ctx.record.id, step: "discuss", brief: ticket.brief },
+        { workId: ctx.record.id, step: "discuss", brief: ticket.brief, readOnly: true },
       );
       recordAgentRun(ctx, reply.run);
       refuseAnIncompleteRun("discuss", reply.run);

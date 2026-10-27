@@ -190,6 +190,8 @@ export function discussPrompt(
     `Ticket ${ticket.id}: ${ticket.title}`,
     `Tracker: ${ticket.url}`,
     ...briefLines(ticket),
+    ...bodyLines(ticket),
+    ...labelLines(ticket),
     ``,
     `What the work is waiting on:`,
     ``,

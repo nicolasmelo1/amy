@@ -111,7 +111,7 @@ function world(conversationPolicy) {
     host: { findPullRequest: async () => null, reviewLoad: async () => ({}) },
     agent: {
       async ask(prompt, cwd, context = {}) {
-        asks.push({ step: context.step, prompt });
+        asks.push({ step: context.step, prompt, readOnly: context.readOnly === true });
         const run = { outcome: "completed", harness: "stand-in", model: "stand-in-1", durationMs: 1, costSource: "unknown", output: "" };
         const said = asks.filter((a) => a.step === "discuss").length;
         const reply = { text: context.step === "discuss" ? `answer ${said}` : "changed the test", run };
@@ -210,6 +210,7 @@ record(
   counted.every((delta) => delta === 0) && discuss.record().attempts.IMPLEMENTING === 3,
   { counted, attempts: discuss.record().attempts },
 );
+record("escalated.a_discussion_runs_read_only", discuss.asks.filter((a) => a.step === "discuss").every((a) => a.readOnly) && !discuss.asks.some((a) => a.step !== "discuss" && a.readOnly));
 record("escalated.a_discussion_is_charged_to_the_agent", dispatchesTo("discuss", "agent") && discuss.asks.filter((a) => a.step === "discuss").length === 3);
 
 discuss.slack.say("change the test, keep the code", "white_check_mark");

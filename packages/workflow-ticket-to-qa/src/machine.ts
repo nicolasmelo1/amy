@@ -15,7 +15,7 @@ import {
 } from "./review.js";
 import { isConfirmedFor, leastLoadedReviewer } from "./roster.js";
 import { handOver, handedToQa, pendingReviewRequest } from "./handover.js";
-import { discussedSince, discussing, readAs, settledDiscussion } from "./discussion.js";
+import { discussionBefore, discussing, readAs, settledDiscussion } from "./discussion.js";
 
 /**
  * Decides the single next move for one ticket.
@@ -128,12 +128,15 @@ function conversationLines(record: TicketRecord, conversation: Observation["conv
 function planClarifying(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   const since = record.triage?.at ?? "";
   const decisions = obs.conversation.filter((comment) => comment.fromAmy || readAs(comment, policy) === "decision");
-  const said = [...(discussedSince(record, since)?.lines ?? []), ...conversationLines(record, decisions)];
+  const answered = conversationLines(record, decisions);
 
-  if (said.some((line) => line.includes("answered:"))) {
+  // Only a decision unblocks the wait. The discussion before it — answered,
+  // or said in the same breath and not answered yet — goes to the triage with
+  // it, so a decision that says "use that" still has "that" in front of it.
+  if (answered.some((line) => line.includes("answered:"))) {
     return advance("READY", "the question in the work thread was answered", {
       type: "triage",
-      conversation: said,
+      conversation: [...discussionBefore(record, obs, policy, since), ...answered],
     });
   }
 
