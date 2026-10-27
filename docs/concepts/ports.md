@@ -186,6 +186,7 @@ Declared in `packages/core/src/ports/EventLog.ts`.
 | :-- | :-- |
 | `append(event: Event): void` |  |
 | `read(since?: Date): Event[]` | Events at or after the given instant, oldest first. |
+| `watch(since: Date, onEvent: (event: Event) => void): () => void` | Every event at or after `since`, oldest first, then every event any process appends afterwards, until the returned function is called. |
 
 ### `FeatureTracker`
 

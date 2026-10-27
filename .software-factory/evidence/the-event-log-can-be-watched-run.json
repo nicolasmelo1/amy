@@ -1,0 +1,40 @@
+{
+  "scenario": "the-event-log-can-be-watched",
+  "status": "passed",
+  "goal": "Prove that a process watching the event log sees a work.advanced another process wrote within a second of it being written, across a day boundary, once and in order, never a partial line, and nothing after it stops watching.",
+  "artifact": {
+    "package": "@amykit/plugin-file-log",
+    "entry": "dist/index.js, in the watcher and in the writer"
+  },
+  "observed": {
+    "assertions_run": 6,
+    "assertions_failed": 0,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "watch.the_writer_is_another_process",
+      "status": "passed"
+    },
+    {
+      "type": "watch.a_work_advanced_arrives_within_a_second",
+      "status": "passed"
+    },
+    {
+      "type": "watch.each_line_once_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "watch.a_partial_line_is_never_delivered",
+      "status": "passed"
+    },
+    {
+      "type": "watch.the_next_day_is_followed_without_resubscribing",
+      "status": "passed"
+    },
+    {
+      "type": "watch.stopping_ends_delivery",
+      "status": "passed"
+    }
+  ]
+}

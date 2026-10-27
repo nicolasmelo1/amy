@@ -114,4 +114,77 @@ export interface EventLog {
   append(event: Event): void;
   /** Events at or after the given instant, oldest first. */
   read(since?: Date): Event[];
+  /**
+   * Every event at or after `since`, oldest first, then every event any
+   * process appends afterwards, until the returned function is called.
+   *
+   * Optional because a log may be a sink nobody can watch: `watchEvents`
+   * reads one of those by polling instead.
+   */
+  watch?(since: Date, onEvent: (event: Event) => void): () => void;
 }
+
+export interface WatchOptions {
+  /** How often a log without `watch` is read again. */
+  everyMs?: number;
+  /**
+   * Called once, when the log cannot be watched and is polled instead. The
+   * caller words it: the core words nothing a person reads.
+   */
+  onPolling?: (everyMs: number) => void;
+}
+
+/**
+ * Watch any log: through its own `watch` when it has one, by polling `read`
+ * when it does not.
+ *
+ * The poll keeps a cursor at the last instant it delivered and remembers the
+ * lines it delivered at that instant, so two events stamped the same
+ * millisecond are both delivered and neither twice. A line appended later
+ * with an instant older than the cursor is not seen; a log that can be
+ * watched has no such gap.
+ */
+export function watchEvents(
+  log: EventLog,
+  since: Date,
+  onEvent: (event: Event) => void,
+  options: WatchOptions = {},
+): () => void {
+  if (log.watch) return log.watch(since, onEvent);
+
+  const everyMs = options.everyMs ?? DEFAULT_POLL_MS;
+  options.onPolling?.(everyMs);
+
+  let cursor = since.getTime();
+  let atCursor = new Map<string, number>();
+  let stopped = false;
+  const poll = (): void => {
+    const already = new Map(atCursor);
+    for (const event of log.read(new Date(cursor))) {
+      // A callback that stops the watch stops the rest of this batch too.
+      if (stopped) return;
+      const line = JSON.stringify(event);
+      const at = new Date(event.at).getTime();
+      const left = at === cursor ? (already.get(line) ?? 0) : 0;
+      if (left > 0) {
+        already.set(line, left - 1);
+        continue;
+      }
+      if (at !== cursor) {
+        cursor = at;
+        atCursor = new Map();
+      }
+      atCursor.set(line, (atCursor.get(line) ?? 0) + 1);
+      onEvent(event);
+    }
+  };
+
+  poll();
+  const timer = setInterval(poll, everyMs);
+  return () => {
+    stopped = true;
+    clearInterval(timer);
+  };
+}
+
+const DEFAULT_POLL_MS = 1_000;

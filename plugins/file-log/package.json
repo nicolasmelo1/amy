@@ -29,5 +29,8 @@
   ],
   "dependencies": {
     "@amykit/core": "^0.6.0"
+  },
+  "devDependencies": {
+    "@amykit/test-fixtures": "^0.1.0"
   }
 }
