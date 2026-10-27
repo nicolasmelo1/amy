@@ -1196,8 +1196,9 @@ describe("a discussion, driven through the engine", () => {
     const prompts: { step?: string; prompt: string }[] = [];
     const contexts: (AskContext | undefined)[] = [];
     const run = { outcome: "completed" as const, harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown" as const, output: "" };
+    const ask = vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>();
     const agent = fakeAgent({
-      ask: vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>().mockImplementation(async (prompt, _cwd, context) => {
+      ask: ask.mockImplementation(async (prompt, _cwd, context) => {
         prompts.push({ step: context?.step, prompt });
         contexts.push(context);
         const discussed = prompts.filter((p) => p.step === "discuss").length;
@@ -1230,6 +1231,7 @@ describe("a discussion, driven through the engine", () => {
     return {
       prompts,
       contexts,
+      askedAt: (step: string) => ask.mock.invocationCallOrder[contexts.findIndex((context) => context?.step === step)]!,
       post,
       git,
       records,
@@ -1286,10 +1288,19 @@ describe("a discussion, driven through the engine", () => {
     w.cleanup();
 
     expect(w.git.commitAndPush).not.toHaveBeenCalled();
-    expect(w.git.prepareBranch).not.toHaveBeenCalled();
     expect(w.state().attempts).toEqual({ IMPLEMENTING: 3, ESCALATED: 0 });
     expect(w.state().discussion?.lines).toEqual(["ada asked: why did it fail?", "You answered: answer 1"]);
     expect(w.contexts.find((context) => context?.step === "discuss")).toMatchObject({ readOnly: true });
+  });
+
+  it("answers on the work's own branch, which a shared checkout may have left", async () => {
+    const w = world({ conversation: "discuss" });
+    w.say("why did it fail?");
+    await w.look();
+    w.cleanup();
+
+    expect(w.git.prepareBranch).toHaveBeenCalledWith("Northwind/northwind-backend", "ada/proj-1239-total-is-wrong", "PROJ-1239");
+    expect(w.git.prepareBranch.mock.invocationCallOrder[0]).toBeLessThan(w.askedAt("discuss"));
   });
 
   it("charges a discussion to the agent's budget, and parks it at the ceiling", async () => {

@@ -446,7 +446,7 @@ export function ticketRuntime(
       outcomesOf(ctx).verdicts = value;
     },
 
-    // Read-only and moving nothing: the agent answers in the checkout, the
+    // Read-only and moving nothing: the agent answers on the work's branch, the
     // answer goes back to the thread, and what was said is remembered so the
     // decision can carry it. Nothing is committed and no state changes.
     "discuss": async (effect, ctx) => {
@@ -454,6 +454,10 @@ export function ticketRuntime(
       if (!deps.conversation) {
         throw new Error(`${ctx.record.id} has a discussion to answer and no conversation is mounted to answer it in`);
       }
+      // Without a worktree the checkout is shared, and another ticket may have
+      // moved it while this one waited: the work's own branch is put back
+      // first, the way every step that reads the work's code does.
+      await deps.git.prepareBranch(ticket.repo, ctx.observation.pullRequest?.headBranch ?? branchOf(ticket), ctx.record.id);
       const reply = await deps.agent.ask(
         discussPrompt(ticket, effect.about, effect.thread, effect.turns),
         await deps.git.acquire(ticket.repo, ctx.record.id),

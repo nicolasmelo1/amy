@@ -86,6 +86,11 @@ a decision and inventing a syntax for one is worse than the current default.
   runs with `--permission-mode plan`, Codex with `--sandbox read-only`, and
   Hermes, whose one-shot `-z` has no mode that keeps its tools off the
   checkout, refuses the run so a relay hands it to a harness that can.
+- **The work's own code.** Before it asks, the discussion puts the checkout
+  on the work's branch — the pull request's head when there is one — with the
+  same `prepareBranch` every step that reads the work's code calls. Without a
+  worktree the checkout is shared, and another ticket may have moved it while
+  this one waited.
 - **The attempt.** A look that only discussed takes back the attempt the
   engine counted for it, in the workflow's fold. Every other look in a waiting
   state still counts, as it always did.
