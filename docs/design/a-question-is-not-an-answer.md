@@ -89,6 +89,11 @@ a decision and inventing a syntax for one is worse than the current default.
   runs with `--permission-mode plan`, Codex with `--sandbox read-only`, and
   Hermes, whose one-shot `-z` has no mode that keeps its tools off the
   checkout, refuses the run so a relay hands it to a harness that can.
+- **What it is answered with.** The discussion prompt carries the ticket's
+  body and labels, the escalation's reason, the review threads a
+  disagreement is about — replies included, read off the pull request — and
+  what the clarification before the work settled, so a question like "why is
+  that comment wrong?" is answered with the comment in front of it.
 - **The work's own code.** Before it asks, the discussion puts the checkout
   on the work's branch — the pull request's head when there is one — with the
   same `prepareBranch` every step that reads the work's code calls. Without a

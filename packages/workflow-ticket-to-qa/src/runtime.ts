@@ -463,7 +463,10 @@ export function ticketRuntime(
       // first, the way every step that reads the work's code does.
       await deps.git.prepareBranch(ticket.repo, ctx.observation.pullRequest?.headBranch ?? branchOf(ticket), ctx.record.id);
       const reply = await deps.agent.ask(
-        discussPrompt(ticket, effect.about, effect.thread, effect.turns),
+        discussPrompt(ticket, effect.about, effect.thread, effect.turns, {
+          clarification: effect.clarification,
+          threads: (ctx.observation.pullRequest?.threads ?? []).filter((thread) => effect.threadIds?.includes(thread.id)),
+        }),
         await deps.git.acquire(ticket.repo, ctx.record.id),
         { workId: ctx.record.id, step: "discuss", brief: ticket.brief, readOnly: true },
       );

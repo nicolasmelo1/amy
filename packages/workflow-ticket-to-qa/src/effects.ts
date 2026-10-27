@@ -24,7 +24,17 @@ export type Effect =
    * nothing else: no state, no commit, no attempt. `since` names the wait
    * the turns belong to, and `thread` is what was said in it before them.
    */
-  | { type: "discuss"; since: string; about: string; thread: string[]; turns: DiscussionTurn[] }
+  | {
+      type: "discuss";
+      since: string;
+      about: string;
+      thread: string[];
+      turns: DiscussionTurn[];
+      /** What the questions before the work settled, so it is not argued again. */
+      clarification?: string[];
+      /** The review threads an escalated disagreement is about, read from the pull request. */
+      threadIds?: string[];
+    }
   | { type: "assign-reviewer"; host: string }
   | { type: "request-rereview"; host: string }
   | { type: "escalate"; reason: string; threadIds: string[] }

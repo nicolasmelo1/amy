@@ -591,7 +591,14 @@ function planEscalated(record: TicketRecord, obs: Observation, policy: Policy): 
   }
   const escalation = record.escalation;
   const discussion = escalation && discussing(record, obs.conversation, policy, escalation.askedAt, escalation.reason);
-  if (discussion) return act(`answering ${discussion.turns.length} turn(s) of the owner's discussion; nothing is decided yet`, discussion);
+  if (discussion) {
+    const threadIds = disagreements(record).map((verdict) => verdict.threadId);
+    return act(`answering ${discussion.turns.length} turn(s) of the owner's discussion; nothing is decided yet`, {
+      ...discussion,
+      ...(record.clarification?.length ? { clarification: record.clarification } : {}),
+      ...(threadIds.length ? { threadIds } : {}),
+    });
+  }
   return wait(policy.pollBackoffMs, "waiting for the owner to settle a disagreement");
 }
 

@@ -1163,6 +1163,27 @@ describe("a discussion while a question is open", () => {
   });
 });
 
+describe("a discussion of a disagreement", () => {
+  it("names the disagreed threads and the settled clarification for the answer to read", () => {
+    const r = record("ESCALATED", {
+      resumeAt: "HUMAN_FIX",
+      escalation: { reason: "T1: the comment is wrong", askedAt: "2026-09-03T10:00:00.000Z" },
+      judged: [
+        { threadId: "T1", verdict: "disagreed", note: "the comment is wrong" },
+        { threadId: "T2", verdict: "fixed", note: "done" },
+      ],
+      clarification: ["ada answered: use USD"],
+    });
+    const obs = observation({ conversation: [{ author: "ada", body: "why is it wrong?", at: "2026-09-03T10:05:00.000Z", fromAmy: false }] });
+
+    expect(expectAct(plan(r, obs, { ...policy, conversation: "discuss" })).effects[0]).toMatchObject({
+      type: "discuss",
+      threadIds: ["T1"],
+      clarification: ["ada answered: use USD"],
+    });
+  });
+});
+
 describe("under answer, the first unmarked reply", () => {
   it("still resumes escalated work, as it always did", () => {
     const r = record("ESCALATED", { resumeAt: "CHECKED", escalation: { reason: "r", askedAt: "2026-09-03T10:00:00.000Z" } });

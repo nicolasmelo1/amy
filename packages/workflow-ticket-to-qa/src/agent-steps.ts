@@ -146,14 +146,7 @@ export function threadPrompt(
     ...bodyLines(ticket),
     ...labelLines(ticket),
     `Comments:`,
-    ...threads.flatMap((thread) => [
-      `\n[${thread.id}] ${thread.author} said:\n${thread.body}`,
-      // A review is a conversation, not one comment: what follows the
-      // opening comment is a correction of it or an answer to it. The first
-      // comment is the header above, so the bullets carry only what came
-      // after it, oldest first — the last one says who is being waited on.
-      ...thread.comments.slice(1).map((comment) => `  - ${comment.author} replied:\n${comment.body}`),
-    ]),
+    ...threads.flatMap(threadLines),
     ...(hints.length ? [``, `Reviewer notes:`, ...hints.map((hint) => `- ${hint}`)] : []),
     ...decisionLines(discussion),
     ``,
@@ -183,6 +176,7 @@ export function discussPrompt(
   about: string,
   thread: readonly string[],
   turns: readonly { author: string; text: string }[],
+  settled: { clarification?: readonly string[]; threads?: readonly ReviewThread[] } = {},
 ): string {
   return [
     `This work is waiting on a person, and they are discussing it with you before they decide.`,
@@ -196,6 +190,8 @@ export function discussPrompt(
     `What the work is waiting on:`,
     ``,
     about,
+    ...(settled.threads?.length ? [``, `The review comments it is about:`, ...settled.threads.flatMap(threadLines)] : []),
+    ...conversationLines(settled.clarification),
     ...(thread.length ? [``, `The discussion so far:`, ...thread.map((line) => `- ${line}`)] : []),
     ``,
     `What they said now:`,
@@ -205,6 +201,18 @@ export function discussPrompt(
     `as much as you need to, but change nothing and commit nothing: this is a`,
     `discussion, and the work resumes only when they decide.`,
   ].join("\n");
+}
+
+/**
+ * One review thread as a conversation, not one comment: what follows the
+ * opening comment is a correction of it or an answer to it, oldest first —
+ * the last one says who is being waited on.
+ */
+function threadLines(thread: ReviewThread): string[] {
+  return [
+    `\n[${thread.id}] ${thread.author} said:\n${thread.body}`,
+    ...thread.comments.slice(1).map((comment) => `  - ${comment.author} replied:\n${comment.body}`),
+  ];
 }
 
 /**

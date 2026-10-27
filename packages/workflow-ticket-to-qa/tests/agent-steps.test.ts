@@ -182,3 +182,26 @@ describe("the prompt a discussion is answered from", () => {
     expect(prompt).toContain("- ada: why?");
   });
 });
+
+describe("the context a discussion is answered with", () => {
+  it("carries the review threads it is about, replies included, and what the clarification settled", () => {
+    const prompt = discussPrompt(ticket(), "T1: the comment is wrong", [], [{ author: "ada", text: "why is it wrong?" }], {
+      clarification: ["ada answered: use USD"],
+      threads: [
+        thread({
+          id: "T1",
+          author: "edsger",
+          body: "round the total",
+          comments: [
+            { author: "edsger", body: "round the total", createdAt: "2026-09-03T10:00:00.000Z" },
+            { author: "edsger", body: "to two places", createdAt: "2026-09-03T10:01:00.000Z" },
+          ],
+        }),
+      ],
+    });
+
+    expect(prompt).toContain("[T1] edsger said:\nround the total");
+    expect(prompt).toContain("edsger replied:\nto two places");
+    expect(prompt).toContain("- ada answered: use USD");
+  });
+});
