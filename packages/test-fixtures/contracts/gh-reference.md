@@ -155,6 +155,7 @@ Authenticate gh and git with GitHub
 Log in to a GitHub account
 
   -c, --clipboard             Copy one-time OAuth device code to clipboard
+      --expiring              Prefer expiring credentials that gh refreshes automatically, if the host supports them
   -p, --git-protocol string   The protocol to use for git operations on this host: {ssh|https}
   -h, --hostname string       The hostname of the GitHub instance to authenticate with
       --insecure-storage      Save authentication credentials in plain text instead of credential store
@@ -175,6 +176,7 @@ Log out of a GitHub account
 Refresh stored authentication credentials
 
   -c, --clipboard               Copy one-time OAuth device code to clipboard
+      --expiring                Prefer expiring credentials that gh refreshes automatically, if the host supports them
   -h, --hostname string         The GitHub host to use for authentication
       --insecure-storage        Save authentication credentials in plain text instead of credential store
   -r, --remove-scopes strings   Authentication scopes to remove from gh
@@ -196,6 +198,7 @@ Display active account and authentication state on each known GitHub host
   -h, --hostname string   Check only a specific hostname's auth status
       --jq expression     Filter JSON output using a jq expression
       --json fields       Output JSON with the specified fields
+      --no-refresh        Do not automatically refresh expired tokens
   -t, --show-token        Display the auth token
       --template string   Format JSON output using a Go template; see "gh help formatting"
 
@@ -211,6 +214,7 @@ Switch active GitHub account
 Print the authentication token gh uses for a hostname and account
 
   -h, --hostname string   The hostname of the GitHub instance authenticated with
+      --no-refresh        Do not automatically refresh an expired token
   -u, --user string       The account to output the token for
 
 ## gh browse [<number> | <path> | <commit-sha>] [flags]
@@ -700,6 +704,74 @@ gh gpg-key ls
 ## gh issue <command>
 
 Manage issues
+
+### gh issue artifact <command>
+
+Work with issue artifacts (preview)
+
+#### gh issue artifact create {<issue-number> | <issue-url>} [<file>[#<name>] | <url>]... [flags]
+
+Create issue artifacts (preview)
+
+      --attach file      Attach an image or video file, in '<file>#<image alt text>' format
+  -b, --body string      Content for a single document
+  -F, --body-file file   Read content for a single artifact from file (use "-" to read from standard input)
+      --name string      Name for a single artifact
+      --type string      Type for documents: {generic|plan|embedded_html}
+
+Aliases
+
+gh issue artifact new
+
+#### gh issue artifact delete {<issue> <artifact-number>... | <artifact-url>...} [flags]
+
+Delete issue artifacts (preview)
+
+  --yes   Confirm deletion without prompting
+
+#### gh issue artifact download {<issue> [<artifact-number>...] | <artifact-url>...} [flags]
+
+Download issue artifacts (preview)
+
+      --clobber          Overwrite existing files of the same name
+  -D, --dir directory    The directory to download files into (default ".")
+  -O, --output file      The file to write a single artifact to (use "-" to write to standard output)
+      --skip-existing    Skip downloading when files of the same name exist
+      --version number   Download the version with this number from the edit history
+
+#### gh issue artifact edit {<issue> <artifact-number> | <artifact-url>} [flags]
+
+Edit an issue artifact (preview)
+
+      --attach file              Attach an image or video file, in '<file>#<image alt text>' format
+  -b, --body string              New content; for a link, a URL
+  -F, --body-file file           Read new content from file (use "-" to read from standard input)
+      --name string              New name
+      --restore-version number   Restore the version with this number from the edit history
+
+#### gh issue artifact list {<issue-number> | <issue-url>} [flags]
+
+List artifacts on an issue (preview)
+
+  -q, --jq expression     Filter JSON output using a jq expression
+      --json fields       Output JSON with the specified fields
+  -L, --limit int         Maximum number of artifacts to fetch
+  -t, --template string   Format JSON output using a Go template; see "gh help formatting"
+      --type string       Filter by type: {generic|plan|link|embedded_html}
+
+Aliases
+
+gh issue artifact ls
+
+#### gh issue artifact view {<issue> <artifact-number> | <artifact-url>} [flags]
+
+View an issue artifact (preview)
+
+  -q, --jq expression     Filter JSON output using a jq expression
+      --json fields       Output JSON with the specified fields
+  -t, --template string   Format JSON output using a Go template; see "gh help formatting"
+      --version number    Show the version with this number from the edit history
+  -w, --web               Open a document's page on GitHub, or a link's URL
 
 ### gh issue close {<number> | <url>} [flags]
 
