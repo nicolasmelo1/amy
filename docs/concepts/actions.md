@@ -43,6 +43,7 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 | `announce` | `notifier` | `announce()` | `@amykit/core` |  |
 | `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |
 | `assign-reviewer` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `discuss` | `agent` | `ask()` | `@amykit/core` | Answer a person's turn in a discussion, before anything is decided. |
 | `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
 | `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
 | `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |

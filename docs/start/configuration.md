@@ -229,6 +229,12 @@ policy:
   # waits until it sees you made it. Nothing is written on the tracker or the
   # code host.
   writes: machine
+  # answer: a reply in the work's thread is your decision, and the work moves
+  # on it. discuss: a reply is a turn in a discussion, answered in the thread
+  # while the work waits; mark the reply that decides (✅ in Slack) and only
+  # that one moves it. A reply you marked reads as marked under either, and
+  # without a thread a comment on the ticket is always the decision.
+  conversation: answer
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it, so leaving codex and hermes out means they are never required to be

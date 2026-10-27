@@ -23,6 +23,12 @@ export interface SlackConversationOptions {
    * pruned; `0` keeps everything.
    */
   retentionDays?: number;
+  /**
+   * The reactions the operator puts on their own reply to mark what it is,
+   * by emoji name. A reply without one carries no kind, and the workflow's
+   * policy reads it.
+   */
+  marks?: { decision: string; discussion: string };
   now?: () => Date;
 }
 
@@ -50,6 +56,7 @@ interface SlackMessage {
   subtype?: string;
   text?: string;
   files?: SlackFile[];
+  reactions?: { name?: string; users?: string[] }[];
 }
 
 /**
@@ -70,6 +77,9 @@ export const DEFAULT_RETENTION_DAYS = 30;
 const PRUNE_EVERY_MS = 60 * 60 * 1000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** ✅ settles it, 💬 asks something first. */
+export const DEFAULT_MARKS = { decision: "white_check_mark", discussion: "speech_balloon" } as const;
 
 /** What marks a root as amy's, and whose work it opened. */
 const ROOT_EVENT = "amy_work_thread";
@@ -148,11 +158,13 @@ export class SlackConversation implements Conversation {
       const at = tsToMicros(message.ts!);
       if (at <= after) continue;
       const { paths, skipped } = await this.downloadAll(thread.id, message.files ?? []);
+      const kind = this.kindOf(message);
       answers.push({
         at: microsToInstant(at),
         author: message.user!,
         text: [message.text ?? "", ...skipped].filter(Boolean).join("\n"),
         files: paths,
+        ...(kind ? { kind } : {}),
       });
     }
     return answers.sort((a, b) => a.at.localeCompare(b.at));
@@ -332,6 +344,21 @@ export class SlackConversation implements Conversation {
       cursor = body.has_more === true && next ? next : undefined;
     } while (cursor);
     return messages;
+  }
+
+  /**
+   * What the operator marked their reply as, by their own reaction on it and
+   * nobody else's — never by its text. Both marks read as the decision, the
+   * one that moves the work, because a person who put both meant to be done.
+   * Re-read on every look, so marking a reply after it was answered counts.
+   */
+  private kindOf(message: SlackMessage): Reply["kind"] {
+    const marks = this.options.marks ?? DEFAULT_MARKS;
+    const by = (name: string) =>
+      (message.reactions ?? []).some((reaction) => reaction.name === name && (reaction.users ?? []).includes(this.options.operator));
+    if (by(marks.decision)) return "decision";
+    if (by(marks.discussion)) return "discussion";
+    return undefined;
   }
 
   /** By author id, never by a marker in the text. */

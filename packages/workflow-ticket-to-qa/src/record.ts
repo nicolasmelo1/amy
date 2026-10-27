@@ -11,6 +11,26 @@ export interface Escalation {
   askedAt: string;
   followUpTicketId?: string;
   resolvedAt?: string;
+  /**
+   * The discussion that settled it, attributed, with the decision last — what
+   * the step it resumes is prompted with, so the agent acts on what was
+   * concluded rather than on the first thing said.
+   */
+  decision?: string[];
+}
+
+/**
+ * What has been discussed during one wait, and answered.
+ *
+ * Keyed by the instant the wait began — the question asked, the escalation
+ * raised — so a new wait starts a new discussion rather than inheriting one.
+ */
+export interface Discussion {
+  since: string;
+  /** The newest turn answered; a turn at or before it is not asked again. */
+  upTo: string;
+  /** Each turn and each answer, attributed, oldest first. */
+  lines: string[];
 }
 
 /**
@@ -39,6 +59,8 @@ export interface TicketRecord extends WorkRecord {
   /** Threads already judged, so the same comment is never worked twice. */
   judged: ThreadVerdict[];
   escalation?: Escalation;
+  /** The discussion in the current wait, when anybody started one. */
+  discussion?: Discussion;
   /**
    * The state an escalation interrupted, so the owner's answer sends the work
    * back there rather than to wherever the machine happens to resume.

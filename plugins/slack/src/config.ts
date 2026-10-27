@@ -1,6 +1,6 @@
 import { ConfigSchema } from "@amykit/core";
 import { DEFAULT_RATE_LIMIT_RETRIES, DEFAULT_RETRY_AFTER_S } from "./SlackApi.js";
-import { DEFAULT_RETENTION_DAYS } from "./SlackConversation.js";
+import { DEFAULT_MARKS, DEFAULT_RETENTION_DAYS } from "./SlackConversation.js";
 
 /** What this plugin needs told to it, and nothing more. */
 export const configSchema: ConfigSchema = {
@@ -42,5 +42,17 @@ export const configSchema: ConfigSchema = {
     description:
       "days a downloaded file or a thread's memory stays unused before it is pruned, 0 to keep everything. A pruned file is fetched again when its reply is read; a pruned thread means the next question opens a new one",
     default: DEFAULT_RETENTION_DAYS,
+  },
+  decisionReaction: {
+    type: "string",
+    description:
+      "the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work",
+    default: DEFAULT_MARKS.decision,
+  },
+  discussionReaction: {
+    type: "string",
+    description:
+      "the reaction, by emoji name, the operator puts on their own reply to mark it as a turn in a discussion, answered in the thread while the work waits",
+    default: DEFAULT_MARKS.discussion,
   },
 };

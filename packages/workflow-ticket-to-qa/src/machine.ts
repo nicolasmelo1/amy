@@ -15,6 +15,7 @@ import {
 } from "./review.js";
 import { isConfirmedFor, leastLoadedReviewer } from "./roster.js";
 import { handOver, handedToQa, pendingReviewRequest } from "./handover.js";
+import { discussedSince, discussing, readAs, settledDiscussion } from "./discussion.js";
 
 /**
  * Decides the single next move for one ticket.
@@ -117,16 +118,27 @@ function conversationLines(record: TicketRecord, conversation: Observation["conv
   return lines;
 }
 
+/**
+ * Waiting on an answer to the questions the triage asked.
+ *
+ * A turn somebody takes in a discussion is answered in the thread and moves
+ * nothing; the work goes back to the triage only on a decision, carrying
+ * the discussion that came before it.
+ */
 function planClarifying(record: TicketRecord, obs: Observation, policy: Policy): Plan {
-  const said = conversationLines(record, obs.conversation);
-  const answer = said.find((line) => line.includes("answered:"));
+  const since = record.triage?.at ?? "";
+  const decisions = obs.conversation.filter((comment) => comment.fromAmy || readAs(comment, policy) === "decision");
+  const said = [...(discussedSince(record, since)?.lines ?? []), ...conversationLines(record, decisions)];
 
-  if (answer) {
+  if (said.some((line) => line.includes("answered:"))) {
     return advance("READY", "the question in the work thread was answered", {
       type: "triage",
       conversation: said,
     });
   }
+
+  const discussion = discussing(record, obs.conversation, policy, since, (record.triage?.askedQuestions ?? []).join("\n"));
+  if (discussion) return act(`answering ${discussion.turns.length} turn(s) of a discussion before anything is decided`, discussion);
 
   // Re-asking is the defect this state used to be: a look without an answer
   // holds rather than posts the same words again. `CLARIFYING` cannot clear
@@ -185,6 +197,7 @@ function planImplementing(record: TicketRecord, policy: Policy): Plan {
   return act(`implementation attempt ${attempts + 1}`, {
     type: "implement",
     retryContext: retryContextFor(record),
+    ...settledDiscussion(record),
   });
 }
 
@@ -341,6 +354,7 @@ function planAutomatedReviewFix(record: TicketRecord, obs: Observation, policy: 
     type: "address-threads",
     threadIds: open.map((t) => t.id),
     from: "automated",
+    ...settledDiscussion(record),
   });
 }
 
@@ -542,6 +556,7 @@ function planHumanFix(record: TicketRecord, obs: Observation, policy: Policy): P
       type: "address-threads",
       threadIds: open.map((t) => t.id),
       from: "human",
+      ...settledDiscussion(record),
     });
   }
 
@@ -568,8 +583,11 @@ function planHumanFix(record: TicketRecord, obs: Observation, policy: Policy): P
 function planEscalated(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   if (obs.escalationAnswered) {
     const back = record.resumeAt ?? "HUMAN_FIX";
-    return advance(back, `the owner answered, back to ${back} where the escalation stopped it`);
+    return advance(back, `the owner decided, back to ${back} where the escalation stopped it`);
   }
+  const escalation = record.escalation;
+  const discussion = escalation && discussing(record, obs.conversation, policy, escalation.askedAt, escalation.reason);
+  if (discussion) return act(`answering ${discussion.turns.length} turn(s) of the owner's discussion; nothing is decided yet`, discussion);
   return wait(policy.pollBackoffMs, "waiting for the owner to settle a disagreement");
 }
 

@@ -75,6 +75,14 @@ export const CORE_ACTIONS: Readonly<Record<string, ActionSpec>> = {
    */
   "resolve-review-thread": { port: "code-host", method: "resolveReviewThread" },
   "address-threads": { port: "agent", method: "ask" },
+  /**
+   * Answer a person's turn in a discussion, before anything is decided.
+   *
+   * Read-only, and it moves nothing: the answer goes back where the person
+   * asked, and the work waits for a decision. On the `agent` port like every
+   * other run, so it is charged to the same budget and parks at its ceiling.
+   */
+  "discuss": { port: "agent", method: "ask" },
   "assign-reviewer": { port: "code-host", method: "requestReview" },
   "request-rereview": { port: "code-host", method: "requestReview" },
   "escalate": { port: "tracker", method: "createFollowUp" },

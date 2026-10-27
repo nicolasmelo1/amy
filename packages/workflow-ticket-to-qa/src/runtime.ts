@@ -5,7 +5,6 @@ import {
   baseBranchFor,
   BriefStore,
   CodeHost,
-  Comment,
   Conversation,
   Event,
   EventKind,
@@ -25,6 +24,7 @@ import { implementStep, judgeStep } from "@amykit/agent-kit";
 import {
   ReviewerHints,
   branchOf,
+  discussPrompt,
   implementPrompt,
   readTriage,
   readVerdicts,
@@ -33,7 +33,8 @@ import {
   unreadTriage,
 } from "./agent-steps.js";
 import { Effect, WRITE_EFFECTS, WriteEffect } from "./effects.js";
-import { Observation, Policy } from "./observation.js";
+import { Observation, Policy, Said } from "./observation.js";
+import { decided, decisionLines } from "./discussion.js";
 import { EffectOutcomes, applyOutcomes, applyTransition } from "./outcomes.js";
 import { Roster } from "./roster.js";
 import { TicketRecord, newRecord } from "./record.js";
@@ -111,6 +112,11 @@ type TicketHandlers = {
 export function ticketRuntime(
   deps: TicketRuntimeDeps,
 ): WorkflowRuntime<TicketRecord, Observation> {
+  // Only a thread can hold a discussion. Without one, a reply is a comment on
+  // the ticket, which has no way to be marked a decision, so it is the
+  // decision — whatever the install asked unmarked replies to read as.
+  const policy: Policy = deps.conversation ? deps.policy : { ...deps.policy, conversation: "answer" };
+
   /**
    * Appends to the log if there is one, and shrugs if it throws.
    *
@@ -241,7 +247,7 @@ export function ticketRuntime(
    * own. In that mode the machine wrote nothing on the ticket, so every
    * comment there is the operator's, and is read as one.
    */
-  const answersFor = async (current: TicketRecord, ticket: Ticket) => {
+  const answersFor = async (current: TicketRecord, ticket: Ticket): Promise<Pick<Observation, "conversation" | "escalationAnswered">> => {
     const awaitingAnswer = current.state === "CLARIFYING" && Boolean(current.triage);
     const awaitingOwner = Boolean(current.escalation && !current.escalation.resolvedAt);
     if (!awaitingAnswer && !awaitingOwner) return { conversation: [], escalationAnswered: false };
@@ -249,8 +255,8 @@ export function ticketRuntime(
     const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
     const said = await saidSince(current.id, ticket, since);
     return {
-      conversation: awaitingAnswer ? said ?? (await deps.tracker.comments(ticket.id, since)) : [],
-      escalationAnswered: awaitingOwner && (said ? said.length > 0 : await deps.tracker.hasReplyAfter(ticket.id, since)),
+      conversation: said ?? (awaitingAnswer ? await deps.tracker.comments(ticket.id, since) : []),
+      escalationAnswered: awaitingOwner && (said ? decided(said, policy) : await deps.tracker.hasReplyAfter(ticket.id, since)),
     };
   };
 
@@ -260,7 +266,7 @@ export function ticketRuntime(
    * ticket. Null where the machine comments on the ticket too, and the
    * tracker's own reading of who wrote what is the one to trust.
    */
-  const saidSince = async (workId: string, ticket: Ticket, since: string): Promise<Comment[] | null> => {
+  const saidSince = async (workId: string, ticket: Ticket, since: string): Promise<Said[] | null> => {
     if (deps.conversation) return repliesFor(deps.conversation, workId, ticket.title, since);
     if (deps.policy.writes !== "operator") return null;
     return (await deps.tracker.comments(ticket.id, since)).map((comment) => ({ ...comment, fromAmy: false }));
@@ -352,7 +358,7 @@ export function ticketRuntime(
       const branch = branchOf(ticket);
       await deps.git.prepareBranch(ticket.repo, branch, ctx.record.id);
       const { value, run } = await implementStep(deps.agent, {
-        prompt: implementPrompt(ticket, effect.retryContext),
+        prompt: implementPrompt(ticket, effect.retryContext, undefined, effect.discussion),
         cwd: await deps.git.acquire(ticket.repo, ctx.record.id),
         context: { workId: ctx.record.id, step: "implement" },
         commit: () => deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: ${ticket.title}`, ctx.record.id),
@@ -426,7 +432,7 @@ export function ticketRuntime(
       const branch = ctx.observation.pullRequest?.headBranch ?? branchOf(ticket);
       await deps.git.prepareBranch(ticket.repo, branch, ctx.record.id);
       const { value, run } = await judgeStep(deps.agent, {
-        prompt: threadPrompt(ticket, threads, effect.from, deps.config.reviewerHints),
+        prompt: threadPrompt(ticket, threads, effect.from, deps.config.reviewerHints, effect.discussion),
         cwd: await deps.git.acquire(ticket.repo, ctx.record.id),
         context: { workId: ctx.record.id, step: "address-threads" },
         read: (answer) => readVerdicts(answer, threads),
@@ -438,6 +444,30 @@ export function ticketRuntime(
       refuseAnIncompleteRun("address-threads", run);
       await deps.git.commitAndPush(ticket.repo, branch, `${ticket.id}: address review comments`, ctx.record.id);
       outcomesOf(ctx).verdicts = value;
+    },
+
+    // Read-only and moving nothing: the agent answers in the checkout, the
+    // answer goes back to the thread, and what was said is remembered so the
+    // decision can carry it. Nothing is committed and no state changes.
+    "discuss": async (effect, ctx) => {
+      const ticket = ctx.observation.ticket;
+      if (!deps.conversation) {
+        throw new Error(`${ctx.record.id} has a discussion to answer and no conversation is mounted to answer it in`);
+      }
+      const reply = await deps.agent.ask(
+        discussPrompt(ticket, effect.about, effect.thread, effect.turns),
+        await deps.git.acquire(ticket.repo, ctx.record.id),
+        { workId: ctx.record.id, step: "discuss", brief: ticket.brief },
+      );
+      recordAgentRun(ctx, reply.run);
+      refuseAnIncompleteRun("discuss", reply.run);
+      const thread = await deps.conversation.open(ctx.record.id, ticket.title);
+      await deps.conversation.post(thread, { text: reply.text });
+      outcomesOf(ctx).discussed = {
+        since: effect.since,
+        upTo: effect.turns.at(-1)!.at,
+        lines: [...effect.turns.map((turn) => `${turn.author} asked: ${turn.text}`), `You answered: ${reply.text}`],
+      };
     },
 
     "assign-reviewer": async (effect, ctx) => {
@@ -518,7 +548,7 @@ export function ticketRuntime(
     : Object.fromEntries(Object.entries(handlers).filter(([name]) => name !== "hand-over"));
 
   return {
-    policy: deps.policy,
+    policy,
     progress: deps.progress,
 
     // One work item per repository. The ticket's own repository keeps the
@@ -592,7 +622,11 @@ export function ticketRuntime(
       // action at all — so it is folded here rather than by a handler.
       const settled =
         current.escalation && !current.escalation.resolvedAt && observation.escalationAnswered
-          ? { ...folded, escalationResolvedAt: now.toISOString() }
+          ? {
+              ...folded,
+              escalationResolvedAt: now.toISOString(),
+              escalationDecision: decisionLines(current, observation.conversation, policy, current.escalation.askedAt),
+            }
           : folded;
 
       return applyTransition(applyOutcomes(current, settled), moved);
@@ -651,13 +685,14 @@ function splitWorkId(workId: string): { ticketId: string; repo?: string } {
   return { ticketId: workId.slice(0, at), repo: decodeURIComponent(workId.slice(at + 1)) };
 }
 
-function repliesFor(conversation: Conversation, workId: string, title: string, since: string): Promise<Comment[]> {
+function repliesFor(conversation: Conversation, workId: string, title: string, since: string): Promise<Said[]> {
   return conversation.open(workId, title).then((thread) => conversation.replies(thread, since)).then((replies) =>
     replies.map((reply) => ({
       author: reply.author,
       body: [reply.text, ...reply.files.map((file) => `Attachment: ${file}`)].filter(Boolean).join("\n"),
       at: reply.at,
       fromAmy: false,
+      ...(reply.kind ? { kind: reply.kind } : {}),
     })),
   );
 }

@@ -3,7 +3,7 @@ import { Plugin } from "@amykit/core";
 import { configSchema } from "./config.js";
 import { resolveToken } from "./secret.js";
 import { DEFAULT_RATE_LIMIT_RETRIES, DEFAULT_RETRY_AFTER_S, SlackApi } from "./SlackApi.js";
-import { DEFAULT_RETENTION_DAYS, SlackConversation } from "./SlackConversation.js";
+import { DEFAULT_MARKS, DEFAULT_RETENTION_DAYS, SlackConversation } from "./SlackConversation.js";
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-slack",
@@ -42,6 +42,10 @@ export const plugin: Plugin = {
         operator,
         directory: path.join(ctx.paths.state, (ctx.config.directory as string | undefined) ?? "slack"),
         retentionDays,
+        marks: {
+          decision: (ctx.config.decisionReaction as string | undefined) ?? DEFAULT_MARKS.decision,
+          discussion: (ctx.config.discussionReaction as string | undefined) ?? DEFAULT_MARKS.discussion,
+        },
         now: ctx.now,
       }),
     );

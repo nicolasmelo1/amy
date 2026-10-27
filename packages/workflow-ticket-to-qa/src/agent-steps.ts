@@ -89,7 +89,12 @@ export function unreadTriage(at: string): TriageOutcome {
   return { clear: false, questions: [], askedQuestions: [], at };
 }
 
-export function implementPrompt(ticket: Ticket, retryContext?: string, conversation?: readonly string[]): string {
+export function implementPrompt(
+  ticket: Ticket,
+  retryContext?: string,
+  conversation?: readonly string[],
+  discussion?: readonly string[],
+): string {
   return [
     `Implement this ticket in the current repository.`,
     ``,
@@ -99,6 +104,7 @@ export function implementPrompt(ticket: Ticket, retryContext?: string, conversat
     ...bodyLines(ticket),
     ...labelLines(ticket),
     ...conversationLines(conversation),
+    ...decisionLines(discussion),
     ...(retryContext
       ? [
           ``,
@@ -120,6 +126,7 @@ export function threadPrompt(
   threads: readonly ReviewThread[],
   from: "automated" | "human",
   reviewerHints: ReviewerHints = {},
+  discussion?: readonly string[],
 ): string {
   const hints = [
     ...new Set(
@@ -148,6 +155,7 @@ export function threadPrompt(
       ...thread.comments.slice(1).map((comment) => `  - ${comment.author} replied:\n${comment.body}`),
     ]),
     ...(hints.length ? [``, `Reviewer notes:`, ...hints.map((hint) => `- ${hint}`)] : []),
+    ...decisionLines(discussion),
     ``,
     `A later comment in a thread answers the earlier ones, and the last`,
     `comment says who the thread is waiting on. Answer the thread as it`,
@@ -162,6 +170,38 @@ export function threadPrompt(
     ``,
     `Use "disagreed" only when you did not change the code, and say why in the`,
     `note. A disagreement goes to the ticket owner to settle, so be specific.`,
+  ].join("\n");
+}
+
+/**
+ * Answers somebody's turns in a discussion about work that is waiting on
+ * them. The answer goes back to the thread as written, so it is prose; and
+ * nothing is changed, because nothing has been decided.
+ */
+export function discussPrompt(
+  ticket: Ticket,
+  about: string,
+  thread: readonly string[],
+  turns: readonly { author: string; text: string }[],
+): string {
+  return [
+    `This work is waiting on a person, and they are discussing it with you before they decide.`,
+    ``,
+    `Ticket ${ticket.id}: ${ticket.title}`,
+    `Tracker: ${ticket.url}`,
+    ...briefLines(ticket),
+    ``,
+    `What the work is waiting on:`,
+    ``,
+    about,
+    ...(thread.length ? [``, `The discussion so far:`, ...thread.map((line) => `- ${line}`)] : []),
+    ``,
+    `What they said now:`,
+    ...turns.map((turn) => `- ${turn.author}: ${turn.text}`),
+    ``,
+    `Answer them in plain prose, as a reply in the thread. Read this repository`,
+    `as much as you need to, but change nothing and commit nothing: this is a`,
+    `discussion, and the work resumes only when they decide.`,
   ].join("\n");
 }
 
@@ -212,6 +252,17 @@ function bodyLines(ticket: Ticket): string[] {
 function labelLines(ticket: Ticket): string[] {
   if (ticket.labels.length === 0) return [];
   return [`Labels: ${ticket.labels.join(", ")}`];
+}
+
+/** What the owner concluded after a discussion, so the step acts on that and not the first thing said. */
+function decisionLines(discussion?: readonly string[]): string[] {
+  if (!discussion || discussion.length === 0) return [];
+  return [
+    ``,
+    `The owner was asked to decide, and discussed it first. The whole discussion, oldest first;`,
+    `the last line is the decision, and it is what you act on:`,
+    ...discussion.map((line) => `- ${line}`),
+  ];
 }
 
 /** The conversation so far, so a question already answered is not asked again. */
