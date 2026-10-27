@@ -11,11 +11,16 @@ export type Json = string | number | boolean | null | readonly Json[] | { readon
 export function isJson(value: unknown): value is Json {
   if (value === null || typeof value === "string" || typeof value === "boolean") return true;
   if (typeof value === "number") return Number.isFinite(value);
-  if (Array.isArray(value)) return value.every(isJson);
-  if (typeof value !== "object") return false;
+  // Every slot, not `every`: a hole would cross the wire as `null`.
+  if (Array.isArray(value)) return Array.from(value).every(isJson);
+  return isPlainObject(value) && Object.values(value).every(isJson);
+}
+
+/** Whether a value is an object literal's kind of object, not a date, a map or a class instance. */
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value) as unknown;
-  if (prototype !== Object.prototype && prototype !== null) return false;
-  return Object.values(value).every(isJson);
+  return prototype === Object.prototype || prototype === null;
 }
 
 /** Whether two JSON values are the same value, key order aside. */
@@ -28,5 +33,5 @@ export function sameJson(a: Json, b: Json): boolean {
   const left = a as { readonly [key: string]: Json };
   const right = b as { readonly [key: string]: Json };
   const keys = Object.keys(left);
-  return keys.length === Object.keys(right).length && keys.every((key) => key in right && sameJson(left[key] as Json, right[key] as Json));
+  return keys.length === Object.keys(right).length && keys.every((key) => Object.hasOwn(right, key) && sameJson(left[key] as Json, right[key] as Json));
 }

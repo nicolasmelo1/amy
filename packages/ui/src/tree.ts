@@ -1,4 +1,4 @@
-import { isJson, type Json } from "./json.js";
+import { isJson, isPlainObject, type Json } from "./json.js";
 import { fitsPropType, PRIMITIVES, VOCABULARY, type Primitive } from "./vocabulary.js";
 
 /**
@@ -92,10 +92,11 @@ function validateAt(value: unknown, at: string): Child {
   const extra = Object.keys(rest);
   if (extra.length > 0) refuse(at, `carries ${extra.map((key) => `\`${key}\``).join(", ")}, which no primitive has`);
   const primitive = primitiveNamed(type, at);
-  if (typeof props !== "object" || props === null || Array.isArray(props)) return refuse(at, `${primitive} has no props object`);
+  if (!isPlainObject(props)) return refuse(at, `${primitive} has no props object`);
   if (!Array.isArray(children)) return refuse(at, `${primitive} has no children list`);
-  checkProps(primitive, props as Record<string, unknown>, at);
-  const checked = children.map((child: unknown, i) => validateAt(child, `${at}/${i}`));
+  checkProps(primitive, props, at);
+  // Every slot, not `map`: a hole in the list would cross the wire as `null`.
+  const checked = Array.from(children, (child: unknown, i) => validateAt(child, `${at}/${i}`));
   checkChildren(primitive, checked, at);
   return { type: primitive, props: props as Node["props"], children: checked };
 }

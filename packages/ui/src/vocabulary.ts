@@ -33,7 +33,7 @@ export type Primitive = (typeof PRIMITIVES)[number];
 /** The kinds of value a property may hold. Each one is JSON, and has a schema. */
 export type PropType =
   | "string"
-  | "number"
+  | "count"
   | "boolean"
   | "tone"
   | "strings"
@@ -63,8 +63,8 @@ const optional = (type: PropType): PropSpec => ({ type });
 const required = (type: PropType): PropSpec => ({ type, required: true });
 
 export const VOCABULARY: Readonly<Record<Primitive, PrimitiveSpec>> = {
-  Stack: { props: { gap: optional("number") }, children: "nodes" },
-  Row: { props: { gap: optional("number") }, children: "nodes" },
+  Stack: { props: { gap: optional("count") }, children: "nodes" },
+  Row: { props: { gap: optional("count") }, children: "nodes" },
   Section: { props: { title: optional("string") }, children: "nodes" },
   Text: { props: { tone: optional("tone") }, children: "text" },
   Badge: { props: { tone: optional("tone") }, children: "text" },
@@ -103,9 +103,11 @@ export function isIntent(value: Json): boolean {
   return isRecord(value) && keysWithin(value, ["action", "args"]) && isString(value.action) && isRecord(value.args ?? null);
 }
 
+const isCount = (value: Json): boolean => typeof value === "number" && Number.isInteger(value) && value >= 0;
+
 const CHECKS: Readonly<Record<PropType, (value: Json) => boolean>> = {
   string: isString,
-  number: (value) => typeof value === "number",
+  count: isCount,
   boolean: (value) => typeof value === "boolean",
   tone: (value) => isString(value) && (TONES as readonly string[]).includes(value),
   strings: isStrings,
@@ -114,7 +116,7 @@ const CHECKS: Readonly<Record<PropType, (value: Json) => boolean>> = {
     listOf(value, (column) =>
       keysWithin(column, ["label", "width", "optional"]) &&
       optionalOf(column.label, isString) &&
-      optionalOf(column.width, (width) => typeof width === "number" && Number.isInteger(width) && width >= 0) &&
+      optionalOf(column.width, isCount) &&
       optionalOf(column.optional, (flag) => typeof flag === "boolean")),
   rows: (value) => Array.isArray(value) && value.every(isStrings),
   entries: (value) => listOf(value, (entry) => keysWithin(entry, ["at", "label"]) && isString(entry.at) && isString(entry.label)),
@@ -128,6 +130,7 @@ export function fitsPropType(type: PropType, value: unknown): boolean {
 
 const STRING = { type: "string" } as const;
 const STRINGS = { type: "array", items: STRING } as const;
+const COUNT = { type: "integer", minimum: 0 } as const;
 const closed = (properties: Record<string, Json>, requiredKeys: readonly string[]): Json => ({
   type: "object",
   properties,
@@ -138,14 +141,14 @@ const closed = (properties: Record<string, Json>, requiredKeys: readonly string[
 /** The JSON Schema of each property type, which is what a catalogue publishes. */
 export const PROP_SCHEMAS: Readonly<Record<PropType, Json>> = {
   string: STRING,
-  number: { type: "number" },
+  count: COUNT,
   boolean: { type: "boolean" },
   tone: { type: "string", enum: [...TONES] },
   strings: STRINGS,
   intent: closed({ action: STRING, args: { type: "object" } }, ["action", "args"]),
   columns: {
     type: "array",
-    items: closed({ label: STRING, width: { type: "integer", minimum: 0 }, optional: { type: "boolean" } }, []),
+    items: closed({ label: STRING, width: COUNT, optional: { type: "boolean" } }, []),
   },
   rows: { type: "array", items: STRINGS },
   entries: { type: "array", items: closed({ at: STRING, label: STRING }, ["at", "label"]) },

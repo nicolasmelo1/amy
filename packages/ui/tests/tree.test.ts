@@ -22,7 +22,7 @@ describe("the vocabulary is closed", () => {
   });
 
   it("refuses a value that is not the property's type", () => {
-    expect(() => element("Stack", { gap: "wide" })).toThrow("Stack.gap is not of type number");
+    expect(() => element("Stack", { gap: "wide" })).toThrow("Stack.gap is not of type count");
     expect(() => element("Text", { tone: "loud" })).toThrow("Text.tone is not of type tone");
   });
 
