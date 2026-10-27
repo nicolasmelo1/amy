@@ -155,6 +155,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | `plugin-github` | `plugins/github/src/**`<br>`packages/workflow-*/src/**` | 4 |
 | `plugin-serial-engine` | `plugins/serial-engine/src/**`<br>`plugins/notify-fanout/src/**` | 13 |
 | `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 14 |
+| `the-event-log-can-be-watched` | `packages/core/src/ports/EventLog.ts`<br>`plugins/file-log/src/**` | 6 |
 | `ticket-to-qa` | `packages/workflow-ticket-to-qa/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-brief-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**` | 49 |
 
 <!-- amy:end factory-gates -->
@@ -162,6 +163,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 Each one exists for a reason worth stating:
 
 - **`plugin-file-queue`** — because the engine cannot survive it handing one item out twice.
+- **`the-event-log-can-be-watched`** — because a window that misses a line, or reads half of one, shows a machine that is not the one running.
 - **`plugin-agent-relay`** — because it decides how money gets spent when something goes wrong.
 - **`plugin-serial-engine`** — because it decides whether a piece of work gets lost.
 - **`installed-binary`** — because every test in the suite imports from inside the workspace.

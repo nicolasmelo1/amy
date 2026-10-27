@@ -358,6 +358,11 @@
           "description": ""
         },
         {
+          "title": "The event log can be watched",
+          "path": "/design/the-event-log-can-be-watched",
+          "description": ""
+        },
+        {
           "title": "The forge is asked, not run beside",
           "path": "/design/the-forge-is-asked-not-run-beside",
           "description": ""
@@ -846,6 +851,11 @@
           "depth": 3,
           "title": "**A reply in a work's thread can be a question, not only an answer.**",
           "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
+        },
+        {
+          "depth": 3,
+          "title": "**The event log can be watched, from any process.**",
+          "slug": "the-event-log-can-be-watched-from-any-process"
         },
         {
           "depth": 2,
@@ -2509,6 +2519,33 @@
           "depth": 2,
           "title": "What is not proven, and is not pretended",
           "slug": "what-is-not-proven-and-is-not-pretended"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-event-log-can-be-watched",
+      "file": "docs/design/the-event-log-can-be-watched.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-event-log-can-be-watched.md",
+      "title": "The event log can be watched",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "What the gate drives, and what it does not",
+          "slug": "what-the-gate-drives-and-what-it-does-not"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
         }
       ]
     },
@@ -4847,6 +4884,11 @@
             "name": "read",
             "signature": "read(since?: Date): Event[]",
             "doc": "Events at or after the given instant, oldest first."
+          },
+          {
+            "name": "watch",
+            "signature": "watch(since: Date, onEvent: (event: Event) => void): () => void",
+            "doc": "Every event at or after `since`, oldest first, then every event any process appends afterwards, until the returned function is called."
           }
         ]
       },
@@ -8140,6 +8182,24 @@
         "scenario": ".software-factory/evidence/project-phases-scenario.sh"
       },
       {
+        "name": "the-event-log-can-be-watched",
+        "activation": [
+          "packages/core/src/ports/EventLog.ts",
+          "plugins/file-log/src/**"
+        ],
+        "evidence": ".software-factory/evidence/the-event-log-can-be-watched.json",
+        "plan": "docs/design/the-event-log-can-be-watched.md",
+        "assertions": [
+          "watch.the_writer_is_another_process",
+          "watch.a_work_advanced_arrives_within_a_second",
+          "watch.each_line_once_in_order",
+          "watch.a_partial_line_is_never_delivered",
+          "watch.the_next_day_is_followed_without_resubscribing",
+          "watch.stopping_ends_delivery"
+        ],
+        "scenario": ".software-factory/evidence/the-event-log-can-be-watched-scenario.sh"
+      },
+      {
         "name": "ticket-to-qa",
         "activation": [
           "packages/workflow-ticket-to-qa/src/**",
@@ -8615,6 +8675,22 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-event-log-can-be-watched",
+        "title": "**The event log can be watched, from any process.**",
+        "body": "Everything amy does is a line in the event log, and a reader in another\nprocess — `amy status`, a dashboard, the window planned next — could only read\nit again and guess how often. The log is the one place that knows something\nchanged, so it is now the place to ask.\n\n- `EventLog` gains an optional `watch(since, onEvent)`: every event at or\n  after `since`, oldest first, then every event any process appends, until the\n  returned function is called. Optional because a log may be a sink nobody\n  can watch.\n- `watchEvents(log, since, onEvent, { everyMs, onPolling })` in the core\n  watches any log: through its own `watch`, or by polling `read` when it has\n  none, calling `onPolling` once so the caller can say so.\n- `@amykit/plugin-file-log` implements `watch` by following each day file from\n  a byte offset. A line is delivered only once its newline is on disk, so a\n  line the daemon is halfway through writing is never read half, and a new\n  day's file is followed without resubscribing.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-log",
             "level": "minor"
           }
         ],

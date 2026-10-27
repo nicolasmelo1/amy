@@ -104,8 +104,8 @@ export type { BaseSource, BaseSourceSnapshot, SearchMatch, SearchResult, SearchO
 
 export { NodeCommandRunner } from "./NodeCommandRunner.js";
 export { FileStopSwitch } from "./FileStopSwitch.js";
-export { EVENT_KINDS, isEventKind } from "./ports/EventLog.js";
-export type { Event, EventKind, EventLog } from "./ports/EventLog.js";
+export { EVENT_KINDS, isEventKind, watchEvents } from "./ports/EventLog.js";
+export type { Event, EventKind, EventLog, WatchOptions } from "./ports/EventLog.js";
 export { checkEvent, eventContract } from "./event-contract.js";
 export type { EventContract, FieldType, KindContract } from "./event-contract.js";
 export { BUDGET_WINDOWS, LogBudget, budgetDecision, hasACeiling, spendSince } from "./budget.js";

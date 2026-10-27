@@ -618,6 +618,25 @@ gates:
       - "escalated.a_discussion_runs_read_only"
       - "escalated.an_unmarked_reply_under_answer_is_the_decision"
 
+  # That a process watching the event log is handed what another process
+  # writes: within a second, across midnight, once, in order, never half a
+  # line. The activation is the port and the plugin that implements it,
+  # because a change to either means the last run proved a watch that no
+  # longer exists.
+  the-event-log-can-be-watched:
+    activation:
+      - "packages/core/src/ports/EventLog.ts"
+      - "plugins/file-log/src/**"
+    evidence: ".software-factory/evidence/the-event-log-can-be-watched.json"
+    plan: "docs/design/the-event-log-can-be-watched.md"
+    required_assertions:
+      - "watch.the_writer_is_another_process"
+      - "watch.a_work_advanced_arrives_within_a_second"
+      - "watch.each_line_once_in_order"
+      - "watch.a_partial_line_is_never_delivered"
+      - "watch.the_next_day_is_followed_without_resubscribing"
+      - "watch.stopping_ends_delivery"
+
 rules:
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:

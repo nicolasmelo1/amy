@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { Event } from "@amykit/core";
 import { FileEventLog } from "../src/FileEventLog.js";
 
 const DAY_ONE = "2026-09-03T12:00:00.000Z";
@@ -109,5 +111,116 @@ describe("FileEventLog", () => {
     log.append({ at: DAY_ONE, kind: "run.claimed" });
 
     expect(new FileEventLog(root).read()).toHaveLength(1);
+  });
+});
+
+describe("FileEventLog: watching", () => {
+  let root: string;
+  let log: FileEventLog;
+  let stop: () => void = () => undefined;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-log-watch-"));
+    log = new FileEventLog(root);
+  });
+
+  afterEach(() => {
+    stop();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  const watching = (since = new Date(0)): Event[] => {
+    const seen: Event[] = [];
+    stop = log.watch(since, (event) => seen.push(event));
+    return seen;
+  };
+
+  /** Appends the way the daemon does, from a process that is not this one. */
+  const appendFromAnotherProcess = (events: Event[]): void => {
+    const lines = events.map((event) => `${JSON.stringify(event)}\n`).join("");
+    const file = path.join(root, `${events[0]?.at.slice(0, 10)}.jsonl`);
+    const script = "require('fs').appendFileSync(process.argv[1], process.argv[2])";
+    const child = spawnSync(process.execPath, ["-e", script, file, lines]);
+    expect(child.status).toBe(0);
+  };
+
+  /** Long enough for a watch to have delivered anything it was going to. */
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 700));
+
+  it("hands over what is already there from the instant asked for, oldest first", () => {
+    log.append({ at: DAY_TWO, kind: "run.idle" });
+    log.append({ at: DAY_ONE, kind: "run.claimed" });
+    log.append({ at: "2026-09-02T12:00:00.000Z", kind: "run.claimed" });
+
+    const seen = watching(new Date(DAY_ONE));
+
+    expect(seen.map((e) => e.at)).toEqual([DAY_ONE, DAY_TWO]);
+  });
+
+  it("delivers an event another process appends, once, in order", async () => {
+    log.append({ at: DAY_ONE, kind: "run.claimed", workId: "W-0" });
+    const seen = watching();
+
+    appendFromAnotherProcess([
+      { at: "2026-09-03T12:00:01.000Z", kind: "work.advanced", workId: "W-1" },
+      { at: "2026-09-03T12:00:02.000Z", kind: "work.waiting", workId: "W-2" },
+    ]);
+
+    await vi.waitFor(() => expect(seen).toHaveLength(3), { timeout: 2_000 });
+    await settle();
+    expect(seen.map((e) => e.workId)).toEqual(["W-0", "W-1", "W-2"]);
+  });
+
+  it("holds a line back until its newline is on disk", async () => {
+    const seen = watching();
+    const file = path.join(root, "2026-09-03.jsonl");
+
+    fs.appendFileSync(file, JSON.stringify({ at: DAY_ONE, kind: "work.advanced", workId: "W-1" }));
+    await settle();
+    expect(seen).toEqual([]);
+
+    fs.appendFileSync(file, "\n");
+    await vi.waitFor(() => expect(seen.map((e) => e.workId)).toEqual(["W-1"]), { timeout: 2_000 });
+  });
+
+  it("follows the next day's file across midnight without being asked again", async () => {
+    const seen = watching();
+
+    log.append({ at: "2026-09-03T23:59:59.900Z", kind: "work.waiting", workId: "W-1" });
+    await vi.waitFor(() => expect(seen).toHaveLength(1), { timeout: 2_000 });
+
+    appendFromAnotherProcess([{ at: "2026-09-04T00:00:00.100Z", kind: "work.advanced", workId: "W-1" }]);
+
+    await vi.waitFor(() => expect(seen.map((e) => e.kind)).toEqual(["work.waiting", "work.advanced"]), {
+      timeout: 2_000,
+    });
+  });
+
+  it("leaves out a line it cannot read, and goes on following the file", async () => {
+    const seen = watching();
+    const file = path.join(root, "2026-09-03.jsonl");
+
+    fs.appendFileSync(file, '{"at":"2026-09-03T12:0\n');
+    log.append({ at: DAY_ONE, kind: "run.idle" });
+
+    await vi.waitFor(() => expect(seen.map((e) => e.kind)).toEqual(["run.idle"]), { timeout: 2_000 });
+  });
+
+  it("stops delivering, and lets go of what it held, once told to", async () => {
+    // What a watch holds is a filesystem watcher and a timer. Earlier tests'
+    // are let go first, so the count is this watch's alone.
+    const held = () =>
+      process.getActiveResourcesInfo().filter((r) => r === "FSEventWrap" || r === "Timeout").length;
+    await settle();
+    const before = held();
+    const seen = watching();
+    expect(held()).toBe(before + 2);
+
+    stop();
+    log.append({ at: DAY_ONE, kind: "run.claimed" });
+    await settle();
+
+    expect(seen).toEqual([]);
+    expect(held()).toBe(before);
   });
 });

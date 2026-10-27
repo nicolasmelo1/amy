@@ -3,7 +3,7 @@
   "files": {
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "ef3d2175b8b0be268e780511700afb153c5f31b3b15a542689336286b2236d22",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
-    "package.json": "9c7a92d310187c9df23408094000ba3a4136ef322153b54f1206bffbdd9232ba",
+    "package.json": "f8b697c6e9d54319b82ad56334c9d0b30761b5764d5fff32dc3c9c67f19cd170",
     "packages/agent-kit/package.json": "d0933d431a84ca506e4c8129d8174f8f3b47f1caad1fcd7c4f76f823114a20a6",
     "packages/cli/package.json": "c9eb89ef373b09ed922cc9239c5275928e4a900f28be8121c1efd95b5e29b14a",
     "packages/core/package.json": "7844d97332e51b6e425588d1da000a395d857968fd94fcc112468f4bbb82dd93",
@@ -20,7 +20,7 @@
     "plugins/command-gate/package.json": "5689410b3762b002cea5ae1291920217c316142b1e98a93b7f2e2acdb54a47d8",
     "plugins/command/package.json": "34e3a202da3bbd8132894fa270b1370a639bfad0ab190b479559f8142665e1da",
     "plugins/file-brief-store/package.json": "466ac6d1edeb0ba0af87e5edf9eb4503598aba516bfcad32c5be4fb67b0a593a",
-    "plugins/file-log/package.json": "1803c719e8b43374b1e2bb5079a4b015368b4fb147776cddfea49fe31a6d06d5",
+    "plugins/file-log/package.json": "edc38b4887ef2d6d2a7fb41de76e9f52cc52cb1a9ecdbcd3b020b57cee866e6b",
     "plugins/file-notes/package.json": "f47da4e924befb44158029d7333730a1a2287166239bf4f3f24141cd8ca37322",
     "plugins/file-queue/package.json": "84b53c511d9f5dbe933d8358ecb7a6315c9527905e1518b7298b5f8c72007911",
     "plugins/file-store/package.json": "ed47f7a588db77ea47ac9840d0bc34b393142654ca699500d0cff2a63a969872",

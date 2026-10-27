@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "gate": "the-event-log-can-be-watched",
+  "implementation_sha256": "7abe3a00fdda959a759e99df5dea53fc537386b21432b7bbb39272f42ea01385",
+  "runs": [
+    {
+      "scenario": "the-event-log-can-be-watched",
+      "status": "passed",
+      "actor": "Claude (agent), running .software-factory/evidence/the-event-log-can-be-watched-scenario.sh against the built file-log dist from two processes on macOS, for Nicolas Melo",
+      "report": ".software-factory/evidence/the-event-log-can-be-watched-run.json",
+      "report_sha256": "d2fabbbc6337654f724208e4897a276bacda36d6ced189f26a0e90ca662cbd3b",
+      "required_assertions": []
+    }
+  ]
+}
