@@ -84,6 +84,9 @@ const PRUNE_EVERY_MS = 60 * 60 * 1000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** A reaction whose list of users is too short to say who is on it. */
+const UNKNOWN = Symbol("unknown");
+
 /** ✅ settles it, 💬 asks something first. */
 export const DEFAULT_MARKS = { decision: "white_check_mark", discussion: "speech_balloon" } as const;
 
@@ -357,29 +360,37 @@ export class SlackConversation implements Conversation {
    * nobody else's — never by its text. Both marks read as the decision, the
    * one that moves the work, because a person who put both meant to be done.
    * Re-read on every look, so marking a reply after it was answered counts.
-   */
-  private async kindOf(message: SlackMessage): Promise<Reply["kind"]> {
-    const marks = this.options.marks ?? DEFAULT_MARKS;
-    const reactions = await this.operatorReactions(message, [marks.decision, marks.discussion]);
-    if (reactions.has(marks.decision)) return "decision";
-    if (reactions.has(marks.discussion)) return "discussion";
-    return undefined;
-  }
-
-  /**
-   * Which of these reactions the operator put on the message.
    *
    * Slack may list only some of a reaction's users while `count` holds them
-   * all, so a mark whose list is short and does not name the operator is
-   * asked again in full. A reply the operator may have marked is never read
-   * as unmarked: if the full list cannot be had, the read fails and says why.
+   * all. Only a mark whose answer could still change the kind is asked again
+   * in full, and a reply the operator may have marked is never read as
+   * unmarked: if the full list still cannot say, the read fails and says why.
    */
-  private async operatorReactions(message: SlackMessage, names: readonly string[]): Promise<Set<string>> {
-    const operator = this.options.operator;
-    const marks = (message.reactions ?? []).filter((reaction) => reaction.name && names.includes(reaction.name));
-    const truncated = marks.some((reaction) => !reaction.users?.includes(operator) && (reaction.count ?? 0) > (reaction.users?.length ?? 0));
-    const complete = truncated ? await this.allReactions(message.ts!) : marks;
-    return new Set(complete.filter((reaction) => reaction.users?.includes(operator)).map((reaction) => reaction.name!));
+  private async kindOf(message: SlackMessage): Promise<Reply["kind"]> {
+    const listed = this.kindFrom(message.reactions ?? []);
+    if (listed !== UNKNOWN) return listed;
+    const full = this.kindFrom(await this.allReactions(message.ts!));
+    if (full !== UNKNOWN) return full;
+    throw new Error(`cannot tell whether the operator marked reply ${message.ts}: Slack lists only part of who reacted to it`);
+  }
+
+  /** The kind these reactions say, or UNKNOWN when a list too short to tell could change it. */
+  private kindFrom(reactions: readonly SlackReaction[]): Reply["kind"] | typeof UNKNOWN {
+    const marks = this.options.marks ?? DEFAULT_MARKS;
+    const decision = this.marked(reactions, marks.decision);
+    if (decision === true) return "decision";
+    const discussion = this.marked(reactions, marks.discussion);
+    if (decision === UNKNOWN || discussion === UNKNOWN) return UNKNOWN;
+    return discussion ? "discussion" : undefined;
+  }
+
+  /** Whether the operator put this reaction on, or UNKNOWN when Slack's list is short and leaves them out. */
+  private marked(reactions: readonly SlackReaction[], name: string): boolean | typeof UNKNOWN {
+    const reaction = reactions.find((candidate) => candidate.name === name);
+    if (!reaction) return false;
+    const users = reaction.users ?? [];
+    if (users.includes(this.options.operator)) return true;
+    return (reaction.count ?? users.length) > users.length ? UNKNOWN : false;
   }
 
   private async allReactions(ts: string): Promise<SlackReaction[]> {

@@ -490,3 +490,40 @@ describe("a reaction Slack listed only in part", () => {
     expect(http.argsOf("reactions.get")).toEqual([]);
   });
 });
+
+describe("only what could change the kind is asked again", () => {
+  it("takes a decision the operator is listed on without asking about a short discussion list", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([
+        {
+          ts: "1790000101.000100",
+          user: OPERATOR,
+          text: "go",
+          reactions: [
+            { name: "white_check_mark", users: [OPERATOR], count: 1 },
+            { name: "speech_balloon", users: ["U0SOMEONE"], count: 4 },
+          ],
+        },
+      ]),
+    ]);
+
+    const [only] = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(only?.kind).toBe("decision");
+    expect(http.argsOf("reactions.get")).toEqual([]);
+  });
+
+  it("refuses a full list that still cannot say whether the operator reacted", async () => {
+    const short = { name: "white_check_mark", users: ["U0SOMEONE"], count: 3 };
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([{ ts: "1790000101.000100", user: OPERATOR, text: "go", reactions: [short] }]),
+      { match: method("reactions.get"), answer: ok({ type: "message", message: { ts: "1790000101.000100", reactions: [short] } }) },
+    ]);
+
+    await expect(conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).rejects.toThrow(
+      /cannot tell whether the operator marked reply 1790000101.000100/,
+    );
+  });
+});
