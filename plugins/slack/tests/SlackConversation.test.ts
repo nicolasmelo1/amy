@@ -441,3 +441,52 @@ describe("what a reply is, when the operator marked it", () => {
     expect(replies.map((r) => r.kind)).toEqual(["decision", undefined]);
   });
 });
+
+describe("a reaction Slack listed only in part", () => {
+  const truncated = {
+    ts: "1790000101.000100",
+    user: OPERATOR,
+    text: "keep it",
+    reactions: [{ name: "white_check_mark", users: ["U0SOMEONE"], count: 3 }],
+  };
+
+  it("asks for the whole list before deciding the operator did not mark it", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([truncated]),
+      {
+        match: method("reactions.get"),
+        answer: ok({ type: "message", message: { ...truncated, reactions: [{ name: "white_check_mark", users: ["U0SOMEONE", OPERATOR, "U0THIRD"], count: 3 }] } }),
+      },
+    ]);
+
+    const [only] = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(only?.kind).toBe("decision");
+    expect(http.argsOf("reactions.get")[0]).toMatchObject({ channel: CHANNEL, timestamp: truncated.ts, full: "true" });
+  });
+
+  it("does not read a reply it cannot see the marks of as unmarked", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([truncated]),
+      { match: method("reactions.get"), answer: { json: { ok: false, error: "missing_scope", needed: "reactions:read" } } },
+    ]);
+
+    await expect(conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).rejects.toThrow(
+      /cannot tell whether the operator marked reply .*reactions:read/,
+    );
+  });
+
+  it("asks nothing more when the list Slack gave is whole", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([{ ...truncated, reactions: [{ name: "white_check_mark", users: ["U0SOMEONE"], count: 1 }] }]),
+    ]);
+
+    const [only] = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(only?.kind).toBeUndefined();
+    expect(http.argsOf("reactions.get")).toEqual([]);
+  });
+});

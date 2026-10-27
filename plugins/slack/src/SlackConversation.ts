@@ -47,6 +47,12 @@ interface SlackFile {
   url_private_download?: string;
 }
 
+interface SlackReaction {
+  name?: string;
+  users?: string[];
+  count?: number;
+}
+
 interface SlackMessage {
   ts?: string;
   thread_ts?: string;
@@ -56,7 +62,7 @@ interface SlackMessage {
   subtype?: string;
   text?: string;
   files?: SlackFile[];
-  reactions?: { name?: string; users?: string[] }[];
+  reactions?: SlackReaction[];
 }
 
 /**
@@ -158,7 +164,7 @@ export class SlackConversation implements Conversation {
       const at = tsToMicros(message.ts!);
       if (at <= after) continue;
       const { paths, skipped } = await this.downloadAll(thread.id, message.files ?? []);
-      const kind = this.kindOf(message);
+      const kind = await this.kindOf(message);
       answers.push({
         at: microsToInstant(at),
         author: message.user!,
@@ -352,13 +358,37 @@ export class SlackConversation implements Conversation {
    * one that moves the work, because a person who put both meant to be done.
    * Re-read on every look, so marking a reply after it was answered counts.
    */
-  private kindOf(message: SlackMessage): Reply["kind"] {
+  private async kindOf(message: SlackMessage): Promise<Reply["kind"]> {
     const marks = this.options.marks ?? DEFAULT_MARKS;
-    const by = (name: string) =>
-      (message.reactions ?? []).some((reaction) => reaction.name === name && (reaction.users ?? []).includes(this.options.operator));
-    if (by(marks.decision)) return "decision";
-    if (by(marks.discussion)) return "discussion";
+    const reactions = await this.operatorReactions(message, [marks.decision, marks.discussion]);
+    if (reactions.has(marks.decision)) return "decision";
+    if (reactions.has(marks.discussion)) return "discussion";
     return undefined;
+  }
+
+  /**
+   * Which of these reactions the operator put on the message.
+   *
+   * Slack may list only some of a reaction's users while `count` holds them
+   * all, so a mark whose list is short and does not name the operator is
+   * asked again in full. A reply the operator may have marked is never read
+   * as unmarked: if the full list cannot be had, the read fails and says why.
+   */
+  private async operatorReactions(message: SlackMessage, names: readonly string[]): Promise<Set<string>> {
+    const operator = this.options.operator;
+    const marks = (message.reactions ?? []).filter((reaction) => reaction.name && names.includes(reaction.name));
+    const truncated = marks.some((reaction) => !reaction.users?.includes(operator) && (reaction.count ?? 0) > (reaction.users?.length ?? 0));
+    const complete = truncated ? await this.allReactions(message.ts!) : marks;
+    return new Set(complete.filter((reaction) => reaction.users?.includes(operator)).map((reaction) => reaction.name!));
+  }
+
+  private async allReactions(ts: string): Promise<SlackReaction[]> {
+    try {
+      const { body } = await this.api.call("reactions.get", { channel: this.options.channel, timestamp: ts, full: "true" });
+      return ((body.message as { reactions?: SlackReaction[] } | undefined)?.reactions ?? []);
+    } catch (error) {
+      throw new Error(`cannot tell whether the operator marked reply ${ts}: ${messageOf(error)}`, { cause: error });
+    }
   }
 
   /** By author id, never by a marker in the text. */

@@ -70,7 +70,11 @@ a decision and inventing a syntax for one is worse than the current default.
   two names are settings (`decisionReaction`, `discussionReaction`). The
   reactions arrive on the messages `conversations.replies` already returns,
   and every look re-reads them, so a reply marked after it was answered still
-  counts. Plain text carries no kind. There are no buttons: a button needs an
+  counts. Slack may list only some of a reaction's users while its `count`
+  holds them all; a mark whose list is short and leaves the operator out is
+  read again with `reactions.get` and `full=true` (which needs
+  `reactions:read`), and if that cannot be had the read fails naming why,
+  rather than taking a reply the operator may have marked as unmarked. Plain text carries no kind. There are no buttons: a button needs an
   interactivity endpoint or Socket Mode, and this plugin keeps neither.
 - **The workflow.** `packages/workflow-ticket-to-qa/src/discussion.ts` is the
   one place a reply is read: as marked, or by `policy.conversation` when

@@ -46,7 +46,7 @@ export const configSchema: ConfigSchema = {
   decisionReaction: {
     type: "string",
     description:
-      "the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work",
+      "the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work. A reaction Slack lists only in part is read again in full with reactions.get, which needs reactions:read",
     default: DEFAULT_MARKS.decision,
   },
   discussionReaction: {

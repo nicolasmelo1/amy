@@ -567,7 +567,7 @@ plugins:
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `channel` | `string` | **yes** |  | the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name |
-| `decisionReaction` | `string` | no | `white_check_mark` | the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work |
+| `decisionReaction` | `string` | no | `white_check_mark` | the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work. A reaction Slack lists only in part is read again in full with reactions.get, which needs reactions:read |
 | `defaultRetryAfterSeconds` | `number` | no | `60` | how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins |
 | `directory` | `string` | no | `slack` | where each work item's thread is remembered, relative to the state directory |
 | `discussionReaction` | `string` | no | `speech_balloon` | the reaction, by emoji name, the operator puts on their own reply to mark it as a turn in a discussion, answered in the thread while the work waits |

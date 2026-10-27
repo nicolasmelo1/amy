@@ -33,6 +33,8 @@ and watched their question turn into work.
   discussion, attributed, with the decision last.
 - The Slack plugin marks a reply by the operator's own reaction on it: ✅
   (`white_check_mark`) decides, 💬 (`speech_balloon`) discusses. Both names are
-  settings, `decisionReaction` and `discussionReaction`.
+  settings, `decisionReaction` and `discussionReaction`. A reaction Slack lists
+  only in part is read again in full with `reactions.get`, which needs the
+  `reactions:read` scope; without it, that one read fails and says so.
 - Without a conversation port, a comment on the ticket is still the decision,
   whatever the policy says.
