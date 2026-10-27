@@ -721,6 +721,9 @@ rules:
   # L0 — The core's code names no product (docs/design/an-agent-only-answers.md)
   L0.THE_CORE_NAMES_NO_VENDOR:
     enabled: true
+  # L0 — A view draws nothing; only a renderer plugin names a renderer (docs/design/a-view-is-data.md)
+  L0.A_VIEW_DRAWS_NOTHING:
+    enabled: true
   # L1 — A comment block stays under the line ceiling
   L1.COMMENT_STAYS_SUCCINCT:
     enabled: true

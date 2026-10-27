@@ -97,13 +97,26 @@
       ],
       "@amykit/workflow-ticket-to-qa": [
         "packages/workflow-ticket-to-qa/src/index.ts"
+      ],
+      "@amykit/ui": [
+        "packages/ui/src/index.ts"
+      ],
+      "@amykit/ui/jsx-runtime": [
+        "packages/ui/src/jsx-runtime.ts"
+      ],
+      "@amykit/ui/jsx-dev-runtime": [
+        "packages/ui/src/jsx-dev-runtime.ts"
       ]
-    }
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "@amykit/ui"
   },
   "include": [
     "packages/*/tests/**/*.ts",
+    "packages/*/tests/**/*.tsx",
     "plugins/*/tests/**/*.ts",
     "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
     "plugins/*/src/**/*.ts"
   ]
 }

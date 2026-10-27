@@ -36,7 +36,8 @@ import { WorktreeManager } from "@amykit/plugin-file-worktree";
 // plugin will not mount, which is exactly when you want to look.
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
-import { recordsToShow, standing } from "./status-view.js";
+import { renderText } from "@amykit/ui";
+import { statusView, type StatusSnapshot } from "./status-page.js";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -972,22 +973,9 @@ program
       return;
     }
 
-    reportRecords(records, waiting, terminal, options.all ?? false);
-
-    console.log(
-      `\nqueue: ${queue.ready(now).length} due, ${queue.pending().length} pending, ` +
-        `${queue.running().length} in flight, ${queue.completed().length} finished`,
-    );
-
-    console.log(
-      live
-        ? `loop:  running since ${live.startedAt}, driving ${live.workflow}, pid ${live.pid}` +
-            `${held ? ` (paused: ${held})` : ""}`
-        : `loop:  not running${held ? ` (paused: ${held})` : ""}`,
-    );
-
-    if (notes) console.log(`notes: ${notes} written down`);
-    if (asked) console.log(`\n${asked} question(s) waiting for you in ${place.needsInput}`);
+    // The page is a view of the same snapshot `--json` prints, drawn as
+    // text: what a window shows has to be what the terminal would have said.
+    console.log(renderText(statusView(snapshot(), { all: options.all ?? false, inbox: place.needsInput })));
 
     /**
      * Everything above, as data.
@@ -996,7 +984,7 @@ program
      * neither should be able to drift from the other: what a page shows has
      * to be what the terminal would have said.
      */
-    function snapshot() {
+    function snapshot(): StatusSnapshot {
       return {
         at: now.toISOString(),
         home,
@@ -1558,31 +1546,6 @@ function pickedIsInstalled(root: string, name: string): boolean {
  * status command per workflow.
  */
 type AnyRecord = WorkRecord & { pullRequestNumber?: number; repo?: string };
-
-function reportRecords(
-  records: readonly AnyRecord[],
-  waiting: readonly string[] | undefined,
-  terminal: readonly string[] | undefined,
-  all: boolean,
-): void {
-  const view = recordsToShow(records, terminal, all);
-
-  if (records.length === 0) console.log("nothing tracked yet");
-  else if (view.shown.length === 0) console.log("nothing open");
-
-  for (const record of view.shown) {
-    const held = standing(record.state, waiting, terminal);
-    const pr = record.pullRequestNumber ? `#${record.pullRequestNumber}` : "";
-    console.log(
-      `${record.id.padEnd(28)} ${record.state.padEnd(18)} ${held.padEnd(8)} ` +
-        `${(record.repo ?? "").padEnd(30)} ${pr}`.trimEnd(),
-    );
-  }
-
-  if (view.finished) {
-    console.log(`\n${view.finished} finished, not shown. \`amy status --all\` lists them.`);
-  }
-}
 
 /** The `budget` setting, from the plugin slice the relay is given. */
 function configuredBudget(): unknown {

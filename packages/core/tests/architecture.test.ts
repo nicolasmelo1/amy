@@ -58,3 +58,29 @@ describe("the core words nothing and names nobody", () => {
     expect(named).toEqual([]);
   });
 });
+
+describe("a view is data, and depends on no UI framework or standard yet", () => {
+  const ui = path.resolve(import.meta.dirname, "../../ui");
+  const outside = /copilotkit|a2ui|ag-ui|ag_ui|agui/i;
+
+  it("declares no dependency beyond the core", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(ui, "package.json"), "utf-8")) as Record<string, Record<string, string> | undefined>;
+    const declared = ["dependencies", "peerDependencies", "optionalDependencies", "devDependencies"].flatMap((field) =>
+      Object.keys(manifest[field] ?? {}),
+    );
+
+    expect(declared.filter((name) => name !== "@amykit/core")).toEqual([]);
+  });
+
+  it("imports nothing from CopilotKit, A2UI or AG-UI", () => {
+    const source = path.join(ui, "src");
+    const files = fs.readdirSync(source, { recursive: true, encoding: "utf8" }).filter((file) => /\.tsx?$/.test(file));
+    const imports = files.flatMap((file) =>
+      [...fs.readFileSync(path.join(source, file), "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1] ?? ""),
+    );
+
+    expect(files.length).toBeGreaterThan(0);
+    expect(imports.filter((name) => outside.test(name))).toEqual([]);
+    expect(imports.filter((name) => !name.startsWith(".") && name !== "@amykit/core")).toEqual([]);
+  });
+});
