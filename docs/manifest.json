@@ -869,6 +869,11 @@
         },
         {
           "depth": 3,
+          "title": "amy update reaches the release. It said nothing to move with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):",
+          "slug": "amy-update-reaches-the-release-it-said-nothing-to-move-with-060-published-to-a-machine-on-050-for-two-reasons-110httpsgithubcomnicolasmelo1amyissues110"
+        },
+        {
+          "depth": 3,
           "title": "The mutation fixtures amy workflow new writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still index.js, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so sf verify in an existing workflow is unaffected.",
           "slug": "the-mutation-fixtures-amy-workflow-new-writes-beside-a-workflow-are-typescript-now-the-same-as-the-scaffold-they-guard-two-of-the-three-were-still-indexjs-so-a-workflow-written-in-typescript-proved-its-guardrails-against-a-file-in-a-language-it-does-not-use-the-rules-read-both-so-sf-verify-in-an-existing-workflow-is-unaffected"
         },
@@ -2090,6 +2095,11 @@
           "depth": 2,
           "title": "What shipped",
           "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "An update reaches the release",
+          "slug": "an-update-reaches-the-release"
         },
         {
           "depth": 2,
@@ -8020,7 +8030,12 @@
           "packages/cli/src/harnesses.ts",
           "packages/cli/src/auto-update.ts",
           "packages/cli/src/daemon.ts",
-          "packages/cli/src/config.ts"
+          "packages/cli/src/config.ts",
+          ".changeset/config.json",
+          "scripts/install.sh",
+          "scripts/write-install-manifest.ts",
+          ".software-factory/evidence/amy-update/registry.ts",
+          ".software-factory/evidence/amy-update/release.ts"
         ],
         "evidence": ".software-factory/evidence/amy-update.json",
         "plan": "docs/design/amy-update.md",
@@ -8054,7 +8069,16 @@
           "update.auto_update_can_be_disabled",
           "update.invalid_auto_update_settings_refuse_before_work",
           "update.a_daemon_updates_only_at_its_lifecycle_boundary",
-          "update.direct_daemon_uses_the_configured_schedule"
+          "update.direct_daemon_uses_the_configured_schedule",
+          "update.a_release_crosses_the_minor",
+          "update.one_release_on_disk",
+          "update.a_third_party_range_is_honoured",
+          "update.a_global_cli_is_an_install_root",
+          "update.a_global_cli_moves",
+          "update.a_moved_global_cli_still_runs",
+          "update.a_refused_release_rolls_back_whole",
+          "update.a_check_names_the_release",
+          "update.auto_update_reaches_the_release"
         ],
         "scenario": ".software-factory/evidence/amy-update-scenario.sh"
       },
@@ -8902,6 +8926,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "an-update-reaches-the-release",
+        "title": "`amy update` reaches the release. It said `nothing to move` with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):",
+        "body": "- **A 0.x caret never crossed a minor.** Every `@amykit/*` package now moves to one release, asked once of the CLI's registry intent (`latest` unless the operator wrote another), whatever caret npm saved, and each manifest entry then names it as `^<release>`. Third-party packages still move only within the range the operator wrote, so a 0.x workflow at `^0.1.0` stays on 0.1.0. To hold the machine below a release, set `amyUpdateRanges[\"@amykit/cli\"]` in `~/.amy/plugins/package.json`; `--check` names that pin and the release it holds you below, where it used to say `nothing to move`.\n- **A CLI installed with `npm install -g` read as a checkout.** The global prefix is now an install root, on Unix and on Windows. The CLI moves there with `npm install --global`, and when a plugin in the release refuses to import, every move rolls back, the CLI included.\n\nThe `amy-update` gate stubbed out both of these with a stand-in npm that answered whatever it held. It now runs real npm against a registry on a loopback port, with the CLI installed globally.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "no-javascript-left",

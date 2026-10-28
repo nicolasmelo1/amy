@@ -1,10 +1,12 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 import {
+  compareVersions,
+  globalPrefix,
   Held,
   held,
   isRange,
@@ -13,7 +15,9 @@ import {
   move,
   oneVersion,
   restore,
+  Root,
   roots,
+  survey,
   updateRangeOf,
   versionIn,
 } from "../src/update.js";
@@ -98,32 +102,83 @@ describe("the roots this machine keeps", () => {
   });
   afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
-  it("are the plugins root alone when this is a checkout", () => {
+  /** The URL a CLI's `dist/update.js` resolves from, under one `node_modules`. */
+  function cliUnder(modules: string): URL {
+    fs.mkdirSync(path.join(modules, "@amykit", "cli", "dist"), { recursive: true });
+    return pathToFileURL(path.join(modules, "@amykit", "cli", "dist", "update.js"));
+  }
+
+  it("are the plugins root alone when this is a checkout, and npm is never asked", async () => {
     // `packages/cli/src/update.ts` in a checkout: three up is the repository
     // root, whose parent is not a `node_modules`.
     const from = pathToFileURL(path.join(home, "packages", "cli", "src", "update.ts"));
-    expect(roots(home, from)).toEqual({ plugins: path.join(home, "plugins") });
+    const runner = new ScriptedRunner();
+    expect(await roots(home, runner, from)).toEqual({ plugins: path.join(home, "plugins") });
+    expect(runner.calls).toHaveLength(0);
   });
 
-  it("are both when the CLI resolved from an install root", () => {
+  it("are both when the CLI resolved from an install root, and npm is never asked", async () => {
     const install = path.join(home, "lib", "amy");
-    const from = pathToFileURL(
-      path.join(install, "node_modules", "@amykit", "cli", "dist", "update.js"),
-    );
-    fs.mkdirSync(path.join(install, "node_modules", "@amykit", "cli", "dist"), { recursive: true });
+    const from = cliUnder(path.join(install, "node_modules"));
     fs.writeFileSync(path.join(install, "package.json"), "{}", "utf-8");
+    const runner = new ScriptedRunner();
 
-    expect(roots(home, from)).toEqual({ plugins: path.join(home, "plugins"), install });
+    expect(await roots(home, runner, from)).toEqual({
+      plugins: path.join(home, "plugins"),
+      install: { kind: "local", dir: install, modules: path.join(install, "node_modules") },
+    });
+    expect(runner.calls).toHaveLength(0);
   });
 
-  it("are the plugins root alone when the package beside the root has no manifest", () => {
-    const install = path.join(home, "lib", "amy");
-    const from = pathToFileURL(
-      path.join(install, "node_modules", "@amykit", "cli", "dist", "update.js"),
-    );
-    fs.mkdirSync(path.join(install, "node_modules", "@amykit", "cli", "dist"), { recursive: true });
+  it("take npm's global prefix as the install root when the CLI lives in it", async () => {
+    // `npm install -g` on Unix: `<prefix>/lib/node_modules`, no manifest beside it.
+    const prefix = path.join(home, "global");
+    const modules = path.join(prefix, "lib", "node_modules");
+    const from = cliUnder(modules);
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("root", "--global"), result: { stdout: `${modules}\n` } },
+    ]);
 
-    expect(roots(home, from)).toEqual({ plugins: path.join(home, "plugins") });
+    expect(await roots(home, runner, from, "darwin")).toEqual({
+      plugins: path.join(home, "plugins"),
+      install: { kind: "global", dir: prefix, modules },
+    });
+    // The global-root question is asked once, and only because no manifest
+    // sat beside the CLI.
+    expect(runner.callsTo("npm")).toHaveLength(1);
+  });
+
+  it("are the plugins root alone when the CLI sits in a node_modules that is neither", async () => {
+    const modules = path.join(home, "lib", "amy", "node_modules");
+    const from = cliUnder(modules);
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("root", "--global"), result: { stdout: `${path.join(home, "elsewhere")}\n` } },
+    ]);
+
+    expect(await roots(home, runner, from)).toEqual({ plugins: path.join(home, "plugins") });
+  });
+
+  it("are the plugins root alone when npm cannot say where its global root is", async () => {
+    const from = cliUnder(path.join(home, "lib", "amy", "node_modules"));
+    expect(await roots(home, new ScriptedRunner(), from)).toEqual({ plugins: path.join(home, "plugins") });
+  });
+
+  it("know both platforms' global layouts", () => {
+    expect(globalPrefix("/usr/local/lib/node_modules", "linux")).toBe("/usr/local");
+    expect(globalPrefix("/opt/homebrew/lib/node_modules", "darwin")).toBe("/opt/homebrew");
+    // Windows puts `node_modules` straight under the prefix.
+    expect(globalPrefix("C:\\Users\\op\\AppData\\Roaming\\npm\\node_modules", "win32")).toBe(
+      "C:\\Users\\op\\AppData\\Roaming\\npm",
+    );
+  });
+});
+
+describe("versions compared", () => {
+  it("by their numbers, a prerelease before its release", () => {
+    expect(compareVersions("0.7.0", "0.6.9")).toBeGreaterThan(0);
+    expect(compareVersions("0.10.0", "0.9.0")).toBeGreaterThan(0);
+    expect(compareVersions("1.0.0-rc.1", "1.0.0")).toBeLessThan(0);
+    expect(compareVersions("1.2.3", "1.2.3")).toBe(0);
   });
 });
 
@@ -209,6 +264,93 @@ describe("what the roots hold", () => {
     expect(updateRangeOf(install, "@amykit/cli", "file:/cache/cli.tgz")).toBe("latest");
     const found = await held(runner, home, install);
     expect(found).toContainEqual(expect.objectContaining({ name: "@amykit/cli", range: "latest", want: "0.5.0" }));
+  });
+});
+
+describe("the release", () => {
+  let home: string;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-release-"));
+  });
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+  it("moves every first-party package across the minor its caret holds", async () => {
+    // What `amy init` leaves: npm saved `^0.5.0`, and on 0.x a caret never
+    // reaches 0.6.0 — the range alone would answer 0.5.0 forever.
+    const root = rootWith(home, { "@amykit/plugin-file-log": "^0.5.0", "@acme/workflow-young": "^0.1.0" });
+    packageAt(root, "@amykit/plugin-file-log", "0.5.0", "export {};");
+    packageAt(root, "@acme/workflow-young", "0.1.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("view", "@amykit/plugin-file-log@^0.5.0"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("view", "@acme/workflow-young@^0.1.0"), result: { stdout: '"0.1.0"\n' } },
+    ]);
+
+    const { held: found, release } = await survey(runner, home);
+
+    expect(release).toEqual({ version: "0.6.0", intent: "latest" });
+    expect(found.find((one) => one.name === "@amykit/plugin-file-log")).toMatchObject({ have: "0.5.0", want: "0.6.0" });
+    // A third-party 0.x range is the operator's call, and stays where it is.
+    expect(found.find((one) => one.name === "@acme/workflow-young")).toMatchObject({ have: "0.1.0", want: "0.1.0" });
+    // The release is asked once, not once per first-party package.
+    expect(runner.callsTo("npm").filter((call) => call.args[1] === "@amykit/cli@latest")).toHaveLength(1);
+  });
+
+  it("never moves a first-party copy backwards", async () => {
+    const root = rootWith(home, { "@amykit/plugin-file-log": "^0.7.0" });
+    packageAt(root, "@amykit/plugin-file-log", "0.7.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+    ]);
+
+    const { held: found } = await survey(runner, home);
+    expect(found[0]).toMatchObject({ have: "0.7.0", want: "0.7.0" });
+  });
+
+  it("asks nothing of the registry about a release when no first-party package is held", async () => {
+    const root = rootWith(home, { "@acme/workflow-oncall": "^1.0.0" });
+    packageAt(root, "@acme/workflow-oncall", "1.0.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@acme/workflow-oncall@^1.0.0"), result: { stdout: '"1.1.0"\n' } },
+    ]);
+
+    const { release } = await survey(runner, home);
+    expect(release).toBeUndefined();
+    expect(runner.callsTo("npm").map((call) => call.args[1])).toEqual(["@acme/workflow-oncall@^1.0.0"]);
+  });
+
+  it("is what the operator's intent allows, naming the newer one it holds the machine below", async () => {
+    const root = path.join(home, "plugins");
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      `${JSON.stringify({ dependencies: { "@amykit/plugin-file-log": "^0.5.0" }, amyUpdateRanges: { "@amykit/cli": "0.5.x" } })}\n`,
+    );
+    packageAt(root, "@amykit/plugin-file-log", "0.5.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@0.5.x"), result: { stdout: '"0.5.3"\n' } },
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+    ]);
+
+    const { held: found, release } = await survey(runner, home);
+    expect(release).toEqual({ version: "0.5.3", intent: "0.5.x", newest: "0.6.0" });
+    expect(found[0]).toMatchObject({ want: "0.5.3" });
+  });
+
+  it("holds the global CLI under the release, with no manifest to read", async () => {
+    rootWith(home, {});
+    const modules = path.join(home, "global", "lib", "node_modules");
+    const cli = path.join(modules, "@amykit", "cli");
+    fs.mkdirSync(cli, { recursive: true });
+    fs.writeFileSync(path.join(cli, "package.json"), '{"name":"@amykit/cli","version":"0.5.0"}');
+    const install: Root = { kind: "global", dir: path.join(home, "global"), modules };
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+    ]);
+
+    const { held: found } = await survey(runner, home, install);
+    expect(found).toEqual([{ name: "@amykit/cli", range: "latest", root: "install", have: "0.5.0", want: "0.6.0" }]);
   });
 });
 
@@ -317,6 +459,20 @@ describe("the move", () => {
     fs.chmodSync(manifest, 0o644);
     expect(outcome.ok).toBe(false);
     expect(outcome.output).toContain("could not restore its manifest range");
+  });
+});
+
+describe("the move into a global prefix", () => {
+  it("installs with --global under the prefix, and writes no manifest", async () => {
+    const runner = new ScriptedRunner();
+    const install: Root = { kind: "global", dir: "/opt/amy", modules: "/opt/amy/lib/node_modules" };
+
+    const outcome = await move(runner, install, "@amykit/cli", undefined, "0.6.0");
+
+    expect(outcome.ok).toBe(true);
+    expect(runner.argvFor("npm")).toEqual([
+      "install", "--global", "--prefix", "/opt/amy", "--no-audit", "--no-fund", "--", "@amykit/cli@0.6.0",
+    ]);
   });
 });
 
@@ -787,5 +943,121 @@ describe("the running loop", () => {
       "@acme/workflow-oncall@2.0.0",
       "@acme/workflow-oncall@1.0.0",
     ]);
+  });
+
+  /** A machine on 0.5.0: its CLI in a global prefix, one first-party plugin at the caret npm saved. */
+  function globalMachine(): Root {
+    const root = rootWith(home, { "@amykit/plugin-file-log": "^0.5.0" });
+    packageAt(root, "@amykit/plugin-file-log", "0.5.0", "export const plugin = {};");
+    const modules = path.join(home, "global", "lib", "node_modules");
+    packageAt(path.dirname(modules), "@amykit/cli", "0.5.0", "process.exit(0);", { amy: "./index.js" });
+    return { kind: "global", dir: path.join(home, "global"), modules };
+  }
+
+  function said(spy: { mock: { calls: unknown[][] } }): string {
+    return spy.mock.calls.map((call) => call.join(" ")).join("\n");
+  }
+
+  it("names the release `--check` would move to, in one line", async () => {
+    const install = globalMachine();
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, true, {
+        mountProfiles: async () => ({ ok: true as const }),
+        skillsInto: () => [],
+        installRoot: install,
+      });
+      expect(code).toBe(0);
+      expect(said(log)).toContain("release 0.5.0 -> 0.6.0  (every @amykit/* package, @amykit/cli latest)");
+      expect(said(log)).toContain("the CLI's is npm's global prefix");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("names the operator's intent that holds the CLI below the release, not `nothing to move`", async () => {
+    const install = globalMachine();
+    const manifest = path.join(home, "plugins", "package.json");
+    fs.writeFileSync(manifest, `${JSON.stringify({ ...JSON.parse(fs.readFileSync(manifest, "utf-8")), amyUpdateRanges: { "@amykit/cli": "0.5.x" } })}\n`);
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@0.5.x"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, true, {
+        mountProfiles: async () => ({ ok: true as const }),
+        skillsInto: () => [],
+        installRoot: install,
+      });
+      expect(code).toBe(0);
+      expect(said(log)).toContain("held below the release by its registry intent 0.5.x: 0.6.0 is published");
+      expect(said(log)).not.toContain("nothing to move");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("moves the global CLI and the plugins to the release, and names it in the manifest", async () => {
+    const install = globalMachine();
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, false, {
+        mountProfiles: async () => ({ ok: true as const }),
+        skillsInto: () => ["claude: 6 skill(s) rewritten"],
+        installRoot: install,
+      });
+      expect(code).toBe(0);
+    } finally {
+      log.mockRestore();
+    }
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install").map((call) => call.args);
+    expect(installs).toEqual([
+      ["install", "--prefix", path.join(home, "plugins"), "--no-audit", "--no-fund", "--", "@amykit/plugin-file-log@0.6.0"],
+      ["install", "--global", "--prefix", install.dir, "--no-audit", "--no-fund", "--", "@amykit/cli@0.6.0"],
+    ]);
+    // The root names the release it is on, not a caret that never reaches the next.
+    expect(manifestOf(path.join(home, "plugins"))["@amykit/plugin-file-log"]).toBe("^0.6.0");
+  });
+
+  it("rolls the whole release back, the global CLI included, when a plugin refuses", async () => {
+    const install = globalMachine();
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, false, {
+        mountProfiles: async () => ({ ok: false as const, problems: ["oncall: @amykit/plugin-file-log: refused"] }),
+        skillsInto: () => [],
+        installRoot: install,
+      });
+      expect(code).toBe(1);
+    } finally {
+      log.mockRestore();
+      error.mockRestore();
+    }
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install").map((call) => call.args.at(-1));
+    expect(installs).toEqual([
+      "@amykit/plugin-file-log@0.6.0",
+      "@amykit/cli@0.6.0",
+      "@amykit/plugin-file-log@0.5.0",
+      "@amykit/cli@0.5.0",
+    ]);
+    // One version on disk: the old one, and the manifest says so.
+    expect(manifestOf(path.join(home, "plugins"))["@amykit/plugin-file-log"]).toBe("^0.5.0");
   });
 });

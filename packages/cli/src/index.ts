@@ -86,7 +86,7 @@ import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from 
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
-import { Held, held, isRange, line, move, restore, roots } from "./update.js";
+import { firstParty, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
@@ -1700,7 +1700,7 @@ export async function updateCommand(
     /** Rewrites the skills into the harnesses they were written into before. */
     skillsInto: () => string[];
     /** Where the install root is; the running CLI's own answer by default. */
-    installRoot?: string;
+    installRoot?: string | Root;
   },
 ): Promise<number> {
     const release = updateBoundary(home);
@@ -1708,9 +1708,9 @@ export async function updateCommand(
     const refused = refuseWhileRunning(home);
     if (refused !== undefined) return refused;
 
-    const where = roots(home);
-    const installRoot = deps.installRoot ?? where.install;
-    const everything = await held(runner, home, installRoot);
+    const where = await roots(home, runner);
+    const installRoot = typeof deps.installRoot === "string" ? localRoot(deps.installRoot) : deps.installRoot ?? where.install;
+    const { held: everything, release } = await survey(runner, home, installRoot);
 
     if (pkg !== undefined && !everything.some((held) => held.name === pkg)) {
       console.error(`no package named ${pkg} in either root`);
@@ -1724,8 +1724,9 @@ export async function updateCommand(
     const unresolvedFailure = reportUnresolved(everything, pkg);
     if (unresolvedFailure !== undefined) return unresolvedFailure;
 
-    if (check) return reportOnly(moving);
-    if (moving.length === 0) return nothingMoved(deps);
+    const pinned = reportRelease(everything, moving, release);
+    if (check) return reportOnly(moving, pinned);
+    if (moving.length === 0) return nothingMoved(deps, pinned);
 
     return moveEverything(runner, where.plugins, installRoot, moving, deps);
     } finally {
@@ -1746,7 +1747,7 @@ export async function updateCommand(
 async function moveEverything(
     runner: CommandRunner,
     pluginsRoot: string,
-    installRoot: string | undefined,
+    installRoot: Root | undefined,
     moving: readonly Held[],
     deps: MountProfiles & SkillsInto,
 ): Promise<number> {
@@ -1797,7 +1798,7 @@ let rewriteSkillsSaid: string[] = [];
 async function rewriteSkillsOrRollBack(
     runner: CommandRunner,
     pluginsRoot: string,
-    installRoot: string | undefined,
+    installRoot: Root | undefined,
     moved: readonly Held[],
     deps: SkillsInto,
 ): Promise<number | undefined> {
@@ -1842,9 +1843,34 @@ function orphanedProfileDaemons(home: string): Array<NonNullable<ReturnType<type
 }
 
 /** The one-line report of everything the two roots hold. */
-function reportWhatIsHeld(everything: readonly Held[], installRoot: string | undefined): void {
-    console.log(`${everything.length} package(s) in ${installRoot ? "both roots" : "the plugins root"}${installRoot ? "" : " (running from a checkout, so no CLI half to move)"}`);
+function reportWhatIsHeld(everything: readonly Held[], installRoot: Root | undefined): void {
+    const where = installRoot === undefined
+      ? "the plugins root (running from a checkout, so no CLI half to move)"
+      : installRoot.kind === "global"
+        ? `both roots (the CLI's is npm's global prefix, ${installRoot.dir})`
+        : "both roots";
+    console.log(`${everything.length} package(s) in ${where}`);
     for (const one of everything) console.log(`  ${line(one)}`);
+}
+
+/**
+ * Names the release the first-party packages move to, and an operator's
+ * intent that holds the CLI below a newer one. Says whether it named a
+ * pin, so the caller does not then report `nothing to move` over it.
+ */
+function reportRelease(everything: readonly Held[], moving: readonly Held[], release: Release | undefined): boolean {
+    if (release === undefined) return false;
+    const first = moving.filter((one) => firstParty(one.name));
+    if (first.length > 0) {
+      const from = (everything.find((one) => one.name === "@amykit/cli") ?? first[0]!).have;
+      console.log(`\nrelease ${from} -> ${release.version}  (every @amykit/* package, @amykit/cli ${release.intent})`);
+    }
+    if (release.newest === undefined) return false;
+    console.log(
+      `\n@amykit/cli is held below the release by its registry intent ${release.intent}: ` +
+        `${release.newest} is published, and ${release.intent} allows ${release.version}.`,
+    );
+    return true;
 }
 
 /** Refuses an update whose registry target could not be resolved. */
@@ -1859,9 +1885,9 @@ function reportUnresolved(everything: readonly Held[], pkg: string | undefined):
 }
 
 /** `--check`'s whole answer: what would move, and nothing does. */
-function reportOnly(moving: readonly Held[]): number {
+function reportOnly(moving: readonly Held[], pinned: boolean): number {
     if (moving.length === 0) {
-      console.log("nothing to move");
+      if (!pinned) console.log("nothing to move");
       return 0;
     }
     console.log(`\n${moving.length} package(s) would move. Run \`amy update\` to move them.`);
@@ -1869,7 +1895,7 @@ function reportOnly(moving: readonly Held[]): number {
 }
 
 /** The zero-move case, which still has to answer for a machine that will not boot. */
-async function nothingMoved(deps: MountProfiles & SkillsInto): Promise<number> {
+async function nothingMoved(deps: MountProfiles & SkillsInto, pinned: boolean): Promise<number> {
     // The boot check runs even when nothing moved: an update on a machine
     // whose config already does not boot must say so, not report success
     // over a config the next tick would refuse.
@@ -1879,7 +1905,7 @@ async function nothingMoved(deps: MountProfiles & SkillsInto): Promise<number> {
       console.error("\nNothing moved; the config is what needs attention.");
       return 1;
     }
-    console.log("nothing to move");
+    if (!pinned) console.log("nothing to move");
     return 0;
 }
 
@@ -1904,7 +1930,7 @@ type SkillsInto = Pick<UpdateDeps, "skillsInto">;
 async function moveEach(
     runner: CommandRunner,
     pluginsRoot: string,
-    installRoot: string | undefined,
+    installRoot: Root | undefined,
     moving: readonly Held[],
 ): Promise<{ moved: Held[]; failed: number }> {
     const moved: Held[] = [];
@@ -1912,8 +1938,11 @@ async function moveEach(
 
     for (const one of moving) {
       console.log(`\nupdating ${one.name}: ${one.have} -> ${one.want}`);
-      const root = one.root === "plugins" ? pluginsRoot : installRoot!;
-      const installed = await move(runner, root, one.name, one.range, one.want!);
+      const root = one.root === "plugins" ? localRoot(pluginsRoot) : installRoot!;
+      // A first-party entry names the release it moved to; a third-party
+      // one keeps the range the operator wrote.
+      const keep = firstParty(one.name) ? `^${one.want!}` : one.spec;
+      const installed = await move(runner, root, one.name, keep, one.want!);
       if (!installed.ok) {
         console.error(`${installed.command} failed:`);
         console.error(installed.output || "it said nothing");
@@ -1938,14 +1967,14 @@ async function moveEach(
       // for the plugins: a CLI that will not run is a bad version, and the
       // move is rolled back.
       const probe = one.root === "plugins"
-        ? await moduleProbe(root, one.name, true)
+        ? await moduleProbeAt(root.modules, one.name, true)
         : one.name === "@amykit/cli"
-          ? await cliProbe(root, one.name)
-          : await moduleProbe(root, one.name, false);
+          ? await cliProbe(root.modules, one.name)
+          : await moduleProbeAt(root.modules, one.name, false);
       if (!probe.ok) {
         console.error(`${one.name} ${one.want} does not import:`);
         for (const problem of probe.problems) console.error(`  ${problem}`);
-        const rolledBack = await restore(runner, root, one.name, one.have);
+        const rolledBack = await restore(runner, root, one.name, one.have, one.spec);
         console.log(rolledBack.ok ? `rolled back to ${one.have}` : `rollback failed — restore by hand with ${rolledBack.command}`);
         failed += 1;
         continue;
@@ -1964,9 +1993,19 @@ export async function moduleProbe(
   needsPlugin: boolean,
   timeoutMs = 10_000,
 ): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  return moduleProbeAt(path.join(root, "node_modules"), name, needsPlugin, timeoutMs);
+}
+
+/** The same probe, for the copy under one `node_modules` — a global root's has no root above it. */
+async function moduleProbeAt(
+  modules: string,
+  name: string,
+  needsPlugin: boolean,
+  timeoutMs = 10_000,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   let entry: string;
   try {
-    entry = packageEntrySpecifier(path.join(root, "node_modules", ...name.split("/")));
+    entry = packageEntrySpecifier(path.join(modules, ...name.split("/")));
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
     return { ok: false, problems: [`${name}: could not resolve its entry — ${why}`] };
@@ -2013,16 +2052,16 @@ async function spawnedProbe(
  * error, or a bin whose manifest names nothing answer "the CLI is broken",
  * which rolls the move back like any other bad version.
  */
-async function cliProbe(root: string, name: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  const bin = binOf(root, name);
+async function cliProbe(modules: string, name: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const bin = binOf(modules, name);
   if (!bin) return { ok: false, problems: [`${name}: its manifest names no bin`] };
   return spawnedProbe(name, [bin, "--version"], 10_000);
 }
 
 /** The moved package's own bin file, by its manifest, or nothing. */
-function binOf(root: string, name: string): string | undefined {
+function binOf(modules: string, name: string): string | undefined {
   try {
-    const directory = path.join(root, "node_modules", ...name.split("/"));
+    const directory = path.join(modules, ...name.split("/"));
     const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as {
       bin?: Record<string, string> | string;
     };
@@ -2051,12 +2090,12 @@ function reportUnbootable(problems: readonly string[]): void {
 async function rollBackAll(
     runner: CommandRunner,
     pluginsRoot: string,
-    installRoot: string | undefined,
+    installRoot: Root | undefined,
     moved: readonly Held[],
 ): Promise<void> {
     for (const one of moved) {
-      const root = one.root === "plugins" ? pluginsRoot : installRoot!;
-      const rolledBack = await restore(runner, root, one.name, one.have);
+      const root = one.root === "plugins" ? localRoot(pluginsRoot) : installRoot!;
+      const rolledBack = await restore(runner, root, one.name, one.have, one.spec);
       console.log(rolledBack.ok ? `rolled back ${one.name} to ${one.have}` : `rollback failed for ${one.name} — restore by hand with ${rolledBack.command}`);
     }
 }
