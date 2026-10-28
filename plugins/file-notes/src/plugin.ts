@@ -7,7 +7,6 @@ import { frictionChannel } from "./frictionChannel.js";
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-file-notes",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     const notes = new FileNotes(path.join(ctx.paths.state, ctx.config.directory as string), {

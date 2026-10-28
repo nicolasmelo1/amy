@@ -4,7 +4,6 @@ import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-command-gate",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     const git = new Git(

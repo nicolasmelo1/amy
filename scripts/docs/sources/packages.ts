@@ -42,7 +42,6 @@ interface NoteRegistry {
   workflow(workflow: { name: string }): void;
   port(kind: string): void;
   action(name: string, spec: { port: string; method: string }): void;
-  observer(slice: string): void;
   contribute(collection: string, name: string, impl: ContributedRuntime): void;
 }
 
@@ -76,7 +75,6 @@ interface Machine {
   waitingStates: readonly string[];
   terminalStates: readonly string[];
   initialState: string;
-  usesObservers: readonly string[];
 }
 
 interface Registered {
@@ -279,7 +277,6 @@ async function registers(
       seen.addsActions.push({ name, port: spec.port, method: spec.method });
       if (!seen.mounts.includes(spec.port)) seen.mounts.push(spec.port);
     },
-    observer: (slice) => seen.observes.push(slice),
     contribute: (collection, name, impl) => {
       seen.contributes.push({ collection, name });
       if (collection === "workflow-runtime") runtimes.set(name, impl);
@@ -410,7 +407,6 @@ function workflowShape(
       terminalStates: [...machine.terminalStates],
       initialState: machine.initialState,
       usesActions: actionsOf(runtimes.get(machine.name)),
-      usesObservers: [...machine.usesObservers].sort(),
     },
   };
 }

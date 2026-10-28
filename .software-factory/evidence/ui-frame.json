@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/ui-frame-scenario.sh against the packed and installed @amykit/ui, @amykit/ui-conformance and stub renderers from another process on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/ui-frame-run.json",
-      "report_sha256": "612d003b7df2ad171119b923587e1444843d7998757a01046b62637af04a16f7",
+      "report_sha256": "5e5feaf187d24f6a933885f8c62fe52d491968bdeb6f1dbbdc2a9ccc0287f4c8",
       "required_assertions": []
     }
   ]

@@ -41,7 +41,6 @@ import type { Plugin } from "@amykit/core";
 
 export const plugin: Plugin = {
   name: "@acme/plugin-jira",
-  version: "1.0.0",
   register() {},
 };
 ```
@@ -120,7 +119,6 @@ import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
   name: "@acme/plugin-jira",
-  version: "1.0.0",
   configSchema,
   register(registry, ctx) {
     const key = process.env.JIRA_API_TOKEN;
@@ -206,14 +204,6 @@ the port and the method themselves, `"page-oncall": { port: "pager", method: "pa
 and the host calls it with no handler written; what it returns lands in
 `outcomes` under the action's name. A method that takes its own arguments is
 refused there at boot, because it would run on the wrong ones.
-
-### Contribute an observation
-
-One named slice of what a workflow reads before deciding:
-
-```ts
-registry.observer("incidents", { observe: async (record) => this.incidentsFor(record.id) });
-```
 
 ### Mount an engine, a queue or a store
 

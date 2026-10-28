@@ -6,10 +6,10 @@ import type { Plugin, WorkflowRuntime } from "@amykit/core";
 
 const name = path.basename(path.dirname(fileURLToPath(import.meta.url)));
 
-export const plugin: Plugin = { name: `invoices-${name}`, version: "1.0.0", register(registry) {
+export const plugin: Plugin = { name: `invoices-${name}`, register(registry) {
     registry.workflow({
       name: `invoices-${name}`, states: ["START", "DONE"], waitingStates: [],
-      initialState: "START", terminalStates: ["DONE"], usesObservers: [],
+      initialState: "START", terminalStates: ["DONE"],
       plan: () => ({ kind: "settled", why: "scenario" }),
     });
     registry.contribute("workflow-runtime", `invoices-${name}`, {

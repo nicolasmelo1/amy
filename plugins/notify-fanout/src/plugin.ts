@@ -26,7 +26,6 @@ function sinkFor(ctx: PluginContext, announcement: Announcement) {
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-notify-fanout",
-  version: "0.1.0",
   register(registry, ctx) {
     // Read when an announcement is made, not when this is mounted: the
     // channels are contributed by plugins listed after this one.

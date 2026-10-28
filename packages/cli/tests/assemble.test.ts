@@ -68,7 +68,6 @@ describe("assembling the built-in set", () => {
 
     const roster = {
       name: "@amykit/cli",
-      version: "0.1.0",
       register: (r: Parameters<(typeof loaded.plugins)[0]["register"]>[0]) =>
         r.contribute("workflow-data", "roster", { read: () => ROSTER }),
     };

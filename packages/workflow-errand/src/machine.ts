@@ -120,6 +120,5 @@ export const errand: Workflow<Observation, Policy> = {
   initialState: "QUEUED",
   terminalStates: ["DONE", "DECLINED"],
   codeHostWrites: ["open-pull-request"],
-  usesObservers: [],
   plan: (record, observation, policy) => plan(record as ErrandRecord, observation, policy),
 };

@@ -178,7 +178,6 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
  */
 export const plugin: Plugin = {
   name: "@amykit/workflow-ticket-to-qa",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     // The claim follows the switch, so a workflow handing its writes to the

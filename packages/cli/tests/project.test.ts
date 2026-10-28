@@ -364,7 +364,6 @@ describe("a brief crosses the phase boundary", () => {
       waitingStates: [],
       initialState: "START",
       terminalStates: ["DONE"],
-      usesObservers: [],
       plan: () => ({ kind: "settled", why: "fixture" }),
     });
     registry.contribute("workflow-runtime", "invoices-${name}", {

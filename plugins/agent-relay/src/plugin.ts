@@ -35,7 +35,6 @@ function relayFor(ctx: PluginContext): HarnessRelay {
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-agent-relay",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     // Not built now: the harnesses it relays to are contributed by plugins

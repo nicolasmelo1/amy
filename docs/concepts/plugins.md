@@ -12,7 +12,6 @@ A plugin is a package exporting one object:
 ```ts
 export const plugin: Plugin = {
   name: "@amykit/plugin-file-queue",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     registry.queue(new FileQueue(path.join(ctx.paths.state, ctx.config.directory as string)));
@@ -66,7 +65,6 @@ halfway through somebody's ticket.
 | Two contributions collide in one collection | `` `claude` is already in the `agent` collection `` |
 | The workflow emits an action nothing defines | `` action `escalate`: nothing defines it `` |
 | An action's port is not mounted | `` action `triage`: needs the `agent` port, which nothing mounted `` |
-| An observation nothing contributes | `` observation `tracker`: nothing contributes it `` |
 
 **Every problem is reported, not just the first.** One boot fixes one round of
 edits.
@@ -91,7 +89,7 @@ that composes others cannot see contributions made after it, so it reads them
 *when it is used* rather than when it is mounted. Otherwise the order plugins
 appear in the config would be something an operator has to get right.
 
-## The five things a plugin can register
+## What a plugin can register
 
 ```ts
 interface Registry {
@@ -101,7 +99,6 @@ interface Registry {
   workflow(impl): void;
   port(kind, impl): void;
   action(name, spec, port): void;
-  observer(slice, source): void;
   contribute(collection, name, impl): void;
 }
 ```
@@ -114,8 +111,6 @@ plugin **has to bring the port that runs it in the same package**. The pair is
 inseparable on purpose: an action nobody can execute is a promise the machine
 cannot keep. If such an action proves general it graduates into the core, by
 evidence rather than guess.
-
-**An observation** is one named slice of what a workflow reads before deciding.
 
 **A contribution** adds to a named collection that some other plugin consumes.
 

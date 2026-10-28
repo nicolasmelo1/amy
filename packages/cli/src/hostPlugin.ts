@@ -17,7 +17,6 @@ const WORKFLOW_DATA = "workflow-data";
 export function hostPlugin(readRoster: () => Roster): Plugin {
   return {
     name: "@amykit/cli",
-    version: "0.1.0",
     register(registry) {
       registry.contribute(WORKFLOW_DATA, "roster", { read: readRoster });
     },

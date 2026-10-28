@@ -55,7 +55,7 @@ import {
 import { budgetLines } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
-import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver } from "./loader.js";
+import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
 import { hostPlugin } from "./hostPlugin.js";
@@ -2194,7 +2194,8 @@ pluginCommand
     const loaded = await loadMountable(specs);
     for (const spec of specs) {
       const found = loaded.bySpec.get(spec);
-      console.log(`  ${found ? "ok  " : "FAIL"} ${spec}${found ? `  ${found.version}` : ""}`);
+      const version = found ? pluginVersion(home, paths(home).plugins, spec) : undefined;
+      console.log(`  ${found ? "ok  " : "FAIL"} ${spec}${version ? `  ${version}` : ""}`);
     }
     for (const problem of loaded.problems) console.log(`  ${problem}`);
 
@@ -2218,7 +2219,6 @@ pluginCommand
     const { mounted } = outcome;
     console.log(
       `\nassembled: ${mounted.ports.size} port(s), ${mounted.actions.size} action(s), ` +
-        `${mounted.observers.size} observation(s), ` +
         `${[...mounted.contributions.values()].reduce((n, c) => n + c.size, 0)} contribution(s)`,
     );
     console.log(`workflow: ${mounted.workflow?.name ?? "none"}`);

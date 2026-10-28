@@ -9,7 +9,6 @@ export const configSchema: ConfigSchema = {
 /** Mounts only narrow source and provider-neutral tracker capabilities. */
 export const plugin: Plugin = {
   name: "@amykit/workflow-feature-grooming",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     for (const repo of ctx.config.repos as string[]) {

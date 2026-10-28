@@ -107,7 +107,6 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation
  */
 export const plugin: Plugin = {
   name: "@amykit/workflow-note-to-plan",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     registry.workflow(noteToPlan);

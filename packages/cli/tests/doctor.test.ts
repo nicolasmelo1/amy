@@ -79,7 +79,6 @@ describe("diagnose", () => {
         waitingStates: [],
         initialState: "",
         terminalStates: [],
-        usesObservers: [],
         trackerWrites: [],
         codeHostWrites: [],
         plan: () => ({ kind: "settled", why: "test" }),

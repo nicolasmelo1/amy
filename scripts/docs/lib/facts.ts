@@ -110,7 +110,6 @@ export interface WorkflowShape {
   terminalStates: string[];
   initialState: string;
   usesActions: string[];
-  usesObservers: string[];
 }
 
 type PackageKind = "unbuilt" | "cli" | "unloadable" | "library" | "plugin" | "workflow";

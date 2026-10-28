@@ -331,7 +331,6 @@ const runtimes = new WeakMap<PluginContext, WorkflowRuntime<ReviewRecord, Observ
 
 export const plugin: Plugin = {
   name: "@acme/workflow-review",
-  version: "1.0.0",
   configSchema,
   register(registry, ctx) {
     registry.workflow(review);

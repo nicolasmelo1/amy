@@ -178,6 +178,12 @@ case "$listing" in
 esac
 says plugins.a_workflow_from_outside_this_repository_mounts "$listing" "workflow: oncall"
 says plugins.the_listing_tells_installed_from_mounted "$listing" "installed, 7 mounted"
+versions_ok=0
+for name in @acme/workflow-oncall @amykit/plugin-file-queue @amykit/plugin-file-store @amykit/plugin-file-brief-store @amykit/plugin-serial-engine @amykit/plugin-notify-fanout @amykit/plugin-notify-inbox; do
+  version=$(node -p "require(process.argv[1]).version" "$plugins/node_modules/$name/package.json")
+  printf '%s\n' "$listing" | grep -F "ok   $name  $version" >/dev/null || versions_ok=1
+done
+record plugins.listing_uses_installed_manifest_versions "$versions_ok"
 case "$listing" in
   *plugin-parent-walk*) record plugins.the_listing_is_read_from_one_directory 1 ;;
   *) record plugins.the_listing_is_read_from_one_directory 0 ;;

@@ -99,7 +99,7 @@ value is neither, a port nothing mounted, or a method the port does not have.
 The engine refuses a plan that carries a name the map does not, before any of
 that plan's actions run.
 
-## The seven things a workflow declares
+## What a workflow declares
 
 ```ts
 export const errand: Workflow<Observation, Policy> = {
@@ -108,7 +108,6 @@ export const errand: Workflow<Observation, Policy> = {
   waitingStates: WAITING_STATES,
   initialState: "QUEUED",
   terminalStates: ["DONE", "DECLINED"],
-  usesObservers: [],
   plan: (record, observation, policy) => plan(record as ErrandRecord, observation, policy),
 };
 ```
@@ -122,9 +121,9 @@ state cannot silently become a busy loop.
 
 **`terminalStates`** — where work stops being queued.
 
-**`usesObservers`**, and the keys of the runtime's **`actions`** — the
-workflow's *reach*, which the host checks at boot: an observation nothing
-contributes, or an action with nothing behind it, refuses the mount by name.
+The keys of the runtime's **`actions`** declare the workflow's *reach*,
+which the host checks at boot: an action with nothing behind it refuses the
+mount by name.
 The actions are declared on the runtime rather than here because the
 declaration and the implementation are one entry; two lists of one fact is how
 an action once passed the mount with nothing behind it.
@@ -183,7 +182,6 @@ Something said in passing becomes work: capture it, do it, say what happened.
 | Terminal | `DONE`, `DECLINED` |
 | Waits in | `QUEUED` |
 | Actions it emits | `announce`, `open-pull-request`, `run-errand` |
-| Observations it reads | _none_ |
 
 | # | State | Kind |
 | :-- | :-- | :-- |
@@ -205,7 +203,6 @@ The note-to-plan workflow: friction becomes a plan in the repository it is about
 | Terminal | `DONE`, `DECLINED` |
 | Waits in | `NOTED` |
 | Actions it emits | `announce`, `check-plan`, `draft-plan`, `open-pull-request` |
-| Observations it reads | _none_ |
 
 | # | State | Kind |
 | :-- | :-- | :-- |
@@ -228,7 +225,6 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 | Terminal | `DONE` |
 | Waits in | `CLARIFYING`, `COPILOT_WAIT`, `HUMAN_REVIEW`, `ESCALATED` |
 | Actions it emits | `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `discuss`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `resolve-review-thread`, `run-gate`, `self-review`, `triage` |
-| Observations it reads | _none_ |
 
 | # | State | Kind |
 | :-- | :-- | :-- |

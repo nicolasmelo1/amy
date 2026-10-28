@@ -12,7 +12,6 @@ const workflow: Workflow = {
   waitingStates: [],
   initialState: "paged",
   terminalStates: ["acknowledged"],
-  usesObservers: [],
   plan: (record) =>
     record.state === "paged"
       ? (appendFileSync(process.env.HOME + "/.amy/lifecycle.log", "workflow\n"), { kind: "advance", to: "acknowledged", effects: [], why: `the page was picked up at ${version}` })
@@ -21,7 +20,6 @@ const workflow: Workflow = {
 
 export const plugin: Plugin = {
   name: "@acme/workflow-oncall",
-  version,
   register(registry, ctx) {
     registry.workflow(workflow);
     registry.contribute("workflow-runtime", "oncall", {

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { Plugin } from "@amykit/core";
 import { localWorkflow } from "./workflow.js";
 import { packageEntrySpecifier } from "./spec.js";
@@ -189,4 +189,22 @@ function directoryEntrySpecifier(directory: string): string {
 function packageDirectory(root: string, spec: string): string {
   const parts = spec.startsWith("@") ? spec.split("/", 2) : [spec.split("/", 1)[0]!];
   return path.join(root, "node_modules", ...parts);
+}
+
+/** The manifest belongs to the resolved package, never an ancestor of a bare path. */
+export function pluginVersion(home: string, root: string, spec: string): string | undefined {
+  try {
+    const local = localWorkflow(home, spec);
+    let directory: string;
+    if (local) directory = path.dirname(fileURLToPath(local));
+    else if (isFilesystemWorkflow(spec)) {
+      const target = path.resolve(spec);
+      directory = fs.statSync(target).isDirectory() ? target : path.dirname(target);
+    } else if (spec.startsWith("file:")) directory = path.dirname(fileURLToPath(spec));
+    else directory = packageDirectory(root, spec);
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as { version?: unknown };
+    return typeof manifest.version === "string" ? manifest.version : undefined;
+  } catch {
+    return undefined;
+  }
 }

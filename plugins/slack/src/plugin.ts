@@ -7,7 +7,6 @@ import { DEFAULT_MARKS, DEFAULT_RETENTION_DAYS, SlackConversation } from "./Slac
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-slack",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     const channel = ctx.config.channel as string;

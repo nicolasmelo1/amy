@@ -21,7 +21,6 @@ export function workflowOf<O>(machine: Machine<O>): Workflow<O, unknown> {
     waitingStates: machine.waiting ?? [],
     initialState: machine.states[0]!,
     terminalStates: machine.terminal,
-    usesObservers: [],
     plan: (record, observation) => machine.plan(record, observation),
   };
 }

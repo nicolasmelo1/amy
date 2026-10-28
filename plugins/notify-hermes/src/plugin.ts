@@ -4,7 +4,6 @@ import { configSchema, hermesChannel, hermesTargetIsKnown } from "./hermesChanne
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-notify-hermes",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     const target = ctx.config.target as string;

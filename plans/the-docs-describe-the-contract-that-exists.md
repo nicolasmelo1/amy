@@ -25,7 +25,7 @@ contract look heavier than it is:
 - `@amykit/workflow-feature-grooming` is called a workflow, sits in the plugin
   index, registers two ports and no workflow, and no page says why.
 
-[Nothing is declared twice](nothing-is-declared-twice.md),
+[Nothing is declared twice](../docs/design/nothing-is-declared-twice.md),
 [a mount builds once](a-mount-builds-once.md),
 [a config is typed by its schema](a-config-is-typed-by-its-schema.md),
 [the host lends the checkout](the-host-lends-the-checkout.md) and
