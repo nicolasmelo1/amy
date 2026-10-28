@@ -26,7 +26,7 @@
         "never-draws-the-panel",
         "plugin-tab-in-nav1"
       ],
-      "findings": 181
+      "findings": 246
     },
     "broken": {
       "exit": 1,
@@ -37,7 +37,7 @@
         "plugin-section-first",
         "restless"
       ],
-      "findings": 101
+      "findings": 129
     },
     "pair": {
       "exit": 1,
@@ -46,7 +46,7 @@
         "stub-desktop",
         "stub-terminal"
       ],
-      "findings": 18
+      "findings": 24
     },
     "assertions_run": 11,
     "assertions_failed": 0,

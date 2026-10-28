@@ -241,6 +241,73 @@ describe("each assertion fails the renderer that breaks it", () => {
     expect(report.findings).toEqual([{ assertion: "frame.every_region_sits_where_declared", renderer: "broken", message: "could not be driven: no display" }]);
   });
 
+  it("a layout slid wholly off the window, which keeps every relation", () => {
+    const off = altered("off-screen", (session) => ({
+      read() {
+        const surface = window(session.read());
+        return { surfaces: { window: { ...surface, regions: surface.regions.map((region) => ({ ...region, box: { ...region.box, x: region.box.x + surface.size.width } })) } } };
+      },
+    }));
+
+    expect(messages(conform(frame, [off], config, golden), "frame.every_region_sits_where_declared")).toContain("nav2 is drawn outside the 1280×800 window");
+  });
+
+  it("a surface the renderer declares and never draws", () => {
+    const report = conform(frame, [{ ...desktop, name: "promises-a-menu-bar", surfaces: ["window", "menubar"] }], config, golden);
+
+    expect(messages(report, "frame.a_surface_is_drawn_only_where_declared")).toContain("declares menubar, and does not draw it");
+  });
+
+  it("a renderer of the menu bar alone, measured on the menu bar and nothing of the window", () => {
+    const menubar: LaidSurface = { size: { width: 1, height: 1 }, regions: [] };
+    const only = { ...altered("menu-bar-only", () => ({ read: () => ({ surfaces: { menubar } }) })), surfaces: ["menubar"] };
+    const report = conform(frame, [only], config, golden);
+
+    expect(report.findings).toEqual([]);
+  });
+
+  it("a menu bar beside the window, compared only on the surfaces the golden approved", () => {
+    const menubar: LaidSurface = { size: { width: 1, height: 1 }, regions: [] };
+    const both = { ...altered("window-and-menu-bar", (session) => ({ read: () => ({ surfaces: { ...session.read().surfaces, menubar } }) })), surfaces: ["window", "menubar"] };
+
+    expect(messages(conform(frame, [both], config, golden), "frame.nothing_moved_since_it_was_approved")).toEqual([]);
+  });
+
+  it("a resize that does nothing, which cannot pass for the narrowest width", () => {
+    const report = conform(frame, [altered("will-not-shrink", () => ({ resize: () => undefined }))], config, golden);
+
+    expect(messages(report, "frame.no_region_is_lost_at_the_narrowest_width")).toContain("the window is 1280×800, not the narrowest 720×480 it was resized to");
+  });
+
+  it("an intent shortened as though it were a label", () => {
+    const shortened = altered("gro…", (session) => ({
+      read: () => retree(session.read(), "nav2", "groom", (tree) => element("Button", { intent: { action: "gro…", args: {} } }, ...tree.children)),
+    }));
+
+    expect(messages(conform(frame, [shortened], config, golden), "frame.nothing_moved_since_it_was_approved")[0]).toBe(
+      'differs from the approved projection at /surfaces/window/regions/nav2/holds/groom/tree/props/intent/action: "gro…" ≠ "groom"',
+    );
+  });
+
+  it("a row menu that leaves out the plugin's action", () => {
+    const report = conform(
+      frame,
+      [
+        altered("drops-plugin-actions", (session) => ({
+          read: () =>
+            retree(session.read(), "nav2", "list", function drop(tree: Node): Node {
+              const children = tree.children.filter((child) => typeof child === "string" || (child.props.intent as { action?: string } | undefined)?.action !== "rerun");
+              return { ...tree, children: children.map((child) => (typeof child === "string" ? child : drop(child))) };
+            }),
+        })),
+      ],
+      config,
+      golden,
+    );
+
+    expect(messages(report, "frame.a_slot_takes_only_what_it_declares")).toContain("ui-action's rerun was handed to nav2, and is not drawn there");
+  });
+
   it("no renderer at all, which passes nothing", () => {
     expect(conform(frame, [], config, golden).assertions.every((each) => each.status === "failed")).toBe(true);
   });

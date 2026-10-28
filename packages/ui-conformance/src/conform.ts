@@ -1,8 +1,8 @@
 import { sameJson, type Intent } from "@amykit/ui";
-import { buildKeymap, keysFor, type ConformanceRenderer, type Frame, type KeyOverrides, type Session } from "@amykit/ui/frame";
+import { buildKeymap, keysFor, type ConformanceRenderer, type Frame, type KeyOverrides, type Session, type Size } from "@amykit/ui/frame";
 import { ASSERTIONS, checkStep, type Assertion, type Finding } from "./checks.js";
 import { firstDifference, project, type Projection } from "./projection.js";
-import { RUNS, SCRIPT, type Move, type Run } from "./script.js";
+import { RUNS, SCRIPT, type Move, type Run, type Step } from "./script.js";
 import { apply, scene, START, type ConformanceConfig, type WindowState } from "./world.js";
 
 /** The conformance config: what the world's config gives, and the keymap the remapped run uses. */
@@ -48,6 +48,13 @@ function perform(drive: Drive, session: Session, move: Move, state: WindowState,
 
 const describe = (intents: readonly Intent[]): string => (intents.length === 0 ? "nothing" : intents.map((intent) => intent.action).join(", "));
 
+/** Whether what the renderer asked for is exactly the one intent the frame says this move asks for. */
+const asked = (got: readonly Intent[], want: Intent): boolean => got.length === 1 && got[0]?.action === want.action && sameJson(got[0].args, want.args);
+
+/** Where the last step takes the window: the narrowest the frame allows, in the renderer's unit. */
+const narrowestFor = (frame: Frame, renderer: ConformanceRenderer, step: Step): Size | undefined =>
+  step.narrowest ? (renderer.unit === "px" ? frame.narrowest.px : frame.narrowest.cells) : undefined;
+
 /** The script once, through one renderer, one way: a projection per step and whatever each step broke. */
 function driveOnce(drive: Drive): Driven {
   const { frame, renderer, run, config } = drive;
@@ -61,16 +68,17 @@ function driveOnce(drive: Drive): Driven {
   for (const step of SCRIPT) {
     for (const move of step.moves) {
       const { got, want, did } = perform(drive, session, move, state, keymap);
-      if (got.length !== 1 || got[0]?.action !== want.action || !sameJson(got[0].args, want.args)) {
+      if (!asked(got, want)) {
         findings.push({ assertion: "frame.every_key_does_what_it_is_declared_to", renderer: renderer.name, run, step: step.name, message: `${did} did ${describe(got)}; the frame declares ${want.action}` });
       }
       for (const intent of got) state = apply(state, intent, frame, config);
       session.draw(scene(frame, state, config));
     }
-    if (step.narrowest) session.resize(renderer.unit === "px" ? frame.narrowest.px : frame.narrowest.cells);
+    const narrowest = narrowestFor(frame, renderer, step);
+    if (narrowest !== undefined) session.resize(narrowest);
     const laid = session.read();
     const projection = project(frame, step.name, state.mode, laid);
-    const context = { frame, renderer, run, step: step.name, narrowest: step.narrowest === true, scene: scene(frame, state, config), config };
+    const context = { frame, renderer, run, step: step.name, ...(narrowest === undefined ? {} : { narrowest }), scene: scene(frame, state, config), config };
     findings.push(...checkStep(context, laid.surfaces, projection));
     projections.push(projection);
   }
@@ -79,15 +87,18 @@ function driveOnce(drive: Drive): Driven {
 
 function compare(frame: Frame, a: readonly Projection[], b: readonly Projection[], say: (step: string, where: string) => Finding): Finding[] {
   return a.flatMap((projection, i) => {
-    const where = firstDifference(frame, projection, b[i]);
+    const other = b[i];
+    if (other === undefined) return [say(projection.step, `${projection.step}: drawn ≠ a step the other has no projection for`)];
+    const where = firstDifference(frame, projection, other);
     return where === undefined ? [] : [say(projection.step, where)];
   });
 }
 
-/** The projections, kept to the surfaces somebody else also drew. */
+/** The projections, kept to the surfaces somebody else also drew; nav 1's sections are the window's. */
 function within(projections: readonly Projection[], surfaces: readonly string[]): readonly Projection[] {
   return projections.map((projection) => ({
     ...projection,
+    sections: surfaces.includes("window") ? projection.sections : [],
     surfaces: Object.fromEntries(Object.entries(projection.surfaces).filter(([name]) => surfaces.includes(name))),
   }));
 }
@@ -115,8 +126,9 @@ function measure(frame: Frame, renderer: ConformanceRenderer, config: Conformanc
     findings.push({ assertion: "frame.nothing_moved_since_it_was_approved", renderer: renderer.name, message: "there is no approved projection to compare with" });
   } else {
     const approved = Object.keys(golden.steps[0]?.surfaces ?? {});
+    const shared = renderer.surfaces.filter((name) => approved.includes(name));
     findings.push(
-      ...compare(frame, within(keys, renderer.surfaces), within(golden.steps, renderer.surfaces.filter((name) => approved.includes(name))), (step, where) => ({
+      ...compare(frame, within(keys, shared), within(golden.steps, shared), (step, where) => ({
         assertion: "frame.nothing_moved_since_it_was_approved",
         renderer: renderer.name,
         step,

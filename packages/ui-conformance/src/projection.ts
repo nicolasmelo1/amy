@@ -89,25 +89,33 @@ export function project(frame: Frame, step: string, mode: Mode, laid: Laid): Pro
 
 /**
  * Where two projections first differ, as a path and the two values, or
- * nothing when they are the same. A string compares equal to one the frame's
- * abbreviation rule could have shortened it to, either way round, and to
- * nothing else.
+ * nothing when they are the same. A label a person reads — a primitive's text,
+ * a title, a placeholder — compares equal to one the frame's abbreviation rule
+ * could have shortened it to, either way round; every other string, an
+ * intent's action and arguments included, compares exactly.
  */
-export function firstDifference(frame: Frame, a: unknown, b: unknown, at = ""): string | undefined {
-  if (Array.isArray(a) && Array.isArray(b)) return named(a) && named(b) ? byName(frame, a, b, at) : byIndex(frame, a, b, at);
+export function firstDifference(frame: Frame, a: unknown, b: unknown, at = "", role?: Role): string | undefined {
+  if (Array.isArray(a) && Array.isArray(b)) return named(a) && named(b) ? byName(frame, a, b, at) : byIndex(frame, a, b, at, role);
   if (isObject(a) && isObject(b)) return byKey(frame, a, b, at);
-  return same(frame, a, b) ? undefined : `${at}: ${JSON.stringify(a) ?? "missing"} ≠ ${JSON.stringify(b) ?? "missing"}`;
+  return same(frame, a, b, role === "label") ? undefined : `${at}: ${JSON.stringify(a) ?? "missing"} ≠ ${JSON.stringify(b) ?? "missing"}`;
 }
 
-/** Two leaves: equal, or two strings one of which the frame's rule abbreviates to the other. */
-function same(frame: Frame, a: unknown, b: unknown): boolean {
-  if (typeof a !== "string" || typeof b !== "string") return a === b;
+/** What a value is to the node holding it: a label shown as it is, or the list of a node's children. */
+type Role = "label" | "children";
+
+/** The properties a renderer shows as text, rather than acts on. */
+const LABELS = ["title", "placeholder"];
+
+/** Two leaves: equal, or two labels one of which the frame's rule abbreviates to the other. */
+function same(frame: Frame, a: unknown, b: unknown, label: boolean): boolean {
+  if (!label || typeof a !== "string" || typeof b !== "string") return a === b;
   return abbreviates(frame, a, b) || abbreviates(frame, b, a);
 }
 
 function byKey(frame: Frame, a: Readonly<Record<string, unknown>>, b: Readonly<Record<string, unknown>>, at: string): string | undefined {
   for (const key of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
-    const found = firstDifference(frame, a[key], b[key], `${at}/${key}`);
+    const role: Role | undefined = key === "children" ? "children" : LABELS.includes(key) ? "label" : undefined;
+    const found = firstDifference(frame, a[key], b[key], `${at}/${key}`, role);
     if (found !== undefined) return found;
   }
   return undefined;
@@ -140,10 +148,11 @@ function byName(frame: Frame, a: readonly Named[], b: readonly Named[], at: stri
   return order(a) === order(b) ? undefined : `${at}: [${order(a)}] ≠ [${order(b)}]`;
 }
 
-function byIndex(frame: Frame, a: readonly unknown[], b: readonly unknown[], at: string): string | undefined {
+/** A node's text children are labels; the items of any other list are not. */
+function byIndex(frame: Frame, a: readonly unknown[], b: readonly unknown[], at: string, role?: Role): string | undefined {
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     if (i >= a.length || i >= b.length) return `${at}/${i}: ${presence(a[i])} ≠ ${presence(b[i])}`;
-    const found = firstDifference(frame, a[i], b[i], `${at}/${i}`);
+    const found = firstDifference(frame, a[i], b[i], `${at}/${i}`, role === "children" ? "label" : undefined);
     if (found !== undefined) return found;
   }
   return undefined;

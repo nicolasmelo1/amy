@@ -5,8 +5,8 @@
     "docs/rules.md": "47abaef987835cfdac828145a5b45da86f1bb1147238126ab147b42da259febd",
     "packages/core/events.json": "22a789f02f9cc44c0e498518f16f184eacd7da81b8e80c62084c2d01f461894b",
     "packages/model-specs/specs.json": "510a95116df96792c6ee7b71876f27a201c6163e425664334adac1328cce65c8",
-    "packages/ui/conformance/config.yaml": "7a0ceb078b354eb860b20d13d826bafaa7bbdac2875b6c2abf30d880d9784f27",
-    "packages/ui/conformance/golden.json": "83158ca8a11990061076798669827f7e4c9612bf09c695228fc78b99ac35b779",
+    "packages/ui/conformance/config.yaml": "5f23918134d5533df1876e7cac6e4f9016fbbbc29b963a503765a8e260ac43ed",
+    "packages/ui/conformance/golden.json": "3c1606e34381afb282ebd69abadd13a33967e5dea00a90dc41d6f972dc62e685",
     "packages/ui/frame.yaml": "38de6471ba58a7312e03324dc3d6cf0b6fe584b37f8abbbb4a4e123d67b0ce0b"
   }
 }

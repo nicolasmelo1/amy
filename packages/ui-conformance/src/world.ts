@@ -54,13 +54,15 @@ export interface WindowState {
   readonly open?: string;
   readonly panel: boolean;
   readonly palette: boolean;
+  /** The open row's menu, where `ui-action` adds. */
+  readonly menu: boolean;
   readonly mode: Mode;
   readonly tab: string;
   readonly section: string;
   readonly thread: Readonly<Record<string, readonly string[]>>;
 }
 
-export const START: WindowState = { cursor: 0, panel: false, palette: false, mode: "normal", tab: "timeline", section: "work", thread: {} };
+export const START: WindowState = { cursor: 0, panel: false, palette: false, menu: false, mode: "normal", tab: "timeline", section: "work", thread: {} };
 
 /** The conformance config: the order it gives the fixed sections, and the keys it remaps. */
 export interface ConformanceConfig {
@@ -109,7 +111,8 @@ const REDUCERS: Readonly<Record<string, Reducer>> = {
   },
   "panel.toggle": (state) => ({ ...state, panel: !state.panel }),
   "palette.open": (state) => ({ ...state, palette: true }),
-  "close-topmost": (state) => (state.palette ? { ...state, palette: false } : state),
+  "item.menu": (state) => ({ ...state, menu: true }),
+  "close-topmost": (state) => (state.palette ? { ...state, palette: false } : { ...state, menu: false }),
   "mode.insert": (state) => ({ ...state, mode: "insert" }),
   "mode.normal": (state) => ({ ...state, mode: "normal" }),
   "thread.post-discussion": (state) => post(state, "discussion"),
@@ -139,6 +142,14 @@ function row(record: WorldRecord, cursor: boolean): Node {
   ]);
 }
 
+/** The row's menu: what amy can do to the record, and then what the plugin adds. */
+function menu(record: WorldRecord): Node {
+  return element("List", {}, [
+    button("Poke", "poke", { id: record.id }),
+    button(WORLD.plugin.action.label, WORLD.plugin.action.id, { id: record.id }),
+  ]);
+}
+
 function list(state: WindowState): Node {
   return element(
     "Stack",
@@ -148,7 +159,11 @@ function list(state: WindowState): Node {
         element(
           "List",
           {},
-          WORLD.records.flatMap((record, i) => (record.profile === profile ? [row(record, i === state.cursor)] : [])),
+          WORLD.records.flatMap((record, i) => {
+            if (record.profile !== profile) return [];
+            const cursor = i === state.cursor;
+            return cursor && state.menu ? [row(record, cursor), menu(record)] : [row(record, cursor)];
+          }),
         ),
       ]),
     ),

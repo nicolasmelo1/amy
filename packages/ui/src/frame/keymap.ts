@@ -26,6 +26,9 @@ const SPECIAL: Readonly<Record<string, string>> = {
   bslash: "Bslash",
 };
 
+/** Printable characters that are named keys: a literal space is the same key as `<Space>`. */
+const LITERAL: Readonly<Record<string, string>> = { " ": "<Space>", "\t": "<Tab>" };
+
 /** Modifiers in the order a canonical key spells them. `D` is the command key. */
 const MODIFIERS = ["C", "M", "S", "D"] as const;
 const ALIASES: Readonly<Record<string, (typeof MODIFIERS)[number]>> = { c: "C", m: "M", a: "M", s: "S", d: "D" };
@@ -49,8 +52,8 @@ function bracketed(inside: string, at: string): string {
   if (key === "-") parts.splice(-2, 2);
   const modifiers = new Set(parts.map((each) => ALIASES[each.toLowerCase()] ?? refuse(at, `${each}- is not a modifier`)));
   let name = base(key, at);
-  // Neovim reads <C-K> as <C-k>: with a modifier, a letter has no case.
-  if (modifiers.size > 0 && name.length === 1) name = name.toLowerCase();
+  // Neovim reads <C-K> as <C-k>: under Control a letter has no case. <M-a> and <M-A> stay two keys.
+  if (modifiers.has("C") && name.length === 1) name = name.toLowerCase();
   if (modifiers.size === 0) return name.length === 1 ? name : `<${name}>`;
   return `<${MODIFIERS.filter((each) => modifiers.has(each)).map((each) => `${each}-`).join("")}${name}>`;
 }
@@ -65,7 +68,7 @@ export function parseKeys(notation: string, leader = "<Space>"): readonly string
   while (i < notation.length) {
     const close = notation[i] === "<" ? notation.indexOf(">", i + 2) : -1;
     if (close === -1) {
-      keys.push(notation.charAt(i));
+      keys.push(LITERAL[notation.charAt(i)] ?? notation.charAt(i));
       i += 1;
       continue;
     }

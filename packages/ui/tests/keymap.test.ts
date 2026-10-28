@@ -25,6 +25,11 @@ describe("keys are read in Neovim's notation", () => {
     ["]s", ["]", "s"]],
     ["<leader>p", ["<Space>", "p"]],
     ["<lt>", ["<"]],
+    ["<M-a>", ["<M-a>"]],
+    ["<M-A>", ["<M-A>"]],
+    ["<C-M-A>", ["<C-M-a>"]],
+    [" ", ["<Space>"]],
+    ["\t", ["<Tab>"]],
   ])("%s is %j", (notation, keys) => {
     expect(parseKeys(notation)).toEqual(keys);
   });
@@ -92,6 +97,14 @@ describe("a remap is refused at boot, by name", () => {
 
   it("when a remapped leader makes a binding collide with another", () => {
     expect(() => buildKeymap(frame, { leader: "<Esc>" })).toThrow(/keys\.normal\.<leader>m: begins, or is begun by, <Esc>|keys\.normal\.<Esc>: begins, or is begun by, <leader>m/);
+  });
+
+  it("when a literal space begins a binding the leader also begins", () => {
+    expect(() => buildKeymap(frame, { normal: { " ": "nav.next" } })).toThrow(/begins, or is begun by, <leader>/);
+  });
+
+  it("not when two Alt keys differ only in case, which Neovim reads as two keys", () => {
+    expect(() => buildKeymap(frame, { normal: { "<M-a>": "nav.next", "<M-A>": "nav.prev" } })).not.toThrow();
   });
 
   it("when a binding begins with a digit, which is a count", () => {

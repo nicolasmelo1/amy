@@ -1,5 +1,5 @@
 import type { Json, Node } from "@amykit/ui";
-import type { Box, ConformanceRenderer, Frame, LaidRegion, LaidSurface, Region, Scene } from "@amykit/ui/frame";
+import type { Box, ConformanceRenderer, Frame, LaidRegion, LaidSurface, Region, Scene, Size } from "@amykit/ui/frame";
 import type { Projection } from "./projection.js";
 import { CONTRIBUTIONS, sectionOrder, slotOf, tabOrder, type ConformanceConfig } from "./world.js";
 
@@ -35,7 +35,8 @@ export interface StepContext {
   readonly renderer: ConformanceRenderer;
   readonly run: string;
   readonly step: string;
-  readonly narrowest: boolean;
+  /** The narrowest window the frame allows, in the renderer's unit, when this step resized to it. */
+  readonly narrowest?: Size;
   readonly scene: Scene;
   readonly config: ConformanceConfig;
 }
@@ -99,15 +100,27 @@ function checkHolds(region: Region, laid: LaidRegion, say: Say): Finding[] {
   ];
 }
 
+/** At the narrowest width, a region that is not there is a region lost there. */
+const loser = (context: StepContext, say: Say): Say => (assertion, message) =>
+  say(context.narrowest === undefined ? assertion : "frame.no_region_is_lost_at_the_narrowest_width", message);
+
+const finite = (...values: readonly number[]): boolean => values.every((value) => Number.isFinite(value));
+
+/** Whether a box lies wholly within the surface it was drawn on. */
+function inside(box: Box, size: Size): boolean {
+  return finite(box.x, box.y, box.width, box.height) && box.x >= 0 && box.y >= 0 && box.x + box.width <= size.width && box.y + box.height <= size.height;
+}
+
 /** One declared region, against whether it should be drawn now and where its placement says it sits. */
 function checkRegion(context: StepContext, region: Region, drawn: readonly (Placed & { laid: LaidRegion })[], surface: LaidSurface, say: Say): Finding[] {
-  const lost: Say = (assertion, message) => say(context.narrowest ? "frame.no_region_is_lost_at_the_narrowest_width" : assertion, message);
+  const lost = loser(context, say);
   const here = drawn.find((each) => each.region.name === region.name);
   const want = wanted(region, context.scene);
   if (here === undefined) return want ? [lost("frame.every_region_sits_where_declared", `${region.name} should be drawn now, and is not`)] : [];
   return [
     ...(want ? [] : [say("frame.every_region_sits_where_declared", `${region.name} is drawn while it is ${region.toggled ? "toggled off" : "closed"}`)]),
     ...(here.box.width > 0 && here.box.height > 0 ? [] : [lost("frame.every_region_sits_where_declared", `${region.name} is drawn with no room`)]),
+    ...(inside(here.box, surface.size) ? [] : [lost("frame.every_region_sits_where_declared", `${region.name} is drawn outside the ${surface.size.width}×${surface.size.height} window`)]),
     ...promises(here, drawn, surface.size.height).map((broken) => say("frame.every_region_sits_where_declared", `${region.name} ${broken}`)),
     ...checkHolds(region, here.laid, say),
   ];
@@ -123,7 +136,12 @@ function checkRegions(context: StepContext, surface: LaidSurface, say: Say): Fin
     const laid = surface.regions.find((each) => each.name === region.name);
     return laid === undefined ? [] : [{ region, box: laid.box, laid }];
   });
-  return [...invented, ...frame.regions.flatMap((region) => checkRegion(context, region, drawn, surface, say))];
+  const { narrowest } = context;
+  const resized =
+    narrowest === undefined || (surface.size.width === narrowest.width && surface.size.height === narrowest.height)
+      ? []
+      : [loser(context, say)("frame.every_region_sits_where_declared", `the window is ${surface.size.width}×${surface.size.height}, not the narrowest ${narrowest.width}×${narrowest.height} it was resized to`)];
+  return [...invented, ...resized, ...frame.regions.flatMap((region) => checkRegion(context, region, drawn, surface, say))];
 }
 
 /** Every exact text a tree carries: its text, its string properties, an intent's arguments. */
@@ -153,9 +171,26 @@ function strays(context: StepContext, surface: LaidSurface, collection: string, 
   );
 }
 
+/** A contribution the scene put in its slot, and the renderer left out of it. */
+function dropped(context: StepContext, surface: LaidSurface, collection: string, mark: string, say: Say): Finding[] {
+  const slot = slotOf(context.frame, collection);
+  if (slot === undefined) return [];
+  const given = context.scene.regions[slot.region];
+  const holds = (names: readonly string[]): readonly string[] => (slot.hold === undefined ? names : names.filter((name) => name === slot.hold));
+  const sent = given?.open === true && holds(Object.keys(given.holds)).some((name) => texts(given.holds[name] as Node).includes(mark));
+  const region = surface.regions.find((each) => each.name === slot.region);
+  if (!sent || region === undefined) return [];
+  const drawn = region.holds.some((hold) => holds([hold.name]).length > 0 && texts(hold.tree).includes(mark));
+  const where = [slot.region, slot.hold].filter(Boolean).join("/");
+  return drawn ? [] : [say("frame.a_slot_takes_only_what_it_declares", `${collection}'s ${mark} was handed to ${where}, and is not drawn there`)];
+}
+
 /** A plugin's contribution is drawn in its slot and nowhere else; a plugin tab comes after the fixed tabs. */
 function checkSlots(context: StepContext, surface: LaidSurface, say: Say): Finding[] {
-  const findings = CONTRIBUTIONS.flatMap(({ collection, mark }) => strays(context, surface, collection, mark, say));
+  const findings = CONTRIBUTIONS.flatMap(({ collection, mark }) => [
+    ...strays(context, surface, collection, mark, say),
+    ...dropped(context, surface, collection, mark, say),
+  ]);
   const tabs = slotOf(context.frame, "ui-tab");
   const held = surface.regions.find((region) => region.name === tabs?.region)?.holds.find((hold) => hold.name === tabs?.hold);
   const order = held === undefined ? [] : tabsIn(held.tree);
@@ -171,6 +206,7 @@ function checkSurfaces(context: StepContext, surfaces: Readonly<Record<string, L
   const findings: Finding[] = [];
   for (const declared of context.renderer.surfaces) {
     if (!context.frame.surfaces.some((surface) => surface.name === declared)) findings.push(say("frame.a_surface_is_drawn_only_where_declared", `declares ${declared}, which the frame does not name`));
+    else if (surfaces[declared] === undefined) findings.push(say("frame.a_surface_is_drawn_only_where_declared", `declares ${declared}, and does not draw it`));
   }
   for (const [name, laid] of Object.entries(surfaces)) {
     const surface = context.frame.surfaces.find((each) => each.name === name);
@@ -195,9 +231,12 @@ export function checkStep(context: StepContext, surfaces: Readonly<Record<string
   const say = sayer(context);
   const window = surfaces.window;
   const expected = sectionOrder(context.frame, context.config);
+  // The window's own checks only for a renderer that declares one; not drawing it is checkSurfaces' finding.
+  if (!context.renderer.surfaces.includes("window") || window === undefined) return checkSurfaces(context, surfaces, say);
   return [
     ...checkSurfaces(context, surfaces, say),
-    ...(window === undefined ? [say("frame.every_region_sits_where_declared", "draws no window")] : [...checkRegions(context, window, say), ...checkSlots(context, window, say)]),
+    ...checkRegions(context, window, say),
+    ...checkSlots(context, window, say),
     ...(projection.sections.join() === expected.join()
       ? []
       : [say("frame.the_fixed_sections_come_first", `nav 1 offers [${projection.sections.join(", ")}]; the frame and the config give [${expected.join(", ")}]`)]),

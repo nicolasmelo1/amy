@@ -19,7 +19,7 @@ export interface Step {
 
 /**
  * The script every renderer is driven through, in order: start, select the
- * escalated record, toggle the panel, open the palette, press enter in the
+ * escalated record, open its menu and close it, toggle the panel, open the palette, press enter in the
  * thread, open the diff tab, and resize to the narrowest the frame allows.
  */
 export const SCRIPT: readonly Step[] = [
@@ -28,6 +28,8 @@ export const SCRIPT: readonly Step[] = [
     name: "select the escalated record",
     moves: [{ action: "nav.next" }, { action: "item.open", mouse: { gesture: "click", on: "row", args: { id: "AMY-102" } } }],
   },
+  { name: "open the row menu", moves: [{ action: "item.menu" }] },
+  { name: "close the row menu", moves: [{ action: "close-topmost" }] },
   { name: "toggle the panel", moves: [{ action: "panel.toggle", mouse: { gesture: "click-edge", on: "panel", args: {} } }] },
   { name: "open the palette", moves: [{ action: "palette.open" }] },
   {

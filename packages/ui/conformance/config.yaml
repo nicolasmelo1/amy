@@ -10,6 +10,7 @@ ui:
     normal:
       "<C-n>": nav.next
       o: item.open
+      M: item.menu
       "<leader>t": panel.toggle
       "<C-p>": palette.open
       q: close-topmost

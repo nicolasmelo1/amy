@@ -227,7 +227,17 @@ window is the window that was agreed, in every renderer, every time.
   relation between each pair — `left-of`, `above`, `overlaps` — and never a
   box. Two projections are compared by region and hold name, so the first
   difference is reported as a path like
-  `/surfaces/window/regions/canvas/holds/header/...`.
+  `/surfaces/window/regions/canvas/holds/header/...`. Only a label a person
+  reads — a primitive's text, a title, a placeholder — may differ by the
+  frame's abbreviation rule; an intent's action and arguments compare exactly.
+- **What the review added.** The script also opens the escalated row's menu
+  and closes it, so the plugin's `ui-action` is drawn and must be: a
+  contribution handed to its slot and not drawn there fails, as does one
+  drawn anywhere else. A region drawn outside the window fails even when
+  every relation still holds; a renderer whose window is not the narrowest
+  size after the resize fails; a declared surface must be drawn; and a
+  renderer that declares only the menu bar is measured on nothing of the
+  window.
 - **The golden**, `packages/ui/conformance/golden.json`, is the first
   renderer's projections, written by `amy-ui-conformance --approve`. It, the
   frame and the conformance config ship with `@amykit/ui` and are in
