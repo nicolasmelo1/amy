@@ -60,11 +60,14 @@ export default defineConfig({
       "@amykit/plugin-codex": resolve(here, "plugins/codex/src/index.ts"),
       "@amykit/plugin-hermes-agent": resolve(here, "plugins/hermes-agent/src/index.ts"),
       "@amykit/plugin-agent-relay": resolve(here, "plugins/agent-relay/src/index.ts"),
+      "@amykit/plugin-ui-stub": resolve(here, "plugins/ui-stub/src/index.ts"),
       "@amykit/cli": resolve(here, "packages/cli/src/index.ts"),
       // The runtimes before the package: an alias matches by prefix, so
       // `@amykit/ui` alone would swallow `@amykit/ui/jsx-runtime`.
       "@amykit/ui/jsx-runtime": resolve(here, "packages/ui/src/jsx-runtime.ts"),
       "@amykit/ui/jsx-dev-runtime": resolve(here, "packages/ui/src/jsx-dev-runtime.ts"),
+      "@amykit/ui/frame": resolve(here, "packages/ui/src/frame/index.ts"),
+      "@amykit/ui-conformance": resolve(here, "packages/ui-conformance/src/index.ts"),
       "@amykit/ui": resolve(here, "packages/ui/src/index.ts"),
       "@amykit/test-fixtures": resolve(here, "packages/test-fixtures/src/index.ts")
     },

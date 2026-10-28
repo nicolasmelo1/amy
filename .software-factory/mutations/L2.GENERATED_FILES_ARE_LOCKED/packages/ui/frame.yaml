@@ -1,0 +1,5 @@
+# The frame, edited without `sf lock` in the same commit: nav 2 moved to the
+# right, which no reviewer was shown as a locked change.
+version: 1
+regions:
+  nav2:    { place: right, spans: full-height, holds: [search, list, groom] }

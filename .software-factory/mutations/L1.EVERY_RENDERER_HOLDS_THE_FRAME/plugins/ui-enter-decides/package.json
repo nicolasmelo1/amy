@@ -1,0 +1,6 @@
+{
+  "name": "@amykit/plugin-ui-enter-decides",
+  "private": true,
+  "type": "module",
+  "amy": { "conformance": "./renderer.mjs" }
+}

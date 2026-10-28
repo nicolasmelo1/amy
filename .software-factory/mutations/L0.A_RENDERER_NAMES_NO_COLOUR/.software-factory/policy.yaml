@@ -1,0 +1,11 @@
+# Mutation fixture for L0.A_RENDERER_NAMES_NO_COLOUR. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.A_RENDERER_NAMES_NO_COLOUR
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.A_RENDERER_NAMES_NO_COLOUR:
+    enabled: true

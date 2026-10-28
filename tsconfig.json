@@ -32,6 +32,9 @@
       "path": "packages/ui"
     },
     {
+      "path": "packages/ui-conformance"
+    },
+    {
       "path": "packages/workflow-note-to-plan"
     },
     {
@@ -96,6 +99,9 @@
     },
     {
       "path": "plugins/slack"
+    },
+    {
+      "path": "plugins/ui-stub"
     }
   ]
 }

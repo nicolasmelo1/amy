@@ -1,0 +1,11 @@
+# Mutation fixture for L1.EVERY_RENDERER_HOLDS_THE_FRAME. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L1.EVERY_RENDERER_HOLDS_THE_FRAME
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L1.EVERY_RENDERER_HOLDS_THE_FRAME:
+    enabled: true
