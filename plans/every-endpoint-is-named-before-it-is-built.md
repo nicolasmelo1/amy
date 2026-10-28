@@ -14,7 +14,8 @@ file the build checks.
 
 `packages/server/surface.yaml` lists every operation — its `operationId`,
 domain, method and path, whether it is local-only, what it writes — and every
-fixed view — its `viewId`, params schema, slot and surface — each with the
+fixed view — its `viewId`, params schema, slot, surface and whether it is
+local-only — each with the
 plan that delivers it and its status, `planned` or `delivered`. It is locked like
 `openapi.json`, so changing the surface is a reviewed diff. A gate,
 `the-surface-is-the-registry`, compares it with the generated document on
@@ -28,7 +29,8 @@ every build:
   mounted, with the slot, surface and params schema the registry says, and a
   subscription to it with the registry's example params yields a snapshot;
   `listViews` answers no fixed view the registry does not list, and no
-  `planned` one;
+  `planned` one; a local-only view is answered on the socket and never over
+  TCP;
 - a `planned` entry names a row of `next-steps.md`; a `delivered` one names
   the design note under `docs/design/` its plan became, because a delivered
   plan leaves the table.
@@ -89,6 +91,7 @@ The fixed views, by the row that brings them:
 | `work.list` | `{ query? }` | `nav2` under Work | *the window is served* |
 | `workflows.list` | — | `nav2` under Workflows | *amy has a window* |
 | `workflows.handbrake` | — | canvas under Workflows | *amy has a window* |
+| `settings.config` | — | canvas under Settings; **local-only** | *amy has a window* |
 | `work.detail` | `{ profile, workId }` | canvas: header, machine strip, `timeline` tab | *the window is served* |
 | `work.log` | `{ profile?, workId? }` | `panel` | *amy has a window* |
 | `menubar.title`, `menubar.menu` | — | `menubar` surface | *amy lives in the menu bar* |
@@ -97,9 +100,13 @@ The fixed views, by the row that brings them:
 | `grooming.detail` | `{ groomingId }` | canvas under Work | *grooming happens in the window* |
 | `work.diff` | `{ profile, workId }` | `diff` tab | *the workplace opens where you work* |
 
-A `Button` in any view carries an intent as `{ operationId, params }`: the SDK
-calls that operation, typed. A view naming an `operationId` the registry does
-not list is a failing build.
+A `Button` or an `Input` in any view carries an intent in the envelope the
+vocabulary already ships and validates — `{ action, args }`
+(`isIntent` in `packages/ui/src/vocabulary.ts`) — with `action` the
+`operationId` to call and `args` its path parameters and body fields by name;
+an `Input`'s own value arrives under its `name`. The SDK calls that operation,
+typed. The vocabulary does not change. A view whose intent's `action` is not
+an `operationId` the registry lists is a failing build.
 
 ### `work` — one piece of work · *the window is served*
 
@@ -128,7 +135,7 @@ alone already shows live work.
 
 | Operation | Method and path | What it does |
 | :-- | :-- | :-- |
-| `getConfig` | `GET /v1/settings/config` | `{ text, revision }`, the revision being the text's digest. **Local-only**: a config names paths and channels. |
+| `getConfig` | `GET /v1/settings/config` | `{ text, revision }`, the revision being the text's digest. **Local-only**: a config names paths and channels. The window does not call it to draw Settings — it subscribes to `settings.config`, an `Input` named `text` holding the file with `saveConfig` as its intent and the revision in its args, and the last refusals as a `List` beneath it — so no renderer builds the editor itself. |
 | `saveConfig` | `PUT /v1/settings/config` | Request `{ text, baseRevision }`. Assembles it the way a boot does and saves only if it mounts. `200 { revision }`; `409 settings.stale_revision { current }`; `422 settings.would_not_mount { refusals[] }`. **Local-only.** Writes: `config.yaml`. |
 
 ### `actions` — what plugins add to a row · *the window takes plugins*

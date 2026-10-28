@@ -110,7 +110,8 @@ same change.
 
 ## The gates
 
-- **`ui-server`**, new, activated by `packages/ui/**` and the server's source.
+- **`ui-server`**, new, activated by `packages/ui/**`, `packages/server/src/**`
+  and `packages/cli/src/ui/**`.
   Its scenario starts `amy serve` on the conformance world under one amy home
   and connects a client from **a second home that holds no amy state at
   all**, over TCP, through a TCP forward on `127.0.0.1` standing in for a

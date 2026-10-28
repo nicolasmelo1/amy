@@ -92,12 +92,14 @@ a command already calls, so the window is never a second road to the tracker.
 - **`ui-window`**, new: the host's behaviour, observed. Its scenario installs
   amy, starts the daemon on the conformance world with fake tracker, forge and
   conversation, launches the packaged app and drives the script.
-  Activation: `packages/cli/src/ui/**`, `packages/ui/**`, `plugins/ui-desktop/src/**`.
+  Activation: `packages/server/src/**`, `packages/cli/src/ui/**`, `packages/ui/**`,
+  `plugins/ui-desktop/src/**` — the server is where every behaviour these
+  assertions exercise lives, so a change there expires the proof.
   Every `window.*` assertion below is one of its required assertions.
 
 ## What it delivers
 
-The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbrake`, `removeWorkflow`, `getConfig` and `saveConfig` — and the views `workflows.list`, `workflows.handbrake` and `work.log` (`work.list` and `work.detail` arrived with *the window is served*), from *every endpoint is named before it is built*, flipped to
+The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbrake`, `removeWorkflow`, `getConfig` and `saveConfig` — and the views `workflows.list`, `workflows.handbrake`, `work.log` and the local-only `settings.config` (`work.list` and `work.detail` arrived with *the window is served*), from *every endpoint is named before it is built*, flipped to
 `delivered` in `surface.yaml` in the same pull request.
 
 ## Acceptance criteria
