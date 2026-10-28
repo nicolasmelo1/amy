@@ -8,8 +8,8 @@ carries the host inside it, and a phone, which has no amy home, could never be
 one.
 
 The split OpenCode settled on is the right one here too: one headless server
-that owns the state and speaks a documented protocol, and any number of
-clients that speak only that protocol — `opencode serve` and
+that owns the state and publishes its contract as OpenAPI, and any number of
+clients that speak only that contract — `opencode serve` and
 `opencode attach <url>`. A client that never reads a file works the same on
 the machine amy runs on, on another machine through a tunnel, and on a phone.
 
@@ -23,14 +23,49 @@ calls — so a client is never a second road to a write the CLI cannot make. It
 is not the daemon: the loop advances work, the server shows it and relays
 intents, and either can restart without the other.
 
-**The protocol is a contract, locked like the event log's.**
-`packages/ui/protocol.json` declares the messages — the handshake, a
-subscription to a surface, a patch, an intent and its outcome, an error — and
-sits in `L2.GENERATED_FILES_ARE_LOCKED`'s scope beside `events.json`. A client
-opens with its protocol version, its renderer name, the surfaces it draws and
-the primitives it knows. The server answers with what it can serve that client
-and refuses, by name, a client missing a primitive a mounted view uses —
-compatibility asked as a capability, not guessed from a version.
+**The contract is OpenAPI, and the server writes it.** Nothing about the
+protocol is written twice, and nothing about it is written by hand:
+
+1. **The server declares each route and each message once**, as a Zod schema
+   beside the code that answers it. The request, the response, every event on
+   the stream and every error are among them.
+2. **The build writes the document.** `npm run build` generates
+   `packages/ui/openapi.json` from those schemas (Zod's own JSON Schema output
+   through `zod-openapi`), as OpenAPI 3.1. Patches stream as Server-Sent
+   Events and intents go up as plain requests, so all of it is describable in
+   OpenAPI: every stream event is a named schema in a `oneOf`, which every
+   generator types. When the generator reads OpenAPI 3.2's `itemSchema` for
+   event streams, the stream moves to it.
+3. **The build writes the SDK.** `@amykit/ui-client` is generated from that
+   document by `openapi-typescript`, with `openapi-fetch` as its only runtime,
+   and adds by hand only what a generator cannot: reconnecting the stream and
+   applying patches. It exports the contract's hash.
+4. **A renderer speaks only through the SDK.** No renderer calls `fetch` or
+   opens an `EventSource` itself, and a rule keeps it so.
+
+So a change to a response on the server regenerates the document, which
+regenerates the SDK's types, which breaks the type check of every renderer
+that relied on the old shape — in the same `npm run build`, with nothing to
+run by hand. Both generated files are committed, so a protocol change is a
+diff a reviewer sees. Both are also in `L2.GENERATED_FILES_ARE_LOCKED`'s
+scope beside `events.json`, and the gate regenerates them and fails on any
+difference, the way `docs:check` does for the generated docs.
+
+**The body is checked against the document, not against the code that wrote
+it.** In tests, and in the gate's scenario, every response and every event the
+server sends is validated against `openapi.json` — the generated document,
+because validating against the Zod source would only prove the source agrees
+with itself. Every route carries an example, and the examples are validated
+too. A field the document requires and the server forgot is a red build, not a
+blank in somebody's window.
+
+**The handshake checks the contract and what the client can draw.** A client
+opens with the contract hash its SDK was generated from, its renderer name,
+the surfaces it draws and the primitives it knows. A different hash is refused
+by name, telling the client to update — a built app on a phone cannot run
+`npm run build`. A client missing a primitive a mounted view uses is refused
+naming the primitive: compatibility asked as a capability, not guessed from a
+version.
 
 **A client reads nothing but the server.** No renderer imports a store, a
 queue, the log or a path under amy's home, and a rule keeps it so.
@@ -60,9 +95,15 @@ same change.
   Its scenario starts `amy serve` on the conformance world under one amy home
   and connects a client from **a second home that holds no amy state at
   all** — a remote client in every way that matters — and drives the frame's
-  script through the protocol alone.
+  script through the generated SDK alone, validating every body it receives
+  against `openapi.json`.
 - **`a-client-reads-only-the-server`**, a local layer-0 rule with a mutation
   fixture: a renderer importing a store, the event log or `node:fs` is refused.
+- **`a-client-speaks-only-through-the-sdk`**, the same kind: a renderer calling
+  `fetch`, opening an `EventSource` or a socket itself is refused.
+- **The generated files are checked like the docs are.** The gate regenerates
+  `openapi.json` and the SDK and fails on any difference from what is
+  committed.
 - From here on, `ui-frame`'s script reaches every renderer through a server.
 
 ## Acceptance criteria
@@ -80,14 +121,33 @@ same change.
       (proof: deferred:assertion:server.a_remote_client_gets_no_shell)
 - [ ] A client missing a primitive a mounted view uses is refused at the
       handshake, naming the primitive (proof: deferred:test:packages/ui/tests/handshake.test.ts)
-- [ ] Editing `protocol.json` without `sf lock` fails the build
+- [ ] `npm run build` writes `openapi.json` and the SDK, and nothing else has
+      to be run (proof: deferred:test:packages/ui/tests/contract.test.ts)
+- [ ] Removing a field from a server response turns a renderer that reads it
+      red in the type check, in the same build
+      (proof: deferred:test:a mutation fixture that drops a response field)
+- [ ] A committed `openapi.json` or SDK that differs from what the build
+      generates fails the gate (proof: deferred:assertion:server.the_contract_is_what_the_code_says)
+- [ ] Every response and every stream event in the scenario validates against
+      `openapi.json`, and a server sending a body missing a required field
+      fails it (proof: deferred:assertion:server.every_body_honours_the_contract)
+- [ ] Every route's example validates against its own schema
+      (proof: deferred:test:packages/ui/tests/contract.test.ts)
+- [ ] A client whose SDK was generated from another contract is refused at the
+      handshake, naming both hashes (proof: deferred:test:packages/ui/tests/handshake.test.ts)
+- [ ] Editing `openapi.json` without `sf lock` fails the build
       (proof: deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED)
+- [ ] A renderer calling `fetch` or opening an `EventSource` itself fails the
+      build, and the rule trips on its fixture
+      (proof: deferred:test:mutation fixture for a-client-speaks-only-through-the-sdk)
 - [ ] A renderer importing a store or `node:fs` fails the build, and the rule
       trips on its fixture (proof: deferred:test:mutation fixture for a-client-reads-only-the-server)
 - [ ] An intent leaves the same record, queue and log its command leaves
       (proof: deferred:assertion:server.an_intent_is_its_command)
 
-**Exit condition:** `amy serve` runs on one machine; on a second, with no amy
+**Exit condition:** a field removed from a server response turns the build
+red in the renderer that read it, before anything runs; and with it restored,
+`amy serve` runs on one machine; on a second, with no amy
 state and only the server's URL and token, `amy ui text --server <url>` shows
 the first machine's work moving, and a `poke` from it moves the record there —
 while a shell, asked for from the second machine, is not on offer.

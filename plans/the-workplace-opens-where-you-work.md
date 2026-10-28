@@ -21,7 +21,7 @@ able to run where the window is.
 The ones that ship:
 
 - **Terminal.** In the desktop app it is a terminal in the canvas: xterm.js
-  drawing, over the protocol, a PTY the server runs in the checkout. That is a
+  drawing, through the SDK, a PTY the server runs in the checkout. That is a
   shell, so it is its own plugin, `@amykit/ui-shell`, and never mounted by
   default, and the server
   offers it only to a client that connected over loopback (*the window is

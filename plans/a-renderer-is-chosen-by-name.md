@@ -43,7 +43,9 @@ that may have no screen.
 **`amy ui build <name>` builds a renderer that ships as an app.** A desktop
 app is packaged, a phone app is compiled — neither can load a package at run
 time — so the renderer that needs it declares a build, and the command runs it
-with the renderer-side contributions installed beside it: themes, and the
+against the current SDK — so the app carries the contract hash it was built
+for, and the server tells it when it is out of date — with the renderer-side
+contributions installed beside it: themes, and the
 client half of any opener. What a build never needs is the plugins that
 contribute *views*: views are computed on the server and arrive as data, so a
 phone built once shows a plugin installed on the server a month later. Only a

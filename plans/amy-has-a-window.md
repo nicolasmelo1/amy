@@ -71,7 +71,7 @@ The app is `@amykit/ui-desktop`, contributing the renderer named `desktop`
 (*a renderer is chosen by name*): `amy ui desktop` opens it, and so does
 `amy ui` once `ui.default` says so. It is **a client and nothing else**
 (*the window is served*): it connects to the local server, or to the one
-`ui.server` names, and draws what the protocol sends. It reads no file under
+`ui.server` names, and draws what the server sends, through the generated SDK. It reads no file under
 amy's home, so the same app shows the work on this machine or on one reached
 through a tunnel. `amy ui build desktop` packages it as a macOS app.
 
