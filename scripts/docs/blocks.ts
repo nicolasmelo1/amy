@@ -13,6 +13,7 @@ import type {
   MountedFact,
   PackageFact,
   ReleaseFacts,
+  RuntimeFacts,
   Setting,
   Skill,
   WorkflowFact,
@@ -30,6 +31,10 @@ export function blocksFrom(facts: Facts): Record<string, string> {
   return {
     "cli-global": cliGlobal(facts.cli),
     "cli-commands": cliCommands(facts.cli),
+    "readme-node-badge": readmeNodeBadge(facts.runtime),
+    "readme-node-version": readmeNodeVersion(facts.runtime),
+    "readme-commands": readmeCommands(facts.cli),
+    "readme-factory": readmeFactory(facts.factory),
     "cli-index": cliIndex(facts.cli),
     "core-actions": coreActions(facts.core, facts.packages),
     "core-contracts": coreContracts(facts.core),
@@ -57,6 +62,36 @@ export function blocksFrom(facts: Facts): Record<string, string> {
     "config-example": configExample(facts.config),
     "roster-example": rosterExample(facts.config),
   };
+}
+
+/** The badge is derived from npm's own admission rule, not a second claim. */
+export function readmeNodeBadge(runtime: RuntimeFacts): string {
+  const version = runtime.node.replace(/^>=/, "").replace(/\.0$/, "");
+  return `<img alt="Node ${version}+" src="https://img.shields.io/badge/node-${version}+-E424CC?style=flat-square&labelColor=1B0A19">`;
+}
+
+/** The prose form used where a badge would be unreadable or inaccessible. */
+export function readmeNodeVersion(runtime: RuntimeFacts): string {
+  return `Node ${runtime.node.replace(/^>=/, "").replace(/\.0$/, "")} or later runs the command.`;
+}
+
+/** The front door shows only top-level commands; the reference holds syntax. */
+export function readmeCommands(cli: CliFacts): string {
+  return table(
+    ["Command", "What it does"],
+    cli.commands
+      .filter((command) => command.path.length === 1)
+      .map((command) => [`\`amy ${command.path[0]}\``, command.description]),
+  );
+}
+
+/** Counts are rendered from the policy that the factory actually enforces. */
+export function readmeFactory(factory: FactoryFacts): string {
+  return [
+    `This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **${factory.rules.filter((rule) => rule.enabled).length} rules**, and \`sf verify\` proves every one fires against a deliberately broken fixture.`,
+    "",
+    `**${factory.gates.length} gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.`,
+  ].join("\n");
 }
 
 function configFields(config: ConfigFacts): string {

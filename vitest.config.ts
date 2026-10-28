@@ -9,7 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // shape.
 export default defineConfig({
   test: {
-    include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts"],
+    include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts", "scripts/docs/tests/**/*.test.ts"],
 
     // Named explicitly, or the default pattern walks
     // `.software-factory/mutations` as well, where the repositories are

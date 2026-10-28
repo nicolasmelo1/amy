@@ -4,6 +4,9 @@
   "description": "The amy command line: one install per machine, reached from any harness.",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "author": "Nicolas Melo",
   "homepage": "https://github.com/nicolasmelo1/amy#readme",
   "bugs": "https://github.com/nicolasmelo1/amy/issues",

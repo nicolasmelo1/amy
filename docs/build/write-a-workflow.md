@@ -35,9 +35,13 @@ it later is a scoped name, dropping that flag and `npm publish` in the same
 directory, rather than a restructuring.
 
 What it writes is one `index.ts` holding both halves, typed against
-`@amykit/core`. Node strips the types and runs it from that directory as it is,
-which takes Node 22.18 or later; `npm run typecheck` is `tsc` holding it to the
-core's contract. Node refuses TypeScript under `node_modules`, so what `npm
+`@amykit/core`. Node strips the types and runs it from that directory as it is.
+<!-- amy:generated readme-node-version -->
+
+Node 22.18 or later runs the command.
+
+<!-- amy:end readme-node-version -->
+`npm run typecheck` is `tsc` holding it to the core's contract. Node refuses TypeScript under `node_modules`, so what `npm
 publish` or `amy add <path>` takes is what `npm run build` compiles into `dist/`,
 and `prepack` runs that for you. Everything below is the
 same seven things with the files split — what that directory

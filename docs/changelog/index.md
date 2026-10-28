@@ -146,6 +146,14 @@ window is a locked file and every renderer is measured against it.
 - Three local rules: `L0.A_RENDERER_ONLY_TRANSLATES`,
   `L0.A_RENDERER_NAMES_NO_COLOUR` and `L1.EVERY_RENDERER_HOLDS_THE_FRAME`.
 
+### **The README now derives its mutable facts from the code and policy that own them.**
+
+`patch` · `@amykit/cli`
+
+The published command declares its Node requirement to npm. The README's Node
+badge, command table and factory counts are generated with the rest of the
+documentation, so `npm run docs:check` names the README when one falls behind.
+
 <!-- amy:end changelog-unreleased -->
 
 ## Released

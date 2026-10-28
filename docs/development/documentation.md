@@ -116,9 +116,9 @@ Two things are errors rather than warnings:
 generated from the package itself and carry a banner saying so. Twenty
 hand-written READMEs is twenty things that quietly stop being true.
 
-**The root `README.md` is not**, deliberately. It is the front door, it is
-argued rather than listed, and generating it would cost the one piece of writing
-that makes anybody try this at all.
+**The root `README.md` keeps its pitch as prose.** Its command table, factory
+counts and Node requirement are generated blocks: the front door may persuade,
+but it must not hand-copy a fact the code already knows.
 
 **`docs/manifest.json`** — see below.
 

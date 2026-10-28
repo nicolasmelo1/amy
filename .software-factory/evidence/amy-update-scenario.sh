@@ -114,7 +114,11 @@ export npm_config_cache="$work/npm-cache"
 # A published version must be seen on the next question, the way it is on a
 # registry nobody has cached.
 export npm_config_prefer_online=true
+# npm reads configuration variables case-insensitively. Pin both spellings so a
+# caller's configured global prefix cannot make this isolated machine install
+# into the agent's own prefix instead.
 export NPM_CONFIG_PREFIX="$work/global"
+export npm_config_prefix="$work/global"
 
 # The CLI, installed the way every guide says.
 npm install --global --no-audit --no-fund --loglevel=error "@amykit/cli@$current" >/dev/null
