@@ -121,3 +121,27 @@ describe("what JSON reads is what the checks read", () => {
     expect(() => validate({ type: "Stack", props, children: [] })).toThrow("Stack props are not a JSON value");
   });
 });
+
+describe("what a check reads is what JSON sends", () => {
+  const hidden = (target: object, key: string, value: unknown) =>
+    Object.defineProperty(target, key, { value, enumerable: false });
+
+  it("refuses a required property JSON would not send", () => {
+    const props = hidden({}, "href", "https://example.test");
+
+    expect(() => validate({ type: "Link", props, children: ["docs"] })).toThrow("Link props are not a JSON value");
+  });
+
+  it("refuses a node whose own fields JSON would not send", () => {
+    const node = hidden({ type: "Stack", props: {} }, "children", []);
+
+    expect(() => validate(node)).toThrow("root: carries a property JSON would not send");
+  });
+
+  it("refuses a property keyed by a symbol, and a hidden one anywhere in a value", () => {
+    expect(isJson({ [Symbol("x")]: 1 })).toBe(false);
+    expect(isJson({ args: hidden({}, "workId", "A-1") })).toBe(false);
+    expect(isJson(hidden(["a"], "extra", "b"))).toBe(false);
+    expect(isJson(["a", "b"])).toBe(true);
+  });
+});

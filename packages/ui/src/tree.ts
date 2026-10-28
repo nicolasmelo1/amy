@@ -1,4 +1,4 @@
-import { isJson, isPlainObject, type Json } from "./json.js";
+import { isJson, isPlainObject, onlyWhatJsonSends, type Json } from "./json.js";
 import { fitsPropType, PRIMITIVES, VOCABULARY, type Primitive } from "./vocabulary.js";
 
 /**
@@ -102,6 +102,7 @@ export function element(type: string, props: Readonly<Record<string, unknown>> =
 function validateAt(value: unknown, at: string): Child {
   if (typeof value === "string") return value;
   if (typeof value !== "object" || value === null || Array.isArray(value)) return refuse(at, "is not a primitive or text");
+  if (!onlyWhatJsonSends(value)) return refuse(at, "carries a property JSON would not send");
   const { type, props, children, ...rest } = value as Record<string, unknown>;
   const extra = Object.keys(rest);
   if (extra.length > 0) refuse(at, `carries ${extra.map((key) => `\`${key}\``).join(", ")}, which no primitive has`);

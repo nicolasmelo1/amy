@@ -23,6 +23,7 @@ function jsonOnPath(value: unknown, path: Set<object>): boolean {
   if (typeof value !== "object" || path.has(value)) return false;
   // A `toJSON` hook is what `JSON.stringify` sends instead of the value itself.
   if (typeof (value as { toJSON?: unknown }).toJSON === "function") return false;
+  if (!onlyWhatJsonSends(value)) return false;
   const items = Array.isArray(value) ? arrayItems(value) : isPlainObject(value) ? Object.values(value) : undefined;
   if (!items) return false;
   path.add(value);
@@ -42,6 +43,17 @@ function arrayItems(value: readonly unknown[]): readonly unknown[] | undefined {
   const items: unknown[] = [];
   for (let i = 0; i < value.length; i++) items.push(value[i]);
   return items;
+}
+
+/**
+ * Whether every own property of an object is one `JSON.stringify` sends: a
+ * non-enumerable one passes a check that reads it and is gone on arrival.
+ * An array's own `length` is the one exception, and is not sent either.
+ */
+export function onlyWhatJsonSends(value: object): boolean {
+  if (Object.getOwnPropertySymbols(value).length > 0) return false;
+  const names = Object.getOwnPropertyNames(value).length;
+  return names === Object.keys(value).length + (Array.isArray(value) ? 1 : 0);
 }
 
 /** Whether a value is an object literal's kind of object, not a date, a map or a class instance. */
