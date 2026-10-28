@@ -351,6 +351,12 @@ describe("each assertion fails the renderer that breaks it", () => {
     expect(fs.readFileSync(FILES.golden, "utf-8")).toBe(before);
   });
 
+  it("not a binding that begins with 0, which takes no count and still works on its own", () => {
+    const zero = { ...config, keys: { ...config.keys, normal: { ...config.keys.normal, "0": "nav.first" } } };
+
+    expect(conform(frame, [desktop], zero, golden).findings).toEqual([]);
+  });
+
   it("no renderer at all, which passes nothing", () => {
     expect(conform(frame, [], config, golden).assertions.every((each) => each.status === "failed")).toBe(true);
   });

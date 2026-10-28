@@ -30,7 +30,8 @@ export function audit(frame: Frame, renderer: ConformanceRenderer, config: Confo
     for (const binding of keymap.bindings[mode]) {
       const session = fresh(mode);
       expect(`${binding.keys.join("")} in ${mode} mode, on its own,`, binding.keys.flatMap((key) => session.press(key)), binding.action, {});
-      if (mode !== "normal") continue;
+      // After a count, 0 is one more digit of it, as in Neovim: a binding that begins with 0 takes no count.
+      if (mode !== "normal" || binding.keys[0] === "0") continue;
       const counted = fresh(mode);
       const pressed = [String(COUNT), ...binding.keys].flatMap((key) => counted.press(key));
       expect(`${COUNT}${binding.keys.join("")} in normal mode`, pressed, binding.action, { count: COUNT });
