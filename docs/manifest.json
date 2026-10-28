@@ -7,7 +7,7 @@
     "description": "A state machine you leave running. Everything in it is a plugin, and the workflow is yours.",
     "repository": "https://github.com/nicolasmelo1/amy",
     "license": "MIT",
-    "node": ">=24"
+    "node": ">=22.18.0"
   },
   "nav": [
     {
@@ -393,6 +393,11 @@
           "description": ""
         },
         {
+          "title": "The README counts nothing by hand",
+          "path": "/design/the-readme-counts-nothing-by-hand",
+          "description": ""
+        },
+        {
           "title": "The relay is proven end to end",
           "path": "/design/the-relay-is-proven-end-to-end",
           "description": ""
@@ -704,7 +709,7 @@
       "description": "Your process, as a directory of yours — the pure decision, the runtime, and the walkthrough test that is the only real proof.",
       "group": "Build your own",
       "order": 2,
-      "generated": false,
+      "generated": true,
       "headings": [
         {
           "depth": 2,
@@ -886,6 +891,11 @@
           "depth": 3,
           "title": "**The frame is closed.**",
           "slug": "the-frame-is-closed"
+        },
+        {
+          "depth": 3,
+          "title": "**The README now derives its mutable facts from the code and policy that own them.**",
+          "slug": "the-readme-now-derives-its-mutable-facts-from-the-code-and-policy-that-own-them"
         },
         {
           "depth": 2,
@@ -2793,6 +2803,33 @@
           "depth": 2,
           "title": "Acceptance criteria",
           "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-readme-counts-nothing-by-hand",
+      "file": "docs/design/the-readme-counts-nothing-by-hand.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-readme-counts-nothing-by-hand.md",
+      "title": "The README counts nothing by hand",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "Proof",
+          "slug": "proof"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance",
+          "slug": "acceptance"
         }
       ]
     },
@@ -8982,6 +9019,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-readme-counts-nothing-by-hand",
+        "title": "**The README now derives its mutable facts from the code and policy that own them.**",
+        "body": "The published command declares its Node requirement to npm. The README's Node\nbadge, command table and factory counts are generated with the rest of the\ndocumentation, so `npm run docs:check` names the README when one falls behind.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       }
     ],
     "changelogs": [
@@ -9130,6 +9179,10 @@
     "plugin-index",
     "plugin-settings",
     "port-kinds",
+    "readme-commands",
+    "readme-factory",
+    "readme-node-badge",
+    "readme-node-version",
     "roster-example",
     "skills-index",
     "workflow-index",

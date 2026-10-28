@@ -10,6 +10,7 @@ import { packageFacts } from "./sources/packages.js";
 import { factoryFacts } from "./sources/factory.js";
 import { configFacts } from "./sources/config.js";
 import { releaseFacts } from "./sources/releases.js";
+import { runtimeFacts } from "./sources/runtime.js";
 import { manifestFrom } from "./render/manifest.js";
 import { readmesFrom } from "./render/readme.js";
 import type { Facts, GeneratedFile } from "./lib/facts.js";
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
   const facts: Facts = {
     core: coreFacts(),
     cli: cliFacts(),
+    runtime: runtimeFacts(),
     packages: await packageFacts(),
     factory: factoryFacts(),
     config: configFacts(),
@@ -128,6 +130,14 @@ function spliceDocs(blocks: Record<string, string>, problems: string[]): Generat
     problems.push(...outcome.problems);
     written.push({ file: `docs/${relative}`, text: outcome.text });
   }
+
+  const root = "README.md";
+  const rootBefore = fs.readFileSync(path.join(ROOT, root), "utf8");
+  const rootNamed = blocksIn(rootBefore);
+  for (const name of rootNamed) placed.add(name);
+  const rootOutcome = splice(rootBefore, blocks, root);
+  problems.push(...rootOutcome.problems);
+  written.push({ file: root, text: rootOutcome.text });
 
   for (const name of Object.keys(blocks).sort()) {
     if (!placed.has(name)) {

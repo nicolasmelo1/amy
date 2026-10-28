@@ -57,7 +57,7 @@ export function manifestFrom(
           "A state machine you leave running. Everything in it is a plugin, and the workflow is yours.",
         repository: REPOSITORY,
         license: "MIT",
-        node: ">=24",
+        node: facts.runtime.node,
       },
       nav: navFrom(pages),
       pages,

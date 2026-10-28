@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "installed-binary",
-  "implementation_sha256": "9a77f846b2aaee789a4968fac928596038fac33fd742f93efcf296b708fb9075",
+  "implementation_sha256": "9693a57b8c67de37326b059a6c57413a9e3a28df1d4d5faac2520edeca48c481",
   "runs": [
     {
       "scenario": "installed-binary",

@@ -79,6 +79,11 @@ export interface CliFacts {
   commands: CliCommand[];
 }
 
+/** The runtime requirement the published command declares to npm. */
+export interface RuntimeFacts {
+  node: string;
+}
+
 export interface Setting {
   name: string;
   type: string;
@@ -238,6 +243,7 @@ export interface Skill {
 export interface Facts {
   core: CoreFacts;
   cli: CliFacts;
+  runtime: RuntimeFacts;
   packages: PackageFact[];
   factory: FactoryFacts;
   config: ConfigFacts;
