@@ -20,13 +20,18 @@ able to run where the window is.
 
 The ones that ship:
 
-- **Terminal.** In the browser it is a terminal in the canvas: xterm.js drawing, a PTY on the
-  host, over the window's socket. That is a shell reachable from a browser, so
-  it is its own plugin, never mounted by default, and refuses to start if the
-  window is listening on anything but loopback. Its terminal-renderer half —
+- **Terminal.** In the desktop app it is a terminal in the canvas: xterm.js
+  drawing, through the SDK, a PTY the server runs in the checkout. That is a
+  shell, so it is its own plugin, `@amykit/ui-shell`, and never mounted by
+  default, and the server
+  offers it only on its local socket (*the window is served*), never over
+  TCP — so a client through a tunnel, which reaches the server from
+  `127.0.0.1` with a valid token, still never sees it. Its terminal-renderer
+  half —
   suspending the window for `$EDITOR` and resuming on exit — ships with *the
   window fits a terminal*, because that renderer does not exist before it.
-- **Editors**: `code <path>` and `cursor <path>`, run on the host.
+- **Editors**: `code <path>` and `cursor <path>`, run on the server's machine,
+  so offered only on the local socket, like the shell.
 - **Claude Code**: `claude`, started in the checkout, in the terminal opener.
 
 ## The gates
@@ -36,7 +41,15 @@ The openers are `ui-window`'s: the conformance world's `$EDITOR` and `code`
 are fake commands that record the directory they were started in and exit,
 so "it opened the right checkout" is a line in a file.
 
+## What it delivers
+
+The `workplace` domain — `listOpeners`, `runOpener`, `openShell`, `writeShell`, `resizeShell` and `closeShell` — and the view `work.diff`, from *every endpoint is named before it is built*, flipped to
+`delivered` in `surface.yaml` in the same pull request.
+
 ## Acceptance criteria
+
+- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
+      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] The `Diff` tab holds what `git diff <base>...` prints in the checkout
       (proof: deferred:test:packages/cli/tests/ui-diff.test.ts)
@@ -46,10 +59,11 @@ so "it opened the right checkout" is a line in a file.
       (proof: deferred:assertion:window.an_opener_starts_in_the_checkout)
 - [ ] An opener that needs the host is not offered in a window on another
       machine (proof: deferred:test:packages/cli/tests/ui-openers.test.ts)
-- [ ] The browser terminal refuses to mount when the host is not on loopback
-      (proof: deferred:test:plugins/ui-terminal/tests/plugin.test.ts)
+- [ ] The terminal opener is offered only when its plugin is mounted, only
+      in the desktop app, and only on the local socket — a tunnelled client with
+      the token does not get it (proof: deferred:test:plugins/ui-shell/tests/plugin.test.ts)
 
 **Exit condition:** from one record, a person reads its diff in the window,
-opens `nvim` on its checkout in the browser terminal, and a second person on the same
+opens `nvim` on its checkout in the app's terminal, and a second person on the same
 install opens the same checkout in VS Code — with neither of them typing a
 path.

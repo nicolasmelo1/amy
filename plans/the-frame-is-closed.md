@@ -1,15 +1,15 @@
 # The frame is closed
 
-amy is about to have a window drawn by more than one renderer — a browser
-first, a terminal next, a phone some day — with plugins adding to it. Nothing
+amy is about to have a window drawn by more than one renderer — a desktop
+app first, a terminal next, a phone some day — with plugins adding to it. Nothing
 in this repository, nor in the factory that gates it, has ever had a window to
 check. Every gate here observes an effect: a queue claims once, a push is a
 fast-forward. None of them can say that the terminal put the work list on the
-left and the browser put it on the right, and that is exactly how two
+left and the desktop app put it on the right, and that is exactly how two
 renderers drift: each one reasonable, together two products.
 
 A screenshot comparison is the reflex, and it is not a gate. Fonts, hinting
-and antialiasing differ by machine and by browser build, so a pixel diff is
+and antialiasing differ by machine and by engine build, so a pixel diff is
 either red for no reason or loosened until it is green for every reason. What
 must not drift is not pixels. It is **which regions exist, where each sits
 relative to the others, what each one holds and in what order, and what each
@@ -31,17 +31,69 @@ regions:
 sections:
   fixed: [work, workflows, settings]     # in this order unless config reorders
   extended-by: ui-nav                    # plugin sections come after the fixed
-keys:
-  "mod+k": palette.open
-  "mod+j": panel.toggle
-  escape: close-topmost
-  enter-in-thread: post-discussion       # never a decision
+actions:                                 # what a key or a click can do
+  [nav.next, nav.prev, nav.first, nav.last, focus.left, focus.right,
+   section.next, section.prev, section.select, tab.next, tab.prev,
+   tab.select, item.open, item.menu, nav.scroll, canvas.scroll,
+   search, palette.open, panel.toggle, close-topmost, command,
+   mode.insert, mode.normal, thread.post-discussion, thread.decide]
+keys:                                    # the default keymap; config remaps it
+  normal:
+    j: nav.next
+    k: nav.prev
+    gg: nav.first
+    G: nav.last
+    h: focus.left
+    l: focus.right
+    "]s": section.next
+    "[s": section.prev
+    gt: tab.next
+    gT: tab.prev
+    "<CR>": item.open
+    "<leader>m": item.menu
+    /: search
+    ":": command
+    "<leader>p": panel.toggle
+    "<C-k>": palette.open                # mod+k on the desktop
+    i: mode.insert
+    "<Esc>": close-topmost
+  insert:                                # a composer has focus
+    "<CR>": thread.post-discussion       # never a decision
+    "<Esc>": mode.normal
+  leader: "<Space>"
+mouse:                                   # every mouse gesture is an action too
+  click: { row: item.open, tab: tab.select, section: section.select }
+  wheel: { list: nav.scroll, canvas: canvas.scroll }
+  "click-edge": { panel: panel.toggle }
+surfaces:                                # what a renderer may declare it draws
+  window:  { holds: all }
+  menubar: { holds: [Text, Badge, List, Link, Button] }
 slots:
   canvas.tabs: { fixed: [timeline, diff], extended-by: ui-tab }
   nav2.row:    { extended-by: ui-decoration }
   nav2.menu:   { extended-by: ui-action }
   panel:       { extended-by: ui-panel }
 ```
+
+**Navigation is Neovim's, and a person's own.** The keymap is modal the way
+Neovim is: normal mode moves and acts, a focused composer is insert mode, and
+sequences, counts (`5j`) and a leader key work as they do there. It is a
+default, not a law: `ui.keys` in `config.yaml` remaps any key to any declared
+action in Neovim's own key notation, and a remap to an action the frame does
+not declare, or two keys bound ambiguously, is refused at boot by name. The
+mouse reaches the same actions, so a click and a key can never disagree about
+what a row does. The keymap belongs to the frame, not to a renderer: the
+desktop app and the terminal answer the same keys the same way.
+
+**A surface is a place the frame draws.** The window is one; the menu bar
+(*amy lives in the menu bar*) is another, with its own closed subset of
+primitives. The frame names surfaces, never renderers: a renderer — shipped
+here or written by anybody — declares in its `ui-renderer` contribution which
+surfaces it draws (*a renderer is chosen by name*), and the gate measures
+exactly those. The terminal declares only `window`, so its missing menu bar
+is a declaration the gate reads, not an absence it has to forgive; a renderer
+nobody here has heard of declares what it draws and is measured on it, with
+no edit to the locked frame.
 
 It is in `L2.GENERATED_FILES_ARE_LOCKED`'s scope, beside `events.json`. Moving
 a region, adding one or giving a key a second meaning is an edit plus an
@@ -54,14 +106,23 @@ A **conformance world**: a fixed set of records in fixed states across two
 profiles, a fixed clock, a fixed log, one plugin contributing one of each
 collection. And a fixed **script** over it: start, select the escalated
 record, toggle the panel, open the palette, press enter in the thread, open the
-diff tab, resize to the narrowest width the frame allows.
+diff tab, resize to the narrowest width the frame allows — once driven by the
+default keys, once by a remapped keymap from the conformance config, and once
+by the mouse. The three runs must yield the same projections.
+
+Once *the window is served* lands, the script reaches every renderer through
+a server, and once *a renderer is chosen by name* lands, the harness finds the
+renderers through the `ui-renderer` collection rather than a list of its own.
 
 After every step the harness — not the renderer — reads a **projection** out
 of what the renderer actually laid out:
 
-- **The browser** renders the built bundle in a pinned headless Chromium at a
-  fixed viewport. Each region carries `data-amy-region`, each primitive
+- **The desktop app** is launched packaged, headless, at a fixed window size,
+  and measured in its own Chromium — the engine that ships, the same on every
+  platform. Each region carries `data-amy-region`, each primitive
   `data-amy-primitive`; the harness reads their bounding boxes and the tree.
+  The menu bar's projection is the title and menu template the app handed the
+  system.
 - **The terminal** renders the built Ink plugin into a fixed 120×40 stream.
   The harness reads each region's computed Yoga box — the same layout engine
   React Native uses — in cells.
@@ -128,6 +189,13 @@ window is the window that was agreed, in every renderer, every time.
       config gives, and plugin sections after (proof: deferred:assertion:frame.the_fixed_sections_come_first)
 - [ ] At the narrowest width the frame allows, every region is still drawn
       (proof: deferred:assertion:frame.no_region_is_lost_at_the_narrowest_width)
+- [ ] The script driven by the default keys, by a remapped keymap and by the
+      mouse yields the same projections in every renderer
+      (proof: deferred:assertion:frame.keys_remaps_and_the_mouse_agree)
+- [ ] A remap to an undeclared action, or an ambiguous binding, is refused at
+      boot by name (proof: deferred:test:packages/ui/tests/keymap.test.ts)
+- [ ] A renderer drawing a surface it did not declare fails
+      (proof: deferred:assertion:frame.a_surface_is_drawn_only_where_declared)
 - [ ] The same script run twice yields byte-identical projections
       (proof: deferred:assertion:frame.a_projection_is_deterministic)
 - [ ] Each of the four rules above trips on its fixture under `sf verify`
