@@ -68,3 +68,60 @@ describe("a view draws nothing", () => {
     expect(refused(source)).toBe(false);
   });
 });
+
+/** A package's compiler options, its own over the ones it extends. */
+function compilerOptions(file: string): Record<string, unknown> {
+  const config = JSON.parse(fs.readFileSync(file, "utf-8")) as { extends?: string; compilerOptions?: Record<string, unknown> };
+  const inherited = config.extends ? compilerOptions(path.resolve(path.dirname(file), config.extends)) : {};
+  return { ...inherited, ...config.compilerOptions };
+}
+
+/** What a package's JSX compiles against, or nothing when it compiles no JSX. */
+function jsxRuntime(options: Record<string, unknown>): string | undefined {
+  const jsx = options.jsx;
+  if (jsx === undefined || jsx === "preserve") return undefined;
+  if (jsx === "react-jsx" || jsx === "react-jsxdev") return typeof options.jsxImportSource === "string" ? options.jsxImportSource : "react";
+  return "react";
+}
+
+describe("a view compiles against amy's runtime, never a renderer's by default", () => {
+  const configs = ["packages", "plugins"].flatMap((root) =>
+    fs
+      .readdirSync(path.join(repo, root))
+      .map((name) => path.join(repo, root, name, "tsconfig.json"))
+      .filter((file) => fs.existsSync(file)),
+  );
+
+  it("finds the packages it reads", () => {
+    expect(configs.map((file) => path.relative(repo, file))).toContain("packages/cli/tsconfig.json");
+  });
+
+  // The text rule sees a renderer named; it cannot see one left implied,
+  // which is what `react-jsx` without `jsxImportSource` is.
+  it("leaves no package compiling JSX against React by leaving the source out", () => {
+    const offending = configs
+      .map((file) => [path.relative(repo, file), jsxRuntime(compilerOptions(file))] as const)
+      .filter(([, runtime]) => runtime !== undefined && runtime !== "@amykit/ui");
+
+    expect(offending).toEqual([]);
+  });
+
+  it.each([
+    [{ jsx: "react-jsx" }, "react"],
+    [{ jsx: "react-jsxdev" }, "react"],
+    [{ jsx: "react" }, "react"],
+    [{ jsx: "react-jsx", jsxImportSource: "@amykit/ui" }, "@amykit/ui"],
+    [{ jsx: "preserve" }, undefined],
+    [{}, undefined],
+  ])("reads %j as compiling against %s", (options, runtime) => {
+    expect(jsxRuntime(options)).toBe(runtime);
+  });
+
+  it.each([['"jsx": "react"'], ['"jsx":"react-native"']])("refuses classic JSX by text too: %s", (source) => {
+    expect(refused(source)).toBe(true);
+  });
+
+  it("lets the automatic runtime through to the check above", () => {
+    expect(refused('"jsx": "react-jsx"')).toBe(false);
+  });
+});

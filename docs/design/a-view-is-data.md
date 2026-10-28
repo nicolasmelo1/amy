@@ -126,8 +126,12 @@ dependency beyond the core, and no import of any of the three.
 `L0.A_VIEW_DRAWS_NOTHING`, a local rule in `.software-factory/rules/`: **no
 source under `packages/*/src` or `plugins/*/src` imports React, React DOM,
 React Native, Ink, Preact, Vue, Solid or Svelte, or compiles its JSX against
-one** — by import, `require`, dynamic `import`, a `@jsxImportSource` pragma or
-a package's `tsconfig.json`. From here on nothing but a renderer plugin may
+one** — by import, `require`, dynamic `import`, a `@jsxImportSource` pragma,
+or a package's `tsconfig.json` naming one or asking for classic JSX. What a
+text pattern cannot see is a renderer left implied — `react-jsx` with no
+`jsxImportSource` compiles against React — so
+`packages/ui/tests/a-view-draws-nothing.test.ts` reads every package's
+effective compiler options, `extends` included, and refuses that too. From here on nothing but a renderer plugin may
 name a renderer; the first renderer plugin narrows the scope to leave itself
 out, in the same pull request that adds it. Its mutation fixture is a view
 importing `react`, and `sf verify` confirms the rule still catches it.

@@ -41,13 +41,14 @@ function primitiveNamed(type: unknown, at: string): Primitive {
 function checkProps(type: Primitive, props: Readonly<Record<string, unknown>>, at: string): void {
   const spec = VOCABULARY[type].props;
   for (const [key, value] of Object.entries(props)) {
-    const prop = spec[key];
+    // Own keys only: `constructor` or `toString` would otherwise find a member of the spec object.
+    const prop = Object.hasOwn(spec, key) ? spec[key] : undefined;
     if (!prop) refuse(at, `${type} has no property \`${key}\``);
     if (!isJson(value)) refuse(at, `${type}.${key} is not a JSON value`);
     if (!fitsPropType(prop.type, value)) refuse(at, `${type}.${key} is not of type ${prop.type}`);
   }
   for (const [key, prop] of Object.entries(spec)) {
-    if (prop.required && !(key in props)) refuse(at, `${type} needs \`${key}\``);
+    if (prop.required && !Object.hasOwn(props, key)) refuse(at, `${type} needs \`${key}\``);
   }
 }
 
@@ -76,13 +77,26 @@ function flatten(children: Children, into: Child[]): Child[] {
  * the one it refused. A property set to `undefined` is left out, which is
  * how a view writes an optional one.
  */
+/** Nodes this module built or checked, so a tree built tag by tag is checked once, not once per level. */
+const checked = new WeakSet<Node>();
+
+function remember(node: Node): Node {
+  checked.add(node);
+  return node;
+}
+
+/** A child built anywhere but here — by hand, or parsed — is checked the way `validate` would check it. */
+function trusted(child: Child, at: string): Child {
+  return typeof child === "string" || checked.has(child) ? child : validateAt(child, at);
+}
+
 export function element(type: string, props: Readonly<Record<string, unknown>> = {}, children: Children = []): Node {
   const primitive = primitiveNamed(type, "view");
   const defined = Object.fromEntries(Object.entries(props).filter(([, value]) => value !== undefined));
   checkProps(primitive, defined, primitive);
-  const flat = flatten(children, []);
+  const flat = flatten(children, []).map((child, i) => trusted(child, `${primitive}/${i}`));
   checkChildren(primitive, flat, primitive);
-  return { type: primitive, props: defined as Node["props"], children: flat };
+  return remember({ type: primitive, props: defined as Node["props"], children: flat });
 }
 
 function validateAt(value: unknown, at: string): Child {
@@ -96,9 +110,9 @@ function validateAt(value: unknown, at: string): Child {
   if (!Array.isArray(children)) return refuse(at, `${primitive} has no children list`);
   checkProps(primitive, props, at);
   // Every slot, not `map`: a hole in the list would cross the wire as `null`.
-  const checked = Array.from(children, (child: unknown, i) => validateAt(child, `${at}/${i}`));
-  checkChildren(primitive, checked, at);
-  return { type: primitive, props: props as Node["props"], children: checked };
+  const valid = Array.from(children, (child: unknown, i) => validateAt(child, `${at}/${i}`));
+  checkChildren(primitive, valid, at);
+  return remember({ type: primitive, props: props as Node["props"], children: valid });
 }
 
 /**

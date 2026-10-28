@@ -9,11 +9,34 @@ export type Json = string | number | boolean | null | readonly Json[] | { readon
  * what the view said.
  */
 export function isJson(value: unknown): value is Json {
+  return jsonOnPath(value, new Set());
+}
+
+/**
+ * `path` holds the objects between the root and here, so a cycle is refused
+ * rather than recursed into forever, while one value shared by two branches
+ * is still JSON.
+ */
+function jsonOnPath(value: unknown, path: Set<object>): boolean {
   if (value === null || typeof value === "string" || typeof value === "boolean") return true;
   if (typeof value === "number") return Number.isFinite(value);
-  // Every slot, not `every`: a hole would cross the wire as `null`.
-  if (Array.isArray(value)) return Array.from(value).every(isJson);
-  return isPlainObject(value) && Object.values(value).every(isJson);
+  if (typeof value !== "object" || path.has(value)) return false;
+  // A `toJSON` hook is what `JSON.stringify` sends instead of the value itself.
+  if (typeof (value as { toJSON?: unknown }).toJSON === "function") return false;
+  const items = Array.isArray(value) ? arrayItems(value) : isPlainObject(value) ? Object.values(value) : undefined;
+  if (!items) return false;
+  path.add(value);
+  const every = items.every((item) => jsonOnPath(item, path));
+  path.delete(value);
+  return every;
+}
+
+/**
+ * Every slot of an array, or nothing when it carries keys besides its
+ * indexes: a hole would cross the wire as `null`, and an extra key not at all.
+ */
+function arrayItems(value: readonly unknown[]): readonly unknown[] | undefined {
+  return Object.keys(value).length === value.length ? Array.from(value) : undefined;
 }
 
 /** Whether a value is an object literal's kind of object, not a date, a map or a class instance. */

@@ -33,3 +33,5 @@ defaults:
       message: "A view returns primitives from @amykit/ui; only a renderer plugin may import a renderer."
     - regex: '(@jsxImportSource\s+|"jsxImportSource"\s*:\s*")(react|react-native|preact|solid-js|vue)\b'
       message: "Compile JSX against @amykit/ui. A renderer's JSX runtime turns a view into a component."
+    - regex: '"jsx"\s*:\s*"(react|react-native)"'
+      message: "Classic JSX calls React.createElement. Use \"react-jsx\" with \"jsxImportSource\": \"@amykit/ui\"."

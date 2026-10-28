@@ -46,3 +46,56 @@ describe("a change is never mistaken for none", () => {
     expect(diff(before, after)).toEqual([{ op: "props", path: [], props: after.props }]);
   });
 });
+
+describe("what the checks refuse, they refuse by name", () => {
+  it("refuses a cycle as not JSON, rather than overflowing the stack", () => {
+    const args: Record<string, unknown> = { workId: "A-1" };
+    args.self = args;
+
+    expect(isJson(args)).toBe(false);
+    expect(() => element("Button", { intent: { action: "poke", args } }, ["poke"])).toThrow("Button.intent is not a JSON value");
+  });
+
+  it("still accepts one value shared by two branches", () => {
+    const shared = { workId: "A-1" };
+
+    expect(isJson({ a: shared, b: [shared, shared] })).toBe(true);
+  });
+
+  it("refuses a value whose serialization hook would send something else", () => {
+    const lines = Object.assign(["one"], { toJSON: () => ["two"] });
+
+    expect(isJson(lines)).toBe(false);
+    expect(isJson({ toJSON: () => ({}) })).toBe(false);
+    expect(() => element("Log", { lines })).toThrow("Log.lines is not a JSON value");
+  });
+
+  it("refuses an array carrying keys besides its indexes, which JSON drops", () => {
+    expect(isJson(Object.assign(["a"], { extra: "b" }))).toBe(false);
+  });
+
+  it.each([["constructor"], ["toString"], ["hasOwnProperty"]])("names %s as a property no primitive has", (key) => {
+    expect(() => element("Text", { [key]: "x" })).toThrow(`Text has no property \`${key}\``);
+    expect(() => validate({ type: "Text", props: { [key]: "x" }, children: [] })).toThrow(`Text has no property \`${key}\``);
+  });
+});
+
+describe("a tree the constructor accepts is a tree the receiver accepts", () => {
+  it("checks a child built by hand rather than by a tag", () => {
+    const button = { type: "Button", props: {}, children: ["poke"] } as const;
+
+    expect(() => element("Stack", {}, [button])).toThrow("Stack/0: Button needs `intent`");
+  });
+
+  it("checks a hand-built child all the way down", () => {
+    const deep = { type: "Section", props: {}, children: [{ type: "Marquee", props: {}, children: [] }] } as const;
+
+    expect(() => element("Stack", {}, [deep as never])).toThrow('Stack/0/0: "Marquee" is not a primitive');
+  });
+
+  it("accepts a child that arrived as data and checks out", () => {
+    const parsed = JSON.parse(JSON.stringify(element("Text", {}, ["hi"]))) as never;
+
+    expect(element("Stack", {}, [parsed]).children).toEqual([element("Text", {}, ["hi"])]);
+  });
+});
