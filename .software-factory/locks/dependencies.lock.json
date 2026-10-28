@@ -37,6 +37,6 @@
     "plugins/plan-check/package.json": "38acddecc27fa6cfb8d94030d2a586de257a382d138f37dbd066c885efec152c",
     "plugins/serial-engine/package.json": "ed01f7194d54924c2371d1d536a376caddcc993b7ee259383a67dea512fd7528",
     "plugins/slack/package.json": "63cf9f819e5e7194e04b838311ae933fbba46cc60ce60fce1ad93247e7fec84c",
-    "plugins/ui-stub/package.json": "48d24e7f0912d9b5ff00a356fa51d92944855495dcba490d6cc3b2df194558c1"
+    "plugins/ui-stub/package.json": "6a01970fbf137313290ed26f4a979776eb49c5d9776a54916cf96fece1c8e06c"
   }
 }

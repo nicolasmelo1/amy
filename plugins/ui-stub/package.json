@@ -21,6 +21,6 @@
     "conformance": "./dist/index.js"
   },
   "dependencies": {
-    "@amykit/ui": "^0.6.0"
+    "@amykit/ui": "*"
   }
 }
