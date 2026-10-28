@@ -29,6 +29,9 @@
       "path": "packages/test-fixtures"
     },
     {
+      "path": "packages/ui"
+    },
+    {
       "path": "packages/workflow-note-to-plan"
     },
     {

@@ -36,6 +36,17 @@
       "must_live_in": 0,
       "must_not_live_in": 1
     },
+    "L0.A_VIEW_DRAWS_NOTHING": {
+      "severity": "high",
+      "scope": 4,
+      "exclude": 0,
+      "forbidden": 3,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
     "L0.CORE_STAYS_IGNORANT": {
       "severity": "high",
       "scope": 1,

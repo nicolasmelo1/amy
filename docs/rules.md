@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**51 rules shipped**, 43 enabled here, 8 switched off, 43 carrying a mutation fixture, 1 violations frozen.
+**52 rules shipped**, 44 enabled here, 8 switched off, 44 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -19,7 +19,7 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:generated layer-index -->
 | | Layer | What it checks | Shipped | Enabled here |
 | :-- | :-- | :-- | --: | --: |
-| **L0** | Shape | where things live | 13 | 11 |
+| **L0** | Shape | where things live | 14 | 12 |
 | **L1** | Grain | how the code reads | 6 | 5 |
 | **L2** | Contract | no drift from the source of truth | 7 | 7 |
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
@@ -60,6 +60,16 @@ The core's `Ticket` requires `id`, `title`, `url`, `status`, `labels` and `repo`
 **Why.** Every required field is a promise each tracker adapter has to keep. `branchName` and `team` were Linear's: GitHub Issues derives no branch name and has no team, so an adapter for it would have to invent both. A workflow that needs such a field asks for it and refuses a ticket without it, by name.
 
 **Fix.** Make the field optional (`name?: type`) and have the workflow that relies on it refuse a ticket that lacks it. Widening the required set is a decision about every tracker, and changes docs/design/an-agent-only-answers.md first.
+
+### L0.A_VIEW_DRAWS_NOTHING
+
+**A view draws nothing**
+
+No source under packages/*/src or plugins/*/src imports a renderer — React, React DOM, React Native, Ink, Preact, Vue, Solid or Svelte — or compiles its JSX against one. A view returns a tree of @amykit/ui primitives, and only a renderer plugin may name a renderer.
+
+**Why.** A terminal has boxes and text, a browser has the DOM and a phone has native views, so a component written for one renders in none of the others; a phone does not install npm packages, so whatever a plugin adds has to reach it as data; and a plugin carrying its own React is two copies of React, which breaks hooks with an error in somebody's window rather than at boot. One import is all it takes to lose all three, by anybody, at any time.
+
+**Fix.** Return primitives from @amykit/ui and let the renderer draw them: JSX works, with "jsxImportSource" set to "@amykit/ui". If the code genuinely draws, it is a renderer, and belongs in a renderer plugin. See docs/design/a-view-is-data.md.
 
 ### L0.CORE_STAYS_IGNORANT
 

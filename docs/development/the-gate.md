@@ -32,6 +32,7 @@ held to a gate that is proven to work.
 | Rule | What it holds |
 | :-- | :-- |
 | `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` | A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md) |
+| `L0.A_VIEW_DRAWS_NOTHING` | A view draws nothing; only a renderer plugin names a renderer (docs/design/a-view-is-data.md) |
 | `L0.AGENT_ACTIONS_DISPATCH_TO_ASK` | Every catalogue action on the agent port dispatches to ask (docs/design/an-agent-only-answers.md) |
 | `L0.AN_AGENT_NEVER_TOUCHES_GIT` | An agent never prepares a branch, commits or pushes (docs/design/an-agent-only-answers.md) |
 | `L0.CORE_STAYS_IGNORANT` | The core imports no workflow and no plugin |

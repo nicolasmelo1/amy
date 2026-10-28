@@ -1,0 +1,37 @@
+id: L0.A_VIEW_DRAWS_NOTHING
+layer: L0
+title: A view draws nothing
+severity: high
+statement: >-
+  No source under packages/*/src or plugins/*/src imports a renderer — React,
+  React DOM, React Native, Ink, Preact, Vue, Solid or Svelte — or compiles its
+  JSX against one. A view returns a tree of @amykit/ui primitives, and only a
+  renderer plugin may name a renderer.
+why: >-
+  A terminal has boxes and text, a browser has the DOM and a phone has native
+  views, so a component written for one renders in none of the others; a
+  phone does not install npm packages, so whatever a plugin adds has to reach
+  it as data; and a plugin carrying its own React is two copies of React,
+  which breaks hooks with an error in somebody's window rather than at boot.
+  One import is all it takes to lose all three, by anybody, at any time.
+fix: >-
+  Return primitives from @amykit/ui and let the renderer draw them: JSX works,
+  with "jsxImportSource" set to "@amykit/ui". If the code genuinely draws, it
+  is a renderer, and belongs in a renderer plugin. See
+  docs/design/a-view-is-data.md.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope:
+    - "packages/*/src/**"
+    - "plugins/*/src/**"
+    - "packages/*/tsconfig.json"
+    - "plugins/*/tsconfig.json"
+  forbidden:
+    - regex: '(\bfrom|\bimport|\brequire)\s*\(?\s*["''](react|react-dom|react-native|ink|preact|vue|solid-js|svelte)(/[^"'']*)?["'']'
+      message: "A view returns primitives from @amykit/ui; only a renderer plugin may import a renderer."
+    - regex: '(@jsxImportSource\s+|"jsxImportSource"\s*:\s*")(react|react-native|preact|solid-js|vue)\b'
+      message: "Compile JSX against @amykit/ui. A renderer's JSX runtime turns a view into a component."
+    - regex: '"jsx"\s*:\s*"(react|react-native)"'
+      message: "Classic JSX calls React.createElement. Use \"react-jsx\" with \"jsxImportSource\": \"@amykit/ui\"."

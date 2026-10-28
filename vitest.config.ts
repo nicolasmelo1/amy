@@ -17,7 +17,7 @@ export default defineConfig({
     benchmark: { include: ["packages/*/tests/**/*.bench.ts", "plugins/*/tests/**/*.bench.ts"] },
     coverage: {
       provider: "v8",
-      include: ["packages/*/src/**/*.ts", "plugins/*/src/**/*.ts"],
+      include: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx", "plugins/*/src/**/*.ts"],
       // Barrels re-export and nothing else, so covering them measures nothing.
       exclude: ["packages/*/src/index.ts", "plugins/*/src/index.ts", "packages/test-fixtures/**"],
       reporter: ["text-summary"],
@@ -31,6 +31,8 @@ export default defineConfig({
       },
     },
   },
+  // A view is JSX compiled against amy's own runtime, never React's.
+  oxc: { jsx: { runtime: "automatic", importSource: "@amykit/ui" } },
   resolve: {
     alias: {
       "@amykit/core": resolve(here, "packages/core/src/index.ts"),
@@ -59,6 +61,11 @@ export default defineConfig({
       "@amykit/plugin-hermes-agent": resolve(here, "plugins/hermes-agent/src/index.ts"),
       "@amykit/plugin-agent-relay": resolve(here, "plugins/agent-relay/src/index.ts"),
       "@amykit/cli": resolve(here, "packages/cli/src/index.ts"),
+      // The runtimes before the package: an alias matches by prefix, so
+      // `@amykit/ui` alone would swallow `@amykit/ui/jsx-runtime`.
+      "@amykit/ui/jsx-runtime": resolve(here, "packages/ui/src/jsx-runtime.ts"),
+      "@amykit/ui/jsx-dev-runtime": resolve(here, "packages/ui/src/jsx-dev-runtime.ts"),
+      "@amykit/ui": resolve(here, "packages/ui/src/index.ts"),
       "@amykit/test-fixtures": resolve(here, "packages/test-fixtures/src/index.ts")
     },
   },

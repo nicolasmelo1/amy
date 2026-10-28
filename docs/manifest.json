@@ -278,6 +278,11 @@
           "description": ""
         },
         {
+          "title": "A view is data",
+          "path": "/design/a-view-is-data",
+          "description": ""
+        },
+        {
           "title": "A workflow is yours, not a package",
           "path": "/design/a-workflow-is-yours-not-a-package",
           "description": ""
@@ -851,6 +856,11 @@
           "depth": 3,
           "title": "**A reply in a work's thread can be a question, not only an answer.**",
           "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
+        },
+        {
+          "depth": 3,
+          "title": "**A view is data.**",
+          "slug": "a-view-is-data"
         },
         {
           "depth": 3,
@@ -1935,6 +1945,43 @@
           "depth": 2,
           "title": "What shipped",
           "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-view-is-data",
+      "file": "docs/design/a-view-is-data.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-view-is-data.md",
+      "title": "A view is data",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 3,
+          "title": "amy status is a view",
+          "slug": "amy-status-is-a-view"
+        },
+        {
+          "depth": 2,
+          "title": "Why not a framework, and not a standard yet",
+          "slug": "why-not-a-framework-and-not-a-standard-yet"
+        },
+        {
+          "depth": 2,
+          "title": "The rule",
+          "slug": "the-rule"
         },
         {
           "depth": 2,
@@ -3920,6 +3967,11 @@
           "depth": 3,
           "title": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
           "slug": "l0aticketrequireswhateverytrackerhas"
+        },
+        {
+          "depth": 3,
+          "title": "L0.A_VIEW_DRAWS_NOTHING",
+          "slug": "l0aviewdrawsnothing"
         },
         {
           "depth": 3,
@@ -7389,6 +7441,20 @@
         "environment": []
       },
       {
+        "name": "@amykit/ui",
+        "version": "0.6.0",
+        "kind": "library",
+        "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, and a text renderer.",
+        "directory": "packages/ui",
+        "npm": "https://www.npmjs.com/package/@amykit/ui",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/ui",
+        "readme": "packages/ui/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
         "name": "@amykit/workflow-errand",
         "version": "0.6.0",
         "kind": "workflow",
@@ -8281,6 +8347,13 @@
         "reason": ""
       },
       {
+        "id": "L0.A_VIEW_DRAWS_NOTHING",
+        "enabled": true,
+        "settings": {},
+        "title": "A view draws nothing; only a renderer plugin names a renderer (docs/design/a-view-is-data.md)",
+        "reason": ""
+      },
+      {
         "id": "L0.AGENT_ACTIONS_DISPATCH_TO_ASK",
         "enabled": true,
         "settings": {},
@@ -8675,6 +8748,22 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-view-is-data",
+        "title": "**A view is data.**",
+        "body": "amy is going to have a window — a terminal, a browser, eventually a phone —\nwith plugins changing what is in it. A plugin that exports React components\nrenders in one of those and none of the others, cannot reach a phone that\ninstalls no npm packages, and brings a second copy of React into somebody's\nwindow. So a plugin does not render: it describes, and the renderer draws.\n\n- A new package, `@amykit/ui`, with no dependencies: a closed vocabulary of\n  seventeen semantic primitives, checked so a name outside it — or any\n  property value that is not JSON — is refused by name; a JSX runtime\n  (`jsxImportSource: \"@amykit/ui\"`) that returns a tree of plain data with\n  no React anywhere; `diff` and `patch` between two trees; `validate` for a\n  tree that arrived as data; `catalogue()`, the vocabulary as JSON Schema\n  components; and `renderText`, a deterministic text renderer.\n- A button's `intent` is `{ action, args }`, never a closure, so it survives\n  a socket.\n- `amy status` is a view of the snapshot `amy status --json` prints, drawn by\n  the text renderer. Its output is what it printed before, byte for byte.\n- A new local rule, `L0.A_VIEW_DRAWS_NOTHING`: no package or plugin source\n  imports React, Ink, Preact, Vue, Solid or Svelte, or compiles its JSX\n  against one.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/ui",
             "level": "minor"
           }
         ],
