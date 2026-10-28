@@ -19,7 +19,7 @@
       "file": "linear.graphql",
       "url": "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql",
       "publisher": "Linear — the GraphQL schema its own SDK is generated from",
-      "sha256": "20061a8427b66237c3e850775ddf0450b6d2de73a6250735d5e6b17070d4f7c8"
+      "sha256": "99d9d750824578cf8bceecda0b556b9b885c07404fe7d32222e679b5962d1dce"
     }
   ],
   "gh": {

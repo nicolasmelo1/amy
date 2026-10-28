@@ -414,6 +414,14 @@ gates:
       - "packages/cli/src/auto-update.ts"
       - "packages/cli/src/daemon.ts"
       - "packages/cli/src/config.ts"
+      # The fixed group the lockstep rests on, the installer whose tarballs the
+      # registry publishes, and the registry itself: a change to any of them
+      # is a change to what the scenario proved.
+      - ".changeset/config.json"
+      - "scripts/install.sh"
+      - "scripts/write-install-manifest.ts"
+      - ".software-factory/evidence/amy-update/registry.ts"
+      - ".software-factory/evidence/amy-update/release.ts"
     evidence: ".software-factory/evidence/amy-update.json"
     plan: "docs/design/amy-update.md"
     required_assertions:
@@ -447,6 +455,15 @@ gates:
       - "update.invalid_auto_update_settings_refuse_before_work"
       - "update.a_daemon_updates_only_at_its_lifecycle_boundary"
       - "update.direct_daemon_uses_the_configured_schedule"
+      - "update.a_release_crosses_the_minor"
+      - "update.one_release_on_disk"
+      - "update.a_third_party_range_is_honoured"
+      - "update.a_global_cli_is_an_install_root"
+      - "update.a_global_cli_moves"
+      - "update.a_moved_global_cli_still_runs"
+      - "update.a_refused_release_rolls_back_whole"
+      - "update.a_check_names_the_release"
+      - "update.auto_update_reaches_the_release"
 
   feature-grooming:
     activation:

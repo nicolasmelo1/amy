@@ -1,5 +1,6 @@
 // The edits the amy-update scenario makes to the scratch machine between
-// moves: a manifest read, a range re-declared, a config setting flipped.
+// moves, and the reads it makes of it: a range re-declared, a config setting
+// flipped, the operator's intent written, the release on disk listed.
 //
 // Usage: tsx machine.ts <step> [arguments...]
 import fs from "node:fs";
@@ -82,6 +83,58 @@ function dropAfterhours(): void {
   fs.writeFileSync(config, kept.join("\n"));
 }
 
+/**
+ * Every first-party version on disk under the given `node_modules` trees,
+ * nested copies included, one `name@version` a line — and then each
+ * first-party entry of the plugins root's manifest as `manifest name spec`.
+ */
+function releaseOnDisk(trees: string[]): void {
+  const found = new Set<string>();
+  const seen = new Set<string>();
+  // Every package directory is descended into, not only `@amykit/*` ones: a
+  // third-party workflow's own `node_modules` can hold an older
+  // `@amykit/core`, and a walk that skipped it would call a mixed tree one
+  // release.
+  const packagesIn = (modules: string): string[] => {
+    if (!fs.existsSync(modules)) return [];
+    return fs.readdirSync(modules, { withFileTypes: true }).flatMap((entry) => {
+      if (entry.name.startsWith(".") || !(entry.isDirectory() || entry.isSymbolicLink())) return [];
+      const directory = path.join(modules, entry.name);
+      return entry.name.startsWith("@") ? packagesIn(directory) : [directory];
+    });
+  };
+  const walk = (modules: string): void => {
+    for (const directory of packagesIn(modules)) {
+      const real = fs.realpathSync(directory);
+      if (seen.has(real)) continue;
+      seen.add(real);
+      const manifest = path.join(directory, "package.json");
+      if (fs.existsSync(manifest)) {
+        const { name, version }: { name: string; version: string } = JSON.parse(fs.readFileSync(manifest, "utf-8"));
+        if (name.startsWith("@amykit/")) found.add(`${name}@${version}`);
+      }
+      walk(path.join(directory, "node_modules"));
+    }
+  };
+  for (const tree of trees) walk(tree);
+  for (const one of [...found].sort()) console.log(one);
+  const plugins: { dependencies?: Record<string, string> } = JSON.parse(
+    fs.readFileSync(path.join(home, ".amy", "plugins", "package.json"), "utf-8"),
+  );
+  for (const [name, spec] of Object.entries(plugins.dependencies ?? {})) {
+    if (name.startsWith("@amykit/")) console.log(`manifest ${name} ${spec}`);
+  }
+}
+
+/** Writes the operator's registry intent for the CLI into the plugins root, or removes it. */
+function setIntent(range: string | undefined): void {
+  const file = path.join(home, ".amy", "plugins", "package.json");
+  const manifest: { amyUpdateRanges?: Record<string, string> } = JSON.parse(fs.readFileSync(file, "utf-8"));
+  if (range === undefined) delete manifest.amyUpdateRanges;
+  else manifest.amyUpdateRanges = { "@amykit/cli": range };
+  fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 /** Prints the version a package.json declares. */
 function version(file: string): void {
   const manifest: { version: string } = JSON.parse(fs.readFileSync(file, "utf-8"));
@@ -98,6 +151,8 @@ const steps: Record<string, () => void> = {
   "add-afterhours": addAfterhours,
   "drop-afterhours": dropAfterhours,
   version: () => version(args[0] ?? ""),
+  "release-on-disk": () => releaseOnDisk(args),
+  "set-intent": () => setIntent(args[0]),
 };
 const run = step === undefined ? undefined : steps[step];
 if (run === undefined) {

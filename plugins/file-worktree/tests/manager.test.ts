@@ -57,10 +57,10 @@ function isolatedGitEnvironment(): NodeJS.ProcessEnv {
 /** A bare origin with one commit on main, which is what an install has. */
 function origin(root: string, name: string): string {
   const bare = path.join(root, `${name}.git`);
-  execFileSync("git", ["init", "--bare", "--initial-branch=main", bare], { stdio: "ignore" });
+  execFileSync("git", ["init", "--bare", "--initial-branch=main", bare], { stdio: "ignore", env: isolatedGitEnvironment() });
 
   const seed = path.join(root, `seed-${name}`);
-  execFileSync("git", ["clone", "-q", bare, seed], { stdio: "ignore" });
+  execFileSync("git", ["clone", "-q", bare, seed], { stdio: "ignore", env: isolatedGitEnvironment() });
   git(seed, "config", "user.email", "amy@example.test");
   git(seed, "config", "user.name", "amy");
   fs.writeFileSync(path.join(seed, "README.md"), "seed\n", "utf-8");
@@ -129,7 +129,7 @@ describe("the worktree manager", () => {
   it("cuts a tree from the base branch the repository named", async () => {
     const bare = origin(root, "widgets");
     const seed = path.join(root, "trunk-seed");
-    execFileSync("git", ["clone", "-q", bare, seed], { stdio: "ignore" });
+    execFileSync("git", ["clone", "-q", bare, seed], { stdio: "ignore", env: isolatedGitEnvironment() });
     git(seed, "config", "user.email", "amy@example.test");
     git(seed, "config", "user.name", "amy");
     git(seed, "checkout", "-q", "-b", "trunk");
@@ -174,7 +174,7 @@ describe("the worktree manager", () => {
     origin(root, "widgets");
 
     const standing = path.join(root, "standing");
-    execFileSync("git", ["clone", "-q", bare, standing], { stdio: "ignore" });
+    execFileSync("git", ["clone", "-q", bare, standing], { stdio: "ignore", env: isolatedGitEnvironment() });
     git(standing, "config", "user.email", "amy@example.test");
     git(standing, "config", "user.name", "amy");
     git(standing, "checkout", "-q", "-b", "operator/working");
@@ -193,7 +193,7 @@ describe("the worktree manager", () => {
     // source is the map's answer, not a join under the configured root.
     const bare = origin(root, "widgets");
     const own = path.join(root, "elsewhere", "widgets");
-    execFileSync("git", ["clone", "-q", bare, own], { stdio: "ignore" });
+    execFileSync("git", ["clone", "-q", bare, own], { stdio: "ignore", env: isolatedGitEnvironment() });
 
     const manager = managerFor({
       checkouts: { "acme/widgets": own },
@@ -212,7 +212,7 @@ describe("the worktree manager", () => {
     origin(root, "widgets");
 
     const standing = path.join(root, "standing");
-    execFileSync("git", ["clone", "-q", bare, standing], { stdio: "ignore" });
+    execFileSync("git", ["clone", "-q", bare, standing], { stdio: "ignore", env: isolatedGitEnvironment() });
     git(standing, "config", "user.email", "amy@example.test");
     git(standing, "config", "user.name", "amy");
     git(standing, "checkout", "-q", "-b", "operator/on-one");
