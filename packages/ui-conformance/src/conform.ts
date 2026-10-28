@@ -86,12 +86,15 @@ function driveOnce(drive: Drive): Driven {
   return { projections, findings };
 }
 
+/** Step by step, both ways round: a step either side lacks is a difference too. */
 function compare(frame: Frame, a: readonly Projection[], b: readonly Projection[], say: (step: string, where: string) => Finding): Finding[] {
-  return a.flatMap((projection, i) => {
-    const other = b[i];
-    if (other === undefined) return [say(projection.step, `${projection.step}: drawn ≠ a step the other has no projection for`)];
-    const where = firstDifference(frame, projection, other);
-    return where === undefined ? [] : [say(projection.step, where)];
+  return Array.from({ length: Math.max(a.length, b.length) }, (_, i) => [a[i], b[i]] as const).flatMap(([left, right]) => {
+    if (left === undefined || right === undefined) {
+      const step = (left ?? right)?.step ?? "";
+      return [say(step, `${step}: ${left === undefined ? "missing" : "drawn"} ≠ ${right === undefined ? "missing" : "drawn"}`)];
+    }
+    const where = firstDifference(frame, left, right);
+    return where === undefined ? [] : [say(left.step, where)];
   });
 }
 
@@ -187,4 +190,43 @@ export function conform(frame: Frame, renderers: readonly ConformanceRenderer[],
     findings,
     projections: Object.fromEntries(sorted.map((renderer, i) => [renderer.name, measured[i]?.keys ?? []])),
   };
+}
+
+/** What `--approve` would write, or why it will not. */
+export type Approval = { readonly golden: Golden } | { readonly refused: readonly string[] };
+
+/**
+ * The golden a set of renderers would approve: per surface, the projections
+ * of the first renderer that draws it, so no surface is approved from a
+ * renderer that does not draw it. Refused while anything but the golden
+ * fails, while there is nothing to approve, or when a surface the previous
+ * golden held is drawn by none of them — approving would drop its baseline.
+ */
+export function approve(frame: Frame, renderers: readonly ConformanceRenderer[], config: Conformance, previous?: Golden): Approval {
+  const draft = conform(frame, renderers, config, undefined);
+  const refused = draft.findings
+    .filter((finding) => finding.assertion !== "frame.nothing_moved_since_it_was_approved")
+    .map((finding) => `${finding.assertion}: ${finding.renderer}: ${finding.message}`);
+  const drawers = new Map<string, readonly Projection[]>();
+  for (const renderer of draft.renderers) {
+    for (const surface of renderer.surfaces) if (!drawers.has(surface)) drawers.set(surface, draft.projections[renderer.name] ?? []);
+  }
+  const held = Object.keys(previous?.steps[0]?.surfaces ?? {});
+  refused.push(...held.filter((surface) => !drawers.has(surface)).map((surface) => `${surface} is in the approved golden, and no renderer here draws it`));
+  const window = drawers.get("window") ?? [];
+  const first = [...drawers.values()][0] ?? [];
+  const steps = first.map((step, i) => ({
+    ...step,
+    sections: window[i]?.sections ?? [],
+    surfaces: Object.fromEntries(
+      [...drawers.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .flatMap(([surface, projections]) => {
+          const projected = projections[i]?.surfaces[surface];
+          return projected === undefined ? [] : [[surface, projected]];
+        }),
+    ),
+  }));
+  if (steps.length === 0) refused.push("there is no projection to approve");
+  return refused.length > 0 ? { refused } : { golden: { steps } };
 }

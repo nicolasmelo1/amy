@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { conform } from "./conform.js";
+import { approve, conform } from "./conform.js";
 import { discover, FILES, goldenText, loadConformance, loadFrame, loadGolden, renderersIn } from "./files.js";
 
 /**
@@ -41,7 +41,7 @@ function options(argv: readonly string[]): Options {
 }
 
 async function main(): Promise<number> {
-  const { root, renderers: modules, report: reportFile, approve } = options(process.argv.slice(2));
+  const { root, renderers: modules, report: reportFile, approve: approving } = options(process.argv.slice(2));
   const frame = loadFrame();
   const renderers = modules.length > 0 ? (await Promise.all(modules.map(renderersIn))).flat() : await discover(path.resolve(root));
   if (renderers.length === 0) {
@@ -49,18 +49,16 @@ async function main(): Promise<number> {
     return 1;
   }
   const config = loadConformance();
-  if (approve) {
+  if (approving) {
     // Only a window that holds the frame in every other way may become the approved one.
-    const draft = conform(frame, renderers, config, undefined);
-    const blocking = draft.findings.filter((finding) => finding.assertion !== "frame.nothing_moved_since_it_was_approved");
-    const steps = Object.values(draft.projections)[0] ?? [];
-    if (blocking.length > 0 || steps.length === 0) {
-      console.error(`amy-ui-conformance: not approved, and ${FILES.golden} is untouched: ${blocking.length} finding(s) besides the golden, ${steps.length} projection(s)`);
-      for (const finding of blocking) console.error(`${finding.assertion}: ${finding.renderer}: ${finding.message}`);
+    const approval = approve(frame, renderers, config, loadGolden());
+    if ("refused" in approval) {
+      console.error(`amy-ui-conformance: not approved, and ${FILES.golden} is untouched:`);
+      for (const reason of approval.refused) console.error(`  ${reason}`);
       return 1;
     }
-    fs.writeFileSync(FILES.golden, goldenText({ steps }));
-    console.log(`approved ${steps.length} projections into ${FILES.golden}; lock it with \`sf lock\``);
+    fs.writeFileSync(FILES.golden, goldenText(approval.golden));
+    console.log(`approved ${approval.golden.steps.length} projections into ${FILES.golden}; lock it with \`sf lock\``);
   }
   const report = conform(frame, renderers, config, loadGolden());
   if (reportFile !== undefined) fs.writeFileSync(reportFile, `${JSON.stringify(report, null, 2)}\n`);

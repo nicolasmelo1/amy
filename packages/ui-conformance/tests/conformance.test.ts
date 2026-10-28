@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { element, type Node } from "@amykit/ui";
 import type { ConformanceRenderer, Laid, LaidSurface, Session } from "@amykit/ui/frame";
-import { ASSERTIONS, conform, FILES, goldenText, loadConformance, loadFrame, loadGolden, type Assertion, type Report } from "@amykit/ui-conformance";
+import { approve, ASSERTIONS, conform, FILES, goldenText, loadConformance, loadFrame, loadGolden, type Assertion, type Report } from "@amykit/ui-conformance";
 import { renderers as stubs } from "@amykit/plugin-ui-stub";
 
 const repo = path.resolve(import.meta.dirname, "../../..");
@@ -355,6 +355,51 @@ describe("each assertion fails the renderer that breaks it", () => {
     const zero = { ...config, keys: { ...config.keys, normal: { ...config.keys.normal, "0": "nav.first" } } };
 
     expect(conform(frame, [desktop], zero, golden).findings).toEqual([]);
+  });
+
+  it("a renderer that declares no surface, which would otherwise be measured on nothing", () => {
+    const report = conform(frame, [{ ...desktop, name: "declares-nothing", surfaces: [] }], config, golden);
+
+    expect(messages(report, "frame.a_surface_is_drawn_only_where_declared")).toContain("declares no surface the frame names, so nothing of it could be measured");
+  });
+
+  it("a golden with a step the script no longer reaches", () => {
+    const longer = { steps: [...(golden?.steps ?? []), { ...(golden?.steps.at(-1) as NonNullable<typeof golden>["steps"][number]), step: "a step nobody drives" }] };
+
+    expect(messages(conform(frame, [desktop], config, longer), "frame.nothing_moved_since_it_was_approved")).toEqual([
+      "differs from the approved projection at a step nobody drives: missing ≠ drawn",
+    ]);
+  });
+
+  describe("approving", () => {
+    const menubar: LaidSurface = { size: { width: 1, height: 1 }, regions: [{ name: "nav2", box: { x: 0, y: 0, width: 1, height: 1 }, holds: [{ name: "list", tree: element("Text", {}, "1 waiting") }] }] };
+    const menu: ConformanceRenderer = {
+      ...altered("z-menu-bar", () => ({ read: () => ({ surfaces: { menubar } }) })),
+      surfaces: ["menubar"],
+    };
+
+    it("writes what the stubs draw, byte for byte the golden on disk", () => {
+      const approval = approve(frame, stubs, config, golden);
+      expect("golden" in approval && goldenText(approval.golden)).toBe(fs.readFileSync(FILES.golden, "utf-8"));
+    });
+
+    it("takes each surface from the first renderer that draws it", () => {
+      const approval = approve(frame, [desktop, menu], config, golden);
+      expect("golden" in approval && Object.keys(approval.golden.steps[0]?.surfaces ?? {})).toEqual(["menubar", "window"]);
+      expect("golden" in approval && approval.golden.steps[0]?.sections).toEqual(["workflows", "work", "settings", "checks"]);
+    });
+
+    it("refuses to drop a surface the approved golden held", () => {
+      const withMenu = approve(frame, [desktop, menu], config, golden);
+      const previous = "golden" in withMenu ? withMenu.golden : undefined;
+
+      expect(approve(frame, [desktop], config, previous)).toEqual({ refused: ["menubar is in the approved golden, and no renderer here draws it"] });
+    });
+
+    it("refuses a window that fails anything but the golden", () => {
+      const approval = approve(frame, [altered("no-room", () => ({ pointer: () => [] }))], config, golden);
+      expect("refused" in approval && approval.refused.length).toBeGreaterThan(0);
+    });
   });
 
   it("no renderer at all, which passes nothing", () => {

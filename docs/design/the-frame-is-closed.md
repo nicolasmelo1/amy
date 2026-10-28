@@ -240,9 +240,12 @@ window is the window that was agreed, in every renderer, every time.
   window. Every binding in both keymaps, each normal-mode one again after a
   count, and every mouse gesture is also pressed in a session of its own, so
   a key the script never reaches is held to the frame too. Renderers are
-  compared per surface, each against the first that draws it. An approval
-  that would write a window failing anything but the golden is refused, and
-  the golden left as it was. `<Bar>`, `<Bslash>` and `<S-g>` are the same
+  compared per surface, each against the first that draws it, and a renderer
+  declaring no surface the frame names fails rather than being measured on
+  nothing. A golden step the script no longer reaches is a difference. An
+  approval takes each surface from the first renderer that draws it, and is
+  refused — the golden left as it was — while anything but the golden fails
+  or when a surface the golden held is drawn by none of the renderers. `<Bar>`, `<Bslash>` and `<S-g>` are the same
   keys as `|`, `\` and `G`.
 - **The golden**, `packages/ui/conformance/golden.json`, is the first
   renderer's projections, written by `amy-ui-conformance --approve`. It, the

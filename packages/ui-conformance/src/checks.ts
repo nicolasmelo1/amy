@@ -204,6 +204,9 @@ function checkSlots(context: StepContext, surface: LaidSurface, say: Say): Findi
 /** A surface is drawn only where the renderer declared it, the frame names it, and with only the primitives it holds. */
 function checkSurfaces(context: StepContext, surfaces: Readonly<Record<string, LaidSurface>>, say: Say): Finding[] {
   const findings: Finding[] = [];
+  if (!context.renderer.surfaces.some((declared) => context.frame.surfaces.some((surface) => surface.name === declared))) {
+    findings.push(say("frame.a_surface_is_drawn_only_where_declared", "declares no surface the frame names, so nothing of it could be measured"));
+  }
   for (const declared of context.renderer.surfaces) {
     if (!context.frame.surfaces.some((surface) => surface.name === declared)) findings.push(say("frame.a_surface_is_drawn_only_where_declared", `declares ${declared}, which the frame does not name`));
     else if (surfaces[declared] === undefined) findings.push(say("frame.a_surface_is_drawn_only_where_declared", `declares ${declared}, and does not draw it`));
