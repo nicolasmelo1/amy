@@ -105,7 +105,6 @@ const comments: { id: string; body: string }[] = [];
 function worldPlugin(): Plugin {
   return {
     name: "@amykit/plugin-e2e-world",
-    version: "0.1.0",
     register(registry: Registry) {
       registry.port("tracker", {
         inProgress: async () => [],
@@ -152,7 +151,6 @@ function agentRun(): AgentRun {
 function channelPlugin(name: string, { throws = false }: { throws?: boolean } = {}): Plugin {
   return {
     name: `@amykit/plugin-e2e-${name}`,
-    version: "0.1.0",
     register(registry: Registry) {
       const channel: Channel = {
         name,
@@ -184,7 +182,6 @@ function refusingBudgetPlugin(): Plugin {
   };
   return {
     name: "@amykit/plugin-e2e-budget",
-    version: "0.1.0",
     register(registry: Registry) {
       registry.port("budget", budget);
     },

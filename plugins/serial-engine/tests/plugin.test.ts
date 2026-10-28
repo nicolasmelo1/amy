@@ -26,7 +26,6 @@ const SETTINGS = {
 /** A workflow, and no way to run it. Half of the pair an engine needs. */
 const halfAWorkflow: Plugin = {
   name: "@amykit/workflow-half",
-  version: "0.1.0",
   register: (registry) =>
     registry.workflow({
       name: "half",
@@ -34,7 +33,6 @@ const halfAWorkflow: Plugin = {
       waitingStates: [],
       initialState: "NEW",
       terminalStates: [],
-      usesObservers: [],
       plan: () => ({ kind: "settled", why: "nothing to do" }),
     }),
 };
@@ -47,7 +45,6 @@ const halfAWorkflow: Plugin = {
  */
 const stubWorkflow: Plugin = {
   name: "@amykit/workflow-stub",
-  version: "0.1.0",
   register: (registry) => {
     halfAWorkflow.register(registry, undefined as never);
     registry.contribute(WORKFLOW_RUNTIME, "half", {
@@ -117,7 +114,6 @@ describe("the serial engine plugin", () => {
       stubWorkflow,
       {
         name: "@amykit/plugin-q",
-        version: "0.1.0",
         register: (r) => r.queue({} as never),
       },
     ]);

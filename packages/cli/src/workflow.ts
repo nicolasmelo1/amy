@@ -162,7 +162,7 @@ function recordingRegistry(
 ): Registry {
   return {
     queue: () => undefined, store: () => undefined, engine: () => undefined,
-    workflow: setWorkflow, port: () => undefined, action: () => undefined, observer: () => undefined,
+    workflow: setWorkflow, port: () => undefined, action: () => undefined,
     contribute: (collection, name, value) => {
       const values = contributions.get(collection) ?? new Map<string, object>();
       values.set(name, value);
@@ -301,7 +301,6 @@ export const workflow: Workflow = {
   waitingStates: [],
   initialState: "received",
   terminalStates: ["done"],
-  usesObservers: [],
   plan: (record) =>
     record.state === "received"
       ? { kind: "advance", to: "done", effects: [], why: "the work was received" }
@@ -329,7 +328,6 @@ export function runtime(): WorkflowRuntime {
 
 export const plugin: Plugin = {
   name: ${JSON.stringify(`workflow-${name}`)},
-  version: "0.1.0",
   register(registry) {
     registry.workflow(workflow);
     registry.contribute("workflow-runtime", workflow.name, runtime());

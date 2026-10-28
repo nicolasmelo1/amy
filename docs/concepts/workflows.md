@@ -183,7 +183,6 @@ Something said in passing becomes work: capture it, do it, say what happened.
 | Terminal | `DONE`, `DECLINED` |
 | Waits in | `QUEUED` |
 | Actions it emits | `announce`, `open-pull-request`, `run-errand` |
-| Observations it reads | _none_ |
 
 | # | State | Kind |
 | :-- | :-- | :-- |
@@ -205,7 +204,6 @@ The note-to-plan workflow: friction becomes a plan in the repository it is about
 | Terminal | `DONE`, `DECLINED` |
 | Waits in | `NOTED` |
 | Actions it emits | `announce`, `check-plan`, `draft-plan`, `open-pull-request` |
-| Observations it reads | _none_ |
 
 | # | State | Kind |
 | :-- | :-- | :-- |
@@ -228,7 +226,6 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 | Terminal | `DONE` |
 | Waits in | `CLARIFYING`, `COPILOT_WAIT`, `HUMAN_REVIEW`, `ESCALATED` |
 | Actions it emits | `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `discuss`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `resolve-review-thread`, `run-gate`, `self-review`, `triage` |
-| Observations it reads | _none_ |
 
 | # | State | Kind |
 | :-- | :-- | :-- |

@@ -129,12 +129,7 @@ function states(machine: WorkflowShape): string {
 }
 
 function uses(machine: WorkflowShape): string {
-  const observers =
-    machine.usesObservers.length > 0
-      ? `, and reads the ${sentence(machine.usesObservers.map((o) => `\`${o}\``))} observation`
-      : "";
-
-  return `It emits ${sentence(machine.usesActions.map((a) => `\`${a}\``))}${observers}.`;
+  return `It emits ${sentence(machine.usesActions.map((a) => `\`${a}\``))}.`;
 }
 
 function configuration(entry: MountedFact): string {

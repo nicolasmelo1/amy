@@ -27,7 +27,7 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * lists of one fact were how an action came to pass the mount with nothing
    * behind it.
    */
-  readonly usesObservers: readonly string[];
+
   /**
    * The tracker writes this workflow claims, by capability name.
    *
@@ -56,10 +56,7 @@ export interface Engine {
   tick(): Promise<unknown>;
 }
 
-/** Contributes one named slice of the observation a workflow reads. */
-export interface ObservationSource {
-  observe(record: WorkRecord): Promise<unknown>;
-}
+
 
 export interface HostPaths {
   /** Where the checkouts a workflow works in live. */
@@ -130,7 +127,7 @@ export interface Registry {
    * is a promise the machine cannot keep.
    */
   action(name: string, spec: ActionSpec, port: object): void;
-  observer(slice: string, source: ObservationSource): void;
+
   /**
    * Adds to a named collection that some other plugin consumes.
    *
@@ -144,7 +141,7 @@ export interface Registry {
 
 export interface Plugin {
   readonly name: string;
-  readonly version: string;
+
   /**
    * What this plugin's slice of the configuration looks like.
    *

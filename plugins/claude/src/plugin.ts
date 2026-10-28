@@ -5,7 +5,6 @@ import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-claude",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     const tiers = ctx.config.models as string[];

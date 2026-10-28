@@ -4,7 +4,6 @@ import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-command",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     // The action and the port together, which is what the registry asks of a

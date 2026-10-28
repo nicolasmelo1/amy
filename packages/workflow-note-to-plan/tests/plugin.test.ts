@@ -10,7 +10,7 @@ const host: HostServices = {
 
 /** A plugin that mounts one port, so a test can leave exactly one out. */
 function mounts(name: string, kind: string, impl: object = {}): Plugin {
-  return { name, version: "0.1.0", register: (registry) => registry.port(kind, impl) };
+  return { name, register: (registry) => registry.port(kind, impl) };
 }
 
 const PORTS = [
@@ -109,7 +109,6 @@ describe("what the workflow says it needs", () => {
       "open-pull-request",
       "announce",
     ]);
-    expect(outcome.mounted.workflow!.usesObservers).toEqual([]);
   });
 
   it("shares three of them with the ticket workflow rather than declaring its own", async () => {

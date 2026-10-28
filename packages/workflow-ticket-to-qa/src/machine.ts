@@ -693,9 +693,7 @@ function joinRepositories(obs: Observation, policy: Policy): Plan | null {
 /**
  * The workflow as the core mounts it.
  *
- * `usesActions` and `usesObservers` are data on purpose: the loader refuses a
- * mount where an action has no port behind it, and the capability surface can
- * be measured without anybody reading the logic below.
+ * The loader refuses a mount where a runtime action has no port behind it.
  *
  * The cast is the one boundary where this workflow's typed record meets the
  * core's generic one. It lives here, once, rather than being spread through
@@ -722,6 +720,5 @@ export const ticketToQa: Workflow<Observation, Policy> = {
   //
   // A workflow that needs something no action already reaches, a browser
   // check say, would name it here and a plugin would contribute it.
-  usesObservers: [],
   plan: (record, observation, policy) => plan(record as TicketRecord, observation, policy),
 };

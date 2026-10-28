@@ -100,7 +100,6 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observati
  */
 export const plugin: Plugin = {
   name: "@amykit/workflow-errand",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     registry.workflow(errand);

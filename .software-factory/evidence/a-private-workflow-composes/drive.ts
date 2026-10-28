@@ -173,13 +173,12 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const ctx: Partial<Pick<PluginContext, "port">> = {};
   const workflowPlugin: Plugin = {
     name: "@amykit/workflow-reader",
-    version: "0.1.0",
     register: (registry, given) => {
-      registry.workflow({ name: "reader", states: ["START", "DONE"], waitingStates: [], initialState: "START", terminalStates: ["DONE"], usesObservers: [], trackerWrites: [], codeHostWrites: [], plan: () => ({ kind: "settled", why: "reads only" }) });
+      registry.workflow({ name: "reader", states: ["START", "DONE"], waitingStates: [], initialState: "START", terminalStates: ["DONE"], trackerWrites: [], codeHostWrites: [], plan: () => ({ kind: "settled", why: "reads only" }) });
       ctx.port = given.port;
     },
   };
-  const hostPlugin: Plugin = { name: "@amykit/plugin-github-under-test", version: "0.1.0", register: (registry) => registry.port("code-host", host) };
+  const hostPlugin: Plugin = { name: "@amykit/plugin-github-under-test", register: (registry) => registry.port("code-host", host) };
   const mounted = await core.mount([hostPlugin, workflowPlugin], {}, { runner: new core.NodeCommandRunner(), now: () => new Date(), paths: { workspace: root, checkouts: {}, state: path.join(root, ".amy") } });
   const view = ctx.port?.("code-host") as (Partial<CodeHost> & Record<string, unknown>) | undefined;
   const ancestry = await view?.pullRequestAncestry?.(REPO, 80).catch((error: unknown) => String(error));
@@ -248,7 +247,7 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
 /* 3. The queue, built, from this process and a fresh one. ----------------- */
 {
   const dir = path.join(scratch, "queue");
-  const toy: Workflow = { name: "toy", states: ["NEW"], waitingStates: [], initialState: "NEW", terminalStates: ["DONE"], usesObservers: [], plan: () => ({ kind: "settled", why: "" }) };
+  const toy: Workflow = { name: "toy", states: ["NEW"], waitingStates: [], initialState: "NEW", terminalStates: ["DONE"], plan: () => ({ kind: "settled", why: "" }) };
   const toyRuntime = (discovered: WorkflowRuntime["found"]): WorkflowRuntime => ({ policy: {}, found: discovered, newRecord: (id, t) => ({ id, state: "NEW", updatedAt: t.toISOString(), attempts: {}, history: [] }), observe: async () => ({}), actions: {}, apply: (r) => r });
   // The queue reads the same `fs` object this run holds, so a stand-in put
   // on it here is the one the queue calls.

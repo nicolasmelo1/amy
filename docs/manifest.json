@@ -348,6 +348,11 @@
           "description": ""
         },
         {
+          "title": "Nothing is declared twice",
+          "path": "/design/nothing-is-declared-twice",
+          "description": ""
+        },
+        {
           "title": "Nothing is installed by default",
           "path": "/design/nothing-is-installed-by-default",
           "description": ""
@@ -881,6 +886,11 @@
           "depth": 3,
           "title": "The mutation fixtures amy workflow new writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still index.js, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so sf verify in an existing workflow is unaffected.",
           "slug": "the-mutation-fixtures-amy-workflow-new-writes-beside-a-workflow-are-typescript-now-the-same-as-the-scaffold-they-guard-two-of-the-three-were-still-indexjs-so-a-workflow-written-in-typescript-proved-its-guardrails-against-a-file-in-a-language-it-does-not-use-the-rules-read-both-so-sf-verify-in-an-existing-workflow-is-unaffected"
+        },
+        {
+          "depth": 3,
+          "title": "Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.",
+          "slug": "plugin-versions-and-unused-workflow-observer-declarations-were-removed-package-manifests-supply-displayed-versions"
         },
         {
           "depth": 3,
@@ -2403,6 +2413,28 @@
           "depth": 2,
           "title": "What shipped",
           "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/nothing-is-declared-twice",
+      "file": "docs/design/nothing-is-declared-twice.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/nothing-is-declared-twice.md",
+      "title": "Nothing is declared twice",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
         },
         {
           "depth": 2,
@@ -7826,8 +7858,7 @@
         "announce",
         "open-pull-request",
         "run-errand"
-      ],
-      "usesObservers": []
+      ]
     },
     {
       "package": "@amykit/workflow-note-to-plan",
@@ -7854,8 +7885,7 @@
         "check-plan",
         "draft-plan",
         "open-pull-request"
-      ],
-      "usesObservers": []
+      ]
     },
     {
       "package": "@amykit/workflow-ticket-to-qa",
@@ -7905,8 +7935,7 @@
         "run-gate",
         "self-review",
         "triage"
-      ],
-      "usesObservers": []
+      ]
     }
   ],
   "factory": {
@@ -8987,6 +9016,118 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "nothing-is-declared-twice",
+        "title": "Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-brief-store",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-notes",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-queue",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-store",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-tasks",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-fanout",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-hermes",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-inbox",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-feature-grooming",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "the-event-log-can-be-watched",

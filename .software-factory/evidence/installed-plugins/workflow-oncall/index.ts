@@ -14,7 +14,6 @@ const workflow: Workflow = {
   waitingStates: [],
   initialState: "paged",
   terminalStates: ["acknowledged"],
-  usesObservers: [],
   plan: (record) =>
     record.state === "paged"
       ? { kind: "advance", to: "acknowledged", effects: [], why: "the page was picked up" }
@@ -40,7 +39,6 @@ const runtime = (pages: string): WorkflowRuntime => ({
 
 export const plugin: Plugin = {
   name: "@acme/workflow-oncall",
-  version: "1.0.0",
   register(registry, ctx) {
     registry.workflow(workflow);
     registry.contribute("workflow-runtime", "oncall", runtime(path.join(ctx.paths.state, "pages")));

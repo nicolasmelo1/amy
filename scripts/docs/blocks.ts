@@ -472,10 +472,6 @@ function workflowStates(packages: PackageFact[]): string {
               machine.waitingStates.map((s) => `\`${s}\``).join(", ") || "_nowhere_",
             ],
             ["Actions it emits", machine.usesActions.map((a) => `\`${a}\``).join(", ")],
-            [
-              "Observations it reads",
-              machine.usesObservers.map((o) => `\`${o}\``).join(", ") || "_none_",
-            ],
           ],
         ),
         "",

@@ -29,7 +29,7 @@ export type { PortLookup } from "./dispatch.js";
 export type {
   Engine,
   HostPaths,
-  ObservationSource,
+
   Plugin,
   PluginContext,
   Registry,

@@ -12,7 +12,7 @@ const HOST: HostServices = {
 };
 
 function plugin(name: string, overrides: Partial<Plugin> = {}): Plugin {
-  return { name, version: "0.1.0", register: () => {}, ...overrides };
+  return { name, register: () => {}, ...overrides };
 }
 
 const WORKFLOW: Workflow<never, never> = {
@@ -21,7 +21,6 @@ const WORKFLOW: Workflow<never, never> = {
   waitingStates: [],
   initialState: "START",
   terminalStates: ["DONE"],
-  usesObservers: ["ticket"],
   plan: () => ({ kind: "settled", why: "toy" }),
 };
 
@@ -39,12 +38,12 @@ describe("mount", () => {
     expect(outcome.ok === true && outcome.mounted.actions.has("implement")).toBe(true);
   });
 
-  it("records what mounted, with versions", async () => {
+  it("records the names of what mounted", async () => {
     const outcome = await mount([plugin("@amykit/plugin-a"), plugin("@amykit/plugin-b")], {}, HOST);
 
     expect(outcome.ok === true && outcome.mounted.plugins).toEqual([
-      { name: "@amykit/plugin-a", version: "0.1.0" },
-      { name: "@amykit/plugin-b", version: "0.1.0" },
+      "@amykit/plugin-a",
+      "@amykit/plugin-b",
     ]);
   });
 
@@ -111,18 +110,6 @@ describe("mount", () => {
     const outcome = await mount([a, b], {}, HOST);
 
     expect(outcome.ok === false && outcome.problems[0]).toContain("a workflow is already mounted");
-  });
-
-  it("refuses two plugins contributing the same observation", async () => {
-    const source = { observe: async () => ({}) };
-    const a = plugin("@amykit/plugin-a", { register: (r) => r.observer("ticket", source) });
-    const b = plugin("@amykit/plugin-b", { register: (r) => r.observer("ticket", source) });
-
-    const outcome = await mount([a, b], {}, HOST);
-
-    expect(outcome.ok === false && outcome.problems[0]).toContain(
-      "the `ticket` observation is already contributed",
-    );
   });
 
   it("lets a plugin add an action the core does not have, with its port", async () => {
@@ -777,7 +764,7 @@ describe("unmetNeeds", () => {
 
   it("names an action whose port nothing mounted", async () => {
     const mounted = await mountedWith([
-      plugin("@amykit/plugin-a", { register: (r) => r.observer("ticket", { observe: async () => ({}) }) }),
+
     ]);
 
     // `triage` is a core action, so it is defined, but nothing is the agent.
@@ -788,20 +775,13 @@ describe("unmetNeeds", () => {
 
   it("names an action nothing defines at all", async () => {
     const mounted = await mountedWith([], { "check-web-browser": HANDLED });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `check-web-browser`: nothing defines it",
     ]);
   });
 
-  it("names an observation nothing contributes", async () => {
-    const mounted = await mountedWith([
-      plugin("@amykit/plugin-a", { register: (r) => r.port("agent", {}) }),
-    ]);
-
-    expect(unmetNeeds(mounted, WORKFLOW)).toEqual(["observation `ticket`: nothing contributes it"]);
-  });
 
   it("refuses a workflow that mutates the tracker while claiming no capability", async () => {
     const mounted = await mountedWith([
@@ -809,7 +789,7 @@ describe("unmetNeeds", () => {
     ], { "ask-question": HANDLED });
     // `ask-question` is a core tracker action, so it is defined and its port
     // is mounted; the refusal is the undeclared write alone.
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `ask-question` writes the tracker (`comment`), " +
@@ -821,7 +801,7 @@ describe("unmetNeeds", () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("tracker", {}) }),
     ], { "hand-off-to-qa": HANDLED });
-    const workflow = { ...WORKFLOW, usesObservers: [], trackerWrites: ["set-status"] };
+    const workflow = { ...WORKFLOW, trackerWrites: ["set-status"] };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `hand-off-to-qa` writes the tracker (`assign`), " +
@@ -833,7 +813,7 @@ describe("unmetNeeds", () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("code-host", {}) }),
     ], { "open-pull-request": HANDLED });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `open-pull-request` writes the code-host (`open-pull-request`), " +
@@ -847,7 +827,7 @@ describe("unmetNeeds", () => {
         register: (r) => r.action("plugin-merge", { port: "code-host", method: "merge" }, { merge: acceptsAction(async () => {}) }),
       }),
     ], { "plugin-merge": { port: "code-host", method: "merge" } });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `plugin-merge` writes the code-host (`merge`), " +
@@ -864,7 +844,7 @@ describe("unmetNeeds", () => {
         },
       }),
     ], { "open-pull-request": { port: "code-host", method: "merge" } });
-    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["open-pull-request"] };
+    const workflow = { ...WORKFLOW, codeHostWrites: ["open-pull-request"] };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `open-pull-request` writes the code-host (`merge`), " +
@@ -878,7 +858,7 @@ describe("unmetNeeds", () => {
         register: (r) => r.action("plugin-merge", { port: "tracker", method: "merge" }, { merge: acceptsAction(async () => {}) }),
       }),
     ], { "plugin-merge": { port: "tracker", method: "merge" } });
-    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["merge"] };
+    const workflow = { ...WORKFLOW, codeHostWrites: ["merge"] };
 
     expect(unmetNeeds(mounted, workflow)).toContain(
       "action `plugin-merge` binds the tracker port to `merge`, a write only the code-host contract defines",
@@ -891,7 +871,7 @@ describe("unmetNeeds", () => {
         register: (r) => r.action("plugin-comment", { port: "feature", method: "comment" }, { comment: acceptsAction(async () => {}) }),
       }),
     ], { "plugin-comment": { port: "feature", method: "comment" } });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `plugin-comment` writes the tracker (`comment`), " +
@@ -907,7 +887,7 @@ describe("unmetNeeds", () => {
         }),
       }),
     ], { "plugin-mutate": { port: "forge", method: "mutate" } });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `forge.mutate`"),
@@ -920,7 +900,7 @@ describe("unmetNeeds", () => {
         register: (r) => r.port("forge", { mutate: acceptsAction(async () => {}) }),
       }),
     ], { "plugin-mutate": { port: "forge", method: "mutate" } });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `forge.mutate`"),
@@ -933,7 +913,7 @@ describe("unmetNeeds", () => {
         register: (r) => r.port("tracker", { mutate: acceptsAction(async () => {}) }),
       }),
     ], { "plugin-mutate": { port: "tracker", method: "mutate" } });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       expect.stringContaining("action `plugin-mutate` binds unrecognised mutable port `tracker.mutate`"),
@@ -946,7 +926,7 @@ describe("unmetNeeds", () => {
         register: (r) => r.port("forge", { merge: acceptsAction(async () => {}) }),
       }),
     ], { merge: { port: "forge", method: "merge" } });
-    const workflow = { ...WORKFLOW, usesObservers: [] };
+    const workflow = { ...WORKFLOW };
 
     expect(unmetNeeds(mounted, workflow)).toEqual([
       "action `merge` writes the code-host (`merge`), " +
@@ -958,7 +938,7 @@ describe("unmetNeeds", () => {
     const mounted = await mountedWith([
       plugin("@amykit/plugin-a", { register: (r) => r.port("agent", {}) }),
     ], { triage: HANDLED });
-    const workflow = { ...WORKFLOW, usesObservers: [], codeHostWrites: ["delete-everything"] };
+    const workflow = { ...WORKFLOW, codeHostWrites: ["delete-everything"] };
 
     expect(unmetNeeds(mounted, workflow)[0]).toContain("the workflow claims the code-host write `delete-everything`");
   });
@@ -969,7 +949,6 @@ describe("unmetNeeds", () => {
     ], { "ask-question": HANDLED });
     const workflow = {
       ...WORKFLOW,
-      usesObservers: [],
       trackerWrites: ["comment"],
     };
 
@@ -982,7 +961,6 @@ describe("unmetNeeds", () => {
     ], { "ask-question": HANDLED });
     const workflow = {
       ...WORKFLOW,
-      usesObservers: [],
       trackerWrites: ["delete-everything"],
     };
 
@@ -999,7 +977,6 @@ describe("unmetNeeds", () => {
       plugin("@amykit/plugin-a", {
         register: (r) => {
           r.port("agent", {});
-          r.observer("ticket", { observe: async () => ({}) });
         },
       }),
     ]);
@@ -1014,7 +991,7 @@ describe("one declaration per action", () => {
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     return outcome.mounted;
   }
-  const workflow = { ...WORKFLOW, usesObservers: [] };
+  const workflow = { ...WORKFLOW };
   const forge = (): Plugin =>
     plugin("@amykit/plugin-forge", { register: (r) => r.port("forge", { merge: acceptsAction(async () => 7) }) });
 

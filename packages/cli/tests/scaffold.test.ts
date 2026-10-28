@@ -88,7 +88,7 @@ describe("a workflow of your own", () => {
   it("tells a workflow still declaring usesActions what to change", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
-    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("usesObservers: [],", "usesActions: [],\n  usesObservers: [],"));
+    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("waitingStates: [],", "waitingStates: [],\n  usesActions: [],"));
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([
       "oncall: still declares `usesActions`; delete it and key each action in its runtime's `actions`",

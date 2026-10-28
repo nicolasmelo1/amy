@@ -3,7 +3,7 @@ import { ConfigSchema, validateConfig } from "./config-schema.js";
 import {
   Engine,
   HostPaths,
-  ObservationSource,
+
   Plugin,
   PluginContext,
   Registry,
@@ -42,10 +42,10 @@ export interface Mounted {
   ports: Map<PortKind, object>;
   /** Core actions plus whatever plugins added. */
   actions: Map<string, ActionSpec>;
-  observers: Map<string, ObservationSource>;
+
   /** Named collections several plugins may add to, keyed by collection. */
   contributions: Map<string, Map<string, object>>;
-  plugins: { name: string; version: string }[];
+  plugins: string[];
 }
 
 export type MountOutcome =
@@ -77,7 +77,7 @@ export async function mount(
   const mounted: Mounted = {
     ports: new Map(),
     actions: new Map(Object.entries(CORE_ACTIONS)),
-    observers: new Map(),
+
     contributions: new Map(),
     plugins: [],
   };
@@ -111,7 +111,7 @@ export async function mount(
       finishRegistration();
     }
 
-    mounted.plugins.push({ name: plugin.name, version: plugin.version });
+    mounted.plugins.push(plugin.name);
     registered.push({ plugin, ctx });
   }
 
@@ -505,13 +505,7 @@ function registrarFor(
       existing.set(name, impl);
       mounted.contributions.set(collection, existing);
     },
-    observer: (slice, source) => {
-      if (mounted.observers.has(slice)) {
-        problems.push(`${plugin.name}: the \`${slice}\` observation is already contributed`);
-        return;
-      }
-      mounted.observers.set(slice, source);
-    },
+
   };
 }
 
@@ -646,11 +640,6 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
     unmet.push(...unclassifiableActionBindings(mounted, actions));
   }
 
-  for (const slice of workflow.usesObservers) {
-    if (!mounted.observers.has(slice)) {
-      unmet.push(`observation \`${slice}\`: nothing contributes it`);
-    }
-  }
 
   return unmet;
 }

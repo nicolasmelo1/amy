@@ -21,7 +21,7 @@ the list, still carries a refusal for an observation nothing contributes, and
 the generated workflow tables still print an "Observations it reads" row that
 says _none_ for every workflow there is. The runtime's own `observe()` is a
 different thing, used by every workflow, and stays exactly as it is.
-[Actions](../docs/concepts/actions.md) holds that a capability graduates into
+[Actions](../concepts/actions.md) holds that a capability graduates into
 the core by evidence rather than guess; this one has had no evidence since it
 was written.
 
@@ -44,25 +44,25 @@ carries `version` fails to compile, which tells its author the one line to
 delete. The changeset says so in one sentence.
 
 It ships in the same release as
-[a workflow is one declaration](a-workflow-is-one-declaration.md), so somebody
+[a workflow is one declaration](../../plans/a-workflow-is-one-declaration.md), so somebody
 who wrote a workflow migrates once.
 
 ## Acceptance criteria
 
-- [ ] `amy plugin list` prints, for each installed package, the version its
+- [x] `amy plugin list` prints, for each installed package, the version its
       own `package.json` declares, and no version for a path that has none
-      (proof: deferred:test:packages/cli/tests/plugin-list.test.ts)
-- [ ] An object literal typed `Plugin` that declares `version` fails to
+      (proof: test:packages/cli/tests/plugin-list.test.ts)
+- [x] An object literal typed `Plugin` that declares `version` fails to
       typecheck, and one typed `Workflow` that declares `usesObservers` does
       too
-      (proof: deferred:test:packages/core/tests/plugin-contract.test.ts)
-- [ ] The mount no longer knows the word observation: nothing registers one,
+      (proof: test:packages/core/tests/plugin-contract.test.ts)
+- [x] The mount no longer knows the word observation: nothing registers one,
       nothing is refused for lacking one, and `Mounted` carries none
       (proof: test:packages/core/tests/mount.test.ts)
-- [ ] The installed `workflow-oncall` fixture, with both lines gone, still
+- [x] The installed `workflow-oncall` fixture, with both lines gone, still
       mounts from outside this repository and is driven by the engine
       (proof: assertion:plugins.a_workflow_from_outside_this_repository_mounts)
-- [ ] The scaffold writes neither line, and what it writes still runs before
+- [x] The scaffold writes neither line, and what it writes still runs before
       anybody edits it
       (proof: assertion:mine.the_scaffold_runs_before_it_is_edited)
 

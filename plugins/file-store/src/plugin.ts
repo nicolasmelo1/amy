@@ -6,7 +6,6 @@ import { configSchema } from "./config.js";
 /** The record store only; briefs mount through their own adapter. */
 export const plugin: Plugin = {
   name: "@amykit/plugin-file-store",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     registry.store(new FileStore(path.join(ctx.paths.state, ctx.config.directory as string)));

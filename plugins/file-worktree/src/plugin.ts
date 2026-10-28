@@ -63,7 +63,6 @@ function settingsFor(ctx: PluginContext): WorktreeManagerConfig {
  */
 export const plugin: Plugin = {
   name: "@amykit/plugin-file-worktree",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     registry.port("worktree", new WorktreeManager(ctx.runner, settingsFor(ctx)));

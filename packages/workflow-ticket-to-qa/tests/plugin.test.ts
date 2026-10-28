@@ -16,7 +16,6 @@ const SETTINGS = {
 /** Everything this workflow reaches for, mounted by somebody else. */
 const world: Plugin = {
   name: "@amykit/plugin-world",
-  version: "0.1.0",
   register: (registry) => {
     registry.port("tracker", fakeTracker());
     registry.port("code-host", fakeHost());
@@ -169,7 +168,6 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     };
     const thread: Plugin = {
       name: "@amykit/plugin-thread",
-      version: "0.1.0",
       register: (registry) =>
         registry.port("conversation", { open: async () => ({ id: "t" }), post: async () => "m", replies: async () => [] }),
     };

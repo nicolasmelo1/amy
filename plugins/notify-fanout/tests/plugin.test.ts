@@ -12,7 +12,6 @@ const ANNOUNCEMENT = {
 function channelPlugin(name: string, down = false) {
   return {
     name: `@amykit/plugin-${name}`,
-    version: "0.1.0",
     register(registry: Parameters<typeof plugin.register>[0]) {
       registry.contribute(CHANNEL_COLLECTION, name, {
         name,

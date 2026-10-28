@@ -95,6 +95,12 @@ The `amy-update` gate stubbed out both of these with a stand-in npm that answere
 
 
 
+### Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.
+
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-command`, `@amykit/plugin-command-gate`, `@amykit/plugin-file-brief-store`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-file-worktree`, `@amykit/plugin-github`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-linear`, `@amykit/plugin-notify-fanout`, `@amykit/plugin-notify-hermes`, `@amykit/plugin-notify-inbox`, `@amykit/plugin-plan-check`, `@amykit/plugin-serial-engine`, `@amykit/plugin-slack`, `@amykit/workflow-errand`, `@amykit/workflow-feature-grooming`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
+
+
+
 ### **The event log can be watched, from any process.**
 
 `minor` · `@amykit/core`, `@amykit/plugin-file-log`

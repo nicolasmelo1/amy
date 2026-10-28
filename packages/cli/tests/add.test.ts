@@ -76,7 +76,7 @@ describe("whatPackageIs", () => {
     );
     fs.writeFileSync(
       path.join(home, "workflow-standalone", "index.js"),
-      'export const plugin = { name: "@acme/workflow-standalone", version: "0.1.0", register() {} };\n',
+      'export const plugin = { name: "@acme/workflow-standalone", register() {} };\n',
       "utf-8",
     );
 
@@ -188,7 +188,7 @@ describe("importPluginBySpec", () => {
     );
     fs.writeFileSync(
       path.join(directory, "index.js"),
-      'export const plugin = { name: "standalone", version: "0.1.0", register() {} };\n',
+      'export const plugin = { name: "standalone", register() {} };\n',
       "utf-8",
     );
 
@@ -229,7 +229,6 @@ describe("whatMountingSays", () => {
   initialState: "paged",
   terminalStates: ["acknowledged"],
   usesActions: [],
-  usesObservers: [],
   plan: (record) =>
     record.state === "paged"
       ? { kind: "advance", to: "acknowledged", effects: [], why: "the page was picked up" }
@@ -270,7 +269,6 @@ export const plugin = {
       "@acme/plugin-extra",
       `export const plugin = {
   name: "@acme/plugin-extra",
-  version: "0.1.0",
   register(registry) {
     registry.port("brief", { get: async () => undefined });
   },
@@ -294,7 +292,6 @@ export const plugin = {
       "@acme/plugin-refusing",
       `export const plugin = {
   name: "@acme/plugin-refusing",
-  version: "0.1.0",
   register(registry) {
     registry.workflow({ name: "w" });
     registry.workflow({ name: "w2" });
@@ -319,7 +316,6 @@ export const plugin = {
       "@acme/plugin-scribbler",
       `export const plugin = {
   name: "@acme/plugin-scribbler",
-  version: "0.1.0",
   register(_registry, ctx) {
     ctx.paths.state;
   },

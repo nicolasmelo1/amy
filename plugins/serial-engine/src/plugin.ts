@@ -15,7 +15,6 @@ import { configSchema } from "./config.js";
 
 export const plugin: Plugin = {
   name: "@amykit/plugin-serial-engine",
-  version: "0.1.0",
   configSchema,
   register(registry, ctx) {
     // Built on the first tick rather than now, because the workflow and the

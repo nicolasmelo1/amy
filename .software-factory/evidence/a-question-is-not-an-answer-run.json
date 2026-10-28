@@ -9,7 +9,7 @@
   "observed": {
     "assertions_run": 8,
     "assertions_failed": 0,
-    "node": "v22.22.1"
+    "node": "v24.22.1"
   },
   "assertions": [
     {

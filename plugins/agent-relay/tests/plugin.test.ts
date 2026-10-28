@@ -20,7 +20,6 @@ const asked: { prompt: string; by: string; context?: AskContext }[] = [];
 function harnessPlugin(harness: string, models: string[]): Plugin {
   return {
     name: `@amykit/plugin-${harness}-fake`,
-    version: "0.0.0",
     register(registry) {
       for (const model of models) {
         const name = model ? `${harness}:${model}` : harness;

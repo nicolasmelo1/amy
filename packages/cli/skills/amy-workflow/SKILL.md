@@ -156,7 +156,6 @@ const workflow = {
   waitingStates: [],
   initialState: "paged",
   terminalStates: ["acknowledged"],
-  usesObservers: [],    // observation slices it reads
   plan: (record, observation, policy) => ({ ... }),
 };
 
