@@ -3,6 +3,7 @@ import { Plugin, PluginContext, Workflow } from "../src/plugin.js";
 import { HostServices, mount, mountedActions, unmetNeeds } from "../src/mount.js";
 import { ActionContext, WORKFLOW_RUNTIME, WorkflowRuntime } from "../src/runtime.js";
 import { acceptsAction, implementationOf, runAction, undeclaredIn } from "../src/dispatch.js";
+import { deferred } from "../src/deferred.js";
 
 /** The services a host lends every plugin, with nothing that touches a machine. */
 const HOST: HostServices = {
@@ -1188,5 +1189,208 @@ describe("a plugin that cannot mount", () => {
     // The one that worked still registered, so one bad plugin does not hide
     // the state of the others.
     expect(outcome.ok === false && outcome.problems).toHaveLength(1);
+  });
+});
+
+describe("a deferred implementation", () => {
+  it("mounts a port that needs a port listed after it, and hands it that port", async () => {
+    let seen: object | undefined;
+    const early = plugin("@amykit/plugin-early", {
+      register: (r, ctx) => r.port("agent", deferred(() => {
+        seen = ctx.port("gate");
+        return { ask: async () => "answered" };
+      })),
+    });
+    const late = plugin("@amykit/plugin-late", { register: (r) => r.port("gate", { id: "gate" }) });
+
+    const outcome = await mount([early, late], {}, HOST);
+
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    expect(seen).toEqual({ id: "gate" });
+  });
+
+  it("hands every reader the built object, never the factory", async () => {
+    const runtime = { policy: {} };
+    const engine = { discover: async () => [], tick: async () => undefined };
+    let read: { port?: object; contribution?: object } = {};
+    const provider = plugin("@amykit/plugin-provider", {
+      register: (r) => {
+        r.port("agent", deferred(() => ({ ask: async () => "answered" })));
+        r.contribute(WORKFLOW_RUNTIME, "toy", deferred(() => runtime));
+        r.engine(deferred(() => engine));
+      },
+    });
+    const reader = plugin("@amykit/plugin-reader", {
+      ready: (ctx) => {
+        read = { port: ctx.port("agent"), contribution: ctx.contributions(WORKFLOW_RUNTIME).get("toy") };
+      },
+    });
+
+    const outcome = await mount([reader, provider], {}, HOST);
+
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    expect(typeof (read.port as { ask?: unknown }).ask).toBe("function");
+    expect(read.contribution).toBe(runtime);
+    expect(outcome.mounted.engine).toBe(engine);
+    expect(outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("toy")).toBe(runtime);
+    expect(typeof (outcome.mounted.ports.get("agent") as { ask?: unknown }).ask).toBe("function");
+  });
+
+  it("builds before any `ready`, so a `ready` judges what was built", async () => {
+    const order: string[] = [];
+    const judge = plugin("@amykit/plugin-judge", { ready: () => { order.push("ready"); } });
+    const built = plugin("@amykit/plugin-built", {
+      register: (r) => r.port("gate", deferred(() => {
+        order.push("built");
+        return {};
+      })),
+    });
+
+    await mount([judge, built], {}, HOST);
+
+    expect(order).toEqual(["built", "ready"]);
+  });
+
+  it("leaves a contribution that is itself a function exactly as it was given", async () => {
+    const handler = () => "a function, not a factory";
+    let read: object | undefined;
+    const provider = plugin("@amykit/plugin-provider", { register: (r) => r.contribute("handlers", "one", handler) });
+    const reader = plugin("@amykit/plugin-reader", { ready: (ctx) => { read = ctx.contributions("handlers").get("one"); } });
+
+    await mount([provider, reader], {}, HOST);
+
+    expect(read).toBe(handler);
+  });
+
+  it("refuses a build that throws at boot, naming its plugin", async () => {
+    const broken = plugin("@amykit/plugin-broken", {
+      register: (r) => r.port("agent", deferred(() => {
+        throw new Error("the ladder names `claude:opuss`, which no harness contributed");
+      })),
+    });
+
+    const outcome = await mount([broken], {}, HOST);
+
+    expect(outcome).toEqual({
+      ok: false,
+      problems: ["@amykit/plugin-broken: failed to mount — the ladder names `claude:opuss`, which no harness contributed"],
+    });
+  });
+
+  it("refuses only the build that threw, not the ones that read it", async () => {
+    const broken = plugin("@amykit/plugin-broken", {
+      register: (r) => r.port("gate", deferred(() => {
+        throw new Error("no command configured");
+      })),
+    });
+    const reader = plugin("@amykit/workflow-reader", {
+      register: (r, ctx) => r.contribute(WORKFLOW_RUNTIME, "toy", deferred(() => ({ gate: ctx.port("gate") }))),
+    });
+
+    const outcome = await mount([reader, broken], {}, HOST);
+
+    expect(outcome).toEqual({ ok: false, problems: ["@amykit/plugin-broken: failed to mount — no command configured"] });
+  });
+
+  it("refuses two builds that read each other, naming both", async () => {
+    const first = plugin("@amykit/plugin-first", {
+      register: (r, ctx) => r.port("agent", deferred(() => ({ gate: ctx.port("gate") }))),
+    });
+    const second = plugin("@amykit/plugin-second", {
+      register: (r, ctx) => r.port("gate", deferred(() => ({ agent: ctx.port("agent") }))),
+    });
+
+    const outcome = await mount([first, second], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems).toEqual([
+      "@amykit/plugin-first (the `agent` port) and @amykit/plugin-second (the `gate` port) each need what the other builds, so neither can be built",
+    ]);
+  });
+
+  it("refuses a build that reads itself", async () => {
+    const selfish = plugin("@amykit/plugin-selfish", {
+      register: (r, ctx) => r.port("agent", deferred(() => ({ agent: ctx.port("agent") }))),
+    });
+
+    const outcome = await mount([selfish], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems).toEqual([
+      "@amykit/plugin-selfish (the `agent` port): reads itself while it is being built",
+    ]);
+  });
+
+  it("refuses a read during `register`, when what it needs may not exist yet", async () => {
+    const provider = plugin("@amykit/plugin-provider", { register: (r) => r.port("agent", deferred(() => ({}))) });
+    const eager = plugin("@amykit/plugin-eager", { register: (_r, ctx) => { ctx.port("agent"); } });
+
+    const outcome = await mount([provider, eager], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems[0]).toContain(
+      "@amykit/plugin-eager: failed to mount — the `agent` port of @amykit/plugin-provider is built once every plugin has registered",
+    );
+  });
+
+  it("refuses a build that returns a promise rather than an implementation", async () => {
+    const asynchronous = plugin("@amykit/plugin-async", {
+      register: (r) => r.port("agent", deferred(() => Promise.resolve({}))),
+    });
+
+    const outcome = await mount([asynchronous], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems[0]).toContain("returned a promise");
+  });
+
+  it("builds each mount its own instance, exactly once, when two hosts mount in one process", async () => {
+    let builds = 0;
+    const shared = plugin("@amykit/plugin-shared", {
+      register: (r) => r.port("agent", deferred(() => ({ instance: ++builds }))),
+    });
+    const readsTwice = plugin("@amykit/plugin-reader", {
+      register: (r, ctx) => r.contribute("readers", "twice", deferred(() => ({ a: ctx.port("agent"), b: ctx.port("agent") }))),
+      ready: (ctx) => { ctx.port("agent"); },
+    });
+
+    const first = await mount([readsTwice, shared], {}, HOST);
+    const second = await mount([readsTwice, shared], {}, HOST);
+
+    if (!first.ok || !second.ok) throw new Error("both mounts should have worked");
+    expect(builds).toBe(2);
+    expect(first.mounted.ports.get("agent")).toEqual({ instance: 1 });
+    expect(second.mounted.ports.get("agent")).toEqual({ instance: 2 });
+    expect(first.mounted.contributions.get("readers")?.get("twice")).toEqual({ a: { instance: 1 }, b: { instance: 1 } });
+  });
+
+  it("still attenuates a deferred tracker for the workflow that reads it", async () => {
+    let comments = 0;
+    let port: { comment(): Promise<void> } | undefined;
+    const workflow = plugin("@amykit/workflow-toy", {
+      register: (r, ctx) => {
+        r.workflow({ ...WORKFLOW, trackerWrites: [] });
+        r.contribute(WORKFLOW_RUNTIME, "toy", deferred(() => {
+          port = ctx.port("tracker") as typeof port;
+          return {};
+        }));
+      },
+    });
+    const tracker = plugin("@amykit/plugin-tracker", {
+      register: (r) => r.port("tracker", deferred(() => ({ comment: async () => { comments += 1; } }))),
+    });
+
+    const outcome = await mount([workflow, tracker], {}, HOST);
+
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    await expect(port!.comment()).rejects.toThrow("comment");
+    expect(comments).toBe(0);
+  });
+
+  it("refuses a deferred port handed to `action`, which binds a built one", async () => {
+    const binder = plugin("@amykit/plugin-binder", {
+      register: (r) => r.action("page", { port: "pager", method: "page" }, deferred(() => ({ page: async () => undefined }))),
+    });
+
+    const outcome = await mount([binder], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems[0]).toContain("the action `page` needs a built port");
   });
 });

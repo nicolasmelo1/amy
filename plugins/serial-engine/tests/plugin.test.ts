@@ -64,27 +64,40 @@ const stubWorkflow: Plugin = {
   },
 };
 
-async function mountAlone(extra: Plugin[] = []) {
-  const outcome = await mount([plugin, ...extra], SETTINGS, HOST);
-  if (!outcome.ok) throw new Error(outcome.problems.join("; "));
-  return outcome.mounted;
+/** The ports an engine reaches, standing in, so only the pair is under test. */
+const PORTS: Plugin = {
+  name: "@amykit/plugin-ports",
+  register: (registry) => {
+    registry.queue({} as never);
+    registry.store({} as never);
+    registry.port("notifier", { announce: async () => undefined });
+  },
+};
+
+async function refusal(plugins: Plugin[]): Promise<string> {
+  const outcome = await mount(plugins, SETTINGS, HOST);
+  if (outcome.ok) throw new Error("the mount should have been refused");
+  return outcome.problems.join("\n");
 }
 
 describe("the serial engine plugin", () => {
   it("mounts an engine and nothing else", async () => {
-    const mounted = await mountAlone();
+    const outcome = await mount([plugin, stubWorkflow, PORTS], SETTINGS, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
-    expect(typeof mounted.engine?.tick).toBe("function");
+    expect(Object.keys(outcome.mounted.engine as Engine).sort()).toEqual(["discover", "tick"]);
     // Deliberately not this plugin's job any more. An engine that registered
     // the workflow was an engine that had decided which one it drives.
-    expect(mounted.workflow).toBeUndefined();
+    expect(outcome.mounted.workflow?.name).toBe("half");
+    expect([...outcome.mounted.ports.keys()].sort()).toEqual(["notifier", "queue", "store"]);
   });
 
-  it("refuses to run without a workflow, rather than throwing on undefined", async () => {
-    const mounted = await mountAlone();
-
-    await expect((mounted.engine as Engine).tick()).rejects.toThrow(
-      /needs a workflow, and no plugin registered one/,
+  // Behaviour change: these used to mount and fail on the first tick. The
+  // engine is now a deferred implementation the host builds at boot, so each
+  // of them is a boot refusal naming the plugin and what is missing.
+  it("refuses at boot without a workflow, rather than throwing on undefined", async () => {
+    expect(await refusal([plugin])).toMatch(
+      /@amykit\/plugin-serial-engine: failed to mount — the serial engine needs a workflow, and no plugin registered one/,
     );
   });
 
@@ -92,32 +105,27 @@ describe("the serial engine plugin", () => {
   // in, and how the actions in them run. Half of it is a config mistake, and
   // it costs a boot rather than somebody's ticket.
   it("refuses a workflow that contributed no runtime, and names what there was", async () => {
-    const mounted = await mountAlone([halfAWorkflow]);
-
-    await expect((mounted.engine as Engine).tick()).rejects.toThrow(
-      /`half` contributed no runtime/,
-    );
+    expect(await refusal([plugin, halfAWorkflow])).toMatch(/`half` contributed no runtime/);
   });
 
-  it("mounts without the ports it will need, and complains only when used", async () => {
-    // Deliberate: the ports come from plugins that may be listed after this
-    // one, so demanding them at mount would make the config order matter.
-    const mounted = await mountAlone([stubWorkflow]);
+  it("finds the ports it needs from plugins listed after it, and refuses at boot when one is missing", async () => {
+    // The ports come from plugins that may be listed after this one, and the
+    // host builds the engine once all of them have registered, so the order
+    // does not matter and a missing one still costs a boot.
+    const listedLast = await mount([plugin, stubWorkflow, PORTS], SETTINGS, HOST);
+    expect(listedLast.ok).toBe(true);
 
-    await expect((mounted.engine as Engine).tick()).rejects.toThrow(
-      /needs the `queue` port, and nothing mounted it/,
-    );
+    expect(await refusal([plugin, stubWorkflow])).toMatch(/needs the `queue` port, and nothing mounted it/);
   });
 
   it("names the missing port, not a property of undefined", async () => {
-    const withQueue = await mountAlone([
+    expect(await refusal([
+      plugin,
       stubWorkflow,
       {
         name: "@amykit/plugin-q",
         register: (r) => r.queue({} as never),
       },
-    ]);
-
-    await expect((withQueue.engine as Engine).tick()).rejects.toThrow(/needs the `store` port/);
+    ])).toMatch(/needs the `store` port/);
   });
 });

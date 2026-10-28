@@ -2,6 +2,7 @@ import { ActionSpec, PortKind } from "./actions.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { ConfigSchema } from "./config-schema.js";
+import { Deferred } from "./deferred.js";
 import { Plan, WorkRecord } from "./work.js";
 import { Queue } from "./ports/Queue.js";
 import { Store } from "./ports/Store.js";
@@ -114,13 +115,19 @@ export interface PluginContext {
   workflow(): Workflow<never, never> | undefined;
 }
 
+/**
+ * What `port`, `engine` and `contribute` accept: the implementation itself,
+ * or a `deferred` one the host builds once every plugin has registered.
+ */
+export type Implementation<T extends object> = T | Deferred<T>;
+
 export interface Registry {
   queue(impl: Queue): void;
   store(impl: Store): void;
-  engine(impl: Engine): void;
+  engine(impl: Implementation<Engine>): void;
   workflow(impl: Workflow<never, never>): void;
   /** Mounts a port. Mounting the same kind twice fails loudly. */
-  port(kind: PortKind, impl: object): void;
+  port(kind: PortKind, impl: Implementation<object>): void;
   /**
    * Registers an action the core does not ship, together with the port that
    * runs it. The pair is inseparable on purpose: an action nobody can execute
@@ -136,7 +143,7 @@ export interface Registry {
    * notification channels reach the fan-out without the core learning the
    * word "channel".
    */
-  contribute(collection: string, name: string, impl: object): void;
+  contribute(collection: string, name: string, impl: Implementation<object>): void;
 }
 
 export interface Plugin {
@@ -151,8 +158,10 @@ export interface Plugin {
   readonly configSchema?: ConfigSchema;
   register(r: Registry, ctx: PluginContext): void | Promise<void>;
   /**
-   * Checked once every plugin has registered, and only for a plugin whose
-   * settings cannot be judged before then.
+   * Checked once every plugin has registered and every deferred
+   * implementation is built, and only for a plugin whose settings cannot be
+   * judged before then. Building something early is not what it is for: a
+   * `deferred` implementation is already built, and refused, at boot.
    *
    * A plugin that composes others is the case this exists for: it cannot tell
    * whether its configuration makes sense until the plugins it composes have

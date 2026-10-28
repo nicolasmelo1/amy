@@ -219,7 +219,9 @@ both.
 ## 5. Validate what you cannot judge alone
 
 If your plugin *composes* others, its settings cannot be checked in `register` —
-the plugins it composes may be listed after it. That is what `ready` is for:
+the plugins it composes may be listed after it. When what you mount is built
+from them, register it `deferred` (below) and throw from the factory. When there
+is only something to judge, that is what `ready` is for:
 
 ```ts
 ready(ctx) {
@@ -245,20 +247,20 @@ load.
 The exported `plugin` is a **module singleton**. A field on it is shared by every
 host in the process, and the second mount answers with the first one's state.
 
-Key anything expensive by the context, which is per mount:
+Build what you mount inside `register`, from its `ctx`, which is per mount. When
+it needs something another plugin registers — possibly after yours — register
+it `deferred` and let the host build it:
 
 ```ts
-const built = new WeakMap<PluginContext, JiraTracker>();
-
-function trackerFor(ctx: PluginContext): JiraTracker {
-  const existing = built.get(ctx);
-  if (existing) return existing;
-
-  const made = new JiraTracker(…);
-  built.set(ctx, made);
-  return made;
-}
+registry.port("tracker", deferred(() => new JiraTracker(ctx.port("http") as Http, …)));
 ```
+
+The host calls the factory once every plugin has registered, once per mount and
+before any `ready`; a factory that reads another deferred implementation gets it
+built on demand, and two that read each other are refused at boot, naming both.
+A factory that throws is the same refusal a `register` that throws is. `port`,
+`engine` and `contribute` all take one. The marker is explicit because a
+contribution that is itself a function is a legitimate thing to register.
 
 ## 7. Test it
 

@@ -139,16 +139,34 @@ plugins are listed in does not matter.
 ready?(ctx: PluginContext): void | Promise<void>;
 ```
 
-Checked once every plugin has registered, and only for a plugin whose settings
-cannot be judged before then.
+Checked once every plugin has registered and every deferred implementation is
+built, and only for a plugin whose settings cannot be judged before then.
+Throwing in `ready` is a refusal at boot, named — the same promise `register`
+makes. It is for judging, not for building something early: that is what
+`deferred` is for.
+
+## `deferred()`, and the order plugins are listed in
+
+```ts
+registry.port("agent", deferred(() => relay(ctx)));
+registry.contribute(WORKFLOW_RUNTIME, "errand", deferred(() => errandRuntime(…)));
+registry.engine(deferred(() => worker(ctx)));
+```
+
+Wherever an implementation is registered — `port`, `engine`, `contribute` — a
+deferred one may be instead. The host builds it once every plugin has
+registered, once per mount, and before any `ready`. A factory that reads another
+deferred implementation through `ctx.port` or `ctx.contributions` gets it built
+on demand, so the order they are listed in still does not matter; two that read
+each other are refused at boot, naming both. A factory that throws is the same
+refusal a `register` that throws is, naming the plugin. Whoever reads a port or
+a contribution receives the built object, never the factory.
 
 The agent relay is the case it exists for. Its `ladder: [claude:sonnet,
 codex:gpt-5]` names harnesses that *other plugins contribute*, and it cannot
-tell whether that list makes sense until they have. Throwing in `ready` is a
-refusal at boot, named — the same promise `register` makes.
-
-A ladder that quietly meant less than it says would first show up as a ticket
-escalating for no reason.
+build itself until they have. A ladder that quietly meant less than it says
+would first show up as a ticket escalating for no reason; built deferred, it is
+a refusal at boot instead.
 
 ## Config schemas
 
@@ -180,14 +198,10 @@ The exported `plugin` is a **module singleton**. A field on it would be shared
 by every host in the same process, and the second mount would answer with the
 first one's state.
 
-The shipped plugins that build something expensive key it by context:
-
-```ts
-const relays = new WeakMap<PluginContext, HarnessRelay>();
-```
-
-The context is per mount, which makes it the right key. If your plugin holds
-anything built from `ctx`, do the same.
+Build what you mount inside `register`, from `ctx`, which is per mount — or
+register it `deferred` and the host builds it once per mount for you. Nothing
+shipped keeps its own cache keyed by `PluginContext`; a test in the core holds
+that.
 
 ## Every shipped plugin
 

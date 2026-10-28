@@ -86,6 +86,21 @@ describe("mounting the relay", () => {
     expect(outcome.problems.join("\n")).toContain("claude:sonnet");
   });
 
+  it("is refused at boot by the host's build, with no `ready` and no cache of its own", async () => {
+    // The host builds the deferred port once every plugin has registered, so
+    // the typo is still a boot refusal without the relay building early.
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"])],
+      ladder(["claude:opuss"]),
+      host,
+    );
+
+    expect(relay.ready).toBeUndefined();
+    expect(outcome.ok === false && outcome.problems).toEqual([
+      "@amykit/plugin-agent-relay: failed to mount — the ladder names `claude:opuss`, which no harness contributed. Contributed: claude:sonnet",
+    ]);
+  });
+
   it("refuses at boot when no harness was mounted at all", async () => {
     const outcome = await mount([relay], ladder([]), host);
 

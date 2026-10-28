@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { applyPlan, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { applyPlan, factoryOf, isDeferred, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 import { AmyConfig, writeWorkflowProfile } from "./config.js";
 
 /** The directory where one machine keeps workflows that belong only to it. */
@@ -140,8 +140,16 @@ async function registeredWorkflow(home: string, spec: string, resolve: (spec: st
   }
   if (!workflow) return `${spec}: registered no workflow`;
 
-  const runtime = contributions.get("workflow-runtime")?.get(workflow.name) as WorkflowRuntime | undefined;
-  return runtime ? { workflow, runtime, now } : `${workflow.name}: contributed no runtime, so nothing here knows how to run its actions`;
+  const contributed = contributions.get("workflow-runtime")?.get(workflow.name);
+  if (!contributed) return `${workflow.name}: contributed no runtime, so nothing here knows how to run its actions`;
+  // A deferred runtime is built here, once registration is over, the way the
+  // mount builds it.
+  if (!isDeferred(contributed)) return { workflow, runtime: contributed as WorkflowRuntime, now };
+  try {
+    return { workflow, runtime: factoryOf(contributed)() as WorkflowRuntime, now };
+  } catch (error) {
+    return `${workflow.name}: its runtime could not be built — ${message(error)}`;
+  }
 }
 
 async function importedPlugin(spec: string, resolve: (spec: string) => string): Promise<Plugin | string> {

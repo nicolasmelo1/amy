@@ -50,7 +50,7 @@
     },
     "assertions_run": 11,
     "assertions_failed": 0,
-    "node": "v24.22.1"
+    "node": "v22.22.1"
   },
   "assertions": [
     {

@@ -26,9 +26,13 @@ export {
 } from "./dispatch.js";
 export type { PortLookup } from "./dispatch.js";
 
+export { deferred, factoryOf, isDeferred } from "./deferred.js";
+export type { Deferred } from "./deferred.js";
+
 export type {
   Engine,
   HostPaths,
+  Implementation,
 
   Plugin,
   PluginContext,

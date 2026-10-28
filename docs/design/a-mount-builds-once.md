@@ -3,7 +3,7 @@
 Five plugins need something that another plugin registers, possibly after
 them: the agent relay needs the harnesses, the serial engine needs the workflow,
 its runtime and the queue, and each of the three workflows needs the ports its
-runtime calls. [Plugins](../docs/concepts/plugins.md) promises that the order
+runtime calls. [Plugins](../concepts/plugins.md) promises that the order
 plugins are listed in is not something an operator has to get right, and all
 five keep that promise by hand, each in its own way:
 
@@ -20,7 +20,7 @@ five keep that promise by hand, each in its own way:
   written a fifth way.
 
 That is roughly a hundred lines in each workflow's `plugin.ts`, and three traps
-[Write a workflow](../docs/build/write-a-workflow.md) has to call
+[Write a workflow](../build/write-a-workflow.md) has to call
 "load-bearing" because an author who misses any one of them ships a bug that
 only shows up with two mounts, or with a different plugin order, or on the first
 tick instead of at boot. The host is the only thing that knows when every
@@ -57,22 +57,22 @@ for a plugin that has something to judge once everything is mounted.
 
 ## Acceptance criteria
 
-- [ ] A port whose implementation is deferred and needs a port listed after
+- [x] A port whose implementation is deferred and needs a port listed after
       it in the config mounts, and gets that port
       (proof: test:packages/core/tests/mount.test.ts)
-- [ ] A deferred implementation that throws is a boot refusal naming its
+- [x] A deferred implementation that throws is a boot refusal naming its
       plugin, and two that read each other are refused naming both
       (proof: test:packages/core/tests/mount.test.ts)
-- [ ] Two hosts mounted in one process build two instances, and each mount
+- [x] Two hosts mounted in one process build two instances, and each mount
       builds its own exactly once
       (proof: test:packages/core/tests/mount.test.ts)
-- [ ] A relay ladder naming a harness nobody contributed is still refused at
+- [x] A relay ladder naming a harness nobody contributed is still refused at
       boot, without the relay holding a `WeakMap` or building in `ready`
-      (proof: deferred:test:plugins/agent-relay/tests/plugin.test.ts)
-- [ ] No module under `plugins/` or `packages/workflow-*` keys anything by
+      (proof: test:plugins/agent-relay/tests/plugin.test.ts)
+- [x] No module under `plugins/` or `packages/workflow-*` keys anything by
       `PluginContext`
       (proof: test:packages/core/tests/architecture.test.ts)
-- [ ] The three shipped workflows still walk their scenarios with nothing in
+- [x] The three shipped workflows still walk their scenarios with nothing in
       them changed but the wiring
       (proof: assertion:plan.work_injected_by_command_reaches_the_queue)
 

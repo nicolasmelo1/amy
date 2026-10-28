@@ -6,6 +6,7 @@ import {
   Plugin,
   PluginContext,
   Registry,
+  deferred,
   hasACeiling,
   parseBudget,
 } from "@amykit/core";
@@ -14,56 +15,28 @@ import { configSchema } from "./config.js";
 import { inertCeilingProblems } from "./pricing.js";
 import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
 
-/**
- * The relay built for one mount, keyed by that mount's context.
- *
- * The exported `plugin` is a module singleton, so a field on it would be
- * shared by every host in the process and the second mount would answer with
- * the first one's ladder. The context is per mount, which makes it the right
- * key.
- */
-const relays = new WeakMap<PluginContext, HarnessRelay>();
-
-function relayFor(ctx: PluginContext): HarnessRelay {
-  const existing = relays.get(ctx);
-  if (existing) return existing;
-
-  const built = build(ctx);
-  relays.set(ctx, built);
-  return built;
-}
-
 export const plugin: Plugin = {
   name: "@amykit/plugin-agent-relay",
   configSchema,
   register(registry, ctx) {
-    // Not built now: the harnesses it relays to are contributed by plugins
-    // that may be listed after this one, and mounting order should not be
-    // something an operator has to get right. `ready` builds it as soon as
-    // they have all registered, and this is the fallback for a host that
-    // mounts without that second pass.
+    // Deferred: the harnesses it relays to are contributed by plugins that
+    // may be listed after this one. The host builds it once every plugin has
+    // registered, so a ladder naming an agent nobody contributed is a typo
+    // that costs a boot rather than somebody's ticket.
     //
     // The port is `ask` and nothing else. Every workflow's steps go up the
     // same ladder, into the same log and under the same ceiling, keyed by the
     // step each one names in its context.
-    const agent: Agent & { name: string } = {
-      ask: (prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply> =>
-        relayFor(ctx).ask(prompt, cwd, context),
-      name: "relay",
-    };
-    registry.port("agent", agent);
+    registry.port("agent", deferred(() => {
+      const relay = build(ctx);
+      const agent: Agent & { name: string } = {
+        ask: (prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply> =>
+          relay.ask(prompt, cwd, context),
+        name: "relay",
+      };
+      return agent;
+    }));
     mountBudget(registry, ctx);
-  },
-
-  /**
-   * Builds the relay while boot can still refuse.
-   *
-   * A ladder naming an agent nobody contributed is a typo, and the whole
-   * point of validating at mount is that a typo costs a boot rather than
-   * somebody's ticket.
-   */
-  ready(ctx) {
-    relayFor(ctx);
   },
 };
 

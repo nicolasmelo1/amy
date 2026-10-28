@@ -59,7 +59,7 @@ export const plugin = defineWorkflow({
   boot, by name, the way an unknown setting already is.
 - The core writes `id`, `state`, `updatedAt`, `attempts` and `history`; the
   workflow's `record` adds its own fields and nothing else.
-- `runtime` is built through [a mount builds once](a-mount-builds-once.md), so
+- `runtime` is built through [a mount builds once](../docs/design/a-mount-builds-once.md), so
   there is no proxy, no `WeakMap` and no `ready` in a workflow at all.
 - The write claims may be a function of the config, because `ticket-to-qa`'s
   `writes: operator` claims none — the one place a claim is not a constant.
@@ -76,7 +76,7 @@ apply to it; what to call it is for
 [the docs describe the contract that exists](the-docs-describe-the-contract-that-exists.md)
 to raise.
 
-It depends on [a mount builds once](a-mount-builds-once.md), reads better after
+It depends on [a mount builds once](../docs/design/a-mount-builds-once.md), reads better after
 [a config is typed by its schema](a-config-is-typed-by-its-schema.md) and
 [the host lends the checkout](the-host-lends-the-checkout.md), and ships in the
 same release as [nothing is declared twice](../docs/design/nothing-is-declared-twice.md), so an

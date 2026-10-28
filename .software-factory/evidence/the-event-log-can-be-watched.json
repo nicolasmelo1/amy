@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/the-event-log-can-be-watched-scenario.sh against the built file-log dist from two processes on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/the-event-log-can-be-watched-run.json",
-      "report_sha256": "bb7590baff20ef3e4841621b351f27f90fe212bb821b47b4d1dc8fead62a09fe",
+      "report_sha256": "d2fabbbc6337654f724208e4897a276bacda36d6ced189f26a0e90ca662cbd3b",
       "required_assertions": []
     }
   ]

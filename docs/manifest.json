@@ -233,6 +233,11 @@
           "description": ""
         },
         {
+          "title": "A mount builds once",
+          "path": "/design/a-mount-builds-once",
+          "description": ""
+        },
+        {
           "title": "A private workflow composes the shipped one",
           "path": "/design/a-private-workflow-composes-the-shipped-one",
           "description": ""
@@ -864,6 +869,11 @@
         },
         {
           "depth": 3,
+          "title": "**A mount builds once.** port, engine and contribute accept deferred(() => impl): the host builds it once every plugin has registered, once per mount and before any ready, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own WeakMap<PluginContext, …>, getter proxies and build-early ready. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.",
+          "slug": "a-mount-builds-once-port-engine-and-contribute-accept-deferred-impl-the-host-builds-it-once-every-plugin-has-registered-once-per-mount-and-before-any-ready-building-on-demand-when-one-reads-another-so-the-order-plugins-are-listed-in-does-not-matter-a-build-that-throws-is-a-boot-refusal-naming-its-plugin-and-two-builds-that-read-each-other-are-refused-naming-both-the-agent-relay-the-serial-engine-and-the-three-shipped-workflows-use-it-in-place-of-their-own-weakmapplugincontext-getter-proxies-and-build-early-ready-one-behaviour-change-the-serial-engine-is-now-built-at-boot-so-an-engine-with-no-workflow-no-runtime-or-no-queue-store-or-notifier-is-refused-when-the-host-mounts-rather-than-on-its-first-tick"
+        },
+        {
+          "depth": 3,
           "title": "**A reply in a work's thread can be a question, not only an answer.**",
           "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
         },
@@ -1203,6 +1213,11 @@
           "depth": 2,
           "title": "ready(), and why it exists",
           "slug": "ready-and-why-it-exists"
+        },
+        {
+          "depth": 2,
+          "title": "deferred(), and the order plugins are listed in",
+          "slug": "deferred-and-the-order-plugins-are-listed-in"
         },
         {
           "depth": 2,
@@ -1597,6 +1612,28 @@
           "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-mount-builds-once",
+      "file": "docs/design/a-mount-builds-once.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-mount-builds-once.md",
+      "title": "A mount builds once",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
         },
         {
           "depth": 2,
@@ -8936,6 +8973,42 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-mount-builds-once",
+        "title": "**A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
       {
         "id": "a-question-is-not-an-answer",
         "title": "**A reply in a work's thread can be a question, not only an answer.**",
