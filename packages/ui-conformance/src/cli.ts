@@ -50,8 +50,15 @@ async function main(): Promise<number> {
   }
   const config = loadConformance();
   if (approve) {
-    const first = conform(frame, renderers, config, undefined).projections;
-    const steps = Object.values(first)[0] ?? [];
+    // Only a window that holds the frame in every other way may become the approved one.
+    const draft = conform(frame, renderers, config, undefined);
+    const blocking = draft.findings.filter((finding) => finding.assertion !== "frame.nothing_moved_since_it_was_approved");
+    const steps = Object.values(draft.projections)[0] ?? [];
+    if (blocking.length > 0 || steps.length === 0) {
+      console.error(`amy-ui-conformance: not approved, and ${FILES.golden} is untouched: ${blocking.length} finding(s) besides the golden, ${steps.length} projection(s)`);
+      for (const finding of blocking) console.error(`${finding.assertion}: ${finding.renderer}: ${finding.message}`);
+      return 1;
+    }
     fs.writeFileSync(FILES.golden, goldenText({ steps }));
     console.log(`approved ${steps.length} projections into ${FILES.golden}; lock it with \`sf lock\``);
   }

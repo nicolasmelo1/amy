@@ -29,6 +29,11 @@ describe("keys are read in Neovim's notation", () => {
     ["<M-A>", ["<M-A>"]],
     ["<C-M-A>", ["<C-M-a>"]],
     [" ", ["<Space>"]],
+    ["<Bar>", ["|"]],
+    ["<Bslash>", ["\\"]],
+    ["<S-g>", ["G"]],
+    ["<S-G>", ["G"]],
+    ["<C-S-g>", ["<C-S-g>"]],
     ["\t", ["<Tab>"]],
   ])("%s is %j", (notation, keys) => {
     expect(parseKeys(notation)).toEqual(keys);
@@ -101,6 +106,16 @@ describe("a remap is refused at boot, by name", () => {
 
   it("when a literal space begins a binding the leader also begins", () => {
     expect(() => buildKeymap(frame, { normal: { " ": "nav.next" } })).toThrow(/begins, or is begun by, <leader>/);
+  });
+
+  it("when two spellings of one printable key are bound to two actions", () => {
+    expect(() => buildKeymap(frame, { normal: { "|": "nav.next", "<Bar>": "nav.prev" } })).toThrow("ui.keys.normal.|: is the same keys as <Bar>");
+  });
+
+  it("not when <S-g> remaps G, which replaces the frame's binding of it", () => {
+    const keymap = buildKeymap(frame, { normal: { "<S-g>": "nav.first" } });
+    expect(keysFor(keymap, "normal", "nav.last")).toBeUndefined();
+    expect(press({ normal: { "<S-g>": "nav.first" } }, "normal", "G")).toEqual([{ kind: "action", action: "nav.first", count: 1 }]);
   });
 
   it("not when two Alt keys differ only in case, which Neovim reads as two keys", () => {

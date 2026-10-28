@@ -22,8 +22,9 @@ const SPECIAL: Readonly<Record<string, string>> = {
   end: "End",
   pageup: "PageUp",
   pagedown: "PageDown",
-  bar: "Bar",
-  bslash: "Bslash",
+  // Printable keys with a name: alone, each is its own character, so `<Bar>` and `|` are one key.
+  bar: "|",
+  bslash: "\\",
 };
 
 /** Printable characters that are named keys: a literal space is the same key as `<Space>`. */
@@ -44,6 +45,16 @@ function base(name: string, at: string): string {
   return special ?? refuse(at, `<${name}> is not a key Neovim names`);
 }
 
+/** A key and its modifiers, spelled the one way Neovim would read them back. */
+function canonical(modifiers: ReadonlySet<string>, key: string): string {
+  // Neovim reads <C-K> as <C-k>: under Control a letter has no case. <M-a> and <M-A> stay two keys.
+  const name = modifiers.has("C") && key.length === 1 ? key.toLowerCase() : key;
+  if (modifiers.size === 0) return name.length === 1 ? name : `<${name}>`;
+  // Shift alone on a letter is the capital letter: `<S-g>` is `G`.
+  if (modifiers.size === 1 && modifiers.has("S") && /^[a-zA-Z]$/.test(name)) return name.toUpperCase();
+  return `<${MODIFIERS.filter((each) => modifiers.has(each)).map((each) => `${each}-`).join("")}${name}>`;
+}
+
 function bracketed(inside: string, at: string): string {
   if (inside.toLowerCase() === "lt") return "<";
   const parts = inside.split("-");
@@ -51,11 +62,7 @@ function bracketed(inside: string, at: string): string {
   const key = parts.length > 1 && parts.at(-1) === "" ? "-" : (parts.pop() ?? "");
   if (key === "-") parts.splice(-2, 2);
   const modifiers = new Set(parts.map((each) => ALIASES[each.toLowerCase()] ?? refuse(at, `${each}- is not a modifier`)));
-  let name = base(key, at);
-  // Neovim reads <C-K> as <C-k>: under Control a letter has no case. <M-a> and <M-A> stay two keys.
-  if (modifiers.has("C") && name.length === 1) name = name.toLowerCase();
-  if (modifiers.size === 0) return name.length === 1 ? name : `<${name}>`;
-  return `<${MODIFIERS.filter((each) => modifiers.has(each)).map((each) => `${each}-`).join("")}${name}>`;
+  return canonical(modifiers, base(key, at));
 }
 
 /**

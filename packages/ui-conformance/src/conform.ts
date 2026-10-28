@@ -1,5 +1,6 @@
 import { sameJson, type Intent } from "@amykit/ui";
 import { buildKeymap, keysFor, type ConformanceRenderer, type Frame, type KeyOverrides, type Session, type Size } from "@amykit/ui/frame";
+import { audit } from "./audit.js";
 import { ASSERTIONS, checkStep, type Assertion, type Finding } from "./checks.js";
 import { firstDifference, project, type Projection } from "./projection.js";
 import { RUNS, SCRIPT, type Move, type Run, type Step } from "./script.js";
@@ -106,7 +107,11 @@ function within(projections: readonly Projection[], surfaces: readonly string[])
 function measure(frame: Frame, renderer: ConformanceRenderer, config: Conformance, golden: Golden | undefined): { keys: readonly Projection[]; findings: Finding[] } {
   const runs = RUNS.map((run) => ({ run, ...driveOnce({ frame, renderer, run, config }) }));
   const keys = runs[0]?.projections ?? [];
-  const findings = runs.flatMap((driven) => driven.findings);
+  const findings = [
+    ...runs.flatMap((driven) => driven.findings),
+    ...audit(frame, renderer, config, undefined, "keys"),
+    ...audit(frame, renderer, config, config.keys, "remapped keys"),
+  ];
   for (const other of runs.slice(1)) {
     findings.push(
       ...compare(frame, keys, other.projections, (step, where) => ({
@@ -139,17 +144,20 @@ function measure(frame: Frame, renderer: ConformanceRenderer, config: Conformanc
   return { keys, findings };
 }
 
+/** Per surface, every renderer that draws it against the first that does, so two menu bars are compared even when the first renderer draws none. */
 function crossCheck(frame: Frame, renderers: readonly ConformanceRenderer[], keys: readonly (readonly Projection[])[]): Finding[] {
-  const [first, ...rest] = renderers;
-  if (first === undefined) return [];
-  return rest.flatMap((other, i) => {
-    const shared = first.surfaces.filter((surface) => other.surfaces.includes(surface));
-    return compare(frame, within(keys[0] ?? [], shared), within(keys[i + 1] ?? [], shared), (step, where) => ({
-      assertion: "frame.renderers_agree_on_every_region",
-      renderer: other.name,
-      step,
-      message: `${first.name} and ${other.name} differ first at ${where}`,
-    }));
+  return frame.surfaces.flatMap(({ name }) => {
+    const holders = renderers.flatMap((renderer, i) => (renderer.surfaces.includes(name) && (keys[i]?.length ?? 0) > 0 ? [{ renderer, keys: keys[i] ?? [] }] : []));
+    const [first, ...rest] = holders;
+    if (first === undefined) return [];
+    return rest.flatMap((other) =>
+      compare(frame, within(first.keys, [name]), within(other.keys, [name]), (step, where) => ({
+        assertion: "frame.renderers_agree_on_every_region",
+        renderer: other.renderer.name,
+        step,
+        message: `${first.renderer.name} and ${other.renderer.name} differ first at ${where}`,
+      })),
+    );
   });
 }
 

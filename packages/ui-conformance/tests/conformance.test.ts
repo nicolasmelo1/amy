@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -306,6 +307,48 @@ describe("each assertion fails the renderer that breaks it", () => {
     );
 
     expect(messages(report, "frame.a_slot_takes_only_what_it_declares")).toContain("ui-action's rerun was handed to nav2, and is not drawn there");
+  });
+
+  it("a key the script never presses, a count, or a gesture it never makes", () => {
+    const deaf = altered("ignores-k-counts-and-the-wheel", (session) => ({
+      press: (key) => (key === "k" || /^[0-9]$/.test(key) ? [] : session.press(key)),
+      pointer: (gesture) => (gesture.gesture === "wheel" ? [] : session.pointer(gesture)),
+    }));
+    const said = messages(conform(frame, [deaf], config, golden), "frame.every_key_does_what_it_is_declared_to");
+
+    expect(said).toContain("k in normal mode, on its own, did nothing; the frame declares nav.prev");
+    expect(said).toContain('3j in normal mode did nav.next; the frame declares nav.next {"count":3}');
+    expect(said).toContain("wheel on list, on its own, did nothing; the frame declares nav.scroll");
+  });
+
+  it("two menu bars that differ, when the first renderer draws no menu bar at all", () => {
+    const menubar = (label: string): LaidSurface => ({
+      size: { width: 1, height: 1 },
+      regions: [{ name: "nav2", box: { x: 0, y: 0, width: 1, height: 1 }, holds: [{ name: "list", tree: element("Text", {}, label) }] }],
+    });
+    const withMenu = (name: string, label: string): ConformanceRenderer => ({
+      ...altered(name, (session) => ({ read: () => ({ surfaces: { ...session.read().surfaces, menubar: menubar(label) } }) })),
+      surfaces: ["window", "menubar"],
+    });
+    const report = conform(frame, [{ ...desktop, name: "a-window" }, withMenu("b-menu", "1 waiting"), withMenu("c-menu", "2 waiting")], config, golden);
+
+    expect(messages(report, "frame.renderers_agree_on_every_region")).toContain(
+      'b-menu and c-menu differ first at /surfaces/menubar/regions/nav2/holds/list/tree/children/0: "1 waiting" ≠ "2 waiting"',
+    );
+  });
+
+  // The command as built, which the gate and CI build before this suite runs.
+  it("an approval that would write a broken window, refused with the golden untouched", () => {
+    const before = fs.readFileSync(FILES.golden, "utf-8");
+    const done = spawnSync(
+      process.execPath,
+      [path.join(repo, "packages/ui-conformance/dist/cli.js"), "--approve", "--renderer", path.join(fixture, "plugins/ui-no-panel/renderer.mjs")],
+      { encoding: "utf-8" },
+    );
+
+    expect(done.status).toBe(1);
+    expect(done.stderr).toContain("not approved, and");
+    expect(fs.readFileSync(FILES.golden, "utf-8")).toBe(before);
   });
 
   it("no renderer at all, which passes nothing", () => {

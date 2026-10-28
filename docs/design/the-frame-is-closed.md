@@ -237,7 +237,13 @@ window is the window that was agreed, in every renderer, every time.
   every relation still holds; a renderer whose window is not the narrowest
   size after the resize fails; a declared surface must be drawn; and a
   renderer that declares only the menu bar is measured on nothing of the
-  window.
+  window. Every binding in both keymaps, each normal-mode one again after a
+  count, and every mouse gesture is also pressed in a session of its own, so
+  a key the script never reaches is held to the frame too. Renderers are
+  compared per surface, each against the first that draws it. An approval
+  that would write a window failing anything but the golden is refused, and
+  the golden left as it was. `<Bar>`, `<Bslash>` and `<S-g>` are the same
+  keys as `|`, `\` and `G`.
 - **The golden**, `packages/ui/conformance/golden.json`, is the first
   renderer's projections, written by `amy-ui-conformance --approve`. It, the
   frame and the conformance config ship with `@amykit/ui` and are in
