@@ -186,3 +186,16 @@ describe("what was checked is what is kept", () => {
     expect(JSON.stringify(button.props.intent)).toBe('{"action":"poke","args":{"__proto__":{"a":1}}}');
   });
 });
+
+describe("what a table accepts is what it draws", () => {
+  it("refuses a row with a cell outside every column, rather than dropping it", () => {
+    expect(() => element("Table", { columns: [{}], rows: [["a", "b"]] })).toThrow("Table row 0 has 2 cells for 1 columns");
+    expect(() => validate({ type: "Table", props: { columns: [], rows: [["a"]] }, children: [] })).toThrow(
+      "root: Table row 0 has 1 cells for 0 columns",
+    );
+  });
+
+  it("still accepts a row that leaves its last cells blank", () => {
+    expect(renderText(element("Table", { columns: [{ width: 2 }, {}], rows: [["a"]] }))).toBe("a  ");
+  });
+});

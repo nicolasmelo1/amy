@@ -58,7 +58,16 @@ function checkedProps(type: Primitive, props: Readonly<Record<string, unknown>>,
   for (const [key, prop] of Object.entries(spec)) {
     if (prop.required && !Object.hasOwn(copy, key)) refuse(at, `${type} needs \`${key}\``);
   }
+  if (type === "Table") checkRows(copy, at);
   return Object.freeze(copy);
+}
+
+/** A row may leave cells blank, but no cell may fall outside every column: no renderer would draw it. */
+function checkRows(props: Readonly<Record<string, Json>>, at: string): void {
+  const columns = (props.columns as readonly Json[]).length;
+  (props.rows as readonly (readonly Json[])[]).forEach((row, i) => {
+    if (row.length > columns) refuse(at, `Table row ${i} has ${row.length} cells for ${columns} columns`);
+  });
 }
 
 function checkChildren(type: Primitive, children: readonly Child[], at: string): void {
