@@ -97,7 +97,7 @@ a command already calls, so the window is never a second road to the tracker.
 
 ## What it delivers
 
-The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbrake`, `removeWorkflow`, `getConfig` and `saveConfig` — and the views `work.list`, `workflows.list`, `workflows.handbrake`, `work.detail` and `work.log`, from *every endpoint is named before it is built*, flipped to
+The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbrake`, `removeWorkflow`, `getConfig` and `saveConfig` — and the views `workflows.list`, `workflows.handbrake` and `work.log` (`work.list` and `work.detail` arrived with *the window is served*), from *every endpoint is named before it is built*, flipped to
 `delivered` in `surface.yaml` in the same pull request.
 
 ## Acceptance criteria
@@ -133,7 +133,8 @@ The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbr
 - [ ] The fake tracker's and forge's call logs hold no write the window made
       (proof: deferred:assertion:window.the_window_writes_nothing_the_cli_cannot)
 
-**Exit condition:** on a Mac, with the daemon running, a person opens `amy ui desktop`, watches a
+**Exit condition:** on a Mac, with the daemon running, a person runs
+`amy plugin add @amykit/ui-desktop`, opens `amy ui desktop`, watches a
 ticket go from `DISCOVERED` to `IMPLEMENTING` without touching anything, pokes
 another from its `⋯`, and breaks `config.yaml` in Settings without breaking the
 install — and `sf check` is green on `ui-frame` and `ui-window`.

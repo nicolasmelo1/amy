@@ -21,7 +21,7 @@ response, and each controller calls one service — written here in TypeScript.
 packages/server/src/
 ├── core/                      the only thing domains share
 │   ├── errors.ts              the error envelope and DomainError
-│   ├── auth.ts                the token and the loopback check
+│   ├── auth.ts                the token, and which transport a request came on
 │   ├── stream.ts              writing a typed event to the session stream
 │   └── app.ts                 mounts every domain's router, writes the document
 └── work/                      one domain
@@ -106,8 +106,9 @@ served*) and has to be readable without the code:
   `<domain>.<reason>` (`work.not_found`, `session.contract_mismatch`); a domain
   error no controller declared is a 500 and a failing test, never a new code
   nobody documented;
-- every operation says whether it is **loopback-only** and which **writes** it
-  makes, as extensions on the operation (`x-amy-loopback-only`,
+- every operation says whether it is **local-only** — served on the local
+  socket only (*the window is served*) — and which **writes** it makes, as
+  extensions on the operation (`x-amy-local-only`,
   `x-amy-writes`), so a reader and the gate see the same thing.
 
 ## The gates
@@ -118,7 +119,7 @@ mutation fixture `sf verify` shows tripping it.
 | Gate or rule | What it refuses |
 | :-- | :-- |
 | `the-server-keeps-its-domains` (layer 0, `kind: command`, a script over the TypeScript compiler's view of `packages/server`) | a controller exporting anything but `route`; a request or response schema exported; anything but a domain's `router.ts` importing its controllers; a domain importing another domain; a controller or service importing a port; a service importing a controller; a domain missing `controllers/`, `services/`, `exceptions.ts` or `router.ts` |
-| `the-contract-documents-itself` (layer 4, `kind: command`, a script over `openapi.json`) | an operation without `operationId`, summary, description or tag; a property without a description; a request or response without an example; an error response that is not the envelope; a code not named `<domain>.<reason>`; an operation without `x-amy-loopback-only` and `x-amy-writes` |
+| `the-contract-documents-itself` (layer 4, `kind: command`, a script over `openapi.json`) | an operation without `operationId`, summary, description or tag; a property without a description; a request or response without an example; an error response that is not the envelope; a code not named `<domain>.<reason>`; an operation without `x-amy-local-only` and `x-amy-writes` |
 | `every-documented-response-is-tested` (layer 3, `kind: command`) | an `(operationId, status)` pair the document declares and no test produced; the controller tests run every operation in-process through the app and record each status they saw |
 | `the-contract-only-breaks-on-purpose` (layer 2, `kind: command`) | a change to `openapi.json` that `oasdiff breaking` against the base branch's document reports at `ERR`, unless the same commit raises `apiMajor`; `oasdiff` is pinned in the toolchain lock beside `sf` and `gh` |
 | `the-server-keeps-no-database` (layer 0, `text_pattern`) | a database driver, an ORM or an embedded store imported anywhere under `packages/server` — `better-sqlite3`, `sqlite3`, `pg`, `mysql2`, `prisma`, `drizzle-orm`, `typeorm`, `knex`, `level`, `lmdb` — and any `node:fs` call outside `repositories/` |

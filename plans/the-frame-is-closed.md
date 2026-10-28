@@ -33,7 +33,8 @@ sections:
   extended-by: ui-nav                    # plugin sections come after the fixed
 actions:                                 # what a key or a click can do
   [nav.next, nav.prev, nav.first, nav.last, focus.left, focus.right,
-   section.next, section.prev, tab.next, tab.prev, item.open, item.menu,
+   section.next, section.prev, section.select, tab.next, tab.prev,
+   tab.select, item.open, item.menu, nav.scroll, canvas.scroll,
    search, palette.open, panel.toggle, close-topmost, command,
    mode.insert, mode.normal, thread.post-discussion, thread.decide]
 keys:                                    # the default keymap; config remaps it
@@ -64,9 +65,9 @@ mouse:                                   # every mouse gesture is an action too
   click: { row: item.open, tab: tab.select, section: section.select }
   wheel: { list: nav.scroll, canvas: canvas.scroll }
   "click-edge": { panel: panel.toggle }
-surfaces:
-  window:  { renderers: [desktop, terminal, text] }
-  menubar: { renderers: [desktop], holds: [Text, Badge, List, Link, Button] }
+surfaces:                                # what a renderer may declare it draws
+  window:  { holds: all }
+  menubar: { holds: [Text, Badge, List, Link, Button] }
 slots:
   canvas.tabs: { fixed: [timeline, diff], extended-by: ui-tab }
   nav2.row:    { extended-by: ui-decoration }
@@ -86,8 +87,13 @@ desktop app and the terminal answer the same keys the same way.
 
 **A surface is a place the frame draws.** The window is one; the menu bar
 (*amy lives in the menu bar*) is another, with its own closed subset of
-primitives and only the renderers that have one. A renderer without a surface
-says so in the frame, so the gate never has to forgive an absence.
+primitives. The frame names surfaces, never renderers: a renderer — shipped
+here or written by anybody — declares in its `ui-renderer` contribution which
+surfaces it draws (*a renderer is chosen by name*), and the gate measures
+exactly those. The terminal declares only `window`, so its missing menu bar
+is a declaration the gate reads, not an absence it has to forgive; a renderer
+nobody here has heard of declares what it draws and is measured on it, with
+no edit to the locked frame.
 
 It is in `L2.GENERATED_FILES_ARE_LOCKED`'s scope, beside `events.json`. Moving
 a region, adding one or giving a key a second meaning is an edit plus an
@@ -188,7 +194,7 @@ window is the window that was agreed, in every renderer, every time.
       (proof: deferred:assertion:frame.keys_remaps_and_the_mouse_agree)
 - [ ] A remap to an undeclared action, or an ambiguous binding, is refused at
       boot by name (proof: deferred:test:packages/ui/tests/keymap.test.ts)
-- [ ] A renderer drawing a surface the frame does not give it fails
+- [ ] A renderer drawing a surface it did not declare fails
       (proof: deferred:assertion:frame.a_surface_is_drawn_only_where_declared)
 - [ ] The same script run twice yields byte-identical projections
       (proof: deferred:assertion:frame.a_projection_is_deterministic)

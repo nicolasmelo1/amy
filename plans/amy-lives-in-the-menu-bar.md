@@ -65,9 +65,9 @@ drawn from the same primitives.
 The menu bar is not a region of the window, and a native menu cannot draw
 what a canvas can. So `frame.yaml` declares it as a second **surface**,
 `menubar`, with its own closed subset of primitives — `Text`, `Badge`, `List`,
-`Link`, `Button` — and the renderers that have one. The terminal renderer
-declares none, so its absence is a fact the frame states rather than a
-disagreement the gate has to forgive.
+`Link`, `Button`. The desktop renderer declares it draws `menubar`; the
+terminal does not, so its absence is a declaration the gate reads rather than
+a disagreement it has to forgive.
 
 ## The gates
 

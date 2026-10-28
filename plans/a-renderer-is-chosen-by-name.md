@@ -69,8 +69,9 @@ command.
       for it (proof: deferred:assertion:bare.a_window_needs_no_install)
 - [ ] Two plugins contributing the same renderer name are refused at boot,
       naming both (proof: deferred:test:packages/core/tests/mount.test.ts)
-- [ ] A renderer declaring a surface `frame.yaml` does not give it is refused
-      at boot (proof: deferred:test:packages/cli/tests/ui-command.test.ts)
+- [ ] A renderer declaring a surface `frame.yaml` does not define is refused
+      at boot, and any renderer declaring defined surfaces mounts with no edit
+      to the frame (proof: deferred:test:packages/cli/tests/ui-command.test.ts)
 - [ ] Every installed renderer is driven by the frame's script, found through
       `ui-renderer` (proof: deferred:assertion:frame.every_installed_renderer_is_measured)
 - [ ] A built app shows a view-only plugin installed on the server after the
@@ -79,7 +80,9 @@ command.
       (proof: deferred:test:packages/cli/tests/ui-build.test.ts)
 
 **Exit condition:** on the bare install, `amy ui` opens the text renderer
-against the local server; after `amy plugin add @amykit/ui-desktop` and
-`ui.default: desktop`, `amy ui` opens the desktop app and `amy ui text` still
-opens the text one — and a renderer from outside this repository, installed by
-name, is driven by the frame's script without the script being edited.
+against the local server; after installing a packaged fixture renderer named
+`fixture` from outside this repository and setting `ui.default: fixture`,
+`amy ui` opens it and `amy ui text` still opens the text one — and the
+fixture, declaring the `window` surface only, is driven by the frame's script
+without the script or the frame being edited. The desktop renderer is not
+needed here; *amy has a window* is where it arrives.

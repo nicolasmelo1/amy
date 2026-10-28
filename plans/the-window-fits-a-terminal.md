@@ -74,7 +74,7 @@ desktop and terminal projections are compared on every step.
       suspends for an editor (proof: deferred:test:plugins/ui-ink/tests/mouse.test.ts)
 - [ ] A terminal that reports no mouse still answers every key
       (proof: deferred:test:plugins/ui-ink/tests/mouse.test.ts)
-- [ ] The terminal draws no menu bar, as the frame declares
+- [ ] The terminal draws no menu bar, as its contribution declares
       (proof: deferred:assertion:frame.a_surface_is_drawn_only_where_declared)
 - [ ] The narrowest width the frame allows still draws every region
       (proof: deferred:assertion:frame.no_region_is_lost_at_the_narrowest_width)

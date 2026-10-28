@@ -80,10 +80,27 @@ queue, the log or a path under amy's home, and a rule keeps it so.
 - Listening anywhere else is a flag — `amy serve --host 0.0.0.0` — and
   exposing it to the internet is a tunnel the operator runs in front of it,
   which is where TLS comes from.
-- What only makes sense on the machine itself is refused to any connection
-  that did not arrive over loopback: a shell (*the workplace opens where you
-  work*), and starting an editor on the host. A remote client sees those
-  actions absent, not failing.
+
+**What only makes sense on the machine itself is a second door, not a peer
+address.** A tunnel — ngrok, `ssh -L`, a reverse proxy — terminates on the
+server's machine and reaches amy *from* `127.0.0.1`, so a remote client
+holding the token looks exactly like a local one to anything that checks where
+a connection came from. So the server serves two transports:
+
+- **TCP**, on the host and port above: every operation except the
+  **local-only** ones, which are not routed there at all — not refused, absent.
+- **A Unix domain socket**, `serve.sock` under amy's home, created `0600` for
+  the user who runs amy: every operation, local-only included. Nothing on the
+  network can open it; a tunnel forwards a port, and a person who forwards
+  the socket on purpose has handed out their shell on purpose.
+
+The local clients — the desktop app and the terminal on the same machine —
+connect over the socket; a client given `--server <url>` connects over TCP and
+is a remote client whatever address it came from. Local-only means: a shell
+(*the workplace opens where you work*), starting an editor on the host,
+removing a workflow and reading or saving `config.yaml`. A remote client sees
+those absent from its views, and the operations do not exist on its
+transport.
 
 **`amy ui` finds a server or starts one.** It connects to `ui.server` from the
 config or `--server <url>` when given; otherwise it uses the local server,
@@ -96,7 +113,8 @@ same change.
 - **`ui-server`**, new, activated by `packages/ui/**` and the server's source.
   Its scenario starts `amy serve` on the conformance world under one amy home
   and connects a client from **a second home that holds no amy state at
-  all** — a remote client in every way that matters — and drives the frame's
+  all**, over TCP, through a TCP forward on `127.0.0.1` standing in for a
+  tunnel — a remote client in every way that matters — and drives the frame's
   script through the generated SDK alone, validating every body it receives
   against `openapi.json`.
 - **`a-client-reads-only-the-server`**, a local layer-0 rule with a mutation
@@ -113,25 +131,29 @@ same change.
 The `session`, `views` and `work` domains of *every endpoint is named before
 it is built* — `getCompatibility`, `openSession`, `closeSession`,
 `streamSession`, `listViews`, `subscribeView`, `unsubscribeView` and
-`pokeWork` — flipped to `delivered` in `surface.yaml` in the same pull
+`pokeWork` — and the views `work.list` and `work.detail`, so a client of this
+row alone shows live work, flipped to `delivered` in `surface.yaml` in the same pull
 request, and no operation the registry does not list.
 
 ## Acceptance criteria
 
 - [ ] The operations this row delivers are `delivered` in `surface.yaml`, and
       the surface gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
-
 - [ ] A client in a home with no amy state draws the conformance world, and
       moves when the daemon advances a record
       (proof: deferred:assertion:server.a_client_needs_nothing_but_the_server)
 - [ ] Two clients connected at once receive the same patch for the same change
       (proof: deferred:assertion:server.every_client_sees_the_same_change)
-- [ ] A connection without the token is refused, over loopback as over the
-      network (proof: deferred:assertion:server.nothing_answers_without_the_token)
-- [ ] The server listens on loopback unless told otherwise
-      (proof: deferred:assertion:server.it_listens_on_loopback_by_default)
-- [ ] A non-loopback client is offered no shell and no host-only action
-      (proof: deferred:assertion:server.a_remote_client_gets_no_shell)
+- [ ] A connection without the token is refused, on the socket as over TCP
+      (proof: deferred:assertion:server.nothing_answers_without_the_token)
+- [ ] The server listens on loopback unless told otherwise, and its socket is
+      `0600` (proof: deferred:assertion:server.it_listens_on_loopback_by_default)
+- [ ] A client reaching the server through a TCP forward on `127.0.0.1` — a
+      tunnel, in the scenario — with the right token gets no local-only
+      operation: they are absent from its views and answer `404` on its
+      transport (proof: deferred:assertion:server.a_tunnelled_client_gets_no_shell)
+- [ ] A client on the socket gets the local-only operations
+      (proof: deferred:assertion:server.the_socket_is_the_local_door)
 - [ ] A client missing a primitive a mounted view uses is refused at the
       handshake, naming the primitive (proof: deferred:test:packages/ui/tests/handshake.test.ts)
 - [ ] `npm run build` writes `openapi.json` and the SDK, and nothing else has
@@ -163,4 +185,5 @@ red in the renderer that read it, before anything runs; and with it restored,
 `amy serve` runs on one machine; on a second, with no amy
 state and only the server's URL and token, `amy ui text --server <url>` shows
 the first machine's work moving, and a `poke` from it moves the record there —
-while a shell, asked for from the second machine, is not on offer.
+while a shell, asked for from the second machine through a tunnel, does not
+exist on its transport.

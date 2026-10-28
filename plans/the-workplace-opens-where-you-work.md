@@ -24,13 +24,14 @@ The ones that ship:
   drawing, through the SDK, a PTY the server runs in the checkout. That is a
   shell, so it is its own plugin, `@amykit/ui-shell`, and never mounted by
   default, and the server
-  offers it only to a client that connected over loopback (*the window is
-  served*) — a client through a tunnel never sees it. Its terminal-renderer
+  offers it only on its local socket (*the window is served*), never over
+  TCP — so a client through a tunnel, which reaches the server from
+  `127.0.0.1` with a valid token, still never sees it. Its terminal-renderer
   half —
   suspending the window for `$EDITOR` and resuming on exit — ships with *the
   window fits a terminal*, because that renderer does not exist before it.
 - **Editors**: `code <path>` and `cursor <path>`, run on the server's machine,
-  so offered only to a loopback client, like the shell.
+  so offered only on the local socket, like the shell.
 - **Claude Code**: `claude`, started in the checkout, in the terminal opener.
 
 ## The gates
@@ -59,7 +60,8 @@ The `workplace` domain — `listOpeners`, `runOpener`, `openShell`, `writeShell`
 - [ ] An opener that needs the host is not offered in a window on another
       machine (proof: deferred:test:packages/cli/tests/ui-openers.test.ts)
 - [ ] The terminal opener is offered only when its plugin is mounted, only
-      in the desktop app, and only over loopback (proof: deferred:test:plugins/ui-shell/tests/plugin.test.ts)
+      in the desktop app, and only on the local socket — a tunnelled client with
+      the token does not get it (proof: deferred:test:plugins/ui-shell/tests/plugin.test.ts)
 
 **Exit condition:** from one record, a person reads its diff in the window,
 opens `nvim` on its checkout in the app's terminal, and a second person on the same
