@@ -19,6 +19,7 @@ collections, not a new plugin model.
 | `ui-panel` | a view in the right panel | same name refused |
 | `ui-action` | an entry in a row's `⋯` | same name refused |
 | `ui-decoration` | a badge on a row in nav 2 | several, ordered |
+| `ui-menubar` | a line in the menu bar, under the work (*amy lives in the menu bar*) | same name refused |
 
 Each contribution is a view from *a view is data*, plus the slice of the
 snapshot it reads, so the host recomputes it only when that slice moves.
@@ -62,4 +63,4 @@ and the refusals are unit tests on `mount()`.
 **Exit condition:** a plugin written outside this repository adds a nav 1
 section, a canvas tab and a `⋯` action, installed with `amy plugin add`, and
 none of the three appears until it is mounted — and each lands in the same
-place in the browser and the text renderer.
+place in the desktop app and the text renderer.

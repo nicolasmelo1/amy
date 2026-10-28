@@ -60,7 +60,8 @@ of its own event type with the kind and the author, and `replies` returns a
 bot message only when it carries that event type. The metadata is a marker,
 not the authentication: any member of a workspace can read message metadata,
 so what makes a submitted turn the operator's is that only amy holds the bot
-token and only the window host, behind its token, calls `submit`. Every other
+token and only the desktop app's own process, which opens no network port, calls
+`submit`. Every other
 message amy wrote stays excluded, as today. `transcript` is every message in
 the thread, attributed, which is what the panel draws.
 

@@ -49,31 +49,57 @@ everything beyond that is a plugin.
 
 ## What runs it
 
-`amy ui` starts a local host that mounts the profiles read-only, watches the
-event log (*the event log can be watched*), recomputes the views whose inputs
-changed (*a view is data*) and streams patches to a browser renderer over a
-socket. It binds to the loopback interface, prints a URL carrying a random
-token once, and refuses a request without it.
+**A desktop app, not a page.** A window served to a browser tab is a tab
+among forty, has no place in the menu bar, cannot own a global shortcut, and
+has to open a network port and guard it with a token for every request. amy
+is a machine that runs all day on a person's computer; its window should be an
+app that does too. macOS first; Windows and Linux are the same app built for
+them, not a second one.
+
+**Electron, for the gate's sake.** The deciding question is not size. It is
+whether the engine the gate measures is the engine that ships. Electron
+carries its own Chromium on every platform, so the projection *the frame is
+closed* reads in its pinned Chromium is the window a person gets on a Mac
+today and on Windows and Linux later. Tauri draws with each system's own
+webview — WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux — so a
+gate green in one engine says nothing about the other two, and amy's host is
+Node, which Tauri would run as a sidecar beside its Rust core. Electron's
+main process is Node, so the host runs inside it. The cost is a larger
+download, paid once, and named in the dependency lock like any package.
+
+`amy ui` opens the app — `@amykit/ui-desktop`, a renderer plugin like any
+other. Its main process assembles the profiles read-only, watches the event
+log (*the event log can be watched*), recomputes the views whose inputs
+changed (*a view is data*) and sends patches to the window over the app's own
+IPC. **It opens no network port at all**: nothing on the machine or the
+network can reach the host, so there is no token to leak and no interface to
+bind.
+
+Closing the window does not quit the app: it stays resident for *amy lives in
+the menu bar*. `mod+k` can be a **global** shortcut that brings the ask up
+from anywhere, configurable in `config.yaml` and off by default, because a
+global shortcut is a promise about every other app on the machine — and never
+`⌘Space`, which is Spotlight's.
 
 The window writes nothing the CLI cannot. Every intent resolves to a function
 a command already calls, so the window is never a second road to the tracker.
 
 ## The gates
 
-- **`ui-frame`** (from *the frame is closed*) gains the browser renderer:
-  `plugins/ui-web/src/**` joins its activation, and the conformance script
-  runs against the installed bundle.
+- **`ui-frame`** (from *the frame is closed*) gains the desktop renderer:
+  `plugins/ui-desktop/src/**` joins its activation, and the conformance script
+  runs against the packaged app's own Chromium.
 - **`ui-window`**, new: the host's behaviour, observed. Its scenario installs
   amy, starts the daemon on the conformance world with fake tracker, forge and
-  conversation, opens the window in the pinned browser and drives the script.
-  Activation: `packages/cli/src/ui/**`, `packages/ui/**`, `plugins/ui-web/src/**`.
+  conversation, launches the packaged app and drives the script.
+  Activation: `packages/cli/src/ui/**`, `packages/ui/**`, `plugins/ui-desktop/src/**`.
   Every `window.*` assertion below is one of its required assertions.
 
 ## Acceptance criteria
 
-- [ ] The browser renderer holds the frame on every step of the script
+- [ ] The desktop renderer holds the frame on every step of the script
       (proof: deferred:assertion:frame.every_region_sits_where_declared)
-- [ ] The browser and the text renderer agree on every region
+- [ ] The desktop and the text renderer agree on every region
       (proof: deferred:assertion:frame.renderers_agree_on_every_region)
 - [ ] A record the daemon advances moves in the open window with no reload,
       within one second of its event (proof: deferred:assertion:window.a_record_moves_without_a_reload)
@@ -83,10 +109,13 @@ a command already calls, so the window is never a second road to the tracker.
       refused by name (proof: deferred:test:packages/cli/tests/ui-config.test.ts)
 - [ ] Saving a config that would not mount keeps the old file and shows every
       refusal (proof: deferred:assertion:window.a_config_that_would_not_mount_is_not_saved)
-- [ ] A request without the token is refused
-      (proof: deferred:assertion:window.nothing_answers_without_the_token)
-- [ ] The host listens on loopback and nowhere else
-      (proof: deferred:assertion:window.it_listens_only_on_loopback)
+- [ ] The running app listens on no network port
+      (proof: deferred:assertion:window.it_opens_no_network_port)
+- [ ] The global shortcut is off unless configured, and a configured one that
+      the system already owns is refused by name
+      (proof: deferred:assertion:window.a_global_shortcut_is_asked_for_not_taken)
+- [ ] Closing the window leaves the app running, and reopening it shows the
+      record that was selected (proof: deferred:assertion:window.closing_is_not_quitting)
 - [ ] Every `⋯` action leaves the same record, queue and log a run of its
       command leaves (proof: deferred:assertion:window.an_action_is_its_command)
 - [ ] No row's `⋯` offers an action wider than its row: no record row pauses
@@ -94,7 +123,7 @@ a command already calls, so the window is never a second road to the tracker.
 - [ ] The fake tracker's and forge's call logs hold no write the window made
       (proof: deferred:assertion:window.the_window_writes_nothing_the_cli_cannot)
 
-**Exit condition:** with the daemon running, a person opens `amy ui`, watches a
+**Exit condition:** on a Mac, with the daemon running, a person opens `amy ui`, watches a
 ticket go from `DISCOVERED` to `IMPLEMENTING` without touching anything, pokes
 another from its `⋯`, and breaks `config.yaml` in Settings without breaking the
 install — and `sf check` is green on `ui-frame` and `ui-window`.

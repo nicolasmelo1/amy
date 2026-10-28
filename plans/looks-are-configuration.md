@@ -1,22 +1,14 @@
 # Looks are configuration
 
-A record's row in the window should say at a glance whether it needs the
-person reading it. The core cannot say so. It knows a state is `waiting` or
-`terminal` and nothing more (`standing` in `packages/cli/src/status-view.ts`),
-so `ESCALATED` and `HUMAN_REVIEW` look alike — both waiting — though one waits
-on its owner and the other on somebody else.
-
-And what a window looks like is a person's preference, not the machine's.
+*amy lives in the menu bar* gave every record a standing — attention,
+active, waiting, finished — from the `attentionStates` a workflow declares.
+The window draws the standing; what it looks like is a person's preference,
+not the machine's.
 
 ## What changes
 
-**A workflow may declare `attentionStates`**: the states in which it waits on
-the person whose work it is. Optional, so every workflow written so far mounts
-unchanged and simply has none. `ticket-to-qa` declares `CLARIFYING` and
-`ESCALATED`.
-
-**Four semantic standings**: attention, active, waiting, finished. The window
-colours by those, so a workflow nobody configured still reads correctly.
+**The window colours by standing**, so a workflow nobody configured still
+reads correctly.
 
 **`config.yaml` decides the rest**, under `ui`:
 
@@ -43,12 +35,10 @@ renderer must not decide. `a-renderer-names-no-colour` (from *the frame is
 closed*) keeps every colour in a theme's tokens. What the frame does fix is the
 standing: the projection carries each row's standing, never its colour, so
 "the escalated records stand out" is asserted the same way in a terminal and
-a browser.
+the desktop app.
 
 ## Acceptance criteria
 
-- [ ] A workflow without `attentionStates` mounts unchanged
-      (proof: deferred:test:packages/core/tests/mount.test.ts)
 - [ ] An escalated record's row carries the attention standing in every
       renderer, with no `ui` block at all (proof: deferred:assertion:frame.renderers_agree_on_every_region)
 - [ ] A colour set for one state of one workflow applies there and nowhere
