@@ -387,7 +387,6 @@ safety comes from the other side" means in practice.
 ```ts
 export const plugin: Plugin = {
   name: "@acme/plugin-jira",
-  version: "1.0.0",
   configSchema,
   register(registry, ctx) {
     registry.port("tracker", new JiraTracker(ctx.runner, ctx.config));

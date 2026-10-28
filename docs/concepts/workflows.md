@@ -99,7 +99,7 @@ value is neither, a port nothing mounted, or a method the port does not have.
 The engine refuses a plan that carries a name the map does not, before any of
 that plan's actions run.
 
-## The seven things a workflow declares
+## What a workflow declares
 
 ```ts
 export const errand: Workflow<Observation, Policy> = {
@@ -108,7 +108,6 @@ export const errand: Workflow<Observation, Policy> = {
   waitingStates: WAITING_STATES,
   initialState: "QUEUED",
   terminalStates: ["DONE", "DECLINED"],
-  usesObservers: [],
   plan: (record, observation, policy) => plan(record as ErrandRecord, observation, policy),
 };
 ```
@@ -122,9 +121,9 @@ state cannot silently become a busy loop.
 
 **`terminalStates`** — where work stops being queued.
 
-**`usesObservers`**, and the keys of the runtime's **`actions`** — the
-workflow's *reach*, which the host checks at boot: an observation nothing
-contributes, or an action with nothing behind it, refuses the mount by name.
+The keys of the runtime's **`actions`** declare the workflow's *reach*,
+which the host checks at boot: an action with nothing behind it refuses the
+mount by name.
 The actions are declared on the runtime rather than here because the
 declaration and the implementation are one entry; two lists of one fact is how
 an action once passed the mount with nothing behind it.

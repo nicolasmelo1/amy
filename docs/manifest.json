@@ -666,11 +666,6 @@
         },
         {
           "depth": 3,
-          "title": "Contribute an observation",
-          "slug": "contribute-an-observation"
-        },
-        {
-          "depth": 3,
           "title": "Mount an engine, a queue or a store",
           "slug": "mount-an-engine-a-queue-or-a-store"
         },
@@ -1196,8 +1191,8 @@
         },
         {
           "depth": 2,
-          "title": "The five things a plugin can register",
-          "slug": "the-five-things-a-plugin-can-register"
+          "title": "What a plugin can register",
+          "slug": "what-a-plugin-can-register"
         },
         {
           "depth": 2,
@@ -1489,8 +1484,8 @@
         },
         {
           "depth": 2,
-          "title": "The seven things a workflow declares",
-          "slug": "the-seven-things-a-workflow-declares"
+          "title": "What a workflow declares",
+          "slug": "what-a-workflow-declares"
         },
         {
           "depth": 2,
