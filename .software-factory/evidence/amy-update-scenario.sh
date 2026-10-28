@@ -475,3 +475,4 @@ cat > "$report" <<JSON
 JSON
 
 echo "$((total - failed))/$total assertions passed"
+test "$failed" = "0"

@@ -90,15 +90,28 @@ function dropAfterhours(): void {
  */
 function releaseOnDisk(trees: string[]): void {
   const found = new Set<string>();
+  const seen = new Set<string>();
+  // Every package directory is descended into, not only `@amykit/*` ones: a
+  // third-party workflow's own `node_modules` can hold an older
+  // `@amykit/core`, and a walk that skipped it would call a mixed tree one
+  // release.
+  const packagesIn = (modules: string): string[] => {
+    if (!fs.existsSync(modules)) return [];
+    return fs.readdirSync(modules, { withFileTypes: true }).flatMap((entry) => {
+      if (entry.name.startsWith(".") || !(entry.isDirectory() || entry.isSymbolicLink())) return [];
+      const directory = path.join(modules, entry.name);
+      return entry.name.startsWith("@") ? packagesIn(directory) : [directory];
+    });
+  };
   const walk = (modules: string): void => {
-    const scope = path.join(modules, "@amykit");
-    if (!fs.existsSync(scope)) return;
-    for (const entry of fs.readdirSync(scope)) {
-      const directory = path.join(scope, entry);
+    for (const directory of packagesIn(modules)) {
+      const real = fs.realpathSync(directory);
+      if (seen.has(real)) continue;
+      seen.add(real);
       const manifest = path.join(directory, "package.json");
       if (fs.existsSync(manifest)) {
         const { name, version }: { name: string; version: string } = JSON.parse(fs.readFileSync(manifest, "utf-8"));
-        found.add(`${name}@${version}`);
+        if (name.startsWith("@amykit/")) found.add(`${name}@${version}`);
       }
       walk(path.join(directory, "node_modules"));
     }

@@ -260,7 +260,13 @@ const CLI = "@amykit/cli";
  */
 function cliIntent(pluginsRoot: string, install: Root | undefined): string | undefined {
   const local = install?.kind === "local" ? install.dir : undefined;
-  const fromInstall = local === undefined ? "latest" : updateRangeOf(local, CLI, manifestOf(local)[CLI] ?? "latest");
+  // The dependency is only an intent when it is a pin. A registry range there
+  // is whatever npm saved — or the `^<release>` this command wrote after the
+  // last move — and on 0.x that caret would hold the machine on one minor
+  // forever, so the intent stays `latest` unless the operator wrote one.
+  const dependency = local === undefined ? undefined : manifestOf(local)[CLI];
+  const fallback = dependency !== undefined && !isRange(dependency) ? dependency : "latest";
+  const fromInstall = local === undefined ? "latest" : updateRangeOf(local, CLI, fallback);
   const intent = updateRangeOf(pluginsRoot, CLI, fromInstall);
   return isRange(intent) ? intent : undefined;
 }
@@ -274,15 +280,112 @@ async function releaseFor(runner: CommandRunner, intent: string): Promise<Releas
   return newest !== undefined && compareVersions(newest, version) > 0 ? { version, intent, newest } : { version, intent };
 }
 
-/** Release versions by their numbers; a prerelease sorts before its release. */
+/**
+ * Versions by SemVer precedence: the three numbers, then a prerelease before
+ * its release, then the prerelease identifiers one by one — numeric ones by
+ * value and below any alphanumeric one, a shorter list before a longer one
+ * it prefixes. Build metadata is ignored. Without the identifiers, `rc.2`
+ * and `rc.1` compare equal and a prerelease tag never moves.
+ */
 export function compareVersions(a: string, b: string): number {
-  const parts = (version: string) => version.split(/[.+-]/).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
-  const [x, y] = [parts(a), parts(b)];
+  const split = (version: string) => {
+    const [core = "", ...pre] = version.split("+", 1)[0]!.split("-");
+    const numbers = core.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+    return { numbers, pre: pre.length === 0 ? [] : pre.join("-").split(".") };
+  };
+  const [x, y] = [split(a), split(b)];
   for (let i = 0; i < 3; i += 1) {
-    const difference = (x[i] ?? 0) - (y[i] ?? 0);
+    const difference = (x.numbers[i] ?? 0) - (y.numbers[i] ?? 0);
     if (difference !== 0) return difference;
   }
-  return Number(!a.includes("-")) - Number(!b.includes("-"));
+  if (x.pre.length === 0 || y.pre.length === 0) return Number(x.pre.length === 0) - Number(y.pre.length === 0);
+  for (let i = 0; i < Math.min(x.pre.length, y.pre.length); i += 1) {
+    const difference = compareIdentifiers(x.pre[i]!, y.pre[i]!);
+    if (difference !== 0) return difference;
+  }
+  return x.pre.length - y.pre.length;
+}
+
+function compareIdentifiers(a: string, b: string): number {
+  const numeric = /^\d+$/;
+  if (numeric.test(a) && numeric.test(b)) return Number(a) - Number(b);
+  if (numeric.test(a) !== numeric.test(b)) return numeric.test(a) ? -1 : 1;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** One first-party copy on disk: what it is, and where. */
+export interface Copy {
+  readonly name: string;
+  readonly version: string;
+  readonly at: string;
+}
+
+/**
+ * Every first-party copy under one `node_modules`, nested copies included.
+ *
+ * Every package directory is descended into, third-party ones too: a
+ * workflow from elsewhere can carry its own `@amykit/core` in its own
+ * `node_modules`, and that copy is on the machine as much as the hoisted
+ * one. `only` narrows the top level to one package's tree — a global
+ * prefix holds the operator's other tools, which are not amy's to read.
+ */
+export function firstPartyCopies(modules: string, only?: string): Copy[] {
+  const found: Copy[] = [];
+  const seen = new Set<string>();
+  const visit = (directory: string): void => {
+    const real = realpath(directory);
+    if (seen.has(real)) return;
+    seen.add(real);
+    try {
+      const { name, version } = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as {
+        name?: unknown;
+        version?: unknown;
+      };
+      if (typeof name === "string" && typeof version === "string" && firstParty(name)) {
+        found.push({ name, version, at: directory });
+      }
+    } catch {
+      // A directory without a readable manifest is not a package; its
+      // `node_modules`, if any, is still walked below.
+    }
+    walk(path.join(directory, "node_modules"));
+  };
+  const walk = (tree: string): void => {
+    for (const directory of packagesIn(tree)) visit(directory);
+  };
+  if (only === undefined) walk(modules);
+  else if (fs.existsSync(path.join(modules, ...only.split("/")))) visit(path.join(modules, ...only.split("/")));
+  return found;
+}
+
+/** The package directories directly under one `node_modules`, scoped ones included. */
+function packagesIn(modules: string): string[] {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(modules, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries.flatMap((entry) => {
+    if (entry.name.startsWith(".") || !(entry.isDirectory() || entry.isSymbolicLink())) return [];
+    const directory = path.join(modules, entry.name);
+    return entry.name.startsWith("@") ? packagesIn(directory) : [directory];
+  });
+}
+
+/**
+ * The first-party copies a move left above the release.
+ *
+ * The CLI and each plugin are installed at the release exactly, but what
+ * they depend on is a caret: with 0.7.0 the intent and 0.7.1 published, npm
+ * answers their `^0.7.0` with 0.7.1, and the machine holds two versions of
+ * one group. No flag constrains that for a global install, so the update
+ * reads the trees it wrote and refuses to call such a machine moved. A
+ * package the survey held past the release is held there on purpose, and is
+ * not a stray.
+ */
+export function aboveRelease(trees: readonly Copy[], release: string, heldPast: ReadonlySet<string>): Copy[] {
+  return trees.filter((copy) => !heldPast.has(copy.name) && compareVersions(copy.version, release) > 0);
 }
 
 /**

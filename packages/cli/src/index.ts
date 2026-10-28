@@ -86,7 +86,7 @@ import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from 
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
-import { firstParty, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
+import { aboveRelease, compareVersions, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
@@ -1717,18 +1717,26 @@ export async function updateCommand(
       return 1;
     }
 
-    const moving = everything.filter((one) => (pkg === undefined || one.name === pkg) && one.want !== undefined && one.want !== one.have);
+    // A first-party name selects the release, not one package of it: the
+    // group is released as one, and moving the CLI alone would leave its
+    // plugins a version behind under a report that says they moved together.
+    const selected = (one: Held): boolean =>
+      pkg === undefined || one.name === pkg || (release !== undefined && firstParty(pkg) && firstParty(one.name));
+    const moving = everything.filter((one) => selected(one) && one.want !== undefined && one.want !== one.have);
 
     reportWhatIsHeld(everything, installRoot);
 
-    const unresolvedFailure = reportUnresolved(everything, pkg);
+    const unresolvedFailure = reportUnresolved(everything, selected);
     if (unresolvedFailure !== undefined) return unresolvedFailure;
 
     const pinned = reportRelease(everything, moving, release);
     if (check) return reportOnly(moving, pinned);
     if (moving.length === 0) return nothingMoved(deps, pinned);
 
-    return moveEverything(runner, where.plugins, installRoot, moving, deps);
+    return moveEverything(runner, where.plugins, installRoot, moving, deps, release === undefined ? undefined : {
+      version: release.version,
+      heldPast: new Set(everything.filter((one) => firstParty(one.name) && compareVersions(one.have, release.version) > 0).map((one) => one.name)),
+    });
     } finally {
       release();
     }
@@ -1750,6 +1758,7 @@ async function moveEverything(
     installRoot: Root | undefined,
     moving: readonly Held[],
     deps: MountProfiles & SkillsInto,
+    release?: { version: string; heldPast: ReadonlySet<string> },
 ): Promise<number> {
     const movedList = await moveEach(runner, pluginsRoot, installRoot, moving);
     if (movedList.failed > 0) {
@@ -1760,6 +1769,20 @@ async function moveEverything(
       await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
       console.error(`\n${movedList.failed} package(s) refused to move; every move is rolled back.`);
       return 1;
+    }
+
+    // What the moves depend on resolved through carets, which can land past
+    // the release inside its minor. A machine holding two versions of the
+    // group is not on the release, whatever the installs said.
+    if (release !== undefined && movedList.moved.some((one) => firstParty(one.name))) {
+      const strays = aboveRelease(copiesOnDisk(pluginsRoot, installRoot), release.version, release.heldPast);
+      if (strays.length > 0) {
+        console.error(`\nthe moves left first-party copies past the release ${release.version}:`);
+        for (const stray of strays) console.error(`  ${stray.name}@${stray.version}  ${stray.at}`);
+        await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
+        console.error("every move is rolled back; publish the release's dependencies at one version, or set the intent to the newest.");
+        return 1;
+      }
     }
 
     // Every configured profile mounts before the update is called done: an
@@ -1873,10 +1896,20 @@ function reportRelease(everything: readonly Held[], moving: readonly Held[], rel
     return true;
 }
 
+/** Every first-party copy the two roots hold; of a global prefix, only the CLI's own tree. */
+function copiesOnDisk(pluginsRoot: string, installRoot: Root | undefined) {
+    const install = installRoot === undefined
+      ? []
+      : installRoot.kind === "global"
+        ? firstPartyCopies(installRoot.modules, "@amykit/cli")
+        : firstPartyCopies(installRoot.modules);
+    return [...firstPartyCopies(localRoot(pluginsRoot).modules), ...install];
+}
+
 /** Refuses an update whose registry target could not be resolved. */
-function reportUnresolved(everything: readonly Held[], pkg: string | undefined): number | undefined {
+function reportUnresolved(everything: readonly Held[], selected: (one: Held) => boolean): number | undefined {
     const unresolved = everything.filter(
-      (one) => (pkg === undefined || one.name === pkg) && isRange(one.range) && one.want === undefined,
+      (one) => selected(one) && isRange(one.range) && one.want === undefined,
     );
     if (unresolved.length === 0) return undefined;
     console.error(`\ncould not resolve ${unresolved.length} package(s) from the registry; nothing moved:`);

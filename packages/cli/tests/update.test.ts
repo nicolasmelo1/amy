@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 import {
   compareVersions,
+  firstPartyCopies,
   globalPrefix,
   Held,
   held,
@@ -1059,5 +1060,119 @@ describe("the running loop", () => {
     ]);
     // One version on disk: the old one, and the manifest says so.
     expect(manifestOf(path.join(home, "plugins"))["@amykit/plugin-file-log"]).toBe("^0.5.0");
+  });
+
+  it("moves the whole release when the name given is one first-party package", async () => {
+    const install = globalMachine();
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, "@amykit/cli", false, {
+        mountProfiles: async () => ({ ok: true as const }),
+        skillsInto: () => ["claude: 6 skill(s) rewritten"],
+        installRoot: install,
+      });
+      expect(code).toBe(0);
+    } finally {
+      log.mockRestore();
+    }
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install").map((call) => call.args.at(-1));
+    expect(installs).toEqual(["@amykit/plugin-file-log@0.6.0", "@amykit/cli@0.6.0"]);
+  });
+
+  it("rolls the release back when a move leaves a first-party copy past it", async () => {
+    const install = globalMachine();
+    // What a caret does inside the release's minor: a workflow from elsewhere
+    // carries its own core, and npm answered its `^0.6.0` with 0.6.1.
+    const root = path.join(home, "plugins");
+    packageAt(path.join(root, "node_modules", "@acme", "workflow-oncall"), "@amykit/core", "0.6.1", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, false, {
+        mountProfiles: async () => ({ ok: true as const }),
+        skillsInto: () => ["claude: 6 skill(s) rewritten"],
+        installRoot: install,
+      });
+      expect(code).toBe(1);
+      expect(said(error)).toContain("@amykit/core@0.6.1");
+    } finally {
+      log.mockRestore();
+      error.mockRestore();
+    }
+    const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install").map((call) => call.args.at(-1));
+    expect(installs).toEqual([
+      "@amykit/plugin-file-log@0.6.0",
+      "@amykit/cli@0.6.0",
+      "@amykit/plugin-file-log@0.5.0",
+      "@amykit/cli@0.5.0",
+    ]);
+  });
+});
+
+describe("versions compared by prerelease", () => {
+  it("orders successive prereleases, so a prerelease tag moves", () => {
+    expect(compareVersions("0.7.0-rc.2", "0.7.0-rc.1")).toBeGreaterThan(0);
+    expect(compareVersions("0.7.0-rc.10", "0.7.0-rc.9")).toBeGreaterThan(0);
+    expect(compareVersions("1.0.0-alpha", "1.0.0-alpha.1")).toBeLessThan(0);
+    expect(compareVersions("1.0.0-alpha.1", "1.0.0-alpha.beta")).toBeLessThan(0);
+    expect(compareVersions("1.0.0-beta", "1.0.0-alpha.beta")).toBeGreaterThan(0);
+    expect(compareVersions("1.0.0-rc.1+build.2", "1.0.0-rc.1+build.1")).toBe(0);
+  });
+});
+
+describe("the first-party copies on disk", () => {
+  let home: string;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-copies-"));
+  });
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+  it("include one nested under a third-party package", () => {
+    packageAt(home, "@amykit/core", "0.6.0", "export {};");
+    const workflow = packageAt(home, "@acme/workflow-oncall", "1.0.0", "export {};");
+    packageAt(workflow, "@amykit/core", "0.5.0", "export {};");
+    packageAt(home, "left-pad", "1.0.0", "export {};");
+
+    const copies = firstPartyCopies(path.join(home, "node_modules")).map((copy) => `${copy.name}@${copy.version}`);
+    expect(copies.sort()).toEqual(["@amykit/core@0.5.0", "@amykit/core@0.6.0"]);
+  });
+});
+
+describe("the CLI's registry intent in a local install root", () => {
+  let home: string;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-intent-"));
+  });
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+  it("is latest when the dependency is a caret npm or a previous update saved", async () => {
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "^0.7.0" } })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.7.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.8.0"\n' } },
+    ]);
+
+    const { held: found, release } = await survey(runner, home, { kind: "local", dir: install, modules: path.join(install, "node_modules") });
+
+    expect(release).toEqual({ version: "0.8.0", intent: "latest" });
+    expect(found.find((one) => one.name === "@amykit/cli")).toMatchObject({ have: "0.7.0", want: "0.8.0" });
   });
 });
