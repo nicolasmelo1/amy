@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { applyPlan, factoryOf, isDeferred, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { applyPlan, Builds, isDeferred, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 import { AmyConfig, writeWorkflowProfile } from "./config.js";
 
 /** The directory where one machine keeps workflows that belong only to it. */
@@ -131,25 +131,24 @@ async function registeredWorkflow(home: string, spec: string, resolve: (spec: st
 
   let workflow: Workflow | undefined;
   const contributions = new Map<string, Map<string, object>>();
-  const registry = recordingRegistry((value) => { workflow = value; }, contributions);
+  // Deferred contributions are built the way the mount builds them: once
+  // registration is over, each once, a dependency on demand, a circle refused.
+  const problems: string[] = [];
+  const builds = new Builds(problems);
+  const registry = recordingRegistry(plugin.name, (value) => { workflow = value; }, contributions, builds);
   const now = () => new Date("2026-01-01T00:00:00.000Z");
   try {
-    await plugin.register(registry, context(home, now, contributions, () => workflow));
+    await plugin.register(registry, context(home, now, contributions, builds, () => workflow));
   } catch (error) {
     return `${spec}: failed to register — ${message(error)}`;
   }
   if (!workflow) return `${spec}: registered no workflow`;
 
-  const contributed = contributions.get("workflow-runtime")?.get(workflow.name);
-  if (!contributed) return `${workflow.name}: contributed no runtime, so nothing here knows how to run its actions`;
-  // A deferred runtime is built here, once registration is over, the way the
-  // mount builds it.
-  if (!isDeferred(contributed)) return { workflow, runtime: contributed as WorkflowRuntime, now };
-  try {
-    return { workflow, runtime: factoryOf(contributed)() as WorkflowRuntime, now };
-  } catch (error) {
-    return `${workflow.name}: its runtime could not be built — ${message(error)}`;
-  }
+  builds.buildAll();
+  if (problems.length > 0) return problems.join("; ");
+
+  const runtime = contributions.get("workflow-runtime")?.get(workflow.name) as WorkflowRuntime | undefined;
+  return runtime ? { workflow, runtime, now } : `${workflow.name}: contributed no runtime, so nothing here knows how to run its actions`;
 }
 
 async function importedPlugin(spec: string, resolve: (spec: string) => string): Promise<Plugin | string> {
@@ -165,8 +164,10 @@ async function importedPlugin(spec: string, resolve: (spec: string) => string): 
 }
 
 function recordingRegistry(
+  plugin: string,
   setWorkflow: (workflow: Workflow) => void,
   contributions: Map<string, Map<string, object>>,
+  builds: Builds,
 ): Registry {
   return {
     queue: () => undefined, store: () => undefined, engine: () => undefined,
@@ -175,6 +176,7 @@ function recordingRegistry(
       const values = contributions.get(collection) ?? new Map<string, object>();
       values.set(name, value);
       contributions.set(collection, values);
+      if (isDeferred(value)) builds.defer(value, plugin, `\`${name}\` in \`${collection}\``, (built) => values.set(name, built));
     },
   };
 }
@@ -183,12 +185,13 @@ function context(
   home: string,
   now: () => Date,
   contributions: Map<string, Map<string, object>>,
+  builds: Builds,
   workflow: () => Workflow | undefined,
 ): PluginContext {
   return {
     config: {}, runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now,
     paths: { workspace: home, checkouts: {}, state: home },
-    contributions: (collection) => contributions.get(collection) ?? new Map(),
+    contributions: (collection) => builds.collection(contributions.get(collection)),
     port: () => undefined,
     workflow: () => workflow() as Workflow<never, never> | undefined,
   };

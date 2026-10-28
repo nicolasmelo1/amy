@@ -202,7 +202,7 @@ function contextFor(
     now: host.now,
     log: host.log,
     paths: host.paths,
-    contributions: (collection) => builtContributions(mounted.contributions.get(collection), builds),
+    contributions: (collection) => builds.collection(mounted.contributions.get(collection)),
     // This remains deferred until a workflow registers. A workflow plugin can
     // retain this view while it registers; it must never retain the raw port.
     // Other plugins also compose independent contracts (for example the
@@ -216,16 +216,6 @@ function contextFor(
     workflow: () => mounted.workflow,
   };
   return ctx;
-}
-
-/**
- * A collection as a reader sees it: every deferred member built, so nobody
- * ever receives a factory. A built member replaces its factory in the map.
- */
-function builtContributions(collection: Map<string, object> | undefined, builds: Builds): ReadonlyMap<string, object> {
-  if (!collection) return new Map();
-  for (const value of collection.values()) builds.resolve(value);
-  return collection;
 }
 
 /**

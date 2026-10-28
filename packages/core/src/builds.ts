@@ -73,6 +73,15 @@ export class Builds {
     return this.get(entry);
   }
 
+  /**
+   * A collection as a reader sees it: each deferred member built when it is
+   * read, never the factory. Lazily, member by member, so a member that reads
+   * a sibling while it builds is not mistaken for one that reads itself.
+   */
+  collection(members: Map<string, object> | undefined): ReadonlyMap<string, object> {
+    return new BuiltCollection(members ?? new Map(), this);
+  }
+
   /** Builds every deferred implementation, in the order it was registered. */
   buildAll(): void {
     this.open = true;
@@ -131,8 +140,53 @@ function built(value: unknown): object {
   if ((typeof value !== "object" && typeof value !== "function") || value === null) {
     throw new Error("its deferred build returned nothing to mount");
   }
-  if (typeof (value as { then?: unknown }).then === "function") {
+  const then = (value as { then?: unknown }).then;
+  if (typeof then === "function") {
+    // Handled before refusing, so a factory that rejects is this refusal and
+    // not also an unhandled rejection that takes the host down.
+    then.call(value, undefined, () => undefined);
     throw new Error("its deferred build returned a promise; a build returns the implementation itself");
   }
   return value;
+}
+
+/** A live view of one collection that builds each member as it is read. */
+class BuiltCollection implements ReadonlyMap<string, object> {
+  constructor(
+    private readonly members: Map<string, object>,
+    private readonly builds: Builds,
+  ) {}
+
+  get size(): number {
+    return this.members.size;
+  }
+
+  has(name: string): boolean {
+    return this.members.has(name);
+  }
+
+  get(name: string): object | undefined {
+    const member = this.members.get(name);
+    return member === undefined ? undefined : (this.builds.resolve(member) as object);
+  }
+
+  keys(): MapIterator<string> {
+    return this.members.keys();
+  }
+
+  *entries(): MapIterator<[string, object]> {
+    for (const name of [...this.members.keys()]) yield [name, this.get(name)!];
+  }
+
+  *values(): MapIterator<object> {
+    for (const [, value] of this.entries()) yield value;
+  }
+
+  [Symbol.iterator](): MapIterator<[string, object]> {
+    return this.entries();
+  }
+
+  forEach(each: (value: object, name: string, map: ReadonlyMap<string, object>) => void, self?: unknown): void {
+    for (const [name, value] of this.entries()) each.call(self, value, name, this);
+  }
 }

@@ -1341,6 +1341,35 @@ describe("a deferred implementation", () => {
     expect(outcome.ok === false && outcome.problems[0]).toContain("returned a promise");
   });
 
+  it("refuses a factory that rejects without leaving the rejection unhandled", async () => {
+    // Vitest fails the run on an unhandled rejection, which is the half of
+    // this the assertion below cannot see.
+    const rejecting = plugin("@amykit/plugin-rejecting", {
+      register: (r) => r.port("agent", deferred((async () => { throw new Error("failed"); }) as () => object)),
+    });
+
+    const outcome = await mount([rejecting], {}, HOST);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(outcome.ok === false && outcome.problems[0]).toContain("returned a promise");
+  });
+
+  it("lets one member of a collection read a sibling while it builds", async () => {
+    let built: object | undefined;
+    const provider = plugin("@amykit/plugin-provider", {
+      register: (r, ctx) => {
+        r.contribute("handlers", "a", deferred(() => ({ uses: ctx.contributions("handlers").get("b") })));
+        r.contribute("handlers", "b", deferred(() => ({ name: "b" })));
+      },
+      ready: (ctx) => { built = ctx.contributions("handlers").get("a"); },
+    });
+
+    const outcome = await mount([provider], {}, HOST);
+
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    expect(built).toEqual({ uses: { name: "b" } });
+  });
+
   it("builds each mount its own instance, exactly once, when two hosts mount in one process", async () => {
     let builds = 0;
     const shared = plugin("@amykit/plugin-shared", {

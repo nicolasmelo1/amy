@@ -26,7 +26,8 @@ export {
 } from "./dispatch.js";
 export type { PortLookup } from "./dispatch.js";
 
-export { deferred, factoryOf, isDeferred } from "./deferred.js";
+export { deferred, isDeferred } from "./deferred.js";
+export { Builds } from "./builds.js";
 export type { Deferred } from "./deferred.js";
 
 export type {
