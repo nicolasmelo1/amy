@@ -50,8 +50,7 @@ everything beyond that is a plugin.
 ## What runs it
 
 **A desktop app, not a page.** A window served to a browser tab is a tab
-among forty, has no place in the menu bar, cannot own a global shortcut, and
-has to open a network port and guard it with a token for every request. amy
+among forty, has no place in the menu bar and cannot own a global shortcut. amy
 is a machine that runs all day on a person's computer; its window should be an
 app that does too. macOS first; Windows and Linux are the same app built for
 them, not a second one.
@@ -62,18 +61,19 @@ carries its own Chromium on every platform, so the projection *the frame is
 closed* reads in its pinned Chromium is the window a person gets on a Mac
 today and on Windows and Linux later. Tauri draws with each system's own
 webview — WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux — so a
-gate green in one engine says nothing about the other two, and amy's host is
-Node, which Tauri would run as a sidecar beside its Rust core. Electron's
-main process is Node, so the host runs inside it. The cost is a larger
-download, paid once, and named in the dependency lock like any package.
+gate green in one engine says nothing about the other two. Electron is also
+JavaScript end to end, as amy is. The cost is a larger download, paid once,
+named in the dependency lock like any package — and paid only by somebody who
+installs this renderer, since *a renderer is chosen by name* keeps it out of
+the bare install.
 
-`amy ui` opens the app — `@amykit/ui-desktop`, a renderer plugin like any
-other. Its main process assembles the profiles read-only, watches the event
-log (*the event log can be watched*), recomputes the views whose inputs
-changed (*a view is data*) and sends patches to the window over the app's own
-IPC. **It opens no network port at all**: nothing on the machine or the
-network can reach the host, so there is no token to leak and no interface to
-bind.
+The app is `@amykit/ui-desktop`, contributing the renderer named `desktop`
+(*a renderer is chosen by name*): `amy ui desktop` opens it, and so does
+`amy ui` once `ui.default` says so. It is **a client and nothing else**
+(*the window is served*): it connects to the local server, or to the one
+`ui.server` names, and draws what the protocol sends. It reads no file under
+amy's home, so the same app shows the work on this machine or on one reached
+through a tunnel. `amy ui build desktop` packages it as a macOS app.
 
 Closing the window does not quit the app: it stays resident for *amy lives in
 the menu bar*. `mod+k` can be a **global** shortcut that brings the ask up
@@ -109,8 +109,10 @@ a command already calls, so the window is never a second road to the tracker.
       refused by name (proof: deferred:test:packages/cli/tests/ui-config.test.ts)
 - [ ] Saving a config that would not mount keeps the old file and shows every
       refusal (proof: deferred:assertion:window.a_config_that_would_not_mount_is_not_saved)
-- [ ] The running app listens on no network port
-      (proof: deferred:assertion:window.it_opens_no_network_port)
+- [ ] The app draws everything from the server and reads nothing under amy's
+      home (proof: deferred:assertion:server.a_client_needs_nothing_but_the_server)
+- [ ] `amy ui build desktop` produces a macOS app that opens against a server
+      (proof: deferred:assertion:window.the_built_app_opens)
 - [ ] The global shortcut is off unless configured, and a configured one that
       the system already owns is refused by name
       (proof: deferred:assertion:window.a_global_shortcut_is_asked_for_not_taken)
@@ -123,7 +125,7 @@ a command already calls, so the window is never a second road to the tracker.
 - [ ] The fake tracker's and forge's call logs hold no write the window made
       (proof: deferred:assertion:window.the_window_writes_nothing_the_cli_cannot)
 
-**Exit condition:** on a Mac, with the daemon running, a person opens `amy ui`, watches a
+**Exit condition:** on a Mac, with the daemon running, a person opens `amy ui desktop`, watches a
 ticket go from `DISCOVERED` to `IMPLEMENTING` without touching anything, pokes
 another from its `⋯`, and breaks `config.yaml` in Settings without breaking the
 install — and `sf check` is green on `ui-frame` and `ui-window`.

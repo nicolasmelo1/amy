@@ -6,8 +6,11 @@ data (*a view is data*) costs one renderer, not a second window.
 
 ## What changes
 
-`amy ui --terminal` runs the same host in-process and draws it with Ink, the
-React renderer for the command line. The frame is the same: nav 1 as a row of
+`@amykit/ui-ink` contributes the renderer named `terminal`
+(*a renderer is chosen by name*): `amy ui terminal` opens it, and `amy ui`
+does once `ui.default` says so. It is a client like the desktop app
+(*the window is served*) — it can follow a server on another machine — and
+draws with Ink, the React renderer for the command line. The frame is the same: nav 1 as a row of
 sections, nav 2 as a list, the canvas, and the right panel toggled by a key.
 `⌘K` is the same ask. Every primitive has a terminal drawing: `StateMachine`
 as one line with the current state marked, `Diff` as a coloured unified diff,
@@ -76,7 +79,7 @@ desktop and terminal projections are compared on every step.
 - [ ] The narrowest width the frame allows still draws every region
       (proof: deferred:assertion:frame.no_region_is_lost_at_the_narrowest_width)
 
-**Exit condition:** a person runs `amy ui --terminal`, follows a record to
+**Exit condition:** a person runs `amy ui terminal`, follows a record to
 `ESCALATED`, discusses it in the right panel, decides, and opens its checkout
 in `nvim` — never touching the arrow keys, and clicking where a click is
 quicker — and the projection of every step is the desktop app's.

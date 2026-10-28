@@ -21,13 +21,16 @@ able to run where the window is.
 The ones that ship:
 
 - **Terminal.** In the desktop app it is a terminal in the canvas: xterm.js
-  drawing, a PTY in the app's own Node process, over its IPC. Nothing about it
-  is reachable from the network, because the app opens no port; it is still a
-  shell, so it is its own plugin and never mounted by default. Its
-  terminal-renderer half —
+  drawing, over the protocol, a PTY the server runs in the checkout. That is a
+  shell, so it is its own plugin, `@amykit/ui-shell`, and never mounted by
+  default, and the server
+  offers it only to a client that connected over loopback (*the window is
+  served*) — a client through a tunnel never sees it. Its terminal-renderer
+  half —
   suspending the window for `$EDITOR` and resuming on exit — ships with *the
   window fits a terminal*, because that renderer does not exist before it.
-- **Editors**: `code <path>` and `cursor <path>`, run on the host.
+- **Editors**: `code <path>` and `cursor <path>`, run on the server's machine,
+  so offered only to a loopback client, like the shell.
 - **Claude Code**: `claude`, started in the checkout, in the terminal opener.
 
 ## The gates
@@ -47,8 +50,8 @@ so "it opened the right checkout" is a line in a file.
       (proof: deferred:assertion:window.an_opener_starts_in_the_checkout)
 - [ ] An opener that needs the host is not offered in a window on another
       machine (proof: deferred:test:packages/cli/tests/ui-openers.test.ts)
-- [ ] The terminal opener is offered only when its plugin is mounted, and
-      only in the desktop app (proof: deferred:test:plugins/ui-terminal/tests/plugin.test.ts)
+- [ ] The terminal opener is offered only when its plugin is mounted, only
+      in the desktop app, and only over loopback (proof: deferred:test:plugins/ui-shell/tests/plugin.test.ts)
 
 **Exit condition:** from one record, a person reads its diff in the window,
 opens `nvim` on its checkout in the app's terminal, and a second person on the same

@@ -47,6 +47,10 @@ are its row's `⋯` actions, the same functions, so the menu bar is never a
 road the window is not. Deciding is not one of them: a decision happens in the
 thread, beside the discussion it settles (*a conversation before the work*).
 
+**It says when it cannot see.** The menu bar is a client of the server like
+the window; when the server is unreachable, the title says so rather than
+showing the last count it had.
+
 **It moves on its own.** The menu is a view like any other, recomputed when
 the event log says something changed, whether or not the window is open. A
 record entering an attention state also raises a system notification,
@@ -92,6 +96,8 @@ the daemon on the conformance world.
       (proof: deferred:assertion:window.the_menu_bar_is_no_other_road)
 - [ ] A record entering an attention state raises one notification, and none
       when notifications are off (proof: deferred:assertion:window.attention_is_notified_once)
+- [ ] An unreachable server is in the title, and no stale count is shown
+      (proof: deferred:assertion:window.the_menu_bar_says_it_cannot_see)
 - [ ] The pulled handbrake is in the title
       (proof: deferred:assertion:window.the_menu_bar_says_it_is_paused)
 

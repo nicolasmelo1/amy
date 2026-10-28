@@ -104,6 +104,10 @@ diff tab, resize to the narrowest width the frame allows — once driven by the
 default keys, once by a remapped keymap from the conformance config, and once
 by the mouse. The three runs must yield the same projections.
 
+Once *the window is served* lands, the script reaches every renderer through
+a server, and once *a renderer is chosen by name* lands, the harness finds the
+renderers through the `ui-renderer` collection rather than a list of its own.
+
 After every step the harness — not the renderer — reads a **projection** out
 of what the renderer actually laid out:
 
