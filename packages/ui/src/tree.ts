@@ -79,11 +79,17 @@ function checkChildren(type: Primitive, children: readonly Child[], at: string):
   }
 }
 
-function flatten(children: Children, into: Child[]): Child[] {
+/** `above` holds the lists being flattened, so a list that holds itself is refused, not recursed into forever. */
+function flatten(children: Children, into: Child[], at: string, above: Set<object> = new Set()): Child[] {
   if (children === null || children === undefined || typeof children === "boolean") return into;
   if (typeof children === "number") into.push(String(children));
   else if (typeof children === "string" || !Array.isArray(children)) into.push(children as Child);
-  else for (const child of children as readonly Children[]) flatten(child, into);
+  else {
+    if (above.has(children)) return refuse(at, "a list of children holds itself, which no tree can");
+    above.add(children);
+    for (const child of children as readonly Children[]) flatten(child, into, at, above);
+    above.delete(children);
+  }
   return into;
 }
 
@@ -117,7 +123,7 @@ export function element(type: string, props: Readonly<Record<string, unknown>> =
   const primitive = primitiveNamed(type, "view");
   const defined = Object.fromEntries(Object.entries(props).filter(([, value]) => value !== undefined));
   const read = checkedProps(primitive, defined, primitive);
-  const flat = flatten(children, []).map((child, i) => trusted(child, `${primitive}/${i}`));
+  const flat = flatten(children, [], primitive).map((child, i) => trusted(child, `${primitive}/${i}`));
   checkChildren(primitive, flat, primitive);
   return remember(primitive, read, flat);
 }

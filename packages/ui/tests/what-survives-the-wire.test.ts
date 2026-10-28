@@ -234,3 +234,23 @@ describe("a patch for a place the tree does not have is refused, not skipped", (
     expect(patch(tree, [{ op: "insert", path: [], index: 1, node: "b" }])).toEqual(element("Stack", {}, [element("Text", {}, ["a"]), "b"]));
   });
 });
+
+describe("what is drawn is what was given", () => {
+  it("refuses a list of children that holds itself, rather than overflowing the stack", () => {
+    const loop: unknown[] = ["a"];
+    loop.push(loop);
+
+    expect(() => element("Stack", {}, loop as never)).toThrow("Stack: a list of children holds itself, which no tree can");
+  });
+
+  it("still flattens one list used twice", () => {
+    const shared = ["a", "b"];
+
+    expect(element("Stack", {}, [shared, shared]).children).toEqual(["a", "b", "a", "b"]);
+  });
+
+  it("draws what was typed into an input as typed, trailing spaces included", () => {
+    expect(renderText(element("Input", { name: "reply", value: "yes  " }))).toBe("reply: yes  ");
+    expect(renderText(element("Input", { name: "reply", value: "" }))).toBe("reply:");
+  });
+});

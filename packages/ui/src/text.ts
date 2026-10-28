@@ -102,7 +102,9 @@ const DRAW: Readonly<Record<Primitive, Draw>> = {
     const value = string(node.props, "value");
     const placeholder = string(node.props, "placeholder");
     const shown = value ?? (placeholder === undefined ? "" : `<${placeholder}>`);
-    return `${string(node.props, "name") ?? ""}: ${shown}`.trimEnd();
+    // Only an empty box loses its separator space: what somebody typed is drawn as typed.
+    const name = string(node.props, "name") ?? "";
+    return shown === "" ? `${name}:` : `${name}: ${shown}`;
   },
   Timeline: (node) => records(node.props, "entries").map((entry) => `${String(entry.at)}  ${String(entry.label)}`).join("\n"),
   StateMachine: stateMachine,
