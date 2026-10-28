@@ -61,6 +61,14 @@ describe("the frame's keymap", () => {
     expect(press({}, "normal", "gx").at(-1)).toEqual({ kind: "none" });
   });
 
+  it("drops a sequence begun in one mode when the next key comes in another", () => {
+    // `g` then `x` is a binding in insert mode only: a `g` pressed in normal mode does not begin it.
+    const reader = new KeyReader(buildKeymap(frame, { insert: { gx: "mode.normal" } }));
+
+    expect(reader.press("normal", "g")).toEqual({ kind: "pending" });
+    expect(reader.press("insert", "x")).toEqual({ kind: "none" });
+  });
+
   it("posts to the discussion on enter in a composer, and never decides", () => {
     expect(press({}, "insert", "<CR>")).toEqual([{ kind: "action", action: "thread.post-discussion", count: 1 }]);
     expect(keysFor(buildKeymap(frame), "insert", "thread.decide")).toBeUndefined();

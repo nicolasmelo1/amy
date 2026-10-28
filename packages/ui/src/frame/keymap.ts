@@ -182,10 +182,14 @@ export type KeyResult =
 export class KeyReader {
   private pending: string[] = [];
   private count = "";
+  private mode: Mode | undefined;
 
   constructor(private readonly keymap: Keymap) {}
 
   press(mode: Mode, key: string): KeyResult {
+    // A sequence begun in one mode is not finished in another.
+    if (mode !== this.mode) this.reset();
+    this.mode = mode;
     if (mode === "normal" && this.pending.length === 0 && /^[0-9]$/.test(key) && (key !== "0" || this.count !== "")) {
       this.count += key;
       return { kind: "pending" };

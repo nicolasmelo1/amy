@@ -402,6 +402,21 @@ describe("each assertion fails the renderer that breaks it", () => {
     });
   });
 
+  it("a region, or a thing a region holds, drawn twice", () => {
+    const doubled = altered("draws-twice", (session) => ({
+      read() {
+        const surface = window(session.read());
+        const nav = surface.regions[0] as LaidSurface["regions"][number];
+        const canvas = surface.regions.map((region) => (region.name === "canvas" ? { ...region, holds: [...region.holds, ...region.holds.slice(0, 1)] } : region));
+        return { surfaces: { window: { ...surface, regions: [...canvas, { ...nav, box: { ...nav.box, x: surface.size.width - nav.box.width } }] } } };
+      },
+    }));
+    const said = messages(conform(frame, [doubled], config, golden), "frame.no_region_is_invented");
+
+    expect(said).toContain("nav2 is drawn twice");
+    expect(said).toContain("canvas holds header twice");
+  });
+
   it("no renderer at all, which passes nothing", () => {
     expect(conform(frame, [], config, golden).assertions.every((each) => each.status === "failed")).toBe(true);
   });

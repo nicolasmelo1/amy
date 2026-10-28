@@ -89,11 +89,16 @@ function promises(self: Placed, drawn: readonly Placed[], height: number): reado
   return [...PLACEMENT[self.region.place](self, others, of), ...(tall ? [] : ["is declared to span the full height, and does not"])];
 }
 
+/** Each name a list carries more than once. */
+const twice = (names: readonly string[]): readonly string[] => [...new Set(names.filter((name, i) => names.indexOf(name) !== i))];
+
 function checkHolds(region: Region, laid: LaidRegion, say: Say): Finding[] {
   const invented = laid.holds.filter((hold) => !region.holds.includes(hold.name));
+  const doubled = twice(laid.holds.map((hold) => hold.name)).map((name) => say("frame.no_region_is_invented", `${region.name} holds ${name} twice`));
   const names = laid.holds.map((hold) => hold.name).filter((name) => region.holds.includes(name));
   return [
     ...invented.map((hold) => say("frame.no_region_is_invented", `${region.name} holds ${hold.name}, which the frame does not declare`)),
+    ...doubled,
     ...(names.join() === region.holds.join()
       ? []
       : [say("frame.every_region_sits_where_declared", `${region.name} holds [${names.join(", ")}]; the frame declares [${region.holds.join(", ")}]`)]),
@@ -132,6 +137,7 @@ function checkRegions(context: StepContext, surface: LaidSurface, say: Say): Fin
   const invented = surface.regions
     .filter((laid) => !frame.regions.some((region) => region.name === laid.name))
     .map((laid) => say("frame.no_region_is_invented", `${laid.name} is drawn, and the frame declares no such region`));
+  invented.push(...twice(surface.regions.map((laid) => laid.name)).map((name) => say("frame.no_region_is_invented", `${name} is drawn twice`)));
   const drawn = frame.regions.flatMap((region) => {
     const laid = surface.regions.find((each) => each.name === region.name);
     return laid === undefined ? [] : [{ region, box: laid.box, laid }];
