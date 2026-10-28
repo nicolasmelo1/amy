@@ -168,6 +168,23 @@ not a row yet: with the server, it is one more client built with
 `amy ui build`, and costs nothing to plan until two renderers have proven the
 views are renderer-free.
 
+**After 0.7: a decision model beside the agent.** Every decision about state
+is code and stays code; what these rows take is the other kind, where a piece
+of text has to become a category and today either a fixed default decides
+without reading it or a whole agent run decides in prose. *A decision is
+asked of a port* is the seam and comes first: a `Decider` port with the shape
+every decision model shares, a ladder with a threshold per rung, the verdict
+on the record, and `reply-kind` as the first question — with nothing
+installed, nothing changes. *A decision model runs on this machine* is the
+first real model behind it, and it is local, because the first question's
+context is somebody's message and should not leave the machine to be
+classified. *A threshold is measured, not guessed* follows before anything
+hosted, because no decision model publishes its calibration and a threshold
+typed by hand is a guess that reads as a measurement. *Any decision model is
+a plugin* is last: the hosted adapters, the conformance suite they all pass,
+and the rule that a question declares whether its context may leave the
+machine.
+
 | # | Work | Exit condition |
 | --- | --- | --- |
 | 1 | [The README counts nothing by hand](the-readme-counts-nothing-by-hand.md) | Every number and every list on the README is between generated markers, `npm run docs:check` goes red when one disagrees with the code, and the README is shorter than it is today |
@@ -209,6 +226,10 @@ views are renderer-free.
 | 37 | [Decisions are asked in a batch](decisions-are-asked-in-a-batch.md) | Under `policy.decisions: batch`, three review rounds that find one, one and zero decisions reach the owner as one message carrying the two that still apply, after the third round and not before |
 | 38 | [A row of next steps is a ticket](a-row-of-next-steps-is-a-ticket.md) | `ticket-to-qa`, mounted on a `next-steps.md` table, takes its first row from the base branch, walks it to a pull request in the repository the row's plan lives in, and writes nothing anywhere a tracker would have been |
 | 39 | [Telegram is a conversation](telegram-is-a-conversation.md) | A work item's question reaches its own Telegram topic, the process restarts, the operator answers in that topic, and the same work item — and no other — reads the answer and moves on |
+| 40 | [A decision is asked of a port](a-decision-is-asked-of-a-port.md) | A workflow hands one named question to a ladder of deciders from `config.yaml`; with nothing installed it behaves as today, and every answer a model gave is on the record with the model's name and how sure it was |
+| 41 | [A decision model runs on this machine](a-decision-model-runs-on-this-machine.md) | With the network off, "why do you think that?" in the work thread is read as a discussion and "go with option B" as a decision, by a model on the machine, and the record says which model and how sure |
+| 42 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) | A decider whose threshold was never measured only records what it would have said; after `amy decide measure` it decides, and new weights put it back in shadow |
+| 43 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) | The same question is answered by a local model, Clef on Workers AI and OpenAI's Decisions API by changing only `config.yaml`, all pass one conformance suite, and a question declared `local` is refused a hosted rung at boot by name |
 
 **Delivered:** *An update reaches the release* now lives in `docs/design/amy-update.md`, beside the command it fixed.
 
