@@ -41,12 +41,17 @@ function nodeAt(tree: Child, path: Path): Node {
   return tree;
 }
 
+/** Whether `index` names a place among `length` slots; `end` allows the slot just past the last, where an insert appends. */
+function within(index: number, length: number, end = false): boolean {
+  return Number.isInteger(index) && index >= 0 && (end ? index <= length : index < length);
+}
+
 /** The tree with the node at `path` replaced by what `change` makes of it, every other node shared. */
 function rewrite(tree: Child, path: Path, change: (node: Child) => Child): Child {
   if (path.length === 0) return change(tree);
   const node = nodeAt(tree, path);
   const [head, ...rest] = path as [number, ...number[]];
-  if (head >= node.children.length) throw new TypeError(`no child ${head} under ${node.type}`);
+  if (!within(head, node.children.length)) throw new TypeError(`no child ${head} under ${node.type}`);
   const children = node.children.map((child, i) => (i === head ? rewrite(child, rest, change) : child));
   return { ...node, children };
 }
@@ -60,17 +65,24 @@ function applyOne(tree: Child, patch: Patch): Child {
     case "insert":
       return rewrite(tree, patch.path, (node) => {
         const target = nodeAt(node, patch.path);
+        if (!within(patch.index, target.children.length, true)) throw new TypeError(`no place ${patch.index} to insert under ${target.type}`);
         return { ...target, children: [...target.children.slice(0, patch.index), patch.node, ...target.children.slice(patch.index)] };
       });
     case "remove":
       return rewrite(tree, patch.path, (node) => {
         const target = nodeAt(node, patch.path);
+        if (!within(patch.index, target.children.length)) throw new TypeError(`no child ${patch.index} to remove under ${target.type}`);
         return { ...target, children: target.children.filter((_, i) => i !== patch.index) };
       });
   }
 }
 
-/** The tree the patches describe, built from the one they were taken against. The tree passed in is not changed. */
+/**
+ * The tree the patches describe, built from the one they were taken against.
+ * The tree passed in is not changed. A patch naming a place the tree does not
+ * have is refused rather than skipped: a renderer that quietly kept the old
+ * tree would draw a window nobody sent it.
+ */
 export function patch(tree: Child, patches: readonly Patch[]): Child {
   return patches.reduce(applyOne, tree);
 }

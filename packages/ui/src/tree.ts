@@ -122,9 +122,11 @@ export function element(type: string, props: Readonly<Record<string, unknown>> =
   return remember(primitive, read, flat);
 }
 
-function validateAt(value: unknown, at: string): Child {
+/** `above` holds the nodes between the root and here, so a node that holds itself is refused, not recursed into forever. */
+function validateAt(value: unknown, at: string, above: Set<object> = new Set()): Child {
   if (typeof value === "string") return value;
   if (typeof value !== "object" || value === null || Array.isArray(value)) return refuse(at, "is not a primitive or text");
+  if (above.has(value)) return refuse(at, "holds itself, which no tree can");
   if (!onlyWhatJsonSends(value)) return refuse(at, "carries a property JSON would not send");
   const { type, props, children, ...rest } = value as Record<string, unknown>;
   const extra = Object.keys(rest);
@@ -138,7 +140,9 @@ function validateAt(value: unknown, at: string): Child {
   const valid = checkedProps(primitive, container as Record<string, Json>, at);
   // Each slot read once by index: a hole is refused, and no iterator or getter answers twice.
   const list: Child[] = [];
-  for (let i = 0; i < children.length; i++) list.push(validateAt(children[i], `${at}/${i}`));
+  above.add(value);
+  for (let i = 0; i < children.length; i++) list.push(validateAt(children[i], `${at}/${i}`, above));
+  above.delete(value);
   checkChildren(primitive, list, at);
   return remember(primitive, valid, list);
 }

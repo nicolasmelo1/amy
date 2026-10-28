@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diff, element, isJson, renderText, sameJson, validate, type Child, type Json } from "../src/index.js";
+import { diff, element, isJson, patch, renderText, sameJson, validate, type Child, type Json } from "../src/index.js";
 
 // Each case here is a value the checks once accepted and the wire then
 // changed: what a renderer received was not what the view built.
@@ -197,5 +197,40 @@ describe("what a table accepts is what it draws", () => {
 
   it("still accepts a row that leaves its last cells blank", () => {
     expect(renderText(element("Table", { columns: [{ width: 2 }, {}], rows: [["a"]] }))).toBe("a  ");
+  });
+});
+
+describe("what cannot be a tree is refused, not recursed into", () => {
+  it("refuses a node that holds itself", () => {
+    const loop = { type: "Stack", props: {}, children: [] as unknown[] };
+    loop.children.push(loop);
+
+    expect(() => validate(loop)).toThrow("root/0: holds itself, which no tree can");
+    expect(() => element("Section", {}, [loop as never])).toThrow("Section/0/0: holds itself, which no tree can");
+  });
+
+  it("still accepts one node shared by two branches", () => {
+    const shared = { type: "Text", props: {}, children: ["hi"] };
+
+    expect(validate({ type: "Stack", props: {}, children: [shared, shared] }).children).toHaveLength(2);
+  });
+});
+
+describe("a patch for a place the tree does not have is refused, not skipped", () => {
+  const tree = element("Stack", {}, [element("Text", {}, ["a"])]);
+
+  it.each([
+    [{ op: "remove", path: [], index: 1 }, "no child 1 to remove under Stack"],
+    [{ op: "remove", path: [], index: -1 }, "no child -1 to remove under Stack"],
+    [{ op: "insert", path: [], index: 2, node: "x" }, "no place 2 to insert under Stack"],
+    [{ op: "insert", path: [], index: 0.5, node: "x" }, "no place 0.5 to insert under Stack"],
+    [{ op: "replace", path: [-1], node: "x" }, "no child -1 under Stack"],
+    [{ op: "props", path: [1.5], props: {} }, "no child 1.5 under Stack"],
+  ] as const)("%j", (change, said) => {
+    expect(() => patch(tree, [change])).toThrow(said);
+  });
+
+  it("still appends at the end", () => {
+    expect(patch(tree, [{ op: "insert", path: [], index: 1, node: "b" }])).toEqual(element("Stack", {}, [element("Text", {}, ["a"]), "b"]));
   });
 });
