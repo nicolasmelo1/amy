@@ -36,6 +36,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | :-- | :-- |
 | [`amy add`](#amy-add) | Add a workflow or a plugin: install it, mount it, and check the machine boots |
 | [`amy after-daemon`](#amy-after-daemon) | Internal: update after a started daemon has exited |
+| [`amy boot-check`](#amy-boot-check) | Internal: whether every configured profile mounts, for an update that replaced this CLI |
 | [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
 | [`amy btw`](#amy-btw) | Something to do, said in passing. Goes on the queue, never becomes a ticket |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
@@ -108,6 +109,14 @@ amy after-daemon <pid> <workflow>
 | :-- | :-- | :-- |
 | `<pid>` | yes |  |
 | `<workflow>` | yes |  |
+
+### `amy boot-check`
+
+Internal: whether every configured profile mounts, for an update that replaced this CLI
+
+```sh
+amy boot-check
+```
 
 ### `amy brief`
 

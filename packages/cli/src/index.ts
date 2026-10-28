@@ -86,7 +86,7 @@ import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from 
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
-import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
+import { aboveRelease, belowRelease, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
@@ -1673,6 +1673,7 @@ program
     try {
       process.exitCode = await updateCommand(home, runner, pkg, options.check === true, {
         mountProfiles: assembleProfiles,
+        mountProfilesWithMovedCli: bootCheckByMovedCli,
         skillsInto: rewriteSkillsInto,
       });
     } catch (error) {
@@ -1697,6 +1698,8 @@ export async function updateCommand(
   deps: {
     /** Whether every configured profile still boots, with the problems named. */
     mountProfiles: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+    /** The same question asked of the CLI the update installed, when it moved. */
+    mountProfilesWithMovedCli?: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
     /** Rewrites the skills into the harnesses they were written into before. */
     skillsInto: () => string[];
     /** Where the install root is; the running CLI's own answer by default. */
@@ -1733,9 +1736,11 @@ export async function updateCommand(
     if (check) return reportOnly(moving, pinned);
     if (moving.length === 0) return nothingMoved(deps, pinned);
 
+    // What was on disk before anything moved, so a copy already past the
+    // release is told apart from one this update put there.
     return moveEverything(runner, where.plugins, installRoot, moving, deps, release === undefined ? undefined : {
       version: release.version,
-      heldPast: new Set(everything.filter((one) => firstParty(one.name) && compareVersions(one.have, release.version) > 0).map((one) => one.name)),
+      before: copiesOnDisk(where.plugins, installRoot),
     });
     } finally {
       release();
@@ -1758,7 +1763,7 @@ async function moveEverything(
     installRoot: Root | undefined,
     moving: readonly Held[],
     deps: MountProfiles & SkillsInto,
-    release?: { version: string; heldPast: ReadonlySet<string> },
+    release?: { version: string; before: readonly Copy[] },
 ): Promise<number> {
     const movedList = await moveEach(runner, pluginsRoot, installRoot, moving);
     if (movedList.failed > 0) {
@@ -1771,24 +1776,15 @@ async function moveEverything(
       return 1;
     }
 
-    // What the moves depend on resolved through carets, which can land past
-    // the release inside its minor. A machine holding two versions of the
-    // group is not on the release, whatever the installs said.
     if (release !== undefined && movedList.moved.some((one) => firstParty(one.name))) {
-      const strays = aboveRelease(copiesOnDisk(pluginsRoot, installRoot), release.version, release.heldPast);
-      if (strays.length > 0) {
-        console.error(`\nthe moves left first-party copies past the release ${release.version}:`);
-        for (const stray of strays) console.error(`  ${stray.name}@${stray.version}  ${stray.at}`);
-        await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
-        console.error("every move is rolled back; publish the release's dependencies at one version, or set the intent to the newest.");
-        return 1;
-      }
+      const strays = await refuseStrays(runner, pluginsRoot, installRoot, movedList.moved, release);
+      if (strays !== undefined) return strays;
     }
 
     // Every configured profile mounts before the update is called done: an
     // update that leaves a config that cannot boot has not worked, and
     // finding that out at the next tick means finding it out from the daemon.
-    const booted = await deps.mountProfiles();
+    const booted = await bootCheck(movedList.moved, deps);
     if (!booted.ok) {
       reportUnbootable(booted.problems);
       await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
@@ -1804,6 +1800,42 @@ async function moveEverything(
     if (release !== undefined) reportHeldBelow(belowRelease(copiesOnDisk(pluginsRoot, installRoot), release.version), release.version);
     console.log(`\n${movedList.moved.length} package(s) moved; every configured profile mounts. Run \`amy doctor\`, then \`amy start\`.`);
     return 0;
+}
+
+/**
+ * Rolls everything back when the moves left a first-party copy past the
+ * release. What the moves depend on resolved through carets, which can land
+ * past the release inside its minor, and a machine holding two versions of
+ * the group is not on the release, whatever the installs said.
+ */
+async function refuseStrays(
+    runner: CommandRunner,
+    pluginsRoot: string,
+    installRoot: Root | undefined,
+    moved: readonly Held[],
+    release: { version: string; before: readonly Copy[] },
+): Promise<number | undefined> {
+    const strays = aboveRelease(copiesOnDisk(pluginsRoot, installRoot), release.version, release.before);
+    if (strays.length === 0) return undefined;
+    console.error(`\nthe moves left first-party copies past the release ${release.version}:`);
+    for (const stray of strays) console.error(`  ${stray.name}@${stray.version}  ${stray.at}`);
+    await rollBackAll(runner, pluginsRoot, installRoot, moved);
+    console.error("every move is rolled back; publish the release's dependencies at one version, or set the intent to the newest.");
+    return 1;
+}
+
+/**
+ * Whether the profiles boot under the host they will run under.
+ *
+ * A moved CLI is that host, and this process still holds the old one's
+ * core: asked here, a release whose plugins need a new host capability
+ * would be refused by the host it replaces. So the new CLI answers.
+ */
+async function bootCheck(moved: readonly Held[], deps: MountProfiles) {
+    const cliMoved = moved.some((one) => one.root === "install" && one.name === "@amykit/cli");
+    return cliMoved && deps.mountProfilesWithMovedCli !== undefined
+      ? deps.mountProfilesWithMovedCli()
+      : deps.mountProfiles();
 }
 
 /**
@@ -1954,10 +1986,11 @@ async function nothingMoved(deps: MountProfiles & SkillsInto, pinned: boolean): 
 /** What the update depends on beyond the move itself, in one named shape. */
 interface UpdateDeps {
     mountProfiles: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+    mountProfilesWithMovedCli?: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
     skillsInto: () => string[];
 }
 
-type MountProfiles = Pick<UpdateDeps, "mountProfiles">;
+type MountProfiles = Pick<UpdateDeps, "mountProfiles" | "mountProfilesWithMovedCli">;
 type SkillsInto = Pick<UpdateDeps, "skillsInto">;
 
 /**
@@ -2159,6 +2192,29 @@ async function assembleProfiles(): Promise<{ ok: true } | { ok: false; problems:
   }
   return problems.length > 0 ? { ok: false, problems } : { ok: true };
 }
+
+/**
+ * Whether every configured profile mounts, asked of the CLI on disk now.
+ *
+ * `process.argv[1]` is the bin npm linked, so after a move it is the new
+ * CLI's — the same way the skills rewrite reaches it.
+ */
+async function bootCheckByMovedCli(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const result = spawnSync(process.execPath, [process.argv[1]!, "boot-check"], { encoding: "utf-8", env: process.env });
+  if (result.status === 0) return { ok: true };
+  const said = (result.stderr ?? "").split("\n").filter(Boolean);
+  return { ok: false, problems: said.length > 0 ? said : ["the updated CLI's boot check said nothing"] };
+}
+
+program
+  .command("boot-check")
+  .description("Internal: whether every configured profile mounts, for an update that replaced this CLI")
+  .action(async () => {
+    const booted = await assembleProfiles();
+    if (booted.ok) return;
+    for (const problem of booted.problems) console.error(problem);
+    process.exitCode = 1;
+  });
 
 /** Rewrites the skills into the harnesses and directories the record names. */
 function rewriteSkillsInto(): string[] {

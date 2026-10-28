@@ -57,6 +57,22 @@ function rootWith(home: string, dependencies: Record<string, string>): string {
   return root;
 }
 
+/** A scripted npm that also writes to disk when one exact install runs, the way npm would. */
+class InstallingRunner extends ScriptedRunner {
+  constructor(
+    scripts: ConstructorParameters<typeof ScriptedRunner>[0],
+    private readonly when: string,
+    private readonly effect: () => void,
+  ) {
+    super(scripts);
+  }
+
+  override async run(...call: Parameters<ScriptedRunner["run"]>): ReturnType<ScriptedRunner["run"]> {
+    if (call[1][0] === "install" && call[1].at(-1) === this.when) this.effect();
+    return super.run(...call);
+  }
+}
+
 describe("what a manifest range is", () => {
   it("moves a bare name, a semver range and latest, and pins everything else", () => {
     expect(isRange("@acme/workflow-oncall")).toBe(true);
@@ -154,6 +170,20 @@ describe("the roots this machine keeps", () => {
     // CLI resolves under the target, but npm installs under the prefix.
     const prefix = path.join(home, "global");
     const shared = path.join(home, "shared", "node_modules");
+    fs.mkdirSync(shared, { recursive: true });
+    fs.mkdirSync(path.join(prefix, "lib"), { recursive: true });
+    fs.symlinkSync(shared, path.join(prefix, "lib", "node_modules"));
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("root", "--global"), result: { stdout: `${path.join(prefix, "lib", "node_modules")}\n` } },
+    ]);
+
+    const found = await roots(home, runner, cliUnder(shared), "darwin");
+    expect(found.install).toMatchObject({ kind: "global", dir: prefix });
+  });
+
+  it("take npm's global prefix when the global root links to a directory not named node_modules", async () => {
+    const prefix = path.join(home, "global");
+    const shared = path.join(home, "shared", "npm-packages");
     fs.mkdirSync(shared, { recursive: true });
     fs.mkdirSync(path.join(prefix, "lib"), { recursive: true });
     fs.symlinkSync(shared, path.join(prefix, "lib", "node_modules"));
@@ -1102,14 +1132,17 @@ describe("the running loop", () => {
 
   it("rolls the release back when a move leaves a first-party copy past it", async () => {
     const install = globalMachine();
-    // What a caret does inside the release's minor: a workflow from elsewhere
-    // carries its own core, and npm answered its `^0.6.0` with 0.6.1.
-    const root = path.join(home, "plugins");
-    packageAt(path.join(root, "node_modules", "@acme", "workflow-oncall"), "@amykit/core", "0.6.1", "export {};");
-    const runner = new ScriptedRunner([
-      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
-      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
-    ]);
+    // What a caret does inside the release's minor: installing the CLI at
+    // 0.6.0 resolved its own `^0.6.0` core to 0.6.1, which is on disk only
+    // once the install has run.
+    const runner = new InstallingRunner(
+      [
+        { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+        { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+      ],
+      "@amykit/cli@0.6.0",
+      () => packageAt(path.join(install.modules, "@amykit", "cli"), "@amykit/core", "0.6.1", "export {};"),
+    );
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
@@ -1156,6 +1189,87 @@ describe("the running loop", () => {
     } finally {
       log.mockRestore();
     }
+  });
+
+  it("leaves alone a first-party copy that was already past the release before anything moved", async () => {
+    const install = globalMachine();
+    // Already there, already ahead: the operator's own choice, not this update's doing.
+    packageAt(path.join(install.modules, "@amykit", "cli"), "@amykit/core", "0.7.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, false, {
+        mountProfiles: async () => ({ ok: true as const }),
+        skillsInto: () => ["claude: 6 skill(s) rewritten"],
+        installRoot: install,
+      });
+      expect(code).toBe(0);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("asks the moved CLI whether the profiles boot, not the process it replaced", async () => {
+    const install = globalMachine();
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const asked: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, false, {
+        // The old host would refuse a release that needs a new capability.
+        mountProfiles: async () => {
+          asked.push("old");
+          return { ok: false as const, problems: ["oncall: needs a capability this host lacks"] };
+        },
+        mountProfilesWithMovedCli: async () => {
+          asked.push("moved");
+          return { ok: true as const };
+        },
+        skillsInto: () => ["claude: 6 skill(s) rewritten"],
+        installRoot: install,
+      });
+      expect(code).toBe(0);
+    } finally {
+      log.mockRestore();
+    }
+    expect(asked).toEqual(["moved"]);
+  });
+
+  it("asks this process when only the plugins moved, because the host did not", async () => {
+    const root = rootWith(home, { "@amykit/plugin-file-log": "^0.5.0" });
+    packageAt(root, "@amykit/plugin-file-log", "0.5.0", "export const plugin = {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const asked: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, false, {
+        mountProfiles: async () => {
+          asked.push("this");
+          return { ok: true as const };
+        },
+        mountProfilesWithMovedCli: async () => {
+          asked.push("moved");
+          return { ok: true as const };
+        },
+        skillsInto: () => [],
+      });
+      expect(code).toBe(0);
+    } finally {
+      log.mockRestore();
+    }
+    expect(asked).toEqual(["this"]);
   });
 });
 
@@ -1214,5 +1328,34 @@ describe("the CLI's registry intent in a local install root", () => {
 
     expect(release).toEqual({ version: "0.8.0", intent: "latest" });
     expect(found.find((one) => one.name === "@amykit/cli")).toMatchObject({ have: "0.7.0", want: "0.8.0" });
+  });
+
+  it("moves a bootstrap tarball CLI when the intent is written only in the plugins root", async () => {
+    rootWith(home, {});
+    fs.writeFileSync(
+      path.join(home, "plugins", "package.json"),
+      `${JSON.stringify({ name: "amy-plugins", private: true, dependencies: {}, amyUpdateRanges: { "@amykit/cli": "latest" } })}\n`,
+      "utf-8",
+    );
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "file:/cache/amykit-cli-0.7.0.tgz" } })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.7.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.8.0"\n' } },
+    ]);
+
+    const { held: found } = await survey(runner, home, { kind: "local", dir: install, modules: path.join(install, "node_modules") });
+
+    // It moves by the intent, and a rollback still writes the tarball back.
+    expect(found.find((one) => one.name === "@amykit/cli")).toMatchObject({
+      range: "latest",
+      want: "0.8.0",
+      spec: "file:/cache/amykit-cli-0.7.0.tgz",
+    });
   });
 });

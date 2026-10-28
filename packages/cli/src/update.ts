@@ -225,12 +225,7 @@ export async function survey(runner: CommandRunner, home: string, install?: Root
   }
 
   if (install?.kind === "local") {
-    for (const [name, dependency] of Object.entries(manifestOf(install.dir))) {
-      const range = updateRangeOf(install.dir, name, dependency);
-      const have = versionAt(install.modules, name);
-      if (!have) continue;
-      found.push({ name, range, root: "install", have, want: await wantFor(name, range, have), spec: dependency });
-    }
+    found.push(...(await heldIn(install, intent, wantFor)));
   } else if (install?.kind === "global") {
     // A global prefix keeps no manifest: the CLI is the one package amy put
     // there, and what it moves to is the release.
@@ -239,6 +234,27 @@ export async function survey(runner: CommandRunner, home: string, install?: Root
   }
 
   return release === undefined ? { held: found } : { held: found, release };
+}
+
+/**
+ * What a local install root holds. The CLI moves by the intent, wherever the
+ * operator wrote it: a bootstrap tarball with the intent only in the plugins
+ * root would otherwise stay a `file:` pin while its plugins moved past it.
+ * The dependency is still what a rollback writes back.
+ */
+async function heldIn(
+  install: Root,
+  intent: string | undefined,
+  wantFor: (name: string, range: string, have: string) => Promise<string | undefined>,
+): Promise<Held[]> {
+  const found: Held[] = [];
+  for (const [name, dependency] of Object.entries(manifestOf(install.dir))) {
+    const range = name === CLI && intent !== undefined ? intent : updateRangeOf(install.dir, name, dependency);
+    const have = versionAt(install.modules, name);
+    if (!have) continue;
+    found.push({ name, range, root: "install", have, want: await wantFor(name, range, have), spec: dependency });
+  }
+  return found;
 }
 
 /** Every package this machine's two roots hold, without the release around them. */
@@ -384,12 +400,18 @@ function packagesIn(modules: string): string[] {
  * they depend on is a caret: with 0.7.0 the intent and 0.7.1 published, npm
  * answers their `^0.7.0` with 0.7.1, and the machine holds two versions of
  * one group. No flag constrains that for a global install, so the update
- * reads the trees it wrote and refuses to call such a machine moved. A
- * package the survey held past the release is held there on purpose, and is
- * not a stray.
+ * reads the trees it wrote and refuses to call such a machine moved. A copy
+ * that was already past the release before anything moved — the same copy,
+ * at the same place and version — is held there on purpose, and is not a
+ * stray; a new one beside it still is.
  */
-export function aboveRelease(trees: readonly Copy[], release: string, heldPast: ReadonlySet<string>): Copy[] {
-  return trees.filter((copy) => !heldPast.has(copy.name) && compareVersions(copy.version, release) > 0);
+export function aboveRelease(trees: readonly Copy[], release: string, before: readonly Copy[]): Copy[] {
+  const unchanged = new Set(before.map(where));
+  return trees.filter((copy) => compareVersions(copy.version, release) > 0 && !unchanged.has(where(copy)));
+}
+
+function where(copy: Copy): string {
+  return `${copy.at}\u0000${copy.version}`;
 }
 
 /**
@@ -428,9 +450,13 @@ export async function roots(
 ): Promise<{ plugins: string; install?: Root }> {
   const plugins = path.join(home, "plugins");
   const packageDir = path.dirname(path.dirname(fileURLToPath(from)));
-  const modules = path.dirname(path.dirname(packageDir));
-  if (path.basename(modules) !== "node_modules") return { plugins };
-  if (fs.existsSync(path.join(path.dirname(modules), "package.json"))) {
+  const scope = path.dirname(packageDir);
+  const modules = path.dirname(scope);
+  // Installed means the `@amykit/cli` layout, not a directory named
+  // `node_modules`: Node hands this module its real path, and a global root
+  // that is a symlink can resolve to a directory called anything.
+  if (path.basename(scope) !== "@amykit" || path.basename(packageDir) !== "cli") return { plugins };
+  if (path.basename(modules) === "node_modules" && fs.existsSync(path.join(path.dirname(modules), "package.json"))) {
     return { plugins, install: localRoot(path.dirname(modules)) };
   }
   const global = await globalModules(runner);

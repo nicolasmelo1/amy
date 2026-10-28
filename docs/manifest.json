@@ -3425,6 +3425,11 @@
         },
         {
           "depth": 3,
+          "title": "amy boot-check",
+          "slug": "amy-boot-check"
+        },
+        {
+          "depth": 3,
           "title": "amy brief",
           "slug": "amy-brief"
         },
@@ -5812,6 +5817,15 @@
               "description": ""
             }
           ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "boot-check"
+          ],
+          "description": "Internal: whether every configured profile mounts, for an update that replaced this CLI",
+          "arguments": [],
           "options": [],
           "isDefault": false
         },
