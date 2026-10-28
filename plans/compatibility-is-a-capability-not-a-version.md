@@ -63,7 +63,7 @@ still builds. The range widens to `>=0.2.0` — the floor, and only the floor.
 `peerDependencies` is what makes the range mean something: the package manager
 resolves one core and complains about a conflict instead of quietly satisfying
 both. The workspace-wide half of this belongs in
-`scripts/check-release-config.mjs`, which already walks every manifest for
+`scripts/check-release-config.ts`, which already walks every manifest for
 exactly this class of quiet, late failure; its logic moves into
 `packages/cli/src/manifests.ts` so it can be tested, the way `plan-board.ts`
 already is.

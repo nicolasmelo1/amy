@@ -219,7 +219,7 @@ changes.
 
 There is a complete third-party workflow in this repository that a gate installs
 onto a machine with no checkout on it and drives, to prove exactly this —
-[`workflow-oncall/index.js`](.software-factory/evidence/installed-plugins/workflow-oncall/index.js).
+[`workflow-oncall/index.ts`](.software-factory/evidence/installed-plugins/workflow-oncall/index.ts).
 
 `/amy-workflow` designs one by interrogating you a question at a time.
 

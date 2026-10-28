@@ -16,14 +16,15 @@ cd "$repo"
 
 # The version of `sf` this repository locked. Read rather than written down,
 # because a second copy of a version number is the thing that goes stale —
-# see scripts/check-toolchain.mjs, which fails the gate when one does.
-sf_version=$(node -e "process.stdout.write(require('./.software-factory/catalog.lock.json').sf_version)")
+# see scripts/check-toolchain.ts, which fails the gate when one does. Read
+# with sed because this runs before `npm ci`, so there is no tsx to read it with.
+sf_version=$(sed -n 's/.*"sf_version": *"\([^"]*\)".*/\1/p' .software-factory/catalog.lock.json)
 
 say() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 missing=""
 
 say "1/5  Node"
-node_major=$(node -p 'process.versions.node.split(".")[0]')
+node_major=$(node -v | sed 's/^v//; s/\..*//')
 echo "node $(node -v), npm $(npm -v)"
 # CI runs 24. Older majors do run the tests today, so this warns rather than
 # stops: being told is useful, being blocked on your own laptop is not.

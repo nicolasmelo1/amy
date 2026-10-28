@@ -2,5 +2,5 @@
   "name": "@amykit/plugin-ui-tab-in-nav1",
   "private": true,
   "type": "module",
-  "amy": { "conformance": "./renderer.mjs" }
+  "amy": { "conformance": "./renderer.ts" }
 }

@@ -16,7 +16,7 @@ credential, and talks to nothing outside the machine.
 
 | Real | A stand-in |
 | --- | --- |
-| the installed executable, and every adapter inside it | `tracker.mjs` — Linear's GraphQL API, on a loopback socket |
+| the installed executable, and every adapter inside it | `tracker.ts` — Linear's GraphQL API, on a loopback socket |
 | two git repositories, their clones, the commits, the push | `bin/gh` — the code host, as the CLI amy shells out to |
 | the gate, as two shell commands in the checkout | `bin/claude` — the coding agent, editing real files |
 | the queue, the store, the log, the roster, the notifications | |
@@ -31,10 +31,10 @@ pushed.
 
 | | |
 | --- | --- |
-| `world.mjs` | the world: tickets, repositories, other people's open reviews, the roster, the config, the agent's script |
-| `tracker.mjs` | the stand-in tracker, one process, state in a JSON file |
-| `bin/gh`, `bin/claude` | the two stand-in executables, copied onto the `PATH` of the run |
-| `drive.mjs` | the run: the commands, what the world does between looks, the assertions, the report |
+| `world.ts` | the world: tickets, repositories, other people's open reviews, the roster, the config, the agent's script |
+| `tracker.ts` | the stand-in tracker, one process, state in a JSON file |
+| `bin/gh`, `bin/claude` | the two stand-in executables, each a `sh` wrapper that runs the `.ts` beside it through tsx, copied onto the `PATH` of the run |
+| `drive.ts` | the run: the commands, what the world does between looks, the assertions, the report |
 
 ## Walking around inside a kept world
 
@@ -64,31 +64,31 @@ And it can be driven further by hand, because the world is still there:
 ```sh
 cd <kept>/home
 PATH="<kept>/bin:$PATH" HOME="$PWD" AMY_E2E_WORLD=<kept>/world \
-  AMY_E2E_ORIGINS=<kept>/origins <path-to>/amy status
+  AMY_E2E_ORIGINS=<kept>/origins AMY_E2E_TSX=<repo>/node_modules/.bin/tsx <path-to>/amy status
 ```
 
 The tracker's endpoint is in `.amy/config.yaml`, and the process behind it is
 gone once the run ends, so anything that reaches the tracker needs it started
-again:
+again, from the repository root:
 
 ```sh
-node tracker.mjs <kept>/world/tracker.json <kept>/world/tracker.port
+node_modules/.bin/tsx .software-factory/evidence/ticket-to-qa/tracker.ts <kept>/world/tracker.json <kept>/world/tracker.port
 ```
 
 ## Changing what the world does
 
-Everything the run depends on is data in `world.mjs`: the tickets and their
+Everything the run depends on is data in `world.ts`: the tickets and their
 statuses, which repository each team's work lands in, how many open reviews
 each reviewer is already carrying, the gate's commands, and the agent's script
 — what it answers at triage, which comment it refuses, and what it does once
 the owner has settled it.
 
-The one rule to keep is the timing rule in `drive.mjs`: the world only moves
+The one rule to keep is the timing rule in `drive.ts`: the world only moves
 **after a look that made no move**. That is what puts a genuine wait in front
 of every waiting state, instead of letting the answer be there before the
 question was asked.
 
-Adding an assertion means adding it in `drive.mjs`, and adding a *required*
+Adding an assertion means adding it in `drive.ts`, and adding a *required*
 one means naming it in `gates.ticket-to-qa.required_assertions` in
 `.software-factory/policy.yaml` and citing it from a criterion in
 `docs/design/the-lifecycle-is-proven-end-to-end.md`. Then re-run and

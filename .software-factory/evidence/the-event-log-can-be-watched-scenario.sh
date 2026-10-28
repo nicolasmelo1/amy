@@ -23,4 +23,4 @@ esac
 
 test -f "$repo/plugins/file-log/dist/index.js" || { echo "build it first: npm run build" >&2; exit 1; }
 
-node "$here/the-event-log-can-be-watched/drive.mjs" "$repo" "$report"
+"$repo/node_modules/.bin/tsx" "$here/the-event-log-can-be-watched/drive.ts" "$repo" "$report"

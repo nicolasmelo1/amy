@@ -40,7 +40,8 @@ test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
 # from the tarballs the command install made and answers the third-party name
 # from that copy; the CLI is still the process that calls npm, with its own
 # `--prefix` root. A registry would answer the same names on a real machine.
-cp -R "$here/installed-plugins/workflow-oncall" "$work/third-party"
+# It is written in TypeScript and arrives compiled, as npm would ship it.
+"$repo/node_modules/.bin/tsx" "$here/lib/publish.ts" "$here/installed-plugins/workflow-oncall" "$work/third-party"
 
 # amy keeps its state in one place per machine, so this run gets its own.
 export HOME="$work/home"

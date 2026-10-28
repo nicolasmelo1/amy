@@ -28,4 +28,4 @@ for built in packages/core/dist/index.js plugins/slack/dist/index.js plugins/fil
   test -f "$repo/$built" || { echo "build it first: npm run build" >&2; exit 1; }
 done
 
-node "$here/a-question-is-not-an-answer/drive.mjs" "$repo" "$report"
+"$repo/node_modules/.bin/tsx" "$here/a-question-is-not-an-answer/drive.ts" "$repo" "$report"

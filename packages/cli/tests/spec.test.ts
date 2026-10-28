@@ -328,14 +328,14 @@ describe("a plugin spec", () => {
       }
     }
 
-    const probe = path.join(oracleRoot, "probe.mjs");
+    const probe = path.join(oracleRoot, "probe.mts");
     const names = forms.map(([name]) => name);
     fs.writeFileSync(
       probe,
       `const names = ${JSON.stringify(names)};\n` +
         "for (const n of names) {\n" +
         "  try { console.log(n + ' RESOLVED:' + import.meta.resolve(n)); }\n" +
-        "  catch (e) { console.log(n + ' ERR:' + e.code); }\n" +
+        "  catch (e) { console.log(n + ' ERR:' + (e as { code?: string }).code); }\n" +
         "}\n",
       "utf-8",
     );

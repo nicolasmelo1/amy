@@ -51,7 +51,7 @@ function retree(laid: Laid, region: string, hold: string, tree: (old: Node) => N
 }
 
 async function fixtureRenderer(plugin: string): Promise<ConformanceRenderer> {
-  const module = (await import(pathToFileURL(path.join(fixture, "plugins", plugin, "renderer.mjs")).href)) as { renderers: ConformanceRenderer[] };
+  const module = (await import(pathToFileURL(path.join(fixture, "plugins", plugin, "renderer.ts")).href)) as { renderers: ConformanceRenderer[] };
   return module.renderers[0] as ConformanceRenderer;
 }
 
@@ -342,7 +342,7 @@ describe("each assertion fails the renderer that breaks it", () => {
     const before = fs.readFileSync(FILES.golden, "utf-8");
     const done = spawnSync(
       process.execPath,
-      [path.join(repo, "packages/ui-conformance/dist/cli.js"), "--approve", "--renderer", path.join(fixture, "plugins/ui-no-panel/renderer.mjs")],
+      [path.join(repo, "packages/ui-conformance/dist/cli.js"), "--approve", "--renderer", path.join(fixture, "plugins/ui-no-panel/renderer.ts")],
       { encoding: "utf-8" },
     );
 

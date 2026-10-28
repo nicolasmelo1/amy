@@ -34,27 +34,17 @@ amy="$work/bin/amy"
 test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 # The workflow is copied out before npm sees it, so the installed machine has
-# no path back into this checkout. The npm stand-in answers the third-party
-# name from that copy and maps the tarball URL to a real tarball, then delegates
-# everything else to the real npm with the prefix amy supplied.
-cp -R "$here/amy-add-remove/workflow-oncall" "$work/third-party"
+# no path back into this checkout, and compiled the way npm would ship it. The
+# npm stand-in answers the third-party name from that copy and maps the tarball
+# URL to a real tarball, then delegates everything else to the real npm with
+# the prefix amy supplied.
+tsx="$repo/node_modules/.bin/tsx"
+"$tsx" "$here/lib/publish.ts" "$here/amy-add-remove/workflow-oncall" "$work/third-party"
 cp -R "$work/third-party" "$work/tarball-workflow"
-node -e '
-  const fs = require("fs");
-  const root = process.argv[1];
-  const manifest = JSON.parse(fs.readFileSync(`${root}/package.json`, "utf8"));
-  manifest.name = "@acme/workflow-afterhours";
-  fs.writeFileSync(`${root}/package.json`, `${JSON.stringify(manifest, null, 2)}\n`);
-  const entry = fs.readFileSync(`${root}/index.js`, "utf8").replaceAll("oncall", "afterhours");
-  fs.writeFileSync(`${root}/index.js`, entry);
-' "$work/tarball-workflow"
+"$tsx" "$here/amy-add-remove/rename.ts" "$work/tarball-workflow"
 mkdir -p "$work/tarballs"
 "$npm_real" pack "$work/tarball-workflow" --pack-destination "$work/tarballs" >/dev/null
-mkdir -p "$work/plugin-extra"
-printf '{"name":"@acme/plugin-extra","type":"module","exports":"./index.js"}\n' \
-  > "$work/plugin-extra/package.json"
-printf 'export const plugin = { name: "@acme/plugin-extra", version: "0.1.0", register() {} };\n' \
-  > "$work/plugin-extra/index.js"
+"$tsx" "$here/lib/publish.ts" "$here/amy-add-remove/plugin-extra" "$work/plugin-extra"
 
 # amy keeps its state in one place per machine, so this run gets its own.
 export HOME="$work/home"
