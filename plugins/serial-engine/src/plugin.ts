@@ -9,6 +9,7 @@ import {
   WORKFLOW_RUNTIME,
   Workflow,
   WorkflowRuntime,
+  deferred,
 } from "@amykit/core";
 import { Worker } from "./Worker.js";
 import { configSchema } from "./config.js";
@@ -17,21 +18,14 @@ export const plugin: Plugin = {
   name: "@amykit/plugin-serial-engine",
   configSchema,
   register(registry, ctx) {
-    // Built on the first tick rather than now, because the workflow and the
-    // ports it needs are registered by plugins that may be listed after this
-    // one.
-    let worker: Worker | null = null;
-    const lazily = (): Worker => (worker ??= build(ctx));
-
-    // `async` so a missing port becomes a rejected promise rather than a
-    // synchronous throw out of something that returns one. A caller doing
-    // `.catch()` should not have to also wrap the call in a try.
-    const engine: Engine = {
-      discover: async () => lazily().discover(),
-      tick: async () => lazily().tick(),
-    };
-
-    registry.engine(engine);
+    // Deferred: the workflow and the ports it needs are registered by plugins
+    // that may be listed after this one. The host builds it once every plugin
+    // has registered, so an engine with no workflow, or a workflow with no
+    // queue, is refused at boot rather than on the first tick.
+    registry.engine(deferred((): Engine => {
+      const worker = build(ctx);
+      return { discover: () => worker.discover(), tick: () => worker.tick() };
+    }));
   },
 };
 

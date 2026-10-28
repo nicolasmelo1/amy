@@ -34,6 +34,9 @@ interface ContributedRuntime {
   actions?: object;
 }
 
+/** The marker `deferred()` in the core puts on an implementation the host builds. */
+const DEFERRED = Symbol.for("amykit.deferred");
+
 /** The registry handed to a plugin here, which only writes down what it is asked. */
 interface NoteRegistry {
   queue(): void;
@@ -287,6 +290,12 @@ async function registers(
   const restore = placeholders([...environment, ...referencedEnvironment(context.config)]);
   try {
     await plugin.register(registry, context);
+    // A deferred runtime is built the way the host builds one: once
+    // registration is over, against the same stand-in context.
+    for (const [name, runtime] of runtimes) {
+      const build = (runtime as Record<symbol, unknown>)[DEFERRED];
+      if (typeof build === "function") runtimes.set(name, build() as ContributedRuntime);
+    }
   } catch (error) {
     // A plugin that will not register against a stand-in host is reported as
     // such rather than dropped: a reference page missing a plugin looks

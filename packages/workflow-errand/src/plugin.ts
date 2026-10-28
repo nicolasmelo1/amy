@@ -2,15 +2,14 @@ import {
   CodeHost,
   ConfigSchema,
   Git,
-  Moved,
   Harness,
   Notifier,
-  Plan,
   Plugin,
   PluginContext,
   Store,
   Worktree,
   WORKFLOW_RUNTIME,
+  deferred,
   WorkflowRuntime,
 } from "@amykit/core";
 import { errand } from "./machine.js";
@@ -45,20 +44,9 @@ export const configSchema: ConfigSchema = {
   },
 };
 
-/**
- * The runtime built for one mount, keyed by that mount's context.
- *
- * The exported plugin is a module singleton, so a field on it would be shared
- * by every host in the process and the second mount would answer with the
- * first one's ports.
- */
-const runtimes = new WeakMap<PluginContext, WorkflowRuntime<ErrandRecord, Observation>>();
-
+/** The runtime for one mount, built by the host once every plugin has registered. */
 function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observation> {
-  const existing = runtimes.get(ctx);
-  if (existing) return existing;
-
-  const built = errandRuntime({
+  return errandRuntime({
     tasks: required<Tasks>(ctx, "tasks"),
     agent: required<Harness>(ctx, "agent"),
     host: required<CodeHost>(ctx, "code-host"),
@@ -87,9 +75,6 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observati
     config: { repos: ctx.config.repos as string[] },
     policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
   });
-
-  runtimes.set(ctx, built);
-  return built;
 }
 
 /**
@@ -104,31 +89,10 @@ export const plugin: Plugin = {
   register(registry, ctx) {
     registry.workflow(errand);
 
-    const lazily = (): WorkflowRuntime<ErrandRecord, Observation> => runtimeFor(ctx);
-
-    registry.contribute(WORKFLOW_RUNTIME, errand.name, {
-      get policy(): unknown {
-        return lazily().policy;
-      },
-      found: () => lazily().found(),
-      newRecord: (workId: string, now: Date): ErrandRecord => lazily().newRecord(workId, now),
-      observe: (record: ErrandRecord): Promise<Observation> => lazily().observe(record),
-      get actions() {
-        return lazily().actions;
-      },
-      apply: (
-        record: ErrandRecord,
-        plan: Plan,
-        outcomes: Record<string, unknown>,
-        observation: Observation,
-        now: Date,
-        moved: Moved | null,
-      ): ErrandRecord => lazily().apply(record, plan, outcomes, observation, now, moved),
-    } satisfies WorkflowRuntime<ErrandRecord, Observation>);
-  },
-
-  ready(ctx) {
-    runtimeFor(ctx);
+    // Deferred: the ports it needs are mounted by plugins that may be listed
+    // after this one. The host builds it once every plugin has registered, so
+    // a port nobody mounted is refused at boot, naming the port.
+    registry.contribute(WORKFLOW_RUNTIME, errand.name, deferred(() => runtimeFor(ctx)));
   },
 };
 

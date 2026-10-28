@@ -387,6 +387,9 @@ describe("a brief crosses the phase boundary", () => {
       "@amykit/plugin-file-brief-store",
       workflow,
       "@amykit/plugin-serial-engine",
+      // The engine is built at boot, and an engine with nobody to tell is
+      // refused there rather than on its first tick.
+      "@amykit/plugin-notify-fanout",
     ];
     return {
       ...DEFAULT_CONFIG,

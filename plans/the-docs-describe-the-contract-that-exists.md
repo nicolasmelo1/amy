@@ -26,7 +26,7 @@ contract look heavier than it is:
   index, registers two ports and no workflow, and no page says why.
 
 [Nothing is declared twice](../docs/design/nothing-is-declared-twice.md),
-[a mount builds once](a-mount-builds-once.md),
+[a mount builds once](../docs/design/a-mount-builds-once.md),
 [a config is typed by its schema](a-config-is-typed-by-its-schema.md),
 [the host lends the checkout](the-host-lends-the-checkout.md) and
 [a workflow is one declaration](a-workflow-is-one-declaration.md) change the

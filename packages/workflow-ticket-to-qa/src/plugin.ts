@@ -4,14 +4,13 @@ import {
   ConfigSchema,
   Conversation,
   Git,
-  Moved,
   Notifier,
   parseBudget,
-  Plan,
   Plugin,
   PluginContext,
   Worktree,
   WORKFLOW_RUNTIME,
+  deferred,
   WorkflowRuntime,
 } from "@amykit/core";
 import { Observation, DEFAULT_POLICY, Policy } from "./observation.js";
@@ -95,20 +94,9 @@ export const configSchema: ConfigSchema = {
   },
 };
 
-/**
- * The runtime built for one mount, keyed by that mount's context.
- *
- * The exported plugin is a module singleton, so a field on it would be shared
- * by every host in the process and the second mount would answer with the
- * first one's ports.
- */
-const runtimes = new WeakMap<PluginContext, WorkflowRuntime<TicketRecord, Observation>>();
-
+/** The runtime for one mount, built by the host once every plugin has registered. */
 function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observation> {
-  const existing = runtimes.get(ctx);
-  if (existing) return existing;
-
-  const built = ticketRuntime({
+  return ticketRuntime({
     tracker: required<Tracker>(ctx, "tracker"),
     conversation: ctx.port("conversation") as Conversation | undefined,
     host: required<CodeHost>(ctx, "code-host"),
@@ -162,9 +150,6 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
     progress: progressPolicy(ctx),
     policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>), writes: writesOf(ctx), conversation: conversationOf(ctx) },
   });
-
-  runtimes.set(ctx, built);
-  return built;
 }
 
 /**
@@ -184,45 +169,10 @@ export const plugin: Plugin = {
     // operator is mounted claiming none, and the mount refuses it any writer.
     registry.workflow(writesOf(ctx) === "operator" ? { ...ticketToQa, trackerWrites: [], codeHostWrites: [] } : ticketToQa);
 
-    // Not built now: the ports it needs are mounted by plugins that may be
-    // listed after this one, and mounting order should not be something an
-    // operator has to get right. `ready` builds it while boot can still
-    // refuse, and this is the fallback for a host that mounts without that
-    // second pass.
-    const lazily = (): WorkflowRuntime<TicketRecord, Observation> => runtimeFor(ctx);
-
-    registry.contribute(WORKFLOW_RUNTIME, ticketToQa.name, {
-      get policy(): unknown {
-        return lazily().policy;
-      },
-      get progress() {
-        return lazily().progress;
-      },
-      found: () => lazily().found(),
-      newRecord: (workId: string, now: Date): TicketRecord => lazily().newRecord(workId, now),
-      observe: (record: TicketRecord): Promise<Observation> => lazily().observe(record),
-      get actions() {
-        return lazily().actions;
-      },
-      apply: (
-        record: TicketRecord,
-        plan: Plan,
-        outcomes: Record<string, unknown>,
-        observation: Observation,
-        now: Date,
-        moved: Moved | null,
-      ): TicketRecord => lazily().apply(record, plan, outcomes, observation, now, moved),
-    } satisfies WorkflowRuntime<TicketRecord, Observation>);
-  },
-
-  /**
-   * Builds the runtime while boot can still refuse.
-   *
-   * A missing port is an install that cannot run a ticket, and it costs a
-   * boot naming the port rather than somebody's ticket halfway through.
-   */
-  ready(ctx) {
-    runtimeFor(ctx);
+    // Deferred: the ports it needs are mounted by plugins that may be listed
+    // after this one. The host builds it once every plugin has registered, so
+    // a port nobody mounted is refused at boot, naming the port.
+    registry.contribute(WORKFLOW_RUNTIME, ticketToQa.name, deferred(() => runtimeFor(ctx)));
   },
 };
 

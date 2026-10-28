@@ -227,9 +227,9 @@ export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
       pluginSlices(config, profile),
       {
         // A runner a boot never uses: registration wires the CLIs, the ladder
-        // is judged from the rungs' names, and the engine is built on the
-        // first tick. The real one shells out; this one is the real adapter
-        // and reaches nothing, because nothing here asks it to.
+        // is judged from the rungs' names, and the engine is built at boot
+        // without running anything. The real one shells out; this one is the
+        // real adapter and reaches nothing, because nothing here asks it to.
         runner: new NodeCommandRunner(),
         now: () => new Date(),
         // The budget is read off a log at boot; an empty one is what a fresh

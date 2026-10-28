@@ -84,3 +84,30 @@ describe("a view is data, and depends on no UI framework or standard yet", () =>
     expect(imports.filter((name) => !name.startsWith(".") && name !== "@amykit/core")).toEqual([]);
   });
 });
+
+describe("a mount builds once, and only the core knows when", () => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const sources = [
+    ...fs.readdirSync(path.join(root, "plugins")).map((name) => path.join("plugins", name, "src")),
+    ...fs.readdirSync(path.join(root, "packages")).filter((name) => name.startsWith("workflow-")).map((name) => path.join("packages", name, "src")),
+  ].filter((directory) => fs.existsSync(path.join(root, directory)));
+
+  it("leaves no plugin or workflow keying anything by PluginContext", () => {
+    // A map keyed by the context is a plugin building its own once-per-mount
+    // cache, which is what `deferred` and the host's build pass are for.
+    const keyed = /\b(?:Weak)?Map\s*<\s*PluginContext\b|\bWeak(?:Ref|Set)\s*<\s*PluginContext\b/;
+    const offenders = sources.flatMap((directory) =>
+      fs.readdirSync(path.join(root, directory), { recursive: true, encoding: "utf8" })
+        .filter((file) => /\.tsx?$/.test(file))
+        .flatMap((file) => {
+          const relative = path.join(directory, file);
+          return fs.readFileSync(path.join(root, relative), "utf8").split("\n")
+            .filter((line) => keyed.test(line))
+            .map((line) => `${relative}: ${line.trim()}`);
+        }),
+    );
+
+    expect(sources.length).toBeGreaterThan(10);
+    expect(offenders).toEqual([]);
+  });
+});

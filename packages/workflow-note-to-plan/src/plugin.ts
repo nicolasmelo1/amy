@@ -2,15 +2,14 @@ import {
   CodeHost,
   ConfigSchema,
   Git,
-  Moved,
   Harness,
   Notifier,
-  Plan,
   Plugin,
   PluginContext,
   Store,
   Worktree,
   WORKFLOW_RUNTIME,
+  deferred,
   WorkflowRuntime,
 } from "@amykit/core";
 import { noteToPlan } from "./machine.js";
@@ -45,20 +44,9 @@ export const configSchema: ConfigSchema = {
   },
 };
 
-/**
- * The runtime built for one mount, keyed by that mount's context.
- *
- * The exported plugin is a module singleton, so a field on it would be shared
- * by every host in the process and the second mount would answer with the
- * first one's ports.
- */
-const runtimes = new WeakMap<PluginContext, WorkflowRuntime<PlanRecord, Observation>>();
-
+/** The runtime for one mount, built by the host once every plugin has registered. */
 function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation> {
-  const existing = runtimes.get(ctx);
-  if (existing) return existing;
-
-  const built = planRuntime({
+  return planRuntime({
     notes: required<Notes>(ctx, "notes"),
     // The `agent` port, narrowed to the half that has no vocabulary in it.
     // The ticket workflow narrows the same port to its own three methods,
@@ -92,9 +80,6 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation
     config: { repos: ctx.config.repos as string[] },
     policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
   });
-
-  runtimes.set(ctx, built);
-  return built;
 }
 
 /**
@@ -111,42 +96,10 @@ export const plugin: Plugin = {
   register(registry, ctx) {
     registry.workflow(noteToPlan);
 
-    // Not built now: the ports it needs are mounted by plugins that may be
-    // listed after this one, and mounting order should not be something an
-    // operator has to get right. `ready` builds it while boot can still
-    // refuse, and this is the fallback for a host that mounts without that
-    // second pass.
-    const lazily = (): WorkflowRuntime<PlanRecord, Observation> => runtimeFor(ctx);
-
-    registry.contribute(WORKFLOW_RUNTIME, noteToPlan.name, {
-      get policy(): unknown {
-        return lazily().policy;
-      },
-      found: () => lazily().found(),
-      newRecord: (workId: string, now: Date): PlanRecord => lazily().newRecord(workId, now),
-      observe: (record: PlanRecord): Promise<Observation> => lazily().observe(record),
-      get actions() {
-        return lazily().actions;
-      },
-      apply: (
-        record: PlanRecord,
-        plan: Plan,
-        outcomes: Record<string, unknown>,
-        observation: Observation,
-        now: Date,
-        moved: Moved | null,
-      ): PlanRecord => lazily().apply(record, plan, outcomes, observation, now, moved),
-    } satisfies WorkflowRuntime<PlanRecord, Observation>);
-  },
-
-  /**
-   * Builds the runtime while boot can still refuse.
-   *
-   * A missing port is an install that cannot turn a note into a plan, and it
-   * costs a boot naming the port rather than somebody's note halfway through.
-   */
-  ready(ctx) {
-    runtimeFor(ctx);
+    // Deferred: the ports it needs are mounted by plugins that may be listed
+    // after this one. The host builds it once every plugin has registered, so
+    // a port nobody mounted is refused at boot, naming the port.
+    registry.contribute(WORKFLOW_RUNTIME, noteToPlan.name, deferred(() => runtimeFor(ctx)));
   },
 };
 

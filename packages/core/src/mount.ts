@@ -10,6 +10,8 @@ import {
   Workflow,
 } from "./plugin.js";
 import { declaredActions, isPortBinding, unrunnable } from "./dispatch.js";
+import { Builds } from "./builds.js";
+import { isDeferred } from "./deferred.js";
 import { WORKFLOW_RUNTIME, WorkflowRuntime } from "./runtime.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
@@ -86,6 +88,7 @@ export async function mount(
   const workflowFor = new WeakMap<PluginContext, Workflow<never, never>>();
   const workflowOwners = new Set<Plugin>();
   const mutablePortKinds = new WeakMap<object, MutablePortKind>();
+  const builds = new Builds(problems);
 
   for (const plugin of plugins) {
     const settings = configFor(plugin.name, plugin.configSchema, config[plugin.name], problems);
@@ -93,10 +96,10 @@ export async function mount(
 
     let finishRegistration!: () => void;
     const registrationComplete = new Promise<void>((resolve) => { finishRegistration = resolve; });
-    const ctx = contextFor(settings, mounted, host, workflowFor, mutablePortKinds, registrationComplete);
+    const ctx = contextFor(settings, mounted, host, workflowFor, mutablePortKinds, registrationComplete, builds);
 
     try {
-      await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor, workflowOwners, mutablePortKinds), ctx);
+      await plugin.register(registrarFor(plugin, mounted, problems, ctx, workflowFor, workflowOwners, mutablePortKinds, builds), ctx);
     } catch (error) {
       // A plugin that cannot set itself up is a problem with a name, not an
       // unhandled throw that takes the whole boot down anonymously.
@@ -115,29 +118,38 @@ export async function mount(
     registered.push({ plugin, ctx });
   }
 
+  // Every deferred implementation, built once every plugin has registered and
+  // before any `ready`, so a `ready` reads built things and a build that
+  // throws is a refusal with a name. Skipped when something already went
+  // wrong, for the same reason the pass below is.
+  if (problems.length === 0) builds.buildAll();
+
   // A second pass, because a plugin that composes others can only judge its
   // own settings once those others have contributed themselves. Skipped when
   // something already went wrong, since a later complaint about a missing
   // contribution would just be an echo of the earlier refusal.
-  if (problems.length === 0) {
-    for (const { plugin, ctx } of registered) {
-      if (!plugin.ready) continue;
-
-      try {
-        await plugin.ready(ctx);
-      } catch (error) {
-        problems.push(
-          `${plugin.name}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-  }
+  if (problems.length === 0) await judgeReady(registered, problems);
 
   if (requiresWorkflow(requirements, mounted, workflowOwners)) {
     problems.push(`${requirements.workflowLabel}: exports no workflow`);
   }
 
   return problems.length > 0 ? { ok: false, problems } : { ok: true, mounted };
+}
+
+/** Runs every `ready`, each refusal named by its plugin. */
+async function judgeReady(registered: readonly { plugin: Plugin; ctx: PluginContext }[], problems: string[]): Promise<void> {
+  for (const { plugin, ctx } of registered) {
+    if (!plugin.ready) continue;
+
+    try {
+      await plugin.ready(ctx);
+    } catch (error) {
+      problems.push(
+        `${plugin.name}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
 }
 
 function requiresWorkflow(requirements: MountRequirements, mounted: Mounted, workflowOwners: ReadonlySet<Plugin>): boolean {
@@ -182,6 +194,7 @@ function contextFor(
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
   mutablePortKinds: WeakMap<object, MutablePortKind>,
   registrationComplete: Promise<void>,
+  builds: Builds,
 ): PluginContext {
   const ctx: PluginContext = {
     config,
@@ -189,16 +202,16 @@ function contextFor(
     now: host.now,
     log: host.log,
     paths: host.paths,
-    contributions: (collection) => mounted.contributions.get(collection) ?? new Map(),
+    contributions: (collection) => builds.collection(mounted.contributions.get(collection)),
     // This remains deferred until a workflow registers. A workflow plugin can
     // retain this view while it registers; it must never retain the raw port.
     // Other plugins also compose independent contracts (for example the
     // feature-grooming seam); engines use `workflowPort` for selected actions.
     port: (kind) => narrowedPort(
-      mounted.ports.get(kind), kind, () => workflowFor.get(ctx), mutablePortKinds, registrationComplete,
+      builds.resolve(mounted.ports.get(kind)), kind, () => workflowFor.get(ctx), mutablePortKinds, registrationComplete,
     ),
     workflowPort: (kind) => narrowedPort(
-      mounted.ports.get(kind), kind, () => mounted.workflow, mutablePortKinds, registrationComplete,
+      builds.resolve(mounted.ports.get(kind)), kind, () => mounted.workflow, mutablePortKinds, registrationComplete,
     ),
     workflow: () => mounted.workflow,
   };
@@ -443,6 +456,7 @@ function registrarFor(
   workflowFor: WeakMap<PluginContext, Workflow<never, never>>,
   workflowOwners: Set<Plugin>,
   mutablePortKinds: WeakMap<object, MutablePortKind>,
+  builds: Builds,
 ): Registry {
   const claim = <T>(what: string, held: T | undefined, incoming: T): T => {
     if (held !== undefined) {
@@ -462,7 +476,15 @@ function registrarFor(
       mounted.ports.set("store", impl as object);
     },
     engine: (impl) => {
-      mounted.engine = claim("the engine", mounted.engine, impl);
+      const held = mounted.engine;
+      // A deferred engine holds the slot as its marker until it is built, so a
+      // second engine is refused at registration either way. Nothing reads
+      // the slot before the build pass, and a mount that skips it is refused.
+      mounted.engine = claim("the engine", held, impl as Engine);
+      if (held !== undefined || !isDeferred(impl)) return;
+      builds.defer(impl, plugin.name, "the engine", (engine) => {
+        mounted.engine = engine as Engine;
+      });
     },
     workflow: (impl) => {
       const snapshot = snapshotWorkflow(impl);
@@ -478,10 +500,26 @@ function registrarFor(
         return;
       }
       mounted.ports.set(kind, impl);
-      const mutableKind = mutablePortKindForPort(kind, impl, mutablePortKinds);
-      if (mutableKind) mutablePortKinds.set(impl, mutableKind);
+      // A deferred port is classified by what it builds, once it has: the
+      // marker has none of the methods the classification looks for.
+      const classify = (port: object) => {
+        const mutableKind = mutablePortKindForPort(kind, port, mutablePortKinds);
+        if (mutableKind) mutablePortKinds.set(port, mutableKind);
+      };
+      if (!isDeferred(impl)) {
+        classify(impl);
+        return;
+      }
+      builds.defer(impl, plugin.name, `the \`${kind}\` port`, (port) => {
+        mounted.ports.set(kind, port);
+        classify(port);
+      });
     },
     action: (name, spec, port) => {
+      if (isDeferred(port)) {
+        problems.push(`${plugin.name}: the action \`${name}\` needs a built port; register a deferred one with \`port\` and bind the action to it`);
+        return;
+      }
       if (mounted.actions.has(name) && !mounted.ports.has(spec.port)) {
         problems.push(`${plugin.name}: the action \`${name}\` is already claimed`);
         return;
@@ -493,8 +531,12 @@ function registrarFor(
       // An action can bind a mutable method to an existing consumer-named
       // alias. Classify that already-mounted adapter as well as a new one.
       const adapter = mounted.ports.get(spec.port);
-      const kind = mutablePortKindForAction(spec, adapter, mutablePortKinds);
-      if (kind && adapter) mutablePortKinds.set(adapter, kind);
+      const classify = (port: object) => {
+        const kind = mutablePortKindForAction(spec, port, mutablePortKinds);
+        if (kind) mutablePortKinds.set(port, kind);
+      };
+      if (adapter && builds.holds(adapter)) builds.afterBuilt(adapter, classify);
+      else if (adapter) classify(adapter);
     },
     contribute: (collection, name, impl) => {
       const existing = mounted.contributions.get(collection) ?? new Map<string, object>();
@@ -504,6 +546,9 @@ function registrarFor(
       }
       existing.set(name, impl);
       mounted.contributions.set(collection, existing);
+      if (isDeferred(impl)) {
+        builds.defer(impl, plugin.name, `\`${name}\` in \`${collection}\``, (value) => existing.set(name, value));
+      }
     },
 
   };

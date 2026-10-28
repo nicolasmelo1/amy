@@ -317,7 +317,7 @@ on every move into it; `moved.from` is the state the escalation interrupted.
 
 ```ts
 // src/plugin.ts
-import { WORKFLOW_RUNTIME, type Plugin, type PluginContext, type WorkflowRuntime } from "@amykit/core";
+import { WORKFLOW_RUNTIME, deferred, type Plugin, type PluginContext } from "@amykit/core";
 
 export const configSchema: ConfigSchema = {
   policy: {
@@ -327,32 +327,21 @@ export const configSchema: ConfigSchema = {
   },
 };
 
-const runtimes = new WeakMap<PluginContext, WorkflowRuntime<ReviewRecord, Observation>>();
-
 export const plugin: Plugin = {
   name: "@acme/workflow-review",
   configSchema,
   register(registry, ctx) {
     registry.workflow(review);
 
-    // Lazily, because the ports it needs are mounted by plugins that may be
-    // listed after this one, and mounting order should not be something an
-    // operator has to get right.
-    const lazily = () => runtimeFor(ctx);
-
-    registry.contribute(WORKFLOW_RUNTIME, review.name, {
-      get policy() { return lazily().policy; },
-      found: () => lazily().found(),
-      newRecord: (id, now) => lazily().newRecord(id, now),
-      observe: (record) => lazily().observe(record),
-      get actions() { return lazily().actions; },
-      apply: (record, plan, outcomes, observation, now, moved) =>
-        lazily().apply(record, plan, outcomes, observation, now, moved),
-    } satisfies WorkflowRuntime<ReviewRecord, Observation>);
+    // Deferred, because the ports it needs are mounted by plugins that may be
+    // listed after this one. The host builds it once every plugin has
+    // registered, once per mount, and before any `ready`.
+    registry.contribute(WORKFLOW_RUNTIME, review.name, deferred(() => reviewRuntime({
+      approvals: required<Approvals>(ctx, "approvals"),
+      notifier: required<Notifier>(ctx, "notifier"),
+      policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
+    })));
   },
-
-  // Build it while boot can still refuse.
-  ready(ctx) { runtimeFor(ctx); },
 };
 
 function required<T>(ctx: PluginContext, kind: string): T {
@@ -362,13 +351,12 @@ function required<T>(ctx: PluginContext, kind: string): T {
 }
 ```
 
-Two things there are load-bearing:
-
-**The runtime is built lazily and keyed by context.** The exported plugin is a
-module singleton; a field on it would be shared by every host in the process.
-
-**`ready` builds it anyway**, so a port your workflow needs and nobody mounted is
-a refusal at boot rather than a crash on the first tick.
+`deferred` is the whole of the wiring. The host calls the factory once every
+plugin has registered, so the order plugins are listed in does not matter; it
+calls it once per mount, so two hosts in one process never share a runtime; and
+it calls it at boot, so a port your workflow needs and nobody mounted is a
+refusal naming your plugin rather than a crash on the first tick. Whoever reads
+the runtime receives the built one, never the factory.
 
 ## 8. The walkthrough test — the only real proof
 
