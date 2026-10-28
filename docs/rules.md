@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**52 rules shipped**, 44 enabled here, 8 switched off, 44 carrying a mutation fixture, 1 violations frozen.
+**55 rules shipped**, 47 enabled here, 8 switched off, 47 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -19,8 +19,8 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:generated layer-index -->
 | | Layer | What it checks | Shipped | Enabled here |
 | :-- | :-- | :-- | --: | --: |
-| **L0** | Shape | where things live | 14 | 12 |
-| **L1** | Grain | how the code reads | 6 | 5 |
+| **L0** | Shape | where things live | 16 | 14 |
+| **L1** | Grain | how the code reads | 7 | 6 |
 | **L2** | Contract | no drift from the source of truth | 7 | 7 |
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
 | **L4** | Cadence | docs, plans and rules stay attached | 8 | 7 |
@@ -50,6 +50,26 @@ Nothing in packages/agent-kit or in any plugin calls `prepareBranch` or `commitA
 **Why.** When work is committed and when it reaches the remote are a workflow's decisions. One workflow pushes after every attempt, another pushes once per cycle so nobody reviews half-done work, a third never pushes at all. An agent that pushes by itself makes the second and third impossible without replacing the checkout, which is exactly what a private workflow had to do.
 
 **Fix.** Return the answer and let the caller commit. A helper in agent-kit that needs to commit takes the commit as a function its caller passes in, the way `implementStep` does. See docs/design/an-agent-only-answers.md.
+
+### L0.A_RENDERER_NAMES_NO_COLOUR
+
+**A renderer names no colour**
+
+No source under plugins/ui-*/src spells a colour — a hex literal, an rgb(), hsl(), lab() or oklch() function, an ANSI colour escape, or a named colour given to a colour property — outside the renderer's theme-token file (src/theme.* or src/theme/).
+
+**Why.** How the window looks belongs to the person running it, not to the renderer that draws it. A colour spelled in a component is a colour no config can reach: a theme changes everything but that one, a terminal with a light background shows it unreadable, and two renderers end up disagreeing about what "danger" looks like because each picked its own red. Keeping every colour behind a token in one file is what leaves a single place to change.
+
+**Fix.** Draw by a primitive's tone or by a named token, and give the token its value in the renderer's theme file (src/theme.ts or src/theme/). See docs/design/the-frame-is-closed.md.
+
+### L0.A_RENDERER_ONLY_TRANSLATES
+
+**A renderer only translates**
+
+No source under plugins/ui-*/src imports a workflow, a plugin, or anything of @amykit/ui but the primitives and the frame: not the conformance harness that measures it nor the golden it is measured against, and not a file inside the package's dist or src.
+
+**Why.** A renderer is handed a tree and a frame and draws them; everything it decides beyond that is a decision the next renderer will make differently. One that imports a workflow shows that workflow's states its own way, one that imports another plugin draws that plugin where the frame has no slot for it, and one that imports the harness can pass the conformance script by reading the answer instead of laying out the window. Each is one import, each makes two renderers two products, and none of them fails a test the day it lands.
+
+**Fix.** Take what the window shows from the scene the server hands you, as @amykit/ui primitives, and where it goes from @amykit/ui/frame. If the renderer needs something a workflow or a plugin knows, the server has to send it as part of a view. See docs/design/the-frame-is-closed.md.
 
 ### L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS
 
@@ -172,6 +192,16 @@ Every function stays at or under the configured number of independent paths.
 **Why.** A ceiling is not a style preference: it is the only cheap, language-neutral proxy for "a reviewer can hold this in their head". Agents are especially prone to growing a working function by one more branch instead of splitting it, because appending a branch is a smaller diff than a refactor. The ceiling makes the refactor the cheaper option.
 
 **Fix.** Extract the branch cluster into a named function. Naming it is the point: the name is what the next reader (and the next agent) gets to reason with instead of the branches.
+
+### L1.EVERY_RENDERER_HOLDS_THE_FRAME
+
+**Every renderer holds the frame**
+
+Every renderer in the workspace — every plugins/ui-* package naming a conformance module — is driven through the frame's script by default keys, by a remapped keymap and by the mouse, and the regions it draws, where they sit, what each holds, what each key does and the projection read back from its layout all match packages/ui/frame.yaml and the approved golden.
+
+**Why.** Two renderers drift apart without either being wrong: the terminal puts the work list on the left, the desktop app puts it on the right, enter in one composer posts and in the other decides. A screenshot diff cannot say any of that — fonts and antialiasing make it red for no reason or loose enough to be green for every reason — so what must not drift is read out of each renderer's own layout and compared relationally. Without running that, the first renderer becomes the definition and every later one an argument.
+
+**Fix.** Run `node packages/ui-conformance/dist/cli.js` after `npm run build` and read which assertion each finding names. Fix the renderer, not the frame; if the window is genuinely meant to change, edit frame.yaml, run the harness with --approve, and `sf lock` in the same commit. See docs/design/the-frame-is-closed.md.
 
 ### L1.NO_BLANKET_SUPPRESSION
 

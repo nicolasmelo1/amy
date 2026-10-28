@@ -1,0 +1,3297 @@
+{
+  "steps": [
+    {
+      "step": "start",
+      "mode": "normal",
+      "sections": [
+        "workflows",
+        "work",
+        "settings",
+        "checks"
+      ],
+      "surfaces": {
+        "window": {
+          "regions": [
+            {
+              "name": "nav2",
+              "fullHeight": true,
+              "holds": [
+                {
+                  "name": "search",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "search",
+                      "placeholder": "Search work"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "list",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "work"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "▸"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-101"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IMPLEMENTING"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-102"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "ESCALATED"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "personal"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-201"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IN_REVIEW"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-202"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "DONE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "groom",
+                  "tree": {
+                    "type": "Button",
+                    "props": {
+                      "intent": {
+                        "action": "groom",
+                        "args": {}
+                      }
+                    },
+                    "children": [
+                      "Groom"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "nav1",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "section",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "workflows"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Workflows"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "work"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Work"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "settings"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Settings"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "checks"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Checks"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "canvas",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "header",
+                  "tree": {
+                    "type": "Empty",
+                    "props": {},
+                    "children": [
+                      "Nothing open"
+                    ]
+                  }
+                },
+                {
+                  "name": "machine",
+                  "tree": {
+                    "type": "Empty",
+                    "props": {},
+                    "children": [
+                      "Nothing open"
+                    ]
+                  }
+                },
+                {
+                  "name": "tabs",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "timeline"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Timeline"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "diff"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Diff"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "coverage"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Coverage"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "body",
+                  "tree": {
+                    "type": "Empty",
+                    "props": {},
+                    "children": [
+                      "Nothing open"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "relations": [
+            "nav2 left-of nav1",
+            "nav2 left-of canvas",
+            "nav1 above canvas"
+          ]
+        }
+      }
+    },
+    {
+      "step": "select the escalated record",
+      "mode": "normal",
+      "sections": [
+        "workflows",
+        "work",
+        "settings",
+        "checks"
+      ],
+      "surfaces": {
+        "window": {
+          "regions": [
+            {
+              "name": "nav2",
+              "fullHeight": true,
+              "holds": [
+                {
+                  "name": "search",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "search",
+                      "placeholder": "Search work"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "list",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "work"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-101"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IMPLEMENTING"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "▸"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-102"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "ESCALATED"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "personal"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-201"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IN_REVIEW"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-202"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "DONE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "groom",
+                  "tree": {
+                    "type": "Button",
+                    "props": {
+                      "intent": {
+                        "action": "groom",
+                        "args": {}
+                      }
+                    },
+                    "children": [
+                      "Groom"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "nav1",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "section",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "workflows"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Workflows"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "work"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Work"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "settings"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Settings"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "checks"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Checks"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "canvas",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "header",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "AMY-102"
+                        ]
+                      },
+                      {
+                        "type": "Badge",
+                        "props": {},
+                        "children": [
+                          "ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Choose the reviewer"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "machine",
+                  "tree": {
+                    "type": "StateMachine",
+                    "props": {
+                      "states": [
+                        "DISCOVERED",
+                        "IMPLEMENTING",
+                        "ESCALATED",
+                        "IN_REVIEW",
+                        "DONE"
+                      ],
+                      "current": "ESCALATED"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "tabs",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "timeline"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Timeline"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "diff"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Diff"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "coverage"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Coverage"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "body",
+                  "tree": {
+                    "type": "Timeline",
+                    "props": {
+                      "entries": [
+                        {
+                          "at": "2026-10-28T12:00:00.000Z",
+                          "label": "AMY-102 is ESCALATED"
+                        }
+                      ]
+                    },
+                    "children": []
+                  }
+                }
+              ]
+            }
+          ],
+          "relations": [
+            "nav2 left-of nav1",
+            "nav2 left-of canvas",
+            "nav1 above canvas"
+          ]
+        }
+      }
+    },
+    {
+      "step": "toggle the panel",
+      "mode": "normal",
+      "sections": [
+        "workflows",
+        "work",
+        "settings",
+        "checks"
+      ],
+      "surfaces": {
+        "window": {
+          "regions": [
+            {
+              "name": "nav2",
+              "fullHeight": true,
+              "holds": [
+                {
+                  "name": "search",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "search",
+                      "placeholder": "Search work"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "list",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "work"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-101"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IMPLEMENTING"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "▸"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-102"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "ESCALATED"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "personal"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-201"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IN_REVIEW"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-202"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "DONE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "groom",
+                  "tree": {
+                    "type": "Button",
+                    "props": {
+                      "intent": {
+                        "action": "groom",
+                        "args": {}
+                      }
+                    },
+                    "children": [
+                      "Groom"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "nav1",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "section",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "workflows"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Workflows"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "work"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Work"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "settings"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Settings"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "checks"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Checks"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "canvas",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "header",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "AMY-102"
+                        ]
+                      },
+                      {
+                        "type": "Badge",
+                        "props": {},
+                        "children": [
+                          "ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Choose the reviewer"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "machine",
+                  "tree": {
+                    "type": "StateMachine",
+                    "props": {
+                      "states": [
+                        "DISCOVERED",
+                        "IMPLEMENTING",
+                        "ESCALATED",
+                        "IN_REVIEW",
+                        "DONE"
+                      ],
+                      "current": "ESCALATED"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "tabs",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "timeline"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Timeline"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "diff"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Diff"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "coverage"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Coverage"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "body",
+                  "tree": {
+                    "type": "Timeline",
+                    "props": {
+                      "entries": [
+                        {
+                          "at": "2026-10-28T12:00:00.000Z",
+                          "label": "AMY-102 is ESCALATED"
+                        }
+                      ]
+                    },
+                    "children": []
+                  }
+                }
+              ]
+            },
+            {
+              "name": "panel",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "log",
+                  "tree": {
+                    "type": "Log",
+                    "props": {
+                      "lines": [
+                        "2026-10-28T11:58:00.000Z work.advanced AMY-101 DISCOVERED → IMPLEMENTING",
+                        "2026-10-28T11:59:00.000Z work.escalated AMY-102",
+                        "2026-10-28T12:00:00.000Z work.advanced AMY-201 IMPLEMENTING → IN_REVIEW"
+                      ]
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "thread",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "amy: AMY-102 is ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Input",
+                        "props": {
+                          "name": "composer",
+                          "placeholder": "Discuss"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "plugin-panel",
+                  "tree": {
+                    "type": "Section",
+                    "props": {
+                      "title": "Notes"
+                    },
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Nothing noted"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "relations": [
+            "nav2 left-of nav1",
+            "nav2 left-of canvas",
+            "nav2 left-of panel",
+            "nav1 above canvas",
+            "nav1 above panel",
+            "canvas left-of panel"
+          ]
+        }
+      }
+    },
+    {
+      "step": "open the palette",
+      "mode": "normal",
+      "sections": [
+        "workflows",
+        "work",
+        "settings",
+        "checks"
+      ],
+      "surfaces": {
+        "window": {
+          "regions": [
+            {
+              "name": "nav2",
+              "fullHeight": true,
+              "holds": [
+                {
+                  "name": "search",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "search",
+                      "placeholder": "Search work"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "list",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "work"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-101"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IMPLEMENTING"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "▸"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-102"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "ESCALATED"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "personal"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-201"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IN_REVIEW"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-202"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "DONE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "groom",
+                  "tree": {
+                    "type": "Button",
+                    "props": {
+                      "intent": {
+                        "action": "groom",
+                        "args": {}
+                      }
+                    },
+                    "children": [
+                      "Groom"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "nav1",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "section",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "workflows"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Workflows"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "work"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Work"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "settings"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Settings"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "checks"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Checks"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "canvas",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "header",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "AMY-102"
+                        ]
+                      },
+                      {
+                        "type": "Badge",
+                        "props": {},
+                        "children": [
+                          "ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Choose the reviewer"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "machine",
+                  "tree": {
+                    "type": "StateMachine",
+                    "props": {
+                      "states": [
+                        "DISCOVERED",
+                        "IMPLEMENTING",
+                        "ESCALATED",
+                        "IN_REVIEW",
+                        "DONE"
+                      ],
+                      "current": "ESCALATED"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "tabs",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "timeline"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Timeline"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "diff"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Diff"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "coverage"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Coverage"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "body",
+                  "tree": {
+                    "type": "Timeline",
+                    "props": {
+                      "entries": [
+                        {
+                          "at": "2026-10-28T12:00:00.000Z",
+                          "label": "AMY-102 is ESCALATED"
+                        }
+                      ]
+                    },
+                    "children": []
+                  }
+                }
+              ]
+            },
+            {
+              "name": "panel",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "log",
+                  "tree": {
+                    "type": "Log",
+                    "props": {
+                      "lines": [
+                        "2026-10-28T11:58:00.000Z work.advanced AMY-101 DISCOVERED → IMPLEMENTING",
+                        "2026-10-28T11:59:00.000Z work.escalated AMY-102",
+                        "2026-10-28T12:00:00.000Z work.advanced AMY-201 IMPLEMENTING → IN_REVIEW"
+                      ]
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "thread",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "amy: AMY-102 is ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Input",
+                        "props": {
+                          "name": "composer",
+                          "placeholder": "Discuss"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "plugin-panel",
+                  "tree": {
+                    "type": "Section",
+                    "props": {
+                      "title": "Notes"
+                    },
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Nothing noted"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "palette",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "ask",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "ask",
+                      "placeholder": "Ask amy"
+                    },
+                    "children": []
+                  }
+                }
+              ]
+            }
+          ],
+          "relations": [
+            "nav2 left-of nav1",
+            "nav2 left-of canvas",
+            "nav2 left-of panel",
+            "nav2 left-of palette",
+            "nav1 above canvas",
+            "nav1 above panel",
+            "nav1 above palette",
+            "canvas left-of panel",
+            "canvas overlaps palette",
+            "panel right-of palette"
+          ]
+        }
+      }
+    },
+    {
+      "step": "press enter in the thread",
+      "mode": "insert",
+      "sections": [
+        "workflows",
+        "work",
+        "settings",
+        "checks"
+      ],
+      "surfaces": {
+        "window": {
+          "regions": [
+            {
+              "name": "nav2",
+              "fullHeight": true,
+              "holds": [
+                {
+                  "name": "search",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "search",
+                      "placeholder": "Search work"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "list",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "work"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-101"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IMPLEMENTING"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "▸"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-102"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "ESCALATED"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "personal"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-201"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IN_REVIEW"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-202"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "DONE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "groom",
+                  "tree": {
+                    "type": "Button",
+                    "props": {
+                      "intent": {
+                        "action": "groom",
+                        "args": {}
+                      }
+                    },
+                    "children": [
+                      "Groom"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "nav1",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "section",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "workflows"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Workflows"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "work"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Work"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "settings"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Settings"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "checks"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Checks"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "canvas",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "header",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "AMY-102"
+                        ]
+                      },
+                      {
+                        "type": "Badge",
+                        "props": {},
+                        "children": [
+                          "ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Choose the reviewer"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "machine",
+                  "tree": {
+                    "type": "StateMachine",
+                    "props": {
+                      "states": [
+                        "DISCOVERED",
+                        "IMPLEMENTING",
+                        "ESCALATED",
+                        "IN_REVIEW",
+                        "DONE"
+                      ],
+                      "current": "ESCALATED"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "tabs",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "timeline"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Timeline"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "diff"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Diff"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "coverage"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Coverage"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "body",
+                  "tree": {
+                    "type": "Timeline",
+                    "props": {
+                      "entries": [
+                        {
+                          "at": "2026-10-28T12:00:00.000Z",
+                          "label": "AMY-102 is ESCALATED"
+                        }
+                      ]
+                    },
+                    "children": []
+                  }
+                }
+              ]
+            },
+            {
+              "name": "panel",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "log",
+                  "tree": {
+                    "type": "Log",
+                    "props": {
+                      "lines": [
+                        "2026-10-28T11:58:00.000Z work.advanced AMY-101 DISCOVERED → IMPLEMENTING",
+                        "2026-10-28T11:59:00.000Z work.escalated AMY-102",
+                        "2026-10-28T12:00:00.000Z work.advanced AMY-201 IMPLEMENTING → IN_REVIEW"
+                      ]
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "thread",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "amy: AMY-102 is ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "you posted a discussion"
+                        ]
+                      },
+                      {
+                        "type": "Input",
+                        "props": {
+                          "name": "composer",
+                          "placeholder": "Discuss"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "plugin-panel",
+                  "tree": {
+                    "type": "Section",
+                    "props": {
+                      "title": "Notes"
+                    },
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Nothing noted"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "relations": [
+            "nav2 left-of nav1",
+            "nav2 left-of canvas",
+            "nav2 left-of panel",
+            "nav1 above canvas",
+            "nav1 above panel",
+            "canvas left-of panel"
+          ]
+        }
+      }
+    },
+    {
+      "step": "open the diff tab",
+      "mode": "normal",
+      "sections": [
+        "workflows",
+        "work",
+        "settings",
+        "checks"
+      ],
+      "surfaces": {
+        "window": {
+          "regions": [
+            {
+              "name": "nav2",
+              "fullHeight": true,
+              "holds": [
+                {
+                  "name": "search",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "search",
+                      "placeholder": "Search work"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "list",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "work"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-101"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IMPLEMENTING"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "▸"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-102"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "ESCALATED"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "personal"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-201"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IN_REVIEW"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-202"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "DONE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "groom",
+                  "tree": {
+                    "type": "Button",
+                    "props": {
+                      "intent": {
+                        "action": "groom",
+                        "args": {}
+                      }
+                    },
+                    "children": [
+                      "Groom"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "nav1",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "section",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "workflows"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Workflows"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "work"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Work"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "settings"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Settings"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "checks"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Checks"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "canvas",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "header",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "AMY-102"
+                        ]
+                      },
+                      {
+                        "type": "Badge",
+                        "props": {},
+                        "children": [
+                          "ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Choose the reviewer"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "machine",
+                  "tree": {
+                    "type": "StateMachine",
+                    "props": {
+                      "states": [
+                        "DISCOVERED",
+                        "IMPLEMENTING",
+                        "ESCALATED",
+                        "IN_REVIEW",
+                        "DONE"
+                      ],
+                      "current": "ESCALATED"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "tabs",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "timeline"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Timeline"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "diff"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Diff"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "coverage"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Coverage"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "body",
+                  "tree": {
+                    "type": "Diff",
+                    "props": {},
+                    "children": [
+                      "--- a/AMY-102\n+++ b/AMY-102\n+Choose the reviewer"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "panel",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "log",
+                  "tree": {
+                    "type": "Log",
+                    "props": {
+                      "lines": [
+                        "2026-10-28T11:58:00.000Z work.advanced AMY-101 DISCOVERED → IMPLEMENTING",
+                        "2026-10-28T11:59:00.000Z work.escalated AMY-102",
+                        "2026-10-28T12:00:00.000Z work.advanced AMY-201 IMPLEMENTING → IN_REVIEW"
+                      ]
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "thread",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "amy: AMY-102 is ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "you posted a discussion"
+                        ]
+                      },
+                      {
+                        "type": "Input",
+                        "props": {
+                          "name": "composer",
+                          "placeholder": "Discuss"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "plugin-panel",
+                  "tree": {
+                    "type": "Section",
+                    "props": {
+                      "title": "Notes"
+                    },
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Nothing noted"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "relations": [
+            "nav2 left-of nav1",
+            "nav2 left-of canvas",
+            "nav2 left-of panel",
+            "nav1 above canvas",
+            "nav1 above panel",
+            "canvas left-of panel"
+          ]
+        }
+      }
+    },
+    {
+      "step": "resize to the narrowest width",
+      "mode": "normal",
+      "sections": [
+        "workflows",
+        "work",
+        "settings",
+        "checks"
+      ],
+      "surfaces": {
+        "window": {
+          "regions": [
+            {
+              "name": "nav2",
+              "fullHeight": true,
+              "holds": [
+                {
+                  "name": "search",
+                  "tree": {
+                    "type": "Input",
+                    "props": {
+                      "name": "search",
+                      "placeholder": "Search work"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "list",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "work"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-101"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IMPLEMENTING"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "▸"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-102"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "ESCALATED"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Section",
+                        "props": {
+                          "title": "personal"
+                        },
+                        "children": [
+                          {
+                            "type": "List",
+                            "props": {},
+                            "children": [
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-201"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "IN_REVIEW"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Row",
+                                "props": {},
+                                "children": [
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      " "
+                                    ]
+                                  },
+                                  {
+                                    "type": "Text",
+                                    "props": {},
+                                    "children": [
+                                      "AMY-202"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {},
+                                    "children": [
+                                      "DONE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "Badge",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "children": [
+                                      "ci"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "groom",
+                  "tree": {
+                    "type": "Button",
+                    "props": {
+                      "intent": {
+                        "action": "groom",
+                        "args": {}
+                      }
+                    },
+                    "children": [
+                      "Groom"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "nav1",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "section",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "workflows"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Workflows"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "work"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Work"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "settings"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Settings"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "section.select",
+                            "args": {
+                              "section": "checks"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Checks"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "canvas",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "header",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "AMY-102"
+                        ]
+                      },
+                      {
+                        "type": "Badge",
+                        "props": {},
+                        "children": [
+                          "ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Choose the reviewer"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "machine",
+                  "tree": {
+                    "type": "StateMachine",
+                    "props": {
+                      "states": [
+                        "DISCOVERED",
+                        "IMPLEMENTING",
+                        "ESCALATED",
+                        "IN_REVIEW",
+                        "DONE"
+                      ],
+                      "current": "ESCALATED"
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "tabs",
+                  "tree": {
+                    "type": "Row",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "timeline"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Timeline"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "diff"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Diff"
+                        ]
+                      },
+                      {
+                        "type": "Button",
+                        "props": {
+                          "intent": {
+                            "action": "tab.select",
+                            "args": {
+                              "tab": "coverage"
+                            }
+                          }
+                        },
+                        "children": [
+                          "Coverage"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "body",
+                  "tree": {
+                    "type": "Diff",
+                    "props": {},
+                    "children": [
+                      "--- a/AMY-102\n+++ b/AMY-102\n+Choose the reviewer"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "panel",
+              "fullHeight": false,
+              "holds": [
+                {
+                  "name": "log",
+                  "tree": {
+                    "type": "Log",
+                    "props": {
+                      "lines": [
+                        "2026-10-28T11:58:00.000Z work.advanced AMY-101 DISCOVERED → IMPLEMENTING",
+                        "2026-10-28T11:59:00.000Z work.escalated AMY-102",
+                        "2026-10-28T12:00:00.000Z work.advanced AMY-201 IMPLEMENTING → IN_REVIEW"
+                      ]
+                    },
+                    "children": []
+                  }
+                },
+                {
+                  "name": "thread",
+                  "tree": {
+                    "type": "Stack",
+                    "props": {},
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "amy: AMY-102 is ESCALATED"
+                        ]
+                      },
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "you posted a discussion"
+                        ]
+                      },
+                      {
+                        "type": "Input",
+                        "props": {
+                          "name": "composer",
+                          "placeholder": "Discuss"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "plugin-panel",
+                  "tree": {
+                    "type": "Section",
+                    "props": {
+                      "title": "Notes"
+                    },
+                    "children": [
+                      {
+                        "type": "Text",
+                        "props": {},
+                        "children": [
+                          "Nothing noted"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "relations": [
+            "nav2 left-of nav1",
+            "nav2 left-of canvas",
+            "nav2 left-of panel",
+            "nav1 above canvas",
+            "nav1 above panel",
+            "canvas left-of panel"
+          ]
+        }
+      }
+    }
+  ]
+}

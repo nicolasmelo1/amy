@@ -1,0 +1,26 @@
+{
+  "name": "@amykit/plugin-ui-stub",
+  "version": "0.6.0",
+  "private": true,
+  "description": "The stub renderers that draw exactly the frame: one in pixels, one in cells. What the conformance script is proven against before a real window exists.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "amy": {
+    "conformance": "./dist/index.js"
+  },
+  "dependencies": {
+    "@amykit/ui": "^0.6.0"
+  }
+}

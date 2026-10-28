@@ -1,0 +1,6 @@
+{
+  "name": "@amykit/plugin-ui-nav-on-the-right",
+  "private": true,
+  "type": "module",
+  "amy": { "conformance": "./renderer.mjs" }
+}

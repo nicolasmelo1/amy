@@ -1,0 +1,34 @@
+id: L0.A_RENDERER_ONLY_TRANSLATES
+layer: L0
+title: A renderer only translates
+severity: high
+statement: >-
+  No source under plugins/ui-*/src imports a workflow, a plugin, or anything
+  of @amykit/ui but the primitives and the frame: not the conformance harness
+  that measures it nor the golden it is measured against, and not a file
+  inside the package's dist or src.
+why: >-
+  A renderer is handed a tree and a frame and draws them; everything it
+  decides beyond that is a decision the next renderer will make differently.
+  One that imports a workflow shows that workflow's states its own way, one
+  that imports another plugin draws that plugin where the frame has no slot
+  for it, and one that imports the harness can pass the conformance script by
+  reading the answer instead of laying out the window. Each is one import,
+  each makes two renderers two products, and none of them fails a test the
+  day it lands.
+fix: >-
+  Take what the window shows from the scene the server hands you, as
+  @amykit/ui primitives, and where it goes from @amykit/ui/frame. If the
+  renderer needs something a workflow or a plugin knows, the server has to
+  send it as part of a view. See docs/design/the-frame-is-closed.md.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope:
+    - "plugins/ui-*/src/**"
+  forbidden:
+    - regex: '(\bfrom|\bimport|\brequire)\s*\(?\s*["'']@amykit/(workflow-|plugin-)[^"'']*["'']'
+      message: "A renderer translates the scene it is handed; it imports no workflow and no plugin."
+    - regex: '(\bfrom|\bimport|\brequire)\s*\(?\s*["'']@amykit/(ui-conformance|ui/(conformance|dist|src))\b'
+      message: "A renderer imports the primitives (@amykit/ui) and the frame (@amykit/ui/frame), and nothing else of @amykit/ui."

@@ -31,6 +31,8 @@ held to a gate that is proven to work.
 
 | Rule | What it holds |
 | :-- | :-- |
+| `L0.A_RENDERER_NAMES_NO_COLOUR` | A renderer spells no colour outside its theme-token file (docs/design/the-frame-is-closed.md) |
+| `L0.A_RENDERER_ONLY_TRANSLATES` | A renderer imports the primitives and the frame, and nothing else of amy (docs/design/the-frame-is-closed.md) |
 | `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` | A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md) |
 | `L0.A_VIEW_DRAWS_NOTHING` | A view draws nothing; only a renderer plugin names a renderer (docs/design/a-view-is-data.md) |
 | `L0.AGENT_ACTIONS_DISPATCH_TO_ASK` | Every catalogue action on the agent port dispatches to ask (docs/design/an-agent-only-answers.md) |
@@ -45,6 +47,7 @@ held to a gate that is proven to work.
 | `L0.THE_CORE_WORDS_NOTHING` | The core writes no title for anybody (docs/design/an-agent-only-answers.md) |
 | `L1.COMMENT_STAYS_SUCCINCT` | A comment block stays under the line ceiling |
 | `L1.COMPLEXITY_CEILING` | No function exceeds the cyclomatic ceiling |
+| `L1.EVERY_RENDERER_HOLDS_THE_FRAME` | Every renderer in the workspace passes the frame's conformance script (docs/design/the-frame-is-closed.md) |
 | `L1.NO_BLANKET_SUPPRESSION` | Every suppression names a code and a reason |
 | `L1.NO_UNTYPED_ESCAPE_HATCH` | The untyped escape hatch is banned, and the message names the alternative |
 | `L1.SKIPPED_TESTS_STATE_A_REASON` | A skipped or expected-to-fail test says why |
@@ -158,6 +161,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 14 |
 | `the-event-log-can-be-watched` | `packages/core/src/ports/EventLog.ts`<br>`plugins/file-log/src/**` | 6 |
 | `ticket-to-qa` | `packages/workflow-ticket-to-qa/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-brief-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**` | 49 |
+| `ui-frame` | `packages/ui/**`<br>`packages/ui-conformance/src/**`<br>`plugins/ui-*/src/**` | 11 |
 
 <!-- amy:end factory-gates -->
 

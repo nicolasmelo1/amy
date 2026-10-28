@@ -1,5 +1,13 @@
 # The frame is closed
 
+Delivered. The record of this decision is this document; what proves it is
+the `ui-frame` gate, which drives the installed harness against the installed
+stub renderers and four broken ones from another process, the unit suites of
+`@amykit/ui`, and the three new rules tripping on their fixtures under
+`sf verify`. The plan that came before kept the argument below; what was built
+is under *What was built*, and what it promised is the acceptance criteria at
+the end.
+
 amy is about to have a window drawn by more than one renderer — a desktop
 app first, a terminal next, a phone some day — with plugins adding to it. Nothing
 in this repository, nor in the factory that gates it, has ever had a window to
@@ -73,6 +81,12 @@ slots:
   nav2.row:    { extended-by: ui-decoration }
   nav2.menu:   { extended-by: ui-action }
   panel:       { extended-by: ui-panel }
+narrowest:                               # the smallest window every region still fits
+  cells: { width: 80, height: 24 }
+  px:    { width: 720, height: 480 }
+abbreviate:                              # the one way a renderer may shorten a label
+  marker: "…"
+  keeps: 3
 ```
 
 **Navigation is Neovim's, and a person's own.** The keymap is modal the way
@@ -169,37 +183,102 @@ It does not judge whether the window is good-looking, and it does not check
 colour — *looks are configuration* makes that the person's. It checks that the
 window is the window that was agreed, in every renderer, every time.
 
+## What was built
+
+- **`packages/ui/frame.yaml`**, the file above, checked by `checkFrame` in
+  `@amykit/ui/frame` — which takes what the file parses to, so `@amykit/ui`
+  still depends on nothing — and which refuses a key the frame does not know, a
+  placement relative to a region that does not exist, and a key or gesture
+  bound to an action it does not declare. The two keys the plan left
+  implicit are in it: `narrowest`, the window the last step resizes to, in
+  cells and in pixels; and `abbreviate`, the one rule by which a renderer
+  may shorten a label — its first characters, at least three, then `…`.
+- **The keymap, in Neovim's notation.** `parseKeys` reads `<CR>`, `<C-k>`,
+  `<leader>p` and the rest the way `:help key-notation` does, case of a
+  special name and of a letter under a modifier included. `buildKeymap`
+  lays a person's `ui.keys` over the frame's and refuses, naming the key, a
+  remap to an action the frame does not declare, two bindings where one is
+  the other or begins it (a leader remapped onto `<Esc>` included), and a
+  binding that begins with a digit, which is a count. `KeyReader` reads
+  sequences and counts the way Neovim does. A renderer is handed both and is
+  expected to use them; the script checks that it did.
+- **The renderer contract** is in `@amykit/ui/frame` beside the frame,
+  because the frame and the primitives are all a renderer may import. A
+  renderer declares its name, its unit, the surfaces it draws and the size
+  it opens at; a session is drawn a scene, pressed a key, pointed at a row,
+  resized, and read back.
+- **The harness stands in for the server.** It owns the conformance world
+  and the window's state, hands the renderer a scene — per region, a tree
+  per thing it holds, and whether a toggled region or an overlay is open —
+  and applies the intents the renderer sends back. So a renderer decides
+  nothing but where things go and what a key means, and both are measured.
+  A package of its own, `@amykit/ui-conformance`, holds the world, the
+  script, the projection and the eleven assertions, reads the frame and the
+  golden from the installed `@amykit/ui`, and ships the `amy-ui-conformance`
+  command. It is the one that parses YAML and touches the disk, so the
+  package every renderer imports does neither.
+- **The conformance world** is four records across two profiles, a fixed
+  clock and log, and one plugin adding a section, a tab, a row decoration, a
+  row action and a panel. `packages/ui/conformance/config.yaml` reorders the
+  fixed sections for every run and remaps a key for every action the
+  remapped run presses, so it cannot pass on the frame's defaults.
+- **The projection** keeps, per surface, the regions in the frame's order
+  with what each holds, whether each spans the full height, and every
+  relation between each pair — `left-of`, `above`, `overlaps` — and never a
+  box. Two projections are compared by region and hold name, so the first
+  difference is reported as a path like
+  `/surfaces/window/regions/canvas/holds/header/...`.
+- **The golden**, `packages/ui/conformance/golden.json`, is the first
+  renderer's projections, written by `amy-ui-conformance --approve`. It, the
+  frame and the conformance config ship with `@amykit/ui` and are in
+  `L2.GENERATED_FILES_ARE_LOCKED`'s scope; that rule's fixture now carries a
+  frame edited without its lock.
+- **Two stub renderers**, in the private `plugins/ui-stub`: `stub-desktop`
+  lays out in pixels at 1280×800, `stub-terminal` in cells at 120×40 and
+  abbreviates nav 1's labels by the frame's rule when it is narrower than
+  100 cells. They agree, which is the proof that a pixel and a cell compare
+  the same way. The text renderer *a view is data* shipped draws a tree, not
+  a window, and has no regions to measure; the stubs are what every row
+  before *the window fits a terminal* proves agreement against.
+- **Renderers are found by the harness's own list** until *a renderer is
+  chosen by name*: every `plugins/ui-*` package whose `package.json` names a
+  module under `amy.conformance`, each module exporting `renderers`.
+- **The factory job builds `@amykit/ui`.** `L1.EVERY_RENDERER_HOLDS_THE_FRAME`
+  runs the built harness, so the job that runs `sf verify` and `sf check`
+  now installs the workspace and compiles the harness and the stubs before
+  either; nothing else of the build moved into it.
+
 ## Acceptance criteria
 
-- [ ] Editing `frame.yaml` without `sf lock` in the same commit fails the
-      build (proof: deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED)
-- [ ] A renderer with nav 2 drawn on the right fails the conformance check,
-      naming the region and the relation (proof: deferred:assertion:frame.every_region_sits_where_declared)
-- [ ] A renderer that draws a region the frame does not declare fails
-      (proof: deferred:assertion:frame.no_region_is_invented)
-- [ ] A renderer whose enter in the thread posts a decision fails
-      (proof: deferred:assertion:frame.every_key_does_what_it_is_declared_to)
-- [ ] Two renderers whose canvas trees differ fail, naming the first node that
-      differs (proof: deferred:assertion:frame.renderers_agree_on_every_region)
-- [ ] A projection that differs from the locked golden fails, and regenerating
-      the golden is a locked edit (proof: deferred:assertion:frame.nothing_moved_since_it_was_approved)
-- [ ] A plugin's tab lands in `canvas.tabs` after `timeline` and `diff`, and a
-      plugin cannot put one anywhere else (proof: deferred:assertion:frame.a_slot_takes_only_what_it_declares)
-- [ ] `Work`, `Workflows` and `Settings` come first in nav 1 in the order the
-      config gives, and plugin sections after (proof: deferred:assertion:frame.the_fixed_sections_come_first)
-- [ ] At the narrowest width the frame allows, every region is still drawn
-      (proof: deferred:assertion:frame.no_region_is_lost_at_the_narrowest_width)
-- [ ] The script driven by the default keys, by a remapped keymap and by the
+- [x] Editing `frame.yaml` without `sf lock` in the same commit fails the
+      build (proof: test:packages/ui-conformance/tests/the-frame-is-closed.test.ts)
+- [x] A renderer with nav 2 drawn on the right fails the conformance check,
+      naming the region and the relation (proof: assertion:frame.every_region_sits_where_declared)
+- [x] A renderer that draws a region the frame does not declare fails
+      (proof: assertion:frame.no_region_is_invented)
+- [x] A renderer whose enter in the thread posts a decision fails
+      (proof: assertion:frame.every_key_does_what_it_is_declared_to)
+- [x] Two renderers whose canvas trees differ fail, naming the first node that
+      differs (proof: assertion:frame.renderers_agree_on_every_region)
+- [x] A projection that differs from the locked golden fails, and regenerating
+      the golden is a locked edit (proof: assertion:frame.nothing_moved_since_it_was_approved)
+- [x] A plugin's tab lands in `canvas.tabs` after `timeline` and `diff`, and a
+      plugin cannot put one anywhere else (proof: assertion:frame.a_slot_takes_only_what_it_declares)
+- [x] `Work`, `Workflows` and `Settings` come first in nav 1 in the order the
+      config gives, and plugin sections after (proof: assertion:frame.the_fixed_sections_come_first)
+- [x] At the narrowest width the frame allows, every region is still drawn
+      (proof: assertion:frame.no_region_is_lost_at_the_narrowest_width)
+- [x] The script driven by the default keys, by a remapped keymap and by the
       mouse yields the same projections in every renderer
-      (proof: deferred:assertion:frame.keys_remaps_and_the_mouse_agree)
-- [ ] A remap to an undeclared action, or an ambiguous binding, is refused at
-      boot by name (proof: deferred:test:packages/ui/tests/keymap.test.ts)
-- [ ] A renderer drawing a surface it did not declare fails
-      (proof: deferred:assertion:frame.a_surface_is_drawn_only_where_declared)
-- [ ] The same script run twice yields byte-identical projections
-      (proof: deferred:assertion:frame.a_projection_is_deterministic)
-- [ ] Each of the four rules above trips on its fixture under `sf verify`
-      (proof: deferred:test:sf verify over .software-factory/mutations)
+      (proof: assertion:frame.keys_remaps_and_the_mouse_agree)
+- [x] A remap to an undeclared action, or an ambiguous binding, is refused at
+      boot by name (proof: test:packages/ui/tests/keymap.test.ts)
+- [x] A renderer drawing a surface it did not declare fails
+      (proof: assertion:frame.a_surface_is_drawn_only_where_declared)
+- [x] The same script run twice yields byte-identical projections
+      (proof: assertion:frame.a_projection_is_deterministic)
+- [x] Each of the four rules above trips on its fixture under `sf verify`
+      (proof: test:packages/ui-conformance/tests/the-frame-is-closed.test.ts)
 
 **Exit condition:** with only `frame.yaml`, the conformance world and the
 rules in place — no window yet — `sf verify` shows each rule tripping on its

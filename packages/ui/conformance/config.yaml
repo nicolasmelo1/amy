@@ -1,0 +1,20 @@
+# The conformance world's config.yaml, as far as the window reads it.
+#
+# Every run uses `ui.sections`; only the remapped run uses `ui.keys`, which
+# rebinds a key for every action the script presses so the run cannot pass
+# on the frame's defaults.
+ui:
+  sections: [workflows, work, settings]
+  keys:
+    leader: ","
+    normal:
+      "<C-n>": nav.next
+      o: item.open
+      "<leader>t": panel.toggle
+      "<C-p>": palette.open
+      q: close-topmost
+      a: mode.insert
+      "<Tab>": tab.next
+    insert:
+      "<C-s>": thread.post-discussion
+      "<C-c>": mode.normal

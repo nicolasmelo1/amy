@@ -3,13 +3,14 @@
   "files": {
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "ef3d2175b8b0be268e780511700afb153c5f31b3b15a542689336286b2236d22",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
-    "package.json": "f8b697c6e9d54319b82ad56334c9d0b30761b5764d5fff32dc3c9c67f19cd170",
+    "package.json": "ac62c34173975bedf395b16797a10d43e0d97e83734a6e3c2e604c48b33dcbde",
     "packages/agent-kit/package.json": "d0933d431a84ca506e4c8129d8174f8f3b47f1caad1fcd7c4f76f823114a20a6",
     "packages/cli/package.json": "759c7cc2ab73ea27c0d337d8ba8daf4875bf40aefc460e01d21547c980608f8c",
     "packages/core/package.json": "7844d97332e51b6e425588d1da000a395d857968fd94fcc112468f4bbb82dd93",
     "packages/model-specs/package.json": "d6afcd448edab15754b7e1859f942492a247b0cea14014a6e57bd58145a274bf",
     "packages/test-fixtures/package.json": "c94ca2063874ac5850c5eddc4e006b065210ba9d1a34b49a3797fc3d2f8a134a",
-    "packages/ui/package.json": "65905284d617b7974599d8aa5564bf32b41774ebb8e471cc5c87d447e2e1cee3",
+    "packages/ui-conformance/package.json": "f4025455d6035ea9e2690b951033ad79ae606b90238b8777e79f23f839ab9cba",
+    "packages/ui/package.json": "9de58fa168f2c0ab50239d0ace4bec01a862762910fba961d1bd6f8d8df21f60",
     "packages/workflow-errand/package.json": "c4cf730fd20b6b9d3180bb1843a67736e176cefdec03f445be6206379556baeb",
     "packages/workflow-feature-grooming/package.json": "e20b791692ca978a48abd42afd483cdece0b907064d8e33ad17cb86bb7227516",
     "packages/workflow-note-to-plan/package.json": "860b1d5ed23bb1f1d755beb112be941a841d3724ed8e46d86b0b9b78152f1459",
@@ -35,6 +36,7 @@
     "plugins/notify-inbox/package.json": "49e752a2a428c94224c12e9e89c4c693ef1e2ef58fe07ea0cea5e1bae3f65095",
     "plugins/plan-check/package.json": "38acddecc27fa6cfb8d94030d2a586de257a382d138f37dbd066c885efec152c",
     "plugins/serial-engine/package.json": "ed01f7194d54924c2371d1d536a376caddcc993b7ee259383a67dea512fd7528",
-    "plugins/slack/package.json": "63cf9f819e5e7194e04b838311ae933fbba46cc60ce60fce1ad93247e7fec84c"
+    "plugins/slack/package.json": "63cf9f819e5e7194e04b838311ae933fbba46cc60ce60fce1ad93247e7fec84c",
+    "plugins/ui-stub/package.json": "48d24e7f0912d9b5ff00a356fa51d92944855495dcba490d6cc3b2df194558c1"
   }
 }

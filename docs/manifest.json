@@ -373,6 +373,11 @@
           "description": ""
         },
         {
+          "title": "The frame is closed",
+          "path": "/design/the-frame-is-closed",
+          "description": ""
+        },
+        {
           "title": "The guardrails ship with the workflow",
           "path": "/design/the-guardrails-ship-with-the-workflow",
           "description": ""
@@ -866,6 +871,11 @@
           "depth": 3,
           "title": "**The event log can be watched, from any process.**",
           "slug": "the-event-log-can-be-watched-from-any-process"
+        },
+        {
+          "depth": 3,
+          "title": "**The frame is closed.**",
+          "slug": "the-frame-is-closed"
         },
         {
           "depth": 2,
@@ -2634,6 +2644,48 @@
       ]
     },
     {
+      "path": "/design/the-frame-is-closed",
+      "file": "docs/design/the-frame-is-closed.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-frame-is-closed.md",
+      "title": "The frame is closed",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The frame is a file",
+          "slug": "the-frame-is-a-file"
+        },
+        {
+          "depth": 2,
+          "title": "Every renderer is measured, not trusted",
+          "slug": "every-renderer-is-measured-not-trusted"
+        },
+        {
+          "depth": 2,
+          "title": "The rules came first",
+          "slug": "the-rules-came-first"
+        },
+        {
+          "depth": 2,
+          "title": "What this is not",
+          "slug": "what-this-is-not"
+        },
+        {
+          "depth": 2,
+          "title": "What was built",
+          "slug": "what-was-built"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
       "path": "/design/the-guardrails-ship-with-the-workflow",
       "file": "docs/design/the-guardrails-ship-with-the-workflow.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-guardrails-ship-with-the-workflow.md",
@@ -3965,6 +4017,16 @@
         },
         {
           "depth": 3,
+          "title": "L0.A_RENDERER_NAMES_NO_COLOUR",
+          "slug": "l0arenderernamesnocolour"
+        },
+        {
+          "depth": 3,
+          "title": "L0.A_RENDERER_ONLY_TRANSLATES",
+          "slug": "l0arendereronlytranslates"
+        },
+        {
+          "depth": 3,
           "title": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
           "slug": "l0aticketrequireswhateverytrackerhas"
         },
@@ -4027,6 +4089,11 @@
           "depth": 3,
           "title": "L1.COMPLEXITY_CEILING",
           "slug": "l1complexityceiling"
+        },
+        {
+          "depth": 3,
+          "title": "L1.EVERY_RENDERER_HOLDS_THE_FRAME",
+          "slug": "l1everyrendererholdstheframe"
         },
         {
           "depth": 3,
@@ -7444,11 +7511,25 @@
         "name": "@amykit/ui",
         "version": "0.6.0",
         "kind": "library",
-        "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, and a text renderer.",
+        "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.",
         "directory": "packages/ui",
         "npm": "https://www.npmjs.com/package/@amykit/ui",
         "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/ui",
         "readme": "packages/ui/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amykit/ui-conformance",
+        "version": "0.6.0",
+        "kind": "library",
+        "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
+        "directory": "packages/ui-conformance",
+        "npm": "https://www.npmjs.com/package/@amykit/ui-conformance",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/ui-conformance",
+        "readme": "packages/ui-conformance/README.md",
         "mounts": [],
         "contributes": [],
         "settings": [],
@@ -8336,9 +8417,47 @@
           "lifecycle.finished_work_leaves_the_listing"
         ],
         "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
+      },
+      {
+        "name": "ui-frame",
+        "activation": [
+          "packages/ui/**",
+          "packages/ui-conformance/src/**",
+          "plugins/ui-*/src/**"
+        ],
+        "evidence": ".software-factory/evidence/ui-frame.json",
+        "plan": "docs/design/the-frame-is-closed.md",
+        "assertions": [
+          "frame.every_region_sits_where_declared",
+          "frame.no_region_is_invented",
+          "frame.every_key_does_what_it_is_declared_to",
+          "frame.renderers_agree_on_every_region",
+          "frame.nothing_moved_since_it_was_approved",
+          "frame.a_slot_takes_only_what_it_declares",
+          "frame.the_fixed_sections_come_first",
+          "frame.no_region_is_lost_at_the_narrowest_width",
+          "frame.keys_remaps_and_the_mouse_agree",
+          "frame.a_surface_is_drawn_only_where_declared",
+          "frame.a_projection_is_deterministic"
+        ],
+        "scenario": ".software-factory/evidence/ui-frame-scenario.sh"
       }
     ],
     "rules": [
+      {
+        "id": "L0.A_RENDERER_NAMES_NO_COLOUR",
+        "enabled": true,
+        "settings": {},
+        "title": "A renderer spells no colour outside its theme-token file (docs/design/the-frame-is-closed.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.A_RENDERER_ONLY_TRANSLATES",
+        "enabled": true,
+        "settings": {},
+        "title": "A renderer imports the primitives and the frame, and nothing else of amy (docs/design/the-frame-is-closed.md)",
+        "reason": ""
+      },
       {
         "id": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
         "enabled": true,
@@ -8438,6 +8557,13 @@
         "reason": ""
       },
       {
+        "id": "L1.EVERY_RENDERER_HOLDS_THE_FRAME",
+        "enabled": true,
+        "settings": {},
+        "title": "Every renderer in the workspace passes the frame's conformance script (docs/design/the-frame-is-closed.md)",
+        "reason": ""
+      },
+      {
         "id": "L1.NO_BLANKET_SUPPRESSION",
         "enabled": true,
         "settings": {},
@@ -8499,7 +8625,10 @@
               "docs/rules.md",
               "docs/development/the-factory.md",
               "packages/model-specs/specs.json",
-              "packages/core/events.json"
+              "packages/core/events.json",
+              "packages/ui/frame.yaml",
+              "packages/ui/conformance/golden.json",
+              "packages/ui/conformance/config.yaml"
             ]
           }
         },
@@ -8780,6 +8909,22 @@
           },
           {
             "package": "@amykit/plugin-file-log",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-frame-is-closed",
+        "title": "**The frame is closed.**",
+        "body": "amy's window is about to be drawn by more than one renderer, and two renderers\ndrift apart without either being wrong. Before the first one exists, the\nwindow is a locked file and every renderer is measured against it.\n\n- `packages/ui/frame.yaml` is the closed wireframe as data: five regions and\n  where each sits relative to the others, what each holds, the sections, the\n  actions, a Neovim-style default keymap, the mouse, the surfaces a renderer\n  may declare, the slots plugins add to, the narrowest window and the one\n  rule by which a label may be abbreviated. It ships with `@amykit/ui`, which\n  still depends on nothing, and is hash-locked.\n- `@amykit/ui/frame` checks what it parses to (`checkFrame`), and reads keys in Neovim's\n  notation: `buildKeymap` lays a person's `ui.keys` over the frame's and\n  refuses, by name, a remap to an action the frame does not declare or two\n  bindings a keypress cannot tell apart; `KeyReader` reads sequences, counts\n  and the leader the way Neovim does. The renderer contract lives here too.\n- New package `@amykit/ui-conformance`, and its `amy-ui-conformance` command,\n  drive every\n  renderer through a fixed script over a fixed world — by default keys, by a\n  remapped keymap and by the mouse, and the default way twice — and read a\n  projection out of what it laid out: regions, what each holds, and how each\n  pair sits relative to each other, never a box. Eleven assertions hold it to\n  the frame, to the other renderers and to the approved golden, naming the\n  region, the relation or the first node that differs.\n- Three local rules: `L0.A_RENDERER_ONLY_TRANSLATES`,\n  `L0.A_RENDERER_NAMES_NO_COLOUR` and `L1.EVERY_RENDERER_HOLDS_THE_FRAME`.",
+        "bumps": [
+          {
+            "package": "@amykit/ui",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/ui-conformance",
             "level": "minor"
           }
         ],

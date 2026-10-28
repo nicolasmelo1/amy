@@ -106,6 +106,15 @@
       ],
       "@amykit/ui/jsx-dev-runtime": [
         "packages/ui/src/jsx-dev-runtime.ts"
+      ],
+      "@amykit/ui/frame": [
+        "packages/ui/src/frame/index.ts"
+      ],
+      "@amykit/plugin-ui-stub": [
+        "plugins/ui-stub/src/index.ts"
+      ],
+      "@amykit/ui-conformance": [
+        "packages/ui-conformance/src/index.ts"
       ]
     },
     "jsx": "react-jsx",

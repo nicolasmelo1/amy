@@ -78,7 +78,8 @@ packages/
 ├── core                 Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.
 ├── model-specs          What each model costs per token, vendored and versioned.
 ├── test-fixtures        Shared test builders and scripted doubles. Not published.
-├── ui                   A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, and a text renderer.
+├── ui                   A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.
+├── ui-conformance       The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.
 ├── workflow-errand      Something said in passing becomes work: capture it, do it, say what happened.
 ├── workflow-feature-grooming Feature grooming against read-only base-branch source snapshots.
 ├── workflow-note-to-plan The note-to-plan workflow: friction becomes a plan in the repository it is about.
@@ -106,7 +107,8 @@ plugins/
 ├── notify-inbox         Announcements as a file on disk plus a desktop notification.
 ├── plan-check           The quality bar for a drafted plan: the repository's own check, run in its checkout.
 ├── serial-engine        Advances one work item by one move per tick.
-└── slack                A Slack thread per piece of work, over the Web API, as the conversation port.
+├── slack                A Slack thread per piece of work, over the Web API, as the conversation port.
+└── ui-stub              The stub renderers that draw exactly the frame: one in pixels, one in cells. What the conformance script is proven against before a real window exists.
 ```
 
 <!-- amy:end workspace-layout -->
@@ -126,6 +128,7 @@ this repository.
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/ui` | library | _nothing_ |
+| `@amykit/ui-conformance` | library | `@amykit/ui` |
 | `@amykit/workflow-errand` | workflow | `@amykit/core` |
 | `@amykit/workflow-feature-grooming` | plugin | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
@@ -152,6 +155,7 @@ this repository.
 | `@amykit/plugin-plan-check` | plugin | `@amykit/core`, `@amykit/workflow-note-to-plan` |
 | `@amykit/plugin-serial-engine` | plugin | `@amykit/core` |
 | `@amykit/plugin-slack` | plugin | `@amykit/core` |
+| `@amykit/plugin-ui-stub` | library | `@amykit/ui` |
 
 <!-- amy:end workspace-dependencies -->
 

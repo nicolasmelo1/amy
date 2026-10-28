@@ -1,0 +1,64 @@
+# The closed wireframe of amy's window, as data (docs/design/the-frame-is-closed.md).
+#
+# Every renderer is measured against this file and the golden projection
+# beside it in conformance/. Both are hash-locked: moving a region, adding one
+# or giving a key a second meaning is an edit here plus `sf lock` in the same
+# commit.
+version: 1
+regions:
+  nav2:    { place: left,  spans: full-height, holds: [search, list, groom] }
+  nav1:    { place: top,   of: right-column,   holds: [section] }
+  canvas:  { place: below, of: nav1,           holds: [header, machine, tabs, body] }
+  panel:   { place: right, of: canvas, toggled: true, holds: [log, thread, plugin-panel] }
+  palette: { place: overlay, opened-by: "mod+k", holds: [ask] }
+sections:
+  fixed: [work, workflows, settings]     # in this order unless config reorders
+  extended-by: ui-nav                    # plugin sections come after the fixed
+actions:                                 # what a key or a click can do
+  [nav.next, nav.prev, nav.first, nav.last, focus.left, focus.right,
+   section.next, section.prev, section.select, tab.next, tab.prev,
+   tab.select, item.open, item.menu, nav.scroll, canvas.scroll,
+   search, palette.open, panel.toggle, close-topmost, command,
+   mode.insert, mode.normal, thread.post-discussion, thread.decide]
+keys:                                    # the default keymap; config remaps it
+  normal:
+    j: nav.next
+    k: nav.prev
+    gg: nav.first
+    G: nav.last
+    h: focus.left
+    l: focus.right
+    "]s": section.next
+    "[s": section.prev
+    gt: tab.next
+    gT: tab.prev
+    "<CR>": item.open
+    "<leader>m": item.menu
+    /: search
+    ":": command
+    "<leader>p": panel.toggle
+    "<C-k>": palette.open                # mod+k on the desktop
+    i: mode.insert
+    "<Esc>": close-topmost
+  insert:                                # a composer has focus
+    "<CR>": thread.post-discussion       # never a decision
+    "<Esc>": mode.normal
+  leader: "<Space>"
+mouse:                                   # every mouse gesture is an action too
+  click: { row: item.open, tab: tab.select, section: section.select }
+  wheel: { list: nav.scroll, canvas: canvas.scroll }
+  "click-edge": { panel: panel.toggle }
+surfaces:                                # what a renderer may declare it draws
+  window:  { holds: all }
+  menubar: { holds: [Text, Badge, List, Link, Button] }
+slots:
+  canvas.tabs: { fixed: [timeline, diff], extended-by: ui-tab }
+  nav2.row:    { extended-by: ui-decoration }
+  nav2.menu:   { extended-by: ui-action }
+  panel:       { extended-by: ui-panel }
+narrowest:                               # the smallest window every region still fits
+  cells: { width: 80, height: 24 }
+  px:    { width: 720, height: 480 }
+abbreviate:                              # the one way a renderer may shorten a label
+  marker: "…"                            # what it ends with
+  keeps: 3                               # the fewest characters of the label it keeps

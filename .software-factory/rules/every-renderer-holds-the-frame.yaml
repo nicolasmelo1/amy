@@ -1,0 +1,29 @@
+id: L1.EVERY_RENDERER_HOLDS_THE_FRAME
+layer: L1
+title: Every renderer holds the frame
+severity: critical
+statement: >-
+  Every renderer in the workspace — every plugins/ui-* package naming a
+  conformance module — is driven through the frame's script by default keys,
+  by a remapped keymap and by the mouse, and the regions it draws, where they
+  sit, what each holds, what each key does and the projection read back from
+  its layout all match packages/ui/frame.yaml and the approved golden.
+why: >-
+  Two renderers drift apart without either being wrong: the terminal puts the
+  work list on the left, the desktop app puts it on the right, enter in one
+  composer posts and in the other decides. A screenshot diff cannot say any
+  of that — fonts and antialiasing make it red for no reason or loose enough
+  to be green for every reason — so what must not drift is read out of each
+  renderer's own layout and compared relationally. Without running that, the
+  first renderer becomes the definition and every later one an argument.
+fix: >-
+  Run `node packages/ui-conformance/dist/cli.js` after `npm run build` and
+  read which assertion each finding names. Fix the renderer, not the frame;
+  if the window is genuinely meant to change, edit frame.yaml, run the
+  harness with --approve, and `sf lock` in the same commit. See
+  docs/design/the-frame-is-closed.md.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: 'node "$(git rev-parse --show-toplevel)/packages/ui-conformance/dist/cli.js"'

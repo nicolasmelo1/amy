@@ -1,0 +1,39 @@
+id: L0.A_RENDERER_NAMES_NO_COLOUR
+layer: L0
+title: A renderer names no colour
+severity: medium
+statement: >-
+  No source under plugins/ui-*/src spells a colour — a hex literal, an rgb(),
+  hsl(), lab() or oklch() function, an ANSI colour escape, or a named colour
+  given to a colour property — outside the renderer's theme-token file
+  (src/theme.* or src/theme/).
+why: >-
+  How the window looks belongs to the person running it, not to the renderer
+  that draws it. A colour spelled in a component is a colour no config can
+  reach: a theme changes everything but that one, a terminal with a light
+  background shows it unreadable, and two renderers end up disagreeing about
+  what "danger" looks like because each picked its own red. Keeping every
+  colour behind a token in one file is what leaves a single place to change.
+fix: >-
+  Draw by a primitive's tone or by a named token, and give the token its
+  value in the renderer's theme file (src/theme.ts or src/theme/). See
+  docs/design/the-frame-is-closed.md.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope:
+    - "plugins/ui-*/src/**"
+  exclude:
+    - "plugins/ui-*/src/theme.*"
+    - "plugins/ui-*/src/theme/**"
+  ignore_comment_lines: true
+  forbidden:
+    - regex: '["''`\s:(=]#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b'
+      message: "A hex colour belongs in the renderer's theme-token file; draw by tone or token here."
+    - regex: '\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\s*\('
+      message: "A colour function belongs in the renderer's theme-token file; draw by tone or token here."
+    - regex: '(\\x1b|\\u001b|\\033|\\e)\[[0-9;]*m'
+      message: "An ANSI colour escape belongs in the renderer's theme-token file; draw by tone or token here."
+    - regex: '\b(color|backgroundColor|borderColor|fill|stroke)\s*[=:]\s*\{?\s*["''](black|white|red|green|blue|yellow|magenta|cyan|gray|grey|orange|purple|pink)\w*["'']'
+      message: "A named colour belongs in the renderer's theme-token file; draw by tone or token here."
