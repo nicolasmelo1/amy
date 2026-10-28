@@ -21,7 +21,7 @@ explains why for each.
 
 | Port | Mounted by | Actions dispatched to it |
 | :-- | :-- | :-- |
-| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `self-review`, `triage` |
+| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `discuss`, `draft-plan`, `implement`, `run-errand`, `self-review`, `triage` |
 | `brief` | `@amykit/plugin-file-brief-store` | _reached directly_ |
 | `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview`, `resolve-review-thread` |
 | `commands` | `@amykit/plugin-command` | `run-command` |
@@ -53,6 +53,7 @@ explains why for each.
 | `announce` | `notifier` | `announce()` | `@amykit/core` |  |
 | `ask-question` | `tracker` | `comment()` | `@amykit/core` |  |
 | `assign-reviewer` | `code-host` | `requestReview()` | `@amykit/core` |  |
+| `discuss` | `agent` | `ask()` | `@amykit/core` | Answer a person's turn in a discussion, before anything is decided. |
 | `draft-plan` | `agent` | `ask()` | `@amykit/core` | Ask the agent for a piece of writing, in whoever asked's own words. |
 | `escalate` | `tracker` | `createFollowUp()` | `@amykit/core` |  |
 | `hand-off-to-qa` | `tracker` | `setStatus()` | `@amykit/core` |  |
@@ -211,6 +212,7 @@ Declared in `packages/core/src/ports/EventLog.ts`.
 | :-- | :-- |
 | `append(event: Event): void` |  |
 | `read(since?: Date): Event[]` | Events at or after the given instant, oldest first. |
+| `watch(since: Date, onEvent: (event: Event) => void): () => void` | Every event at or after `since`, oldest first, then every event any process appends afterwards, until the returned function is called. |
 
 ### `FeatureTracker`
 

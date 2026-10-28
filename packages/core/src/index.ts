@@ -42,7 +42,7 @@ export type { QueueItem } from "./queue-item.js";
 export type { EnqueueRequest, Queue } from "./ports/Queue.js";
 export type { Store } from "./ports/Store.js";
 export type { Announcement, AnnouncementKind, Notifier } from "./ports/Notifier.js";
-export type { Conversation, Reply, ThreadRef } from "./ports/Conversation.js";
+export type { Conversation, Reply, ReplyKind, ThreadRef } from "./ports/Conversation.js";
 export type { CommandResult, CommandRunner, RunOptions } from "./ports/CommandRunner.js";
 export type { GraphQLClient } from "./ports/GraphQL.js";
 export type { CommandOutcome, Commands } from "./ports/Commands.js";
@@ -104,8 +104,8 @@ export type { BaseSource, BaseSourceSnapshot, SearchMatch, SearchResult, SearchO
 
 export { NodeCommandRunner } from "./NodeCommandRunner.js";
 export { FileStopSwitch } from "./FileStopSwitch.js";
-export { EVENT_KINDS, isEventKind } from "./ports/EventLog.js";
-export type { Event, EventKind, EventLog } from "./ports/EventLog.js";
+export { EVENT_KINDS, isEventKind, watchEvents } from "./ports/EventLog.js";
+export type { Event, EventKind, EventLog, WatchOptions } from "./ports/EventLog.js";
 export { checkEvent, eventContract } from "./event-contract.js";
 export type { EventContract, FieldType, KindContract } from "./event-contract.js";
 export { BUDGET_WINDOWS, LogBudget, budgetDecision, hasACeiling, spendSince } from "./budget.js";

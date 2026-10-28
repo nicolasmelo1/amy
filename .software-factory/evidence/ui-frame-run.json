@@ -1,0 +1,101 @@
+{
+  "scenario": "ui-frame",
+  "status": "passed",
+  "goal": "Prove that every renderer is the window the frame declares: a renderer that draws exactly the frame passes the script by default keys, by a remapped keymap and by the mouse, twice with identical projections, and one that moves a region, invents one, loses one, rebinds enter, misplaces a plugin's tab or disagrees with another renderer fails naming what it broke.",
+  "artifact": {
+    "packages": [
+      "@amykit/ui",
+      "@amykit/ui-conformance",
+      "@amykit/plugin-ui-stub"
+    ],
+    "entry": "amy-ui-conformance, the bin npm linked from the installed @amykit/ui-conformance"
+  },
+  "observed": {
+    "clean": {
+      "exit": 0,
+      "renderers": [
+        "stub-desktop",
+        "stub-terminal"
+      ]
+    },
+    "fixtures": {
+      "exit": 1,
+      "renderers": [
+        "enter-decides",
+        "nav2-on-the-right",
+        "never-draws-the-panel",
+        "plugin-tab-in-nav1"
+      ],
+      "findings": 313
+    },
+    "broken": {
+      "exit": 1,
+      "renderers": [
+        "deaf-to-the-mouse",
+        "draws-a-menu-bar",
+        "invents-a-region",
+        "plugin-section-first",
+        "restless"
+      ],
+      "findings": 168
+    },
+    "pair": {
+      "exit": 1,
+      "renderers": [
+        "another-header",
+        "stub-desktop",
+        "stub-terminal"
+      ],
+      "findings": 24
+    },
+    "assertions_run": 11,
+    "assertions_failed": 0,
+    "node": "v22.22.1"
+  },
+  "assertions": [
+    {
+      "type": "frame.every_region_sits_where_declared",
+      "status": "passed"
+    },
+    {
+      "type": "frame.no_region_is_invented",
+      "status": "passed"
+    },
+    {
+      "type": "frame.every_key_does_what_it_is_declared_to",
+      "status": "passed"
+    },
+    {
+      "type": "frame.renderers_agree_on_every_region",
+      "status": "passed"
+    },
+    {
+      "type": "frame.nothing_moved_since_it_was_approved",
+      "status": "passed"
+    },
+    {
+      "type": "frame.a_slot_takes_only_what_it_declares",
+      "status": "passed"
+    },
+    {
+      "type": "frame.the_fixed_sections_come_first",
+      "status": "passed"
+    },
+    {
+      "type": "frame.no_region_is_lost_at_the_narrowest_width",
+      "status": "passed"
+    },
+    {
+      "type": "frame.keys_remaps_and_the_mouse_agree",
+      "status": "passed"
+    },
+    {
+      "type": "frame.a_surface_is_drawn_only_where_declared",
+      "status": "passed"
+    },
+    {
+      "type": "frame.a_projection_is_deterministic",
+      "status": "passed"
+    }
+  ]
+}

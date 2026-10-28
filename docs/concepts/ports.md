@@ -24,7 +24,7 @@ dispatches to is still a port — a workflow's runtime may reach one directly.
 
 | Port | Mounted by | Actions dispatched to it |
 | :-- | :-- | :-- |
-| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `draft-plan`, `implement`, `run-errand`, `self-review`, `triage` |
+| `agent` | `@amykit/plugin-agent-relay` | `address-threads`, `discuss`, `draft-plan`, `implement`, `run-errand`, `self-review`, `triage` |
 | `brief` | `@amykit/plugin-file-brief-store` | _reached directly_ |
 | `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview`, `resolve-review-thread` |
 | `commands` | `@amykit/plugin-command` | `run-command` |
@@ -186,6 +186,7 @@ Declared in `packages/core/src/ports/EventLog.ts`.
 | :-- | :-- |
 | `append(event: Event): void` |  |
 | `read(since?: Date): Event[]` | Events at or after the given instant, oldest first. |
+| `watch(since: Date, onEvent: (event: Event) => void): () => void` | Every event at or after `since`, oldest first, then every event any process appends afterwards, until the returned function is called. |
 
 ### `FeatureTracker`
 

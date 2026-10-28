@@ -33,6 +33,8 @@ else
 fi
 mkdir -p "$work/bin" "$work/home" "$work/global"
 npm_real=$(command -v npm)
+tsx="$repo/node_modules/.bin/tsx"
+machine="$here/amy-update/machine.ts"
 
 # Amy is installed alone, the way the machine this scenario simulates was.
 # The tarballs it leaves behind are the machine's own: the plugins root's
@@ -44,7 +46,7 @@ amy="$work/bin/amy"
 test -x "$amy" || { echo "the installer produced no command" >&2; exit 1; }
 # The bootstrap dependency is a local tarball, but the installed CLI declares
 # its registry intent so `amy update` can move itself after publication.
-if node -e 'const m=require(process.argv[1]); process.exit(m.amyUpdateRanges?.["@amykit/cli"] === "latest" ? 0 : 1)' "$work/lib/package.json"; then
+if "$tsx" "$machine" registry-intent "$work/lib/package.json"; then
   install_registry_intent=0
 else
   install_registry_intent=1
@@ -54,54 +56,20 @@ fi
 registry="$work/registry"
 write_workflow() {
   # write_workflow <directory> <version>
-  mkdir -p "$1"
+  # One TypeScript source, compiled the way npm would ship it; the version
+  # it answers with is the one this manifest declares.
+  "$tsx" "$here/lib/publish.ts" "$here/amy-update/workflow-oncall" "$1"
   cat > "$1/package.json" <<JSON
 {"name":"@acme/workflow-oncall","version":"$2","type":"module","main":"./index.js"}
 JSON
-  cat > "$1/index.js" <<JS
-import { appendFileSync } from "node:fs";
-const workflow = {
-  name: "oncall",
-  states: ["paged", "acknowledged"],
-  waitingStates: [],
-  initialState: "paged",
-  terminalStates: ["acknowledged"],
-  usesObservers: [],
-  plan: (record) =>
-    record.state === "paged"
-      ? (appendFileSync(process.env.HOME + "/.amy/lifecycle.log", "workflow\n"), { kind: "advance", to: "acknowledged", effects: [], why: "the page was picked up at $2" })
-      : { kind: "settled", why: "the page was handled" },
-};
-
-export const plugin = {
-  name: "@acme/workflow-oncall",
-  version: "$2",
-  register(registry, ctx) {
-    registry.workflow(workflow);
-    registry.contribute("workflow-runtime", "oncall", {
-      policy: {},
-      found: async () => {
-        const fs = await import("node:fs");
-        const pages = ctx.paths.state + "/pages";
-        return fs.existsSync(pages) ? fs.readdirSync(pages).map((f) => f.replace(/\.md$/, "")) : [];
-      },
-      newRecord: (id, now) => ({ id, state: "paged", updatedAt: now.toISOString(), attempts: {}, history: [] }),
-      observe: async () => ({}),
-      actions: {},
-      apply: (record) => record,
-    });
-  },
-};
-JS
 }
 
 # v1 and v2 are real, mountable versions. v3 exports no plugin: a version
 # that will not mount, which the machine must roll back off.
 write_workflow "$registry/1.0.0" "1.0.0"
 write_workflow "$registry/1.1.0" "1.1.0"
-mkdir -p "$registry/1.2.0"
+"$tsx" "$here/lib/publish.ts" "$here/amy-update/workflow-without-plugin" "$registry/1.2.0"
 printf '{"name":"@acme/workflow-oncall","version":"1.2.0","type":"module","main":"./index.js"}\n' > "$registry/1.2.0/package.json"
-printf 'export const noPluginHere = true;\n' > "$registry/1.2.0/index.js"
 
 for version in 1.0.0 1.1.0 1.2.0; do
   "$npm_real" pack "$registry/$version" --pack-destination "$registry" >/dev/null 2>&1
@@ -120,20 +88,7 @@ mkdir -p "$cli_registry/contents"
 # By glob, not by version: a release moves the version and this must not.
 set -- "$work/lib/packages/amykit-cli-"*.tgz
 tar xzf "$1" -C "$cli_registry/contents"
-node - "$cli_registry/contents/package" <<'NODE'
-const fs = require("node:fs");
-const path = require("node:path");
-const root = process.argv[2];
-const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf-8"));
-manifest.version = "999.0.0";
-fs.writeFileSync(path.join(root, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-const skill = path.join(root, "skills", "amy", "SKILL.md");
-fs.writeFileSync(skill, fs.readFileSync(skill, "utf-8").replace("version: 1.0.0", "version: 999.0.0\nprovenance: replacement-cli-probe"));
-fs.writeFileSync(
-  path.join(root, "dist", "stamp.json"),
-  `${JSON.stringify({ version: "999.0.0", commit: "scenario", builtAt: "2026-09-24T00:00:00.000Z" })}\n`,
-);
-NODE
+"$tsx" "$machine" restamp-cli "$cli_registry/contents/package"
 tar czf "$cli_registry/amykit-cli-999.0.0.tgz" -C "$cli_registry/contents" package
 
 # amy keeps its state in one place per machine, so this run gets its own.
@@ -248,14 +203,7 @@ record update.the_installed_cli_keeps_a_registry_intent "$install_registry_inten
 # way an operator publishes the version they want.
 added=$("$amy" add "$registry/1.0.0" 2>&1 || echo "")
 says update.added_the_first_version "$added" "added @acme/workflow-oncall as the workflow \`oncall\`"
-node -e '
-  const fs = require("fs");
-  const file = process.env.HOME + "/.amy/plugins/package.json";
-  const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
-  manifest.dependencies["@acme/workflow-oncall"] = "^1.0.0";
-  manifest.overrides = { ...(manifest.overrides ?? {}) };
-  fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n");
-'
+"$tsx" "$machine" pin-range
 mkdir -p .amy/pages
 echo "the disk filled up on node 3" > .amy/pages/PAGE-1.md
 discovered=$("$amy" --workflow oncall discover 2>&1 || echo "")
@@ -279,7 +227,7 @@ record_before=$(cat .amy/oncall/records/PAGE-1.json)
 # The rest of the schedule modes use the same installed command and workflow.
 # A one-run after schedule proves ordering; a two-run schedule proves cadence
 # persists in the profile state rather than in this process.
-node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";const n=String.fromCharCode(10);const block="autoUpdate:"+n+"  enabled: true"+n+"  timing: after"+n+"  everyRuns: 1";const text=fs.readFileSync(f,"utf8");fs.writeFileSync(f,/autoUpdate:[^]*?everyRuns: [0-9]+/.test(text)?text.replace(/autoUpdate:[^]*?everyRuns: [0-9]+/,block):text+n+block+n);'
+"$tsx" "$machine" auto-update-after
 : > "$work/npm.log"
 rm -f .amy/lifecycle.log
 rm -f .amy/pages/PAGE-1.md
@@ -294,7 +242,7 @@ update" ]; then
 else
   record update.auto_update_can_run_after_a_workflow 1
 fi
-node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/everyRuns: 1/,"everyRuns: 2"));'
+"$tsx" "$machine" replace-in-config "everyRuns: 1" "everyRuns: 2"
 printf '{"runs": 0}\n' > .amy/workflows/oncall/auto-update.json
 : > "$work/npm.log"
 "$amy" --workflow oncall run --max 1 >/dev/null 2>&1 || true
@@ -302,15 +250,15 @@ first_cadence=$(wc -l < "$work/npm.log" | tr -d ' ')
 "$amy" --workflow oncall run --max 1 >/dev/null 2>&1 || true
 second_cadence=$(wc -l < "$work/npm.log" | tr -d ' ')
 if [ "$first_cadence" = "0" ] && [ "$second_cadence" -gt "0" ]; then record update.auto_update_respects_its_cadence 0; else record update.auto_update_respects_its_cadence 1; fi
-node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace("enabled: true","enabled: false"));'
+"$tsx" "$machine" replace-in-config "enabled: true" "enabled: false"
 : > "$work/npm.log"
 "$amy" --workflow oncall run --max 1 >/dev/null 2>&1 || true
 if [ ! -s "$work/npm.log" ]; then record update.auto_update_can_be_disabled 0; else record update.auto_update_can_be_disabled 1; fi
-node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace("enabled: false","enabled: true").replace("timing: after","timing: during").replace("everyRuns: 2","everyRuns: 0"));'
+"$tsx" "$machine" replace-in-config "enabled: false" "enabled: true" "timing: after" "timing: during" "everyRuns: 2" "everyRuns: 0"
 : > "$work/npm.log"
 invalid=$("$amy" --workflow oncall tick 2>&1 || echo "")
 if [ ! -s "$work/npm.log" ]; then says update.invalid_auto_update_settings_refuse_before_work "$invalid" '`autoUpdate.timing` must be `before` or `after`'; else record update.invalid_auto_update_settings_refuse_before_work 1; fi
-node -e 'const fs=require("fs");const f=process.env.HOME+"/.amy/config.yaml";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace("timing: during","timing: after").replace("everyRuns: 0","everyRuns: 1"));'
+"$tsx" "$machine" replace-in-config "timing: during" "timing: after" "everyRuns: 0" "everyRuns: 1"
 
 # A started daemon has a detached reaper. It owns the marker after SIGTERM,
 # and invokes update only after the loop exits; direct `daemon` documents that
@@ -413,20 +361,7 @@ says update.the_machine_boots_after_the_update "$still" "PAGE-1"
 # the check exists for: the update refuses with the boot's own refusal,
 # rather than leaving a config that finds out from the daemon.
 printf '1.1.0' > "$work/registry-answer"
-node -e '
-  const fs = require("fs");
-  const file = process.env.HOME + "/.amy/config.yaml";
-  const lines = fs.readFileSync(file, "utf8").split("\n");
-  const kept = [];
-  for (const line of lines) {
-    kept.push(line);
-    if (line.trim() === "workflows:") {
-      kept.push("  afterhours:");
-      kept.push("    workflow: \"@acme/workflow-afterhours\"");
-    }
-  }
-  fs.writeFileSync(file, kept.join("\n"));
-' 
+"$tsx" "$machine" add-afterhours
 broken=$("$amy" update 2>&1 || echo "")
 case "$broken" in
   *"does not boot"*"afterhours: @acme/workflow-afterhours: not installed"*)
@@ -441,20 +376,7 @@ else
   record update.the_boot_refusal_rolls_the_move_back 1
 fi
 # The broken profile goes, and the machine is whole again for the rest.
-node -e '
-  const fs = require("fs");
-  const file = process.env.HOME + "/.amy/config.yaml";
-  const lines = fs.readFileSync(file, "utf8").split("\n");
-  const kept = [];
-  let inAfterhours = false;
-  for (const line of lines) {
-    if (line.includes("afterhours:")) { inAfterhours = true; continue; }
-    if (inAfterhours && (line.startsWith("    ") || line.trim() === "")) continue;
-    inAfterhours = false;
-    kept.push(line);
-  }
-  fs.writeFileSync(file, kept.join("\n"));
-' 
+"$tsx" "$machine" drop-afterhours
 
 # 7. The update refuses while the loop is running, naming the pid.
 printf '{"pid": %s, "workflow": "oncall", "startedAt": "2026-01-01T00:00:00.000Z"}\n' "$$" > .amy/daemon.pid
@@ -490,7 +412,7 @@ fi
 # update moves the install root's copy alongside the workflow's: the NEW
 # binary answers for itself, and the skills it rewrites are its own, not
 # the old CLI's. The version before is what the install put there.
-cli_version_after=$(node -p "require('$work/lib/node_modules/@amykit/cli/package.json').version")
+cli_version_after=$("$tsx" "$machine" version "$work/lib/node_modules/@amykit/cli/package.json")
 if [ "$cli_version_after" = "999.0.0" ]; then
   record update.the_cli_moves_itself 0
 else

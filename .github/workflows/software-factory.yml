@@ -31,7 +31,18 @@ jobs:
       # upgrade made weaker.
       - name: Install sf
         run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.1 --locked
-      # verify first: a check that stopped firing makes the run below
+      # L1.EVERY_RENDERER_HOLDS_THE_FRAME runs the conformance harness against
+      # every renderer, so the frame package and the renderers are compiled
+      # here. Only those: the rest of the build, and every check that needs
+      # it, stays in the job below.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build the frame and its renderers
+        run: npx tsc --build packages/ui-conformance plugins/ui-stub
+      # verify first:a check that stopped firing makes the run below
       # meaningless, and it is the cheaper failure to discover.
       #
       # --allow-commands on both: one rule here regenerates docs/rules.md and

@@ -1,5 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { Plan } from "@amykit/core";
+import { describe, it, expect, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { AskContext, Budget, Conversation, HarnessReply, Plan, Reply, Tracker, dispatchesTo } from "@amykit/core";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { Worker } from "@amykit/plugin-serial-engine";
 import { plan } from "../src/machine.js";
 import {
   HEAD,
@@ -15,6 +20,11 @@ import {
   review,
   roster,
   thread,
+  InMemoryStore,
+  fakeAgent,
+  fakeGit,
+  fakeTracker,
+  ticketWorkerDeps,
 } from "@amykit/test-fixtures";
 
 function attempt(ok: boolean, at: string, output = ""): { ok: boolean; at: string; output: string } {
@@ -999,5 +1009,439 @@ describe("what the forge says, before a person is asked", () => {
     });
 
     expect(expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy)).to).toBe("HUMAN_REVIEW");
+  });
+});
+
+describe("a question is not an answer", () => {
+  const ASKED = "2026-09-03T10:00:00.000Z";
+  const escalated = (overrides: Partial<Parameters<typeof record>[1]> = {}) =>
+    record("ESCALATED", {
+      resumeAt: "IMPLEMENTING",
+      escalation: { reason: "The gate stayed red across 3 attempts.", askedAt: ASKED },
+      ...overrides,
+    });
+  const said = (at: string, body: string, kind?: "discussion" | "decision") => ({
+    author: "ada",
+    body,
+    at,
+    fromAmy: false,
+    ...(kind ? { kind } : {}),
+  });
+  const discuss = { ...policy, conversation: "discuss" as const };
+
+  it("answers a reply under discuss in the thread and stays ESCALATED", () => {
+    const obs = observation({ conversation: [said("2026-09-03T10:05:00.000Z", "why do you think the gate is wrong?")] });
+
+    const p = expectAct(plan(escalated(), obs, discuss));
+
+    expect(p.effects).toEqual([
+      {
+        type: "discuss",
+        since: ASKED,
+        about: "The gate stayed red across 3 attempts.",
+        thread: [],
+        turns: [{ at: "2026-09-03T10:05:00.000Z", author: "ada", text: "why do you think the gate is wrong?" }],
+      },
+    ]);
+  });
+
+  it("does not answer a turn it already answered, and waits for the decision", () => {
+    const r = escalated({
+      discussion: { since: ASKED, upTo: "2026-09-03T10:05:00.000Z", lines: ["ada asked: why?", "You answered: because."] },
+    });
+    const obs = observation({ conversation: [said("2026-09-03T10:05:00.000Z", "why?")] });
+
+    expect(expectWait(plan(r, obs, discuss)).why).toContain("owner");
+  });
+
+  it("answers only the turns after the last one it answered, carrying the discussion so far", () => {
+    const r = escalated({
+      discussion: { since: ASKED, upTo: "2026-09-03T10:05:00.000Z", lines: ["ada asked: why?", "You answered: because."] },
+    });
+    const obs = observation({
+      conversation: [said("2026-09-03T10:05:00.000Z", "why?"), said("2026-09-03T10:07:00.000Z", "and the test?")],
+    });
+
+    const [effect] = expectAct(plan(r, obs, discuss)).effects;
+
+    expect(effect).toMatchObject({
+      thread: ["ada asked: why?", "You answered: because."],
+      turns: [{ text: "and the test?" }],
+    });
+  });
+
+  it("does not carry a discussion from another wait into this one", () => {
+    const r = escalated({
+      discussion: { since: "2026-09-01T00:00:00.000Z", upTo: "2026-09-03T10:05:00.000Z", lines: ["ada asked: old"] },
+    });
+    const obs = observation({ conversation: [said("2026-09-03T10:05:00.000Z", "why?")] });
+
+    expect(expectAct(plan(r, obs, discuss)).effects[0]).toMatchObject({ thread: [], turns: [{ text: "why?" }] });
+  });
+
+  it("resumes where the escalation stopped it on a decision", () => {
+    const obs = observation({ escalationAnswered: true, conversation: [said("2026-09-03T10:09:00.000Z", "go", "decision")] });
+
+    expect(expectAdvance(plan(escalated(), obs, discuss)).to).toBe("IMPLEMENTING");
+  });
+
+  it("answers a reply marked as a discussion under answer, and does not resume", () => {
+    const obs = observation({ conversation: [said("2026-09-03T10:05:00.000Z", "why?", "discussion")] });
+
+    expect(expectAct(plan(escalated(), obs, policy)).effects[0]).toMatchObject({ type: "discuss" });
+  });
+
+  it("prompts the step it resumes with the whole discussion and the decision last", () => {
+    const decision = ["ada asked: why?", "You answered: because.", "ada decided, and this settles it: keep it"];
+    const r = record("IMPLEMENTING", {
+      escalation: { reason: "r", askedAt: ASKED, resolvedAt: "2026-09-03T10:10:00.000Z", decision },
+    });
+
+    expect(expectAct(plan(r, observation(), policy)).effects[0]).toMatchObject({ type: "implement", discussion: decision });
+  });
+
+  it("prompts nothing extra while the escalation is still open", () => {
+    const r = record("IMPLEMENTING", {
+      escalation: { reason: "r", askedAt: ASKED, decision: ["ada decided, and this settles it: keep it"] },
+    });
+
+    expect(expectAct(plan(r, observation(), policy)).effects[0]).not.toHaveProperty("discussion");
+  });
+
+  it("answers a discussion while a question is open and goes to READY only on the decision", () => {
+    const asked = {
+      clear: false,
+      questions: ["Which currency?"],
+      askedQuestions: ["Which currency?"],
+      at: ASKED,
+    };
+    const question = said("2026-09-03T10:05:00.000Z", "what does the invoice show today?");
+    const discussed = expectAct(plan(record("CLARIFYING", { triage: asked }), observation({ conversation: [question] }), discuss));
+    expect(discussed.effects[0]).toMatchObject({ type: "discuss", since: ASKED, turns: [{ text: question.body }] });
+
+    const r = record("CLARIFYING", {
+      triage: asked,
+      discussion: { since: ASKED, upTo: question.at, lines: [`ada asked: ${question.body}`, "You answered: euros."] },
+    });
+    const answered = expectAdvance(
+      plan(r, observation({ conversation: [question, said("2026-09-03T10:08:00.000Z", "show the customer's", "decision")] }), discuss),
+    );
+
+    expect(answered.to).toBe("READY");
+    expect(answered.effects[0]).toMatchObject({
+      conversation: [`ada asked: ${question.body}`, "You answered: euros.", "ada answered: show the customer's"],
+    });
+  });
+});
+
+describe("a discussion while a question is open", () => {
+  const ASKED = "2026-09-03T10:00:00.000Z";
+  const asked = { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: ASKED };
+  const discuss = { ...policy, conversation: "discuss" as const };
+  const turn = (at: string, body: string, kind?: "discussion" | "decision") => ({ author: "ada", body, at, fromAmy: false, ...(kind ? { kind } : {}) });
+
+  it("does not read its own answer to a discussion as the decision", () => {
+    const question = turn("2026-09-03T10:05:00.000Z", "what does it show today?");
+    const r = record("CLARIFYING", {
+      triage: asked,
+      discussion: { since: ASKED, upTo: question.at, lines: ["ada asked: what does it show today?", "You answered: euros."] },
+    });
+
+    expect(expectWait(plan(r, observation({ conversation: [question] }), discuss)).why).toContain("answer");
+  });
+
+  it("carries a turn said in the same breath as the decision into the triage", () => {
+    const requirement = turn("2026-09-03T10:05:00.000Z", "it has to be the customer's currency");
+    const decision = turn("2026-09-03T10:05:30.000Z", "use that", "decision");
+
+    const p = expectAdvance(plan(record("CLARIFYING", { triage: asked }), observation({ conversation: [requirement, decision] }), discuss));
+
+    expect(p.to).toBe("READY");
+    expect(p.effects[0]).toMatchObject({
+      conversation: ["ada asked: it has to be the customer's currency", "ada answered: use that"],
+    });
+  });
+});
+
+describe("a discussion of a disagreement", () => {
+  it("names the disagreed threads and the settled clarification for the answer to read", () => {
+    const r = record("ESCALATED", {
+      resumeAt: "HUMAN_FIX",
+      escalation: { reason: "T1: the comment is wrong", askedAt: "2026-09-03T10:00:00.000Z" },
+      judged: [
+        { threadId: "T1", verdict: "disagreed", note: "the comment is wrong" },
+        { threadId: "T2", verdict: "fixed", note: "done" },
+      ],
+      clarification: ["ada answered: use USD"],
+    });
+    const obs = observation({ conversation: [{ author: "ada", body: "why is it wrong?", at: "2026-09-03T10:05:00.000Z", fromAmy: false }] });
+
+    expect(expectAct(plan(r, obs, { ...policy, conversation: "discuss" })).effects[0]).toMatchObject({
+      type: "discuss",
+      threadIds: ["T1"],
+      clarification: ["ada answered: use USD"],
+    });
+  });
+});
+
+describe("under answer, the first unmarked reply", () => {
+  it("still resumes escalated work, as it always did", () => {
+    const r = record("ESCALATED", { resumeAt: "CHECKED", escalation: { reason: "r", askedAt: "2026-09-03T10:00:00.000Z" } });
+    const obs = observation({
+      escalationAnswered: true,
+      conversation: [{ author: "ada", body: "why?", at: "2026-09-03T10:05:00.000Z", fromAmy: false }],
+    });
+
+    expect(expectAdvance(plan(r, obs, policy)).to).toBe("CHECKED");
+  });
+});
+
+/**
+ * The same, driven through the engine: what a discussion spends, and what it
+ * leaves alone. A thread whose replies the test writes, an agent that
+ * answers, and a record parked in ESCALATED with a resume point.
+ */
+describe("a discussion, driven through the engine", () => {
+  const ASKED = "2026-09-03T10:00:00.000Z";
+  const start = new Date("2026-09-03T10:01:00.000Z");
+
+  function world(options: { conversation: "answer" | "discuss"; budget?: Budget }) {
+    let clock = start;
+    const said: Reply[] = [];
+    const thread = { id: "thread-PROJ-1239" };
+    const post = vi.fn<Conversation["post"]>().mockResolvedValue("answer-ts");
+    const conversation: Conversation = {
+      open: vi.fn<Conversation["open"]>().mockResolvedValue(thread),
+      post,
+      replies: async (_thread, since) => said.filter((reply) => reply.at > since),
+    };
+    const prompts: { step?: string; prompt: string }[] = [];
+    const contexts: (AskContext | undefined)[] = [];
+    const run = { outcome: "completed" as const, harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown" as const, output: "" };
+    const ask = vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>();
+    const agent = fakeAgent({
+      ask: ask.mockImplementation(async (prompt, _cwd, context) => {
+        prompts.push({ step: context?.step, prompt });
+        contexts.push(context);
+        const discussed = prompts.filter((p) => p.step === "discuss").length;
+        return { text: context?.step === "discuss" ? `answer ${discussed}` : "done", run };
+      }),
+    });
+    const git = fakeGit();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-discussion-"));
+    const queue = new FileQueue(path.join(root, "queue"));
+    const records = new InMemoryStore();
+    records.save(
+      record("ESCALATED", {
+        resumeAt: "IMPLEMENTING",
+        attempts: { IMPLEMENTING: 3 },
+        escalation: { reason: "Implementation failed 3 times.", askedAt: ASKED },
+      }),
+    );
+    const worker = new Worker({
+      queue,
+      records,
+      ...ticketWorkerDeps({
+        conversation,
+        agent,
+        git,
+        budget: options.budget,
+        policy: { ...policy, conversation: options.conversation },
+        now: () => clock,
+      }),
+    });
+    return {
+      prompts,
+      contexts,
+      askedAt: (step: string) => ask.mock.invocationCallOrder[contexts.findIndex((context) => context?.step === step)]!,
+      post,
+      git,
+      records,
+      cleanup: () => fs.rmSync(root, { recursive: true, force: true }),
+      say(text: string, kind?: Reply["kind"]) {
+        clock = new Date(clock.getTime() + 60_000);
+        said.push({ at: clock.toISOString(), author: "ada", text, files: [], ...(kind ? { kind } : {}) });
+      },
+      /** Looks until the queue has nothing due, then lets the poll come round. */
+      async look(times = 1) {
+        for (let n = 0; n < times; n += 1) {
+          queue.enqueue({ workId: "PROJ-1239", reason: "poke" }, clock);
+          await worker.tick();
+        }
+        clock = new Date(clock.getTime() + policy.pollBackoffMs);
+      },
+      state: () => records.load("PROJ-1239")!,
+    };
+  }
+
+  it("answers three questions in the thread without moving, and moves on the decision with all six lines", async () => {
+    const w = world({ conversation: "discuss" });
+    for (const question of ["why did it fail?", "is the test wrong?", "what would you change?"]) {
+      w.say(question);
+      await w.look();
+      expect(w.state().state).toBe("ESCALATED");
+    }
+    expect(w.post).toHaveBeenCalledTimes(3);
+    expect(w.post).toHaveBeenLastCalledWith({ id: "thread-PROJ-1239" }, { text: "answer 3" });
+
+    w.say("change the test and keep the code", "decision");
+    await w.look(2);
+    w.cleanup();
+
+    const implement = w.prompts.find((p) => p.step === "implement")!.prompt;
+    const lines = [
+      "ada asked: why did it fail?",
+      "You answered: answer 1",
+      "ada asked: is the test wrong?",
+      "You answered: answer 2",
+      "ada asked: what would you change?",
+      "You answered: answer 3",
+      "ada decided, and this settles it: change the test and keep the code",
+    ];
+    expect(implement).toContain(lines.map((line) => `- ${line}`).join("\n"));
+    expect(implement.trimEnd().indexOf("ada decided")).toBeGreaterThan(implement.indexOf("You answered: answer 3"));
+    expect(w.state().history.map((move) => `${move.from}>${move.to}`)).toContain("ESCALATED>IMPLEMENTING");
+  });
+
+  it("commits nothing and counts no attempt for a discussion", async () => {
+    const w = world({ conversation: "discuss" });
+    w.say("why did it fail?");
+    await w.look();
+    w.cleanup();
+
+    expect(w.git.commitAndPush).not.toHaveBeenCalled();
+    expect(w.state().attempts).toEqual({ IMPLEMENTING: 3, ESCALATED: 0 });
+    expect(w.state().discussion?.lines).toEqual(["ada asked: why did it fail?", "You answered: answer 1"]);
+    expect(w.contexts.find((context) => context?.step === "discuss")).toMatchObject({ readOnly: true });
+  });
+
+  it("answers on the work's own branch, which a shared checkout may have left", async () => {
+    const w = world({ conversation: "discuss" });
+    w.say("why did it fail?");
+    await w.look();
+    w.cleanup();
+
+    expect(w.git.prepareBranch).toHaveBeenCalledWith("Northwind/northwind-backend", "ada/proj-1239-total-is-wrong", "PROJ-1239");
+    expect(w.git.prepareBranch.mock.invocationCallOrder[0]).toBeLessThan(w.askedAt("discuss"));
+  });
+
+  it("charges a discussion to the agent's budget, and parks it at the ceiling", async () => {
+    expect(dispatchesTo("discuss", "agent")).toBe(true);
+
+    const spent: Budget = {
+      mayStart: () => ({ ok: false, window: "perFiveHours", measure: "tokens", used: 10, limit: 10, stopAt: 1, retryAfterMs: 60_000, reason: "spent" }),
+    };
+    const w = world({ conversation: "discuss", budget: spent });
+    w.say("why did it fail?");
+    await w.look();
+    w.cleanup();
+
+    expect(w.prompts).toEqual([]);
+    expect(w.post).not.toHaveBeenCalled();
+    expect(w.state().discussion).toBeUndefined();
+  });
+
+  it("under answer, answers a reply marked as a discussion and does not resume", async () => {
+    const w = world({ conversation: "answer" });
+    w.say("why did it fail?", "discussion");
+    await w.look();
+    w.cleanup();
+
+    expect(w.post).toHaveBeenCalledTimes(1);
+    expect(w.state().state).toBe("ESCALATED");
+  });
+
+  it("under answer, resumes on the first unmarked reply, as it always did", async () => {
+    const w = world({ conversation: "answer" });
+    w.say("change the test");
+    await w.look();
+    w.cleanup();
+
+    expect(w.post).not.toHaveBeenCalled();
+    expect(w.state().state).toBe("IMPLEMENTING");
+    expect(w.state().escalation?.decision).toEqual(["ada decided, and this settles it: change the test"]);
+  });
+});
+
+describe("what a clarification settled", () => {
+  it("reaches the implementation, not only the triage that cleared it", async () => {
+    const ASKED = "2026-09-03T10:00:00.000Z";
+    let clock = new Date("2026-09-03T10:10:00.000Z");
+    const replies: Reply[] = [
+      { at: "2026-09-03T10:05:00.000Z", author: "ada", text: "the invoice is in USD", files: [] },
+      { at: "2026-09-03T10:06:00.000Z", author: "ada", text: "use that", files: [], kind: "decision" },
+    ];
+    const conversation: Conversation = {
+      open: async () => ({ id: "t" }),
+      post: async () => "m",
+      replies: async (_thread, since) => replies.filter((reply) => reply.at > since),
+    };
+    const prompts: { step?: string; prompt: string }[] = [];
+    const run = { outcome: "completed" as const, harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown" as const, output: "" };
+    const agent = fakeAgent({
+      ask: vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>().mockImplementation(async (prompt, _cwd, context) => {
+        prompts.push({ step: context?.step, prompt });
+        return { text: context?.step === "triage" ? JSON.stringify({ clear: true }) : "done", run };
+      }),
+    });
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-clarified-"));
+    const queue = new FileQueue(path.join(root, "queue"));
+    const records = new InMemoryStore();
+    records.save(record("CLARIFYING", { triage: { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: ASKED } }));
+    const worker = new Worker({
+      queue,
+      records,
+      ...ticketWorkerDeps({ conversation, agent, policy: { ...policy, conversation: "discuss" }, now: () => clock }),
+    });
+    for (let look = 0; look < 4 && !prompts.some((p) => p.step === "implement"); look += 1) {
+      clock = new Date(clock.getTime() + 60_000);
+      queue.enqueue({ workId: "PROJ-1239", reason: "poke" }, clock);
+      await worker.tick();
+    }
+    fs.rmSync(root, { recursive: true, force: true });
+
+    const implement = prompts.find((p) => p.step === "implement")?.prompt ?? "";
+    expect(implement).toContain("- ada asked: the invoice is in USD");
+    expect(implement).toContain("- ada answered: use that");
+  });
+});
+
+describe("an escalation answered on the ticket", () => {
+  it("carries the owner's comment into the step it resumes, read only once there is one", async () => {
+    const ASKED = "2026-09-03T10:00:00.000Z";
+    let clock = new Date("2026-09-03T10:10:00.000Z");
+    let replied = false;
+    const comments = vi.fn<Tracker["comments"]>().mockImplementation(async () =>
+      replied ? [{ author: "ada", body: "use USD instead", at: "2026-09-03T10:20:00.000Z", fromAmy: false }] : [],
+    );
+    const tracker: Tracker = { ...fakeTracker(), comments, hasReplyAfter: async () => replied };
+    const prompts: { step?: string; prompt: string }[] = [];
+    const run = { outcome: "completed" as const, harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown" as const, output: "" };
+    const agent = fakeAgent({
+      ask: vi.fn<(prompt: string, cwd: string, context?: AskContext) => Promise<HarnessReply>>().mockImplementation(async (prompt, _cwd, context) => {
+        prompts.push({ step: context?.step, prompt });
+        return { text: "done", run };
+      }),
+    });
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-ticket-answer-"));
+    const queue = new FileQueue(path.join(root, "queue"));
+    const records = new InMemoryStore();
+    records.save(record("ESCALATED", { resumeAt: "IMPLEMENTING", escalation: { reason: "r", askedAt: ASKED } }));
+    const worker = new Worker({ queue, records, ...ticketWorkerDeps({ tracker, agent, now: () => clock }) });
+    const look = async () => {
+      clock = new Date(clock.getTime() + policy.pollBackoffMs);
+      queue.enqueue({ workId: "PROJ-1239", reason: "poke" }, clock);
+      await worker.tick();
+    };
+
+    await look();
+    expect(comments).not.toHaveBeenCalled();
+    replied = true;
+    await look();
+    await look();
+    fs.rmSync(root, { recursive: true, force: true });
+
+    expect(records.load("PROJ-1239")?.escalation?.decision).toEqual(["ada decided, and this settles it: use USD instead"]);
+    expect(prompts.find((p) => p.step === "implement")?.prompt).toContain("- ada decided, and this settles it: use USD instead");
   });
 });

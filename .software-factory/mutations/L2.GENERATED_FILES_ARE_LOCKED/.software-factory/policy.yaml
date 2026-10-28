@@ -10,5 +10,5 @@ rules:
   L2.GENERATED_FILES_ARE_LOCKED:
     enabled: true
     options:
-        scope: ["generated/**"]
+        scope: ["generated/**", "packages/ui/frame.yaml"]
         lock_file: ".software-factory/locks/generated.lock.json"

@@ -97,13 +97,37 @@
       ],
       "@amykit/workflow-ticket-to-qa": [
         "packages/workflow-ticket-to-qa/src/index.ts"
+      ],
+      "@amykit/ui": [
+        "packages/ui/src/index.ts"
+      ],
+      "@amykit/ui/jsx-runtime": [
+        "packages/ui/src/jsx-runtime.ts"
+      ],
+      "@amykit/ui/jsx-dev-runtime": [
+        "packages/ui/src/jsx-dev-runtime.ts"
+      ],
+      "@amykit/ui/frame": [
+        "packages/ui/src/frame/index.ts"
+      ],
+      "@amykit/plugin-ui-stub": [
+        "plugins/ui-stub/src/index.ts"
+      ],
+      "@amykit/ui-conformance": [
+        "packages/ui-conformance/src/index.ts"
       ]
-    }
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "@amykit/ui"
   },
   "include": [
     "packages/*/tests/**/*.ts",
+    "packages/*/tests/**/*.tsx",
     "plugins/*/tests/**/*.ts",
     "packages/*/src/**/*.ts",
-    "plugins/*/src/**/*.ts"
+    "packages/*/src/**/*.tsx",
+    "plugins/*/src/**/*.ts",
+    "scripts/**/*.ts",
+    ".software-factory/evidence/**/*.ts"
   ]
 }

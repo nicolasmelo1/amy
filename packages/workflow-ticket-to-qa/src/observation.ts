@@ -1,5 +1,5 @@
 import { PullRequestView } from "@amykit/core";
-import { Comment } from "@amykit/core";
+import { Comment, ReplyKind } from "@amykit/core";
 import { Roster } from "./roster.js";
 import { Ticket } from "./ticket.js";
 
@@ -28,8 +28,11 @@ export interface Observation {
    * the state that re-reads the ticket can put the answer in front of the
    * agent instead of merely knowing one arrived.
    */
-  conversation: Comment[];
-  /** Whether the owner has answered an escalation. */
+  conversation: Said[];
+  /**
+   * Whether the owner has decided an escalation: a reply that reads as a
+   * decision under the policy, not merely any reply.
+   */
   escalationAnswered: boolean;
   /**
    * Whether this work item's repository has left the ticket — a label taken
@@ -52,6 +55,12 @@ export interface Observation {
   repositories?: readonly { repo: string; merged: boolean }[];
   now: Date;
 }
+
+/**
+ * One thing said back, and what it is when the medium let the person say.
+ * Unmarked is the common case, and `policy.conversation` reads it.
+ */
+export type Said = Comment & { kind?: ReplyKind };
 
 export interface Policy {
   maxImplementAttempts: number;
@@ -87,6 +96,14 @@ export interface Policy {
    * the machine waits until it sees the effect.
    */
   writes: "machine" | "operator";
+  /**
+   * How a reply nobody marked reads in a waiting state. `answer` takes it as
+   * the decision, which is how this machine always read one; `discuss` takes
+   * it as a turn in a discussion, answered in the thread while the work
+   * waits for a reply marked as the decision. A marked reply reads as marked
+   * under either.
+   */
+  conversation: "answer" | "discuss";
 }
 
 export const DEFAULT_POLICY: Policy = {
@@ -98,4 +115,5 @@ export const DEFAULT_POLICY: Policy = {
   maxPullRequestFiles: 60,
   maxPullRequestLines: 2000,
   writes: "machine",
+  conversation: "answer",
 };

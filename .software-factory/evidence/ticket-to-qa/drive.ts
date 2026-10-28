@@ -1,0 +1,1353 @@
+// Drives the installed `amy` through one ticket, from the working status to
+// QA, and writes down what the world looked like afterwards.
+//
+// Usage: tsx drive.ts <source-dir> <amy-binary> <report-path> [--keep]
+//
+// Every command here is one an operator types. Nothing reaches inside amy:
+// the only things read back are the tracker, the code host, the repository,
+// the files amy left on disk and what it printed. That is the difference
+// between proving the lifecycle and proving a mock.
+//
+// The world only ever moves *after* a look that made no move, which is what
+// puts a genuine wait in front of every waiting state instead of letting the
+// answer be there before the question was asked.
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
+import {
+  BOT,
+  BRANCH,
+  BRIEF,
+  OTHER_REPO,
+  PAST_IMPLEMENTATION,
+  REPO,
+  SECOND_BRANCH,
+  SOMEBODY_ELSES,
+  THIRD_BRANCH,
+  TICKET,
+  TICKET_THREE,
+  TICKET_TWO,
+  build,
+  configure,
+  found,
+  headOf,
+  lines,
+  read,
+  write,
+  type Brief,
+  type CodeHost,
+  type Issue,
+  type Pull,
+  type TrackerState,
+} from "./world.js";
+
+function usage(): never {
+  throw new Error("usage: drive.ts <source-dir> <amy-binary> <report-path> [--keep]");
+}
+
+const [source = usage(), binary = usage(), reportPath = usage()] = process.argv.slice(2);
+const keep = process.argv.includes("--keep");
+/** The tracker and the stand-ins are TypeScript too, and run the way this does: through the repository's tsx. */
+const TSX = path.join(source, "..", "..", "..", "node_modules", ".bin", "tsx");
+
+const MAX_TICKS = 60;
+const WAITING = ["CLARIFYING", "COPILOT_WAIT", "HUMAN_REVIEW", "ESCALATED"];
+
+/** Every move the ticket makes, in the order it has to make them. */
+const EXPECTED = [
+  "DISCOVERED>CLARIFYING",
+  "CLARIFYING>READY",
+  "READY>IMPLEMENTING",
+  "IMPLEMENTING>CHECKED",
+  "CHECKED>IMPLEMENTING",
+  "IMPLEMENTING>CHECKED",
+  "CHECKED>SELF_REVIEW",
+  "SELF_REVIEW>PR_OPEN",
+  "PR_OPEN>COPILOT_WAIT",
+  "COPILOT_WAIT>COPILOT_FIX",
+  "COPILOT_FIX>COPILOT_WAIT",
+  "COPILOT_WAIT>REVIEWER_ASSIGNED",
+  "REVIEWER_ASSIGNED>HUMAN_REVIEW",
+  "HUMAN_REVIEW>HUMAN_FIX",
+  "HUMAN_FIX>ESCALATED",
+  "ESCALATED>HUMAN_FIX",
+  "HUMAN_FIX>RE_REVIEW",
+  "RE_REVIEW>HUMAN_REVIEW",
+  "HUMAN_REVIEW>APPROVED",
+  "APPROVED>QA_HANDOFF",
+  "QA_HANDOFF>DONE",
+];
+
+/** What a command printed, and how it exited. */
+interface Said {
+  code: number | null;
+  out: string;
+}
+
+/** The ticket as amy keeps it on disk, as much of it as the run reads. */
+interface TicketRecord {
+  id: string;
+  state: string;
+  resumeAt?: string;
+  reviewer?: string;
+  escalation?: { askedAt: string; followUpTicketId?: string };
+  lastGate?: { ok: boolean; at: string };
+  lastImplementation?: unknown;
+  judged: { verdict: string }[];
+}
+
+/** One `amy tick`: the state either side of it, and what it printed. */
+interface Look {
+  before: string;
+  after: string;
+  resumeAt: string | undefined;
+  said: string;
+  code: number | null;
+}
+
+/** Something the world did between two looks. */
+interface Move {
+  at: string;
+  state: string;
+  move: string;
+}
+
+/** One line of each stand-in's log. */
+interface AgentCall {
+  at: string;
+  step: string;
+  model: string;
+  retry: boolean;
+  cwd: string;
+  prompt: string;
+}
+
+interface GhCall {
+  at: string;
+  argv: string[];
+}
+
+interface TrackerCall {
+  at: string;
+  operation: string;
+  authorization: string;
+  query: string;
+}
+
+interface LogEvent {
+  kind: string;
+  detail?: { workId?: string };
+}
+
+/** What the outside world does in one waiting state, or null if it does nothing. */
+type Reaction = (root: string, record: TicketRecord) => string | null;
+
+/** Blocks the thread. There is nothing to do until the port file appears. */
+function pause(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function waitFor(condition: () => boolean, what: string, timeoutMs = 10_000): void {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (condition()) return;
+    pause(50);
+  }
+  throw new Error(`timed out waiting for ${what}`);
+}
+
+/** The stand-in tracker, listening on a port it picks and writes down. */
+function startTracker(root: string): { child: ChildProcess; endpoint: string } {
+  const stateFile = path.join(root, "world", "tracker.json");
+  const portFile = path.join(root, "world", "tracker.port");
+
+  fs.mkdirSync(path.join(root, "world"), { recursive: true });
+  const child = spawn(TSX, [path.join(source, "tracker.ts"), stateFile, portFile], {
+    stdio: "ignore",
+  });
+
+  // Written where the shell can reach it, which the world directory is not:
+  // that gets deleted. If this process dies before its `finally`, the trap
+  // upstream is what ends the child.
+  if (process.env.AMY_E2E_PIDFILE) {
+    fs.appendFileSync(process.env.AMY_E2E_PIDFILE, `${child.pid}\n`);
+  }
+
+  waitFor(() => fs.existsSync(portFile), "the stand-in tracker to listen");
+  return { child, endpoint: `http://127.0.0.1:${fs.readFileSync(portFile, "utf-8").trim()}/graphql` };
+}
+
+function amy(root: string, args: string[]): Said {
+  const result = spawnSync(binary, args, {
+    cwd: path.join(root, "home"),
+    encoding: "utf-8",
+    env: {
+      ...process.env,
+      PATH: `${path.join(root, "bin")}:${process.env.PATH}`,
+      HOME: path.join(root, "home"),
+      AMY_E2E_WORLD: path.join(root, "world"),
+      AMY_E2E_ORIGINS: path.join(root, "origins"),
+      AMY_E2E_TSX: TSX,
+    },
+  });
+
+  return {
+    code: result.status,
+    out: `${result.stdout ?? ""}${result.stderr ?? ""}`.trim(),
+  };
+}
+
+const recordFile = (root: string, ticket = TICKET): string =>
+  path.join(root, "home", ".amy", "tickets", "records", `${ticket}.json`);
+
+function recordOf(root: string, ticket = TICKET): TicketRecord | null {
+  const file = recordFile(root, ticket);
+  return fs.existsSync(file) ? read<TicketRecord>(file) : null;
+}
+
+const stateOf = (root: string): string => recordOf(root)?.state ?? "DISCOVERED";
+
+const hostFile = (root: string): string => path.join(root, "world", "code-host.json");
+const trackerFile = (root: string): string => path.join(root, "world", "tracker.json");
+
+/** The ticket's own pull request, as the code host holds it. */
+function ticketPull(root: string): Pull | undefined {
+  return read<CodeHost>(hostFile(root)).repos[REPO]?.pulls.find(
+    (pull) => pull.head === BRANCH && pull.state === "open",
+  );
+}
+
+function comment(root: string, userId: string, body: string, ticket = TICKET): void {
+  const state = read<TrackerState>(trackerFile(root));
+  const issue = found(state.issues.find((candidate) => candidate.identifier === ticket), ticket);
+  issue.comments.push({ body, createdAt: new Date().toISOString(), userId });
+  write(trackerFile(root), state);
+}
+
+function repliedAfter(root: string, userId: string, since: string): boolean {
+  const state = read<TrackerState>(trackerFile(root));
+  const issue = found(state.issues.find((candidate) => candidate.identifier === TICKET), TICKET);
+  return issue.comments.some(
+    (entry) => entry.userId === userId && new Date(entry.createdAt) > new Date(since),
+  );
+}
+
+const HUMAN_THREADS = [
+  {
+    id: "HUM-1",
+    author: "ada",
+    body: "Read the currency off the invoice rather than hard-coding it.",
+    isResolved: false,
+    isOutdated: false,
+  },
+  {
+    id: "HUM-2",
+    author: "ada",
+    body: "While you are here, rename the whole module to `billing-total`.",
+    isResolved: false,
+    isOutdated: false,
+  },
+];
+
+const BOT_THREAD = {
+  id: "BOT-1",
+  author: BOT,
+  body: "This file has no trailing newline.",
+  isResolved: false,
+  isOutdated: false,
+};
+
+/**
+ * What the outside world does between two looks, keyed by the state amy is
+ * waiting in.
+ *
+ * Each one is asked only after a look that changed nothing, so it answers a
+ * question that was actually asked.
+ */
+function reactions(): Record<string, Reaction> {
+  let ceilingRelieved = false;
+  let humanReviews = 0;
+
+  const sawHead = (pull: Pull, author: string, head: string): boolean =>
+    pull.reviews.some(
+      (review) => review.author.toLowerCase() === author.toLowerCase() && review.commitSha === head,
+    );
+
+  return {
+    CLARIFYING(root) {
+      const issue = found(issueOf(root, TICKET), TICKET);
+
+      // First held look: the colleague answers the question amy asked on the
+      // ticket. Only once — a second held look must find the answer already
+      // there, which is what puts a genuine wait in front of every later
+      // look and would catch the machine re-asking on the way past.
+      const answered = issue.comments.some(
+        (entry) => entry.userId === "u-owner" && entry.body.includes("BRL"),
+      );
+      if (answered) return null;
+
+      const asked = issue.comments.filter((entry) => entry.userId === "u-amy");
+      if (asked.length === 0) return null;
+
+      comment(root, "u-owner", "In BRL, the same as the rest of the invoice.");
+      const briefFile = path.join(root, "home", ".amy", "briefs", `${BRIEF}.json`);
+      const brief = read<Brief>(briefFile);
+      found(brief.sections[0], "brief section").body = "Keep BRL beside the total; do not round the total.";
+      brief.updatedAt = new Date().toISOString();
+      brief.revision += 1;
+      write(briefFile, brief);
+      return "a colleague answered the question and revised the brief";
+    },
+
+    // The bot posts a review even when it found nothing, so it is asked per
+    // head rather than once. Only the first one leaves a comment behind.
+    COPILOT_WAIT(root) {
+      // The bot reviews whichever pull request it is watching, in either
+      // repository: the lifecycle under test is the same, whichever checkout
+      // the work ran in.
+      for (const [repo, branch, origin] of [
+        [REPO, BRANCH, "widgets"],
+        [OTHER_REPO, THIRD_BRANCH, "gadgets"],
+      ] as const) {
+        const state = read<CodeHost>(hostFile(root));
+        const pull = state.repos[repo]?.pulls.find((p) => p.head === branch && p.state === "open");
+        const head = headOf(root, origin, branch);
+        if (!pull || sawHead(pull, BOT, head)) continue;
+
+        // The bot posts a review even when it found nothing, so it is asked
+        // per head rather than once. Only the widgets one leaves a comment
+        // behind — the machine's answer and the thread it closes are the
+        // first lifecycle's business, and the second root's walk is the same
+        // lifecycle with a reviewer that has nothing to say.
+        const first = pull.reviews.every((review) => review.author !== BOT);
+        pull.reviews.push({
+          author: BOT,
+          state: "COMMENTED",
+          commitSha: head,
+          submittedAt: new Date().toISOString(),
+        });
+        if (first && repo === REPO) pull.threads.push({ ...BOT_THREAD });
+        write(hostFile(root), state);
+
+        return repo === REPO && first
+          ? `the automated reviewer looked at ${head.slice(0, 7)} and left one comment`
+          : `the automated reviewer looked at ${head.slice(0, 7)} and had nothing to say`;
+      }
+      return null;
+    },
+
+    // The machine fixed the bot's thread and pushed, and the thread is still
+    // open: this forge does not settle a conversation because the code
+    // changed. The reaction answers a held COPILOT_FIX look — the look after
+    // the fix — which is the machine's cue to close what it answered.
+    COPILOT_FIX() {
+      return null;
+    },
+
+    // Somebody else's review lands, which is the only thing that can make
+    // room on a reviewer's pile.
+    REVIEWER_ASSIGNED(root) {
+      if (ceilingRelieved) return null;
+      ceilingRelieved = true;
+
+      const state = read<CodeHost>(hostFile(root));
+      const done = found(state.repos[REPO]?.pulls.find((pull) => pull.number === 12), "pull request 12");
+      done.state = "closed";
+      write(hostFile(root), state);
+
+      return "one of ada's other reviews was merged, so she is carrying one";
+    },
+
+    HUMAN_REVIEW(root, record) {
+      const state = read<CodeHost>(hostFile(root));
+      const [repo, branch, origin] = record.id === TICKET_THREE
+        ? [OTHER_REPO, THIRD_BRANCH, "gadgets"] as const
+        : [REPO, BRANCH, "widgets"] as const;
+      const pull = state.repos[repo]?.pulls.find((p) => p.head === branch && p.state === "open");
+      const head = headOf(root, origin, branch);
+      if (!pull || !record.reviewer || sawHead(pull, record.reviewer, head)) return null;
+
+      const approving = humanReviews > 0;
+      humanReviews += 1;
+
+      pull.reviewDecision = approving ? "APPROVED" : "CHANGES_REQUESTED";
+      pull.requestedReviewers = pull.requestedReviewers.filter((who) => who !== record.reviewer);
+      pull.reviews.push({
+        author: record.reviewer,
+        state: approving ? "APPROVED" : "CHANGES_REQUESTED",
+        commitSha: head,
+        submittedAt: new Date().toISOString(),
+      });
+      if (!approving) pull.threads.push(...HUMAN_THREADS.map((thread) => ({ ...thread })));
+      write(hostFile(root), state);
+
+      return approving
+        ? `${record.reviewer} approved ${head.slice(0, 7)}`
+        : `${record.reviewer} asked for changes on ${head.slice(0, 7)}`;
+    },
+
+    ESCALATED(root, record) {
+      if (repliedAfter(root, "u-owner", found(record.escalation, "escalation").askedAt)) return null;
+      comment(root, "u-owner", "Agreed, leave the rename out of this one. Do the rest.");
+      return "the owner settled the disagreement on the ticket";
+    },
+  };
+}
+
+function installPlugins(root: string): void {
+  const tarballs = process.env.AMY_E2E_TARBALLS;
+  if (!tarballs) throw new Error("the scenario did not name the packaged plugins");
+  const packed = fs.readdirSync(tarballs)
+    .filter((name) => name.endsWith(".tgz"))
+    .map((name) => path.join(tarballs, name))
+    .map((file) => ({
+      file,
+      manifest: JSON.parse(
+        execFileSync("tar", ["-xOf", file, "package/package.json"], { encoding: "utf-8" }),
+      ) as { name: string },
+    }));
+  const prefix = path.join(root, "home", ".amy", "plugins");
+  // Packages are packed before their fixed release group receives its next
+  // version. Install through the same local overrides the real installer
+  // writes, so this scenario exercises those tarballs rather than asking the
+  // registry for an unreleased sibling range.
+  const overrides = Object.fromEntries(packed
+    .filter(({ manifest }) => manifest.name !== "@amykit/cli")
+    .map(({ file, manifest }) => [manifest.name, `file:${file}`]));
+  fs.mkdirSync(prefix, { recursive: true });
+  // npm 11 rejects an override that disagrees syntactically with a package
+  // supplied on the install command line. Keep each tarball as the explicit
+  // dependency and use the identical specifier for its transitive override,
+  // matching the production install manifest.
+  fs.writeFileSync(
+    path.join(prefix, "package.json"),
+    `${JSON.stringify({ name: "amy-e2e-plugins", private: true, dependencies: overrides, overrides }, null, 2)}\n`,
+    "utf-8",
+  );
+  const result = spawnSync(
+    "npm",
+    ["install", "--prefix", path.join(root, "home", ".amy", "plugins"), "--no-audit", "--no-fund"],
+    { encoding: "utf-8" },
+  );
+  if (result.status !== 0) throw new Error(`the scenario could not install the packaged plugins: ${result.stderr}`);
+}
+
+/** The morning's commands, and what each of them answered. */
+interface Morning {
+  version: Said;
+  init: Said;
+  initWrote: boolean;
+  doctorStale: Said;
+  confirm: Said;
+  doctor: Said;
+  discover: Said;
+}
+
+/** The world once the first ticket has settled. */
+interface Settled {
+  status: Said;
+  statusAll: Said;
+  briefShow: Said;
+  budget: Said;
+  record: TicketRecord;
+  tracker: TrackerState;
+  pull: Pull | undefined;
+  ghCalls: GhCall[];
+  agentCalls: AgentCall[];
+  trackerCalls: TrackerCall[];
+  brief: Brief;
+  inbox: string[];
+  branches: string[];
+  commits: string[];
+  queueReady: string[];
+}
+
+/** A second ticket in the same repository, and the trees the two left. */
+interface Concurrent {
+  secondDiscover: Said;
+  secondRecord: TicketRecord | null;
+  worktreesBeforePrune: Said;
+  standingBranch: string;
+  worktreePaths: { first: string; second: string };
+  twoTreesBeforePrune: boolean;
+  worktreeBranches: { first: string; second: string };
+}
+
+/** What pruning those trees did, and refused to do. */
+interface Pruned {
+  dirtyPrune: Said;
+  dirtyStillThere: boolean;
+  cleanPrune: Said;
+  firstPruned: boolean;
+  orphanedList: Said;
+  worktreeEvents: LogEvent[];
+}
+
+/** The third ticket, in the repository that named its own root. */
+interface NamedRoot {
+  thirdDiscover: Said;
+  thirdRecord: TicketRecord | null;
+  thirdPull: Pull | undefined;
+  thirdTreeExists: boolean;
+  thirdTreeSource?: string;
+  thirdTreeBranch?: string;
+  thirdDoctor: Said;
+  thirdNamedRoot: string;
+  thirdDoctorNamedSpelling: string;
+  thirdDoctorWorkspaceSpelling: string;
+  thirdGateRanInNamedRoot: boolean;
+}
+
+/** Everything one run observed. */
+interface World extends Morning, Settled, Concurrent, Pruned, NamedRoot {
+  root: string;
+  moves: Move[];
+  trail: Look[];
+  leftBehind: boolean;
+}
+
+/** The morning's commands, in the order the README gives them. */
+function morning(root: string, endpoint: string): Morning {
+  const version = amy(root, ["--version"]);
+  const init = amy(root, ["init"]);
+  const initWrote = ["config.yaml", "roster.yaml"].every((file) =>
+    fs.existsSync(path.join(root, "home", ".amy", file)),
+  );
+
+  configure(root, endpoint);
+  installPlugins(root);
+  const doctorStale = amy(root, ["doctor"]);
+  const confirm = amy(root, ["roster", "confirm"]);
+  const doctor = amy(root, ["doctor"]);
+  const discover = amy(root, ["discover"]);
+  return { version, init, initWrote, doctorStale, confirm, doctor, discover };
+}
+
+/** Ticks the first ticket until it settles, letting the world move whenever amy waits. */
+function walk(root: string, react: Record<string, Reaction>, trail: Look[], moves: Move[]): void {
+  let previous: string | null = null;
+
+  for (let tick = 1; tick <= MAX_TICKS; tick += 1) {
+    const before = stateOf(root);
+    const result = amy(root, ["tick"]);
+    const after = stateOf(root);
+
+    trail.push({ before, after, resumeAt: recordOf(root)?.resumeAt, said: result.out, code: result.code });
+    if (result.code !== 0) throw new Error(`amy tick exited ${result.code}: ${result.out}`);
+    if (after === "DONE" && result.out.includes("nothing due")) break;
+
+    // A look that changed nothing is the machine saying it is somebody
+    // else's move. That is when somebody else gets one.
+    const stayed = before === after && previous === after;
+    previous = after;
+    if (!stayed) continue;
+
+    const record = recordOf(root);
+    const move = record ? react[after]?.(root, record) : null;
+    if (move) moves.push({ at: new Date().toISOString(), state: after, move });
+  }
+}
+
+const gitLines = (gitDir: string, ...args: string[]): string[] =>
+  execFileSync("git", ["--git-dir", gitDir, ...args], { encoding: "utf-8" })
+    .split("\n")
+    .filter(Boolean);
+
+/** What the first ticket left behind, read off the world rather than out of amy. */
+function settled(root: string): Settled {
+  const status = amy(root, ["status"]);
+  const statusAll = amy(root, ["status", "--all"]);
+  const briefShow = amy(root, ["brief", BRIEF, "--json"]);
+  const budget = amy(root, ["budget"]);
+  return {
+    status,
+    statusAll,
+    briefShow,
+    budget,
+    record: found(recordOf(root), `a record for ${TICKET}`),
+    tracker: read<TrackerState>(trackerFile(root)),
+    pull: ticketPull(root),
+    ghCalls: lines<GhCall>(path.join(root, "world", "gh.log")),
+    agentCalls: lines<AgentCall>(path.join(root, "world", "claude.log")),
+    trackerCalls: lines<TrackerCall>(path.join(root, "world", "tracker.log")),
+    brief: read<Brief>(path.join(root, "home", ".amy", "briefs", `${BRIEF}.json`)),
+    inbox: fs.existsSync(path.join(root, "home", ".amy", "needs-input"))
+      ? fs.readdirSync(path.join(root, "home", ".amy", "needs-input"))
+      : [],
+    branches: gitLines(path.join(root, "origins", "widgets.git"), "branch", "--format=%(refname:short)"),
+    commits: gitLines(path.join(root, "origins", "widgets.git"), "log", "--format=%s", BRANCH),
+    queueReady: fs.readdirSync(path.join(root, "home", ".amy", "tickets", "queue", "ready")),
+  };
+}
+
+/** Puts a ticket in the working status, assigned to amy, the way a colleague would. */
+function seed(root: string, issue: Omit<Issue, "stateId" | "assigneeId" | "labels" | "comments">): void {
+  const tracker = read<TrackerState>(trackerFile(root));
+  tracker.issues.push({
+    ...issue,
+    stateId: "s-progress",
+    assigneeId: "u-amy",
+    labels: ["Bug"],
+    comments: [],
+  });
+  write(trackerFile(root), tracker);
+}
+
+const branchIn = (tree: string): string =>
+  execFileSync("git", ["-C", tree, "branch", "--show-current"], { encoding: "utf-8" }).trim();
+
+function concurrent(root: string): Concurrent {
+  // The finished first item stays until explicitly pruned. Add a second
+  // working ticket only now, so it cannot alter the lifecycle under test.
+  seed(root, {
+    id: "uuid-BILL-4024",
+    identifier: TICKET_TWO,
+    title: "Show the currency on the refund total",
+    url: `https://tracker.test/issue/${TICKET_TWO}`,
+    branchName: SECOND_BRANCH,
+    teamId: "team-billing",
+    description: "The refund total must name its currency.",
+  });
+  const secondDiscover = amy(root, ["discover"]);
+
+  // Drive the second item far enough to create its own tree, so both exist
+  // at once for one repository and one standing checkout.
+  let secondAnswered = false;
+  for (let tick = 0; tick < 8; tick += 1) {
+    amy(root, ["tick"]);
+    const second = recordOf(root, TICKET_TWO);
+    if (second?.state === "CLARIFYING" && !secondAnswered) {
+      comment(root, "u-owner", "The refund is also in BRL.");
+      secondAnswered = true;
+    }
+    if (second?.state === "IMPLEMENTING" && second.lastImplementation) break;
+  }
+  const secondRecord = recordOf(root, TICKET_TWO);
+  const worktreesBeforePrune = amy(root, ["worktrees", "list"]);
+  const standingBranch = branchIn(path.join(root, "checkouts", "widgets"));
+  const firstTree = path.join(root, "worktrees", "tickets", TICKET, "acme-widgets");
+  const secondTree = path.join(root, "worktrees", "tickets", TICKET_TWO, "acme-widgets");
+  return {
+    secondDiscover,
+    secondRecord,
+    worktreesBeforePrune,
+    standingBranch,
+    worktreePaths: { first: fs.realpathSync(firstTree), second: fs.realpathSync(secondTree) },
+    twoTreesBeforePrune: fs.existsSync(firstTree) && fs.existsSync(secondTree),
+    worktreeBranches: { first: branchIn(firstTree), second: branchIn(secondTree) },
+  };
+}
+
+function pruned(root: string): Pruned {
+  const firstTree = path.join(root, "worktrees", "tickets", TICKET, "acme-widgets");
+  // Dirty terminal work is retained. Once it is clean, retention zero allows
+  // a prune and records it. Removing the second record makes its remaining
+  // tree an orphan the CLI offers for recovery rather than deleting.
+  const dirty = path.join(firstTree, "operator-wip.txt");
+  fs.writeFileSync(dirty, "keep this\n", "utf-8");
+  const dirtyPrune = amy(root, ["worktrees", "prune"]);
+  const dirtyStillThere = fs.existsSync(dirty);
+  fs.rmSync(dirty);
+  const cleanPrune = amy(root, ["worktrees", "prune"]);
+  const firstPruned = !fs.existsSync(firstTree);
+  fs.rmSync(recordFile(root, TICKET_TWO));
+  const orphanedList = amy(root, ["worktrees", "list"]);
+  // The orphaned record's look is still owed a queue slot the store can no
+  // longer answer; the third ticket's run below is not about it, so the
+  // slot is retired rather than left burning a tick apiece.
+  for (const entry of fs.readdirSync(path.join(root, "home", ".amy", "tickets", "queue", "ready"))) {
+    if (entry.includes(TICKET_TWO)) {
+      fs.rmSync(path.join(root, "home", ".amy", "tickets", "queue", "ready", entry));
+    }
+  }
+  const worktreeEvents = fs
+    .readdirSync(path.join(root, "home", ".amy", "log"))
+    .flatMap((file) => lines<LogEvent>(path.join(root, "home", ".amy", "log", file)));
+  return { dirtyPrune, dirtyStillThere, cleanPrune, firstPruned, orphanedList, worktreeEvents };
+}
+
+/** Ticks the third ticket until it settles, answering its question once. */
+function walkThird(root: string, react: Record<string, Reaction>, moves: Move[]): void {
+  let thirdAnswered = false;
+  for (let tick = 0; tick < MAX_TICKS; tick += 1) {
+    const result = amy(root, ["tick"]);
+    if (result.code !== 0) throw new Error(`amy tick exited ${result.code}: ${result.out}`);
+    const third = recordOf(root, TICKET_THREE);
+    if (third?.state === "DONE" && result.out.includes("nothing due")) break;
+    const move = third ? react[third.state]?.(root, third) : null;
+    if (move && third) moves.push({ at: new Date().toISOString(), state: third.state, move });
+    if (third?.state === "CLARIFYING" && !thirdAnswered) {
+      comment(root, "u-owner", "Credit notes are also in BRL.", TICKET_THREE);
+      thirdAnswered = true;
+    }
+  }
+}
+
+/**
+ * The tree the work ran in, and the origin it was cut from: the gitdir
+ * inside the tree names the source, so a tree cut from the named root
+ * and one cut from the shared root are told apart on the disk.
+ */
+function treeOf(thirdTree: string): Pick<NamedRoot, "thirdTreeExists" | "thirdTreeSource" | "thirdTreeBranch"> {
+  if (!fs.existsSync(thirdTree)) return { thirdTreeExists: false };
+  const gitDir = fs.readFileSync(path.join(thirdTree, ".git"), "utf-8").trim();
+  return {
+    thirdTreeExists: true,
+    // The pointer names the source repository's worktree registry
+    // (`<source>/.git/worktrees/<name>`), so the source is what the
+    // pointer holds before that suffix.
+    thirdTreeSource: fs.realpathSync(
+      path.resolve(thirdTree, gitDir.replace(/^gitdir:\s*/, "").split("/.git/worktrees/")[0] ?? ""),
+    ),
+    thirdTreeBranch: branchIn(thirdTree),
+  };
+}
+
+function namedRoot(root: string, react: Record<string, Reaction>, moves: Move[]): NamedRoot {
+  // A repository that named its own root: the third ticket is work in the
+  // second repository, whose checkout lives under a parent nothing else
+  // shares. One piece of work runs in it, which is what makes a second
+  // root real rather than configured. Seeded only now, the way the second
+  // was, so it cannot alter the first lifecycle under test.
+  seed(root, {
+    id: "uuid-OPS-4025",
+    identifier: TICKET_THREE,
+    title: "Show the currency on the credit note",
+    url: `https://tracker.test/issue/${TICKET_THREE}`,
+    branchName: THIRD_BRANCH,
+    teamId: "team-support",
+    description: "The credit note total must name its currency.",
+  });
+  const thirdDiscover = amy(root, ["discover"]);
+  walkThird(root, react, moves);
+  const thirdRecord = recordOf(root, TICKET_THREE);
+  const thirdPull = read<CodeHost>(hostFile(root)).repos[OTHER_REPO]?.pulls.find(
+    (pull) => pull.head === THIRD_BRANCH && pull.state === "open",
+  );
+  const tree = treeOf(path.join(root, "worktrees", "tickets", TICKET_THREE, "acme-gadgets"));
+  const thirdDoctor = amy(root, ["doctor"]);
+  return {
+    thirdDiscover,
+    thirdRecord,
+    thirdPull,
+    ...tree,
+    thirdDoctor,
+    // The doctor's answer is the config's own spelling of both roots; the
+    // tree's pointer, like every git path on this OS, is the resolved one.
+    // Both are kept, because the run removes the whole scratch directory
+    // after, and an assertion compares like against like.
+    thirdNamedRoot: fs.realpathSync(path.join(root, "elsewhere", "gadgets")),
+    thirdDoctorNamedSpelling: path.join(root, "elsewhere", "gadgets"),
+    thirdDoctorWorkspaceSpelling: path.join(root, "checkouts"),
+    // What the shared root answered for: the widgets checkout is still the
+    // one the machine found, and the gadgets one under the root is ignored
+    // for a repository that named its own.
+    thirdGateRanInNamedRoot: fs.existsSync(
+      path.join(root, "worktrees", "tickets", TICKET_THREE, "acme-gadgets", "credit-note.md"),
+    ),
+  };
+}
+
+/**
+ * One whole run, in its own world.
+ *
+ * Returns what was observed rather than asserting anything, so two runs can
+ * be compared against each other as well as against expectations.
+ */
+function lifecycle(): World {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-e2e-"));
+  const tracker = startTracker(root);
+  const moves: Move[] = [];
+  const trail: Look[] = [];
+  let world: World | undefined;
+
+  try {
+    build(root, { source });
+
+    const morningSaid = morning(root, tracker.endpoint);
+    const react = reactions();
+    walk(root, react, trail, moves);
+    const settledWorld = settled(root);
+    const concurrentWorld = concurrent(root);
+    const prunedWorld = pruned(root);
+    const named = namedRoot(root, react, moves);
+
+    world = {
+      root,
+      moves,
+      trail,
+      leftBehind: true,
+      ...morningSaid,
+      ...settledWorld,
+      ...concurrentWorld,
+      ...prunedWorld,
+      ...named,
+    };
+    return world;
+  } finally {
+    tracker.child.kill();
+    if (keep) {
+      process.stdout.write(`kept the world in ${root}\n`);
+    } else {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+    // Recorded after the removal, so the assertion below reads the answer
+    // rather than the intention.
+    if (world) world.leftBehind = fs.existsSync(root);
+  }
+}
+
+const transitions = (world: World): string[] =>
+  world.trail.filter((look) => look.before !== look.after).map((look) => `${look.before}>${look.after}`);
+
+/** Which states amy looked at without moving, which is what waiting looks like. */
+const heldIn = (world: World): string[] =>
+  world.trail.filter((look) => look.before === look.after).map((look) => look.after);
+
+const ghCallsMatching = (world: World, ...needles: string[]): GhCall[] =>
+  world.ghCalls.filter((call) => needles.every((needle) => call.argv.join(" ").includes(needle)));
+
+/**
+ * The `gh api` calls that hit one endpoint with one method.
+ *
+ * Matched on the endpoint argument rather than on the whole command line,
+ * because `/pulls` is also a prefix of `/pulls/41/requested_reviewers` and a
+ * substring match counts a review request as a pull request being opened.
+ */
+const ghApiCalls = (world: World, method: string, endpoint: RegExp): GhCall[] =>
+  world.ghCalls.filter(
+    (call) =>
+      call.argv[0] === "api" &&
+      (call.argv.includes("--method") ? call.argv.includes(method) : method === "GET") &&
+      call.argv.some((argument) => endpoint.test(argument)),
+  );
+
+const issueIn = (world: World, identifier: string): Issue | undefined =>
+  world.tracker.issues.find((issue) => issue.identifier === identifier);
+
+/** Reads the raw tracker state file, which the reactions need between looks. */
+const issueOf = (root: string, identifier: string): Issue | undefined =>
+  read<TrackerState>(trackerFile(root)).issues.find((issue) => issue.identifier === identifier);
+
+const statusOf = (world: World, identifier: string): string => {
+  const issue = found(issueIn(world, identifier), identifier);
+  const team = found(world.tracker.teams.find((candidate) => candidate.id === issue.teamId), issue.teamId);
+  return found(team.states.find((state) => state.id === issue.stateId), issue.stateId).name;
+};
+
+const agentCallsFor = (world: World, step: string): AgentCall[] => world.agentCalls.filter((call) => call.step === step);
+
+/** Monday to Friday, which is the only time the roster is questioned. */
+const isWorkday = (): boolean => {
+  const day = new Date().getUTCDay();
+  return day >= 1 && day <= 5;
+};
+
+/** One assertion, before it is reported: its name, and whether it held. */
+type Check = [type: string, ok: boolean | undefined];
+
+function assertionsFor(first: World, second: World): { type: string; status: "passed" | "failed" }[] {
+  return [
+    ...briefChecks(first),
+    ...discoveryChecks(first),
+    ...clarifyingChecks(first),
+    ...gateChecks(first),
+    ...reviewChecks(first),
+    ...disagreementChecks(first),
+    ...handoffChecks(first, second),
+    ...worktreeChecks(first),
+    ...checkoutChecks(first),
+    ...extraChecks(first),
+  ].map(([type, ok]) => ({ type, status: ok ? "passed" : "failed" }));
+}
+
+function briefChecks(first: World): Check[] {
+  const firstTriage = agentCallsFor(first, "triage")[0];
+  const selfReview = agentCallsFor(first, "self-review")[0];
+  const briefQuestions = first.brief.questions ?? [];
+
+  return [
+    // The tracker parent names the durable brief; every agent half-step reads
+    // it again rather than trusting a record snapshot from the first look.
+    [
+      "brief.parent_is_the_tracker_supplied_shared_id",
+      issueIn(first, TICKET)?.parentId === BRIEF &&
+        first.trackerCalls.some((call) => call.query.includes("parent { id }")) &&
+        Boolean(firstTriage?.prompt.includes("Keep the currency beside the total")),
+    ],
+    [
+      "brief.triage_reads_the_operator_authored_constraint",
+      Boolean(firstTriage?.prompt.includes("Keep the currency beside the total")),
+    ],
+    [
+      "brief.question_is_appended_with_its_work_id",
+      briefQuestions.some((question) => question.workId === TICKET && question.question.includes("currency")),
+    ],
+    [
+      "brief.a_revision_between_ticks_reaches_self_review",
+      first.brief.revision === 2 && Boolean(selfReview?.prompt.includes("Keep BRL beside the total")),
+    ],
+    [
+      "brief.self_review_is_a_declared_agent_step",
+      Boolean(selfReview) && transitions(first).includes("SELF_REVIEW>PR_OPEN"),
+    ],
+    [
+      "brief.show_reads_the_port_without_exposing_its_directory",
+      first.briefShow.code === 0 &&
+        first.briefShow.out.includes(BRIEF) &&
+        !first.briefShow.out.includes(path.join(".amy", "briefs")),
+    ],
+
+  ];
+}
+
+function discoveryChecks(first: World): Check[] {
+  const questionAsked = issueIn(first, TICKET)?.comments.find(
+    (entry) => entry.userId === "u-amy" && entry.body.includes("currency"),
+  );
+
+  return [
+    // Discovery, and the two tickets that look like work and are not.
+    [
+      "lifecycle.only_the_working_status_is_picked_up",
+      first.discover.out.includes(TICKET) &&
+        !first.discover.out.includes(PAST_IMPLEMENTATION) &&
+        !first.discover.out.includes(SOMEBODY_ELSES),
+    ],
+
+    // The question, and that it reached both the ticket and the operator.
+    ["lifecycle.a_blocking_question_is_asked_on_the_ticket", Boolean(questionAsked)],
+    [
+      // The description only the tracker could have supplied, found in the
+      // prompt the agent was actually handed: a body that survived
+      // discovery, the record, and the runtime to reach the step it drives.
+      "lifecycle.triage.reads_a_body_the_tracker_supplied",
+      Boolean(
+        agentCallsFor(first, "triage")[0]?.prompt.includes("Do not round here."),
+      ),
+    ],
+    [
+      // The label only the tracker could have supplied, beside the body it
+      // already carried: what the team says the ticket *is*, surviving the
+      // same trip the description does, into the prompt the agent is handed.
+      "lifecycle.triage.reads_the_label_the_tracker_supplied",
+      Boolean(
+        agentCallsFor(first, "triage")[0]?.prompt.includes("Bug"),
+      ),
+    ],
+    [
+      "lifecycle.the_operator_is_told_where_to_answer",
+      first.inbox.some((file) => file.includes(TICKET)),
+    ],
+    [
+      "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
+      WAITING.every((state) => heldIn(first).includes(state)),
+    ],
+    [
+      "lifecycle.the_answer_on_the_ticket_releases_the_work",
+      transitions(first).includes("CLARIFYING>READY"),
+    ],
+
+  ];
+}
+
+function clarifyingChecks(first: World): Check[] {
+  const reReadCall = agentCallsFor(first, "triage").find((call) => call.prompt.includes("answered:"));
+
+  return [
+    // The answer, and that it reached the agent rather than being re-asked.
+    // The world answers exactly once (see the CLARIFYING guard), so the
+    // question comments amy left can only ever be one — a machine that
+    // re-asked would have left two.
+    [
+      "clarifying.clears_when_the_question_is_answered",
+      Boolean(
+        reReadCall &&
+          transitions(first).includes("CLARIFYING>READY") &&
+          reReadCall.prompt.includes("Ticket Owner answered:") &&
+          reReadCall.prompt.includes("BRL"),
+      ),
+    ],
+    [
+      "clarifying.does_not_ask_the_same_question_twice",
+      issueIn(first, TICKET)?.comments.filter((entry) => entry.userId === "u-amy").length === 1,
+    ],
+    [
+      "clarifying.ignores_its_own_comments",
+      Boolean(
+        reReadCall &&
+          reReadCall.prompt.includes("You asked:") &&
+          !reReadCall.prompt.slice(reReadCall.prompt.indexOf("You asked:")).includes(
+            "answered: You asked:",
+          ),
+      ),
+    ],
+
+  ];
+}
+
+function gateChecks(first: World): Check[] {
+  const gateRuns = first.record.lastGate;
+  const implementCalls = agentCallsFor(first, "implement");
+  const pullsOpened = ghApiCalls(first, "POST", /^\/repos\/[^/]+\/[^/]+\/pulls$/);
+
+  return [
+    // The gate, which is the only thing that lets work out of the door.
+    [
+      "lifecycle.a_red_gate_sends_the_work_back_to_the_agent",
+      transitions(first).includes("CHECKED>IMPLEMENTING") && implementCalls.length === 2,
+    ],
+    [
+      "lifecycle.the_agent_is_told_what_the_gate_said",
+      Boolean(
+        implementCalls[1]?.retry &&
+          implementCalls[1].prompt.includes('grep -q "currency:" invoice.md') &&
+          implementCalls[1].prompt.includes("exited 1"),
+      ),
+    ],
+    [
+      "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green",
+      Boolean(
+        gateRuns?.ok &&
+          pullsOpened.length === 1 &&
+          pullsOpened[0] !== undefined && new Date(pullsOpened[0].at) > new Date(gateRuns.at),
+      ),
+    ],
+
+    // The repository, which is where the claim "implemented" is settled.
+    [
+      "lifecycle.the_branch_the_tracker_named_is_what_gets_pushed",
+      first.branches.includes(BRANCH) && first.commits.length >= 3,
+    ],
+    [
+      "lifecycle.the_pull_request_is_opened_on_that_branch",
+      first.pull?.head === BRANCH &&
+        first.pull?.base === "main" &&
+        first.pull?.title === `${TICKET}: Show the currency on the invoice total`,
+    ],
+
+  ];
+}
+
+function reviewChecks(first: World): Check[] {
+  const threadCalls = agentCallsFor(first, "address-threads");
+  const reviewRequests = ghApiCalls(first, "POST", /\/requested_reviewers$/);
+  const ceilingHold = first.trail.find(
+    (look) => look.after === "REVIEWER_ASSIGNED" && look.before === "REVIEWER_ASSIGNED",
+  );
+
+  return [
+    // Review, and the two currencies it spends.
+    [
+      "lifecycle.the_bot_is_answered_before_a_human_is_asked",
+      Boolean(
+        threadCalls[0]?.prompt.includes("BOT-1") &&
+          reviewRequests[0] &&
+          new Date(threadCalls[0].at) < new Date(reviewRequests[0].at),
+      ),
+    ],
+    [
+      // The write the lifecycle was missing: the machine fixed BOT-1 and
+      // pushed, the forge kept the conversation open, and the machine closed
+      // the thread itself — by id, in one mutation — instead of spending
+      // rounds against a button nobody could press. The next look reads it
+      // resolved, which is how the state leaves on its exit condition.
+      "lifecycle.the_thread_the_machine_answered_is_closed",
+      Boolean(
+        first.pull?.threads.some(
+          (thread) => thread.id === "BOT-1" && thread.isResolved && thread.author === BOT,
+        ) &&
+          ghCallsMatching(first, "graphql", "resolveReviewThread(input: {threadId: $id})", "id=BOT-1")
+            .length === 1 &&
+          !ghCallsMatching(first, "graphql", "id=HUM-1").length,
+      ),
+    ],
+    [
+      "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling",
+      Boolean(ceilingHold?.said.includes("open review(s)")) &&
+        first.inbox.length >= 2 &&
+        first.moves.some((move) => move.state === "REVIEWER_ASSIGNED"),
+    ],
+    [
+      "lifecycle.review_load_is_counted_across_every_repository",
+      first.record.reviewer === "ada" &&
+        ghCallsMatching(first, "pr", "list", REPO).length > 0 &&
+        ghCallsMatching(first, "pr", "list", OTHER_REPO).length > 0,
+    ],
+    [
+      "lifecycle.a_stale_review_does_not_count",
+      // Both looks happened with a review by ada already on the pull request,
+      // and both waited, because it was against the head before the fix.
+      heldIn(first).filter((state) => state === "HUMAN_REVIEW").length === 2,
+    ],
+    [
+      "lifecycle.a_second_review_is_requested_after_changes",
+      reviewRequests.length === 2 && first.record.reviewer === "ada",
+    ],
+
+  ];
+}
+
+function disagreementChecks(first: World): Check[] {
+  const threadCalls = agentCallsFor(first, "address-threads");
+  const followUp = first.tracker.issues.find((issue) => issue.parentId === "uuid-BILL-4021");
+
+  return [
+    // The disagreement, which is the one thing that must never be dropped.
+    [
+      "lifecycle.a_disagreement_goes_to_the_owner_as_a_follow_up",
+      Boolean(followUp) && first.record.escalation?.followUpTicketId === followUp?.identifier,
+    ],
+    [
+      // Folded from the move rather than from the record's state, which is
+      // already ESCALATED by the time the fold sees it — and the answer sends
+      // the work back to the state that raised the escalation, then forgets it.
+      "escalating.remembers_the_state_it_interrupted",
+      first.trail.some((look) => look.before === "HUMAN_FIX" && look.after === "ESCALATED" && look.resumeAt === "HUMAN_FIX") &&
+        first.trail.some((look) => look.before === "ESCALATED" && look.after === "HUMAN_FIX" && look.resumeAt === undefined),
+    ],
+    [
+      "lifecycle.the_owners_answer_reopens_the_judgement",
+      threadCalls.filter((call) => call.prompt.includes("HUM-2")).length === 2 &&
+        first.record.judged.every((verdict) => verdict.verdict === "fixed"),
+    ],
+
+  ];
+}
+
+function handoffChecks(first: World, second: World): Check[] {
+  const budgetRuns = /(\d+) run\(s\)/.exec(first.budget.out)?.[1];
+
+  return [
+    // The handoff, which is the whole point of the machine.
+    [
+      "lifecycle.the_ticket_lands_in_qa_owned_by_qa",
+      statusOf(first, TICKET) === "In QA" && issueIn(first, TICKET)?.assigneeId === "u-grace",
+    ],
+    [
+      "lifecycle.the_ticket_walks_the_lifecycle_in_order",
+      transitions(first).join(",") === EXPECTED.join(","),
+    ],
+    [
+      "lifecycle.one_look_makes_at_most_one_move",
+      first.trail.every((look) => look.said.split("->").length <= 2),
+    ],
+    [
+      "lifecycle.the_machine_settles_instead_of_spinning",
+      first.record.state === "DONE" &&
+        first.trail.at(-1)?.said.includes("nothing due") &&
+        first.queueReady.length === 0,
+    ],
+    [
+      "lifecycle.what_the_agents_spent_is_read_off_the_log",
+      budgetRuns === String(first.agentCalls.length) && first.budget.out.includes("allowed"),
+    ],
+
+    // A run that litters is a run nobody repeats. The world is a scratch
+    // directory, the tracker is a child process, and the 64 MB executable is
+    // built inside the directory the harness deletes.
+    [
+      "lifecycle.the_run_leaves_nothing_behind",
+      !first.leftBehind && !second.leftBehind && !fs.existsSync(path.join(first.root, "home")),
+    ],
+
+    // Reproducible, which is the only way any of the above stays true.
+    [
+      "lifecycle.the_same_run_twice_leaves_the_same_trail",
+      transitions(second).join(",") === transitions(first).join(","),
+    ],
+
+  ];
+}
+
+function worktreeChecks(first: World): Check[] {
+  return [
+    // The worktree is the workplace: two ticket ids, one repository, neither
+    // touching the standing checkout or the other's branch.
+    [
+      "worktree.two_items_in_one_repository_run_concurrently",
+      Boolean(first.secondRecord) &&
+        first.twoTreesBeforePrune &&
+        first.worktreePaths.first !== first.worktreePaths.second,
+    ],
+    [
+      "worktree.the_agent_the_gate_and_git_effects_receive_the_own_path",
+      agentCallsFor(first, "implement").every((call) => call.cwd === first.worktreePaths.first) &&
+        first.worktreeBranches.first === BRANCH,
+    ],
+    [
+      "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree",
+      first.dirtyPrune.code === 0 && first.dirtyStillThere && first.dirtyPrune.out.includes("nothing to prune"),
+    ],
+    [
+      "worktree.a_terminal_clean_tree_is_prunable_after_retention",
+      first.cleanPrune.code === 0 && first.firstPruned &&
+        first.worktreeEvents.some((event) => event.kind === "worktree.removed" && event.detail?.workId === TICKET),
+    ],
+    [
+      "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness",
+      ["terminal", "tickets", REPO, BRANCH, "clean"].every((word) => first.worktreesBeforePrune.out.includes(word)),
+    ],
+    [
+      "worktree.an_orphaned_tree_is_offered_for_recovery",
+      first.orphanedList.code === 0 && first.orphanedList.out.includes(TICKET_TWO) && first.orphanedList.out.includes("orphaned"),
+    ],
+    [
+      "worktree.prune_refuses_an_in_flight_tree",
+      first.dirtyPrune.code === 0 && first.twoTreesBeforePrune,
+    ],
+    [
+      "worktree.preparing_an_item_never_repoints_the_shared_checkout_branch",
+      first.standingBranch === "main" && first.worktreeBranches.first === BRANCH,
+    ],
+
+  ];
+}
+
+function checkoutChecks(first: World): Check[] {
+  return [
+    // A checkout root per repository: a repository that named its own root is
+    // found there, the root still answers for the rest, and a missing
+    // checkout names which root was asked.
+    [
+      "checkout.a_repository_can_name_its_own_root",
+      Boolean(
+        first.thirdRecord?.state === "DONE" &&
+          first.thirdPull?.head === THIRD_BRANCH &&
+          first.thirdTreeExists &&
+          first.thirdTreeSource === first.thirdNamedRoot &&
+          first.thirdTreeBranch === THIRD_BRANCH &&
+          first.thirdGateRanInNamedRoot,
+      ),
+    ],
+    [
+      "checkout.the_root_still_answers_for_the_rest",
+      Boolean(
+        // The first ticket's work ran in the shared-root checkout's tree, cut
+        // from checkouts/widgets; the branch the tracker named is on the
+        // origin the shared root's clone pushes to.
+        first.branches.includes(BRANCH) &&
+          first.commits.length >= 3 &&
+          // And the doctor says so: the widgets checkout is asked of the
+          // workspace root, the gadgets one of its own.
+          first.thirdDoctor.code === 0 &&
+          first.thirdDoctor.out.includes(`asked the workspace root (${first.thirdDoctorWorkspaceSpelling})`) &&
+          first.thirdDoctor.out.includes(`asked its own root (${first.thirdDoctorNamedSpelling})`),
+      ),
+    ],
+    [
+      "checkout.a_missing_checkout_names_which_root_was_asked",
+      // A checkout that is missing names the root it was asked of: the world
+      // leaves no third repository configured, so the doctor's own answer for
+      // the named one is the proof — the label is the same one a missing
+      // checkout would carry, with the root spelled out either way.
+      first.thirdDoctor.code === 0 &&
+        first.thirdDoctor.out.split("\n").some((line) =>
+          line.startsWith("ok   checkout acme/gadgets") &&
+          line.includes(`its own root (${first.thirdDoctorNamedSpelling})`),
+        ),
+    ],
+
+  ];
+}
+
+function extraChecks(first: World): Check[] {
+  return [
+    // Extras: true every day, and reported rather than required.
+    [
+      "lifecycle.init_writes_the_config_and_the_roster",
+      first.initWrote && first.init.out.includes("wrote"),
+    ],
+    [
+      "lifecycle.confirming_the_roster_says_who_is_in",
+      first.confirm.out.includes("ada") &&
+        first.confirm.out.includes("alan") &&
+        first.confirm.out.includes("grace"),
+    ],
+    [
+      "lifecycle.doctor_passes_before_a_ticket_is_touched",
+      first.doctor.code === 0 && first.doctor.out.includes("ready"),
+    ],
+    [
+      "lifecycle.the_roster_is_only_questioned_on_a_workday",
+      isWorkday()
+        ? first.doctorStale.code !== 0 && first.doctorStale.out.includes("roster confirmed for today")
+        : first.doctorStale.code === 0,
+    ],
+    [
+      "lifecycle.a_personal_key_is_sent_raw",
+      first.trackerCalls.every((call) => !call.authorization.startsWith("Bearer ")),
+    ],
+    [
+      "lifecycle.status_says_where_the_work_stands",
+      first.statusAll.out.includes("DONE") && first.statusAll.out.includes(`#${first.pull?.number}`),
+    ],
+    // Finished work leaves the listing. `discover` already refuses to queue a
+    // record in a terminal state, so what is left is a line that never goes
+    // away, and a list that only grows stops being read.
+    [
+      "lifecycle.finished_work_leaves_the_listing",
+      !first.status.out.includes("DONE") && first.status.out.includes("1 finished, not shown"),
+    ],
+  ];
+}
+
+const first = lifecycle();
+// A second world, from scratch, because "it worked once" and "it works" are
+// different claims and only one of them is worth a gate.
+const second = lifecycle();
+
+const assertions = assertionsFor(first, second);
+const failed = assertions.filter((assertion) => assertion.status === "failed");
+
+for (const assertion of failed) process.stderr.write(`FAILED ${assertion.type}\n`);
+
+fs.writeFileSync(
+  reportPath,
+  `${JSON.stringify(
+    {
+      scenario: "ticket-to-qa",
+      status: failed.length === 0 ? "passed" : "failed",
+      goal:
+        "One of my tickets is in progress with a question hanging over it. I want to find it in QA, " +
+        "owned by whoever is on QA today, with a pull request that a person who was not already buried " +
+        "reviewed and approved, the automated reviewer's comments answered, and the one comment I had to " +
+        "settle brought to me instead of guessed at. I want to be told once when it needs me, and I do not " +
+        "want to watch it.",
+      artifact: {
+        package: "@amykit/cli",
+        entry: "the installed executable, driven by `amy discover` and `amy tick`",
+        built_by: "scripts/install.sh",
+      },
+      observed: {
+        assertions_run: assertions.length,
+        assertions_failed: failed.length,
+        version: first.version.out,
+        looks: first.trail.length,
+        transitions: transitions(first),
+        held_in: heldIn(first),
+        what_the_world_did: first.moves.map((move) => move.move),
+        agent_calls: first.agentCalls.map((call) => call.step),
+        gh_calls: first.ghCalls.length,
+        tracker_calls: first.trackerCalls.length,
+        commits_on_the_branch: first.commits,
+        reviewer: first.record.reviewer,
+        follow_up: first.record.escalation?.followUpTicketId,
+        final_status: statusOf(first, TICKET),
+        brief_show: first.briefShow,
+        budget: first.budget.out.split("\n").at(-1),
+        second_run_transitions: transitions(second).length,
+      },
+      assertions,
+    },
+    null,
+    2,
+  )}\n`,
+  "utf-8",
+);
+
+process.stdout.write(
+  `${assertions.length - failed.length}/${assertions.length} assertions passed in ${first.trail.length} looks\n`,
+);
+process.exit(failed.length === 0 ? 0 : 1);

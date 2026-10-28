@@ -1,0 +1,694 @@
+import fs from "node:fs";
+import path from "node:path";
+import type {
+  AgentRun,
+  Announcement,
+  AskContext,
+  Budget,
+  Event,
+  EventLog,
+  Plugin,
+  Queue,
+  Registry,
+  Store,
+  Ticket,
+} from "@amykit/core";
+import type { Channel } from "@amykit/plugin-notify-fanout";
+import type { TickResult } from "@amykit/plugin-serial-engine";
+import type { TicketRecord } from "@amykit/workflow-ticket-to-qa";
+
+const [work = "", repo = "", report = ""] = process.argv.slice(2);
+if (work === "" || repo === "" || report === "") {
+  console.error("usage: probe.ts <work> <repo> <report>");
+  process.exit(2);
+}
+const dist = (...where: string[]) => path.join(repo, ...where, "dist", "index.js");
+
+const { mount, NodeCommandRunner, checkEvent }: typeof import("@amykit/core") = await import(dist("packages", "core"));
+const { plugin: queue }: typeof import("@amykit/plugin-file-queue") = await import(dist("plugins", "file-queue"));
+const { plugin: store }: typeof import("@amykit/plugin-file-store") = await import(dist("plugins", "file-store"));
+const { FileEventLog }: typeof import("@amykit/plugin-file-log") = await import(dist("plugins", "file-log"));
+const { plugin: github }: typeof import("@amykit/plugin-github") = await import(dist("plugins", "github"));
+const { plugin: engine }: typeof import("@amykit/plugin-serial-engine") = await import(
+  dist("plugins", "serial-engine")
+);
+// The workflow arrives as a plugin now: it registers the order its states
+// happen in and contributes how each of its actions runs. The engine holds
+// neither, which is what lets this scenario drive the real one rather than a
+// copy of it.
+const { plugin: workflow }: typeof import("@amykit/workflow-ticket-to-qa") = await import(
+  dist("packages", "workflow-ticket-to-qa")
+);
+const { plugin: fanout, CHANNEL_COLLECTION }: typeof import("@amykit/plugin-notify-fanout") = await import(
+  dist("plugins", "notify-fanout")
+);
+
+interface Assertion {
+  type: string;
+  status: "passed" | "failed";
+}
+
+/** A mounted host, narrowed to the three parts every stage drives. */
+interface Host {
+  queue: Queue;
+  store: Store;
+  engine: { tick(): Promise<TickResult> };
+}
+
+/** What a saved ticket record is read back as. */
+interface SavedTicket {
+  state: string;
+  triage?: { clear?: boolean };
+}
+
+const assertions: Assertion[] = [];
+const record = (type: string, ok: boolean) => assertions.push({ type, status: ok ? "passed" : "failed" });
+
+const state = path.join(work, ".amy");
+const logDir = path.join(state, "log");
+const ghDown = path.join(work, "gh-is-down");
+process.env.AMY_E2E_GH_DOWN = ghDown;
+
+// The probe owns the clock, because the retried item sits behind a five
+// minute backoff and nobody is waiting five minutes to find that out.
+let clock = new Date("2026-09-03T12:00:00.000Z");
+const tick5 = () => (clock = new Date(clock.getTime() + 6 * 60 * 1000));
+
+const ROSTER = {
+  confirmedOn: "2026-09-03",
+  reviewers: [{ tracker: "ada@example.test", host: "ada", available: true }],
+  qa: { tracker: "grace@example.test", host: "grace", available: true },
+};
+
+/** Which repository each ticket works in; the base-branch stage re-points one. */
+const ticketRepos: Record<string, string> = {};
+
+function ticketFor(id: string): Ticket {
+  return {
+    id,
+    title: "The invoice total is wrong",
+    team: "PROJ",
+    url: `https://tracker.test/${id}`,
+    branchName: `ada/${id.toLowerCase()}-invoice-total`,
+    status: "In Progress",
+    labels: [],
+    repo: ticketRepos[id] ?? "acme/widgets",
+  };
+}
+
+/** What the announcements went into, per channel, across the whole run. */
+const delivered: Record<string, string[]> & { recorder: string[] } = { recorder: [] };
+const brokenChannel = path.join(work, "channel-is-broken");
+
+/** The tracker, agent, gate and roster the engine needs but is not about. */
+const comments: { id: string; body: string }[] = [];
+function worldPlugin(): Plugin {
+  return {
+    name: "@amykit/plugin-e2e-world",
+    version: "0.1.0",
+    register(registry: Registry) {
+      registry.port("tracker", {
+        inProgress: async () => [],
+        get: async (id: string) => ticketFor(id),
+        comment: async (id: string, body: string) => void comments.push({ id, body }),
+        hasReplyAfter: async () => false,
+        setStatus: async () => {},
+        assign: async () => {},
+        createFollowUp: async () => "PROJ-9999",
+      });
+      // Never clear, so every ticket's next move is `ask-question`, which is
+      // the cheapest real move that reaches the notifier.
+      // An agent only answers: a triage is the JSON its prompt asks for.
+      registry.port("agent", {
+        ask: async (_prompt: string, _cwd: string, context?: AskContext) => ({
+          text: context?.step === "triage"
+            ? JSON.stringify({ clear: false, questions: ["which total is wrong?"] })
+            : "",
+          run: agentRun(),
+        }),
+      });
+      registry.port("gate", {
+        run: async () => ({ ok: true, output: "", at: clock.toISOString() }),
+      });
+      registry.contribute("workflow-data", "roster", { read: () => ROSTER });
+    },
+  };
+}
+
+function agentRun(): AgentRun {
+  return {
+    outcome: "completed",
+    harness: "fake",
+    model: "fake-1",
+    tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+    costUsd: 0.001,
+    costSource: "reported",
+    durationMs: 10,
+    output: "",
+  };
+}
+
+/** A channel that writes down what it was given, or throws when told to. */
+function channelPlugin(name: string, { throws = false }: { throws?: boolean } = {}): Plugin {
+  return {
+    name: `@amykit/plugin-e2e-${name}`,
+    version: "0.1.0",
+    register(registry: Registry) {
+      const channel: Channel = {
+        name,
+        deliver: async (announcement: Announcement) => {
+          if (throws && fs.existsSync(brokenChannel)) {
+            throw new Error(`${name} cannot reach anybody`);
+          }
+          (delivered[name] ??= []).push(announcement.text);
+        },
+      };
+      registry.contribute(CHANNEL_COLLECTION, name, channel);
+    },
+  };
+}
+
+/** A budget that always refuses, for the one assertion about a park. */
+function refusingBudgetPlugin(): Plugin {
+  const budget: Budget = {
+    mayStart: () => ({
+          ok: false,
+          window: "perFiveHours",
+          measure: "costUsd",
+          used: 19,
+          limit: 20,
+          stopAt: 0.9,
+          retryAfterMs: 60_000,
+          reason: "the perFiveHours budget is nearly spent",
+        }),
+  };
+  return {
+    name: "@amykit/plugin-e2e-budget",
+    version: "0.1.0",
+    register(registry: Registry) {
+      registry.port("budget", budget);
+    },
+  };
+}
+
+/**
+ * A whole host over the same directories, mounted fresh.
+ *
+ * Fresh every time on purpose: `amy tick` is a new process each run, so
+ * anything that only works because one object stayed in memory is not a
+ * property this scenario should be able to observe.
+ */
+interface HostOptions {
+  channels?: Plugin[];
+  extra?: Plugin[];
+  log?: EventLog;
+  overrides?: Record<string, Record<string, unknown>>;
+}
+
+async function host({ channels = [channelPlugin("recorder")], extra = [], log, overrides = {} }: HostOptions = {}): Promise<Host> {
+  const outcome = await mount(
+    [queue, store, github, fanout, ...channels, worldPlugin(), workflow, ...extra, engine],
+    {
+      "@amykit/plugin-serial-engine": { maxItemAttempts: 5 },
+      "@amykit/workflow-ticket-to-qa": {
+        repos: ["acme/widgets"],
+        qaStatusName: "In QA",
+        ...overrides["@amykit/workflow-ticket-to-qa"],
+      },
+    },
+    {
+      runner: new NodeCommandRunner(),
+      now: () => clock,
+      log: log ?? new FileEventLog(logDir, () => clock, "e2e"),
+      paths: { workspace: path.join(work, "checkouts"), checkouts: {}, state },
+    },
+  );
+
+  if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+  const { queue: mountedQueue, store: mountedStore, engine: mountedEngine } = outcome.mounted;
+  if (!mountedQueue || !mountedStore || !mountedEngine) {
+    throw new Error("the mount is missing its queue, its store or its engine");
+  }
+  const tick = async () => {
+    const result = await mountedEngine.tick();
+    if (!isTickResult(result)) throw new Error(`the engine ticked into ${JSON.stringify(result)}`);
+    return result;
+  };
+  return { queue: mountedQueue, store: mountedStore, engine: { tick } };
+}
+
+/** The core's engine answers `unknown`; the serial engine's answer has a kind. */
+function isTickResult(value: unknown): value is TickResult {
+  return typeof value === "object" && value !== null && "kind" in value && typeof value.kind === "string";
+}
+
+/**
+ * Takes everything currently on the queue out of the way.
+ *
+ * One tick advances one item, and the stages below are each about a different
+ * ticket. Without this, a stage would keep claiming the leftovers of the one
+ * before it and prove nothing about its own.
+ */
+function drain(mounted: Host) {
+  const wellPast = new Date(clock.getTime() + 24 * 60 * 60 * 1000);
+  for (;;) {
+    const item = mounted.queue.claim(wellPast);
+    if (!item) break;
+    mounted.queue.complete(item);
+  }
+}
+
+const sentSoFar = () => delivered.recorder.length;
+const linesIn = (dir: string): Event[] =>
+  fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith(".jsonl"))
+    .flatMap((name) => fs.readFileSync(path.join(dir, name), "utf-8").split("\n"))
+    .filter((line) => line.trim() !== "")
+    .map((line) => JSON.parse(line) as Event);
+
+/** One string field of an event's detail, or nothing when it is absent. */
+const detailOf = (event: Event, key: string): string => {
+  const value = event.detail?.[key];
+  return typeof value === "string" ? value : "";
+};
+
+const kindsOf = (kind: string) => linesIn(logDir).filter((event) => event.kind === kind);
+
+// 1. The code host goes down under a claimed ticket. One warning, naming the
+// ticket and the failure, and the ticket stays on the queue.
+{
+  fs.writeFileSync(ghDown, "");
+  const mounted = await host();
+  mounted.queue.enqueue({ workId: "PROJ-1239", reason: "found in the working status" }, clock);
+
+  const result = await mounted.engine.tick();
+  const said = delivered.recorder;
+
+  record(
+    "engine.warns_once_on_the_first_failure",
+    result.kind === "failed" &&
+      said.length === 1 &&
+      said[0]?.includes("PROJ-1239") === true &&
+      said[0].includes("is failing in DISCOVERED") &&
+      said[0].includes("api.github.com"),
+  );
+  record("engine.writes_down_that_the_work_degraded", kindsOf("work.degraded").length === 1);
+}
+
+// 2. Still down, two ticks later. Nothing new is said, and the attempt count
+// is what carried that silence across two fresh mounts.
+{
+  const before = sentSoFar();
+
+  for (const _ of [1, 2]) {
+    tick5();
+    const mounted = await host();
+    await mounted.engine.tick();
+  }
+
+  const mounted = await host();
+  record(
+    "engine.stays_quiet_on_the_middle_attempts",
+    sentSoFar() === before && mounted.queue.pending()[0]?.attempt === 3,
+  );
+}
+
+// 3. The code host comes back. One warning that it is moving again, and the
+// ticket picks up the move it was going to make from where it stood.
+{
+  fs.rmSync(ghDown);
+  tick5();
+
+  const mounted = await host();
+  const result = await mounted.engine.tick();
+  const said = delivered.recorder;
+
+  record(
+    "engine.warns_once_when_it_recovers",
+    said.length === 2 &&
+      said[1]?.includes("PROJ-1239 is moving again in DISCOVERED") === true &&
+      said[1].includes("after 3"),
+  );
+  record("engine.writes_down_that_the_work_recovered", kindsOf("work.recovered").length === 1);
+
+  const saved = JSON.parse(
+    fs.readFileSync(path.join(state, "tickets", "PROJ-1239.json"), "utf-8"),
+  ) as SavedTicket;
+  record(
+    "engine.carries_on_from_where_it_was",
+    result.kind === "worked" &&
+      result.from === "DISCOVERED" &&
+      saved.state === "DISCOVERED" &&
+      saved.triage?.clear === false &&
+      mounted.queue.pending()[0]?.attempt === 0,
+  );
+}
+
+// 4. A channel throws. The tick still finishes, the record still moves, and
+// the log says what could not be delivered.
+{
+  fs.writeFileSync(brokenChannel, "");
+  tick5();
+
+  const mounted = await host({
+    channels: [channelPlugin("recorder"), channelPlugin("broken", { throws: true })],
+  });
+  const result = await mounted.engine.tick();
+
+  const saved = JSON.parse(
+    fs.readFileSync(path.join(state, "tickets", "PROJ-1239.json"), "utf-8"),
+  ) as SavedTicket;
+
+  record(
+    "engine.finishes_the_tick_when_a_channel_throws",
+    result.kind === "worked" && result.to === "CLARIFYING" && saved.state === "CLARIFYING",
+  );
+
+  const failed = kindsOf("notify.failed");
+  record(
+    "engine.records_the_notification_it_could_not_send",
+    failed.length === 1 &&
+      failed[0]?.workId === "PROJ-1239" &&
+      detailOf(failed[0], "error").includes("broken cannot reach anybody") &&
+      detailOf(failed[0], "text").includes("needs an answer"),
+  );
+  // The working channel still got it, which is the other half of the promise.
+  record(
+    "engine.one_broken_channel_does_not_stop_the_others",
+    delivered.recorder.at(-1)?.includes("PROJ-1239 needs an answer") === true,
+  );
+}
+
+// 5. Every channel throws, so the fan-out itself gives up. That is still not
+// a reason for a ticket to stop moving.
+{
+  tick5();
+  const first = await host({ channels: [channelPlugin("broken", { throws: true })] });
+  drain(first);
+  first.queue.enqueue({ workId: "PROJ-1240", reason: "found in the working status" }, clock);
+  await first.engine.tick();
+
+  tick5();
+  const mounted = await host({ channels: [channelPlugin("broken", { throws: true })] });
+  const result = await mounted.engine.tick();
+
+  const saved = JSON.parse(
+    fs.readFileSync(path.join(state, "tickets", "PROJ-1240.json"), "utf-8"),
+  ) as SavedTicket;
+
+  record(
+    "engine.finishes_the_tick_when_every_channel_throws",
+    result.kind === "worked" && result.to === "CLARIFYING" && saved.state === "CLARIFYING",
+  );
+  record(
+    "engine.records_the_notification_when_nothing_could_send_it",
+    kindsOf("notify.failed").some(
+      (event) => event.workId === "PROJ-1240" && detailOf(event, "error").includes("every notification"),
+    ),
+  );
+  fs.rmSync(brokenChannel);
+}
+
+// 6. A ceiling reached while the only channel is down. The item is already
+// off the queue by then, so this is the case where an announcement that threw
+// used to lose the ticket with nothing saying why.
+{
+  tick5();
+  fs.writeFileSync(ghDown, "");
+  fs.writeFileSync(brokenChannel, "");
+
+  const mounted = await host({ channels: [channelPlugin("broken", { throws: true })] });
+  drain(mounted);
+  mounted.queue.enqueue(
+    { workId: "PROJ-1241", reason: "retrying after an error", attempt: 4 },
+    clock,
+  );
+  const result = await mounted.engine.tick();
+
+  // Counted by announcement rather than by line. With one channel that
+  // throws there are two lines about the same undelivered text — the channel
+  // that could not deliver it, and the whole attempt that could not — and
+  // that is two failures recorded at two layers, not two announcements.
+  const said = kindsOf("notify.failed").filter((event) => event.workId === "PROJ-1241");
+  const texts = new Set(said.map((event) => detailOf(event, "text")));
+
+  record(
+    "engine.announces_once_at_the_ceiling",
+    result.kind === "failed" &&
+      texts.size === 1 &&
+      [...texts][0]?.includes("is off the queue") === true &&
+      mounted.queue.pending().every((item) => item.workId !== "PROJ-1241"),
+  );
+
+  fs.rmSync(ghDown);
+  fs.rmSync(brokenChannel);
+}
+
+// 7. A park against a spent budget. The retry budget the failures already
+// used must not come back, or the next tick reads attempt zero and announces
+// a recovery that never happened.
+{
+  tick5();
+  const mounted = await host({ extra: [refusingBudgetPlugin()] });
+  drain(mounted);
+  mounted.queue.enqueue({ workId: "PROJ-1242", reason: "retrying", attempt: 2 }, clock);
+
+  const before = sentSoFar();
+  const result = await mounted.engine.tick();
+  const parked = mounted.queue.pending().find((item) => item.workId === "PROJ-1242");
+
+  record(
+    "engine.keeps_the_attempt_count_across_a_park",
+    result.kind === "parked" && parked?.attempt === 2 && sentSoFar() === before,
+  );
+}
+
+// 8. A log that cannot be written. Not a permission trick — a directory whose
+// parent is a plain file, so `appendFileSync` gets ENOTDIR for anybody,
+// including root.
+{
+  tick5();
+  const broken = path.join(work, "nowhere");
+  const brokenLog = new FileEventLog(path.join(broken, "log"), () => clock, "e2e");
+  fs.rmSync(broken, { recursive: true, force: true });
+  fs.writeFileSync(broken, "not a directory\n");
+
+  const complaints: string[] = [];
+  const stderr = console.error;
+  console.error = (message: unknown) => complaints.push(String(message));
+
+  let result: TickResult | undefined;
+  try {
+    const mounted = await host({ log: brokenLog });
+    drain(mounted);
+    mounted.queue.enqueue({ workId: "PROJ-1243", reason: "found in the working status" }, clock);
+    result = await mounted.engine.tick();
+  } finally {
+    console.error = stderr;
+  }
+
+  record("engine.finishes_the_tick_when_the_log_cannot_be_written", result?.kind === "worked");
+  record(
+    "engine.says_the_log_is_broken_once",
+    complaints.filter((line) => line.includes("cannot write its event log")).length === 1,
+  );
+}
+
+// 9. Every line this run actually wrote, against the declared contract. The
+// unit tests check the engine's own lines; this checks what reached the disk.
+{
+  const written = linesIn(logDir);
+  const problems = written.flatMap((event) => checkEvent(event));
+
+  record(
+    "engine.every_line_matches_the_contract",
+    written.length > 0 && problems.length === 0,
+  );
+  if (problems.length > 0) for (const problem of problems) console.error(problem);
+}
+
+// 10. A base branch per repository. Two real bare origins, one kept on the fallback and one
+// whose base is its own, and the real workflow runtime driven by the real engine: a ticket one
+// look past `PR_OPEN` reaches the real `plugin-github` adapter, and what it sent the stand-in
+// `gh` is what the argv log records. This is the claim no unit test makes — the mapping rides
+// the mount, resolves at the caller, and reaches the forge intact, for the mapped repository
+// and for the one that kept the fallback alike.
+{
+  // Two bare repositories, seeded the way the note-to-plan world seeds them:
+  // one commit on main, and a second branch the fallback does not name.
+  const origins = path.join(work, "origins");
+  fs.mkdirSync(origins, { recursive: true });
+  const realRunner = new NodeCommandRunner();
+  const git = async (cwd: string, ...args: string[]) => {
+    const result = await realRunner.run("git", args, { cwd });
+    if (!result.ok) throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
+    return result.stdout;
+  };
+
+  const seedOne = async (name: string, extraBranch: string | null) => {
+    const bare = path.join(origins, `${name}.git`);
+    fs.rmSync(bare, { recursive: true, force: true });
+    await git(work, "init", "--bare", "--initial-branch=main", bare);
+    const seed = path.join(work, `seed-${name}`);
+    fs.rmSync(seed, { recursive: true, force: true });
+    await git(work, "clone", "-q", bare, seed);
+    await git(seed, "config", "user.email", "amy@example.test");
+    await git(seed, "config", "user.name", "amy");
+    await git(seed, "config", "commit.gpgsign", "false");
+    fs.writeFileSync(path.join(seed, "README.md"), `# ${name}\n`, "utf-8");
+    await git(seed, "add", "-A");
+    await git(seed, "commit", "-q", "-m", "the first commit");
+    await git(seed, "push", "-q", "origin", "main");
+    if (extraBranch) {
+      await git(seed, "checkout", "-q", "-b", extraBranch);
+      fs.writeFileSync(path.join(seed, `${extraBranch}.txt`), `${extraBranch}\n`, "utf-8");
+      await git(seed, "add", "-A");
+      await git(seed, "commit", "-q", "-m", `on ${extraBranch}`);
+      await git(seed, "push", "-q", "origin", extraBranch);
+    }
+    fs.rmSync(seed, { recursive: true, force: true });
+  };
+  await seedOne("widgets", null);
+  await seedOne("gadgets", "trunk");
+
+  // The outage stand-in is swapped for a working forge: it answers the one
+  // GraphQL read the observation makes, opens a pull request, and answers a
+  // default-branch read. Every argv is logged, because the assertions read
+  // what the forge was asked, not what the machine reported asking. The forge
+  // itself is `gh.ts` beside this probe; `bin/gh` is only the door to it.
+  const codeHostState = path.join(work, "world", "code-host.json");
+  fs.mkdirSync(path.dirname(codeHostState), { recursive: true });
+  fs.writeFileSync(
+    codeHostState,
+    `${JSON.stringify({ nextNumber: 51, repos: {} }, null, 2)}\n`,
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(work, "bin", "gh"),
+    [
+      "#!/bin/sh",
+      `exec ${JSON.stringify(path.join(repo, "node_modules", ".bin", "tsx"))} ${JSON.stringify(path.join(import.meta.dirname, "gh.ts"))} ${JSON.stringify(codeHostState)} "$@"`,
+    ].join("\n"),
+    "utf-8",
+  );
+  fs.chmodSync(path.join(work, "bin", "gh"), 0o755);
+
+  const MAPPED = "acme/gadgets";
+  const UNMAPPED = "acme/widgets";
+  ticketRepos["PROJ-3001"] = MAPPED;
+
+  // A parked item from an earlier stage is past its backoff by now, so it is
+  // taken out of the way before this stage's tickets are enqueued: one tick
+  // advances one item, and these two are what this stage is about.
+  const baseMounted = await host({ overrides: {} });
+  drain(baseMounted);
+
+  const mounted = await host({
+    overrides: {
+      "@amykit/workflow-ticket-to-qa": {
+        repos: [UNMAPPED, MAPPED],
+        qaStatusName: "In QA",
+        defaultBranch: "main",
+        baseBranch: { [MAPPED]: "trunk" },
+      },
+    },
+  });
+
+  // One record per repository, parked at the state whose exit is the open:
+  // one look, one move, and the forge is what says which base was asked for.
+  const openOne = (workId: string) => {
+    const parked: TicketRecord = {
+      id: workId,
+      state: "PR_OPEN",
+      updatedAt: clock.toISOString(),
+      attempts: {},
+      history: [],
+      judged: [],
+    };
+    mounted.store.save(parked);
+    mounted.queue.enqueue({ workId, reason: "the gate is green" }, clock);
+  };
+  openOne("PROJ-3001"); // the repository that named its own base
+  openOne("PROJ-3002"); // the repository that kept the fallback
+
+  const first = await mounted.engine.tick();
+  const second = await mounted.engine.tick();
+
+  const opened = fs
+    .readFileSync(path.join(path.dirname(codeHostState), "gh.argv.log"), "utf-8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as string[])
+    .filter((argv) => argv.some((argument) => argument.includes("/pulls")) && argv.includes("POST"));
+  const fieldOf = (argv: string[], name: string) => {
+    const pair = argv.find((argument) => argument.startsWith(`${name}=`));
+    return pair ? pair.slice(name.length + 1) : null;
+  };
+
+  record(
+    "base.a_repository_can_name_its_own_branch",
+    Boolean(
+      first.kind === "worked" &&
+        second.kind === "worked" &&
+        opened.length === 2 &&
+        opened.some(
+          (argv) =>
+            fieldOf(argv, "head")?.startsWith("ada/proj-3001") &&
+            fieldOf(argv, "base") === "trunk",
+        ),
+    ),
+  );
+  record(
+    "base.the_fallback_still_answers_for_the_rest",
+    Boolean(
+      opened.some(
+        (argv) =>
+          fieldOf(argv, "head")?.startsWith("ada/proj-3002") &&
+          fieldOf(argv, "base") === "main",
+      ),
+    ),
+  );
+}
+
+const failed = assertions.filter((a) => a.status !== "passed");
+
+fs.writeFileSync(
+  report,
+  `${JSON.stringify(
+    {
+      scenario: "plugin-serial-engine",
+      status: failed.length === 0 ? "passed" : "failed",
+      goal:
+        "This thing runs unattended, so the day GitHub goes down I want one warning on the way down, silence while it is down, one warning when it comes back, and the ticket still standing where it was. And I want to know that a notification channel I misconfigured, or a log directory I cannot write to, never costs a ticket a move.",
+      artifact: {
+        package: "@amykit/plugin-serial-engine",
+        entry: "dist/index.js",
+        mounted_with: [
+          "@amykit/plugin-notify-fanout",
+          "@amykit/plugin-file-queue",
+          "@amykit/plugin-file-store",
+          "@amykit/plugin-file-log",
+          "@amykit/plugin-github",
+          "@amykit/core",
+        ],
+      },
+      observed: {
+        assertions_run: assertions.length,
+        assertions_failed: failed.length,
+        log_lines_written: linesIn(logDir).length,
+        node: process.version,
+      },
+      assertions,
+    },
+    null,
+    2,
+  )}\n`,
+  "utf-8",
+);
+
+console.log(`${assertions.length - failed.length}/${assertions.length} assertions passed`);
+if (failed.length > 0) {
+  for (const a of failed) console.error(`FAILED ${a.type}`);
+  process.exit(1);
+}

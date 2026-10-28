@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   Agent,
   AttemptOutcome,
   Comment,
   Conversation,
+  Event,
+  EventLog,
   FollowUpRequest,
   Gate,
   Ticket,
@@ -14,6 +16,7 @@ import {
   Workplace,
   trackerCapabilitiesFor,
   trackerWriteFor,
+  watchEvents,
 } from "../src/index.js";
 
 /**
@@ -97,5 +100,94 @@ describe("the ports belong to the core", () => {
     expect(trackerWriteFor("implement")).toBeUndefined();
     expect(trackerWriteFor("announce")).toBeUndefined();
     expect(trackerWriteFor("nobody-defined-this")).toBeUndefined();
+  });
+});
+
+describe("a log nobody can watch is still watched", () => {
+  /** A sink with `read` and no `watch`, as a log is allowed to be. */
+  const sink = (): EventLog & { lines: Event[] } => {
+    const lines: Event[] = [];
+    return {
+      lines,
+      append: (event) => void lines.push(event),
+      read: (since) =>
+        lines
+          .filter((e) => new Date(e.at).getTime() >= (since?.getTime() ?? 0))
+          .sort((a, b) => a.at.localeCompare(b.at)),
+    };
+  };
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("sees every event by polling, each once, including two at the same instant", () => {
+    vi.useFakeTimers();
+    const log = sink();
+    const seen: Event[] = [];
+    log.append({ at: "2026-09-03T12:00:00.000Z", kind: "run.claimed", workId: "W-0" });
+
+    const stop = watchEvents(log, new Date("2026-09-03T00:00:00.000Z"), (e) => seen.push(e), { everyMs: 100 });
+    log.append({ at: "2026-09-03T12:00:01.000Z", kind: "work.advanced", workId: "W-1" });
+    log.append({ at: "2026-09-03T12:00:01.000Z", kind: "work.advanced", workId: "W-2" });
+    vi.advanceTimersByTime(100);
+    log.append({ at: "2026-09-03T12:00:01.000Z", kind: "work.advanced", workId: "W-3" });
+    log.append({ at: "2026-09-04T00:00:00.000Z", kind: "work.waiting", workId: "W-4" });
+    vi.advanceTimersByTime(300);
+    stop();
+
+    expect(seen.map((e) => e.workId)).toEqual(["W-0", "W-1", "W-2", "W-3", "W-4"]);
+  });
+
+  it("says once that it is polling, and stops when told to", () => {
+    vi.useFakeTimers();
+    const log = sink();
+    const seen: Event[] = [];
+    const said: number[] = [];
+
+    const stop = watchEvents(log, new Date(0), (e) => seen.push(e), { onPolling: (ms) => said.push(ms) });
+    vi.advanceTimersByTime(5_000);
+    stop();
+    log.append({ at: "2026-09-03T12:00:00.000Z", kind: "run.claimed" });
+    vi.advanceTimersByTime(5_000);
+
+    expect(said).toEqual([1_000]);
+    expect(seen).toEqual([]);
+  });
+
+  it("delivers nothing more of a batch once a callback stops the watch", () => {
+    vi.useFakeTimers();
+    const log = sink();
+    const seen: Event[] = [];
+
+    const stop = watchEvents(log, new Date(0), (e) => {
+      seen.push(e);
+      stop();
+    });
+    log.append({ at: "2026-09-03T12:00:00.000Z", kind: "run.claimed", workId: "W-1" });
+    log.append({ at: "2026-09-03T12:00:01.000Z", kind: "run.claimed", workId: "W-2" });
+    vi.advanceTimersByTime(5_000);
+
+    expect(seen.map((e) => e.workId)).toEqual(["W-1"]);
+  });
+
+  it("uses the log's own watch when it has one, and never polls it", () => {
+    const watched: Date[] = [];
+    const log: EventLog = {
+      append: () => undefined,
+      read: () => {
+        throw new Error("a watchable log is never polled");
+      },
+      watch: (since) => {
+        watched.push(since);
+        return () => undefined;
+      },
+    };
+    const said: number[] = [];
+
+    watchEvents(log, new Date(0), () => undefined, { onPolling: (ms) => said.push(ms) })();
+
+    expect(watched).toEqual([new Date(0)]);
+    expect(said).toEqual([]);
   });
 });

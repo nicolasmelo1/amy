@@ -15,7 +15,7 @@ CONTRIBUTING.md
 LICENSE
 README.md
 docs
-eslint.config.js
+eslint.config.ts
 package-lock.json
 package.json
 plans

@@ -190,7 +190,7 @@ as everything else amy does.
 
 That is deliberate dogfooding: it is a consumer of the plugin model that is not
 the engine, and if the model only works for the thing it was written for, it
-does not work. See [`scripts/docs/draft.mjs`](https://github.com/nicolasmelo1/amy/blob/main/scripts/docs/draft.mjs).
+does not work. See [`scripts/docs/draft.ts`](https://github.com/nicolasmelo1/amy/blob/main/scripts/docs/draft.ts).
 
 **It never runs in the gate**, and nothing it writes is trusted without review.
 A generated table is a fact; generated prose is a draft.
@@ -198,7 +198,7 @@ A generated table is a fact; generated prose is a draft.
 ## Adding a generated block
 
 1. Write the extractor under `scripts/docs/sources/`, returning plain data.
-2. Add the renderer to `scripts/docs/blocks.mjs`, keyed by the block's name.
+2. Add the renderer to `scripts/docs/blocks.ts`, keyed by the block's name.
 3. Put the markers on the page that should show it.
 4. `npm run docs:generate`.
 

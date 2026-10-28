@@ -38,10 +38,10 @@ if [ -z "${AMY_TARBALLS:-}" ] || [ -z "$(ls -A "$tarballs" 2>/dev/null)" ]; then
   (cd "$repo" && npm pack --workspaces --loglevel=error --pack-destination "$tarballs" >/dev/null)
 fi
 
-# Knip cannot see a call from a shell script, so `write-install-manifest.mjs`
+# Knip cannot see a call from a shell script, so `write-install-manifest.ts`
 # is ignored there rather than being unreferenced here.
 # shellcheck disable=SC2086 # AMY_PACKAGES is a list on purpose.
-node "$repo/scripts/write-install-manifest.mjs" "$tarballs" "$lib" ${AMY_PACKAGES:-} >/dev/null
+"$repo/node_modules/.bin/tsx" "$repo/scripts/write-install-manifest.ts" "$tarballs" "$lib" ${AMY_PACKAGES:-} >/dev/null
 
 rm -rf "$lib/node_modules" "$lib/package-lock.json"
 # Run from inside the install rather than with `--prefix`: npm reads the

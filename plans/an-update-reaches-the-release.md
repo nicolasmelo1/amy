@@ -73,8 +73,8 @@ operator has pinned the CLI's intent below it, `--check` says so by name
 instead of `nothing to move`.
 
 **The scenario gets a real registry.** The stand-in `npm` goes away. In its
-place, the scenario starts a static registry on a loopback port: one Node
-script that serves a packument and tarballs per package, built from tarballs
+place, the scenario starts a static registry on a loopback port: one TypeScript
+script, run by tsx, that serves a packument and tarballs per package, built from tarballs
 the scenario packed itself, with integrity computed from them. Real npm talks
 to it through `--registry`, so npm's own semver resolves every range and npm's
 own `-g` writes the global layout. It still needs no network and no
@@ -146,8 +146,8 @@ of them expires the proof:
 ```yaml
       - ".changeset/config.json"            # the fixed group lockstep rests on
       - "scripts/install.sh"
-      - "scripts/write-install-manifest.mjs"
-      - ".software-factory/evidence/amy-update-registry.mjs"
+      - "scripts/write-install-manifest.ts"
+      - ".software-factory/evidence/amy-update/registry.ts"
 ```
 
 **It must fail before it passes.** The pull request runs the new scenario

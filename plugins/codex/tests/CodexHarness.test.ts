@@ -174,3 +174,14 @@ describe("which outcome it was", () => {
     expect(reply.run.outcome).not.toBe("rate-limited");
   });
 });
+
+describe("a step that must change nothing", () => {
+  it("runs in codex's read-only sandbox instead of the writable one", async () => {
+    const { runner, harness } = harnessFor(REAL_STREAM);
+
+    await harness.ask("why did it fail?", "/w", { readOnly: true });
+
+    const args = runner.argvFor("codex");
+    expect(args.slice(0, 4)).toEqual(["exec", "--json", "--sandbox", "read-only"]);
+  });
+});

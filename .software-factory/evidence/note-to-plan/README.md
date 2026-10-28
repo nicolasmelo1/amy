@@ -43,9 +43,9 @@ workflow would pick that up like any other.
 
 | | |
 | --- | --- |
-| `world.mjs` | the world: two repositories with plans in them, the code host, the config |
-| `bin/gh`, `bin/claude`, `bin/sf` | the three stand-in executables, copied onto the `PATH` of the run |
-| `drive.mjs` | the run: the commands, the assertions, the report |
+| `world.ts` | the world: two repositories with plans in them, the code host, the config |
+| `bin/gh`, `bin/claude`, `bin/sf` | the three stand-in executables, each a `sh` wrapper that runs the `.ts` beside it through tsx, copied onto the `PATH` of the run |
+| `drive.ts` | the run: the commands, the assertions, the report |
 
 ## Walking around inside a kept world
 
@@ -69,12 +69,12 @@ git --git-dir <kept>/origins/amy.git log --oneline --all
 
 ## Changing what the world does
 
-Everything the run depends on is data in `world.mjs`: the repositories, which
+Everything the run depends on is data in `world.ts`: the repositories, which
 of them the code host refuses, and the config — including the ceiling, which
 is one here so that a second note arriving while the first is still in flight
 meets it rather than sailing past.
 
-Adding an assertion means adding it in `drive.mjs`, and adding a *required*
+Adding an assertion means adding it in `drive.ts`, and adding a *required*
 one means naming it in `gates.note-to-plan.required_assertions` in
 `.software-factory/policy.yaml` and citing it from a criterion in
 `docs/design/friction-becomes-a-plan.md`. Then re-run and `sf seal note-to-plan`.

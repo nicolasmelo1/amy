@@ -31,7 +31,10 @@ held to a gate that is proven to work.
 
 | Rule | What it holds |
 | :-- | :-- |
+| `L0.A_RENDERER_NAMES_NO_COLOUR` | A renderer spells no colour outside its theme-token file (docs/design/the-frame-is-closed.md) |
+| `L0.A_RENDERER_ONLY_TRANSLATES` | A renderer imports the primitives and the frame, and nothing else of amy (docs/design/the-frame-is-closed.md) |
 | `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` | A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md) |
+| `L0.A_VIEW_DRAWS_NOTHING` | A view draws nothing; only a renderer plugin names a renderer (docs/design/a-view-is-data.md) |
 | `L0.AGENT_ACTIONS_DISPATCH_TO_ASK` | Every catalogue action on the agent port dispatches to ask (docs/design/an-agent-only-answers.md) |
 | `L0.AN_AGENT_NEVER_TOUCHES_GIT` | An agent never prepares a branch, commits or pushes (docs/design/an-agent-only-answers.md) |
 | `L0.CORE_STAYS_IGNORANT` | The core imports no workflow and no plugin |
@@ -44,6 +47,7 @@ held to a gate that is proven to work.
 | `L0.THE_CORE_WORDS_NOTHING` | The core writes no title for anybody (docs/design/an-agent-only-answers.md) |
 | `L1.COMMENT_STAYS_SUCCINCT` | A comment block stays under the line ceiling |
 | `L1.COMPLEXITY_CEILING` | No function exceeds the cyclomatic ceiling |
+| `L1.EVERY_RENDERER_HOLDS_THE_FRAME` | Every renderer in the workspace passes the frame's conformance script (docs/design/the-frame-is-closed.md) |
 | `L1.NO_BLANKET_SUPPRESSION` | Every suppression names a code and a reason |
 | `L1.NO_UNTYPED_ESCAPE_HATCH` | The untyped escape hatch is banned, and the message names the alternative |
 | `L1.SKIPPED_TESTS_STATE_A_REASON` | A skipped or expected-to-fail test says why |
@@ -141,26 +145,30 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | Gate | What expires it | Assertions |
 | :-- | :-- | :-- |
 | `a-private-workflow-composes` | `packages/core/src/git.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/ports/CodeHost.ts`<br>`packages/core/src/ports/Conversation.ts`<br>`packages/core/src/ports/Notifier.ts`<br>`packages/core/src/ports/Queue.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`packages/core/src/operator.ts`<br>`packages/core/src/runtime.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`plugins/linear/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**`<br>`plugins/file-queue/src/**` | 53 |
+| `a-question-is-not-an-answer` | `packages/core/src/ports/Conversation.ts`<br>`packages/core/src/actions.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`plugins/slack/src/**`<br>`plugins/serial-engine/src/**` | 8 |
 | `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md`<br>`packages/cli/guardrails/**` | 10 |
 | `amy-add-remove` | `packages/cli/src/index.ts`<br>`packages/cli/src/spec.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/remove.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/config.ts` | 5 |
 | `amy-update` | `packages/cli/src/update.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/skills-record.ts`<br>`packages/cli/src/harnesses.ts`<br>`packages/cli/src/auto-update.ts`<br>`packages/cli/src/daemon.ts`<br>`packages/cli/src/config.ts` | 30 |
 | `bare-install` | `packages/cli/package.json`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/src/doctor.ts` | 12 |
 | `feature-grooming` | `packages/workflow-feature-grooming/src/**`<br>`packages/core/src/ports/BaseSource.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`plugins/linear/src/**`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/profiles.ts` | 7 |
 | `installed-binary` | `packages/cli/src/stamp.ts`<br>`packages/cli/src/home.ts`<br>`packages/core/src/build.ts`<br>`scripts/**` | 7 |
-| `installed-plugins` | `packages/cli/src/loader.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/slices.ts`<br>`scripts/install.sh`<br>`scripts/write-install-manifest.mjs`<br>`packages/core/src/mount.ts`<br>`packages/core/src/dispatch.ts`<br>`plugins/serial-engine/src/Worker.ts` | 17 |
+| `installed-plugins` | `packages/cli/src/loader.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/slices.ts`<br>`scripts/install.sh`<br>`scripts/write-install-manifest.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/dispatch.ts`<br>`plugins/serial-engine/src/Worker.ts` | 17 |
 | `note-to-plan` | `packages/workflow-note-to-plan/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-notes/src/**`<br>`plugins/plan-check/src/**`<br>`plugins/agent-relay/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**` | 19 |
 | `plugin-agent-relay` | `plugins/agent-relay/src/**`<br>`packages/agent-kit/src/**` | 27 |
 | `plugin-file-queue` | `plugins/file-queue/src/**` | 9 |
 | `plugin-github` | `plugins/github/src/**`<br>`packages/workflow-*/src/**` | 4 |
 | `plugin-serial-engine` | `plugins/serial-engine/src/**`<br>`plugins/notify-fanout/src/**` | 13 |
 | `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 14 |
+| `the-event-log-can-be-watched` | `packages/core/src/ports/EventLog.ts`<br>`plugins/file-log/src/**` | 6 |
 | `ticket-to-qa` | `packages/workflow-ticket-to-qa/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-brief-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**` | 49 |
+| `ui-frame` | `packages/ui/**`<br>`packages/ui-conformance/src/**`<br>`plugins/ui-*/src/**` | 11 |
 
 <!-- amy:end factory-gates -->
 
 Each one exists for a reason worth stating:
 
 - **`plugin-file-queue`** — because the engine cannot survive it handing one item out twice.
+- **`the-event-log-can-be-watched`** — because a window that misses a line, or reads half of one, shows a machine that is not the one running.
 - **`plugin-agent-relay`** — because it decides how money gets spent when something goes wrong.
 - **`plugin-serial-engine`** — because it decides whether a piece of work gets lost.
 - **`installed-binary`** — because every test in the suite imports from inside the workspace.

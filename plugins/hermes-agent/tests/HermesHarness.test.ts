@@ -200,3 +200,15 @@ describe("which outcome it was", () => {
     expect(reply.run.tokens?.input).toBe(7466);
   });
 });
+
+describe("a step that must change nothing", () => {
+  it("refuses it without running, because -z cannot keep its tools off the checkout", async () => {
+    const { runner, harness } = hermesWriting(REAL_USAGE);
+
+    const reply = await harness.ask("why did it fail?", "/w", { readOnly: true });
+
+    expect(runner.callsTo("hermes")).toEqual([]);
+    expect(reply.run.outcome).toBe("failed");
+    expect(reply.run.output).toMatch(/read-only/);
+  });
+});

@@ -1,4 +1,4 @@
-import { AgentRun, CommandRunner, Harness, HarnessReply } from "@amykit/core";
+import { AgentRun, AskContext, CommandRunner, Harness, HarnessReply } from "@amykit/core";
 import { costOf, specFor } from "@amykit/model-specs";
 import { ParsedRun, parseRun } from "./envelope.js";
 
@@ -23,12 +23,14 @@ export class ClaudeHarness implements Harness {
     private readonly config: ClaudeHarnessConfig = {},
   ) {}
 
-  async ask(prompt: string, cwd: string): Promise<HarnessReply> {
+  async ask(prompt: string, cwd: string, context: AskContext = {}): Promise<HarnessReply> {
     const asked = this.config.model ?? "";
     const args: string[] = [];
     if (this.config.model) {
       args.push("--model", this.config.model);
     }
+    // Plan mode reads and does not edit or run anything, enforced by the CLI.
+    if (context.readOnly) args.push("--permission-mode", "plan");
     args.push("--output-format", "json", "-p");
 
     const started = Date.now();

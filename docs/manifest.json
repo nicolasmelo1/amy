@@ -243,6 +243,11 @@
           "description": ""
         },
         {
+          "title": "A question is not an answer",
+          "path": "/design/a-question-is-not-an-answer",
+          "description": ""
+        },
+        {
           "title": "A reply inside a thread reaches the agent",
           "path": "/design/a-reply-inside-a-thread-reaches-the-agent",
           "description": ""
@@ -270,6 +275,11 @@
         {
           "title": "A testkit proves the machine",
           "path": "/design/a-testkit-proves-the-machine",
+          "description": ""
+        },
+        {
+          "title": "A view is data",
+          "path": "/design/a-view-is-data",
           "description": ""
         },
         {
@@ -353,8 +363,18 @@
           "description": ""
         },
         {
+          "title": "The event log can be watched",
+          "path": "/design/the-event-log-can-be-watched",
+          "description": ""
+        },
+        {
           "title": "The forge is asked, not run beside",
           "path": "/design/the-forge-is-asked-not-run-beside",
+          "description": ""
+        },
+        {
+          "title": "The frame is closed",
+          "path": "/design/the-frame-is-closed",
           "description": ""
         },
         {
@@ -839,8 +859,28 @@
         },
         {
           "depth": 3,
-          "title": "What a private workflow had to write for itself, the shipped one now does.",
-          "slug": "what-a-private-workflow-had-to-write-for-itself-the-shipped-one-now-does"
+          "title": "**A reply in a work's thread can be a question, not only an answer.**",
+          "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
+        },
+        {
+          "depth": 3,
+          "title": "**A view is data.**",
+          "slug": "a-view-is-data"
+        },
+        {
+          "depth": 3,
+          "title": "The mutation fixtures amy workflow new writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still index.js, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so sf verify in an existing workflow is unaffected.",
+          "slug": "the-mutation-fixtures-amy-workflow-new-writes-beside-a-workflow-are-typescript-now-the-same-as-the-scaffold-they-guard-two-of-the-three-were-still-indexjs-so-a-workflow-written-in-typescript-proved-its-guardrails-against-a-file-in-a-language-it-does-not-use-the-rules-read-both-so-sf-verify-in-an-existing-workflow-is-unaffected"
+        },
+        {
+          "depth": 3,
+          "title": "**The event log can be watched, from any process.**",
+          "slug": "the-event-log-can-be-watched-from-any-process"
+        },
+        {
+          "depth": 3,
+          "title": "**The frame is closed.**",
+          "slug": "the-frame-is-closed"
         },
         {
           "depth": 2,
@@ -1715,6 +1755,43 @@
       ]
     },
     {
+      "path": "/design/a-question-is-not-an-answer",
+      "file": "docs/design/a-question-is-not-an-answer.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-question-is-not-an-answer.md",
+      "title": "A question is not an answer",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "What does not change",
+          "slug": "what-does-not-change"
+        },
+        {
+          "depth": 2,
+          "title": "What was built",
+          "slug": "what-was-built"
+        },
+        {
+          "depth": 2,
+          "title": "The gate",
+          "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
       "path": "/design/a-reply-inside-a-thread-reaches-the-agent",
       "file": "docs/design/a-reply-inside-a-thread-reaches-the-agent.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-reply-inside-a-thread-reaches-the-agent.md",
@@ -1883,6 +1960,43 @@
           "depth": 2,
           "title": "What shipped",
           "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-view-is-data",
+      "file": "docs/design/a-view-is-data.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-view-is-data.md",
+      "title": "A view is data",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 3,
+          "title": "amy status is a view",
+          "slug": "amy-status-is-a-view"
+        },
+        {
+          "depth": 2,
+          "title": "Why not a framework, and not a standard yet",
+          "slug": "why-not-a-framework-and-not-a-standard-yet"
+        },
+        {
+          "depth": 2,
+          "title": "The rule",
+          "slug": "the-rule"
         },
         {
           "depth": 2,
@@ -2471,6 +2585,33 @@
       ]
     },
     {
+      "path": "/design/the-event-log-can-be-watched",
+      "file": "docs/design/the-event-log-can-be-watched.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-event-log-can-be-watched.md",
+      "title": "The event log can be watched",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "What the gate drives, and what it does not",
+          "slug": "what-the-gate-drives-and-what-it-does-not"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
       "path": "/design/the-forge-is-asked-not-run-beside",
       "file": "docs/design/the-forge-is-asked-not-run-beside.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-forge-is-asked-not-run-beside.md",
@@ -2499,6 +2640,48 @@
           "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-frame-is-closed",
+      "file": "docs/design/the-frame-is-closed.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-frame-is-closed.md",
+      "title": "The frame is closed",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The frame is a file",
+          "slug": "the-frame-is-a-file"
+        },
+        {
+          "depth": 2,
+          "title": "Every renderer is measured, not trusted",
+          "slug": "every-renderer-is-measured-not-trusted"
+        },
+        {
+          "depth": 2,
+          "title": "The rules came first",
+          "slug": "the-rules-came-first"
+        },
+        {
+          "depth": 2,
+          "title": "What this is not",
+          "slug": "what-this-is-not"
+        },
+        {
+          "depth": 2,
+          "title": "What was built",
+          "slug": "what-was-built"
         },
         {
           "depth": 2,
@@ -3839,8 +4022,23 @@
         },
         {
           "depth": 3,
+          "title": "L0.A_RENDERER_NAMES_NO_COLOUR",
+          "slug": "l0arenderernamesnocolour"
+        },
+        {
+          "depth": 3,
+          "title": "L0.A_RENDERER_ONLY_TRANSLATES",
+          "slug": "l0arendereronlytranslates"
+        },
+        {
+          "depth": 3,
           "title": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
           "slug": "l0aticketrequireswhateverytrackerhas"
+        },
+        {
+          "depth": 3,
+          "title": "L0.A_VIEW_DRAWS_NOTHING",
+          "slug": "l0aviewdrawsnothing"
         },
         {
           "depth": 3,
@@ -3896,6 +4094,11 @@
           "depth": 3,
           "title": "L1.COMPLEXITY_CEILING",
           "slug": "l1complexityceiling"
+        },
+        {
+          "depth": 3,
+          "title": "L1.EVERY_RENDERER_HOLDS_THE_FRAME",
+          "slug": "l1everyrendererholdstheframe"
         },
         {
           "depth": 3,
@@ -4484,6 +4687,12 @@
         "doc": ""
       },
       {
+        "name": "discuss",
+        "port": "agent",
+        "method": "ask",
+        "doc": "Answer a person's turn in a discussion, before anything is decided."
+      },
+      {
         "name": "draft-plan",
         "port": "agent",
         "method": "ask",
@@ -4799,6 +5008,11 @@
             "name": "read",
             "signature": "read(since?: Date): Event[]",
             "doc": "Events at or after the given instant, oldest first."
+          },
+          {
+            "name": "watch",
+            "signature": "watch(since: Date, onEvent: (event: Event) => void): () => void",
+            "doc": "Every event at or after `since`, oldest first, then every event any process appends afterwards, until the returned function is called."
           }
         ]
       },
@@ -6206,6 +6420,7 @@
         "kind": "agent",
         "actions": [
           "address-threads",
+          "discuss",
           "draft-plan",
           "implement",
           "run-errand",
@@ -6421,7 +6636,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
         "directory": "packages/agent-kit",
@@ -6435,7 +6650,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -6449,7 +6664,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -6463,7 +6678,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -6477,7 +6692,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -6529,7 +6744,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "The claude CLI as the agent, over its JSON envelope.",
         "directory": "plugins/claude",
@@ -6570,7 +6785,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -6611,7 +6826,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -6648,7 +6863,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -6699,7 +6914,7 @@
       },
       {
         "name": "@amykit/plugin-file-brief-store",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Briefs kept as one file per item.",
         "directory": "plugins/file-brief-store",
@@ -6723,7 +6938,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -6737,7 +6952,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -6775,7 +6990,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -6820,7 +7035,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -6850,7 +7065,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -6881,7 +7096,7 @@
       },
       {
         "name": "@amykit/plugin-file-worktree",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
         "directory": "plugins/file-worktree",
@@ -6947,7 +7162,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -6971,7 +7186,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -7012,7 +7227,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -7066,7 +7281,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
         "directory": "plugins/notify-fanout",
@@ -7082,7 +7297,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -7110,7 +7325,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -7137,7 +7352,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -7179,7 +7394,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -7222,7 +7437,7 @@
       },
       {
         "name": "@amykit/plugin-slack",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "A Slack thread per piece of work, over the Web API, as the conversation port.",
         "directory": "plugins/slack",
@@ -7241,6 +7456,13 @@
             "description": "the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name"
           },
           {
+            "name": "decisionReaction",
+            "type": "string",
+            "required": false,
+            "default": "white_check_mark",
+            "description": "the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work. A reaction Slack lists only in part is read again in full with reactions.get, which needs reactions:read"
+          },
+          {
             "name": "defaultRetryAfterSeconds",
             "type": "number",
             "required": false,
@@ -7253,6 +7475,13 @@
             "required": false,
             "default": "slack",
             "description": "where each work item's thread is remembered, relative to the state directory"
+          },
+          {
+            "name": "discussionReaction",
+            "type": "string",
+            "required": false,
+            "default": "speech_balloon",
+            "description": "the reaction, by emoji name, the operator puts on their own reply to mark it as a turn in a discussion, answered in the thread while the work waits"
           },
           {
             "name": "maxRateLimitRetries",
@@ -7284,8 +7513,36 @@
         "environment": []
       },
       {
+        "name": "@amykit/ui",
+        "version": "0.6.0",
+        "kind": "library",
+        "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.",
+        "directory": "packages/ui",
+        "npm": "https://www.npmjs.com/package/@amykit/ui",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/ui",
+        "readme": "packages/ui/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
+        "name": "@amykit/ui-conformance",
+        "version": "0.6.0",
+        "kind": "library",
+        "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
+        "directory": "packages/ui-conformance",
+        "npm": "https://www.npmjs.com/package/@amykit/ui-conformance",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/ui-conformance",
+        "readme": "packages/ui-conformance/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
         "name": "@amykit/workflow-errand",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
@@ -7332,7 +7589,7 @@
       },
       {
         "name": "@amykit/workflow-feature-grooming",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "plugin",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "packages/workflow-feature-grooming",
@@ -7370,7 +7627,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
@@ -7417,7 +7674,7 @@
       },
       {
         "name": "@amykit/workflow-testkit",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "library",
         "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
         "directory": "packages/workflow-testkit",
@@ -7431,7 +7688,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
@@ -7472,7 +7729,7 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all. Anything left out keeps its default"
+            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all — and conversation — `answer` reads a reply nobody marked as the decision, `discuss` reads it as a turn in a discussion, answered in the thread while the work waits for a reply marked as the decision. Anything left out keeps its default"
           },
           {
             "name": "qaStatusName",
@@ -7591,6 +7848,7 @@
         "announce",
         "ask-question",
         "assign-reviewer",
+        "discuss",
         "escalate",
         "hand-off-to-qa",
         "implement",
@@ -7682,6 +7940,29 @@
           "compose.a_second_review_round_on_one_head_is_said_again"
         ],
         "scenario": ".software-factory/evidence/a-private-workflow-composes-scenario.sh"
+      },
+      {
+        "name": "a-question-is-not-an-answer",
+        "activation": [
+          "packages/core/src/ports/Conversation.ts",
+          "packages/core/src/actions.ts",
+          "packages/workflow-ticket-to-qa/src/**",
+          "plugins/slack/src/**",
+          "plugins/serial-engine/src/**"
+        ],
+        "evidence": ".software-factory/evidence/a-question-is-not-an-answer.json",
+        "plan": "docs/design/a-question-is-not-an-answer.md",
+        "assertions": [
+          "escalated.a_question_does_not_resume",
+          "escalated.a_decision_resumes",
+          "conversation.decision_carries_the_discussion",
+          "escalated.a_marked_discussion_never_resumes",
+          "escalated.a_discussion_counts_no_attempt",
+          "escalated.a_discussion_is_charged_to_the_agent",
+          "escalated.a_discussion_runs_read_only",
+          "escalated.an_unmarked_reply_under_answer_is_the_decision"
+        ],
+        "scenario": ".software-factory/evidence/a-question-is-not-an-answer-scenario.sh"
       },
       {
         "name": "a-workflow-of-your-own",
@@ -7855,7 +8136,7 @@
           "packages/cli/src/paths.ts",
           "packages/cli/src/slices.ts",
           "scripts/install.sh",
-          "scripts/write-install-manifest.mjs",
+          "scripts/write-install-manifest.ts",
           "packages/core/src/mount.ts",
           "packages/core/src/dispatch.ts",
           "plugins/serial-engine/src/Worker.ts"
@@ -8053,6 +8334,24 @@
         "scenario": ".software-factory/evidence/project-phases-scenario.sh"
       },
       {
+        "name": "the-event-log-can-be-watched",
+        "activation": [
+          "packages/core/src/ports/EventLog.ts",
+          "plugins/file-log/src/**"
+        ],
+        "evidence": ".software-factory/evidence/the-event-log-can-be-watched.json",
+        "plan": "docs/design/the-event-log-can-be-watched.md",
+        "assertions": [
+          "watch.the_writer_is_another_process",
+          "watch.a_work_advanced_arrives_within_a_second",
+          "watch.each_line_once_in_order",
+          "watch.a_partial_line_is_never_delivered",
+          "watch.the_next_day_is_followed_without_resubscribing",
+          "watch.stopping_ends_delivery"
+        ],
+        "scenario": ".software-factory/evidence/the-event-log-can-be-watched-scenario.sh"
+      },
+      {
         "name": "ticket-to-qa",
         "activation": [
           "packages/workflow-ticket-to-qa/src/**",
@@ -8123,14 +8422,59 @@
           "lifecycle.finished_work_leaves_the_listing"
         ],
         "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
+      },
+      {
+        "name": "ui-frame",
+        "activation": [
+          "packages/ui/**",
+          "packages/ui-conformance/src/**",
+          "plugins/ui-*/src/**"
+        ],
+        "evidence": ".software-factory/evidence/ui-frame.json",
+        "plan": "docs/design/the-frame-is-closed.md",
+        "assertions": [
+          "frame.every_region_sits_where_declared",
+          "frame.no_region_is_invented",
+          "frame.every_key_does_what_it_is_declared_to",
+          "frame.renderers_agree_on_every_region",
+          "frame.nothing_moved_since_it_was_approved",
+          "frame.a_slot_takes_only_what_it_declares",
+          "frame.the_fixed_sections_come_first",
+          "frame.no_region_is_lost_at_the_narrowest_width",
+          "frame.keys_remaps_and_the_mouse_agree",
+          "frame.a_surface_is_drawn_only_where_declared",
+          "frame.a_projection_is_deterministic"
+        ],
+        "scenario": ".software-factory/evidence/ui-frame-scenario.sh"
       }
     ],
     "rules": [
+      {
+        "id": "L0.A_RENDERER_NAMES_NO_COLOUR",
+        "enabled": true,
+        "settings": {},
+        "title": "A renderer spells no colour outside its theme-token file (docs/design/the-frame-is-closed.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.A_RENDERER_ONLY_TRANSLATES",
+        "enabled": true,
+        "settings": {},
+        "title": "A renderer imports the primitives and the frame, and nothing else of amy (docs/design/the-frame-is-closed.md)",
+        "reason": ""
+      },
       {
         "id": "L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS",
         "enabled": true,
         "settings": {},
         "title": "A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.A_VIEW_DRAWS_NOTHING",
+        "enabled": true,
+        "settings": {},
+        "title": "A view draws nothing; only a renderer plugin names a renderer (docs/design/a-view-is-data.md)",
         "reason": ""
       },
       {
@@ -8218,6 +8562,13 @@
         "reason": ""
       },
       {
+        "id": "L1.EVERY_RENDERER_HOLDS_THE_FRAME",
+        "enabled": true,
+        "settings": {},
+        "title": "Every renderer in the workspace passes the frame's conformance script (docs/design/the-frame-is-closed.md)",
+        "reason": ""
+      },
+      {
         "id": "L1.NO_BLANKET_SUPPRESSION",
         "enabled": true,
         "settings": {},
@@ -8279,7 +8630,10 @@
               "docs/rules.md",
               "docs/development/the-factory.md",
               "packages/model-specs/specs.json",
-              "packages/core/events.json"
+              "packages/core/events.json",
+              "packages/ui/frame.yaml",
+              "packages/ui/conformance/golden.json",
+              "packages/ui/conformance/config.yaml"
             ]
           }
         },
@@ -8498,9 +8852,9 @@
     "releases": [],
     "unreleased": [
       {
-        "id": "a-private-workflow-composes-the-shipped-one",
-        "title": "What a private workflow had to write for itself, the shipped one now does.",
-        "body": "- A commit status GitHub returns in lower case reads as passing or failing; every one used to read as running.\n- `Git` commits without pushing, and `push` refuses anything that is not a fast-forward, naming the branch. `commitAndPush` is built on the two.\n- A review thread carries the file it is on.\n- The code host finds a pull request by the id in its title, open or merged, and the author's pull requests somebody asked to change. A workflow that claims no writes is handed `pullRequestAncestry` and both of these.\n- `ticket-to-qa` takes `policy.writes: operator`: every tracker and code-host write is said once, in the work's thread or through the notifier, and the machine waits until it sees it made. The workflow then claims no writes at all.\n- A ticket Linear labels into several repositories (`repoByLabel`) is one work item per repository, `TICKET@owner%2Fname`, and QA receives it once, when every one has merged.\n- `file-queue` takes `order: priority`: the most urgent due item first, first in first out within one priority, refreshed on every discovery from the tracker's own urgency.",
+        "id": "a-question-is-not-an-answer",
+        "title": "**A reply in a work's thread can be a question, not only an answer.**",
+        "body": "When `ticket-to-qa` escalated, or asked a question before starting, the owner's\nfirst message in the thread ended the wait and the work resumed on it. A person\nwho replied \"why do you think that comment is wrong?\" had not decided anything,\nand watched their question turn into work.\n\n- `Reply` gains an optional `kind`, `discussion` or `decision`, set only when\n  the person marked the reply. The catalogue gains `discuss`, on the `agent`\n  port, so it is charged to the budget like every other run.\n- `policy.conversation` on `ticket-to-qa`: `answer`, the default, reads a reply\n  nobody marked as the decision, exactly as before. `discuss` reads it as a turn\n  in a discussion: answered in the thread, read-only, with no state change, no\n  commit and no attempt counted, while the work waits for a reply marked as the\n  decision. A marked reply reads as marked under either. An unknown value is\n  refused at boot by name.\n- `AskContext` gains `readOnly`, and a discussion is asked with it. The\n  harness enforces it rather than the prompt: Claude runs with\n  `--permission-mode plan`, Codex with `--sandbox read-only`, and Hermes, whose\n  one-shot mode cannot keep its tools off the checkout, refuses the run so a\n  relay hands it to a harness that can.\n- On the decision, the step the work resumes is prompted with the whole\n  discussion, attributed, with the decision last.\n- The Slack plugin marks a reply by the operator's own reaction on it: ✅\n  (`white_check_mark`) decides, 💬 (`speech_balloon`) discusses. Both names are\n  settings, `decisionReaction` and `discussionReaction`. A reaction Slack lists\n  only in part is read again in full with `reactions.get`, which needs the\n  `reactions:read` scope; without it, that one read fails and says so.\n- Without a conversation port, a comment on the ticket is still the decision,\n  whatever the policy says.",
         "bumps": [
           {
             "package": "@amykit/cli",
@@ -8511,31 +8865,83 @@
             "level": "minor"
           },
           {
-            "package": "@amykit/plugin-file-queue",
+            "package": "@amykit/plugin-claude",
             "level": "minor"
           },
           {
-            "package": "@amykit/plugin-github",
+            "package": "@amykit/plugin-codex",
             "level": "minor"
           },
           {
-            "package": "@amykit/plugin-linear",
+            "package": "@amykit/plugin-hermes-agent",
             "level": "minor"
           },
           {
-            "package": "@amykit/plugin-serial-engine",
+            "package": "@amykit/plugin-slack",
             "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "patch"
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-view-is-data",
+        "title": "**A view is data.**",
+        "body": "amy is going to have a window — a terminal, a browser, eventually a phone —\nwith plugins changing what is in it. A plugin that exports React components\nrenders in one of those and none of the others, cannot reach a phone that\ninstalls no npm packages, and brings a second copy of React into somebody's\nwindow. So a plugin does not render: it describes, and the renderer draws.\n\n- A new package, `@amykit/ui`, with no dependencies: a closed vocabulary of\n  seventeen semantic primitives, checked so a name outside it — or any\n  property value that is not JSON — is refused by name; a JSX runtime\n  (`jsxImportSource: \"@amykit/ui\"`) that returns a tree of plain data with\n  no React anywhere; `diff` and `patch` between two trees; `validate` for a\n  tree that arrived as data; `catalogue()`, the vocabulary as JSON Schema\n  components; and `renderText`, a deterministic text renderer.\n- A button's `intent` is `{ action, args }`, never a closure, so it survives\n  a socket.\n- `amy status` is a view of the snapshot `amy status --json` prints, drawn by\n  the text renderer. Its output is what it printed before, byte for byte.\n- A new local rule, `L0.A_VIEW_DRAWS_NOTHING`: no package or plugin source\n  imports React, Ink, Preact, Vue, Solid or Svelte, or compiles its JSX\n  against one.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/ui",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "no-javascript-left",
+        "title": "The mutation fixtures `amy workflow new` writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still `index.js`, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so `sf verify` in an existing workflow is unaffected.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-event-log-can-be-watched",
+        "title": "**The event log can be watched, from any process.**",
+        "body": "Everything amy does is a line in the event log, and a reader in another\nprocess — `amy status`, a dashboard, the window planned next — could only read\nit again and guess how often. The log is the one place that knows something\nchanged, so it is now the place to ask.\n\n- `EventLog` gains an optional `watch(since, onEvent)`: every event at or\n  after `since`, oldest first, then every event any process appends, until the\n  returned function is called. Optional because a log may be a sink nobody\n  can watch.\n- `watchEvents(log, since, onEvent, { everyMs, onPolling })` in the core\n  watches any log: through its own `watch`, or by polling `read` when it has\n  none, calling `onPolling` once so the caller can say so.\n- `@amykit/plugin-file-log` implements `watch` by following each day file from\n  a byte offset. A line is delivered only once its newline is on disk, so a\n  line the daemon is halfway through writing is never read half, and a new\n  day's file is followed without resubscribing.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-log",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-frame-is-closed",
+        "title": "**The frame is closed.**",
+        "body": "amy's window is about to be drawn by more than one renderer, and two renderers\ndrift apart without either being wrong. Before the first one exists, the\nwindow is a locked file and every renderer is measured against it.\n\n- `packages/ui/frame.yaml` is the closed wireframe as data: five regions and\n  where each sits relative to the others, what each holds, the sections, the\n  actions, a Neovim-style default keymap, the mouse, the surfaces a renderer\n  may declare, the slots plugins add to, the narrowest window and the one\n  rule by which a label may be abbreviated. It ships with `@amykit/ui`, which\n  still depends on nothing, and is hash-locked.\n- `@amykit/ui/frame` checks what it parses to (`checkFrame`), and reads keys in Neovim's\n  notation: `buildKeymap` lays a person's `ui.keys` over the frame's and\n  refuses, by name, a remap to an action the frame does not declare or two\n  bindings a keypress cannot tell apart; `KeyReader` reads sequences, counts\n  and the leader the way Neovim does. The renderer contract lives here too.\n- New package `@amykit/ui-conformance`, and its `amy-ui-conformance` command,\n  drive every\n  renderer through a fixed script over a fixed world — by default keys, by a\n  remapped keymap and by the mouse, and the default way twice — and read a\n  projection out of what it laid out: regions, what each holds, and how each\n  pair sits relative to each other, never a box. Eleven assertions hold it to\n  the frame, to the other renderers and to the approved golden, naming the\n  region, the relation or the first node that differs.\n- Three local rules: `L0.A_RENDERER_ONLY_TRANSLATES`,\n  `L0.A_RENDERER_NAMES_NO_COLOUR` and `L1.EVERY_RENDERER_HOLDS_THE_FRAME`.",
+        "bumps": [
+          {
+            "package": "@amykit/ui",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/ui-conformance",
             "level": "minor"
           }
         ],

@@ -166,7 +166,7 @@ gates:
       - "packages/cli/src/paths.ts"
       - "packages/cli/src/slices.ts"
       - "scripts/install.sh"
-      - "scripts/write-install-manifest.mjs"
+      - "scripts/write-install-manifest.ts"
       # The two refusals below are the mount's and the engine's, so a change
       # to either is a change to what this gate last proved.
       - "packages/core/src/mount.ts"
@@ -590,6 +590,79 @@ gates:
       # From the seventh review.
       - "compose.a_second_review_round_on_one_head_is_said_again"
 
+  # A reply in the work's thread is a turn in a discussion or the decision
+  # that ends one, and only the decision moves the work. What no unit test can
+  # say is that the built Slack adapter, workflow and engine agree on it end
+  # to end: three questions answered in the thread and no move, then a
+  # reaction that decides, and the resumed step prompted with all of it.
+  #
+  # The activation is the reply's contract, the action that answers it, the
+  # adapter that marks it and the workflow that reads it, because a change to
+  # any of them means the last run proved a discussion that no longer exists.
+  a-question-is-not-an-answer:
+    activation:
+      - "packages/core/src/ports/Conversation.ts"
+      - "packages/core/src/actions.ts"
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "plugins/slack/src/**"
+      - "plugins/serial-engine/src/**"
+    evidence: ".software-factory/evidence/a-question-is-not-an-answer.json"
+    plan: "docs/design/a-question-is-not-an-answer.md"
+    required_assertions:
+      - "escalated.a_question_does_not_resume"
+      - "escalated.a_decision_resumes"
+      - "conversation.decision_carries_the_discussion"
+      - "escalated.a_marked_discussion_never_resumes"
+      - "escalated.a_discussion_counts_no_attempt"
+      - "escalated.a_discussion_is_charged_to_the_agent"
+      - "escalated.a_discussion_runs_read_only"
+      - "escalated.an_unmarked_reply_under_answer_is_the_decision"
+
+  # That a process watching the event log is handed what another process
+  # writes: within a second, across midnight, once, in order, never half a
+  # line. The activation is the port and the plugin that implements it,
+  # because a change to either means the last run proved a watch that no
+  # longer exists.
+  the-event-log-can-be-watched:
+    activation:
+      - "packages/core/src/ports/EventLog.ts"
+      - "plugins/file-log/src/**"
+    evidence: ".software-factory/evidence/the-event-log-can-be-watched.json"
+    plan: "docs/design/the-event-log-can-be-watched.md"
+    required_assertions:
+      - "watch.the_writer_is_another_process"
+      - "watch.a_work_advanced_arrives_within_a_second"
+      - "watch.each_line_once_in_order"
+      - "watch.a_partial_line_is_never_delivered"
+      - "watch.the_next_day_is_followed_without_resubscribing"
+      - "watch.stopping_ends_delivery"
+
+  # That every renderer is the window that was agreed: the frame's script,
+  # run by the installed @amykit/ui-conformance from another process against
+  # the installed stubs and renderers broken one way each. The activation is
+  # the frame, the harness and every renderer's source, because a change to
+  # any of them means the last run proved a window that no longer exists.
+  # The window host joins it when *amy has a window* adds one.
+  ui-frame:
+    activation:
+      - "packages/ui/**"
+      - "packages/ui-conformance/src/**"
+      - "plugins/ui-*/src/**"
+    evidence: ".software-factory/evidence/ui-frame.json"
+    plan: "docs/design/the-frame-is-closed.md"
+    required_assertions:
+      - "frame.every_region_sits_where_declared"
+      - "frame.no_region_is_invented"
+      - "frame.every_key_does_what_it_is_declared_to"
+      - "frame.renderers_agree_on_every_region"
+      - "frame.nothing_moved_since_it_was_approved"
+      - "frame.a_slot_takes_only_what_it_declares"
+      - "frame.the_fixed_sections_come_first"
+      - "frame.no_region_is_lost_at_the_narrowest_width"
+      - "frame.keys_remaps_and_the_mouse_agree"
+      - "frame.a_surface_is_drawn_only_where_declared"
+      - "frame.a_projection_is_deterministic"
+
 rules:
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:
@@ -618,8 +691,9 @@ rules:
       #
       # `npm run check:config` is the config template's version of this claim
       # and deliberately not here: this rule runs in the factory job, which
-      # carries no npm toolchain and no build on purpose, and the check needs
-      # both. It runs in the build job and in `npm run gate` instead.
+      # compiles only the frame package and its renderers (for
+      # L1.EVERY_RENDERER_HOLDS_THE_FRAME), and the check needs the whole
+      # build. It runs in the build job and in `npm run gate` instead.
       run: sf docs
   # L2 — The guardrail's own configuration is hash-locked
   L2.FACTORY_CONFIG_IS_LOCKED:
@@ -641,6 +715,13 @@ rules:
         # rather than an internal detail. The lock does not enforce the
         # version convention; it guarantees the reviewer sees the diff.
         - "packages/core/events.json"
+        # The closed wireframe every renderer is measured against, and the
+        # projection approved from it. Moving a region, adding one or giving
+        # a key a second meaning is an edit here plus `sf lock` in the same
+        # commit (docs/design/the-frame-is-closed.md).
+        - "packages/ui/frame.yaml"
+        - "packages/ui/conformance/golden.json"
+        - "packages/ui/conformance/config.yaml"
   # L2 — Every frozen exception carries a future review date
   L2.NO_PERMANENT_EXCEPTION:
     enabled: true
@@ -673,6 +754,18 @@ rules:
     enabled: true
   # L0 — The core's code names no product (docs/design/an-agent-only-answers.md)
   L0.THE_CORE_NAMES_NO_VENDOR:
+    enabled: true
+  # L0 — A view draws nothing; only a renderer plugin names a renderer (docs/design/a-view-is-data.md)
+  L0.A_VIEW_DRAWS_NOTHING:
+    enabled: true
+  # L0 — A renderer imports the primitives and the frame, and nothing else of amy (docs/design/the-frame-is-closed.md)
+  L0.A_RENDERER_ONLY_TRANSLATES:
+    enabled: true
+  # L0 — A renderer spells no colour outside its theme-token file (docs/design/the-frame-is-closed.md)
+  L0.A_RENDERER_NAMES_NO_COLOUR:
+    enabled: true
+  # L1 — Every renderer in the workspace passes the frame's conformance script (docs/design/the-frame-is-closed.md)
+  L1.EVERY_RENDERER_HOLDS_THE_FRAME:
     enabled: true
   # L1 — A comment block stays under the line ceiling
   L1.COMMENT_STAYS_SUCCINCT:

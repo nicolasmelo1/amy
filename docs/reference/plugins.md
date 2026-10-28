@@ -554,8 +554,10 @@ A Slack thread per piece of work, over the Web API, as the conversation port.
 plugins:
   "@amykit/plugin-slack":
     channel: …
+    decisionReaction: white_check_mark
     defaultRetryAfterSeconds: 60
     directory: slack
+    discussionReaction: speech_balloon
     maxRateLimitRetries: 5
     operator: …
     retentionDays: 30
@@ -565,8 +567,10 @@ plugins:
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `channel` | `string` | **yes** |  | the channel id every work thread opens in, such as C0XXXXXXX — an id, not a name |
+| `decisionReaction` | `string` | no | `white_check_mark` | the reaction, by emoji name, the operator puts on their own reply to mark it as the decision that moves the work. A reaction Slack lists only in part is read again in full with reactions.get, which needs reactions:read |
 | `defaultRetryAfterSeconds` | `number` | no | `60` | how long to wait after a 429 that carries no Retry-After; one names its own wait, and that wins |
 | `directory` | `string` | no | `slack` | where each work item's thread is remembered, relative to the state directory |
+| `discussionReaction` | `string` | no | `speech_balloon` | the reaction, by emoji name, the operator puts on their own reply to mark it as a turn in a discussion, answered in the thread while the work waits |
 | `maxRateLimitRetries` | `number` | no | `5` | how many times a call Slack rate limits (HTTP 429) is waited out and tried again before it fails |
 | `operator` | `string` | **yes** |  | the user id, such as U0XXXXXXX, whose replies are answers; everybody else's are ignored |
 | `retentionDays` | `number` | no | `30` | days a downloaded file or a thread's memory stays unused before it is pruned, 0 to keep everything. A pruned file is fetched again when its reply is read; a pruned thread means the next question opens a new one |

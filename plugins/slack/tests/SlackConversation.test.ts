@@ -373,3 +373,157 @@ describe("what amy doctor asks", () => {
     expect(http.calls).toHaveLength(1);
   });
 });
+
+describe("what a reply is, when the operator marked it", () => {
+  const reply = (ts: string, text: string, reactions?: { name: string; users: string[] }[]) => ({
+    ts,
+    user: OPERATOR,
+    text,
+    ...(reactions ? { reactions } : {}),
+  });
+
+  it("leaves the kind unset on plain text, and sets it only from the operator's own reaction", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([
+        reply("1790000101.000100", "why do you think that?"),
+        reply("1790000102.000100", "and the test?", [{ name: "speech_balloon", users: [OPERATOR] }]),
+        reply("1790000103.000100", "keep it", [{ name: "white_check_mark", users: [OPERATOR] }]),
+        reply("1790000104.000100", "somebody else agreed", [{ name: "white_check_mark", users: ["U0SOMEONE"] }]),
+      ]),
+    ]);
+
+    const replies = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(replies.map((r) => [r.text, r.kind])).toEqual([
+      ["why do you think that?", undefined],
+      ["and the test?", "discussion"],
+      ["keep it", "decision"],
+      ["somebody else agreed", undefined],
+    ]);
+    expect(replies[0]).not.toHaveProperty("kind");
+  });
+
+  it("reads a reply marked both ways as the decision", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([
+        reply("1790000101.000100", "fine, go", [
+          { name: "speech_balloon", users: [OPERATOR] },
+          { name: "white_check_mark", users: [OPERATOR] },
+        ]),
+      ]),
+    ]);
+
+    const [only] = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(only?.kind).toBe("decision");
+  });
+
+  it("reads the reactions an install configured instead of the defaults", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([
+        reply("1790000101.000100", "go", [{ name: "rocket", users: [OPERATOR] }]),
+        reply("1790000102.000100", "default mark", [{ name: "white_check_mark", users: [OPERATOR] }]),
+      ]),
+    ]);
+    const api = new SlackApi("xoxb-test", { transport: http.transport });
+    const marked = new SlackConversation(api, {
+      channel: CHANNEL,
+      operator: OPERATOR,
+      directory,
+      marks: { decision: "rocket", discussion: "thinking_face" },
+    });
+
+    const replies = await marked.replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(replies.map((r) => r.kind)).toEqual(["decision", undefined]);
+  });
+});
+
+describe("a reaction Slack listed only in part", () => {
+  const truncated = {
+    ts: "1790000101.000100",
+    user: OPERATOR,
+    text: "keep it",
+    reactions: [{ name: "white_check_mark", users: ["U0SOMEONE"], count: 3 }],
+  };
+
+  it("asks for the whole list before deciding the operator did not mark it", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([truncated]),
+      {
+        match: method("reactions.get"),
+        answer: ok({ type: "message", message: { ...truncated, reactions: [{ name: "white_check_mark", users: ["U0SOMEONE", OPERATOR, "U0THIRD"], count: 3 }] } }),
+      },
+    ]);
+
+    const [only] = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(only?.kind).toBe("decision");
+    expect(http.argsOf("reactions.get")[0]).toMatchObject({ channel: CHANNEL, timestamp: truncated.ts, full: "true" });
+  });
+
+  it("does not read a reply it cannot see the marks of as unmarked", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([truncated]),
+      { match: method("reactions.get"), answer: { json: { ok: false, error: "missing_scope", needed: "reactions:read" } } },
+    ]);
+
+    await expect(conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).rejects.toThrow(
+      /cannot tell whether the operator marked reply .*reactions:read/,
+    );
+  });
+
+  it("asks nothing more when the list Slack gave is whole", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([{ ...truncated, reactions: [{ name: "white_check_mark", users: ["U0SOMEONE"], count: 1 }] }]),
+    ]);
+
+    const [only] = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(only?.kind).toBeUndefined();
+    expect(http.argsOf("reactions.get")).toEqual([]);
+  });
+});
+
+describe("only what could change the kind is asked again", () => {
+  it("takes a decision the operator is listed on without asking about a short discussion list", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([
+        {
+          ts: "1790000101.000100",
+          user: OPERATOR,
+          text: "go",
+          reactions: [
+            { name: "white_check_mark", users: [OPERATOR], count: 1 },
+            { name: "speech_balloon", users: ["U0SOMEONE"], count: 4 },
+          ],
+        },
+      ]),
+    ]);
+
+    const [only] = await conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+
+    expect(only?.kind).toBe("decision");
+    expect(http.argsOf("reactions.get")).toEqual([]);
+  });
+
+  it("refuses a full list that still cannot say whether the operator reacted", async () => {
+    const short = { name: "white_check_mark", users: ["U0SOMEONE"], count: 3 };
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      thread([{ ts: "1790000101.000100", user: OPERATOR, text: "go", reactions: [short] }]),
+      { match: method("reactions.get"), answer: ok({ type: "message", message: { ts: "1790000101.000100", reactions: [short] } }) },
+    ]);
+
+    await expect(conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).rejects.toThrow(
+      /cannot tell whether the operator marked reply 1790000101.000100/,
+    );
+  });
+});
