@@ -149,6 +149,22 @@ describe("the roots this machine keeps", () => {
     expect(runner.callsTo("npm")).toHaveLength(1);
   });
 
+  it("take the prefix from npm's path when the global root is a symlink", async () => {
+    // `<prefix>/lib/node_modules` linked to a shared directory elsewhere: the
+    // CLI resolves under the target, but npm installs under the prefix.
+    const prefix = path.join(home, "global");
+    const shared = path.join(home, "shared", "node_modules");
+    fs.mkdirSync(shared, { recursive: true });
+    fs.mkdirSync(path.join(prefix, "lib"), { recursive: true });
+    fs.symlinkSync(shared, path.join(prefix, "lib", "node_modules"));
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("root", "--global"), result: { stdout: `${path.join(prefix, "lib", "node_modules")}\n` } },
+    ]);
+
+    const found = await roots(home, runner, cliUnder(shared), "darwin");
+    expect(found.install).toMatchObject({ kind: "global", dir: prefix });
+  });
+
   it("are the plugins root alone when the CLI sits in a node_modules that is neither", async () => {
     const modules = path.join(home, "lib", "amy", "node_modules");
     const from = cliUnder(modules);
@@ -1116,6 +1132,30 @@ describe("the running loop", () => {
       "@amykit/plugin-file-log@0.5.0",
       "@amykit/cli@0.5.0",
     ]);
+  });
+
+  it("names a first-party copy a third-party package holds below the release, and still moves", async () => {
+    const install = globalMachine();
+    const root = path.join(home, "plugins");
+    const workflow = packageAt(root, "@acme/workflow-oncall", "1.0.0", "export {};");
+    packageAt(workflow, "@amykit/core", "0.5.0", "export {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.6.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "ok\n" } },
+    ]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { updateCommand } = await import("../src/index.js");
+      const code = await updateCommand(home, runner, undefined, false, {
+        mountProfiles: async () => ({ ok: true as const }),
+        skillsInto: () => ["claude: 6 skill(s) rewritten"],
+        installRoot: install,
+      });
+      expect(code).toBe(0);
+      expect(said(log)).toContain("@amykit/core@0.5.0  inside @acme/workflow-oncall");
+    } finally {
+      log.mockRestore();
+    }
   });
 });
 

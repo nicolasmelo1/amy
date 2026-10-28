@@ -318,6 +318,8 @@ export interface Copy {
   readonly name: string;
   readonly version: string;
   readonly at: string;
+  /** The package whose own `node_modules` holds it; nothing for a root's top level. */
+  readonly within?: string;
 }
 
 /**
@@ -332,29 +334,31 @@ export interface Copy {
 export function firstPartyCopies(modules: string, only?: string): Copy[] {
   const found: Copy[] = [];
   const seen = new Set<string>();
-  const visit = (directory: string): void => {
+  const visit = (directory: string, within: string | undefined): void => {
     const real = realpath(directory);
     if (seen.has(real)) return;
     seen.add(real);
+    let own: string | undefined;
     try {
       const { name, version } = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as {
         name?: unknown;
         version?: unknown;
       };
+      if (typeof name === "string") own = name;
       if (typeof name === "string" && typeof version === "string" && firstParty(name)) {
-        found.push({ name, version, at: directory });
+        found.push(within === undefined ? { name, version, at: directory } : { name, version, at: directory, within });
       }
     } catch {
       // A directory without a readable manifest is not a package; its
       // `node_modules`, if any, is still walked below.
     }
-    walk(path.join(directory, "node_modules"));
+    walk(path.join(directory, "node_modules"), own ?? within);
   };
-  const walk = (tree: string): void => {
-    for (const directory of packagesIn(tree)) visit(directory);
+  const walk = (tree: string, within: string | undefined): void => {
+    for (const directory of packagesIn(tree)) visit(directory, within);
   };
-  if (only === undefined) walk(modules);
-  else if (fs.existsSync(path.join(modules, ...only.split("/")))) visit(path.join(modules, ...only.split("/")));
+  if (only === undefined) walk(modules, undefined);
+  else if (fs.existsSync(path.join(modules, ...only.split("/")))) visit(path.join(modules, ...only.split("/")), undefined);
   return found;
 }
 
@@ -389,6 +393,20 @@ export function aboveRelease(trees: readonly Copy[], release: string, heldPast: 
 }
 
 /**
+ * The first-party copies a third-party package holds below the release.
+ *
+ * A workflow from elsewhere that depends on `@amykit/core@^0.6.0` keeps its
+ * own 0.6 core when the machine moves to 0.7.0, and nothing this command can
+ * install changes that: the range is that package's, and moving it is its
+ * author's release, or the operator's choice to drop it. Refusing would hold
+ * the whole machine on the old release until somebody else publishes, so
+ * these are named rather than refused.
+ */
+export function belowRelease(trees: readonly Copy[], release: string): Copy[] {
+  return trees.filter((copy) => copy.within !== undefined && !firstParty(copy.within) && compareVersions(copy.version, release) < 0);
+}
+
+/**
  * Where the plugins root and the install root are, for this running CLI.
  *
  * The plugins root is state, under amy's home. The install root is derived
@@ -417,7 +435,11 @@ export async function roots(
   }
   const global = await globalModules(runner);
   if (global === undefined || realpath(global) !== realpath(modules)) return { plugins };
-  return { plugins, install: { kind: "global", dir: globalPrefix(modules, platform), modules } };
+  // The prefix comes from the path npm reported, not from where this module
+  // resolved: Node hands an ES module its real path, so a global
+  // `node_modules` that is a symlink would put the prefix under the link's
+  // target, and every install and rollback would land in the wrong place.
+  return { plugins, install: { kind: "global", dir: globalPrefix(global, platform), modules } };
 }
 
 /** npm's global `node_modules`, or nothing when npm could not say. */

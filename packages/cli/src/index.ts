@@ -86,7 +86,7 @@ import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from 
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
-import { aboveRelease, compareVersions, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
+import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
@@ -1801,6 +1801,7 @@ async function moveEverything(
       for (const line of rewriteSkillsSaid) console.log(line);
     }
 
+    if (release !== undefined) reportHeldBelow(belowRelease(copiesOnDisk(pluginsRoot, installRoot), release.version), release.version);
     console.log(`\n${movedList.moved.length} package(s) moved; every configured profile mounts. Run \`amy doctor\`, then \`amy start\`.`);
     return 0;
 }
@@ -1894,6 +1895,14 @@ function reportRelease(everything: readonly Held[], moving: readonly Held[], rel
         `${release.newest} is published, and ${release.intent} allows ${release.version}.`,
     );
     return true;
+}
+
+/** Names the first-party copies a third-party package's own range holds below the release. */
+function reportHeldBelow(below: readonly Copy[], release: string): void {
+    if (below.length === 0) return;
+    console.log(`\n${below.length} first-party copy(ies) stay below ${release}, held there by the range of the package that carries them:`);
+    for (const copy of below) console.log(`  ${copy.name}@${copy.version}  inside ${copy.within}`);
+    console.log("They move when that package publishes a version for this release, or when it is removed.");
 }
 
 /** Every first-party copy the two roots hold; of a global prefix, only the CLI's own tree. */
