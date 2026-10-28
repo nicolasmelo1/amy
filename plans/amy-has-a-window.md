@@ -95,7 +95,15 @@ a command already calls, so the window is never a second road to the tracker.
   Activation: `packages/cli/src/ui/**`, `packages/ui/**`, `plugins/ui-desktop/src/**`.
   Every `window.*` assertion below is one of its required assertions.
 
+## What it delivers
+
+The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbrake`, `removeWorkflow`, `getConfig` and `saveConfig` — and the views `work.list`, `workflows.list`, `workflows.handbrake`, `work.detail` and `work.log`, from *every endpoint is named before it is built*, flipped to
+`delivered` in `surface.yaml` in the same pull request.
+
 ## Acceptance criteria
+
+- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
+      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] The desktop renderer holds the frame on every step of the script
       (proof: deferred:assertion:frame.every_region_sits_where_declared)

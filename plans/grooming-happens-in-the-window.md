@@ -36,7 +36,15 @@ row.
 `ticket-to-qa`'s gate already uses, so "writes nothing to the tracker" is its
 call log being empty of mutations, not a promise.
 
+## What it delivers
+
+The `grooming` domain — `searchTickets`, `startGrooming`, `getGrooming` and `addGroomingTurn` — and the view `grooming.detail`, from *every endpoint is named before it is built*, flipped to
+`delivered` in `surface.yaml` in the same pull request.
+
 ## Acceptance criteria
+
+- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
+      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] `+ groom` sits in nav 2 in every renderer
       (proof: deferred:assertion:frame.every_region_sits_where_declared)

@@ -78,7 +78,15 @@ is the menu bar's projection, compared with the locked golden and with the
 frame's subset like any region's. `ui-window` asserts the behaviour against
 the daemon on the conformance world.
 
+## What it delivers
+
+No operation: the views `menubar.title` and `menubar.menu`, over the session stream, from *every endpoint is named before it is built*, flipped to
+`delivered` in `surface.yaml` in the same pull request.
+
 ## Acceptance criteria
+
+- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
+      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] The menu bar's projection holds the frame's `menubar` surface on every
       step of the script (proof: deferred:assertion:frame.the_menu_bar_holds_its_surface)

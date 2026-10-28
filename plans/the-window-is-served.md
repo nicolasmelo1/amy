@@ -26,12 +26,14 @@ intents, and either can restart without the other.
 **The contract is OpenAPI, and the server writes it.** Nothing about the
 protocol is written twice, and nothing about it is written by hand:
 
-1. **The server declares each route and each message once**, as a Zod schema
-   beside the code that answers it. The request, the response, every event on
-   the stream and every error are among them.
+1. **The server declares each route and each message once**, in the
+   controller that answers it (*the server speaks in domains*): a
+   `@hono/zod-openapi` route whose request and response are Zod schemas in the
+   same file. The request, the response, every event on the stream and every
+   error are among them.
 2. **The build writes the document.** `npm run build` generates
-   `packages/ui/openapi.json` from those schemas (Zod's own JSON Schema output
-   through `zod-openapi`), as OpenAPI 3.1. Patches stream as Server-Sent
+   `packages/ui/openapi.json` from those routes (`getOpenAPI31Document`), as
+   OpenAPI 3.1. Patches stream as Server-Sent
    Events and intents go up as plain requests, so all of it is describable in
    OpenAPI: every stream event is a named schema in a `oneOf`, which every
    generator types. When the generator reads OpenAPI 3.2's `itemSchema` for
@@ -106,7 +108,18 @@ same change.
   committed.
 - From here on, `ui-frame`'s script reaches every renderer through a server.
 
+## What it delivers
+
+The `session`, `views` and `work` domains of *every endpoint is named before
+it is built* — `getCompatibility`, `openSession`, `closeSession`,
+`streamSession`, `listViews`, `subscribeView`, `unsubscribeView` and
+`pokeWork` — flipped to `delivered` in `surface.yaml` in the same pull
+request, and no operation the registry does not list.
+
 ## Acceptance criteria
+
+- [ ] The operations this row delivers are `delivered` in `surface.yaml`, and
+      the surface gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] A client in a home with no amy state draws the conformance world, and
       moves when the daemon advances a record

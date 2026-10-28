@@ -41,7 +41,15 @@ collection (*the frame is closed*); this row makes it real. `ui-frame` asserts
 where each contribution lands, `ui-window` asserts it arrives from an install,
 and the refusals are unit tests on `mount()`.
 
+## What it delivers
+
+The `actions` domain — `listActions` and `runAction` — and plugin contributions in `listViews`, from *every endpoint is named before it is built*, flipped to
+`delivered` in `surface.yaml` in the same pull request.
+
 ## Acceptance criteria
+
+- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
+      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] A contribution lands only in the slot `frame.yaml` declares for its
       collection, in every renderer (proof: deferred:assertion:frame.a_slot_takes_only_what_it_declares)

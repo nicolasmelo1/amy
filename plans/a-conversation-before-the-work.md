@@ -95,7 +95,15 @@ port is a fake Slack whose call log the scenario reads, and its harnesses are
 fake CLIs that record the prompt they were given, so what an ask carried is a
 fact a test reads rather than a property of a model.
 
+## What it delivers
+
+The `asks` and `threads` domains — `listHarnesses`, `startAsk`, `listAsks`, `getAsk`, `addAskTurn`, `getThread` and `addThreadTurn` — and the views `work.thread` and `asks.recent`, from *every endpoint is named before it is built*, flipped to
+`delivered` in `surface.yaml` in the same pull request.
+
 ## Acceptance criteria
+
+- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
+      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] `mod+k` opens the ask in every renderer, and escape closes it
       (proof: deferred:assertion:frame.every_key_does_what_it_is_declared_to)

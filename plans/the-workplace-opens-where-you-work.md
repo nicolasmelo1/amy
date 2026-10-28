@@ -40,7 +40,15 @@ The openers are `ui-window`'s: the conformance world's `$EDITOR` and `code`
 are fake commands that record the directory they were started in and exit,
 so "it opened the right checkout" is a line in a file.
 
+## What it delivers
+
+The `workplace` domain — `listOpeners`, `runOpener`, `openShell`, `writeShell`, `resizeShell` and `closeShell` — and the view `work.diff`, from *every endpoint is named before it is built*, flipped to
+`delivered` in `surface.yaml` in the same pull request.
+
 ## Acceptance criteria
+
+- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
+      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
 
 - [ ] The `Diff` tab holds what `git diff <base>...` prints in the checkout
       (proof: deferred:test:packages/cli/tests/ui-diff.test.ts)
