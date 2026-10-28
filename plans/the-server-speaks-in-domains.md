@@ -59,6 +59,39 @@ and nothing of another domain. Two domains that need the same record each read
 it through their own repository: the duplication is the price of being able
 to change one without reading the other.
 
+## There is no database
+
+amy keeps everything on the machine it runs on, as files, and the server adds
+no second place to keep it. What the server shows it reads from what amy
+already writes: the records, the queue, the briefs and `config.yaml` through
+the ports that own them, and what happened from the event log, the JSON Lines
+files the machine appends to. What the server changes it writes the same way an
+`amy` command does, through the same ports, onto the same files.
+
+So a **repository is not an ORM over tables**. It is the domain's narrow
+reading of the file-backed ports amy already mounts — `file-store`,
+`file-queue`, `file-log`, the brief store — and the only place a domain
+reaches them. Three consequences follow, and each is a decision:
+
+- **The files are the truth, the server only remembers.** The daemon writes
+  those files from another process at any moment. A repository reads them
+  when asked, the event log says when to ask again (*the event log can be
+  watched*), and nothing the server holds in memory is ever treated as more
+  current than the disk.
+- **Writes take the files' own discipline.** The ports already write by
+  rename, so a reader never sees half a record; a repository writes only
+  through them, never with a path of its own.
+- **What the server owns is small and on disk too.** Sessions and
+  subscriptions live in memory and end with the process — a client reopens,
+  as `410 session.expired` tells it to. An ask (*a conversation before the
+  work*) is one file under amy's home, like a task or a note. Nothing needs a
+  migration, and deleting the server's own files loses no work.
+
+A database would be a second copy of the machine's state, and the first time
+the two disagreed a person would be looking at a window that is not telling
+the truth. If one is ever needed, it is a plugin behind a port, like
+everything else, and this section is where that would be argued.
+
 ## The contract documents itself
 
 The document is written by the build from the controllers (*the window is
@@ -88,6 +121,7 @@ mutation fixture `sf verify` shows tripping it.
 | `the-contract-documents-itself` (layer 4, `kind: command`, a script over `openapi.json`) | an operation without `operationId`, summary, description or tag; a property without a description; a request or response without an example; an error response that is not the envelope; a code not named `<domain>.<reason>`; an operation without `x-amy-loopback-only` and `x-amy-writes` |
 | `every-documented-response-is-tested` (layer 3, `kind: command`) | an `(operationId, status)` pair the document declares and no test produced; the controller tests run every operation in-process through the app and record each status they saw |
 | `the-contract-only-breaks-on-purpose` (layer 2, `kind: command`) | a change to `openapi.json` that `oasdiff breaking` against the base branch's document reports at `ERR`, unless the same commit raises `apiMajor`; `oasdiff` is pinned in the toolchain lock beside `sf` and `gh` |
+| `the-server-keeps-no-database` (layer 0, `text_pattern`) | a database driver, an ORM or an embedded store imported anywhere under `packages/server` — `better-sqlite3`, `sqlite3`, `pg`, `mysql2`, `prisma`, `drizzle-orm`, `typeorm`, `knex`, `level`, `lmdb` — and any `node:fs` call outside `repositories/` |
 | `L2.GENERATED_FILES_ARE_LOCKED` (existing) | `openapi.json` edited without `sf lock` |
 
 ## Acceptance criteria
@@ -107,10 +141,18 @@ mutation fixture `sf verify` shows tripping it.
       controller's test (proof: deferred:test:packages/server/tests/core/errors.test.ts)
 - [ ] Removing a response field without raising `apiMajor` fails the build,
       and raising it lets the change through (proof: deferred:test:mutation fixture for the-contract-only-breaks-on-purpose)
+- [ ] Importing a database driver or an ORM under `packages/server`, or
+      touching `node:fs` outside a repository, fails the build
+      (proof: deferred:test:mutation fixture for the-server-keeps-no-database)
+- [ ] A record the daemon rewrites on disk is what the server answers next,
+      with no restart and no cache in between
+      (proof: deferred:test:packages/server/tests/core/files-are-the-truth.test.ts)
+- [ ] Restarting the server loses no work: every record, queue item, brief and
+      ask is where it was (proof: deferred:test:packages/server/tests/core/restart.test.ts)
 - [ ] The empty server — `core/` and no domain — builds a valid OpenAPI 3.1
       document (proof: deferred:test:packages/server/tests/core/app.test.ts)
 
 **Exit condition:** with `core/` and one example domain in a mutation
-fixture, `sf verify` shows each of the four rules tripping on its fixture,
+fixture, `sf verify` shows each of the five rules tripping on its fixture,
 and the clean tree builds a document every rule accepts — before *the window
 is served* adds its first real domain.

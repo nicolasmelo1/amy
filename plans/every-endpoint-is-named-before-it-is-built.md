@@ -30,6 +30,10 @@ request. A row that needs one the registry does not have adds it here first.
 
 ## Conventions every operation follows
 
+- Nothing is read from or written to a database: there is none
+  (*the server speaks in domains*). Every read comes from the files amy
+  already keeps — through the ports, and the event log for what happened —
+  and every write lands on them the way the matching `amy` command's would.
 - Paths are versioned, `/v1/…`, and owned by one domain each.
 - Every request carries `Authorization: Bearer <token>`; `401 session.unauthorized`
   is declared on every operation and not repeated below.
