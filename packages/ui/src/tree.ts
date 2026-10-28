@@ -1,4 +1,4 @@
-import { isJson, isPlainObject, onlyWhatJsonSends, type Json } from "./json.js";
+import { isPlainObject, jsonCopy, onlyWhatJsonSends, type Json } from "./json.js";
 import { fitsPropType, PRIMITIVES, VOCABULARY, type Primitive } from "./vocabulary.js";
 
 /**
@@ -38,18 +38,27 @@ function primitiveNamed(type: unknown, at: string): Primitive {
   return refuse(at, `${JSON.stringify(type)} is not a primitive. The vocabulary is ${PRIMITIVES.join(", ")}`);
 }
 
-function checkProps(type: Primitive, props: Readonly<Record<string, unknown>>, at: string): void {
+/**
+ * The props, checked against the primitive's spec, as a frozen copy of what
+ * the check read: what a getter or a later mutation does to the original no
+ * longer reaches the tree.
+ */
+function checkedProps(type: Primitive, props: Readonly<Record<string, unknown>>, at: string): Node["props"] {
   const spec = VOCABULARY[type].props;
+  const copy: Record<string, Json> = {};
   for (const [key, value] of Object.entries(props)) {
     // Own keys only: `constructor` or `toString` would otherwise find a member of the spec object.
     const prop = Object.hasOwn(spec, key) ? spec[key] : undefined;
-    if (!prop) refuse(at, `${type} has no property \`${key}\``);
-    if (!isJson(value)) refuse(at, `${type}.${key} is not a JSON value`);
-    if (!fitsPropType(prop.type, value)) refuse(at, `${type}.${key} is not of type ${prop.type}`);
+    if (!prop) return refuse(at, `${type} has no property \`${key}\``);
+    const read = jsonCopy(value);
+    if (read === undefined) return refuse(at, `${type}.${key} is not a JSON value`);
+    if (!fitsPropType(prop.type, read)) return refuse(at, `${type}.${key} is not of type ${prop.type}`);
+    copy[key] = read;
   }
   for (const [key, prop] of Object.entries(spec)) {
-    if (prop.required && !Object.hasOwn(props, key)) refuse(at, `${type} needs \`${key}\``);
+    if (prop.required && !Object.hasOwn(copy, key)) refuse(at, `${type} needs \`${key}\``);
   }
+  return Object.freeze(copy);
 }
 
 function checkChildren(type: Primitive, children: readonly Child[], at: string): void {
@@ -70,17 +79,14 @@ function flatten(children: Children, into: Child[]): Child[] {
 }
 
 /**
- * One primitive, built and checked.
- *
- * Refuses a name outside the vocabulary, a property the primitive does not
- * declare, and any value that is not JSON — a function included — naming
- * the one it refused. A property set to `undefined` is left out, which is
- * how a view writes an optional one.
+ * Nodes this module built or checked, so a tree built tag by tag is checked
+ * once, not once per level. Every one of them is frozen, so none can change
+ * after it was checked.
  */
-/** Nodes this module built or checked, so a tree built tag by tag is checked once, not once per level. */
 const checked = new WeakSet<Node>();
 
-function remember(node: Node): Node {
+function remember(type: Primitive, props: Node["props"], children: Child[]): Node {
+  const node: Node = Object.freeze({ type, props, children: Object.freeze(children) });
   checked.add(node);
   return node;
 }
@@ -90,13 +96,21 @@ function trusted(child: Child, at: string): Child {
   return typeof child === "string" || checked.has(child) ? child : validateAt(child, at);
 }
 
+/**
+ * One primitive, built and checked.
+ *
+ * Refuses a name outside the vocabulary, a property the primitive does not
+ * declare, and any value that is not JSON — a function included — naming
+ * the one it refused. A property set to `undefined` is left out, which is
+ * how a view writes an optional one.
+ */
 export function element(type: string, props: Readonly<Record<string, unknown>> = {}, children: Children = []): Node {
   const primitive = primitiveNamed(type, "view");
   const defined = Object.fromEntries(Object.entries(props).filter(([, value]) => value !== undefined));
-  checkProps(primitive, defined, primitive);
+  const read = checkedProps(primitive, defined, primitive);
   const flat = flatten(children, []).map((child, i) => trusted(child, `${primitive}/${i}`));
   checkChildren(primitive, flat, primitive);
-  return remember({ type: primitive, props: defined as Node["props"], children: flat });
+  return remember(primitive, read, flat);
 }
 
 function validateAt(value: unknown, at: string): Child {
@@ -109,13 +123,15 @@ function validateAt(value: unknown, at: string): Child {
   const primitive = primitiveNamed(type, at);
   if (!isPlainObject(props)) return refuse(at, `${primitive} has no props object`);
   // The container too: a hidden `toJSON` on it would send something else in its place.
-  if (!isJson(props as unknown)) return refuse(at, `${primitive} props are not a JSON value`);
+  const container = jsonCopy(props);
+  if (container === undefined) return refuse(at, `${primitive} props are not a JSON value`);
   if (!Array.isArray(children)) return refuse(at, `${primitive} has no children list`);
-  checkProps(primitive, props, at);
-  // Every slot, not `map`: a hole in the list would cross the wire as `null`.
-  const valid = Array.from(children, (child: unknown, i) => validateAt(child, `${at}/${i}`));
-  checkChildren(primitive, valid, at);
-  return remember({ type: primitive, props: props as Node["props"], children: valid });
+  const valid = checkedProps(primitive, container as Record<string, Json>, at);
+  // Each slot read once by index: a hole is refused, and no iterator or getter answers twice.
+  const list: Child[] = [];
+  for (let i = 0; i < children.length; i++) list.push(validateAt(children[i], `${at}/${i}`));
+  checkChildren(primitive, list, at);
+  return remember(primitive, valid, list);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diff, element, isJson, renderText, sameJson, validate, type Json } from "../src/index.js";
+import { diff, element, isJson, renderText, sameJson, validate, type Child, type Json } from "../src/index.js";
 
 // Each case here is a value the checks once accepted and the wire then
 // changed: what a renderer received was not what the view built.
@@ -143,5 +143,46 @@ describe("what a check reads is what JSON sends", () => {
     expect(isJson({ args: hidden({}, "workId", "A-1") })).toBe(false);
     expect(isJson(hidden(["a"], "extra", "b"))).toBe(false);
     expect(isJson(["a", "b"])).toBe(true);
+  });
+});
+
+describe("what was checked is what is kept", () => {
+  it("keeps the value a getter gave the check, not what it answers next", () => {
+    let reads = 0;
+    const args = {
+      get workId() {
+        reads += 1;
+        return reads === 1 ? "A-1" : Number.NaN;
+      },
+    };
+    const button = element("Button", { intent: { action: "poke", args } }, ["poke"]);
+
+    expect(JSON.parse(JSON.stringify(button))).toEqual(button);
+    expect((button.props.intent as { args: { workId: string } }).args.workId).toBe("A-1");
+  });
+
+  it("is not changed by a mutation of what it was built from", () => {
+    const columns = [{ width: 4 }];
+    const table = element("Table", { columns, rows: [] });
+    columns[0] = { width: -1 };
+
+    expect(table.props.columns).toEqual([{ width: 4 }]);
+  });
+
+  it("cannot be changed after it was checked, so the cache that trusts it stays right", () => {
+    const tree = validate({ type: "Stack", props: { gap: 1 }, children: [{ type: "Text", props: {}, children: ["hi"] }] });
+
+    expect(Object.isFrozen(tree)).toBe(true);
+    expect(Object.isFrozen(tree.props)).toBe(true);
+    expect(Object.isFrozen(tree.children)).toBe(true);
+    expect(Object.isFrozen(tree.children[0])).toBe(true);
+    expect(() => (tree.children as Child[]).push(element("Badge", {}, ["x"]))).toThrow(TypeError);
+  });
+
+  it("keeps a key named __proto__ as a key", () => {
+    const parsed = JSON.parse('{"__proto__":{"a":1}}') as Json;
+    const button = element("Button", { intent: { action: "poke", args: parsed } }, ["poke"]);
+
+    expect(JSON.stringify(button.props.intent)).toBe('{"action":"poke","args":{"__proto__":{"a":1}}}');
   });
 });
