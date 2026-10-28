@@ -96,10 +96,17 @@ describe("the text renderer", () => {
     );
   });
 
-  it("draws a state machine as a line, the current state marked", () => {
-    expect(draw(element("StateMachine", { states: ["A", "B", "C"], current: "B", transitions: [{ from: "A", to: "B" }] }))).toBe(
-      "A → [B] → C",
+  it("draws a state machine's states on a line, the current one marked, and each declared transition below", () => {
+    const transitions = [{ from: "OPEN", to: "DONE" }, { from: "OPEN", to: "CANCELLED" }];
+
+    expect(draw(element("StateMachine", { states: ["OPEN", "DONE", "CANCELLED"], current: "OPEN", transitions }))).toBe(
+      "[OPEN] · DONE · CANCELLED\nOPEN → DONE\nOPEN → CANCELLED",
     );
+  });
+
+  it("draws no edge a state machine did not declare", () => {
+    expect(draw(element("StateMachine", { states: ["A", "B", "C"], current: "B" }))).toBe("A · [B] · C");
+    expect(draw(element("StateMachine", { states: ["A", "B"], transitions: [] }))).toBe("A · B");
   });
 
   it("draws a log, code and a diff as they are", () => {

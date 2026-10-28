@@ -107,6 +107,8 @@ function validateAt(value: unknown, at: string): Child {
   if (extra.length > 0) refuse(at, `carries ${extra.map((key) => `\`${key}\``).join(", ")}, which no primitive has`);
   const primitive = primitiveNamed(type, at);
   if (!isPlainObject(props)) return refuse(at, `${primitive} has no props object`);
+  // The container too: a hidden `toJSON` on it would send something else in its place.
+  if (!isJson(props as unknown)) return refuse(at, `${primitive} props are not a JSON value`);
   if (!Array.isArray(children)) return refuse(at, `${primitive} has no children list`);
   checkProps(primitive, props, at);
   // Every slot, not `map`: a hole in the list would cross the wire as `null`.

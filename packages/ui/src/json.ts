@@ -32,11 +32,16 @@ function jsonOnPath(value: unknown, path: Set<object>): boolean {
 }
 
 /**
- * Every slot of an array, or nothing when it carries keys besides its
- * indexes: a hole would cross the wire as `null`, and an extra key not at all.
+ * Every indexed slot of an array, read the way `JSON.stringify` reads it —
+ * not through its iterator, which may yield something else — or nothing when
+ * it carries keys besides its indexes, which JSON drops. A hole reads as
+ * `undefined`, and is refused as one.
  */
 function arrayItems(value: readonly unknown[]): readonly unknown[] | undefined {
-  return Object.keys(value).length === value.length ? Array.from(value) : undefined;
+  if (Object.keys(value).length !== value.length) return undefined;
+  const items: unknown[] = [];
+  for (let i = 0; i < value.length; i++) items.push(value[i]);
+  return items;
 }
 
 /** Whether a value is an object literal's kind of object, not a date, a map or a class instance. */

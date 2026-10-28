@@ -66,10 +66,17 @@ function table(node: Node): string {
   return [...header, ...rows.map((row) => tableLine(columns, row))].join("\n");
 }
 
+/**
+ * The states on one line, the current one marked, and then each declared
+ * transition on a line of its own. Nothing between two states is drawn as an
+ * edge unless the tree declared it: the order of `states` is not a path.
+ */
 function stateMachine(node: Node): string {
   const current = string(node.props, "current");
   const states = (node.props.states ?? []) as readonly string[];
-  return states.map((state) => (state === current ? `[${state}]` : state)).join(" → ");
+  const line = states.map((state) => (state === current ? `[${state}]` : state)).join(" · ");
+  const edges = records(node.props, "transitions").map((edge) => `${String(edge.from)} → ${String(edge.to)}`);
+  return [line, ...edges].join("\n");
 }
 
 const DRAW: Readonly<Record<Primitive, Draw>> = {

@@ -99,3 +99,25 @@ describe("a tree the constructor accepts is a tree the receiver accepts", () => 
     expect(element("Stack", {}, [parsed]).children).toEqual([element("Text", {}, ["hi"])]);
   });
 });
+
+describe("what JSON reads is what the checks read", () => {
+  it("reads an array's slots, not what its iterator yields", () => {
+    const lying = Object.assign([Number.NaN], {
+      *[Symbol.iterator]() {
+        yield "fine";
+      },
+    });
+
+    expect(isJson(lying)).toBe(false);
+    expect(() => element("Button", { intent: { action: "poke", args: { values: lying } } }, ["poke"])).toThrow(
+      "Button.intent is not a JSON value",
+    );
+  });
+
+  it("refuses props whose hidden toJSON would send something else in their place", () => {
+    const props = {};
+    Object.defineProperty(props, "toJSON", { value: () => null, enumerable: false });
+
+    expect(() => validate({ type: "Stack", props, children: [] })).toThrow("Stack props are not a JSON value");
+  });
+});

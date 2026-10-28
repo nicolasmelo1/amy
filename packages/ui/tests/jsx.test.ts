@@ -39,7 +39,7 @@ describe("a view written in JSX", () => {
 
   it("is drawn by the text renderer like any other tree", () => {
     expect(renderText(workView(work))).toBe(
-      ["A-1 (waiting)", "", "lifecycle", "DISCOVERED → [IMPLEMENTING] → DONE", "(1)", "", "IMPLEMENTING 2", "", "[poke]"].join("\n"),
+      ["A-1 (waiting)", "", "lifecycle", "DISCOVERED · [IMPLEMENTING] · DONE", "(1)", "", "IMPLEMENTING 2", "", "[poke]"].join("\n"),
     );
   });
 
