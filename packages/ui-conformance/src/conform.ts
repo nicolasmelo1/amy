@@ -126,7 +126,10 @@ function measure(frame: Frame, renderer: ConformanceRenderer, config: Conformanc
       })),
     );
   }
-  const again = driveOnce({ frame, renderer, run: "keys", config }).projections;
+  const repeat = driveOnce({ frame, renderer, run: "keys", config });
+  const again = repeat.projections;
+  // What the second run broke counts as much as the first: a resize that works once is not a resize.
+  findings.push(...repeat.findings.map((finding) => ({ ...finding, run: "keys, again" })));
   if (JSON.stringify(again) !== JSON.stringify(keys)) {
     findings.push({ assertion: "frame.a_projection_is_deterministic", renderer: renderer.name, message: `the same script twice: ${firstDifference(frame, keys, again) ?? "the same values, in different bytes"}` });
   }
@@ -180,7 +183,14 @@ export function conform(frame: Frame, renderers: readonly ConformanceRenderer[],
       return { keys: [], findings: [{ assertion: "frame.every_region_sits_where_declared" as const, renderer: renderer.name, message }] };
     }
   });
-  const findings = [...measured.flatMap((each) => each.findings), ...crossCheck(frame, sorted, measured.map((each) => each.keys))];
+  const names = sorted.map((renderer) => renderer.name);
+  // Projections are kept by name, so two renderers sharing one would be compared, and approved, as one.
+  const named = [...new Set(names.filter((name, i) => names.indexOf(name) !== i))].map((name) => ({
+    assertion: "frame.renderers_agree_on_every_region" as const,
+    renderer: name,
+    message: `${names.filter((each) => each === name).length} renderers are named ${name}; each needs a name of its own to be compared`,
+  }));
+  const findings = [...named, ...measured.flatMap((each) => each.findings), ...crossCheck(frame, sorted, measured.map((each) => each.keys))];
   return {
     renderers: sorted.map((renderer) => ({ name: renderer.name, unit: renderer.unit, surfaces: renderer.surfaces })),
     assertions: ASSERTIONS.map((type) => {

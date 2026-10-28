@@ -417,6 +417,28 @@ describe("each assertion fails the renderer that breaks it", () => {
     expect(said).toContain("canvas holds header twice");
   });
 
+  it("a resize that only works the first time", () => {
+    let sessions = 0;
+    const once = altered("resizes-once", (session) => {
+      sessions += 1;
+      const mine = sessions;
+      return { resize: (size) => (mine <= 3 ? session.resize(size) : undefined) };
+    });
+    const report = conform(frame, [once], config, golden);
+
+    expect(report.findings.filter((finding) => finding.run === "keys, again").map((finding) => finding.message)).toContain(
+      "the window is 1280×800, not the narrowest 720×480 it was resized to",
+    );
+  });
+
+  it("two renderers with one name, which approval would collapse into one", () => {
+    const twin = { ...terminal, name: desktop.name };
+    const report = conform(frame, [desktop, twin], config, golden);
+
+    expect(messages(report, "frame.renderers_agree_on_every_region")).toContain("2 renderers are named stub-desktop; each needs a name of its own to be compared");
+    expect("refused" in approve(frame, [desktop, twin], config, golden)).toBe(true);
+  });
+
   it("no renderer at all, which passes nothing", () => {
     expect(conform(frame, [], config, golden).assertions.every((each) => each.status === "failed")).toBe(true);
   });
