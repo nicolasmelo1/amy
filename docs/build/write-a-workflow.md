@@ -13,7 +13,7 @@ ships, and nothing will name yours either.
 
 This page writes one end to end. There is a complete working example in the
 repository that a gate drives on every run —
-[`workflow-oncall/index.js`](https://github.com/nicolasmelo1/amy/blob/main/.software-factory/evidence/installed-plugins/workflow-oncall/index.js)
+[`workflow-oncall/index.ts`](https://github.com/nicolasmelo1/amy/blob/main/.software-factory/evidence/installed-plugins/workflow-oncall/index.ts)
 — installed onto a machine with no checkout on it, to prove exactly this.
 
 `/amy-workflow` will interrogate you into a design a question at a time. This

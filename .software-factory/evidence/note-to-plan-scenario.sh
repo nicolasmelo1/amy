@@ -46,4 +46,4 @@ trap cleanup EXIT INT TERM
 AMY_INSTALL_LIB="$install_lib" AMY_TARBALLS="$tarballs" "$repo/scripts/install.sh" "$bin" >/dev/null
 test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
 
-AMY_E2E_TARBALLS="$tarballs" node "$here/note-to-plan/drive.mjs" "$here/note-to-plan" "$bin/amy" "$report" $keep
+AMY_E2E_TARBALLS="$tarballs" "$repo/node_modules/.bin/tsx" "$here/note-to-plan/drive.ts" "$here/note-to-plan" "$bin/amy" "$report" $keep

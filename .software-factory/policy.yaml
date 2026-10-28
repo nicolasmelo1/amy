@@ -166,7 +166,7 @@ gates:
       - "packages/cli/src/paths.ts"
       - "packages/cli/src/slices.ts"
       - "scripts/install.sh"
-      - "scripts/write-install-manifest.mjs"
+      - "scripts/write-install-manifest.ts"
       # The two refusals below are the mount's and the engine's, so a change
       # to either is a change to what this gate last proved.
       - "packages/core/src/mount.ts"

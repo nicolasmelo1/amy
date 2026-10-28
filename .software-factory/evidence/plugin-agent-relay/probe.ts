@@ -1,0 +1,479 @@
+import fs from "node:fs";
+import path from "node:path";
+import type { Agent, Budget, Event, Ticket } from "@amykit/core";
+
+/** The nth argument the scenario passed, or a usage line and an exit. */
+function argument(n: number): string {
+  const value = process.argv[2 + n];
+  if (value !== undefined) return value;
+  console.error("usage: probe.ts <work> <repo> <report>");
+  process.exit(2);
+}
+
+const [work, repo, report] = [argument(0), argument(1), argument(2)];
+const dist = (...where: string[]): string => path.join(repo, ...where, "dist", "index.js");
+
+const { mount, NodeCommandRunner }: typeof import("@amykit/core") = await import(dist("packages", "core"));
+const { plugin: claude }: typeof import("@amykit/plugin-claude") = await import(dist("plugins", "claude"));
+const { plugin: codex }: typeof import("@amykit/plugin-codex") = await import(dist("plugins", "codex"));
+const { plugin: hermes }: typeof import("@amykit/plugin-hermes-agent") = await import(dist("plugins", "hermes-agent"));
+const { plugin: relay }: typeof import("@amykit/plugin-agent-relay") = await import(dist("plugins", "agent-relay"));
+const { judgeStep }: typeof import("@amykit/agent-kit") = await import(dist("packages", "agent-kit"));
+const { triagePrompt, readTriage, unreadTriage }: typeof import("@amykit/workflow-ticket-to-qa") = await import(
+  dist("packages", "workflow-ticket-to-qa")
+);
+
+const assertions: { type: string; status: "passed" | "failed" }[] = [];
+const record = (type: string, ok: boolean): number => assertions.push({ type, status: ok ? "passed" : "failed" });
+
+const calls = path.join(work, "calls.log");
+process.env.AMY_E2E_CALLS = calls;
+
+const TICKET = {
+  id: "PROJ-1239",
+  title: "The invoice total is wrong",
+  url: "https://tracker.test/PROJ-1239",
+  status: "In Progress",
+  labels: ["Bug"],
+  repo: "acme/widgets",
+  branch: "proj-1239",
+};
+
+/** What a mount handed back, or what a run on an unmounted port does: throws. */
+function mustHave<T>(port: T | null | undefined, kind: string): T {
+  if (port === null || port === undefined) throw new Error(`no ${kind} port was mounted`);
+  return port;
+}
+
+/**
+ * A triage, the way ticket-to-qa runs one: its prompt, on the agent's one
+ * method, named in the context so the ladders and skills key on it.
+ */
+const triage = async (agent: Agent | null | undefined, ticket: Ticket, conversation?: readonly string[]) =>
+  judgeStep(mustHave(agent, "agent"), {
+    prompt: triagePrompt(ticket, conversation),
+    cwd: path.join(work, "checkouts", "widgets"),
+    context: { workId: ticket.id, step: "triage" },
+    read: (answer) => readTriage(answer, "2026-09-03T12:00:00.000Z"),
+    fallback: unreadTriage("2026-09-03T12:00:00.000Z"),
+  });
+
+/** The prompt the fake claude was last handed, which is what a triage claim reads. */
+const lastPrompt = () => fs.readFileSync(path.join(work, "last-prompt.txt"), "utf-8");
+
+/** What a host is mounted with, beside its ladder. */
+interface HostOptions {
+  budget?: Record<string, Record<string, number>>;
+  seed?: Event[];
+  skills?: Record<string, string[]>;
+  models?: string[];
+  codexModels?: string[];
+  hermesModels?: string[];
+  ladderByStep?: Record<string, string[]>;
+}
+
+/** Mounts the four built plugins with a ladder, and returns the agent port. */
+async function hostWith(
+  ladder: string[],
+  {
+    budget,
+    seed = [],
+    skills,
+    models = ["sonnet", "opus"],
+    codexModels = ["gpt-5"],
+    hermesModels = ["hermes-4-405b"],
+    ladderByStep,
+  }: HostOptions = {},
+) {
+  const events: Event[] = [...seed];
+  const outcome = await mount(
+    [claude, codex, hermes, relay],
+    {
+      "@amykit/plugin-claude": { models },
+      "@amykit/plugin-codex": { models: codexModels },
+      "@amykit/plugin-hermes-agent": { models: hermesModels },
+      "@amykit/plugin-agent-relay": {
+        ladder,
+        ...(ladderByStep === undefined ? {} : { ladderByStep }),
+        ...(budget === undefined ? {} : { budget }),
+        ...(skills === undefined ? {} : { skills, skillRoots: [path.join(work, "skills")] }),
+      },
+    },
+    {
+      runner: new NodeCommandRunner(),
+      now: () => new Date("2026-09-03T12:00:00.000Z"),
+      log: { append: (event) => events.push(event), read: () => [...events] },
+      paths: { workspace: path.join(work, "checkouts"), checkouts: {}, state: path.join(work, ".amy") },
+    },
+  );
+
+  return {
+    outcome,
+    events,
+    agent: outcome.ok ? (outcome.mounted.ports.get("agent") as Agent | undefined) : null,
+    budget: outcome.ok ? (outcome.mounted.ports.get("budget") as Budget | undefined) : null,
+    mounted: outcome.ok ? outcome.mounted : null,
+  };
+}
+
+/** An agent run as the worker writes one, with only what a budget reads. */
+function spent(at: string, costUsd: number): Event {
+  return {
+    at,
+    kind: "agent.run",
+    detail: { costSource: "reported", costUsd, tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } },
+  };
+}
+
+const LADDER = ["claude:sonnet", "claude:opus", "codex:gpt-5"];
+
+// The shape `amy init` ships: the default ladder and a step's own both naming
+// the same rung. Before the union deduped, this was the config that could not
+// boot — the second `claude:opus` met the collection's one-name rule and the
+// template's own example was refused at mount.
+const TEMPLATE_LADDER = ["claude:sonnet", "claude:opus", "claude:haiku"];
+
+function reset(mode: string): void {
+  fs.writeFileSync(calls, "");
+  process.env.AMY_E2E_CLAUDE = mode;
+}
+
+const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(Boolean);
+
+// 0. The config `amy init` writes mounts. A rung named in both the default
+// ladder and a step's own is one rung — the collection holds one `claude:opus`
+// where the raw union held two — and the step's own ladder decides who a step
+// meets first, which is how the order a first mention set stays observable.
+{
+  const { outcome, agent } = await hostWith(TEMPLATE_LADDER, {
+    models: ["sonnet", "opus", "haiku", "opus"],
+    ladderByStep: { triage: ["claude:haiku"], implement: ["claude:opus"] },
+  });
+
+  record(
+    "relay.a_rung_named_twice_mounts_once",
+    outcome.ok === true && Boolean(agent),
+  );
+
+  reset("fine");
+  const { agent: stepped } = await hostWith(TEMPLATE_LADDER, {
+    models: ["sonnet", "opus", "haiku", "opus"],
+    ladderByStep: { triage: ["claude:haiku"], implement: ["claude:opus"] },
+  });
+  await triage(stepped, TICKET);
+
+  // `triage` was handed to the rung its step's ladder names first, and the
+  // default ladder's opening rungs were not consulted on the way: the order
+  // the config meant is the order the relay walked.
+  record(
+    "relay.the_first_mention_sets_the_order",
+    called()[0] === "claude:haiku",
+  );
+}
+
+// 1. The relay is what mounts the port. The harnesses only contribute, so
+// without it the agent actions have no owner at all.
+{
+  const { outcome, agent } = await hostWith(LADDER);
+  record("relay.mounts_the_agent_port", outcome.ok === true && Boolean(agent));
+
+  const withoutRelay = await mount([claude, codex], {
+    "@amykit/plugin-claude": { models: ["sonnet"] },
+    "@amykit/plugin-codex": { models: ["gpt-5"] },
+  }, {
+    runner: new NodeCommandRunner(),
+    now: () => new Date(),
+    paths: { workspace: path.join(work, "checkouts"), checkouts: {}, state: path.join(work, ".amy") },
+  });
+
+  record(
+    "relay.is_the_only_owner_of_the_agent_port",
+    withoutRelay.ok === true && !withoutRelay.mounted.ports.has("agent"),
+  );
+}
+
+// 2. The happy path: the first rung answers and nothing else is disturbed.
+{
+  reset("fine");
+  const { agent } = await hostWith(LADDER);
+  const result = await triage(agent, TICKET);
+
+  record("relay.first_rung_answers_when_it_works", result.value.clear === true);
+  record("relay.asks_nobody_else_when_the_first_rung_worked", called().length === 1);
+}
+
+// 2b. The ticket's body is in the prompt, and a ticket with none says so.
+// The whole defect this gate exists to keep closed: an agent that cannot open
+// a tracker page was being told to read one, and worked from the title alone.
+{
+  reset("fine");
+  const { agent } = await hostWith(LADDER);
+  await triage(agent, {
+    ...TICKET,
+    body: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+  });
+
+  record(
+    "prompt.carries_the_ticket_body",
+    lastPrompt().includes("Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here."),
+  );
+
+  // The label only the tracker could have supplied, beside the body it is
+  // already carried with: what the team says the ticket *is*, surviving the
+  // relay that hands the step its prompt.
+  record(
+    "prompt.carries_the_label_the_tracker_supplied",
+    lastPrompt().includes("Labels: Bug"),
+  );
+
+  reset("fine");
+  await triage(agent, { ...TICKET, body: undefined });
+  record("prompt.says_so_when_a_ticket_has_none", lastPrompt().includes("(this ticket has no description)"));
+
+  // The instruction nobody without a credential could obey is gone with the
+  // body that made it look optional.
+  record(
+    "prompt.sends_the_agent_to_the_repository_not_the_tracker",
+    !lastPrompt().includes("Read the ticket"),
+  );
+
+  // 2c. A question amy asked is labelled as its own, and the answer to it is
+  // part of the ticket. The relay is what hands a step its prompt, so the
+  // attribution has to survive the ladder, not just the kit.
+  reset("fine");
+  await triage(agent, {
+    ...TICKET,
+    body: "The total line must show the same currency as the rest of the invoice.",
+  }, [
+    "You asked: - Which currency should the invoice total be shown in?",
+    "Ticket Owner answered: In BRL, the same as the rest of the invoice.",
+  ]);
+  record(
+    "prompt.carries_the_answers_to_its_own_questions",
+    lastPrompt().includes("You asked: - Which currency should the invoice total be shown in?") &&
+      lastPrompt().includes("Ticket Owner answered: In BRL, the same as the rest of the invoice."),
+  );
+}
+
+// 3. A failure escalates the model, inside the same harness.
+{
+  reset("weak-model-fails");
+  const { agent, events } = await hostWith(LADDER);
+  const result = await triage(agent, TICKET);
+
+  const asked = called();
+  record("relay.escalates_the_model_after_a_failure", asked.join(",") === "claude:sonnet,claude:opus");
+  // The model the envelope named, which is the one that actually ran rather
+  // than the one that was asked for.
+  record("relay.answers_from_the_stronger_model", result.run.model === "claude-opus-4-5[1m]");
+  // codex sat right there and was correctly left alone: a failure has a
+  // stronger model to try before it is worth changing harness.
+  record("relay.does_not_change_harness_on_a_failure", !asked.some((c) => c.startsWith("codex")));
+
+  const handoff = events.filter((e) => e.kind === "agent.handoff");
+  record("relay.records_the_handoff_with_its_cause", handoff[0]?.detail?.cause === "failed");
+  record("relay.records_which_axis_moved", handoff[0]?.detail?.moved === "model");
+}
+
+// 4. A quota changes harness, and skips the rest of the throttled one.
+{
+  reset("throttled");
+  const { agent, events } = await hostWith(LADDER);
+  const result = await triage(agent, TICKET);
+
+  const asked = called();
+  record("relay.changes_harness_after_a_rate_limit", result.run.harness === "codex");
+  // claude:opus is next in the ladder and is deliberately skipped: it sits
+  // behind the same quota that just refused.
+  record("relay.skips_the_rest_of_the_throttled_harness", asked.join(",") === "claude:sonnet,codex:gpt-5");
+
+  const handoff = events.filter((e) => e.kind === "agent.handoff");
+  record("relay.records_the_rate_limit_as_the_cause", handoff[0]?.detail?.cause === "rate-limited");
+  record("relay.records_the_harness_axis", handoff[0]?.detail?.moved === "harness");
+}
+
+// 5. The handbrake. A killed or missing binary must not raise a fresh one.
+{
+  reset("fine");
+  const { agent } = await hostWith(["claude:sonnet", "codex:gpt-5"]);
+
+  // An empty PATH is what a killed child and a missing binary look like from
+  // here: the command cannot be run at all.
+  const previous = process.env.PATH;
+  process.env.PATH = path.join(work, "empty");
+  let outcome;
+  try {
+    outcome = await triage(agent, TICKET).then((r) => r.run.outcome, () => "threw");
+  } finally {
+    process.env.PATH = previous;
+  }
+
+  record("relay.reports_an_unrunnable_harness_as_abandoned", outcome === "abandoned");
+  // The property that matters: `amy stop` kills the child, and if the relay
+  // treated that as a failure it would start a new process on the next
+  // harness the instant the operator pulled the handbrake.
+  record("relay.starts_nothing_else_after_an_abandoned_run", called().length === 0);
+}
+
+// 6. A ladder with a typo in it is refused while boot can still refuse.
+{
+  const { outcome } = await hostWith(["claude:sonnet", "claude:opuss"]);
+
+  record("relay.refuses_an_unknown_agent_at_boot", outcome.ok === false);
+  record(
+    "relay.names_the_unknown_agent_and_the_choices",
+    outcome.ok === false &&
+      outcome.problems.join("\n").includes("claude:opuss") &&
+      outcome.problems.join("\n").includes("codex:gpt-5"),
+  );
+}
+
+// 7. The ceiling on spending, which is the other half of letting this thing
+// run overnight: the relay is what mounts it, and it is asked before a call.
+{
+  const { outcome: uncapped } = await hostWith(LADDER);
+  record("relay.mounts_no_budget_when_no_ceiling_is_set", uncapped.ok === true && !uncapped.mounted.ports.has("budget"));
+
+  const { budget } = await hostWith(LADDER, { budget: { perFiveHours: { costUsd: 20 } } });
+  record("relay.mounts_a_budget_when_a_ceiling_is_set", Boolean(budget));
+
+  // Nineteen dollars in the last hour, against a twenty dollar ceiling that
+  // stops at nine tenths. Read from the log, not from a tally of its own.
+  const seed = [spent("2026-09-03T11:00:00.000Z", 19)];
+  const spentHost = await hostWith(LADDER, { budget: { perFiveHours: { costUsd: 20 } }, seed });
+  const decision = mustHave(spentHost.budget, "budget").mayStart(new Date("2026-09-03T12:00:00.000Z"));
+
+  record("relay.stops_new_work_at_the_ceiling", decision.ok === false && decision.measure === "costUsd");
+  record("relay.says_which_window_stopped_the_work", decision.ok === false && decision.window === "perFiveHours");
+
+  const quiet = await hostWith(LADDER, { budget: { perFiveHours: { costUsd: 500 } }, seed });
+  record(
+    "relay.starts_work_while_the_window_has_room",
+    mustHave(quiet.budget, "budget").mayStart(new Date("2026-09-03T12:00:00.000Z")).ok === true,
+  );
+
+  const typo = await hostWith(LADDER, { budget: { perDay: { costUsd: 20 } } });
+  record("relay.refuses_a_budget_it_cannot_mean_at_boot", typo.outcome.ok === false);
+
+  // A ceiling in dollars over a model nobody can price is not a loose
+  // ceiling, it is an inert one: runs on it are recorded with no cost, the
+  // dollar figure never moves, and the token ceiling beside it is the only
+  // thing that ever stops the work.
+  //
+  // It has to be a *codex* rung. Codex reports no cost of its own, so the
+  // vendored table is the only way one of its runs gets a price, which makes
+  // it the one harness a missing row leaves a dollar ceiling inert for.
+  // `gpt-9-codex` is a model the table has no row for, which is what a table
+  // lagging behind a release looks like from here.
+  const priceless = await hostWith(["codex:gpt-9-codex"], {
+    codexModels: ["gpt-9-codex"],
+    budget: { perWeek: { costUsd: 150 } },
+  });
+  const refused = priceless.outcome.ok === false ? priceless.outcome.problems.join("\n") : "";
+
+  record("relay.refuses_a_dollar_ceiling_it_cannot_price", priceless.outcome.ok === false);
+  record(
+    "relay.names_the_model_that_has_no_price",
+    refused.includes("`gpt-9-codex`") && refused.includes("`codex:gpt-9-codex`"),
+  );
+
+  // The same ladder, the same missing row, a ceiling in tokens. Tokens are
+  // what a subscription meters and every harness reports them, so this one
+  // never needed the price table and refusing it would be theatre.
+  const inTokens = await hostWith(["codex:gpt-9-codex"], {
+    codexModels: ["gpt-9-codex"],
+    budget: { perWeek: { tokens: 30000000 } },
+  });
+
+  record("relay.a_token_ceiling_needs_no_price_table", inTokens.outcome.ok === true);
+
+  // And the other half of the same sentence, which is the one that keeps this
+  // check honest. The question underneath it is not "is this model in the
+  // table", it is "could a run of this rung arrive with a cost on it".
+  //
+  // Claude puts `total_cost_usd` in its envelope and hermes writes `cost_status: "included"`
+  // for a run a subscription or a local model covered — where zero is the right answer and no
+  // price list will ever carry a row. Neither model here is in the table, both ceilings work,
+  // and refusing them would be the same failure as an inert ceiling reached from the other
+  // side: a machine that will not start over a number it already has.
+  const reported = await hostWith(["claude:opus-9", "hermes:llama-3.3"], {
+    models: ["opus-9"],
+    hermesModels: ["llama-3.3"],
+    budget: { perWeek: { costUsd: 150 } },
+  });
+
+  record("relay.a_harness_that_reports_its_cost_needs_no_price_table", reported.outcome.ok === true);
+}
+
+// 8. A skill per step: the same ladder, asking who should do the work rather
+// than who is still within quota.
+{
+  for (const name of ["first-skill", "second-skill"]) {
+    fs.mkdirSync(path.join(work, "skills", name), { recursive: true });
+    fs.writeFileSync(path.join(work, "skills", name, "SKILL.md"), "# a skill\n");
+  }
+
+  const SKILLS = { triage: ["/first-skill", "/second-skill"] };
+
+  reset("fine");
+  const { agent } = await hostWith(["claude:sonnet"], { skills: SKILLS });
+  await triage(agent, TICKET);
+
+  record("relay.hands_the_step_to_the_skill_named_for_it", called()[0] === "claude:sonnet:first-skill");
+  record("relay.asks_no_other_skill_once_one_answered", called().length === 1);
+
+  reset("first-skill-fails");
+  const second = await hostWith(["claude:sonnet"], { skills: SKILLS });
+  await triage(second.agent, TICKET);
+
+  record(
+    "relay.moves_to_the_next_skill_when_the_first_did_not_answer",
+    called().join(",") === "claude:sonnet:first-skill,claude:sonnet:second-skill",
+  );
+
+  const moved = second.events.filter((e) => e.kind === "agent.handoff");
+  record("relay.records_the_skill_axis", moved[0]?.detail?.moved === "skill");
+
+  const typo = await hostWith(["claude:sonnet"], { skills: { triage: ["/nao-existe"] } });
+  const said = typo.outcome.ok === false ? typo.outcome.problems.join("\n") : "";
+
+  record("relay.refuses_a_skill_nobody_installed_at_boot", typo.outcome.ok === false);
+  record(
+    "relay.names_the_skills_there_were_to_choose_from",
+    said.includes("/first-skill") && said.includes("/second-skill"),
+  );
+}
+
+const failed = assertions.filter((a) => a.status !== "passed");
+
+fs.writeFileSync(
+  report,
+  `${JSON.stringify(
+    {
+      scenario: "plugin-agent-relay",
+      status: failed.length === 0 ? "passed" : "failed",
+      goal:
+        "I am about to let this thing spend money on my behalf overnight. Prove the built artifact escalates the model on a failure, changes harness on a quota, refuses a ladder with a typo before boot finishes, never raises a fresh process after a run was cut off, stops starting work once the five hour window is nearly spent, refuses to start at all when the dollar ceiling I wrote could never stop anything, and hands a step to the skill I named rather than to its own prompt.",
+      artifact: {
+        package: "@amykit/plugin-agent-relay",
+        entry: "dist/index.js",
+        mounted_with: ["@amykit/plugin-claude", "@amykit/plugin-codex", "@amykit/core"],
+      },
+      observed: {
+        assertions_run: assertions.length,
+        assertions_failed: failed.length,
+        node: process.version,
+      },
+      assertions,
+    },
+    null,
+    2,
+  )}\n`,
+  "utf-8",
+);
+
+console.log(`${assertions.length - failed.length}/${assertions.length} assertions passed`);
+if (failed.length > 0) {
+  for (const a of failed) console.error(`FAILED ${a.type}`);
+  process.exit(1);
+}

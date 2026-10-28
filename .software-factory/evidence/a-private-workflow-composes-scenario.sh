@@ -49,4 +49,4 @@ trap 'exit 143' TERM
 test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
 
 AMY_E2E_PIDFILE="$pids" AMY_E2E_TARBALLS="$bin/../lib/amy/packages" \
-  node "$here/a-private-workflow-composes/drive.mjs" "$repo" "$bin/amy" "$report" $keep
+  "$repo/node_modules/.bin/tsx" "$here/a-private-workflow-composes/drive.ts" "$repo" "$bin/amy" "$report" $keep

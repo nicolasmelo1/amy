@@ -869,6 +869,11 @@
         },
         {
           "depth": 3,
+          "title": "The mutation fixtures amy workflow new writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still index.js, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so sf verify in an existing workflow is unaffected.",
+          "slug": "the-mutation-fixtures-amy-workflow-new-writes-beside-a-workflow-are-typescript-now-the-same-as-the-scaffold-they-guard-two-of-the-three-were-still-indexjs-so-a-workflow-written-in-typescript-proved-its-guardrails-against-a-file-in-a-language-it-does-not-use-the-rules-read-both-so-sf-verify-in-an-existing-workflow-is-unaffected"
+        },
+        {
+          "depth": 3,
           "title": "**The event log can be watched, from any process.**",
           "slug": "the-event-log-can-be-watched-from-any-process"
         },
@@ -8131,7 +8136,7 @@
           "packages/cli/src/paths.ts",
           "packages/cli/src/slices.ts",
           "scripts/install.sh",
-          "scripts/write-install-manifest.mjs",
+          "scripts/write-install-manifest.ts",
           "packages/core/src/mount.ts",
           "packages/core/src/dispatch.ts",
           "plugins/serial-engine/src/Worker.ts"
@@ -8897,6 +8902,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "no-javascript-left",
+        "title": "The mutation fixtures `amy workflow new` writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still `index.js`, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so `sf verify` in an existing workflow is unaffected.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "the-event-log-can-be-watched",

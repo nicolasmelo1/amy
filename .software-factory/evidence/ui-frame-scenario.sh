@@ -40,6 +40,6 @@ mkdir -p "$work/install"
 # of their own, and the ones this scenario adds for the other assertions.
 mkdir -p "$work/install/broken"
 cp -R "$repo/.software-factory/mutations/L1.EVERY_RENDERER_HOLDS_THE_FRAME/plugins" "$work/install/broken/plugins"
-cp "$here/ui-frame/"*.mjs "$work/install/"
+cp "$here/ui-frame/"*.ts "$work/install/"
 
-node "$here/ui-frame/drive.mjs" "$work/install" "$report"
+"$repo/node_modules/.bin/tsx" "$here/ui-frame/drive.ts" "$work/install" "$report"

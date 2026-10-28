@@ -191,7 +191,7 @@ refuses: *"contributed no runtime, so nothing here knows how to run its
 actions"*. That message is the one you will see if you forget this line.
 
 There is a working example of the whole shape, in about forty lines, at
-`.software-factory/evidence/installed-plugins/workflow-oncall/index.js`.
+`.software-factory/evidence/installed-plugins/workflow-oncall/index.ts`.
 
 ## Making it drivable
 

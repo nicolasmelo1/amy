@@ -2,5 +2,5 @@
   "name": "@amykit/plugin-ui-no-panel",
   "private": true,
   "type": "module",
-  "amy": { "conformance": "./renderer.mjs" }
+  "amy": { "conformance": "./renderer.ts" }
 }

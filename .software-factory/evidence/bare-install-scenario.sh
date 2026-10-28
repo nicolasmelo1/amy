@@ -16,6 +16,7 @@
 set -eu
 
 repo=$(cd "$(dirname "$0")/../.." && pwd)
+here=$(cd "$(dirname "$0")" && pwd)
 # Absolute before anything else: this scenario changes directory on purpose,
 # so a relative report path would be written somewhere nobody looks.
 report=${1:-"$repo/.software-factory/evidence/bare-install-run.json"}
@@ -94,7 +95,7 @@ fi
 # in comments, and the machine drives none of them until one is uncommented
 # or written. The parse runs from the install's own directory, so the `yaml`
 # the command already carries is what reads the file the command wrote.
-declared=$(cd "$work/lib" && node -e "const yaml = require('yaml'); const fs = require('fs'); const p = yaml.parse(fs.readFileSync(process.argv[1],'utf-8')) ?? {}; process.stdout.write(String(Object.keys(p.workflows ?? {}).length));" "$work/home/.amy/config.yaml" 2>/dev/null || echo parse-failed)
+declared=$("$repo/node_modules/.bin/tsx" "$here/bare-install/declared.ts" "$work/lib" "$work/home/.amy/config.yaml" 2>/dev/null || echo parse-failed)
 if [ "$declared" = "0" ]; then
   record bare.init_writes_no_declared_workflow 0
 else
