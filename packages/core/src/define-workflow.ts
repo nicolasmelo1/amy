@@ -108,11 +108,34 @@ export function defineWorkflow<
           checkouts: ctx.checkouts(),
           ctx,
         });
-        return { ...runtime, policy: runtimePolicy, newRecord } as WorkflowRuntime<R, O>;
+        return completeRuntime(runtime, runtimePolicy, newRecord);
       }));
     },
   };
   return plugin;
+}
+
+/**
+ * Completes a declaration's runtime with the fields the core owns.
+ *
+ * Members are delegated, not spread: a class-built runtime keeps its methods
+ * on the prototype, and a spread drops them while the mount still succeeds.
+ */
+function completeRuntime<R extends WorkRecord, O, P>(
+  parts: WorkflowRuntimeParts<R, O>,
+  policy: P,
+  newRecord: (workId: string, now: Date) => R,
+): WorkflowRuntime<R, O> {
+  return {
+    policy,
+    ...(parts.progress ? { progress: parts.progress } : {}),
+    found: () => parts.found(),
+    observe: (record) => parts.observe(record),
+    actions: parts.actions,
+    apply: (record, plan, outcomes, observation, now, moved) =>
+      parts.apply(record, plan, outcomes, observation, now, moved),
+    newRecord,
+  };
 }
 
 function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRecord, O>(

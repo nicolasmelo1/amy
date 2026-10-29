@@ -5,6 +5,7 @@ import {
   Plugin,
   WorkRecord,
   WorkflowRuntime,
+  WorkflowRuntimeParts,
   defineWorkflow,
   mount,
   optional,
@@ -164,6 +165,45 @@ describe("defineWorkflow", () => {
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     expect(outcome.mounted.workflow?.trackerWrites).toEqual(["comment"]);
+  });
+  // Members are delegated to the object the factory returned, so a runtime
+  // built as a class keeps its prototype methods — and `this` — after mount.
+  it("keeps the methods of a runtime built as a class", async () => {
+    class ClassRuntime implements WorkflowRuntimeParts<Record, unknown> {
+      readonly actions = {};
+      #looks: string[] = [];
+
+      async found(): Promise<readonly string[]> {
+        this.#looks.push("found");
+        return ["C-1"];
+      }
+
+      async observe(): Promise<unknown> {
+        return {};
+      }
+
+      apply(record: Record): Record {
+        return record;
+      }
+    }
+
+    const declared = defineWorkflow({
+      name: "classy",
+      configSchema: schema,
+      states: ["NEW"],
+      waiting: [],
+      terminal: ["NEW"],
+      policy: { attempts: 3 },
+      needs: { source: port<RequiredPort>() },
+      plan: () => ({ kind: "settled", why: "done" }),
+      record: (workId) => ({ customer: workId }),
+      runtime: () => new ClassRuntime(),
+    });
+    const outcome = await mount([declared, source], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("classy") as WorkflowRuntime<Record>;
+
+    await expect(runtime.found()).resolves.toEqual(["C-1"]);
   });
 });
 
