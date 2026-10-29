@@ -29,7 +29,9 @@ structured signal, the plan says that, and Codex stays `failed`: guessing from
 prose is the thing the harness was built not to do.
 
 **A rate limit with nowhere to go is a wait.** When the ladder ends on
-`rate-limited`, the attempt is not recorded. The workflow waits — until the
+`rate-limited`, the step's plan is a `wait`, and since
+[waiting is not trying](waiting-is-not-trying.md) a wait is a look and never an
+attempt, so the attempt is not recorded. The workflow waits — until the
 reset time when the harness reports one, the policy's backoff otherwise — and
 the same step runs again on the tree as it was left, with the handoff note
 saying it is continuing. `no-retry-is-free` does not count it: a wait adds no

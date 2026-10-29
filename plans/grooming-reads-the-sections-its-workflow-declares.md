@@ -20,8 +20,11 @@ handed to a person grooming something else. The skills amy ships
 
 **`amy brief check <id>`.** A workflow with a `brief/` phase exports one
 function, `check(record) → refusal[]`, each refusal naming the section and the
-rule. The command runs it against the stored brief and exits non-zero while
-anything is refused. A workflow that declares no check is told so by
+rule. Under *a workflow is one declaration* it is one more optional member of
+the `defineWorkflow` call, `brief: { sections, check }`, beside `decide` and
+`actions`, so the sections and the check are declared where the rest of the
+workflow is. The command runs it against the stored brief and exits non-zero
+while anything is refused. A workflow that declares no check is told so by
 `amy doctor`, not by a check that always passes.
 
 **`amy-groom`, shipped.** A skill in `packages/cli/skills/amy-groom/` that:

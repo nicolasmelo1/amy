@@ -19,7 +19,9 @@ removes the file by hand.
 ## Half of this already works
 
 `terminalStates` is a list — it is meant to be several, and a private workflow
-has two (`DONE` and `REVIEW_POSTED`). `Worker.discover` reads it and refuses to
+has two (`DONE` and `REVIEW_POSTED`). Once *a workflow is a Mermaid diagram*
+lands, it is every state the diagram leads to `[*]`, and this plan reads it
+from there the same way. `Worker.discover` reads it and refuses to
 re-enqueue work that reached one (`plugins/serial-engine/src/Worker.ts:109`). So
 a finished record is not reprocessed, and no agent is spent on it. That part is
 right and this plan does not touch it.
