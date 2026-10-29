@@ -8,6 +8,13 @@ const schema = {
   metadata: { type: "record", default: {}, description: "unstructured metadata the plugin narrows itself" },
 } satisfies ConfigSchema;
 
+const possiblyUndefinedTimeout: number | undefined = Math.random() > 0.5 ? 1_000 : undefined;
+
+const _undefinedDefaults = {
+  explicit: { type: "number", default: undefined, description: "an omitted numeric default" },
+  possible: { type: "number", default: possiblyUndefinedTimeout, description: "a conditional numeric default" },
+} satisfies ConfigSchema;
+
 describe("a config is typed by its schema", () => {
   it("maps every schema field to the value the host validated", () => {
     expectTypeOf<ConfigOf<typeof schema>>().toEqualTypeOf<{
@@ -15,6 +22,13 @@ describe("a config is typed by its schema", () => {
       labels: string[];
       optionalName: string | undefined;
       metadata: Record<string, unknown>;
+    }>();
+  });
+
+  it("keeps undefined defaults optional", () => {
+    expectTypeOf<ConfigOf<typeof _undefinedDefaults>>().toEqualTypeOf<{
+      explicit: number | undefined;
+      possible: number | undefined;
     }>();
   });
 

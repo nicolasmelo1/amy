@@ -39,9 +39,11 @@ export type ConfigSchema = Record<string, ConfigField>;
 /** The post-validation shape a schema promises to its plugin. */
 export type ConfigOf<S extends ConfigSchema> = {
   [K in keyof S]: ConfigValueFor<S[K]["type"]> extends infer Value
-    ? S[K] extends { readonly required: true } | { readonly default: unknown }
+    ? S[K] extends { readonly required: true }
       ? Value
-      : Value | undefined
+      : S[K] extends { readonly default: infer Default }
+        ? undefined extends Default ? Value | undefined : Value
+        : Value | undefined
     : never;
 };
 
