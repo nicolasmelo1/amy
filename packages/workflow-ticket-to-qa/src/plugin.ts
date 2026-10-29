@@ -1,14 +1,13 @@
 import {
+  BRANCH_SETTINGS,
   BriefStore,
   CodeHost,
   ConfigSchema,
   Conversation,
-  Git,
   Notifier,
   parseBudget,
   definePlugin,
   PluginContext,
-  Worktree,
   WORKFLOW_RUNTIME,
   deferred,
   WorkflowRuntime,
@@ -61,17 +60,7 @@ export const configSchema = {
     required: true,
     description: "every repository review load is counted across",
   },
-  defaultBranch: {
-    type: "string",
-    description: "the branch new work is cut from, for a repository that named none, which is not always `main`",
-    default: "main",
-  },
-  baseBranch: {
-    type: "record",
-    description:
-      "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch",
-    default: {},
-  },
+  ...BRANCH_SETTINGS,
   qaStatusName: {
     type: "string",
     required: true,
@@ -113,30 +102,11 @@ function runtimeFor(ctx: TypedContext): WorkflowRuntime<TicketRecord, Observatio
     gate: required<Gate>(ctx, "gate"),
     notifier: required<Notifier>(ctx, "notifier"),
     roster: () => provided<Roster>(ctx, "roster") ?? rosterProvider()(),
-    // The same checkout the gate runs in, for the self-review to read: the
-    // gate already runs against the ticket's own branch, so this is the
-    // second reader of a layout the host already owns. With a worktree port
-    // mounted, the same Git resolves every path through it and the work runs
-    // in the ticket's own tree; without one, nothing here changes.
-    git: new Git(
-      ctx.runner,
-      {
-        workspaceRoot: ctx.paths.workspace,
-        checkouts: ctx.paths.checkouts,
-        defaultBranch: ctx.config.defaultBranch,
-        baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
-      },
-      ctx.port("worktree") as Worktree | undefined,
-    ),
-    // The same layout, named for the question `Git` does not answer: what the
-    // pull request opens against. One map, resolved once, at the caller that
-    // knows the repository.
-    layout: {
-      workspaceRoot: ctx.paths.workspace,
-      checkouts: ctx.paths.checkouts,
-      defaultBranch: ctx.config.defaultBranch,
-      baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
-    },
+    // The same checkout the gate runs in, for the self-review to read, and the
+    // layout behind it for the question `Git` does not answer: what the pull
+    // request opens against. Both are the host's, lent once; with a worktree
+    // port mounted, every path resolves through it.
+    ...ctx.checkouts(),
     // Optional on purpose: the `brief` port is the persistence seam a
     // grooming workflow's briefs live behind, and an install whose tickets
     // reference none is a real install that mounts and runs exactly as

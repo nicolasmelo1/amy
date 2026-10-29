@@ -398,6 +398,11 @@
           "description": ""
         },
         {
+          "title": "The host lends the checkout",
+          "path": "/design/the-host-lends-the-checkout",
+          "description": ""
+        },
+        {
           "title": "The lifecycle is proven end to end",
           "path": "/design/the-lifecycle-is-proven-end-to-end",
           "description": ""
@@ -916,6 +921,11 @@
           "depth": 3,
           "title": "**The frame is closed.**",
           "slug": "the-frame-is-closed"
+        },
+        {
+          "depth": 3,
+          "title": "**The host lends the checkout.** PluginContext gains checkouts(), which answers with the Git and the layout for the calling plugin — the host's paths, the plugin's own defaultBranch and baseBranch, and the worktree port read whenever a path is asked for, so a worktree plugin listed after the caller is still the one used. The core exports BRANCH_SETTINGS, the two branch settings with one description, and every shipped schema that declares them spreads it in place of its own wording. The command gate, the plan check and the three workflows that opened pull requests ask their context instead of building a Git and a second copy of its layout. The settings stay per plugin, so no config.yaml changes; the plan check's baseBranch now defaults to {} like every other's.",
+          "slug": "the-host-lends-the-checkout-plugincontext-gains-checkouts-which-answers-with-the-git-and-the-layout-for-the-calling-plugin-the-hosts-paths-the-plugins-own-defaultbranch-and-basebranch-and-the-worktree-port-read-whenever-a-path-is-asked-for-so-a-worktree-plugin-listed-after-the-caller-is-still-the-one-used-the-core-exports-branchsettings-the-two-branch-settings-with-one-description-and-every-shipped-schema-that-declares-them-spreads-it-in-place-of-its-own-wording-the-command-gate-the-plan-check-and-the-three-workflows-that-opened-pull-requests-ask-their-context-instead-of-building-a-git-and-a-second-copy-of-its-layout-the-settings-stay-per-plugin-so-no-configyaml-changes-the-plan-checks-basebranch-now-defaults-to-like-every-others"
         },
         {
           "depth": 3,
@@ -2835,6 +2845,28 @@
           "depth": 2,
           "title": "amy's own core",
           "slug": "amys-own-core"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-host-lends-the-checkout",
+      "file": "docs/design/the-host-lends-the-checkout.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-host-lends-the-checkout.md",
+      "title": "The host lends the checkout",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
         },
         {
           "depth": 2,
@@ -7043,7 +7075,7 @@
             "type": "string",
             "required": false,
             "default": "main",
-            "description": "the branch new work is cut from, which is not always `main`"
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
             "name": "timeoutMs",
@@ -7256,7 +7288,7 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its trees cut from that branch"
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
             "name": "checkouts",
@@ -7270,7 +7302,7 @@
             "type": "string",
             "required": false,
             "default": "main",
-            "description": "the branch a tree is cut from for a repository that named none, which is not always `main`"
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
             "name": "recordsDirectory",
@@ -7322,7 +7354,7 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "where one repository's base branch is, instead of the forge's own default for it. A repository named here has its pull requests opened against that branch"
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           }
         ],
         "environment": []
@@ -7511,7 +7543,8 @@
             "name": "baseBranch",
             "type": "record",
             "required": false,
-            "description": "the configured base branch by repository, overriding the fallback branch"
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
             "name": "commands",
@@ -7529,7 +7562,7 @@
             "type": "string",
             "required": false,
             "default": "main",
-            "description": "the branch a plan branch is cut from, which is not always `main`"
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
             "name": "timeoutMs",
@@ -7711,14 +7744,14 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its errand opened against that branch"
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
             "default": "main",
-            "description": "the branch an errand branch is cut from, which is not always `main`"
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
             "name": "policy",
@@ -7756,14 +7789,14 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "per-repository base branch"
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
             "default": "main",
-            "description": "fallback base branch for source snapshots"
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
             "name": "repos",
@@ -7796,14 +7829,14 @@
             "type": "record",
             "required": false,
             "default": {},
-            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its plan opened against that branch"
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
             "default": "main",
-            "description": "the branch a plan branch is cut from, which is not always `main`"
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
             "name": "policy",
@@ -9370,6 +9403,54 @@
           },
           {
             "package": "@amykit/ui-conformance",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-host-lends-the-checkout",
+        "title": "**The host lends the checkout.** `PluginContext` gains `checkouts()`, which answers with the `Git` and the layout for the calling plugin — the host's paths, the plugin's own `defaultBranch` and `baseBranch`, and the `worktree` port read whenever a path is asked for, so a worktree plugin listed after the caller is still the one used. The core exports `BRANCH_SETTINGS`, the two branch settings with one description, and every shipped schema that declares them spreads it in place of its own wording. The command gate, the plan check and the three workflows that opened pull requests ask their context instead of building a `Git` and a second copy of its layout. The settings stay per plugin, so no `config.yaml` changes; the plan check's `baseBranch` now defaults to `{}` like every other's.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-feature-grooming",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],

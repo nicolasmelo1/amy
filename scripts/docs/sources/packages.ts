@@ -56,6 +56,7 @@ interface StandInContext {
   paths: { workspace: string; state: string };
   contributions(): Map<string, unknown>;
   port(): object;
+  checkouts(): { git: object; layout: object };
   workflow(): undefined;
 }
 
@@ -375,6 +376,12 @@ function contextFor(plugin: IntrospectedPlugin): StandInContext {
     paths: { workspace: SCRATCH, state: SCRATCH },
     contributions: () => new Map(),
     port: () => ({}),
+    // The layout the plugin's own settings describe, and a `Git` nothing
+    // here will ever ask to run.
+    checkouts: () => ({
+      git: {},
+      layout: { workspaceRoot: SCRATCH, checkouts: {}, defaultBranch: config.defaultBranch ?? "main", baseBranch: config.baseBranch },
+    }),
     workflow: () => undefined,
   };
 }

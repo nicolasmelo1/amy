@@ -185,7 +185,7 @@ plugins:
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run |
 | `commands` | `record` | **yes** |  | the check commands per repository, with a `default` fallback |
-| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
+| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |
 
 ### `@amykit/plugin-file-brief-store`
@@ -338,9 +338,9 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its trees cut from that branch |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `checkouts` | `record` | no | `{}` | where one repository's standing checkout is, instead of under the workspace root. A repository named here is never looked for under `root` at all |
-| `defaultBranch` | `string` | no | `main` | the branch a tree is cut from for a repository that named none, which is not always `main` |
+| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `recordsDirectory` | `string` | no | `""` | where this profile stores workflow records. The host derives it so phase-local worktrees consult the same records as the mounted file store |
 | `retentionDays` | `number` | no | `7` | how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's |
 | `root` | `string` | no | `""` | where the worktrees live, outside every repository. `~` is expanded. The default is beside the state directory, which keeps one install's trees together |
@@ -366,7 +366,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the forge's own default for it. A repository named here has its pull requests opened against that branch |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 
 ### `@amykit/plugin-hermes-agent`
 
@@ -507,9 +507,9 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no |  | the configured base branch by repository, overriding the fallback branch |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `commands` | `record` | no | `{"default":["sf check"]}` | the check commands per repository, with a `default` fallback. `sf check` is the whole quality bar in a repository that has one |
-| `defaultBranch` | `string` | no | `main` | the branch a plan branch is cut from, which is not always `main` |
+| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `timeoutMs` | `number` | no | `600000` | how long one check may run before it is given up on |
 
 ### `@amykit/plugin-serial-engine`
@@ -601,8 +601,8 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | per-repository base branch |
-| `defaultBranch` | `string` | no | `main` | fallback base branch for source snapshots |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
+| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `repos` | `string[]` | **yes** |  | repositories whose configured base branch grooming may read |
 
 <!-- amy:end plugin-settings -->

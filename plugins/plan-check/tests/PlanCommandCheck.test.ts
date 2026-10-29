@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { Git } from "@amykit/core";
+import { lendCheckouts } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 import { PlanCommandCheck } from "../src/PlanCommandCheck.js";
 
 function check(runner: ScriptedRunner, commands: Record<string, string[]>) {
-  const git = new Git(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" });
+  const git = lendCheckouts(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" }).git;
   return new PlanCommandCheck(runner, git, { commands });
 }
 

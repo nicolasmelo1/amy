@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CommandGate } from "../src/CommandGate.js";
-import { Git } from "@amykit/core";
+import { lendCheckouts } from "@amykit/core";
 import { CommandResult } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 
@@ -26,7 +26,7 @@ function gateFor(
   scripts: { match: (c: string, a: readonly string[]) => boolean; result: Partial<CommandResult> }[] = [],
 ) {
   const runner = new ScriptedRunner(scripts);
-  return { runner, gate: new CommandGate(runner, new Git(runner, layout), { commands }) };
+  return { runner, gate: new CommandGate(runner, lendCheckouts(runner, layout).git, { commands }) };
 }
 
 describe("CommandGate", () => {

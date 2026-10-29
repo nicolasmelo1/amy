@@ -1,18 +1,8 @@
-import { ConfigSchema } from "@amykit/core";
+import { BRANCH_SETTINGS, ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
 export const configSchema = {
-  defaultBranch: {
-    type: "string",
-    description: "the branch new work is cut from, which is not always `main`",
-    default: "main",
-  },
-  baseBranch: {
-    type: "record",
-    description:
-      "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch",
-    default: {},
-  },
+  ...BRANCH_SETTINGS,
   checkouts: {
     type: "record",
     description:

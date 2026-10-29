@@ -217,9 +217,9 @@ describe("the worktree manager", () => {
     git(standing, "config", "user.name", "amy");
     git(standing, "checkout", "-q", "-b", "operator/on-one");
 
-    const { Git } = await import("@amykit/core");
+    const { lendCheckouts } = await import("@amykit/core");
     const manager = managerFor();
-    const bridge = new Git(
+    const { git: bridge } = lendCheckouts(
       new RealRunner(),
       { workspaceRoot: path.join(root, "checkouts"), defaultBranch: "main" },
       manager,
