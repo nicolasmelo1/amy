@@ -130,6 +130,41 @@ describe("defineWorkflow", () => {
       customer: "C-1",
     });
   });
+
+  // A claim that reads a required setting has no configuration to read until
+  // the host supplies one. Reading it at import would throw for a workflow
+  // whose config is valid; the mount rebuilds the declaration with its own
+  // config, and that is the workflow it registers.
+  it("evaluates a configuration-dependent claim only where a configuration exists", async () => {
+    const declared = defineWorkflow({
+      name: "claimed",
+      configSchema: {
+        repos: { type: "string[]", required: true, description: "the repositories this workflow works in" },
+        policy: { type: "record", description: "workflow policy", default: {} },
+      } satisfies ConfigSchema,
+      states: ["NEW"],
+      waiting: [],
+      terminal: ["NEW"],
+      policy: { attempts: 3 },
+      needs: { source: port<RequiredPort>() },
+      trackerWrites: ({ config }) => (config.repos.includes("acme/widgets") ? ["comment"] : []),
+      plan: () => ({ kind: "settled", why: "done" }),
+      record: () => ({}),
+      runtime: () => ({
+        found: async () => [],
+        observe: async () => ({}),
+        actions: {},
+        apply: (record) => record,
+      }),
+    });
+
+    expect(declared.workflow.trackerWrites).toEqual([]);
+
+    const outcome = await mount([declared, source], { [declared.name]: { repos: ["acme/widgets"] } }, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(outcome.mounted.workflow?.trackerWrites).toEqual(["comment"]);
+  });
 });
 
 it("types all four planning helpers against the workflow's states and effects", () => {

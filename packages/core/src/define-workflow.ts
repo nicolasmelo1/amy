@@ -128,10 +128,16 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
   policy: P,
   config?: ConfigOf<S>,
 ): Workflow<O, P> {
-  const claims = (value: Claims<S, P> | undefined): readonly string[] =>
-    typeof value === "function"
-      ? value({ config: config ?? {} as ConfigOf<S>, policy })
-      : (Array.isArray(value) ? value : []);
+  // A claim written as a function is read only where a configuration exists:
+  // this module's exported object has none, so a callback that reads a
+  // required setting cannot throw at import. The mount rebuilds the workflow
+  // with its own validated config, and the unmounted declaration claims
+  // nothing — a mount given it refuses loudly rather than widening the claim.
+  const claims = (value: Claims<S, P> | undefined): readonly string[] => {
+    if (typeof value !== "function") return value ?? [];
+    if (config === undefined) return [];
+    return value({ config, policy });
+  };
   return {
     name: declaration.name,
     states: declaration.states,
