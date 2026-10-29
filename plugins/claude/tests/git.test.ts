@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { baseBranchFor, Git } from "@amykit/core";
+import { baseBranchFor, lendCheckouts } from "@amykit/core";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 
 const layout = { workspaceRoot: "/home/dev/workspaces/northwind", defaultBranch: "main" };
@@ -24,7 +24,7 @@ describe("baseBranchFor", () => {
 
 describe("Git.pathFor", () => {
   it("drops the owner to find the local checkout", () => {
-    const git = new Git(new ScriptedRunner(), layout);
+    const git = lendCheckouts(new ScriptedRunner(), layout).git;
 
     expect(git.pathFor("Northwind/northwind-backend")).toBe(
       "/home/dev/workspaces/northwind/northwind-backend",
@@ -32,7 +32,7 @@ describe("Git.pathFor", () => {
   });
 
   it("takes a bare name as-is", () => {
-    const git = new Git(new ScriptedRunner(), layout);
+    const git = lendCheckouts(new ScriptedRunner(), layout).git;
 
     expect(git.pathFor("northwind-backend")).toBe(
       "/home/dev/workspaces/northwind/northwind-backend",
@@ -44,13 +44,13 @@ describe("Git.pathFor, when a repository names its own root", () => {
   const own = { ...layout, checkouts: { "Northwind/northwind-backend": "/work/backend" } };
 
   it("finds it there, and nowhere under the shared root", () => {
-    const git = new Git(new ScriptedRunner(), own);
+    const git = lendCheckouts(new ScriptedRunner(), own).git;
 
     expect(git.pathFor("Northwind/northwind-backend")).toBe("/work/backend");
   });
 
   it("still finds the rest under the shared root", () => {
-    const git = new Git(new ScriptedRunner(), own);
+    const git = lendCheckouts(new ScriptedRunner(), own).git;
 
     expect(git.pathFor("Northwind/northwind-frontend")).toBe(
       "/home/dev/workspaces/northwind/northwind-frontend",
@@ -62,7 +62,7 @@ describe("Git.prepareBranch", () => {
   it("tracks the remote branch when it already exists", async () => {
     const runner = new ScriptedRunner();
 
-    await new Git(runner, layout).prepareBranch("Northwind/northwind-backend", "ada/proj-1239");
+    await lendCheckouts(runner, layout).git.prepareBranch("Northwind/northwind-backend", "ada/proj-1239");
 
     // Behaviour changed: a branch that exists locally is checked out and
     // fast-forwarded to the remote, never reset onto it.
@@ -79,7 +79,7 @@ describe("Git.prepareBranch", () => {
       { match: whenArgsInclude("rev-parse", "--verify"), result: { exitCode: 1 } },
     ]);
 
-    await new Git(runner, layout).prepareBranch("Northwind/northwind-backend", "ada/proj-1239");
+    await lendCheckouts(runner, layout).git.prepareBranch("Northwind/northwind-backend", "ada/proj-1239");
 
     const checkout = runner.calls.find((call) => call.args[0] === "checkout");
     expect(checkout?.args).toEqual(["checkout", "-b", "ada/proj-1239", "origin/main"]);
@@ -91,7 +91,7 @@ describe("Git.prepareBranch", () => {
     ]);
     const own = { ...layout, baseBranch: { "Northwind/northwind-backend": "trunk" } };
 
-    await new Git(runner, own).prepareBranch("Northwind/northwind-backend", "ada/proj-1239");
+    await lendCheckouts(runner, own).git.prepareBranch("Northwind/northwind-backend", "ada/proj-1239");
 
     const checkout = runner.calls.find((call) => call.args[0] === "checkout");
     expect(checkout?.args).toEqual(["checkout", "-b", "ada/proj-1239", "origin/trunk"]);
@@ -103,7 +103,7 @@ describe("Git.prepareBranch", () => {
     ]);
     const own = { ...layout, baseBranch: { "Northwind/northwind-backend": "trunk" } };
 
-    await new Git(runner, own).prepareBranch("Northwind/northwind-frontend", "ada/proj-1240");
+    await lendCheckouts(runner, own).git.prepareBranch("Northwind/northwind-frontend", "ada/proj-1240");
 
     const checkout = runner.calls.find((call) => call.args[0] === "checkout");
     expect(checkout?.args).toEqual(["checkout", "-b", "ada/proj-1240", "origin/main"]);
@@ -112,7 +112,7 @@ describe("Git.prepareBranch", () => {
   it("fetches before deciding", async () => {
     const runner = new ScriptedRunner();
 
-    await new Git(runner, layout).prepareBranch("Northwind/northwind-backend", "b");
+    await lendCheckouts(runner, layout).git.prepareBranch("Northwind/northwind-backend", "b");
 
     expect(runner.calls[0]?.args).toEqual(["fetch", "origin", "--prune"]);
   });
@@ -120,7 +120,7 @@ describe("Git.prepareBranch", () => {
   it("runs inside the repository's own checkout", async () => {
     const runner = new ScriptedRunner();
 
-    await new Git(runner, layout).prepareBranch("Northwind/northwind-backend", "b");
+    await lendCheckouts(runner, layout).git.prepareBranch("Northwind/northwind-backend", "b");
 
     expect(runner.calls[0]?.options?.cwd).toBe("/home/dev/workspaces/northwind/northwind-backend");
   });
@@ -131,7 +131,7 @@ describe("Git.prepareBranch", () => {
     ]);
 
     await expect(
-      new Git(runner, layout).prepareBranch("Northwind/northwind-backend", "b"),
+      lendCheckouts(runner, layout).git.prepareBranch("Northwind/northwind-backend", "b"),
     ).rejects.toThrow(/git fetch origin --prune failed .*no such remote/);
   });
 });
@@ -142,7 +142,7 @@ describe("Git.commitAndPush", () => {
       { match: whenArgsInclude("status", "--porcelain"), result: { stdout: " M src/invoice.ts" } },
     ]);
 
-    const pushed = await new Git(runner, layout).commitAndPush(
+    const pushed = await lendCheckouts(runner, layout).git.commitAndPush(
       "Northwind/northwind-backend",
       "ada/proj-1239",
       "PROJ-1239: The total is wrong",
@@ -169,7 +169,7 @@ describe("Git.commitAndPush", () => {
       { match: whenArgsInclude("status", "--porcelain"), result: { stdout: "" } },
     ]);
 
-    const pushed = await new Git(runner, layout).commitAndPush("Northwind/northwind-backend", "b", "m");
+    const pushed = await lendCheckouts(runner, layout).git.commitAndPush("Northwind/northwind-backend", "b", "m");
 
     expect(pushed).toBe(false);
     // Behaviour changed: a clean tree asks git itself whether the branch
@@ -199,7 +199,7 @@ describe("Git.prepareBranch, when the branch already exists locally", () => {
   it("creates it from the remote branch when only the remote has it", async () => {
     const runner = answers({ local: false });
 
-    await new Git(runner, layout).prepareBranch(repo, branch);
+    await lendCheckouts(runner, layout).git.prepareBranch(repo, branch);
 
     expect(commands(runner)).toContain(`checkout -b ${branch} origin/${branch}`);
   });
@@ -207,7 +207,7 @@ describe("Git.prepareBranch, when the branch already exists locally", () => {
   it("fast-forwards it when the remote is ahead", async () => {
     const runner = answers({});
 
-    await new Git(runner, layout).prepareBranch(repo, branch);
+    await lendCheckouts(runner, layout).git.prepareBranch(repo, branch);
 
     expect(commands(runner)).toContain(`merge-base --is-ancestor refs/heads/${branch} origin/${branch}`);
     expect(commands(runner).slice(-2)).toEqual([`checkout ${branch}`, `merge --ff-only origin/${branch}`]);
@@ -216,7 +216,7 @@ describe("Git.prepareBranch, when the branch already exists locally", () => {
   it("keeps a commit that was never pushed when the remote has the branch", async () => {
     const runner = answers({ localBehind: false });
 
-    await new Git(runner, layout).prepareBranch(repo, branch);
+    await lendCheckouts(runner, layout).git.prepareBranch(repo, branch);
 
     expect(commands(runner).at(-1)).toBe(`checkout ${branch}`);
     expect(commands(runner).some((line) => /checkout -B|reset|merge --ff-only/.test(line))).toBe(false);
@@ -225,7 +225,7 @@ describe("Git.prepareBranch, when the branch already exists locally", () => {
   it("keeps a commit that was never pushed when the remote never had the branch", async () => {
     const runner = answers({ remote: false, localBehind: false });
 
-    await new Git(runner, layout).prepareBranch(repo, branch);
+    await lendCheckouts(runner, layout).git.prepareBranch(repo, branch);
 
     expect(commands(runner).at(-1)).toBe(`checkout ${branch}`);
     expect(commands(runner).some((line) => line.startsWith("checkout") && line.includes("origin/main"))).toBe(false);
@@ -234,7 +234,7 @@ describe("Git.prepareBranch, when the branch already exists locally", () => {
   it("refuses a branch that diverged from its remote, naming what only the local side holds", async () => {
     const runner = answers({ localBehind: false, remoteBehind: false });
 
-    await expect(new Git(runner, layout).prepareBranch(repo, branch)).rejects.toThrow(
+    await expect(lendCheckouts(runner, layout).git.prepareBranch(repo, branch)).rejects.toThrow(
       /ada\/proj-1239 has diverged from origin\/ada\/proj-1239[\s\S]*abc1234 PROJ-1239: The total is wrong/,
     );
     expect(commands(runner).some((line) => line.startsWith("checkout"))).toBe(false);
@@ -245,7 +245,7 @@ describe("Git.prepareBranch, when the branch already exists locally", () => {
     const tree = "/trees/PROJ-1239/northwind-backend";
     const trees = { acquire: async () => tree, pathFor: () => tree };
 
-    await new Git(runner, layout, trees as never).prepareBranch(repo, branch, "PROJ-1239");
+    await lendCheckouts(runner, layout, trees as never).git.prepareBranch(repo, branch, "PROJ-1239");
 
     expect(commands(runner).at(-1)).toBe(`checkout ${branch} --ignore-other-worktrees`);
     expect(runner.calls.every((call) => call.options?.cwd === tree)).toBe(true);
@@ -259,7 +259,7 @@ describe("Git.commitAndPush, when an earlier push never arrived", () => {
       { match: whenArgsInclude("push"), result: { stdout: "To origin\n \trefs/heads/ada/proj-1239:refs/heads/ada/proj-1239\tabc..def\nDone\n" } },
     ]);
 
-    const pushed = await new Git(runner, layout).commitAndPush("Northwind/northwind-backend", "ada/proj-1239", "m");
+    const pushed = await lendCheckouts(runner, layout).git.commitAndPush("Northwind/northwind-backend", "ada/proj-1239", "m");
 
     expect(pushed).toBe(true);
     expect(runner.calls.map((c) => c.args.join(" "))).toEqual([

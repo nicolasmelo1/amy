@@ -65,11 +65,20 @@ export function checkoutFor(layout: RepoLayout, repo: string): string {
  * `workspaceRoot` exactly as it always did. A caller never changes shape.
  */
 export class Git {
+  /**
+   * `worktrees` is the port itself, or how to read it when it is needed: the
+   * host lends a reader, so a worktree plugin listed after the one holding
+   * this `Git` is still the one every path resolves through.
+   */
   constructor(
     private readonly runner: CommandRunner,
     private readonly layout: RepoLayout,
-    private readonly worktrees?: Worktree,
+    private readonly worktreesOf?: Worktree | (() => Worktree | undefined),
   ) {}
+
+  private get worktrees(): Worktree | undefined {
+    return typeof this.worktreesOf === "function" ? this.worktreesOf() : this.worktreesOf;
+  }
 
   /**
    * Where the work for one repository happens.
@@ -79,8 +88,9 @@ export class Git {
    * none of them learns whether this install isolates its checkouts.
    */
   pathFor(repo: string, workId?: string): string {
-    if (this.worktrees && workId !== undefined) {
-      return this.worktrees.pathFor(workId, repo);
+    const worktrees = this.worktrees;
+    if (worktrees && workId !== undefined) {
+      return worktrees.pathFor(workId, repo);
     }
     return checkoutFor(this.layout, repo);
   }
@@ -93,7 +103,8 @@ export class Git {
    * The shared mode remains a no-op path lookup.
    */
   async acquire(repo: string, workId?: string): Promise<string> {
-    if (this.worktrees && workId !== undefined) return this.worktrees.acquire(workId, repo);
+    const worktrees = this.worktrees;
+    if (worktrees && workId !== undefined) return worktrees.acquire(workId, repo);
     return this.pathFor(repo);
   }
 
@@ -116,8 +127,9 @@ export class Git {
    * without the second tree refusing or the first tree losing its place.
    */
   async prepareBranch(repo: string, branch: string, workId?: string): Promise<void> {
-    if (this.worktrees && workId !== undefined) {
-      const tree = await this.worktrees.acquire(workId, repo);
+    const worktrees = this.worktrees;
+    if (worktrees && workId !== undefined) {
+      const tree = await worktrees.acquire(workId, repo);
       await this.onBranch(tree, repo, branch, ["--ignore-other-worktrees"]);
       return;
     }
@@ -248,8 +260,9 @@ export class Git {
 
   /** The tree the work happens in, for the mode this install chose. */
   private cwdFor(repo: string, workId?: string): string {
-    if (this.worktrees && workId !== undefined) {
-      return this.worktrees.pathFor(workId, repo);
+    const worktrees = this.worktrees;
+    if (worktrees && workId !== undefined) {
+      return worktrees.pathFor(workId, repo);
     }
     return this.pathFor(repo);
   }

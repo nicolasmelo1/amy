@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { applyPlan, Builds, isDeferred, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { applyPlan, BRANCH_SETTINGS, Builds, CommandRunner, lendCheckouts, isDeferred, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 import { AmyConfig, writeWorkflowProfile } from "./config.js";
 
 /** The directory where one machine keeps workflows that belong only to it. */
@@ -188,11 +188,13 @@ function context(
   builds: Builds,
   workflow: () => Workflow | undefined,
 ): PluginContext {
+  const runner: CommandRunner = { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) };
   return {
-    config: {}, runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now,
+    config: {}, runner, now,
     paths: { workspace: home, checkouts: {}, state: home },
     contributions: (collection) => builds.collection(contributions.get(collection)),
     port: () => undefined,
+    checkouts: () => lendCheckouts(runner, { workspaceRoot: home, defaultBranch: BRANCH_SETTINGS.defaultBranch.default }),
     workflow: () => workflow() as Workflow<never, never> | undefined,
   };
 }

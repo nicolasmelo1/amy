@@ -1,13 +1,12 @@
 import {
+  BRANCH_SETTINGS,
   CodeHost,
   ConfigSchema,
-  Git,
   Harness,
   Notifier,
   definePlugin,
   PluginContext,
   Store,
-  Worktree,
   WORKFLOW_RUNTIME,
   deferred,
   WorkflowRuntime,
@@ -26,17 +25,7 @@ export const configSchema = {
     description:
       "the repositories an errand may be done in. A task about anything else is handed back to whoever asked",
   },
-  defaultBranch: {
-    type: "string",
-    description: "the branch an errand branch is cut from, which is not always `main`",
-    default: "main",
-  },
-  baseBranch: {
-    type: "record",
-    description:
-      "where one repository's base branch is, instead of the fallback. A repository named here has its errand opened against that branch",
-    default: {},
-  },
+  ...BRANCH_SETTINGS,
   policy: {
     type: "record",
     description:
@@ -55,24 +44,9 @@ function runtimeFor(ctx: TypedContext): WorkflowRuntime<ErrandRecord, Observatio
     host: required<CodeHost>(ctx, "code-host"),
     notifier: required<Notifier>(ctx, "notifier"),
     records: required<Store<ErrandRecord>>(ctx, "store"),
-    git: new Git(
-      ctx.runner,
-      {
-        workspaceRoot: ctx.paths.workspace,
-        checkouts: ctx.paths.checkouts,
-        defaultBranch: ctx.config.defaultBranch,
-        baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
-      },
-      ctx.port("worktree") as Worktree | undefined,
-    ),
-    // The same layout, named for the question `Git` does not answer: what the
-    // pull request opens against.
-    layout: {
-      workspaceRoot: ctx.paths.workspace,
-      checkouts: ctx.paths.checkouts,
-      defaultBranch: ctx.config.defaultBranch,
-      baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
-    },
+    // The checkout and the layout behind it, for the question `Git` does not
+    // answer: what the pull request opens against. Both lent by the host.
+    ...ctx.checkouts(),
     now: ctx.now,
     log: ctx.log,
     config: { repos: ctx.config.repos },

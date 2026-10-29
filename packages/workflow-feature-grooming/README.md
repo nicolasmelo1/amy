@@ -34,8 +34,8 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | per-repository base branch |
-| `defaultBranch` | `string` | no | `main` | fallback base branch for source snapshots |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
+| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `repos` | `string[]` | **yes** |  | repositories whose configured base branch grooming may read |
 
 Every field is checked at boot against the schema this package declares. A key that is

@@ -11,12 +11,14 @@ import {
 } from "./plugin.js";
 import { declaredActions, isPortBinding, unrunnable } from "./dispatch.js";
 import { Builds } from "./builds.js";
+import { checkoutsFromSettings } from "./checkouts.js";
 import { isDeferred } from "./deferred.js";
 import { WORKFLOW_RUNTIME, WorkflowRuntime } from "./runtime.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { Queue } from "./ports/Queue.js";
 import { Store } from "./ports/Store.js";
+import { Worktree } from "./ports/Worktree.js";
 import {
   CODE_HOST_WRITE_CAPABILITIES,
   CODE_HOST_WRITE_FOR_METHOD,
@@ -210,6 +212,7 @@ function contextFor(
     port: (kind) => narrowedPort(
       builds.resolve(mounted.ports.get(kind)), kind, () => workflowFor.get(ctx), mutablePortKinds, registrationComplete,
     ),
+    checkouts: () => checkoutsFromSettings(host.runner, host.paths, config, () => ctx.port("worktree") as Worktree | undefined),
     workflowPort: (kind) => narrowedPort(
       builds.resolve(mounted.ports.get(kind)), kind, () => mounted.workflow, mutablePortKinds, registrationComplete,
     ),

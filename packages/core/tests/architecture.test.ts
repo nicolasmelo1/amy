@@ -130,3 +130,45 @@ describe("a mount builds once, and only the core knows when", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the host lends the checkout", () => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const outsideTheCore = [
+    ...fs.readdirSync(path.join(root, "plugins")).map((name) => path.join("plugins", name)),
+    ...fs.readdirSync(path.join(root, "packages")).filter((name) => name !== "core").map((name) => path.join("packages", name)),
+  ];
+
+  /** Every line matching `pattern` in the TypeScript under `directories`, outside build output. */
+  function linesMatching(directories: readonly string[], pattern: RegExp): string[] {
+    return directories.filter((directory) => fs.existsSync(path.join(root, directory))).flatMap((directory) =>
+      (fs.readdirSync(path.join(root, directory), { recursive: true, encoding: "utf8" }) as string[])
+        .filter((file) => /\.tsx?$/.test(file) && !/(^|\/)(dist|node_modules)\//.test(file))
+        .flatMap((file) => {
+          const relative = path.join(directory, file);
+          return fs.readFileSync(path.join(root, relative), "utf8").split("\n")
+            .filter((line) => pattern.test(line))
+            .map((line) => `${relative}: ${line.trim()}`);
+        }),
+    );
+  }
+
+  it("leaves nothing outside the core constructing a Git, tests included", () => {
+    expect(outsideTheCore.length).toBeGreaterThan(20);
+    expect(linesMatching(outsideTheCore, /\bnew Git\(/)).toEqual([]);
+  });
+
+  // What ships as a plugin or a workflow. The CLI is a host, and lends.
+  const shipped = outsideTheCore
+    .filter((directory) => directory.startsWith("plugins") || path.basename(directory).startsWith("workflow-"))
+    .map((directory) => path.join(directory, "src"));
+
+  it("leaves no shipped plugin or workflow building its checkouts by hand", () => {
+    // A test may hold a layout it was handed; a plugin asks its context.
+    expect(shipped.length).toBeGreaterThan(20);
+    expect(linesMatching(shipped, /\blendCheckouts\(/)).toEqual([]);
+  });
+
+  it("leaves the branch settings described once, in the core", () => {
+    expect(linesMatching(shipped, /^\s*(?:defaultBranch|baseBranch):\s*\{/)).toEqual([]);
+  });
+});

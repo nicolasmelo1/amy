@@ -142,4 +142,6 @@ export { validateConfig } from "./config-schema.js";
 export { definePlugin } from "./plugin.js";
 export type { ConfigField, ConfigFieldType, ConfigOf, ConfigResult, ConfigSchema } from "./config-schema.js";
 export { checkoutFor, baseBranchFor, Git } from "./git.js";
+export { BRANCH_SETTINGS, lendCheckouts } from "./checkouts.js";
+export type { Checkouts } from "./checkouts.js";
 export type { RepoLayout } from "./git.js";

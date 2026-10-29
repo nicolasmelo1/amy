@@ -1,4 +1,5 @@
 import { ActionSpec, PortKind } from "./actions.js";
+import { Checkouts } from "./checkouts.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
@@ -98,6 +99,17 @@ export interface PluginContext<Config extends Record<string, unknown> = Record<s
   contributions(collection: string): ReadonlyMap<string, object>;
   /** A mounted port, read when asked. */
   port(kind: PortKind): object | undefined;
+  /**
+   * The checkouts this plugin works in: a `Git` and the layout behind it,
+   * built from the host's paths and this plugin's own `defaultBranch` and
+   * `baseBranch`.
+   *
+   * The `worktree` port is read whenever a path is asked for, not when this
+   * is called, so a worktree plugin listed after this one is still the one
+   * used. Nothing outside the core constructs a `Git`; this is how a plugin
+   * gets one.
+   */
+  checkouts(): Checkouts;
   /**
    * A mounted port as the selected workflow may use it.
    *

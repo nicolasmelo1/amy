@@ -39,7 +39,7 @@ plugins:
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run |
 | `commands` | `record` | **yes** |  | the check commands per repository, with a `default` fallback |
-| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, which is not always `main` |
+| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |
 
 Every field is checked at boot against the schema this package declares. A key that is

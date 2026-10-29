@@ -1,5 +1,5 @@
 import { describe, it } from "vitest";
-import { AttemptOutcome, Git, Harness, PullRequestView, Store } from "@amykit/core";
+import { AttemptOutcome, lendCheckouts, Harness, PullRequestView, Store } from "@amykit/core";
 import { World, conforms } from "@amykit/workflow-testkit";
 import { ScriptedRunner, fakeHost, fakeRun, pullRequest, whenArgsInclude } from "@amykit/test-fixtures";
 import { DEFAULT_POLICY, Note, PlanRecord, newRecord, noteToPlan, planRuntime } from "../src/index.js";
@@ -51,7 +51,7 @@ class NoteWorld implements World {
       }),
       notifier: { announce: async () => {} },
       records,
-      git: new Git(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" }),
+      git: lendCheckouts(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" }).git,
       layout: { workspaceRoot: "/checkouts", defaultBranch: "main" },
       now,
       config: { repos: [REPO] },
