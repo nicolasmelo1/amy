@@ -1,7 +1,7 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   directory: {
     type: "string",
     description:
@@ -13,4 +13,4 @@ export const configSchema: ConfigSchema = {
     description:
       "deprecated: where briefs are kept, translated to @amykit/plugin-file-brief-store so existing installs keep their briefs",
   },
-};
+} satisfies ConfigSchema;

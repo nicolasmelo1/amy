@@ -77,7 +77,7 @@ apply to it; what to call it is for
 to raise.
 
 It depends on [a mount builds once](../docs/design/a-mount-builds-once.md), reads better after
-[a config is typed by its schema](a-config-is-typed-by-its-schema.md) and
+[a config is typed by its schema](../docs/design/a-config-is-typed-by-its-schema.md) and
 [the host lends the checkout](the-host-lends-the-checkout.md), and ships in the
 same release as [nothing is declared twice](../docs/design/nothing-is-declared-twice.md), so an
 author migrates once.

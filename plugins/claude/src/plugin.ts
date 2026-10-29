@@ -1,13 +1,13 @@
-import { Plugin } from "@amykit/core";
+import { definePlugin } from "@amykit/core";
 import { contributeTiers } from "@amykit/agent-kit";
 import { ClaudeHarness } from "./ClaudeHarness.js";
 import { configSchema } from "./config.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-claude",
   configSchema,
   register(registry, ctx) {
-    const tiers = ctx.config.models as string[];
+    const tiers = ctx.config.models;
 
     // Contributed rather than mounted as the `agent` port: only one plugin
     // can own a port, and three harnesses that each wanted to be *the* agent
@@ -18,12 +18,12 @@ export const plugin: Plugin = {
       // reported beats anything a table could work out, so a missing row
       // never leaves a ceiling in money with nothing to spend against it.
       pricesItsOwnRuns: true,
-      models: tiers.length > 0 ? tiers : [(ctx.config.model as string) || ""],
+      models: tiers.length > 0 ? tiers : [(ctx.config.model) || ""],
       make: (model) =>
         new ClaudeHarness(ctx.runner, {
           model: model || undefined,
-          timeoutMs: ctx.config.timeoutMs as number,
+          timeoutMs: ctx.config.timeoutMs,
         }),
     });
   },
-};
+});

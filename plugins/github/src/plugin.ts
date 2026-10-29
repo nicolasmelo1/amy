@@ -1,8 +1,8 @@
-import { Plugin } from "@amykit/core";
+import { definePlugin } from "@amykit/core";
 import { GitHubCodeHost } from "./GitHubCodeHost.js";
 import { configSchema } from "./config.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-github",
   configSchema,
   register(registry, ctx) {
@@ -10,4 +10,4 @@ export const plugin: Plugin = {
       baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
     }));
   },
-};
+});

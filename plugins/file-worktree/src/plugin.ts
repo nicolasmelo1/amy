@@ -1,8 +1,10 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { Plugin, PluginContext } from "@amykit/core";
+import { definePlugin, PluginContext, ConfigOf } from "@amykit/core";
 import { configSchema } from "./config.js";
+
+type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 import { WorktreeManager, WorktreeManagerConfig } from "./manager.js";
 
 /** `~/worktrees` becomes an absolute path. */
@@ -19,23 +21,23 @@ function expandHome(value: string): string {
  * the workflow's name so two profiles under one install never share a tree,
  * and a mount that cannot say which it is is refused rather than guessed.
  */
-function settingsFor(ctx: PluginContext): WorktreeManagerConfig {
+function settingsFor(ctx: TypedContext): WorktreeManagerConfig {
   // The CLI always derives this from the selected profile. The neutral docs
   // mount has no selected workflow, so it receives a harmless label solely to
   // enumerate the port rather than refusing documentation generation.
-  const workflow = (ctx.config.workflow as string) || "unconfigured";
+  const workflow = (ctx.config.workflow) || "unconfigured";
 
-  const root = (ctx.config.root as string) || path.join(ctx.paths.state, "worktrees");
-  const recordsDirectory = (ctx.config.recordsDirectory as string) || path.join(ctx.paths.state, "records");
+  const root = (ctx.config.root) || path.join(ctx.paths.state, "worktrees");
+  const recordsDirectory = (ctx.config.recordsDirectory) || path.join(ctx.paths.state, "records");
 
   return {
     root: expandHome(root),
     workflow,
-    defaultBranch: ctx.config.defaultBranch as string,
+    defaultBranch: ctx.config.defaultBranch,
     baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
     workspaceRoot: ctx.paths.workspace,
     checkouts: ctx.paths.checkouts,
-    retentionDays: ctx.config.retentionDays as number,
+    retentionDays: ctx.config.retentionDays,
     // Read on every look, never folded in at mount: a record deleted under a
     // running install turns its tree orphaned at the next list, which is the
     // truth about what the store holds now.
@@ -61,10 +63,10 @@ function settingsFor(ctx: PluginContext): WorktreeManagerConfig {
  * while the workflows that consume it read it as `Worktree | undefined` and
  * run unchanged when no install listed this plugin.
  */
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-file-worktree",
   configSchema,
   register(registry, ctx) {
     registry.port("worktree", new WorktreeManager(ctx.runner, settingsFor(ctx)));
   },
-};
+});

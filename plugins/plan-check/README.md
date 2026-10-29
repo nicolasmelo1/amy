@@ -27,6 +27,7 @@ workflows:
 ```yaml
 plugins:
   "@amykit/plugin-plan-check":
+    baseBranch: <record>
     commands: {"default":["sf check"]}
     defaultBranch: "main"
     timeoutMs: 600000
@@ -34,6 +35,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
+| `baseBranch` | `record` | no |  | the configured base branch by repository, overriding the fallback branch |
 | `commands` | `record` | no | `{"default":["sf check"]}` | the check commands per repository, with a `default` fallback. `sf check` is the whole quality bar in a repository that has one |
 | `defaultBranch` | `string` | no | `main` | the branch a plan branch is cut from, which is not always `main` |
 | `timeoutMs` | `number` | no | `600000` | how long one check may run before it is given up on |

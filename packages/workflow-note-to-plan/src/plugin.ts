@@ -4,13 +4,14 @@ import {
   Git,
   Harness,
   Notifier,
-  Plugin,
+  definePlugin,
   PluginContext,
   Store,
   Worktree,
   WORKFLOW_RUNTIME,
   deferred,
   WorkflowRuntime,
+  ConfigOf,
 } from "@amykit/core";
 import { noteToPlan } from "./machine.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
@@ -19,7 +20,7 @@ import { Notes } from "./ports/Notes.js";
 import { PlanCheck } from "./ports/PlanCheck.js";
 import { planRuntime } from "./runtime.js";
 
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   repos: {
     type: "string[]",
     required: true,
@@ -42,10 +43,12 @@ export const configSchema: ConfigSchema = {
       "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default",
     default: {},
   },
-};
+} satisfies ConfigSchema;
+
+type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 
 /** The runtime for one mount, built by the host once every plugin has registered. */
-function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation> {
+function runtimeFor(ctx: TypedContext): WorkflowRuntime<PlanRecord, Observation> {
   return planRuntime({
     notes: required<Notes>(ctx, "notes"),
     // The `agent` port, narrowed to the half that has no vocabulary in it.
@@ -62,7 +65,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation
       {
         workspaceRoot: ctx.paths.workspace,
         checkouts: ctx.paths.checkouts,
-        defaultBranch: ctx.config.defaultBranch as string,
+        defaultBranch: ctx.config.defaultBranch,
         baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
       },
       ctx.port("worktree") as Worktree | undefined,
@@ -72,12 +75,12 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation
     layout: {
       workspaceRoot: ctx.paths.workspace,
       checkouts: ctx.paths.checkouts,
-      defaultBranch: ctx.config.defaultBranch as string,
+      defaultBranch: ctx.config.defaultBranch,
       baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
     },
     now: ctx.now,
     log: ctx.log,
-    config: { repos: ctx.config.repos as string[] },
+    config: { repos: ctx.config.repos },
     policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
   });
 }
@@ -90,7 +93,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<PlanRecord, Observation
  * to the same engine. Nothing in `plugins/serial-engine` changed to make this
  * one run, which is the claim the seam was built to be able to make.
  */
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/workflow-note-to-plan",
   configSchema,
   register(registry, ctx) {
@@ -101,10 +104,10 @@ export const plugin: Plugin = {
     // a port nobody mounted is refused at boot, naming the port.
     registry.contribute(WORKFLOW_RUNTIME, noteToPlan.name, deferred(() => runtimeFor(ctx)));
   },
-};
+});
 
 /** A port this workflow cannot work without. */
-function required<T>(ctx: PluginContext, kind: string): T {
+function required<T>(ctx: TypedContext, kind: string): T {
   const port = ctx.port(kind);
   if (!port) {
     throw new Error(`the note-to-plan workflow needs the \`${kind}\` port, and nothing mounted it`);

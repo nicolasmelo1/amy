@@ -1,8 +1,8 @@
-import { Plugin } from "@amykit/core";
+import { definePlugin } from "@amykit/core";
 import { AllowedCommands } from "./AllowedCommands.js";
 import { configSchema } from "./config.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-command",
   configSchema,
   register(registry, ctx) {
@@ -15,9 +15,9 @@ export const plugin: Plugin = {
       { port: "commands", method: "run" },
       new AllowedCommands(ctx.runner, {
         allow: (ctx.config.allow ?? {}) as Record<string, string>,
-        cwd: (ctx.config.cwd as string) || ctx.paths.state,
-        timeoutMs: ctx.config.timeoutMs as number,
+        cwd: (ctx.config.cwd) || ctx.paths.state,
+        timeoutMs: ctx.config.timeoutMs,
       }),
     );
   },
-};
+});

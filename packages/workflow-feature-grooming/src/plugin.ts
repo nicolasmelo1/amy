@@ -1,17 +1,17 @@
-import { BaseSource, ConfigSchema, GitBaseSource, GroomingTracker, Plugin } from "@amykit/core";
+import { BaseSource, ConfigSchema, GitBaseSource, GroomingTracker, definePlugin } from "@amykit/core";
 
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   repos: { type: "string[]", required: true, description: "repositories whose configured base branch grooming may read" },
   defaultBranch: { type: "string", default: "main", description: "fallback base branch for source snapshots" },
   baseBranch: { type: "record", default: {}, description: "per-repository base branch" },
-};
+} satisfies ConfigSchema;
 
 /** Mounts only narrow source and provider-neutral tracker capabilities. */
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/workflow-feature-grooming",
   configSchema,
   register(registry, ctx) {
-    for (const repo of ctx.config.repos as string[]) {
+    for (const repo of ctx.config.repos) {
       if (ctx.paths.checkouts[repo] === undefined) {
         throw new Error(`the feature-grooming workflow needs a configured checkout for \`${repo}\``);
       }
@@ -21,10 +21,10 @@ export const plugin: Plugin = {
     const source: BaseSource = new GitBaseSource(ctx.runner, {
       workspaceRoot: ctx.paths.workspace,
       checkouts: ctx.paths.checkouts,
-      defaultBranch: ctx.config.defaultBranch as string,
+      defaultBranch: ctx.config.defaultBranch,
       baseBranch: ctx.config.baseBranch as Record<string, string>,
     });
     registry.port("grooming-source", source);
     registry.port("grooming-tracker", tracker);
   },
-};
+});

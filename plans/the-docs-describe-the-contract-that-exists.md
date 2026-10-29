@@ -27,7 +27,7 @@ contract look heavier than it is:
 
 [Nothing is declared twice](../docs/design/nothing-is-declared-twice.md),
 [a mount builds once](../docs/design/a-mount-builds-once.md),
-[a config is typed by its schema](a-config-is-typed-by-its-schema.md),
+[a config is typed by its schema](../docs/design/a-config-is-typed-by-its-schema.md),
 [the host lends the checkout](the-host-lends-the-checkout.md) and
 [a workflow is one declaration](a-workflow-is-one-declaration.md) change the
 contract these pages describe, so this comes after all five, and rewrites them

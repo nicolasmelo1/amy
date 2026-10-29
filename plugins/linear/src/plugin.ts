@@ -1,9 +1,9 @@
-import { Plugin } from "@amykit/core";
+import { definePlugin } from "@amykit/core";
 import { LinearTracker } from "./LinearTracker.js";
 import { HttpGraphQLClient } from "./HttpGraphQLClient.js";
 import { configSchema } from "./config.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-linear",
   configSchema,
   register(registry, ctx) {
@@ -18,10 +18,10 @@ export const plugin: Plugin = {
       );
     }
 
-    const tracker = new LinearTracker(new HttpGraphQLClient(ctx.config.endpoint as string, key), {
-      workingStatusName: ctx.config.workingStatusName as string,
+    const tracker = new LinearTracker(new HttpGraphQLClient(ctx.config.endpoint, key), {
+      workingStatusName: ctx.config.workingStatusName,
       repoByTeam: ctx.config.repoByTeam as Record<string, string>,
-      defaultRepo: ctx.config.defaultRepo as string,
+      defaultRepo: ctx.config.defaultRepo,
       repoByLabel: ctx.config.repoByLabel as Record<string, string> | undefined,
     });
 
@@ -30,4 +30,4 @@ export const plugin: Plugin = {
     // above the adapter, so grooming never depends on ticket-to-qa.
     registry.port("feature", tracker);
   },
-};
+});

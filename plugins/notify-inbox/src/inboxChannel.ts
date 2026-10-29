@@ -4,13 +4,13 @@ import { CommandRunner, ConfigSchema } from "@amykit/core";
 import { Channel } from "@amykit/plugin-notify-fanout";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   directory: {
     type: "string",
     description: "where the questions are left, relative to the workspace",
     default: "needs-input",
   },
-};
+} satisfies ConfigSchema;
 
 /**
  * Writes the announcement to a directory of files the operator can answer in

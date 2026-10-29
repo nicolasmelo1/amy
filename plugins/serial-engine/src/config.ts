@@ -7,7 +7,7 @@ import { ConfigSchema } from "@amykit/core";
  * workflow's vocabulary, not an engine's, and they moved to the workflow's
  * own slice when the engine stopped knowing what a ticket is.
  */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   staleClaimMs: {
     type: "number",
     description: "how long a claimed item may sit before it counts as abandoned",
@@ -28,4 +28,4 @@ export const configSchema: ConfigSchema = {
     description: "how long a failed item is held before it is looked at again",
     default: 5 * 60 * 1000,
   },
-};
+} satisfies ConfigSchema;

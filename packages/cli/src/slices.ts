@@ -82,6 +82,7 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     },
     "@amykit/plugin-plan-check": {
       defaultBranch: config.defaultBranch,
+      baseBranch: config.baseBranch,
       commands: config.plans.check,
     },
     // The workflow's own vocabulary: which repositories it counts review

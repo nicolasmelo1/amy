@@ -3,19 +3,22 @@ import {
   AskContext,
   HarnessReply,
   LogBudget,
-  Plugin,
+  definePlugin,
   PluginContext,
   Registry,
   deferred,
   hasACeiling,
   parseBudget,
+  ConfigOf,
 } from "@amykit/core";
 import { HARNESS_COLLECTION, HarnessRelay, NamedHarness, Ladders, Rung, SkillLadders } from "@amykit/agent-kit";
 import { configSchema } from "./config.js";
+
+type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 import { inertCeilingProblems } from "./pricing.js";
 import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-agent-relay",
   configSchema,
   register(registry, ctx) {
@@ -38,7 +41,7 @@ export const plugin: Plugin = {
     }));
     mountBudget(registry, ctx);
   },
-};
+});
 
 /**
  * Mounts the ceiling the engine asks before it starts anything expensive.
@@ -47,7 +50,7 @@ export const plugin: Plugin = {
  * that spends an agent, and it is only mounted when a ceiling was actually
  * configured: a budget that can never refuse is a port pretending to be one.
  */
-function mountBudget(registry: Registry, ctx: PluginContext): void {
+function mountBudget(registry: Registry, ctx: TypedContext): void {
   const parsed = parseBudget(ctx.config.budget);
   if (!parsed.ok) throw new Error(parsed.problems.join("; "));
 
@@ -62,7 +65,7 @@ function mountBudget(registry: Registry, ctx: PluginContext): void {
   registry.port("budget", new LogBudget(ctx.log, parsed.limits));
 }
 
-function build(ctx: PluginContext): HarnessRelay {
+function build(ctx: TypedContext): HarnessRelay {
   const contributed = [...ctx.contributions(HARNESS_COLLECTION).values()] as NamedHarness[];
   const rungs = ladders(ctx, contributed);
 
@@ -86,7 +89,7 @@ function build(ctx: PluginContext): HarnessRelay {
  * measure nobody can supply, which is the same failure — a ceiling that reads
  * like policy and is decoration — arrived at from the other side.
  */
-function refuseAnInertCeiling(ctx: PluginContext, rungs: Ladders<NamedHarness>): void {
+function refuseAnInertCeiling(ctx: TypedContext, rungs: Ladders<NamedHarness>): void {
   const parsed = parseBudget(ctx.config.budget);
   if (!parsed.ok) throw new Error(parsed.problems.join("; "));
 
@@ -103,8 +106,8 @@ function refuseAnInertCeiling(ctx: PluginContext, rungs: Ladders<NamedHarness>):
  * less than it said would show up as one action mysteriously using the wrong
  * model, which is the hardest kind of thing to notice.
  */
-function ladders<T extends Rung>(ctx: PluginContext, contributed: readonly T[]): Ladders<T> {
-  const wanted = ctx.config.ladder as string[];
+function ladders<T extends Rung>(ctx: TypedContext, contributed: readonly T[]): Ladders<T> {
+  const wanted = ctx.config.ladder;
   const fallback = wanted.length === 0 ? [...contributed] : order(contributed, wanted);
 
   const perStep = ctx.config.ladderByStep as Record<string, unknown>;
@@ -116,7 +119,7 @@ function ladders<T extends Rung>(ctx: PluginContext, contributed: readonly T[]):
     }
     if (names.length === 0) continue;
 
-    byStep[step] = order(contributed, names as string[]);
+    byStep[step] = order(contributed, names);
   }
 
   return { fallback, byStep };
@@ -129,11 +132,11 @@ function ladders<T extends Rung>(ctx: PluginContext, contributed: readonly T[]):
  * agent nobody contributed is refused: a config that quietly means less than
  * it says is worse than one that will not load.
  */
-function skillLadders(ctx: PluginContext): SkillLadders {
+function skillLadders(ctx: TypedContext): SkillLadders {
   const parsed = parseSkills(ctx.config.skills);
   if (!parsed.ok) throw new Error(parsed.problems.join("; "));
 
-  const roots = ctx.config.skillRoots as string[];
+  const roots = ctx.config.skillRoots;
   const installed = installedSkills(roots.length > 0 ? roots : [DEFAULT_SKILL_ROOT]);
 
   const missing = skillsNamed(parsed.ladders).filter((skill) => !installed.includes(skill));

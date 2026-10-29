@@ -2,7 +2,7 @@ import {
   Budget,
   Engine,
   Notifier,
-  Plugin,
+  definePlugin,
   PluginContext,
   Queue,
   Store,
@@ -10,11 +10,14 @@ import {
   Workflow,
   WorkflowRuntime,
   deferred,
+  ConfigOf,
 } from "@amykit/core";
 import { Worker } from "./Worker.js";
 import { configSchema } from "./config.js";
 
-export const plugin: Plugin = {
+type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
+
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-serial-engine",
   configSchema,
   register(registry, ctx) {
@@ -27,9 +30,9 @@ export const plugin: Plugin = {
       return { discover: () => worker.discover(), tick: () => worker.tick() };
     }));
   },
-};
+});
 
-function build(ctx: PluginContext): Worker {
+function build(ctx: TypedContext): Worker {
   const workflow = ctx.workflow() as Workflow | undefined;
   if (!workflow) {
     throw new Error("the serial engine needs a workflow, and no plugin registered one");
@@ -58,10 +61,10 @@ function build(ctx: PluginContext): Worker {
     // engine then never asks one.
     budget: ctx.port("budget") as Budget | undefined,
     config: {
-      staleClaimMs: ctx.config.staleClaimMs as number,
-      retentionDays: ctx.config.retentionDays as number,
-      maxItemAttempts: ctx.config.maxItemAttempts as number,
-      retryDelayMs: ctx.config.retryDelayMs as number,
+      staleClaimMs: ctx.config.staleClaimMs,
+      retentionDays: ctx.config.retentionDays,
+      maxItemAttempts: ctx.config.maxItemAttempts,
+      retryDelayMs: ctx.config.retryDelayMs,
     },
   });
 }
@@ -74,7 +77,7 @@ function build(ctx: PluginContext): Worker {
  * half of itself. Naming what there was to choose from, because a
  * mismatched pair is a config mistake and the fix is a name.
  */
-function runtimeFor(ctx: PluginContext, workflow: Workflow): WorkflowRuntime {
+function runtimeFor(ctx: TypedContext, workflow: Workflow): WorkflowRuntime {
   const contributed = ctx.contributions(WORKFLOW_RUNTIME);
   const runtime = contributed.get(workflow.name);
 
@@ -96,7 +99,7 @@ function runtimeFor(ctx: PluginContext, workflow: Workflow): WorkflowRuntime {
  * here means something registered an engine without the rest. Saying which
  * one beats a property access on undefined.
  */
-function required<T>(ctx: PluginContext, kind: string): T {
+function required<T>(ctx: TypedContext, kind: string): T {
   const port = ctx.port(kind);
   if (!port) {
     throw new Error(`the serial engine needs the \`${kind}\` port, and nothing mounted it`);

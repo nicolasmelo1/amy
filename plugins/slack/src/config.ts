@@ -3,7 +3,7 @@ import { DEFAULT_RATE_LIMIT_RETRIES, DEFAULT_RETRY_AFTER_S } from "./SlackApi.js
 import { DEFAULT_MARKS, DEFAULT_RETENTION_DAYS } from "./SlackConversation.js";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   channel: {
     type: "string",
     required: true,
@@ -55,4 +55,4 @@ export const configSchema: ConfigSchema = {
       "the reaction, by emoji name, the operator puts on their own reply to mark it as a turn in a discussion, answered in the thread while the work waits",
     default: DEFAULT_MARKS.discussion,
   },
-};
+} satisfies ConfigSchema;

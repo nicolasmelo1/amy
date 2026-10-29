@@ -8,7 +8,7 @@ import { LINEAR_ENDPOINT } from "./LinearTracker.js";
  * category: the tracker files In Review, In QA and Ready To Release under the
  * same category as In Progress.
  */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   workingStatusName: {
     type: "string",
     required: true,
@@ -36,4 +36,4 @@ export const configSchema: ConfigSchema = {
       "the GraphQL endpoint to talk to. Linear's own by default, and the one thing that has to move for a stand-in tracker to take its place in an end-to-end run",
     default: LINEAR_ENDPOINT,
   },
-};
+} satisfies ConfigSchema;

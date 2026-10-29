@@ -1,7 +1,7 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   allow: {
     type: "record",
     required: true,
@@ -18,4 +18,4 @@ export const configSchema: ConfigSchema = {
     description: "how long one command may run before it is given up on",
     default: 5 * 60 * 1000,
   },
-};
+} satisfies ConfigSchema;

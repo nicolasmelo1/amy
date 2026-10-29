@@ -6,12 +6,13 @@ import {
   Git,
   Notifier,
   parseBudget,
-  Plugin,
+  definePlugin,
   PluginContext,
   Worktree,
   WORKFLOW_RUNTIME,
   deferred,
   WorkflowRuntime,
+  ConfigOf,
 } from "@amykit/core";
 import { Observation, DEFAULT_POLICY, Policy } from "./observation.js";
 import { Agent, Gate, Tracker } from "@amykit/core";
@@ -54,7 +55,7 @@ function rosterProvider(readFromHost?: () => Roster): () => Roster {
   };
 }
 
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   repos: {
     type: "string[]",
     required: true,
@@ -92,10 +93,12 @@ export const configSchema: ConfigSchema = {
     description: "agent budget, including an optional progress block that stops repeated no-evidence runs",
     default: {},
   },
-};
+} satisfies ConfigSchema;
+
+type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 
 /** The runtime for one mount, built by the host once every plugin has registered. */
-function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observation> {
+function runtimeFor(ctx: TypedContext): WorkflowRuntime<TicketRecord, Observation> {
   return ticketRuntime({
     tracker: required<Tracker>(ctx, "tracker"),
     conversation: ctx.port("conversation") as Conversation | undefined,
@@ -120,7 +123,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
       {
         workspaceRoot: ctx.paths.workspace,
         checkouts: ctx.paths.checkouts,
-        defaultBranch: ctx.config.defaultBranch as string,
+        defaultBranch: ctx.config.defaultBranch,
         baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
       },
       ctx.port("worktree") as Worktree | undefined,
@@ -131,7 +134,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
     layout: {
       workspaceRoot: ctx.paths.workspace,
       checkouts: ctx.paths.checkouts,
-      defaultBranch: ctx.config.defaultBranch as string,
+      defaultBranch: ctx.config.defaultBranch,
       baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
     },
     // Optional on purpose: the `brief` port is the persistence seam a
@@ -143,8 +146,8 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
     now: ctx.now,
     log: ctx.log,
     config: {
-      repos: ctx.config.repos as string[],
-      qaStatusName: ctx.config.qaStatusName as string,
+      repos: ctx.config.repos,
+      qaStatusName: ctx.config.qaStatusName,
       reviewerHints: ctx.config.reviewerHints as Record<string, string>,
     },
     progress: progressPolicy(ctx),
@@ -161,7 +164,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<TicketRecord, Observati
  * tracker itself would drive this workflow and no other, whatever its types
  * said.
  */
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/workflow-ticket-to-qa",
   configSchema,
   register(registry, ctx) {
@@ -174,9 +177,9 @@ export const plugin: Plugin = {
     // a port nobody mounted is refused at boot, naming the port.
     registry.contribute(WORKFLOW_RUNTIME, ticketToQa.name, deferred(() => runtimeFor(ctx)));
   },
-};
+});
 
-function writesOf(ctx: PluginContext): Policy["writes"] {
+function writesOf(ctx: TypedContext): Policy["writes"] {
   const writes = (ctx.config.policy as Partial<Policy> | undefined)?.writes ?? "machine";
   if (writes !== "machine" && writes !== "operator") {
     throw new Error(`ticket-to-qa policy.writes must be "machine" or "operator", not ${JSON.stringify(writes)}`);
@@ -184,7 +187,7 @@ function writesOf(ctx: PluginContext): Policy["writes"] {
   return writes;
 }
 
-function conversationOf(ctx: PluginContext): Policy["conversation"] {
+function conversationOf(ctx: TypedContext): Policy["conversation"] {
   const conversation = (ctx.config.policy as Partial<Policy> | undefined)?.conversation ?? "answer";
   if (conversation !== "answer" && conversation !== "discuss") {
     throw new Error(`ticket-to-qa policy.conversation must be "answer" or "discuss", not ${JSON.stringify(conversation)}`);
@@ -193,7 +196,7 @@ function conversationOf(ctx: PluginContext): Policy["conversation"] {
 }
 
 /** A port this workflow cannot work without. */
-function required<T>(ctx: PluginContext, kind: string): T {
+function required<T>(ctx: TypedContext, kind: string): T {
   const port = ctx.port(kind);
   if (!port) {
     throw new Error(`the ticket-to-qa workflow needs the \`${kind}\` port, and nothing mounted it`);
@@ -201,13 +204,13 @@ function required<T>(ctx: PluginContext, kind: string): T {
   return port as T;
 }
 
-function provided<T>(ctx: PluginContext, name: string): T | undefined {
+function provided<T>(ctx: TypedContext, name: string): T | undefined {
   const entry = ctx.contributions(WORKFLOW_DATA).get(name);
   if (!entry) return undefined;
   return (entry as Provider<T>).read();
 }
 
-function progressPolicy(ctx: PluginContext) {
+function progressPolicy(ctx: TypedContext) {
   const parsed = parseBudget(ctx.config.budget);
   if (!parsed.ok) throw new Error(parsed.problems.join("; "));
   return parsed.limits.progress;

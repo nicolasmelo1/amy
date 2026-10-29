@@ -1,7 +1,7 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   directory: {
     type: "string",
     description: "where the notes are watched for, relative to the state directory",
@@ -19,4 +19,4 @@ export const configSchema: ConfigSchema = {
       "whether a tick this machine gave up on leaves a note behind, so the thing that broke becomes the thing that gets fixed",
     default: true,
   },
-};
+} satisfies ConfigSchema;

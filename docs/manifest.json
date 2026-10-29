@@ -233,6 +233,11 @@
           "description": ""
         },
         {
+          "title": "A config is typed by its schema",
+          "path": "/design/a-config-is-typed-by-its-schema",
+          "description": ""
+        },
+        {
           "title": "A mount builds once",
           "path": "/design/a-mount-builds-once",
           "description": ""
@@ -866,6 +871,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "**A config is typed by its schema.** definePlugin gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and string[] settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.",
+          "slug": "a-config-is-typed-by-its-schema-defineplugin-gives-a-plugins-register-and-ready-hooks-the-post-validation-type-derived-from-its-schema-rejects-mismatched-defaults-and-moves-every-shipped-schema-onto-that-declaration-scalar-and-string-settings-no-longer-cast-away-the-hosts-validation-record-settings-remain-explicitly-narrowed-where-a-plugin-needs-a-stronger-value-shape"
         },
         {
           "depth": 3,
@@ -1612,6 +1622,28 @@
           "depth": 2,
           "title": "The gate",
           "slug": "the-gate"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-config-is-typed-by-its-schema",
+      "file": "docs/design/a-config-is-typed-by-its-schema.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-config-is-typed-by-its-schema.md",
+      "title": "A config is typed by its schema",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
         },
         {
           "depth": 2,
@@ -7476,6 +7508,12 @@
         "contributes": [],
         "settings": [
           {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "description": "the configured base branch by repository, overriding the fallback branch"
+          },
+          {
             "name": "commands",
             "type": "record",
             "required": false,
@@ -8973,6 +9011,114 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-config-is-typed-by-its-schema",
+        "title": "**A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-brief-store",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-notes",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-queue",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-store",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-tasks",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-hermes",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-notify-inbox",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-feature-grooming",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
       {
         "id": "a-mount-builds-once",
         "title": "**A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.",
