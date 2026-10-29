@@ -91,8 +91,9 @@ The fixed views, by the row that brings them:
 | `work.list` | `{ query? }` | `nav2` under Work | *the window is served* |
 | `workflows.list` | — | `nav2` under Workflows | *amy has a window* |
 | `workflows.handbrake` | — | canvas under Workflows | *amy has a window* |
+| `workflows.detail` | `{ profile }` | canvas under Workflows: the workflow's diagram, drawn and as text, and its last check; **the text is editable only on the socket** | *amy has a window* |
 | `settings.config` | — | canvas under Settings; **local-only** | *amy has a window* |
-| `work.detail` | `{ profile, workId }` | canvas: header, machine strip, `timeline` tab | *the window is served* |
+| `work.detail` | `{ profile, workId }` | canvas: header, machine strip — the workflow's diagram with the record's state marked — `timeline` tab | *the window is served* |
 | `work.log` | `{ profile?, workId? }` | `panel` | *amy has a window* |
 | `menubar.title`, `menubar.menu` | — | `menubar` surface | *amy lives in the menu bar* |
 | `work.thread` | `{ profile, workId }` | `panel` | *a conversation before the work* |
@@ -129,6 +130,8 @@ alone already shows live work.
 
 | Operation | Method and path | What it does |
 | :-- | :-- | :-- |
+| `getWorkflowDiagram` | `GET /v1/workflows/{profile}/diagram` | `{ text, revision, editable }` — the profile's `workflow.mmd` (*a workflow is a Mermaid diagram*), the revision its digest, `editable` true only for a workflow under `~/.amy/workflows`. What `amy workflow export` prints. `404 workflows.not_found`; `404 workflows.no_diagram` for a workflow written without one. |
+| `saveWorkflowDiagram` | `PUT /v1/workflows/{profile}/diagram` | Request `{ text, baseRevision }`. Reads it with the same subset the host mounts with, writes `workflow.mmd`, and runs `amy workflow check`. `200 { revision, undrawn[], unwalked[] }`; `409 workflows.stale_revision { current }`; `409 workflows.not_yours` for a package; `422 workflows.diagram_refused { line, construct }`; `409 workflows.state_in_use { state, records[] }` when it drops a state a record is in. The running machine keeps the diagram it mounted until it restarts. **Local-only.** Writes: the workflow's directory. |
 | `removeWorkflow` | `DELETE /v1/workflows/{profile}` | What `amy remove <name>` does, refusing what the machine would not survive. `200 { removed }`; `404 workflows.not_found`; `409 workflows.removal_refused { refusals[] }`. **Local-only.** Writes: `config.yaml`. |
 
 ### `settings` — `config.yaml` · *amy has a window*

@@ -28,17 +28,24 @@ contract look heavier than it is:
 [Nothing is declared twice](../docs/design/nothing-is-declared-twice.md),
 [a mount builds once](../docs/design/a-mount-builds-once.md),
 [a config is typed by its schema](../docs/design/a-config-is-typed-by-its-schema.md),
-[the host lends the checkout](../docs/design/the-host-lends-the-checkout.md) and
-[a workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md) change the
-contract these pages describe, so this comes after all five, and rewrites them
+[the host lends the checkout](../docs/design/the-host-lends-the-checkout.md),
+[a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md),
+[a workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md),
+[a workflow is three pieces](a-workflow-is-three-pieces.md) and
+[waiting is not trying](waiting-is-not-trying.md) change the
+contract these pages describe, so this comes after all eight, and rewrites them
 once against what exists.
 
 ## What changes
 
-- **Write a workflow** starts from one file with one `defineWorkflow` call, and
-  walks the five questions, the states, `plan()`, the runtime and the
-  walkthrough test in that file. Splitting it is a closing section — when, and
-  into what — not the shape of the page.
+- **Write a workflow** starts from two files, `workflow.mmd` and one
+  `defineWorkflow` call, and teaches the three pieces in the order a person
+  thinks of them: the diagram (where work can go), `decide` (where it goes
+  next) and `actions` (what happens), then `before`, `after` and the
+  walkthrough. Every step works without the CLI; `amy workflow new` is named
+  as the shortcut that writes the same two files. Splitting a large workflow
+  into files is a closing section — when, and into what — not the shape of the
+  page.
 - **Write a plugin** starts from `definePlugin` with a typed config, and the
   deferred implementation is where it explains why plugin order does not
   matter.
@@ -65,5 +72,5 @@ once against what exists.
       (proof: assertion:mine.the_scaffold_runs_before_it_is_edited)
 
 **Exit condition:** somebody who has never seen this repository writes a
-workflow from *Write a workflow* alone, in one file, and it mounts on the first
-boot.
+workflow from *Write a workflow* alone, as a diagram and one file, and it
+mounts on the first boot.

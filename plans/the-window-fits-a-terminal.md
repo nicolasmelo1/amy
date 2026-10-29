@@ -13,8 +13,12 @@ does once `ui.default` says so. It is a client like the desktop app
 draws with Ink, the React renderer for the command line. The frame is the same: nav 1 as a row of
 sections, nav 2 as a list, the canvas, and the right panel toggled by a key.
 `⌘K` is the same ask. Every primitive has a terminal drawing: `StateMachine`
-as one line with the current state marked, `Diff` as a coloured unified diff,
-`Timeline` as a list.
+as the workflow's diagram (*a workflow is a Mermaid diagram*) read the way the
+text renderer reads it — the states on one line with the current one marked,
+then each edge the file draws, labelled — `Diff` as a coloured unified diff,
+`Timeline` as a list. A workflow's diagram is edited the way the editor opener
+works: `$EDITOR` on its `workflow.mmd`, and the window saves it through the
+same check the desktop canvas runs when the editor exits.
 
 **It is driven like Neovim, and by the mouse.** A person who lives in a
 terminal lives in its keybindings, and a window that makes them reach for
@@ -63,6 +67,9 @@ desktop and terminal projections are compared on every step.
 - [ ] The editor opener suspends the window, starts in the record's checkout,
       and returns to the same record when the editor exits
       (proof: deferred:assertion:window.the_editor_returns_to_the_same_record)
+- [ ] A workflow's diagram edited in `$EDITOR` from the terminal is saved
+      through the same check as the desktop canvas, and a refused one is not
+      saved (proof: deferred:assertion:window.a_diagram_is_edited_as_text)
 - [ ] A plugin installed from outside the workspace lands in the same place in
       the terminal as in the desktop app (proof: deferred:assertion:frame.a_slot_takes_only_what_it_declares)
 - [ ] The default keys, the conformance remap and the mouse drive the

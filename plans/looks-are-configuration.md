@@ -1,7 +1,8 @@
 # Looks are configuration
 
 *amy lives in the menu bar* gave every record a standing — attention,
-active, waiting, finished — from the `attentionStates` a workflow declares.
+active, waiting, finished — from the states a workflow's diagram marks
+`attention`.
 The window draws the standing; what it looks like is a person's preference,
 not the machine's.
 
@@ -25,8 +26,11 @@ ui:
 
 A theme is a set of tokens — colours, font, density — contributed to a
 `ui-theme` collection, so a plugin can ship one. The keys are validated at
-boot like any setting: a state the workflow does not have, or a token no
-theme defines, is refused by name.
+boot like any setting: a state the workflow's diagram does not draw, or a
+token no theme defines, is refused by name. The `classDef` styles in a
+`workflow.mmd` are not read: they are how the file looks on GitHub and in
+Obsidian, and the window's colours are a person's, from the theme and this
+block.
 
 ## The gates
 
