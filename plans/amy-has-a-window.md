@@ -73,12 +73,23 @@ named in the dependency lock like any package — and paid only by somebody who
 installs this renderer, since *a renderer is chosen by name* keeps it out of
 the bare install.
 
-**The desktop renderer draws `StateMachine` with Mermaid.** The primitive
-carries the diagram's text, so the app hands it to Mermaid, pinned in the
-dependency lock like Electron, and colours it from the theme's tokens rather
-than from the file's `classDef` styles, which stay for GitHub and Obsidian. It
-is the same drawing a person gets pasting `amy workflow export` into a pull
-request.
+**The desktop renderer draws `StateMachine` with Pele.** The primitive
+carries the diagram's text. The app renders it with [Pele](https://pele.run),
+Obsidian's Mermaid renderer: MIT, no dependencies, synchronous, an SVG string
+out. It is a dependency of `@amykit/ui-desktop` only, and of no other package.
+The app registers only the state diagram (`pele/core` and
+`pele/diagrams/state`), which is about 130 KB minified and 52 KB gzipped,
+where the full bundle is 712 KB. Pele colours through CSS variables
+(`--pele-bg`, `--pele-fg`, `--pele-line`, `--pele-accent`, …), so the theme's
+tokens become those variables:
+
+- `a-renderer-names-no-colour` holds, because the renderer never names a
+  colour.
+- A theme switch recolours the diagram without rendering it again.
+- The `classDef` styles in the file are not read. They stay for GitHub and
+  Obsidian.
+
+A person sees the drawing Obsidian would show of the same file.
 
 The app is `@amykit/ui-desktop`, contributing the renderer named `desktop`
 (*a renderer is chosen by name*): `amy ui desktop` opens it, and so does
@@ -139,6 +150,9 @@ The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbr
 - [ ] The strip in a record's canvas is its workflow's diagram, with every
       edge the file draws and the record's state marked
       (proof: deferred:assertion:window.the_strip_is_the_diagram)
+- [ ] Pele is a dependency of `@amykit/ui-desktop` and of no other package,
+      and the app bundles only its state diagram
+      (proof: deferred:test:plugins/ui-desktop/tests/bundle.test.ts)
 - [ ] The app draws everything from the server and reads nothing under amy's
       home (proof: deferred:assertion:server.a_client_needs_nothing_but_the_server)
 - [ ] `amy ui build desktop` produces a macOS app that opens against a server

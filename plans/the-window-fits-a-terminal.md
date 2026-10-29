@@ -12,13 +12,25 @@ does once `ui.default` says so. It is a client like the desktop app
 (*the window is served*) — it can follow a server on another machine — and
 draws with Ink, the React renderer for the command line. The frame is the same: nav 1 as a row of
 sections, nav 2 as a list, the canvas, and the right panel toggled by a key.
-`⌘K` is the same ask. Every primitive has a terminal drawing: `StateMachine`
-as the workflow's diagram (*a workflow is a Mermaid diagram*) read the way the
-text renderer reads it — the states on one line with the current one marked,
-then each edge the file draws, labelled — `Diff` as a coloured unified diff,
-`Timeline` as a list. A workflow's diagram is edited the way the editor opener
-works: `$EDITOR` on its `workflow.mmd`, and the window saves it through the
-same check the desktop canvas runs when the editor exits.
+`⌘K` is the same ask. Every primitive has a terminal drawing: `Diff` as a
+coloured unified diff, `Timeline` as a list, and `StateMachine` as the
+workflow's diagram (*a workflow is a Mermaid diagram*). The diagram is drawn
+from the states and edges the server parsed, never from Mermaid text:
+
+- In a record's canvas it is the strip, one line with the current state
+  marked.
+- In the Workflows canvas it is each state with its edges beneath it,
+  labelled, and the `anywhere` and `returns` states said in words.
+
+No graph layout is drawn in characters. A Mermaid-to-ASCII library exists:
+`beautiful-mermaid` draws a state diagram as box art. But it brings `elkjs`,
+7.7 MB, for a picture that runs to sixty lines for seven states and merges two
+opposite edges into one. If somebody wants it, it is a plugin's canvas tab
+(*the window takes plugins*), not the terminal's own drawing.
+
+A workflow's diagram is edited the way the editor opener works: `$EDITOR` on
+its `workflow.mmd`, and the window saves it through the same check the desktop
+canvas runs when the editor exits.
 
 **It is driven like Neovim, and by the mouse.** A person who lives in a
 terminal lives in its keybindings, and a window that makes them reach for
