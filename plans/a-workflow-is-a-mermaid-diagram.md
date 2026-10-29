@@ -49,13 +49,14 @@ stateDiagram-v2
     NOTED --> DECLINED: not a repository I write into
     NOTED --> DRAFTED
     DRAFTED --> CHECKED
+    DRAFTED --> DECLINED: no draft in the attempts allowed
     CHECKED --> DRAFTED: check is red
     CHECKED --> PR_OPEN
     PR_OPEN --> DONE
     DONE --> [*]
     DECLINED --> [*]
 
-    class PR_OPEN waiting
+    class NOTED waiting
 ```
 
 amy reads a subset of `stateDiagram-v2`, and every line of it is ordinary
@@ -113,7 +114,12 @@ occasions:
 
 - **At boot.** A state the diagram draws with no decision, or a decision for a
   state it does not draw, is refused by name. This applies once
-  *a workflow is three pieces* gives decisions a key per state.
+  *a workflow is three pieces* gives decisions a key per state. A decision
+  may be the core's `notWritten()` stub. A stub mounts, and on a look it
+  settles the record with "the decision for <state> is not written yet"
+  rather than guessing a move. `amy workflow check` lists every stub, so the
+  scaffold an import writes mounts on the first boot and still says what is
+  left to write.
 - **On every walk.** The testkit and `amy workflow check` record every
   transition. An `advance` to a state the diagram does not connect fails,
   naming both ends. Leaving to an `anywhere` state, or out of a `returns`
@@ -133,15 +139,20 @@ because of a drawing mistake.
   state. The result is still valid Mermaid, so pasting it into a GitHub
   comment shows where the work is.
 - `amy workflow new <name> --from <file.mmd>` copies somebody's diagram in
-  beside a scaffold that decides nothing yet. The first `amy workflow check`
-  names every state without a decision and every edge as drawn, not walked.
+  beside a scaffold whose every decision is a `notWritten()` stub. It mounts
+  as it is, and the first `amy workflow check` lists each stub and every edge
+  as drawn, not walked.
 
 Each of these commands is a shortcut. Writing the two files by hand gives the
 same workflow.
 
-**Every view of a workflow is drawn from its diagram.** The `StateMachine`
-primitive gains a required `diagram` prop, the Mermaid text, beside the
-`states` and `transitions` the server reads out of it. A renderer that draws
+**Every view of a workflow is drawn from its diagram, when it has one.** The
+`StateMachine` primitive gains an optional `diagram` prop, the Mermaid text,
+beside the `states` and `transitions` the server reads out of it. A workflow
+written by hand without a diagram still has its `states`, and its views carry
+those with no `diagram` and no edges. Every renderer draws them as the text
+renderer does today, and the window's Workflows canvas says that the workflow
+has no diagram, instead of drawing one it does not have. A renderer that draws
 in a webview — the desktop app, and a web or phone client later — hands the
 text to Pele and gets an SVG. A renderer that draws characters — the text one
 and the terminal — draws the parsed states and edges, as the text renderer
@@ -193,14 +204,16 @@ diagram still mounts.
       stale (proof: deferred:test:mutation fixture for L3.GATE_HAS_FRESH_EVIDENCE)
 - [ ] Each shipped workflow's walkthrough takes every edge its diagram draws
       (proof: deferred:assertion:plan.every_drawn_edge_is_walked)
-- [ ] `amy workflow new --from` turns a diagram into a workflow that mounts and
-      whose check names what is left to decide
+- [ ] `amy workflow new --from` turns a diagram into a workflow that mounts,
+      whose stubs settle rather than move, and whose check lists every stub
+      and every edge not walked
       (proof: deferred:assertion:mine.a_diagram_becomes_a_workflow)
 - [ ] `amy workflow export --work` prints a diagram Mermaid's parser accepts,
       with the record's state marked
       (proof: deferred:test:packages/cli/tests/workflow-export.test.ts)
-- [ ] Every `StateMachine` in the conformance world carries a diagram, and the
-      golden is relocked
+- [ ] Every `StateMachine` for a workflow with a diagram carries it, one for a
+      workflow without carries its states and no diagram, and the golden is
+      relocked
       (proof: deferred:assertion:frame.nothing_moved_since_it_was_approved)
 - [ ] A workflow with no diagram, written by hand, still mounts and is driven
       (proof: assertion:plugins.a_workflow_from_outside_this_repository_mounts)

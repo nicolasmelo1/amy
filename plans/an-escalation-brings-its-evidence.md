@@ -42,7 +42,8 @@ twice on rules the reviewer never saw. None of it reached the person:
 **Evidence goes on the transition, not on the record.** An `advance` may carry
 `evidence`: a short list of `{ source, text, at }` entries, where `source` is
 `gate`, `review`, `agent` or a name the workflow picks. The core keeps it on
-the history entry that move appends. Every escalation therefore has its own
+the history entry that move appends, beside the ids of the runs made since
+the record last entered the state it is leaving. Every escalation therefore has its own
 evidence, and a second escalation cannot show the first one's.
 `ticket-to-qa`'s ceilings attach what tripped them:
 
@@ -95,8 +96,12 @@ already do: an answer in the thread, `amy resume` (*an escalation can be
 withdrawn*), or `amy poke`.
 
 **The thread's discussion reads the same evidence.** The context `discuss`
-prompts with includes the evidence of the move that is waiting and the output
-of the runs since the record entered that state. So "why did the gate go red?"
+prompts with includes the evidence of the move that is waiting, and the runs
+that led to it. Those runs finished before the record entered the waiting
+state: the implementation ran in `IMPLEMENTING` and the gate in `CHECKED`. So
+the escalation's history entry names them, every run since the record last
+entered the state it escalated from, and `discuss` reads those first and its
+own earlier turns after. So "why did the gate go red?"
 in the work thread gets the six findings, and not a guess.
 
 ## What this is not
@@ -128,7 +133,8 @@ in the work thread gets the six findings, and not a guess.
       nothing outside its own file, and `--run` resumes the run's own session
       (proof: deferred:assertion:mine.an_escalation_can_be_asked_about)
 - [ ] A discussion turn in the work thread of an escalated record is answered
-      with the evidence of the move that escalated it
+      with the evidence of the move that escalated it and the output of the
+      runs that move names, which ran before it
       (proof: deferred:assertion:plan.a_discussion_reads_the_evidence)
 
 **Exit condition:** a ticket escalates on a red gate. The message names the

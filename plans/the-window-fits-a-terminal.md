@@ -28,9 +28,12 @@ No graph layout is drawn in characters. A Mermaid-to-ASCII library exists:
 opposite edges into one. If somebody wants it, it is a plugin's canvas tab
 (*the window takes plugins*), not the terminal's own drawing.
 
-A workflow's diagram is edited the way the editor opener works: `$EDITOR` on
-its `workflow.mmd`, and the window saves it through the same check the desktop
-canvas runs when the editor exits.
+A workflow's diagram is edited the way the editor opener works, on a copy:
+`$EDITOR` opens a temporary file holding the diagram and its revision. When the
+editor exits, the window submits the copy through `saveWorkflowDiagram`, the
+same checked save the desktop canvas uses. A refused or stale edit therefore
+leaves `workflow.mmd` exactly as it was, and the copy stays to be edited
+again.
 
 **It is driven like Neovim, and by the mouse.** A person who lives in a
 terminal lives in its keybindings, and a window that makes them reach for
@@ -80,8 +83,8 @@ desktop and terminal projections are compared on every step.
       and returns to the same record when the editor exits
       (proof: deferred:assertion:window.the_editor_returns_to_the_same_record)
 - [ ] A workflow's diagram edited in `$EDITOR` from the terminal is saved
-      through the same check as the desktop canvas, and a refused one is not
-      saved (proof: deferred:assertion:window.a_diagram_is_edited_as_text)
+      through the same check as the desktop canvas, and a refused or stale one
+      leaves `workflow.mmd` unchanged (proof: deferred:assertion:window.a_diagram_is_edited_as_text)
 - [ ] A plugin installed from outside the workspace lands in the same place in
       the terminal as in the desktop app (proof: deferred:assertion:frame.a_slot_takes_only_what_it_declares)
 - [ ] The default keys, the conformance remap and the mouse drive the

@@ -54,6 +54,17 @@ look and not as an attempt. That covers the private workflow's `TREE_LOGISTICS`
 with the word for it, and its `HELD_BY` prefix goes away, because a hold is a
 `wait` and a wait already costs no attempt.
 
+**An outcome can say the try never happened.** Some looks are known not to be
+tries only after the action ran. A run cut off by a usage limit is the case
+*a usage limit is not an attempt* names. The engine charges the attempt in
+`applyPlan`, before the runtime folds the outcomes
+(`Worker.advance`, `plugins/serial-engine/src/Worker.ts`). So the core adds a
+second, generic step: an action may return `{ notATry: true, retryAfterMs? }`.
+The engine then moves that look's count from `attempts` back to `looks`, in the
+same save, and holds the item for `retryAfterMs` (or the state's backoff)
+before the next look. The workflow's fold sees the refunded record, and no
+workflow has to undo a count by hand.
+
 **The helpers say which they read.** The core exports `looksIn(record, state)`
 and `attemptsIn(record, state)` beside `advance`, `act`, `wait` and `settled`
 ([a workflow is three pieces](a-workflow-is-three-pieces.md)), so no
@@ -76,6 +87,9 @@ costs no attempt.
 
 - [ ] A `wait` adds a look and no attempt, and an `act` adds both
       (proof: deferred:test:packages/core/tests/work.test.ts)
+- [ ] An action outcome marked `notATry` leaves the attempts as they were
+      before the look, adds a look, and holds the next look for its
+      `retryAfterMs` (proof: deferred:test:plugins/serial-engine/tests/Worker.test.ts)
 - [ ] An `act` marked `{ attempt: false }` adds a look and no attempt
       (proof: deferred:test:packages/core/tests/work.test.ts)
 - [ ] A record saved before this reads with its `attempts` copied into

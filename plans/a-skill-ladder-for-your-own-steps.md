@@ -32,8 +32,8 @@ pass for exactly this — *"a plugin that composes others can only judge its own
 settings once those others have contributed themselves"*
 (`core/src/mount.ts:87`) — and the workflow has registered by then.
 
-A step is valid if it is a core action dispatching to the agent, or an action
-the mounted workflow declares in `usesActions` that resolves to the agent
+A step is valid if it is a core action dispatching to the agent, or a key of
+the mounted workflow's runtime `actions` whose handler reaches the agent
 port. Everything else is refused by name at boot, with the list of steps there
 were — the same shape as every other refusal here.
 

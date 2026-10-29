@@ -40,7 +40,7 @@ export default defineWorkflow({
 
   decide: {
     QUEUED: (work, world) => world.task ? advance("WORKING") : wait("nothing queued"),
-    WORKING: (work, world, policy) => act("run", { prompt: world.task.text }),
+    WORKING: (work, world) => act("run the task", { type: "run", prompt: world.task.text }),
     // one key per state the diagram draws
   },
 

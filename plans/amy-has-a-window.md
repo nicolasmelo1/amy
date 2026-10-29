@@ -44,7 +44,8 @@ everything beyond that is a plugin.
   is `config.yaml`: saving reads it with the subset the host reads, writes
   the file, and shows the check's *drawn, not walked* list
   beneath it; a diagram the subset refuses is not saved, and the refusal names
-  the line. A workflow installed as a package is shown, not edited.
+  the line. A workflow installed as a package is shown, not edited, and one
+  written without a diagram shows its declared states and says it has none.
 - **Right panel**, opened and closed by the person: the log, filtered to the
   selected record, or the work thread when the record is waiting on its
   owner.
