@@ -19,7 +19,10 @@ conversations that must never be confused:
 ## What changes
 
 **`⌘K` opens an ask, from anywhere in the window.** It is about whatever is
-selected: the record, its checkout and its brief are the context, and the
+selected: the record, its checkout and its brief are the context, with the
+evidence of each move and the kept agent runs that
+[an escalation brings its evidence](an-escalation-brings-its-evidence.md)
+stores — the same context `amy ask` starts from, and the
 directory it runs in is the record's worktree or, with nothing selected, the
 configured base snapshot. A person picks the harness from those contributed to
 the `harness` collection — the ones the relay already climbs. It runs with
@@ -30,8 +33,9 @@ message, which every harness understands. A harness that can resume its own
 session may say so and be sent only the new message, but the transcript stays
 the source of truth, so changing harness mid-conversation works.
 
-**Asks are kept**, one file per conversation under the state directory, and
-`⌘K` lists the recent ones. Nothing in them reaches a tracker or a thread
+**Asks are kept**, one file per conversation under the state directory — the
+files `amy ask` already writes, in the same format — and `⌘K` lists the recent
+ones, whichever of the two started them. Nothing in them reaches a tracker or a thread
 unless a person copies it there.
 
 **The work thread opens in the right panel**, beside the record, whenever the
