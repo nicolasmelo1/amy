@@ -44,7 +44,7 @@ carries `version` fails to compile, which tells its author the one line to
 delete. The changeset says so in one sentence.
 
 It ships in the same release as
-[a workflow is one declaration](../../plans/a-workflow-is-one-declaration.md), so somebody
+[a workflow is one declaration](a-workflow-is-one-declaration.md), so somebody
 who wrote a workflow migrates once.
 
 ## Acceptance criteria

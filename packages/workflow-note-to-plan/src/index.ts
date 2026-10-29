@@ -1,7 +1,7 @@
 export { PLAN_STATES, WAITING_STATES, isTerminal, isWaiting } from "./state.js";
 export type { PlanState } from "./state.js";
 
-export { attemptsIn, newRecord } from "./record.js";
+export { attemptsIn } from "./record.js";
 export type { AttemptOutcome, PlanRecord } from "./record.js";
 
 export { DEFAULT_POLICY } from "./observation.js";
@@ -22,12 +22,12 @@ export type { Effect } from "./effects.js";
 export { applyNotePlan, applyOutcomes } from "./outcomes.js";
 export type { EffectOutcomes } from "./outcomes.js";
 
-export { noteToPlan, plan } from "./machine.js";
+export { plan } from "./machine.js";
 
 export { planRuntime } from "./runtime.js";
 export type { PlanRuntimeConfig, PlanRuntimeDeps } from "./runtime.js";
 
-export { configSchema, plugin } from "./plugin.js";
+export { configSchema, newRecord, noteToPlan, plugin } from "./plugin.js";
 
 export type { NewNote, Note, Notes } from "./ports/Notes.js";
 export type { PlanCheck } from "./ports/PlanCheck.js";

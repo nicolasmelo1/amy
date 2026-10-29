@@ -28,8 +28,8 @@ cd ~/.amy/workflows/review && npm install && npm test   # the machine's own suit
 ```
 
 `new` writes a workflow that already moves a piece of work — the states, a pure
-`plan()`, a runtime, and the `registry.contribute("workflow-runtime", …)` line
-whose absence is the first boot refusal nearly everybody meets. It is a valid
+`plan()`, a runtime, and one `defineWorkflow` declaration that mounts both
+halves. It is a valid
 npm package from the moment it is written — it is written `private`, so sharing
 it later is a scoped name, dropping that flag and `npm publish` in the same
 directory, rather than a restructuring.
@@ -103,44 +103,28 @@ export interface ReviewRecord extends WorkRecord {
   lastAttempt?: { ok: boolean; output: string; at: string };
 }
 
-export function newRecord(workId: string, now: Date): ReviewRecord {
-  return {
-    id: workId,
-    state: "RECEIVED",
-    updatedAt: now.toISOString(),
-    attempts: {},
-    history: [],
-    customer: workId,
-  };
-}
-
 /** How many times work has been looked at in one state. */
 export function attemptsIn(record: ReviewRecord, state: ReviewState): number {
   return record.attempts[state] ?? 0;
 }
 ```
 
-The core reads exactly four fields — `state`, `updatedAt`, `attempts`,
-`history` — and writes them through `applyPlan`. Everything else is yours, and
-your `apply` is what folds it.
+The core owns `id`, `state`, `updatedAt`, `attempts` and `history`. The
+declaration's `record(workId)` callback adds only fields such as `customer`;
+the runtime never constructs these five fields itself. Everything else is
+yours, and your `apply` is what folds it.
 
 ## 3. The typed effects
 
 ```ts
 // src/effects.ts
-import type { Plan } from "@amykit/core";
+import { planning } from "@amykit/core";
 
 export type Effect =
   | { type: "draft-plan"; prompt: string }
   | { type: "announce"; text: string };
 
-export const act = (why: string, ...effects: Effect[]): Plan =>
-  ({ kind: "act", effects, why });
-export const advance = (to: ReviewState, why: string, ...effects: Effect[]): Plan =>
-  ({ kind: "advance", to, effects, why });
-export const wait = (retryAfterMs: number, why: string, ...effects: Effect[]): Plan =>
-  ({ kind: "wait", retryAfterMs, why, effects });
-export const settled = (why: string): Plan => ({ kind: "settled", why });
+export const { act, advance, wait, settled } = planning<ReviewState, Effect>();
 ```
 
 **You compose actions; you do not define them.** Check
@@ -244,15 +228,11 @@ Three habits worth copying from the shipped workflows:
 
 ```ts
 // src/runtime.ts
-import type { ActionHandler, Plan, WorkflowRuntime } from "@amykit/core";
+import type { ActionHandler, Plan, WorkflowRuntimeParts } from "@amykit/core";
 
-export function reviewRuntime(deps: Deps): WorkflowRuntime<ReviewRecord, Observation> {
+export function reviewRuntime(deps: Deps): WorkflowRuntimeParts<ReviewRecord, Observation> {
   return {
-    policy: deps.policy,
-
     found: async () => (await deps.inbox.unanswered()).map((m) => m.id),
-
-    newRecord,
 
     observe: async (record) => ({
       message: await deps.inbox.get(record.id),
@@ -317,7 +297,7 @@ on every move into it; `moved.from` is the state the escalation interrupted.
 
 ```ts
 // src/plugin.ts
-import { WORKFLOW_RUNTIME, deferred, type Plugin, type PluginContext } from "@amykit/core";
+import { defineWorkflow, optional, port } from "@amykit/core";
 
 export const configSchema: ConfigSchema = {
   policy: {
@@ -327,36 +307,38 @@ export const configSchema: ConfigSchema = {
   },
 };
 
-export const plugin: Plugin = {
-  name: "@acme/workflow-review",
+export const plugin = defineWorkflow({
+  name: "review",
+  pluginName: "@acme/workflow-review",
+  states: REVIEW_STATES,
+  waiting: WAITING_STATES,
+  terminal: ["SENT", "DECLINED"],
   configSchema,
-  register(registry, ctx) {
-    registry.workflow(review);
-
-    // Deferred, because the ports it needs are mounted by plugins that may be
-    // listed after this one. The host builds it once every plugin has
-    // registered, once per mount, and before any `ready`.
-    registry.contribute(WORKFLOW_RUNTIME, review.name, deferred(() => reviewRuntime({
-      approvals: required<Approvals>(ctx, "approvals"),
-      notifier: required<Notifier>(ctx, "notifier"),
-      policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
-    })));
+  policy: DEFAULT_POLICY,
+  needs: {
+    approvals: port<Approvals>(),
+    notifier: port<Notifier>(),
+    conversation: optional<Conversation>(),
   },
-};
+  plan,
+  record: (workId) => ({ customer: workId }),
+  runtime: ({ ports, policy }) => reviewRuntime({
+    approvals: ports.approvals,
+    notifier: ports.notifier,
+    conversation: ports.conversation,
+    policy,
+  }),
+});
 
-function required<T>(ctx: PluginContext, kind: string): T {
-  const port = ctx.port(kind);
-  if (!port) throw new Error(`the review workflow needs the \`${kind}\` port, and nothing mounted it`);
-  return port as T;
-}
+export const newRecord = plugin.newRecord;
 ```
 
-`deferred` is the whole of the wiring. The host calls the factory once every
-plugin has registered, so the order plugins are listed in does not matter; it
-calls it once per mount, so two hosts in one process never share a runtime; and
-it calls it at boot, so a port your workflow needs and nobody mounted is a
-refusal naming your plugin rather than a crash on the first tick. Whoever reads
-the runtime receives the built one, never the factory.
+The declaration registers both halves under `review`. Its runtime is deferred
+until every plugin has registered, built once per mount, and handed typed ports.
+An absent required port is a boot refusal naming `review` and the port; the
+optional conversation arrives as `undefined`. The `policy` argument is the
+declared defaults with configured values overlaid, after unknown keys have been
+refused.
 
 ## 8. The walkthrough test — the only real proof
 

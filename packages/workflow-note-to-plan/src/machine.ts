@@ -1,8 +1,7 @@
-import { Plan, Workflow } from "@amykit/core";
+import { Plan } from "@amykit/core";
 import { act, advance, settled, wait } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { PlanRecord, attemptsIn } from "./record.js";
-import { PLAN_STATES, WAITING_STATES } from "./state.js";
 
 /**
  * Decides the single next move for one note.
@@ -147,23 +146,3 @@ function planPullRequestOpen(obs: Observation): Plan {
   }
   return act("the branch has no pull request yet", { type: "open-pull-request" });
 }
-
-/**
- * The workflow as the core mounts it.
- *
- * Same shape as the ticket workflow's, and that is the claim being made: an
- * engine handed one of these and a runtime drives it, having learnt nothing
- * about notes, plans or `sf`.
- */
-export const noteToPlan: Workflow<Observation, Policy> = {
-  name: "note-to-plan",
-  states: PLAN_STATES,
-  waitingStates: WAITING_STATES,
-  initialState: "NOTED",
-  terminalStates: ["DONE", "DECLINED"],
-  // Empty for the same reason the ticket workflow's is: the observation is
-  // assembled from the ports its own actions already require, so there is no
-  // separate slice for a plugin to contribute.
-  codeHostWrites: ["open-pull-request"],
-  plan: (record, observation, policy) => plan(record as PlanRecord, observation, policy),
-};

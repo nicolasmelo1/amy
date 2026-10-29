@@ -1,4 +1,4 @@
-import { Plan } from "@amykit/core";
+import { planning } from "@amykit/core";
 import { ErrandState } from "./state.js";
 
 /**
@@ -14,18 +14,4 @@ export type Effect =
   | { type: "open-pull-request" }
   | { type: "announce"; text: string };
 
-export function act(why: string, ...effects: Effect[]): Plan {
-  return { kind: "act", effects, why };
-}
-
-export function advance(to: ErrandState, why: string, ...effects: Effect[]): Plan {
-  return { kind: "advance", to, effects, why };
-}
-
-export function wait(retryAfterMs: number, why: string, ...effects: Effect[]): Plan {
-  return { kind: "wait", retryAfterMs, why, effects };
-}
-
-export function settled(why: string): Plan {
-  return { kind: "settled", why };
-}
+export const { act, advance, wait, settled } = planning<ErrandState, Effect>();

@@ -1,8 +1,7 @@
-import { Plan, Workflow } from "@amykit/core";
+import { Plan } from "@amykit/core";
 import { act, advance, settled, wait } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { ErrandRecord, attemptsIn } from "./record.js";
-import { ERRAND_STATES, WAITING_STATES } from "./state.js";
 
 /**
  * Decides the single next move for one task.
@@ -105,20 +104,3 @@ function planPullRequestOpen(obs: Observation): Plan {
   }
   return act("the branch has no pull request yet", { type: "open-pull-request" });
 }
-
-/**
- * The workflow as the core mounts it.
- *
- * The third one, and the shortest. What it demonstrates is not a new
- * capability: it is that the third workflow cost a package rather than a
- * change to anything the first two use.
- */
-export const errand: Workflow<Observation, Policy> = {
-  name: "errand",
-  states: ERRAND_STATES,
-  waitingStates: WAITING_STATES,
-  initialState: "QUEUED",
-  terminalStates: ["DONE", "DECLINED"],
-  codeHostWrites: ["open-pull-request"],
-  plan: (record, observation, policy) => plan(record as ErrandRecord, observation, policy),
-};

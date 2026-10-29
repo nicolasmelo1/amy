@@ -28,16 +28,6 @@ export interface PlanRecord extends WorkRecord {
   pullRequestNumber?: number;
 }
 
-export function newRecord(id: string, now: Date): PlanRecord {
-  return {
-    id,
-    state: "NOTED",
-    updatedAt: now.toISOString(),
-    attempts: {},
-    history: [],
-  };
-}
-
 export function attemptsIn(record: PlanRecord, state: PlanState): number {
   return record.attempts[state] ?? 0;
 }

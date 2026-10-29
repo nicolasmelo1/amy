@@ -293,6 +293,11 @@
           "description": ""
         },
         {
+          "title": "A workflow is one declaration",
+          "path": "/design/a-workflow-is-one-declaration",
+          "description": ""
+        },
+        {
           "title": "A workflow is yours, not a package",
           "path": "/design/a-workflow-is-yours-not-a-package",
           "description": ""
@@ -896,6 +901,11 @@
           "depth": 3,
           "title": "**A view is data.**",
           "slug": "a-view-is-data"
+        },
+        {
+          "depth": 3,
+          "title": "**A workflow is one declaration.** defineWorkflow registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. planning supplies the four typed plan constructors, and amy workflow new writes the new declaration.",
+          "slug": "a-workflow-is-one-declaration-defineworkflow-registers-the-pure-machine-and-its-deferred-runtime-together-resolves-typed-required-and-optional-ports-validates-and-merges-policy-defaults-and-constructs-the-core-record-fields-planning-supplies-the-four-typed-plan-constructors-and-amy-workflow-new-writes-the-new-declaration"
         },
         {
           "depth": 3,
@@ -1519,8 +1529,8 @@
         },
         {
           "depth": 2,
-          "title": "What a workflow declares",
-          "slug": "what-a-workflow-declares"
+          "title": "One declaration mounts both halves",
+          "slug": "one-declaration-mounts-both-halves"
         },
         {
           "depth": 2,
@@ -2096,6 +2106,28 @@
           "depth": 2,
           "title": "The rule",
           "slug": "the-rule"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-is-one-declaration",
+      "file": "docs/design/a-workflow-is-one-declaration.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-is-one-declaration.md",
+      "title": "A workflow is one declaration",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
         },
         {
           "depth": 2,
@@ -9235,6 +9267,34 @@
           },
           {
             "package": "@amykit/ui",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-workflow-is-one-declaration",
+        "title": "**A workflow is one declaration.** `defineWorkflow` registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. `planning` supplies the four typed plan constructors, and `amy workflow new` writes the new declaration.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],

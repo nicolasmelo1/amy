@@ -41,7 +41,7 @@ class NoteWorld implements World {
     const agent: Harness = { name: "relay", ask: async () => ({ text: "wrote the plan", run: fakeRun() }) };
     const records: Store<PlanRecord> = { all: () => [...this.others], load: () => null, save: () => undefined };
 
-    return planRuntime({
+    return { ...planRuntime({
       notes: { all: () => [this.note], get: (id) => (id === this.note.id ? this.note : null), write: () => this.note },
       agent,
       check: { check: async () => this.check(now) },
@@ -56,7 +56,7 @@ class NoteWorld implements World {
       now,
       config: { repos: [REPO] },
       policy: DEFAULT_POLICY,
-    });
+    }), policy: DEFAULT_POLICY, newRecord };
   }
 
   private oneIsMerged(): void {

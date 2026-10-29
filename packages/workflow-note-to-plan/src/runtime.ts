@@ -13,12 +13,12 @@ import {
   Plan,
   RepoLayout,
   Store,
-  WorkflowRuntime,
+  WorkflowRuntimeParts,
 } from "@amykit/core";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
-import { PlanRecord, newRecord } from "./record.js";
+import { PlanRecord } from "./record.js";
 import { Note, Notes } from "./ports/Notes.js";
 import { PlanCheck } from "./ports/PlanCheck.js";
 import { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./plan-file.js";
@@ -77,7 +77,7 @@ const IN_FLIGHT = ["DRAFTED", "CHECKED", "PR_OPEN"];
  * driven by is the same engine that drives the ticket workflow, which had to
  * learn nothing to do it.
  */
-export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, Observation> {
+export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRecord, Observation> {
   /** Appends to the log if there is one, and shrugs if it throws. */
   const record = (kind: EventKind, rest: Omit<Event, "at" | "kind"> = {}): void => {
     try {
@@ -196,13 +196,9 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntime<PlanRecord, 
   };
 
   return {
-    policy: deps.policy,
-
     async found() {
       return deps.notes.all().map((note) => note.id);
     },
-
-    newRecord,
 
     async observe(current) {
       const note = requireNote(current.id);

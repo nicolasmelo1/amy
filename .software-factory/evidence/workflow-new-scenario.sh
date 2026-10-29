@@ -32,7 +32,7 @@ record mine.a_directory_name_is_a_workflow "$?"
 # compiler `prepack` runs, so the pack below is the JavaScript that ships.
 modules="$work/home/.amy/workflows/oncall/node_modules"
 mkdir -p "$modules/@amykit"
-ln -s "$repo/packages/core" "$modules/@amykit/core"
+if [ ! -e "$modules/@amykit/core" ]; then ln -s "$repo/packages/core" "$modules/@amykit/core"; fi
 ln -s "$repo/node_modules/typescript" "$modules/typescript"
 mkdir -p "$modules/.bin" && ln -s ../typescript/bin/tsc "$modules/.bin/tsc"
 (cd "$work/home/.amy/workflows/oncall" && npm pack --dry-run 2>&1 | grep -q 'dist/index.js')
@@ -41,7 +41,7 @@ rm -rf "$work/home/.amy/workflows/oncall/dist"
 
 entry="$work/home/.amy/workflows/oncall/index.ts"
 cp "$entry" "$entry.clean"
-python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" '{ kind: "advance", to: "done", effects: [], why: "the work was received" }' '{ kind: "act", effects: [], why: "it keeps trying" }'
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'advance("done", "the work was received")' 'act("it keeps trying")'
 if "$amy" workflow check oncall >/dev/null 2>&1; then spinning=1; else spinning=0; fi
 record mine.a_workflow_that_spins_is_refused "$spinning"
 cp "$entry.clean" "$entry"
@@ -51,7 +51,7 @@ if "$amy" workflow check oncall >/dev/null 2>&1; then unreachable=1; else unreac
 record mine.a_state_nothing_reaches_is_refused "$unreachable"
 cp "$entry.clean" "$entry"
 
-python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'effects: [], why: "the work was received"' 'effects: [{ type: "page" }], why: "the work was received"'
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'advance("done", "the work was received")' 'advance("done", "the work was received", { type: "page" })'
 if "$amy" workflow check oncall >/dev/null 2>&1; then missing=1; else missing=0; fi
 record mine.an_action_with_no_port_is_refused "$missing"
 cp "$entry.clean" "$entry"
@@ -80,7 +80,7 @@ record guardrails.an_every_over_nothing_is_refused "$?"
 
 # The scaffold's own fold, now that it is TypeScript `sf` can read.
 cp "$entry" "$entry.clean"
-python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'apply: (record) => record,' 'apply: (record) => (record.state === "received" ? { ...record, paged: true } : record),'
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'apply: (record: WorkRecord) => record,' 'apply: (record: WorkRecord) => (record.state === "received" ? { ...record, paged: true } : record),'
 if sf check --root "$workflow" --rule L6.FOLD_READS_A_MOVED_RECORD >/dev/null 2>&1; then fold=1; else fold=0; fi
 record guardrails.a_fold_reading_the_moved_state_is_refused "$fold"
 mv "$entry.clean" "$entry"

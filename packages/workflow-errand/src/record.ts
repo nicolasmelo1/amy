@@ -32,10 +32,6 @@ export interface ErrandRecord extends WorkRecord {
   pullRequestNumber?: number;
 }
 
-export function newRecord(id: string, now: Date): ErrandRecord {
-  return { id, state: "QUEUED", updatedAt: now.toISOString(), attempts: {}, history: [] };
-}
-
 export function attemptsIn(record: ErrandRecord, state: ErrandState): number {
   return record.attempts[state] ?? 0;
 }

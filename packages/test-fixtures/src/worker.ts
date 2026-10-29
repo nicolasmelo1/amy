@@ -18,6 +18,7 @@ import {
   Policy,
   Roster,
   TicketGit,
+  newRecord,
   ticketRuntime,
   ticketToQa,
   Tracker,
@@ -94,10 +95,11 @@ export function ticketWorkerDeps(overrides: TicketWorkerOverrides = {}): TicketW
   const workflow: Workflow = overrides.plan
     ? { ...ticketToQa, plan: overrides.plan as (r: never, o: never, p: never) => Plan }
     : (ticketToQa as Workflow);
+  const policy = policyFor(overrides);
 
   return {
     workflow,
-    runtime: ticketRuntime({
+    runtime: { ...ticketRuntime({
       tracker: overrides.tracker ?? fakeTracker(),
       conversation: overrides.conversation,
       host: overrides.host ?? fakeHost(),
@@ -112,11 +114,11 @@ export function ticketWorkerDeps(overrides: TicketWorkerOverrides = {}): TicketW
       git: overrides.git ?? fakeGit(),
       layout: overrides.layout ?? { workspaceRoot: "/tmp/amy-fixture", defaultBranch: "main" },
       config: runtimeConfig,
-      policy: overrides.policy ?? DEFAULT_POLICY,
+      policy,
       // The same boundary `ticketToQa` casts at, for the same reason: this
       // workflow's record and observation are typed, the engine's are not,
       // and the cast lives at the one place they meet.
-    }) as unknown as WorkflowRuntime,
+    }), policy, newRecord } as unknown as WorkflowRuntime,
     notifier,
     now,
     config: { ...workerConfig, ...overrides.config },
@@ -124,4 +126,9 @@ export function ticketWorkerDeps(overrides: TicketWorkerOverrides = {}): TicketW
     stop: overrides.stop,
     budget: overrides.budget,
   };
+}
+
+function policyFor(overrides: TicketWorkerOverrides): Policy {
+  const configured = overrides.policy ?? DEFAULT_POLICY;
+  return overrides.conversation ? configured : { ...configured, conversation: "answer" };
 }

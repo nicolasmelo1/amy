@@ -6,7 +6,7 @@ export type { Comment } from "@amykit/core";
 export { TICKET_STATES, WAITING_STATES, isTerminal, isWaiting } from "./state.js";
 export type { TicketState } from "./state.js";
 
-export { attemptsIn, disagreements, judgedThreadIds, newRecord } from "./record.js";
+export { attemptsIn, disagreements, judgedThreadIds } from "./record.js";
 export type { Escalation, TicketRecord } from "./record.js";
 export type { AttemptOutcome } from "@amykit/core";
 // This workflow's steps on the agent's one method, for a workflow that wants
@@ -41,12 +41,12 @@ export type { Effect } from "./effects.js";
 export { applyOutcomes, applyTicketPlan, applyTransition } from "./outcomes.js";
 export type { EffectOutcomes } from "./outcomes.js";
 
-export { plan, ticketToQa } from "./machine.js";
+export { plan } from "./machine.js";
 
 export { ticketRuntime, workIdFor } from "./runtime.js";
 export type { TicketGit, TicketRuntimeConfig, TicketRuntimeDeps } from "./runtime.js";
 
-export { WORKFLOW_DATA, configSchema, plugin } from "./plugin.js";
+export { WORKFLOW_DATA, configSchema, newRecord, plugin, ticketToQa } from "./plugin.js";
 export type { Provider } from "./plugin.js";
 
 export type {

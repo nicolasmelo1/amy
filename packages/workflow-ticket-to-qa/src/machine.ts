@@ -1,5 +1,5 @@
 import { Observation, Policy } from "./observation.js";
-import { Plan, PullRequestView, ReviewThread, Workflow } from "@amykit/core";
+import { Plan, PullRequestView, ReviewThread } from "@amykit/core";
 import { act, advance, settled, wait } from "./effects.js";
 import {
   TicketRecord,
@@ -7,7 +7,7 @@ import {
   disagreements,
   judgedThreadIds,
 } from "./record.js";
-import { TICKET_STATES, TicketState, WAITING_STATES } from "./state.js";
+import { TicketState } from "./state.js";
 import {
   automatedReviewerSawHead,
   hasReviewedHead,
@@ -317,7 +317,6 @@ function tooLargeForAnAgent(pr: PullRequestView, policy: Policy): string | null 
 
   return null;
 }
-
 function planAutomatedReviewFix(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   const pr = requirePullRequest(obs, "COPILOT_FIX");
   if (isPlan(pr)) return pr;
@@ -405,7 +404,6 @@ function whatTheForgeSays(pr: PullRequestView): string | null {
   if (pr.mergeState === "behind") return "the branch is behind its base";
   return null;
 }
-
 /** The forge's complaint, handed to the owner once, the way size already is. */
 function handBackBroken(
   record: TicketRecord,
@@ -689,36 +687,3 @@ function joinRepositories(obs: Observation, policy: Policy): Plan | null {
   }
   return null;
 }
-
-/**
- * The workflow as the core mounts it.
- *
- * The loader refuses a mount where a runtime action has no port behind it.
- *
- * The cast is the one boundary where this workflow's typed record meets the
- * core's generic one. It lives here, once, rather than being spread through
- * the decision functions.
- */
-export const ticketToQa: Workflow<Observation, Policy> = {
-  name: "ticket-to-qa",
-  states: TICKET_STATES,
-  waitingStates: WAITING_STATES,
-  initialState: "DISCOVERED",
-  terminalStates: ["DONE"],
-  // Claimed rather than derived, because the claim is the contract: what this
-  // workflow may do to a ticket is written here, reviewed here, and refused
-  // here when a mount gives it less than a runtime reach for. `ask-question`
-  // comments, `escalate` files a follow-up, and `hand-off-to-qa` sets the
-  // status and assigns the QA owner; each write is declared here.
-  trackerWrites: ["comment", "set-status", "assign", "create-follow-up"],
-  codeHostWrites: ["open-pull-request", "request-review", "resolve-thread"],
-  // Empty, and honestly so. This workflow's engine assembles the observation
-  // from the very ports its actions already require: the tracker, the code
-  // host and the roster. There is no separate slice for a plugin to
-  // contribute, so declaring one would be a need nothing could ever meet and
-  // the loader would refuse every mount.
-  //
-  // A workflow that needs something no action already reaches, a browser
-  // check say, would name it here and a plugin would contribute it.
-  plan: (record, observation, policy) => plan(record as TicketRecord, observation, policy),
-};

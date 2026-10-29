@@ -14,7 +14,8 @@ import {
 } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
-import { PlanRecord, newRecord } from "../src/record.js";
+import { PlanRecord } from "../src/record.js";
+import { newRecord } from "../src/plugin.js";
 import { PlanState } from "../src/state.js";
 import { Note, Notes } from "../src/ports/Notes.js";
 import { PlanCheck } from "../src/ports/PlanCheck.js";

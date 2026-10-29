@@ -40,8 +40,8 @@ describe("a workflow of your own", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
-      '{ kind: "advance", to: "done", effects: [], why: "the work was received" }',
-      '{ kind: "act", effects: [], why: "it keeps trying" }',
+      'advance("done", "the work was received")',
+      'act("it keeps trying")',
     ));
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toContain(
@@ -66,8 +66,8 @@ describe("a workflow of your own", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
-      'effects: [], why: "the work was received"',
-      'effects: [{ type: "page" }], why: "the work was received"',
+      'advance("done", "the work was received")',
+      'advance("done", "the work was received", { type: "page" })',
     ));
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toContain(
@@ -85,13 +85,31 @@ describe("a workflow of your own", () => {
     ]);
   });
 
+  it("writes one declaration for the workflow and runtime", () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+    const entry = path.join(directory, "index.ts");
+    const source = fs.readFileSync(entry, "utf-8");
+
+    expect(source.match(/defineWorkflow\(/g)).toHaveLength(1);
+    expect(source).not.toContain("registry.workflow(");
+    expect(source).not.toContain('registry.contribute("workflow-runtime"');
+  });
+
+  // The declaration is the shipped way to write one, not the only one: a
+  // workflow that still registers both halves by hand is checked too, and
+  // told what to change.
   it("tells a workflow still declaring usesActions what to change", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
-    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("waitingStates: [],", "waitingStates: [],\n  usesActions: [],"));
+    fs.writeFileSync(entry, RAW_PLUGIN.replace("USES_ACTIONS", "usesActions: [],"));
+    fs.mkdirSync(path.join(directory, "node_modules", "@amykit"), { recursive: true });
+    const mountedCore = path.join(directory, "node_modules", "@amykit", "core");
+    if (!fs.existsSync(mountedCore)) {
+      fs.symlinkSync(path.resolve(here, "../../core"), mountedCore, "dir");
+    }
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([
-      "oncall: still declares `usesActions`; delete it and key each action in its runtime's `actions`",
+      "legacy: still declares `usesActions`; delete it and key each action in its runtime's `actions`",
     ]);
   });
 
@@ -149,7 +167,7 @@ describe("a workflow of your own", () => {
   it("goes red at the type check when the plan returns something the core does not take", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
-    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace('{ kind: "settled", why: "the workflow is complete" }', '{ kind: "finished" }'));
+    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace('settled("the workflow is complete")', '{ kind: "finished" }'));
 
     const run = tscIn(directory, "--noEmit");
 
@@ -181,17 +199,55 @@ describe("a workflow of your own", () => {
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 /**
+ * A workflow written the way every one of them was before the declaration:
+ * both halves registered by hand. USES_ACTIONS is where a test puts the field
+ * a workflow no longer declares.
+ */
+const RAW_PLUGIN = `import type { Plugin, WorkRecord, Workflow, WorkflowRuntime } from "@amykit/core";
+
+export const workflow: Workflow = {
+  name: "legacy",
+  states: ["done"],
+  waitingStates: [],
+  initialState: "done",
+  terminalStates: ["done"],
+  USES_ACTIONS
+  plan: () => ({ kind: "settled", why: "the work is over" }),
+};
+
+export const plugin: Plugin = {
+  name: "workflow-legacy",
+  register(registry) {
+    registry.workflow(workflow);
+    registry.contribute("workflow-runtime", workflow.name, {
+      policy: {},
+      found: async () => [],
+      newRecord: (id, now): WorkRecord => ({
+        id, state: "done", updatedAt: now.toISOString(), attempts: {}, history: [],
+      }),
+      observe: async () => ({}),
+      actions: {},
+      apply: (record) => record,
+    } as WorkflowRuntime);
+  },
+};
+`;
+
+/**
  * Runs the scaffold's own `npm test`, the way its author would after
  * `npm install`: the testkit is linked in as the built package, which is what
  * a registry install would put there.
  */
 function suiteOf(directory: string) {
   const testkit = path.resolve(here, "../../workflow-testkit");
+  const core = path.resolve(here, "../../core");
   if (!fs.existsSync(path.join(testkit, "dist", "index.js"))) {
     throw new Error("the testkit is not built: run `npm run build` before this test");
   }
   fs.mkdirSync(path.join(directory, "node_modules", "@amykit"), { recursive: true });
   fs.symlinkSync(testkit, path.join(directory, "node_modules", "@amykit", "workflow-testkit"), "dir");
+  const mountedCore = path.join(directory, "node_modules", "@amykit", "core");
+  if (!fs.existsSync(mountedCore)) fs.symlinkSync(core, mountedCore, "dir");
   return spawnSync(process.execPath, ["--test"], { cwd: directory, encoding: "utf-8" });
 }
 
@@ -202,7 +258,8 @@ function suiteOf(directory: string) {
 function tscIn(directory: string, ...args: string[]) {
   const modules = path.resolve(here, "../../../node_modules");
   fs.mkdirSync(path.join(directory, "node_modules", "@amykit"), { recursive: true });
-  fs.symlinkSync(path.resolve(here, "../../core"), path.join(directory, "node_modules", "@amykit", "core"), "dir");
+  const mountedCore = path.join(directory, "node_modules", "@amykit", "core");
+  if (!fs.existsSync(mountedCore)) fs.symlinkSync(path.resolve(here, "../../core"), mountedCore, "dir");
   fs.symlinkSync(path.join(modules, "typescript"), path.join(directory, "node_modules", "typescript"), "dir");
   return spawnSync(process.execPath, [path.join(modules, "typescript", "bin", "tsc"), "-p", directory, ...args], { cwd: directory, encoding: "utf-8" });
 }

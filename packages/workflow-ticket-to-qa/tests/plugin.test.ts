@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, dispatchesTo, mount, mountedActions } from "@amykit/core";
+import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, deferred, dispatchesTo, mount, mountedActions } from "@amykit/core";
 import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amykit/test-fixtures";
 import { WORKFLOW_DATA, plugin } from "../src/plugin.js";
 
@@ -141,6 +141,31 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     // Defaults, because the settings above name no policy — and a policy that
     // silently arrived empty would turn every ceiling into zero.
     expect(runtime.policy).toMatchObject({ maxImplementAttempts: 3, maxGateAttempts: 3 });
+  });
+
+  it("claims no writes in operator mode and receives a tracker that refuses them", async () => {
+    let tracker: { comment?: (...args: unknown[]) => Promise<unknown> } | undefined;
+    const probe: Plugin = {
+      name: "@amykit/plugin-probe",
+      register: (registry, ctx) => registry.engine(deferred(() => {
+        tracker = ctx.workflowPort?.("tracker") as typeof tracker;
+        return { discover: async () => [], tick: async () => undefined };
+      })),
+    };
+    const outcome = await mount(
+      [plugin, world, probe],
+      { "@amykit/workflow-ticket-to-qa": {
+        ...SETTINGS["@amykit/workflow-ticket-to-qa"],
+        policy: { writes: "operator" },
+      } },
+      HOST,
+    );
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(outcome.mounted.workflow).toMatchObject({ trackerWrites: [], codeHostWrites: [] });
+    await expect(tracker?.comment?.("PROJ-1", "no")).rejects.toThrow(
+      "the workflow does not claim the tracker write `comment`",
+    );
   });
 
   it("refuses an unknown policy.conversation at boot, naming the setting and the value", async () => {
