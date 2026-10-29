@@ -86,9 +86,17 @@ Mermaid:
   and a construct amy cannot map to that would be drawn as something the
   machine does not do.
 
-Mermaid has no grammar published as a specification; its parser is the
-reference. So the subset amy accepts is also checked against Mermaid's own
-parser, as a development dependency only, and a construct both accept but amy
+**The reader is amy's own, and the core stays without dependencies.** The
+subset is six line forms. A parser for them is smaller than the dependency
+that would replace it, and `@amykit/core` has none today. Mermaid has no
+grammar published as a specification; its parser is the reference, and the
+`mermaid` package expects a browser. So the oracle is
+[Pele](https://pele.run), Obsidian's Mermaid renderer (`obsidianmd/pele`,
+MIT). It is synchronous, runs in Node with no DOM and no dependencies, and its
+parsers are tested against Mermaid's own parser specs and by differential
+fuzzing. It is a development dependency of the core's tests: every diagram
+amy's reader accepts must also parse under Pele, as a `state` diagram, with
+the same states, transitions and classes. A construct both accept but amy
 refuses says why.
 
 **The diagram is the shape. The decisions are still code.** What decides a
@@ -133,10 +141,13 @@ same workflow.
 
 **Every view of a workflow is drawn from its diagram.** The `StateMachine`
 primitive gains a required `diagram` prop, the Mermaid text, beside the
-`states` and `transitions` the server reads out of it. A renderer with a
-Mermaid engine draws the diagram itself, and the text renderer draws the
-states and edges as it does today. Either way, both drawings come from one
-file. This changes the closed vocabulary, so the conformance world takes a
+`states` and `transitions` the server reads out of it. A renderer that draws
+in a webview — the desktop app, and a web or phone client later — hands the
+text to Pele and gets an SVG. A renderer that draws characters — the text one
+and the terminal — draws the parsed states and edges, as the text renderer
+already does. That is two drawings of one file. Neither renderer parses
+Mermaid on its own, and nothing that draws characters carries a graph
+layout. This changes the closed vocabulary, so the conformance world takes a
 diagram, and the golden is regenerated and locked in this row.
 
 **The skills and the docs read the file.** `/amy-show-me` reads
@@ -167,7 +178,8 @@ diagram still mounts.
       and `returns` states and every transition of a diagram, and refuses each
       unsupported construct by name and line
       (proof: deferred:test:packages/core/tests/diagram.test.ts)
-- [ ] Every diagram the subset accepts is accepted by Mermaid's own parser
+- [ ] Every diagram the subset accepts parses under Pele as a state diagram
+      with the same states, transitions and classes
       (proof: deferred:test:packages/core/tests/diagram-mermaid.test.ts)
 - [ ] A workflow with a `workflow.mmd` beside it mounts with the states the
       file draws and declares none, and one that declares them as well is
