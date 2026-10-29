@@ -34,21 +34,21 @@ free.
 - Every shipped plugin and workflow moves onto it and deletes its casts.
 
 `record` stays `Record<string, unknown>`. Giving it a value type would grow the
-schema language, and [Plugins](../docs/concepts/plugins.md#config-schemas)
+schema language, and [Plugins](../concepts/plugins.md#config-schemas)
 caps that language at five types on purpose; a plugin that needs a record of
 strings narrows it once, in one named function, rather than at every read.
 
 ## Acceptance criteria
 
-- [ ] A plugin reading a `number` field as a `string` fails to typecheck, and
+- [x] A plugin reading a `number` field as a `string` fails to typecheck, and
       one reading an optional field without handling `undefined` does too
       (proof: deferred:test:packages/core/tests/config-schema.types.test.ts)
-- [ ] A `default` of the wrong type fails to typecheck
+- [x] A `default` of the wrong type fails to typecheck
       (proof: deferred:test:packages/core/tests/config-schema.types.test.ts)
-- [ ] A plugin still written as `const plugin: Plugin = {…}` compiles and mounts
+- [x] A plugin still written as `const plugin: Plugin = {…}` compiles and mounts
       unchanged
       (proof: assertion:plugins.a_workflow_from_outside_this_repository_mounts)
-- [ ] No shipped `plugin.ts` casts a scalar or `string[]` setting read off
+- [x] No shipped `plugin.ts` casts a scalar or `string[]` setting read off
       `ctx.config`
       (proof: test:packages/core/tests/architecture.test.ts)
 
