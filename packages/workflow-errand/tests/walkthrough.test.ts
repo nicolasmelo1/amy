@@ -3,7 +3,8 @@ import { Plan, PullRequestView, actionsOf } from "@amykit/core";
 import { plan } from "../src/machine.js";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { EffectOutcomes, applyErrandPlan } from "../src/outcomes.js";
-import { ErrandRecord, newRecord } from "../src/record.js";
+import { ErrandRecord } from "../src/record.js";
+import { newRecord } from "../src/plugin.js";
 import { ErrandState } from "../src/state.js";
 import { Task } from "../src/ports/Tasks.js";
 

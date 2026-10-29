@@ -30,6 +30,9 @@ export { deferred, isDeferred } from "./deferred.js";
 export { Builds } from "./builds.js";
 export type { Deferred } from "./deferred.js";
 
+export { defineWorkflow, optional, planning, port } from "./define-workflow.js";
+export type { PortNeed, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";
+
 export type {
   Engine,
   HostPaths,

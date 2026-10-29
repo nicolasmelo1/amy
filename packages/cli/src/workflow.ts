@@ -66,9 +66,19 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig): st
   fs.writeFileSync(path.join(directory, "tsconfig.json"), JSON.stringify(SCAFFOLD_TSCONFIG, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "index.ts"), scaffold(name), "utf-8");
   fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuite(), "utf-8");
+  linkCore(directory);
   writeGuardrails(directory);
   writeWorkflowProfile(home, name, name, config);
   return directory;
+}
+
+/** Makes the declaration runnable before the workflow installs its package dependencies. */
+function linkCore(directory: string): void {
+  const entry = fileURLToPath(import.meta.resolve("@amykit/core"));
+  const core = path.resolve(path.dirname(entry), "..");
+  const scope = path.join(directory, "node_modules", "@amykit");
+  fs.mkdirSync(scope, { recursive: true });
+  fs.symlinkSync(core, path.join(scope, "core"), process.platform === "win32" ? "junction" : "dir");
 }
 
 /** The rules every workflow needs and no author should have to rediscover, shipped with this command. */
@@ -306,46 +316,46 @@ function scaffold(name: string): string {
 // \`amy workflow check ${name}\` drives this file before it drives real work,
 // and \`npm test\` runs the machine's own suite over it. Node runs it as it is;
 // \`npm run build\` compiles it for publishing.
-import type { Plugin, WorkRecord, Workflow, WorkflowRuntime } from "@amykit/core";
+import { defineWorkflow, planning, type ConfigSchema, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
 
-export const workflow: Workflow = {
+type State = "received" | "done";
+type Effect = { type: string };
+const { act, advance, settled } = planning<State, Effect>();
+
+const runtimeParts = () => ({
+  found: async () => ["example"],
+  observe: async () => ({}),
+  // Every action the plan may emit, keyed by name, and what runs it: a
+  // handler, or { port, method } for a mounted port the host calls.
+  actions: {},
+  // Called as (record, plan, outcomes, observation, now, moved). \`record\`
+  // has already moved: read where it came from in \`moved.from\`, never in
+  // \`record.state\`. \`moved\` is null when the plan did not advance.
+  apply: (record: WorkRecord) => record,
+});
+
+export const plugin = defineWorkflow({
   name: ${JSON.stringify(name)},
   states: ["received", "done"],
-  waitingStates: [],
-  initialState: "received",
-  terminalStates: ["done"],
-  plan: (record) =>
+  waiting: [],
+  terminal: ["done"],
+  configSchema: {} satisfies ConfigSchema,
+  policy: {},
+  needs: {},
+  plan: (record: WorkRecord) =>
     record.state === "received"
-      ? { kind: "advance", to: "done", effects: [], why: "the work was received" }
-      : { kind: "settled", why: "the workflow is complete" },
-};
+      ? advance("done", "the work was received")
+      : settled("the workflow is complete"),
+  record: () => ({}),
+  runtime: runtimeParts,
+});
 
-// A function rather than an object, so the suite builds its own. When this
-// runtime needs a port, take it as an argument: the suite hands it a fake and
-// the plugin below hands it the mounted one.
+export const workflow = plugin.workflow;
+
+// The suite builds a fresh runtime and uses the core-owned record constructor.
 export function runtime(): WorkflowRuntime {
-  return {
-    policy: {},
-    found: async () => ["example"],
-    newRecord: (id, now): WorkRecord => ({ id, state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }),
-    observe: async () => ({}),
-    // Every action the plan may emit, keyed by name, and what runs it: a
-    // handler, or { port, method } for a mounted port the host calls.
-    actions: {},
-    // Called as (record, plan, outcomes, observation, now, moved). \`record\`
-    // has already moved: read where it came from in \`moved.from\`, never in
-    // \`record.state\`. \`moved\` is null when the plan did not advance.
-    apply: (record) => record,
-  };
+  return { ...runtimeParts(), policy: {}, newRecord: plugin.newRecord };
 }
-
-export const plugin: Plugin = {
-  name: ${JSON.stringify(`workflow-${name}`)},
-  register(registry) {
-    registry.workflow(workflow);
-    registry.contribute("workflow-runtime", workflow.name, runtime());
-  },
-};
 `;
 }
 

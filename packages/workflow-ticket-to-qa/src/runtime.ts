@@ -14,7 +14,7 @@ import {
   RepoLayout,
   renderBrief,
   sayToOperator,
-  WorkflowRuntime,
+  WorkflowRuntimeParts,
   ProgressPolicy,
   PullRequestView,
 } from "@amykit/core";
@@ -37,7 +37,7 @@ import { Observation, Policy, Said } from "./observation.js";
 import { decided, decisionLines } from "./discussion.js";
 import { EffectOutcomes, applyOutcomes, applyTransition } from "./outcomes.js";
 import { Roster } from "./roster.js";
-import { TicketRecord, newRecord } from "./record.js";
+import { TicketRecord } from "./record.js";
 import { Ticket, pullRequestTitle } from "./ticket.js";
 
 export interface TicketRuntimeConfig {
@@ -111,7 +111,7 @@ type TicketHandlers = {
  */
 export function ticketRuntime(
   deps: TicketRuntimeDeps,
-): WorkflowRuntime<TicketRecord, Observation> {
+): WorkflowRuntimeParts<TicketRecord, Observation> {
   // Only a thread can hold a discussion. Without one, a reply is a comment on
   // the ticket, which has no way to be marked a decision, so it is the
   // decision — whatever the install asked unmarked replies to read as.
@@ -559,7 +559,6 @@ export function ticketRuntime(
     : Object.fromEntries(Object.entries(handlers).filter(([name]) => name !== "hand-over"));
 
   return {
-    policy,
     progress: deps.progress,
 
     // One work item per repository. The ticket's own repository keeps the
@@ -578,8 +577,6 @@ export function ticketRuntime(
         }));
       });
     },
-
-    newRecord,
 
     async observe(current) {
       const ticket = await requireTicketWithBrief(current.id);

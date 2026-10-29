@@ -89,17 +89,6 @@ export interface TicketRecord extends WorkRecord {
   handedOverAt?: Record<string, string>;
 }
 
-export function newRecord(id: string, now: Date): TicketRecord {
-  return {
-    id,
-    state: "DISCOVERED",
-    updatedAt: now.toISOString(),
-    attempts: {},
-    judged: [],
-    history: [],
-  };
-}
-
 export function attemptsIn(record: TicketRecord, state: TicketState): number {
   return record.attempts[state] ?? 0;
 }

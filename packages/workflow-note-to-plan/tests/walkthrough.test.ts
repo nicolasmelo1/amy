@@ -3,7 +3,8 @@ import { Plan, PullRequestView, actionsOf } from "@amykit/core";
 import { plan } from "../src/machine.js";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { EffectOutcomes, applyNotePlan } from "../src/outcomes.js";
-import { PlanRecord, newRecord } from "../src/record.js";
+import { PlanRecord } from "../src/record.js";
+import { newRecord } from "../src/plugin.js";
 import { PlanState } from "../src/state.js";
 import { Note } from "../src/ports/Notes.js";
 

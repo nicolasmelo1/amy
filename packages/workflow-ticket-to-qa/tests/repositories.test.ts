@@ -16,7 +16,8 @@ import {
   runtimeConfig,
   ticket,
 } from "@amykit/test-fixtures";
-import { plan, ticketToQa } from "../src/machine.js";
+import { plan } from "../src/machine.js";
+import { ticketToQa } from "../src/plugin.js";
 import { DEFAULT_POLICY } from "../src/observation.js";
 import { TicketRecord } from "../src/record.js";
 import { ticketRuntime, TicketRuntimeDeps, workIdFor } from "../src/runtime.js";

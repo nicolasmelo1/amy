@@ -4,20 +4,19 @@ import {
   ConfigSchema,
   Harness,
   Notifier,
-  definePlugin,
-  PluginContext,
   Store,
-  WORKFLOW_RUNTIME,
-  deferred,
-  WorkflowRuntime,
-  ConfigOf,
+  Worktree,
+  defineWorkflow,
+  optional,
+  port,
 } from "@amykit/core";
-import { noteToPlan } from "./machine.js";
-import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
+import { plan } from "./machine.js";
+import { DEFAULT_POLICY } from "./observation.js";
 import { PlanRecord } from "./record.js";
 import { Notes } from "./ports/Notes.js";
 import { PlanCheck } from "./ports/PlanCheck.js";
 import { planRuntime } from "./runtime.js";
+import { PLAN_STATES, WAITING_STATES } from "./state.js";
 
 export const configSchema = {
   repos: {
@@ -28,63 +27,45 @@ export const configSchema = {
   ...BRANCH_SETTINGS,
   policy: {
     type: "record",
-    description:
-      "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default",
+    description: "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default",
     default: {},
   },
 } satisfies ConfigSchema;
 
-type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
-
-/** The runtime for one mount, built by the host once every plugin has registered. */
-function runtimeFor(ctx: TypedContext): WorkflowRuntime<PlanRecord, Observation> {
-  return planRuntime({
-    notes: required<Notes>(ctx, "notes"),
-    // The `agent` port, narrowed to the half that has no vocabulary in it.
-    // The ticket workflow narrows the same port to its own three methods,
-    // which is what "type safety comes from the workflow's side" means when
-    // two workflows share one adapter.
-    agent: required<Harness>(ctx, "agent"),
-    check: required<PlanCheck>(ctx, "plan-check"),
-    host: required<CodeHost>(ctx, "code-host"),
-    notifier: required<Notifier>(ctx, "notifier"),
-    records: required<Store<PlanRecord>>(ctx, "store"),
-    // The checkout and the layout behind it, for the question `Git` does not
-    // answer: what the pull request opens against. Both lent by the host.
-    ...ctx.checkouts(),
+export const plugin = defineWorkflow({
+  name: "note-to-plan",
+  pluginName: "@amykit/workflow-note-to-plan",
+  states: PLAN_STATES,
+  waiting: WAITING_STATES,
+  terminal: ["DONE", "DECLINED"],
+  configSchema,
+  policy: DEFAULT_POLICY,
+  needs: {
+    notes: port<Notes>(),
+    agent: port<Harness>(),
+    "plan-check": port<PlanCheck>(),
+    "code-host": port<CodeHost>(),
+    notifier: port<Notifier>(),
+    store: port<Store<PlanRecord>>(),
+    worktree: optional<Worktree>(),
+  },
+  codeHostWrites: ["open-pull-request"],
+  plan,
+  record: () => ({}),
+  runtime: ({ ports, config, policy, checkouts, ctx }) => planRuntime({
+    notes: ports.notes,
+    agent: ports.agent,
+    check: ports["plan-check"],
+    host: ports["code-host"],
+    notifier: ports.notifier,
+    records: ports.store,
+    ...checkouts,
     now: ctx.now,
     log: ctx.log,
-    config: { repos: ctx.config.repos },
-    policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
-  });
-}
-
-/**
- * This workflow, as a plugin: the order its states happen in, and how each of
- * its actions runs.
- *
- * The same two halves the ticket workflow contributes, through the same seam,
- * to the same engine. Nothing in `plugins/serial-engine` changed to make this
- * one run, which is the claim the seam was built to be able to make.
- */
-export const plugin = definePlugin<typeof configSchema>({
-  name: "@amykit/workflow-note-to-plan",
-  configSchema,
-  register(registry, ctx) {
-    registry.workflow(noteToPlan);
-
-    // Deferred: the ports it needs are mounted by plugins that may be listed
-    // after this one. The host builds it once every plugin has registered, so
-    // a port nobody mounted is refused at boot, naming the port.
-    registry.contribute(WORKFLOW_RUNTIME, noteToPlan.name, deferred(() => runtimeFor(ctx)));
-  },
+    config: { repos: config.repos },
+    policy,
+  }),
 });
 
-/** A port this workflow cannot work without. */
-function required<T>(ctx: TypedContext, kind: string): T {
-  const port = ctx.port(kind);
-  if (!port) {
-    throw new Error(`the note-to-plan workflow needs the \`${kind}\` port, and nothing mounted it`);
-  }
-  return port as T;
-}
+export const noteToPlan = plugin.workflow;
+export const newRecord = plugin.newRecord;

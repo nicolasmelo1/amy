@@ -57,7 +57,6 @@ know:
 | Member | What it answers |
 | :-- | :-- |
 | `found()` | What work exists that is not on the queue yet |
-| `newRecord(workId, now)` | What a record looks like before anything has happened |
 | `observe(record)` | What the outside world looks like, for this record, right now |
 | `actions` | Every action this workflow can emit, each beside what runs it |
 | `apply(record, plan, outcomes, observation, now, moved)` | How what happened folds back into the record |
@@ -99,27 +98,46 @@ value is neither, a port nothing mounted, or a method the port does not have.
 The engine refuses a plan that carries a name the map does not, before any of
 that plan's actions run.
 
-## What a workflow declares
+## One declaration mounts both halves
 
 ```ts
-export const errand: Workflow<Observation, Policy> = {
+export const plugin = defineWorkflow({
   name: "errand",
   states: ERRAND_STATES,
-  waitingStates: WAITING_STATES,
-  initialState: "QUEUED",
-  terminalStates: ["DONE", "DECLINED"],
-  plan: (record, observation, policy) => plan(record as ErrandRecord, observation, policy),
-};
+  waiting: WAITING_STATES,
+  terminal: ["DONE", "DECLINED"],
+  configSchema,
+  policy: DEFAULT_POLICY,
+  needs: { tasks: port<Tasks>(), notifier: port<Notifier>() },
+  plan,
+  record: () => ({}),
+  runtime: ({ ports, policy }) => errandRuntime({
+    tasks: ports.tasks,
+    notifier: ports.notifier,
+    policy,
+  }),
+});
 ```
+
+`defineWorkflow` registers the pure workflow and contributes its runtime under
+the same name. The runtime is built after every plugin has registered, so a
+required port nobody mounted is refused at boot and an `optional<T>()` port is
+handed to it as `T | undefined`.
+
+The first state is the initial state. The core constructs each new record with
+`id`, `state`, `updatedAt`, `attempts` and `history`; `record(workId)` returns
+only the workflow's own fields. Policy defaults are merged with the configured
+`policy` mapping at boot, and an override whose key is not in the defaults is
+refused by name.
 
 **`states`** — the strings this lifecycle can be in. The core treats each one as
 a label.
 
-**`waitingStates`** — where the machine has nothing to do until somebody else
+**`waiting`** — where the machine has nothing to do until somebody else
 moves. Kept explicit so the engine backs off instead of spinning, and so a new
 state cannot silently become a busy loop.
 
-**`terminalStates`** — where work stops being queued.
+**`terminal`** — where work stops being queued.
 
 The keys of the runtime's **`actions`** declare the workflow's *reach*,
 which the host checks at boot: an action with nothing behind it refuses the

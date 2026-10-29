@@ -153,6 +153,12 @@ registry.contribute(WORKFLOW_RUNTIME, "errand", deferred(() => errandRuntime(…
 registry.engine(deferred(() => worker(ctx)));
 ```
 
+Workflow authors normally do not write the first two workflow registrations
+themselves. `defineWorkflow` registers the machine immediately and contributes
+its runtime through `deferred`, as one declaration. A raw `Plugin` may still
+call `registry.workflow` and contribute `WORKFLOW_RUNTIME` directly; that is
+the compatibility contract for workflows shipped outside this repository.
+
 Wherever an implementation is registered — `port`, `engine`, `contribute` — a
 deferred one may be instead. The host builds it once every plugin has
 registered, once per mount, and before any `ready`. A factory that reads another

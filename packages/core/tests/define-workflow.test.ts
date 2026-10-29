@@ -1,0 +1,144 @@
+import { describe, expect, expectTypeOf, it } from "vitest";
+import {
+  ConfigSchema,
+  HostServices,
+  Plugin,
+  WorkRecord,
+  WorkflowRuntime,
+  defineWorkflow,
+  mount,
+  optional,
+  planning,
+  port,
+  WORKFLOW_RUNTIME,
+} from "../src/index.js";
+
+const HOST: HostServices = {
+  runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+  now: () => new Date("2026-10-29T12:00:00.000Z"),
+  paths: { workspace: "/work", checkouts: {}, state: "/state" },
+};
+
+interface Record extends WorkRecord {
+  state: "NEW" | "DONE";
+  customer: string;
+}
+
+interface Policy {
+  attempts: number;
+  backoffMs: number;
+}
+
+interface RequiredPort { read(): string }
+interface OptionalPort { notify(): void }
+
+const schema = {
+  policy: { type: "record", description: "workflow policy", default: {} },
+} satisfies ConfigSchema;
+
+function workflow(seen: { optional?: OptionalPort; policy?: Policy } = {}) {
+  return defineWorkflow({
+    name: "example",
+    configSchema: schema,
+    states: ["NEW", "DONE"],
+    waiting: [],
+    terminal: ["DONE"],
+    policy: { attempts: 3, backoffMs: 1000 } satisfies Policy,
+    needs: { source: port<RequiredPort>(), notifier: optional<OptionalPort>() },
+    plan: () => ({ kind: "settled", why: "done" }),
+    record: (workId) => ({ customer: workId }),
+    runtime: ({ ports, policy }) => {
+      seen.optional = ports.notifier;
+      seen.policy = policy;
+      return {
+        found: async () => [],
+        observe: async () => ({}),
+        actions: {},
+        apply: (record) => record,
+      };
+    },
+  });
+}
+
+const source: Plugin = {
+  name: "source",
+  register: (registry) => registry.port("source", { read: () => "value" }),
+};
+
+describe("defineWorkflow", () => {
+  it("registers the workflow and deferred runtime together", async () => {
+    const outcome = await mount([workflow(), source], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(outcome.mounted.workflow?.name).toBe("example");
+    expect(outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.has("example")).toBe(true);
+  });
+
+  it("refuses a missing required port by workflow and port, after registration", async () => {
+    const outcome = await mount([workflow()], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems).toContain(
+      "workflow-example: failed to mount — the example workflow needs the `source` port, and nothing mounted it",
+    );
+  });
+
+  it("hands an absent optional port to the runtime as undefined", async () => {
+    const seen: { optional?: OptionalPort } = {};
+    const outcome = await mount([workflow(seen), source], {}, HOST);
+
+    expect(outcome.ok).toBe(true);
+    expect(seen).toHaveProperty("optional", undefined);
+  });
+
+  it("merges policy defaults and keeps a default left out", async () => {
+    const seen: { policy?: Policy } = {};
+    const plugin = workflow(seen);
+    const outcome = await mount(
+      [plugin, source],
+      { [plugin.name]: { policy: { attempts: 7 } } },
+      HOST,
+    );
+
+    expect(outcome.ok).toBe(true);
+    expect(seen.policy).toEqual({ attempts: 7, backoffMs: 1000 });
+  });
+
+  it("refuses an undeclared policy key by name at boot", async () => {
+    const plugin = workflow();
+    const outcome = await mount(
+      [plugin, source],
+      { [plugin.name]: { policy: { attemptz: 7 } } },
+      HOST,
+    );
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain("example policy.attemptz is not declared");
+  });
+
+  it("constructs records with the five core fields and only the declared domain fields", async () => {
+    const outcome = await mount([workflow(), source], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("example") as WorkflowRuntime<Record>;
+
+    expect(runtime.newRecord("C-1", HOST.now())).toEqual({
+      id: "C-1",
+      state: "NEW",
+      updatedAt: "2026-10-29T12:00:00.000Z",
+      attempts: {},
+      history: [],
+      customer: "C-1",
+    });
+  });
+});
+
+it("types all four planning helpers against the workflow's states and effects", () => {
+  type Effect = { type: "page"; person: string };
+  const { act, advance, wait, settled } = planning<"NEW" | "DONE", Effect>();
+
+  expectTypeOf(advance).parameter(0).toEqualTypeOf<"NEW" | "DONE">();
+  expect(act("page", { type: "page", person: "Sam" }).kind).toBe("act");
+  expect(advance("DONE", "finished").kind).toBe("advance");
+  expect(wait(1000, "waiting").kind).toBe("wait");
+  expect(settled("done").kind).toBe("settled");
+});

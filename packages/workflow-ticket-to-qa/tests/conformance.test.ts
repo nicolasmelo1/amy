@@ -11,7 +11,7 @@ import {
 } from "@amykit/core";
 import { World, conforms } from "@amykit/workflow-testkit";
 import { fakeHost, fakeRun, fakeTracker, pullRequest, roster, runtimeConfig, thread, ticket } from "@amykit/test-fixtures";
-import { DEFAULT_POLICY, ThreadVerdict, TicketGit, ticketRuntime, ticketToQa } from "../src/index.js";
+import { DEFAULT_POLICY, ThreadVerdict, TicketGit, newRecord, ticketRuntime, ticketToQa } from "../src/index.js";
 
 const BOT = "copilot-pull-request-reviewer[bot]";
 
@@ -51,7 +51,7 @@ class TicketWorld implements World {
 
   runtime(now: () => Date) {
     this.now = now;
-    return ticketRuntime({
+    return { ...ticketRuntime({
       tracker: this.tracker(),
       host: this.host(),
       agent: this.agent(),
@@ -63,7 +63,7 @@ class TicketWorld implements World {
       layout: { workspaceRoot: "/tmp/amy-conformance", defaultBranch: "main" },
       config: runtimeConfig,
       policy: DEFAULT_POLICY,
-    });
+    }), policy: DEFAULT_POLICY, newRecord };
   }
 
   /** What the people around the ticket do next, one move per wait. */

@@ -12,12 +12,12 @@ import {
   Notifier,
   RepoLayout,
   Store,
-  WorkflowRuntime,
+  WorkflowRuntimeParts,
 } from "@amykit/core";
 import { Effect } from "./effects.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes } from "./outcomes.js";
-import { ErrandRecord, newRecord } from "./record.js";
+import { ErrandRecord } from "./record.js";
 import { Task, Tasks } from "./ports/Tasks.js";
 import { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./task-file.js";
 import { errandPrompt } from "./prompt.js";
@@ -59,7 +59,7 @@ const IN_FLIGHT = ["WORKING", "PR_OPEN"];
 
 export function errandRuntime(
   deps: ErrandRuntimeDeps,
-): WorkflowRuntime<ErrandRecord, Observation> {
+): WorkflowRuntimeParts<ErrandRecord, Observation> {
   const record = (kind: EventKind, rest: Omit<Event, "at" | "kind"> = {}): void => {
     try {
       deps.log?.append({ at: deps.now().toISOString(), kind, ...rest });
@@ -161,13 +161,9 @@ export function errandRuntime(
   };
 
   return {
-    policy: deps.policy,
-
     async found() {
       return deps.tasks.all().map((task) => task.id);
     },
-
-    newRecord,
 
     async observe(current) {
       const task = requireTask(current.id);

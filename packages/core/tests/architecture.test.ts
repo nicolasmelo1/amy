@@ -131,6 +131,34 @@ describe("a mount builds once, and only the core knows when", () => {
   });
 });
 
+describe("a workflow is one declaration", () => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const workflows = ["workflow-errand", "workflow-note-to-plan", "workflow-ticket-to-qa"];
+
+  it("leaves each shipped workflow with one declaration and no manual runtime registration", () => {
+    const offenders = workflows.flatMap((name) => {
+      const source = fs.readFileSync(path.join(root, "packages", name, "src/plugin.ts"), "utf8");
+      const declarations = source.match(/\bdefineWorkflow\s*\(/g)?.length ?? 0;
+      return declarations === 1 && !/registry\.workflow|WORKFLOW_RUNTIME|function required/.test(source)
+        ? []
+        : [name];
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("uses the core planning helpers and leaves record construction to the declaration", () => {
+    const offenders = workflows.flatMap((name) => {
+      const directory = path.join(root, "packages", name, "src");
+      const effects = fs.readFileSync(path.join(directory, "effects.ts"), "utf8");
+      const record = fs.readFileSync(path.join(directory, "record.ts"), "utf8");
+      return effects.includes("planning<") && !/export function newRecord/.test(record) ? [] : [name];
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe("the host lends the checkout", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
   const outsideTheCore = [

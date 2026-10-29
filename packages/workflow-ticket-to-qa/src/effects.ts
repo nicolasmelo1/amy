@@ -1,4 +1,4 @@
-import { Plan } from "@amykit/core";
+import { planning } from "@amykit/core";
 import { TicketState } from "./state.js";
 
 /**
@@ -88,18 +88,4 @@ export function isWrite(effect: Effect): effect is WriteEffect {
   return (WRITE_EFFECTS as readonly string[]).includes(effect.type);
 }
 
-export function act(why: string, ...effects: Effect[]): Plan {
-  return { kind: "act", effects, why };
-}
-
-export function advance(to: TicketState, why: string, ...effects: Effect[]): Plan {
-  return { kind: "advance", to, effects, why };
-}
-
-export function wait(retryAfterMs: number, why: string, ...effects: Effect[]): Plan {
-  return { kind: "wait", retryAfterMs, why, effects };
-}
-
-export function settled(why: string): Plan {
-  return { kind: "settled", why };
-}
+export const { act, advance, wait, settled } = planning<TicketState, Effect>();

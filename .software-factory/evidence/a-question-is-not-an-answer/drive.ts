@@ -31,7 +31,7 @@ const { dispatchesTo } = (await dist("packages/core/dist/index.js")) as typeof i
 const { SlackApi, SlackConversation } = (await dist("plugins/slack/dist/index.js")) as typeof import("@amykit/plugin-slack");
 const { FileQueue } = (await dist("plugins/file-queue/dist/index.js")) as typeof import("@amykit/plugin-file-queue");
 const { Worker } = (await dist("plugins/serial-engine/dist/index.js")) as typeof import("@amykit/plugin-serial-engine");
-const { DEFAULT_POLICY, ticketRuntime, ticketToQa } = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
+const { DEFAULT_POLICY, newRecord, ticketRuntime, ticketToQa } = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
 
 const CHANNEL = "C0WORK";
 const OWNER = "U0ADA";
@@ -197,7 +197,7 @@ function world(conversationPolicy: Policy["conversation"]) {
     workflow: ticketToQa,
     // The boundary the engine meets every workflow at: the record and the
     // observation are typed on this side, not on the engine's.
-    runtime: ticketRuntime(deps) as unknown as WorkflowRuntime,
+    runtime: { ...ticketRuntime(deps), policy: deps.policy, newRecord } as unknown as WorkflowRuntime,
     notifier: deps.notifier,
     now,
     config: { staleClaimMs: 60000, retentionDays: 7, maxItemAttempts: 1, retryDelayMs: 0 },

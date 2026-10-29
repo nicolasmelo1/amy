@@ -4,7 +4,8 @@ import { plan } from "../src/machine.js";
 import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
 import { PullRequestView, ReviewSubmission, ReviewThread, actionsOf } from "@amykit/core";
 import { Observation } from "../src/observation.js";
-import { TicketRecord, newRecord } from "../src/record.js";
+import { TicketRecord } from "../src/record.js";
+import { newRecord } from "../src/plugin.js";
 import { TicketState } from "../src/state.js";
 import { WORKDAY, policy, roster, ticket } from "@amykit/test-fixtures";
 
