@@ -29,7 +29,7 @@ contract look heavier than it is:
 [a mount builds once](../docs/design/a-mount-builds-once.md),
 [a config is typed by its schema](../docs/design/a-config-is-typed-by-its-schema.md),
 [the host lends the checkout](../docs/design/the-host-lends-the-checkout.md) and
-[a workflow is one declaration](a-workflow-is-one-declaration.md) change the
+[a workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md) change the
 contract these pages describe, so this comes after all five, and rewrites them
 once against what exists.
 
