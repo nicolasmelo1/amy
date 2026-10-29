@@ -1,7 +1,7 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   model: {
     type: "string",
     description: "passed to the CLI as --model. Empty leaves the choice to codex",
@@ -18,4 +18,4 @@ export const configSchema: ConfigSchema = {
     description: "how long one agent call may run before it is given up on",
     default: 30 * 60 * 1000,
   },
-};
+} satisfies ConfigSchema;

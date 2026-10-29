@@ -139,6 +139,7 @@ export type {
 export { mount, mountedActions, mountedRuntime, unmetNeeds } from "./mount.js";
 export type { HostServices, Mounted, MountOutcome, MountRequirements } from "./mount.js";
 export { validateConfig } from "./config-schema.js";
-export type { ConfigField, ConfigFieldType, ConfigResult, ConfigSchema } from "./config-schema.js";
+export { definePlugin } from "./plugin.js";
+export type { ConfigField, ConfigFieldType, ConfigOf, ConfigResult, ConfigSchema } from "./config-schema.js";
 export { checkoutFor, baseBranchFor, Git } from "./git.js";
 export type { RepoLayout } from "./git.js";

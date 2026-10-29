@@ -1,13 +1,13 @@
-import { Plugin } from "@amykit/core";
+import { definePlugin } from "@amykit/core";
 import { contributeTiers } from "@amykit/agent-kit";
 import { HermesHarness } from "./HermesHarness.js";
 import { configSchema } from "./config.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-hermes-agent",
   configSchema,
   register(registry, ctx) {
-    const tiers = ctx.config.models as string[];
+    const tiers = ctx.config.models;
 
     contributeTiers(registry, {
       harness: "hermes",
@@ -17,12 +17,12 @@ export const plugin: Plugin = {
       // providers it prices itself. Neither needs a row here, and a local
       // model would never have one.
       pricesItsOwnRuns: true,
-      models: tiers.length > 0 ? tiers : [(ctx.config.model as string) || ""],
+      models: tiers.length > 0 ? tiers : [(ctx.config.model) || ""],
       make: (model) =>
         new HermesHarness(ctx.runner, {
           model: model || undefined,
-          timeoutMs: ctx.config.timeoutMs as number,
+          timeoutMs: ctx.config.timeoutMs,
         }),
     });
   },
-};
+});

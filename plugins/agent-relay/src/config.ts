@@ -1,7 +1,7 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   ladder: {
     type: "string[]",
     description:
@@ -32,4 +32,4 @@ export const configSchema: ConfigSchema = {
       "what the agents may spend, per window: perFiveHours and perWeek, each with tokens and/or costUsd, plus stopAt, the fraction of a ceiling at which new work stops being started",
     default: {},
   },
-};
+} satisfies ConfigSchema;

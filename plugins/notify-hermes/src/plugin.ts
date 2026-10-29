@@ -1,12 +1,12 @@
-import { Plugin } from "@amykit/core";
+import { definePlugin } from "@amykit/core";
 import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 import { configSchema, hermesChannel, hermesTargetIsKnown } from "./hermesChannel.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-notify-hermes",
   configSchema,
   register(registry, ctx) {
-    const target = ctx.config.target as string;
+    const target = ctx.config.target;
 
     registry.contribute(CHANNEL_COLLECTION, "hermes", hermesChannel(ctx.runner, target));
 
@@ -31,4 +31,4 @@ export const plugin: Plugin = {
       },
     });
   },
-};
+});

@@ -1,16 +1,16 @@
 import path from "node:path";
-import { Plugin } from "@amykit/core";
+import { definePlugin } from "@amykit/core";
 import { CHANNEL_COLLECTION } from "@amykit/plugin-notify-fanout";
 import { FileNotes } from "./FileNotes.js";
 import { configSchema } from "./config.js";
 import { frictionChannel } from "./frictionChannel.js";
 
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-file-notes",
   configSchema,
   register(registry, ctx) {
-    const notes = new FileNotes(path.join(ctx.paths.state, ctx.config.directory as string), {
-      defaultRepo: ctx.config.repo as string,
+    const notes = new FileNotes(path.join(ctx.paths.state, ctx.config.directory), {
+      defaultRepo: ctx.config.repo,
     });
 
     registry.port("notes", notes);
@@ -25,8 +25,8 @@ export const plugin: Plugin = {
       registry.contribute(
         CHANNEL_COLLECTION,
         "friction",
-        frictionChannel(notes, ctx.config.repo as string, ctx.now),
+        frictionChannel(notes, ctx.config.repo, ctx.now),
       );
     }
   },
-};
+});

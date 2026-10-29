@@ -1,10 +1,10 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this store needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   directory: {
     type: "string",
     description: "where briefs are kept, relative to the host-selected artifact root",
     default: "briefs",
   },
-};
+} satisfies ConfigSchema;

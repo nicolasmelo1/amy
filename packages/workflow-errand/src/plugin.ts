@@ -4,13 +4,14 @@ import {
   Git,
   Harness,
   Notifier,
-  Plugin,
+  definePlugin,
   PluginContext,
   Store,
   Worktree,
   WORKFLOW_RUNTIME,
   deferred,
   WorkflowRuntime,
+  ConfigOf,
 } from "@amykit/core";
 import { errand } from "./machine.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
@@ -18,7 +19,7 @@ import { ErrandRecord } from "./record.js";
 import { Tasks } from "./ports/Tasks.js";
 import { errandRuntime } from "./runtime.js";
 
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   repos: {
     type: "string[]",
     required: true,
@@ -42,10 +43,12 @@ export const configSchema: ConfigSchema = {
       "maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default",
     default: {},
   },
-};
+} satisfies ConfigSchema;
+
+type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 
 /** The runtime for one mount, built by the host once every plugin has registered. */
-function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observation> {
+function runtimeFor(ctx: TypedContext): WorkflowRuntime<ErrandRecord, Observation> {
   return errandRuntime({
     tasks: required<Tasks>(ctx, "tasks"),
     agent: required<Harness>(ctx, "agent"),
@@ -57,7 +60,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observati
       {
         workspaceRoot: ctx.paths.workspace,
         checkouts: ctx.paths.checkouts,
-        defaultBranch: ctx.config.defaultBranch as string,
+        defaultBranch: ctx.config.defaultBranch,
         baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
       },
       ctx.port("worktree") as Worktree | undefined,
@@ -67,12 +70,12 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observati
     layout: {
       workspaceRoot: ctx.paths.workspace,
       checkouts: ctx.paths.checkouts,
-      defaultBranch: ctx.config.defaultBranch as string,
+      defaultBranch: ctx.config.defaultBranch,
       baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
     },
     now: ctx.now,
     log: ctx.log,
-    config: { repos: ctx.config.repos as string[] },
+    config: { repos: ctx.config.repos },
     policy: { ...DEFAULT_POLICY, ...(ctx.config.policy as Partial<Policy>) },
   });
 }
@@ -83,7 +86,7 @@ function runtimeFor(ctx: PluginContext): WorkflowRuntime<ErrandRecord, Observati
  * The third one through the same seam, and the one that cost the least: no
  * new action, no new engine, nothing changed in either of the other two.
  */
-export const plugin: Plugin = {
+export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/workflow-errand",
   configSchema,
   register(registry, ctx) {
@@ -94,10 +97,10 @@ export const plugin: Plugin = {
     // a port nobody mounted is refused at boot, naming the port.
     registry.contribute(WORKFLOW_RUNTIME, errand.name, deferred(() => runtimeFor(ctx)));
   },
-};
+});
 
 /** A port this workflow cannot work without. */
-function required<T>(ctx: PluginContext, kind: string): T {
+function required<T>(ctx: TypedContext, kind: string): T {
   const port = ctx.port(kind);
   if (!port) {
     throw new Error(`the errand workflow needs the \`${kind}\` port, and nothing mounted it`);

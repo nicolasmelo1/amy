@@ -1,7 +1,7 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   root: {
     type: "string",
     description:
@@ -43,4 +43,4 @@ export const configSchema: ConfigSchema = {
       "how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's",
     default: 7,
   },
-};
+} satisfies ConfigSchema;

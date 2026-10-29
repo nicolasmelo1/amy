@@ -1,11 +1,15 @@
 import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   defaultBranch: {
     type: "string",
     description: "the branch a plan branch is cut from, which is not always `main`",
     default: "main",
+  },
+  baseBranch: {
+    type: "record",
+    description: "the configured base branch by repository, overriding the fallback branch",
   },
   commands: {
     type: "record",
@@ -18,4 +22,4 @@ export const configSchema: ConfigSchema = {
     description: "how long one check may run before it is given up on",
     default: 10 * 60 * 1000,
   },
-};
+} satisfies ConfigSchema;

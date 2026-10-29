@@ -2,14 +2,14 @@ import { CommandRunner, ConfigSchema } from "@amykit/core";
 import { Channel } from "@amykit/plugin-notify-fanout";
 
 /** What this plugin needs told to it, and nothing more. */
-export const configSchema: ConfigSchema = {
+export const configSchema = {
   target: {
     type: "string",
     required: true,
     description:
       "a Hermes delivery target, such as `slack:my-channel` or a bare platform name for its home channel",
   },
-};
+} satisfies ConfigSchema;
 
 export interface HermesListing {
   platforms?: Record<string, { id?: string; name?: string }[]>;

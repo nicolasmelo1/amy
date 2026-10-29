@@ -1,20 +1,30 @@
 export type ConfigFieldType = "string" | "number" | "boolean" | "string[]" | "record";
 
-export interface ConfigField {
-  readonly type: ConfigFieldType;
-  /** What the field is for. Printed when the field is missing or wrong. */
-  readonly description: string;
-  readonly required?: boolean;
-  readonly default?: unknown;
-  /**
-   * A value the plugin would mount with, never applied to a config.
-   *
-   * For a required field the plugin checks beyond its type — an id that has
-   * to look like an id — so the reference docs can ask the plugin what it
-   * mounts without handing it a blank it rightly refuses.
-   */
-  readonly example?: unknown;
-}
+type ConfigValueFor<T extends ConfigFieldType> =
+  T extends "string" ? string
+    : T extends "number" ? number
+      : T extends "boolean" ? boolean
+        : T extends "string[]" ? string[]
+          : Record<string, unknown>;
+
+/** One field, coupled to the value type it promises at boot. */
+export type ConfigField = {
+  [T in ConfigFieldType]: {
+    readonly type: T;
+    /** What the field is for. Printed when the field is missing or wrong. */
+    readonly description: string;
+    readonly required?: boolean;
+    readonly default?: ConfigValueFor<T>;
+    /**
+     * A value the plugin would mount with, never applied to a config.
+     *
+     * For a required field the plugin checks beyond its type — an id that has
+     * to look like an id — so the reference docs can ask the plugin what it
+     * mounts without handing it a blank it rightly refuses.
+     */
+    readonly example?: unknown;
+  };
+}[ConfigFieldType];
 
 /**
  * What one plugin says its configuration looks like.
@@ -25,6 +35,15 @@ export interface ConfigField {
  * than this wants its own validation, not a bigger schema language here.
  */
 export type ConfigSchema = Record<string, ConfigField>;
+
+/** The post-validation shape a schema promises to its plugin. */
+export type ConfigOf<S extends ConfigSchema> = {
+  [K in keyof S]: ConfigValueFor<S[K]["type"]> extends infer Value
+    ? S[K] extends { readonly required: true } | { readonly default: unknown }
+      ? Value
+      : Value | undefined
+    : never;
+};
 
 export type ConfigResult =
   | { ok: true; config: Record<string, unknown> }

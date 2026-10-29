@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sf_version": "0.4.1",
-  "catalog_digest": "2977e80238dbcaabd4088edb7fd530e5ac215e8c15f648dc70194f5fc6e835bf",
+  "catalog_digest": "2e8bcfb619f2cb406a4860f28e2cd4ec8e639e6948666d17f4abab3689bae67a",
   "rules": {
     "L0.AGENT_ACTIONS_DISPATCH_TO_ASK": {
       "severity": "high",

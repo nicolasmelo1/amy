@@ -85,6 +85,25 @@ describe("a view is data, and depends on no UI framework or standard yet", () =>
   });
 });
 
+describe("a config is typed by its schema", () => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+
+  it("leaves scalar and string-array settings uncast in shipped plugins", () => {
+    const pluginSource = fs.readdirSync(path.join(root, "plugins"), { recursive: true, encoding: "utf8" }) as string[];
+    const workflowSource = fs.readdirSync(path.join(root, "packages"), { recursive: true, encoding: "utf8" }) as string[];
+    const pluginFiles = [
+      ...pluginSource.filter((file) => /\/src\/plugin\.ts$/.test(file)).map((file) => path.join("plugins", file)),
+      ...workflowSource.filter((file) => /^workflow-[^/]+\/src\/plugin\.ts$/.test(file)).map((file) => path.join("packages", file)),
+    ];
+    const scalarCast = /ctx\.config\.[a-zA-Z]+\s+as\s+(?:string|number|boolean|string\[\])/;
+    const offenders = pluginFiles.flatMap((file) => fs.readFileSync(path.join(root, file), "utf8").split("\n")
+      .filter((line) => scalarCast.test(line)).map((line) => `${file}: ${line.trim()}`));
+
+    expect(pluginFiles.length).toBeGreaterThan(20);
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe("a mount builds once, and only the core knows when", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
   const sources = [

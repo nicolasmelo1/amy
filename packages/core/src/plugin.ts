@@ -1,7 +1,7 @@
 import { ActionSpec, PortKind } from "./actions.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
-import { ConfigSchema } from "./config-schema.js";
+import { ConfigOf, ConfigSchema } from "./config-schema.js";
 import { Deferred } from "./deferred.js";
 import { Plan, WorkRecord } from "./work.js";
 import { Queue } from "./ports/Queue.js";
@@ -88,8 +88,8 @@ export interface HostPaths {
  * contributions made after it, so it reads them when it is used rather than
  * when it is mounted.
  */
-export interface PluginContext {
-  readonly config: Record<string, unknown>;
+export interface PluginContext<Config extends Record<string, unknown> = Record<string, unknown>> {
+  readonly config: Config;
   readonly runner: CommandRunner;
   readonly now: () => Date;
   readonly log?: EventLog;
@@ -169,4 +169,19 @@ export interface Plugin {
    * is the same promise `register` makes.
    */
   ready?(ctx: PluginContext): void | Promise<void>;
+}
+
+/**
+ * Declares a plugin with the exact configuration shape its schema validates.
+ *
+ * `Plugin` remains available for third-party and legacy implementations that
+ * intentionally receive an untyped configuration map.
+ */
+export function definePlugin<const S extends ConfigSchema>(plugin: {
+  readonly name: string;
+  readonly configSchema: S;
+  register(r: Registry, ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
+  ready?(ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
+}): Plugin {
+  return plugin;
 }
