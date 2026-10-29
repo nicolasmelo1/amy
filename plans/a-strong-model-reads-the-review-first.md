@@ -112,7 +112,9 @@ grows that method; this plan depends on it and orders after it.
 triages reviews through a plain `ask` prompt keeps working — the new
 step is a first-class seam, not a replacement. The private workflow's
 `review_triage` state emits `triage-review` actions; its state machine,
-its `hand-off-to-executor` transition and its states stay its own.
+its `hand-off-to-executor` transition and its states stay its own — a line
+and an edge in its `workflow.mmd` and a key in its `decide`
+(*a workflow is a Mermaid diagram*, *a workflow is three pieces*).
 
 ## The gate
 

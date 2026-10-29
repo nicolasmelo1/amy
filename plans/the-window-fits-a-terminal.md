@@ -12,9 +12,28 @@ does once `ui.default` says so. It is a client like the desktop app
 (*the window is served*) — it can follow a server on another machine — and
 draws with Ink, the React renderer for the command line. The frame is the same: nav 1 as a row of
 sections, nav 2 as a list, the canvas, and the right panel toggled by a key.
-`⌘K` is the same ask. Every primitive has a terminal drawing: `StateMachine`
-as one line with the current state marked, `Diff` as a coloured unified diff,
-`Timeline` as a list.
+`⌘K` is the same ask. Every primitive has a terminal drawing: `Diff` as a
+coloured unified diff, `Timeline` as a list, and `StateMachine` as the
+workflow's diagram (*a workflow is a Mermaid diagram*). The diagram is drawn
+from the states and edges the server parsed, never from Mermaid text:
+
+- In a record's canvas it is the strip, one line with the current state
+  marked.
+- In the Workflows canvas it is each state with its edges beneath it,
+  labelled, and the `anywhere` and `returns` states said in words.
+
+No graph layout is drawn in characters. A Mermaid-to-ASCII library exists:
+`beautiful-mermaid` draws a state diagram as box art. But it brings `elkjs`,
+7.7 MB, for a picture that runs to sixty lines for seven states and merges two
+opposite edges into one. If somebody wants it, it is a plugin's canvas tab
+(*the window takes plugins*), not the terminal's own drawing.
+
+A workflow's diagram is edited the way the editor opener works, on a copy:
+`$EDITOR` opens a temporary file holding the diagram and its revision. When the
+editor exits, the window submits the copy through `saveWorkflowDiagram`, the
+same checked save the desktop canvas uses. A refused or stale edit therefore
+leaves `workflow.mmd` exactly as it was, and the copy stays to be edited
+again.
 
 **It is driven like Neovim, and by the mouse.** A person who lives in a
 terminal lives in its keybindings, and a window that makes them reach for
@@ -63,6 +82,9 @@ desktop and terminal projections are compared on every step.
 - [ ] The editor opener suspends the window, starts in the record's checkout,
       and returns to the same record when the editor exits
       (proof: deferred:assertion:window.the_editor_returns_to_the_same_record)
+- [ ] A workflow's diagram edited in `$EDITOR` from the terminal is saved
+      through the same check as the desktop canvas, and a refused or stale one
+      leaves `workflow.mmd` unchanged (proof: deferred:assertion:window.a_diagram_is_edited_as_text)
 - [ ] A plugin installed from outside the workspace lands in the same place in
       the terminal as in the desktop app (proof: deferred:assertion:frame.a_slot_takes_only_what_it_declares)
 - [ ] The default keys, the conformance remap and the mouse drive the

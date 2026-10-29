@@ -15,10 +15,11 @@ run it. The validator will not let the config say it.
 
 The validator is right to exist: a typo in a `skills:` key is a ladder that
 silently never fires, and finding that out costs a run. It is checking against
-the wrong list. The list of steps that exist is the mounted workflow's
-`usesActions`, which is data on the workflow for exactly this reason —
-*"`usesActions` is data so the mount can be refused when an action has no port
-behind it"*.
+the wrong list. The list of steps that exist is the keys of the mounted
+workflow's `actions`, where each action is declared and implemented at once —
+`usesActions` is gone, and the mount refuses a workflow that still declares it
+(`packages/core/src/mount.ts`). Under *a workflow is three pieces* those
+keys are the `actions` of its `defineWorkflow` call.
 
 `ladderByStep` has the same shape and the same freedom on the runtime side
 (`rungsFor`, `agent-kit/src/ladders.ts:35`), and nothing validates its keys at
@@ -31,8 +32,8 @@ pass for exactly this — *"a plugin that composes others can only judge its own
 settings once those others have contributed themselves"*
 (`core/src/mount.ts:87`) — and the workflow has registered by then.
 
-A step is valid if it is a core action dispatching to the agent, or an action
-the mounted workflow declares in `usesActions` that resolves to the agent
+A step is valid if it is a core action dispatching to the agent, or a key of
+the mounted workflow's runtime `actions` whose handler reaches the agent
 port. Everything else is refused by name at boot, with the list of steps there
 were — the same shape as every other refusal here.
 

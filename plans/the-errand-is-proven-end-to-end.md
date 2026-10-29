@@ -28,7 +28,7 @@ tick` — and reads the argv log and the event log for its assertions.
 
 A gate, `errand`, citing a durable design note, with the activation the
 assertions rest on: `packages/workflow-errand/src/**`,
-`plugins/file-tasks/src/**`, `packages/agent-kit/src/**` and
+`packages/workflow-errand/workflow.mmd`, `plugins/file-tasks/src/**`, `packages/agent-kit/src/**` and
 `packages/cli/src/**`.
 
 The lifecycle it drives is the whole of the workflow: `QUEUED` → `WORKING` →

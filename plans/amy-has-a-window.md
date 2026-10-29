@@ -36,9 +36,16 @@ everything beyond that is a plugin.
   `pause` and `resume` — stops every workflow at once, so it is not on any
   row: it sits in the `Workflows` canvas, saying what it stops. Retiring one
   record waits for *work that is over goes away*, which adds the command.
-- **Canvas**: the selected item. For a record, the state machine strip with
-  the current state marked, and its timeline: the record's history joined to
-  the events that mention it.
+- **Canvas**: the selected item. For a record, the state machine strip — its
+  workflow's `workflow.mmd` (*a workflow is a Mermaid diagram*) with the
+  current state marked — and its timeline: the record's history joined to the
+  events that mention it. For a workflow, its diagram drawn beside its text.
+  A workflow under `~/.amy/workflows` is edited as that text, the way Settings
+  is `config.yaml`: saving reads it with the subset the host reads, writes
+  the file, and shows the check's *drawn, not walked* list
+  beneath it; a diagram the subset refuses is not saved, and the refusal names
+  the line. A workflow installed as a package is shown, not edited, and one
+  written without a diagram shows its declared states and says it has none.
 - **Right panel**, opened and closed by the person: the log, filtered to the
   selected record, or the work thread when the record is waiting on its
   owner.
@@ -66,6 +73,24 @@ JavaScript end to end, as amy is. The cost is a larger download, paid once,
 named in the dependency lock like any package — and paid only by somebody who
 installs this renderer, since *a renderer is chosen by name* keeps it out of
 the bare install.
+
+**The desktop renderer draws `StateMachine` with Pele.** The primitive
+carries the diagram's text. The app renders it with [Pele](https://pele.run),
+Obsidian's Mermaid renderer: MIT, no dependencies, synchronous, an SVG string
+out. It is a dependency of `@amykit/ui-desktop` only, and of no other package.
+The app registers only the state diagram (`pele/core` and
+`pele/diagrams/state`), which is about 130 KB minified and 52 KB gzipped,
+where the full bundle is 712 KB. Pele colours through CSS variables
+(`--pele-bg`, `--pele-fg`, `--pele-line`, `--pele-accent`, …), so the theme's
+tokens become those variables:
+
+- `a-renderer-names-no-colour` holds, because the renderer never names a
+  colour.
+- A theme switch recolours the diagram without rendering it again.
+- The `classDef` styles in the file are not read. They stay for GitHub and
+  Obsidian.
+
+A person sees the drawing Obsidian would show of the same file.
 
 The app is `@amykit/ui-desktop`, contributing the renderer named `desktop`
 (*a renderer is chosen by name*): `amy ui desktop` opens it, and so does
@@ -119,6 +144,16 @@ The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbr
       refused by name (proof: deferred:test:packages/cli/tests/ui-config.test.ts)
 - [ ] Saving a config that would not mount keeps the old file and shows every
       refusal (proof: deferred:assertion:window.a_config_that_would_not_mount_is_not_saved)
+- [ ] A workflow's diagram edited in its canvas is saved only when the subset
+      reads it, and the save shows what is drawn and not walked; a package's
+      diagram offers no edit
+      (proof: deferred:assertion:window.a_diagram_is_edited_as_text)
+- [ ] The strip in a record's canvas is its workflow's diagram, with every
+      edge the file draws and the record's state marked
+      (proof: deferred:assertion:window.the_strip_is_the_diagram)
+- [ ] Pele is a dependency of `@amykit/ui-desktop` and of no other package,
+      and the app bundles only its state diagram
+      (proof: deferred:test:plugins/ui-desktop/tests/bundle.test.ts)
 - [ ] The app draws everything from the server and reads nothing under amy's
       home (proof: deferred:assertion:server.a_client_needs_nothing_but_the_server)
 - [ ] `amy ui build desktop` produces a macOS app that opens against a server
@@ -138,5 +173,7 @@ The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbr
 **Exit condition:** on a Mac, with the daemon running, a person runs
 `amy plugin add @amykit/ui-desktop`, opens `amy ui desktop`, watches a
 ticket go from `DISCOVERED` to `IMPLEMENTING` without touching anything, pokes
-another from its `⋯`, and breaks `config.yaml` in Settings without breaking the
-install — and `sf check` is green on `ui-frame` and `ui-window`.
+another from its `⋯`, adds an edge to one of their own workflows' diagram in
+its canvas and sees it listed as drawn, not walked, and breaks `config.yaml` in
+Settings without breaking the install — and `sf check` is green on `ui-frame`
+and `ui-window`.

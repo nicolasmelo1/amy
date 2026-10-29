@@ -15,7 +15,7 @@ collections, not a new plugin model.
 | Collection | What a plugin adds | Collision |
 | :-- | :-- | :-- |
 | `ui-nav` | a section in nav 1, after the three that ship | same name refused |
-| `ui-tab` | a tab in the canvas of a record, for the workflows and states it names | same name refused |
+| `ui-tab` | a tab in the canvas of a record, for the workflows and states it names — a state the named workflow does not have is refused by name, read from its diagram when it has one and from its declared `states` when it does not | same name refused |
 | `ui-panel` | a view in the right panel | same name refused |
 | `ui-action` | an entry in a row's `⋯` | same name refused |
 | `ui-decoration` | a badge on a row in nav 2 | several, ordered |

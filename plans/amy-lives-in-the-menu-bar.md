@@ -19,10 +19,14 @@ worked.
 That count needs a word the core does not have. It knows a state is `waiting`
 or `terminal` and nothing more (`standing` in `packages/cli/src/status-view.ts`),
 so `ESCALATED` and `HUMAN_REVIEW` look alike — both waiting — though one waits
-on its owner and the other on somebody else. So **a workflow may declare
-`attentionStates`**: the states in which it waits on the person whose work it
-is. Optional, so every workflow written so far mounts unchanged and simply has
-none; `ticket-to-qa` declares `CLARIFYING` and `ESCALATED`. Every record then
+on its owner and the other on somebody else. So **a workflow may mark states
+`attention`** in its diagram — `class ESCALATED attention`, read by the same
+subset that reads `waiting` (*a workflow is a Mermaid diagram*) — and the
+host reads them from the file as `attentionStates`: the states in which it
+waits on the person whose work it is. A raw `Workflow` may declare the field by
+hand. Optional either way, so every workflow written so far mounts unchanged
+and simply has none; `ticket-to-qa`'s diagram marks `CLARIFYING` and
+`ESCALATED`. Every record then
 has one of four standings — attention, active, waiting, finished — which the
 menu bar counts and the window draws, and which *looks are configuration*
 later colours. No count is no number.
@@ -92,8 +96,10 @@ No operation: the views `menubar.title` and `menubar.menu`, over the session str
       step of the script (proof: deferred:assertion:frame.the_menu_bar_holds_its_surface)
 - [ ] A primitive outside the `menubar` subset is refused naming it
       (proof: deferred:test:packages/ui/tests/surfaces.test.ts)
-- [ ] A workflow without `attentionStates` mounts unchanged
+- [ ] A workflow whose diagram marks no state `attention` mounts unchanged
       (proof: deferred:test:packages/core/tests/mount.test.ts)
+- [ ] A state marked `attention` in a diagram mounts as an attention
+      state (proof: deferred:test:packages/core/tests/diagram.test.ts)
 - [ ] The title counts exactly the records in an attention state, across every
       profile (proof: deferred:assertion:window.the_menu_bar_counts_what_needs_you)
 - [ ] A record the daemon advances moves in the menu with the window closed

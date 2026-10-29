@@ -34,7 +34,8 @@ wrote, append a history entry, start the loop again.
 Two things make that worse than tedious. The daemon can rewrite the record
 in the same second — there is no lock and no "is this claimed" to ask — so
 the window is the whole risk. And knowing which fields are stale means
-reading the workflow's `apply`; they are not core fields, and an operator
+reading the workflow's `apply` (its `remember`, once *a workflow is one
+declaration* lands); they are not core fields, and an operator
 has no way to enumerate them.
 
 ## What changes
@@ -50,15 +51,18 @@ amy resume TBO-1241 TBO-1242 --to COPILOT_FIX
 - Backs the record up beside it — the store is one file per record, and a
   sibling with another extension is invisible to `all()` — and prints what
   changed.
-- Clears the attempts of the state it resumes into, and of the state it
-  leaves.
+- Clears the attempts and the looks (*waiting is not trying*) of the state
+  it resumes into, and of the state it leaves.
 - Appends a history entry saying a person resumed it, so `amy status` and
   the log still tell the truth about how it got there.
 
-`--to` is optional only when the workflow says where. The core knows
-`state`, `attempts` and `history`; everything else on the record belongs to
-the workflow that folded it. So the runtime contribution grows two optional
-members:
+`--to` is optional only when the workflow says where. A state the workflow's
+diagram marks `returns` (*a workflow is a Mermaid diagram*) already says it:
+the record goes back to the state its last history entry came from, and the
+core reads that without asking. The core knows `state`, `attempts`, `looks` and
+`history`; everything else on the record belongs to the workflow that folded
+it. So `defineWorkflow` (*a workflow is three pieces*) takes two optional
+members, beside `remember`:
 
 ```ts
 resumeTarget?(record: R): string | null   // where this record goes on
