@@ -22,6 +22,9 @@ contract look heavier than it is:
 - *Write a workflow*'s plugin step is the lazy proxy, the `WeakMap` and the
   `ready`, under the heading "two things there are load-bearing" — traps the
   author is asked to know about instead of things the host does.
+- *Quickstart* lists `discover`, `tick` and `start` as if all three were
+  needed to turn the machine on. The loop `start` runs already discovers on
+  every pass, and the page never says so.
 - `@amykit/workflow-feature-grooming` is called a workflow, sits in the plugin
   index, registers two ports and no workflow, and no page says why.
 
@@ -55,6 +58,9 @@ once against what exists.
   `Registry` or a `Workflow` declares is generated from the type, like the
   tables below it already are, or it is prose without a number in it.
 - **Ports** says what `checkouts()` is and which port it reads.
+- **Quickstart** says that `amy start` alone is enough. The loop discovers on
+  every pass (`packages/cli/src/index.ts:646`), so `discover` and `tick` are
+  how somebody watches one move before trusting the loop, not steps it needs.
 - `workflow-feature-grooming` is described as what it is. Whether it is renamed
   is a breaking change to every config that names it, and it gets its own plan
   if the answer is yes; this one only stops the docs from calling it something
