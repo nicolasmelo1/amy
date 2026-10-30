@@ -154,8 +154,12 @@ so its own record, and the number of lanes the number of lines drawn — amy
 stays synchronous inside every lane. *A plugin brings its own commands*
 follows, the way Django's apps bring `manage.py` commands and Rails' engines
 bring their tasks: a command, a doctor check and an `init` file, declared by
-whatever is mounted, so the host stops growing words for one workflow. *The
-roster belongs to its workflow* is its first user, and takes the roster out of
+whatever is mounted, so the host stops growing words for one workflow. The
+same row takes out of the host every command that is not the machine's:
+`btw`, `note`, `worktrees` and `models` leave with their owners, `pause` and
+`resume` fold into `start` and `stop`, `discover` folds into `tick`, `daemon`
+and `after-daemon` leave the help, `remove` absorbs `workflow rm`, and `poke`
+becomes `look`. *The roster belongs to its workflow* is its first user, and takes the roster out of
 every install that never assigns a reviewer. *The config is written by what is
 mounted* follows for the same reason one level up: the host stops keeping a
 workflow's settings, `init` writes the machine, `add` writes the workflow, and
@@ -244,7 +248,7 @@ machine.
 | 1 | [The errand is proven end to end](the-errand-is-proven-end-to-end.md) | Editing the errand workflow or the task store turns `sf check` red until the errand scenario is run again and resealed, the same way the other two shipped workflows already behave |
 | 2 | [A workflow calls another](a-workflow-calls-another.md) | In their end-to-end scenarios, through the installed executable, `note-to-plan` and the errand open their pull requests by calling one shipped workflow, configured per caller and bound to ports in one `config.yaml`, and finish when they did before; a workflow three calls deep runs to its end with only the deepest record looked at; a cycle is refused at mount; a copied callee is called like its package |
 | 3 | [A workflow runs on lanes](a-workflow-runs-on-lanes.md) | `ticket-to-qa`'s scenario runs its gate and its self-review as two lanes drawn as a `<<fork>>`, sends one round of findings from both back to the implementation, and reaches the same record under the serial and the concurrent engine — the `ticket-to-qa` gate requiring both |
-| 4 | [A plugin brings its own commands](a-plugin-brings-its-own-commands.md) | In the `ticket-to-qa` scenario, through the installed executable, `amy --help` lists a command the workflow brought, `amy doctor` runs the check it brought and `amy init` writes the file it brought; in the errand's scenario none of the three exists |
+| 4 | [A plugin brings its own commands](a-plugin-brings-its-own-commands.md) | In the `ticket-to-qa` scenario, through the installed executable, `amy --help` lists a command the workflow brought, `amy doctor` runs the check it brought and `amy init` writes the file it brought; in the errand's scenario none of the three exists and `amy --help` lists only the machine's commands; one `start` and one `stop` turn the machine on and off |
 | 5 | [The roster belongs to its workflow](the-roster-belongs-to-its-workflow.md) | In the errand's scenario a fresh install reaches a green `amy doctor` without the word "roster" in any output; in `ticket-to-qa`'s the roster is the profile's and assigns as before; in `amy update`'s the old roster moves into that shape |
 | 6 | [The config is written by what is mounted](the-config-is-written-by-what-is-mounted.md) | In the errand's scenario `amy init` and `amy add` write a config that fits one screen and boots unedited, and `amy config explain` lists every setting it could change; in `amy update`'s an install with all three shipped workflows updates into the new shape |
 | 7 | [The docs describe the contract that exists](the-docs-describe-the-contract-that-exists.md) | Every code block on the concept and build pages typechecks against the current core, no page states a hand-written count, and *Write a workflow* builds the workflow `amy workflow new` writes, as a diagram and one file |

@@ -59,8 +59,9 @@ once against what exists.
   tables below it already are, or it is prose without a number in it.
 - **Ports** says what `checkouts()` is and which port it reads.
 - **Quickstart** says that `amy start` alone is enough. The loop discovers on
-  every pass (`packages/cli/src/index.ts:646`), so `discover` and `tick` are
-  how somebody watches one move before trusting the loop, not steps it needs.
+  every pass (`packages/cli/src/index.ts:643`), so `tick`, which discovers
+  first once *a plugin brings its own commands* lands, is how somebody watches
+  one move before trusting the loop, not a step it needs.
 - `workflow-feature-grooming` is described as what it is. Whether it is renamed
   is a breaking change to every config that names it, and it gets its own plan
   if the answer is yes; this one only stops the docs from calling it something
