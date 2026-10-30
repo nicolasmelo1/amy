@@ -484,6 +484,55 @@ describe("Worker dispatch", () => {
     expect(folds).toEqual([null, null]);
   });
 
+  it("refunds a completed action that reports it never became a try and holds the next look", async () => {
+    const retryAfterMs = 60_000;
+    const runtime = thin({
+      implement: async (_action, context) => {
+        context.outcomes.implementation = { notATry: true, retryAfterMs };
+      },
+    });
+
+    const result = await build(runtime, () => ({
+      kind: "act",
+      why: "the quota stopped it",
+      effects: [{ type: "implement" }],
+    })).tick();
+
+    expect(records.load("W-1")).toMatchObject({
+      attempts: {},
+      looks: { NEW: 1 },
+      outcomes: { implementation: { notATry: true, retryAfterMs } },
+    });
+    expect(queue.pending()[0]?.notBefore).toBe(new Date(WORKDAY.getTime() + retryAfterMs).toISOString());
+    expect(result).toMatchObject({ kind: "worked", retryAfterMs });
+  });
+
+  it("holds a refunded look for its whole delay, counted from when the action finished", async () => {
+    const retryAfterMs = 60_000;
+    let now = WORKDAY;
+    const finishedAt = new Date(WORKDAY.getTime() + 120_000);
+    const runtime = thin({
+      implement: async (_action, context) => {
+        now = finishedAt;
+        context.outcomes.implementation = { notATry: true, retryAfterMs };
+      },
+    });
+    queue.enqueue({ workId: "W-1", reason: "test" }, WORKDAY);
+    const worker = new Worker({
+      queue,
+      records,
+      ...ticketWorkerDeps({
+        now: () => now,
+        plan: (() => ({ kind: "act", why: "the quota stopped it", effects: [{ type: "implement" }] })) as never,
+      }),
+      runtime,
+    });
+
+    await worker.tick();
+
+    expect(queue.pending()[0]?.notBefore).toBe(new Date(finishedAt.getTime() + retryAfterMs).toISOString());
+  });
+
   it("parks before the next agent run after the configured unchanged evidence ceiling", async () => {
     let runs = 0;
     const runtime: WorkflowRuntime = {

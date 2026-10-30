@@ -1,6 +1,6 @@
 export type { Effect, ErrandState } from "./decide.js";
 
-export { attemptsIn } from "./record.js";
+export { attemptsIn, looksIn } from "@amykit/core";
 export type { AttemptOutcome, ErrandRecord } from "./record.js";
 
 export { DEFAULT_POLICY } from "./observation.js";

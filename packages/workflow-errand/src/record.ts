@@ -31,7 +31,3 @@ export interface ErrandRecord extends WorkRecord {
   changed?: boolean;
   pullRequestNumber?: number;
 }
-
-export function attemptsIn(record: ErrandRecord, state: ErrandState): number {
-  return record.attempts[state] ?? 0;
-}

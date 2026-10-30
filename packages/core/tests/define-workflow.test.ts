@@ -127,7 +127,7 @@ describe("defineWorkflow", () => {
     expect(outcome.ok === false && outcome.problems.join("; ")).toContain("example policy.attemptz is not declared");
   });
 
-  it("constructs records with the five core fields and only the declared domain fields", async () => {
+  it("constructs records with the six core fields and only the declared domain fields", async () => {
     const outcome = await mount([workflow(), source], {}, HOST);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("example") as WorkflowRuntime<TestRecord>;
@@ -137,6 +137,7 @@ describe("defineWorkflow", () => {
       state: "NEW",
       updatedAt: "2026-10-29T12:00:00.000Z",
       attempts: {},
+      looks: {},
       history: [],
       customer: "C-1",
     });
@@ -362,6 +363,19 @@ it("types all four planning helpers against the workflow's states and effects", 
   expect(advance("DONE", "finished").kind).toBe("advance");
   expect(wait(1000, "waiting").kind).toBe("wait");
   expect(settled("done").kind).toBe("settled");
+});
+
+it("marks an act that only prepares the try, with or without the typed helpers", () => {
+  const { act: typedAct } = planning<"NEW", { type: "prepare-branch" }>();
+
+  expect(act("prepare", { attempt: false }, { type: "prepare-branch" })).toEqual({
+    kind: "act", why: "prepare", effects: [{ type: "prepare-branch" }], attempt: false,
+  });
+  expect(typedAct("prepare", { attempt: false }, { type: "prepare-branch" })).toEqual({
+    kind: "act", why: "prepare", effects: [{ type: "prepare-branch" }], attempt: false,
+  });
+  expect(act("try", { type: "prepare-branch" })).not.toHaveProperty("attempt");
+  expect(act("nothing to carry").effects).toEqual([]);
 });
 
 it("types an action handler by the payload named in its key", () => {

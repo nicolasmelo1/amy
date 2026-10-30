@@ -458,6 +458,11 @@
           "description": ""
         },
         {
+          "title": "Waiting is not trying",
+          "path": "/design/waiting-is-not-trying",
+          "description": ""
+        },
+        {
           "title": "What runs is not this repo",
           "path": "/design/what-runs-is-not-this-repo",
           "description": ""
@@ -961,6 +966,11 @@
           "depth": 3,
           "title": "**The README now derives its mutable facts from the code and policy that own them.**",
           "slug": "the-readme-now-derives-its-mutable-facts-from-the-code-and-policy-that-own-them"
+        },
+        {
+          "depth": 3,
+          "title": "**Waiting is not trying.**",
+          "slug": "waiting-is-not-trying"
         },
         {
           "depth": 2,
@@ -3245,6 +3255,23 @@
           "title": "The gate",
           "slug": "the-gate"
         },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/waiting-is-not-trying",
+      "file": "docs/design/waiting-is-not-trying.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/waiting-is-not-trying.md",
+      "title": "Waiting is not trying",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
         {
           "depth": 2,
           "title": "Acceptance criteria",
@@ -5603,7 +5630,8 @@
         "fields": [
           "kind: \"act\"",
           "effects: Effect[]",
-          "why: string"
+          "why: string",
+          "attempt: boolean"
         ],
         "doc": "Do the work, stay in this state, and look again straight away. The next look sees whatever the actions recorded, which is how a pure decision function drives work that takes minutes or hours."
       },
@@ -9763,6 +9791,18 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "waiting-is-not-trying",
+        "title": "**Waiting is not trying.**",
+        "body": "The core now records `looks` separately from `attempts`: waits and logistical\nacts are visible without consuming an attempt ceiling. `looksIn` and\n`attemptsIn` make the distinction explicit, an `act` may be marked\n`{ attempt: false }`, and an action result can return `notATry` to refund a\npre-charged attempt and delay the next look.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       }
     ],
     "changelogs": [

@@ -105,7 +105,7 @@ export function applyTransition(record: TicketRecord, moved: Moved | null): Tick
   }
   if (moved.from === "ESCALATED") {
     const { resumeAt: _resumed, ...rest } = record;
-    return { ...rest, attempts: {} };
+    return { ...rest, attempts: {}, looks: {} };
   }
   return record;
 }
@@ -154,7 +154,7 @@ export function applyTicketPlan(
   now: Date,
 ): TicketRecord {
   return applyTransition(
-    applyOutcomes(applyPlan(record, plan, now), outcomes),
+    applyOutcomes(applyPlan(record, plan, now, outcomes), outcomes),
     movedBy(record, plan),
   );
 }

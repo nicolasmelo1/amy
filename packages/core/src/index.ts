@@ -3,8 +3,8 @@ export { sayToOperator } from "./operator.js";
 export type { OperatorChannel, OperatorChannels } from "./operator.js";
 export type { ActionSpec, PortKind } from "./actions.js";
 
-export { actionsOf, applyPlan, movedBy } from "./work.js";
-export type { Action, Moved, Plan, Transition, WorkRecord } from "./work.js";
+export { actionsOf, applyPlan, attemptsIn, looksIn, movedBy, notATryIn } from "./work.js";
+export type { Action, Moved, NotATry, Plan, Transition, WorkRecord } from "./work.js";
 export { DIAGRAM_CLASSES, DIAGRAM_FILE, cameFrom, connects, markState, readDiagram } from "./diagram.js";
 export { DiagramError } from "./errors.js";
 export type { Diagram, DrawnTransition } from "./diagram.js";

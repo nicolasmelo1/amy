@@ -44,5 +44,5 @@ export function applyNotePlan(
   outcomes: EffectOutcomes,
   now: Date,
 ): PlanRecord {
-  return applyOutcomes(applyPlan(record, plan, now), outcomes);
+  return applyOutcomes(applyPlan(record, plan, now, outcomes), outcomes);
 }

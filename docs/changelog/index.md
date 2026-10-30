@@ -201,6 +201,16 @@ The published command declares its Node requirement to npm. The README's Node
 badge, command table and factory counts are generated with the rest of the
 documentation, so `npm run docs:check` names the README when one falls behind.
 
+### **Waiting is not trying.**
+
+`minor` · `@amykit/core`
+
+The core now records `looks` separately from `attempts`: waits and logistical
+acts are visible without consuming an attempt ceiling. `looksIn` and
+`attemptsIn` make the distinction explicit, an `act` may be marked
+`{ attempt: false }`, and an action result can return `notATry` to refund a
+pre-charged attempt and delay the next look.
+
 <!-- amy:end changelog-unreleased -->
 
 ## Released

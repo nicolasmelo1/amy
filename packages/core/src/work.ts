@@ -25,8 +25,14 @@ export interface WorkRecord {
   /** The workflow enumerates its states. The core treats this as a label. */
   state: string;
   updatedAt: string;
-  /** Bounds every retry loop, and lets a state tell its first look from its tenth. */
+  /** Counts only work that was actually tried, so a ceiling speaks about failures. */
   attempts: Record<string, number>;
+  /**
+   * Counts every look in a state. Optional while records written before this
+   * field existed are still on disk; their attempts are their best-known
+   * looks until the next saved move writes an explicit count.
+   */
+  looks?: Record<string, number>;
   history: Transition[];
 }
 
@@ -36,7 +42,7 @@ export type Plan<State extends string = string, Effect extends Action = Action> 
    * look sees whatever the actions recorded, which is how a pure decision
    * function drives work that takes minutes or hours.
    */
-  | { kind: "act"; effects: Effect[]; why: string }
+  | { kind: "act"; effects: Effect[]; why: string; attempt?: boolean }
   | { kind: "advance"; to: State; effects: Effect[]; why: string }
   /**
    * Nothing to do until the outside world moves. May still carry actions, so
@@ -74,6 +80,29 @@ export function actionsOf(plan: Plan): readonly Action[] {
   }
 }
 
+/** The tries a state has actually spent. */
+export function attemptsIn(record: WorkRecord, state: string): number {
+  return record.attempts[state] ?? 0;
+}
+
+/** Every look a state took, including waits and work that prepared a later try. */
+export function looksIn(record: WorkRecord, state: string): number {
+  return record.looks?.[state] ?? attemptsIn(record, state);
+}
+
+/** An action's outcome can say that the attempt charged before it ran never happened. */
+export interface NotATry {
+  notATry: true;
+  retryAfterMs?: number;
+}
+
+/** Reads the generic outcome without learning any workflow's domain result. */
+export function notATryIn(outcomes: object): NotATry | undefined {
+  return Object.values(outcomes).find((outcome): outcome is NotATry =>
+    !!outcome && typeof outcome === "object" && (outcome as Record<string, unknown>).notATry === true,
+  );
+}
+
 /**
  * Folds a plan into the next record: the state, the attempt count and the
  * history, and nothing else.
@@ -82,19 +111,23 @@ export function actionsOf(plan: Plan): readonly Action[] {
  * here, because the core does not know what a triage or a gate result is.
  * Generic over the record so a workflow's richer type survives the call.
  */
-export function applyPlan<R extends WorkRecord>(record: R, plan: Plan, now: Date): R {
+export function applyPlan<R extends WorkRecord>(record: R, plan: Plan, now: Date, outcomes: object = {}): R {
+  const looks = { ...(record.looks ?? record.attempts) };
   const next: R = {
     ...record,
     attempts: { ...record.attempts },
+    looks,
     history: [...record.history],
     updatedAt: now.toISOString(),
   };
 
-  // Work done inside a state is counted, so every retry loop is bounded.
-  // Actions carried by an advance are one-shot transition actions and are not
-  // retried, so they are deliberately not counted.
+  // A look includes waiting and logistics. Only a real `act` spends a try;
+  // transition actions are one-shot and are not retried.
   if (plan.kind === "act" || plan.kind === "wait") {
-    next.attempts[record.state] = (next.attempts[record.state] ?? 0) + 1;
+    looks[record.state] = looksIn(record, record.state) + 1;
+  }
+  if (plan.kind === "act" && plan.attempt !== false && !notATryIn(outcomes)) {
+    next.attempts[record.state] = attemptsIn(record, record.state) + 1;
   }
 
   if (plan.kind === "advance") {

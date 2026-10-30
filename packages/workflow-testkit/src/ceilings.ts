@@ -1,4 +1,4 @@
-import { Plan, WorkRecord, applyPlan, movedBy } from "@amykit/core";
+import { Plan, WorkRecord, applyPlan, looksIn, movedBy } from "@amykit/core";
 import { Finding } from "./finding.js";
 import { describe, replay, sameMove } from "./plans.js";
 import { AnyWorkflow, Look, Walk, replayActions } from "./walk.js";
@@ -59,7 +59,7 @@ async function waitingStatesHold(workflow: AnyWorkflow, walk: Walk, extraLooks: 
       const outcomes = await replayActions(runtime, waited, before, look.observation, walk.port);
       if (!outcomes) break;
       const folded: WorkRecord | undefined = replay(() =>
-        runtime.apply(applyPlan(before, waited, look.at), waited, outcomes, look.observation, look.at, movedBy(before, waited)),
+        runtime.apply(applyPlan(before, waited, look.at, outcomes), waited, outcomes, look.observation, look.at, movedBy(before, waited)),
       );
       if (!folded) break;
       record = folded;
@@ -89,7 +89,7 @@ function holdsAreNotTries(workflow: AnyWorkflow, walk: Walk, extraLooks: number)
     const state = look.record.state;
     const longer: WorkRecord = {
       ...look.record,
-      attempts: { ...look.record.attempts, [state]: (look.record.attempts[state] ?? 0) + extraLooks },
+      looks: { ...(look.record.looks ?? look.record.attempts), [state]: looksIn(look.record, state) + extraLooks },
     };
     // Compared as moves, not word for word: an escalation whose reason
     // quotes the attempt count is the same decision with a different number

@@ -5,7 +5,8 @@ export type { Comment } from "@amykit/core";
 
 export type { TicketState } from "./state.js";
 
-export { attemptsIn, disagreements, judgedThreadIds } from "./record.js";
+export { attemptsIn, looksIn } from "@amykit/core";
+export { disagreements, judgedThreadIds } from "./record.js";
 export type { Escalation, TicketRecord } from "./record.js";
 export type { AttemptOutcome } from "@amykit/core";
 // This workflow's steps on the agent's one method, for a workflow that wants

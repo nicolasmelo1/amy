@@ -1,6 +1,6 @@
-import { Plan, act, advance, settled, wait } from "@amykit/core";
+import { Plan, act, advance, attemptsIn, looksIn, settled, wait } from "@amykit/core";
 import { Observation, Policy } from "./observation.js";
-import { ErrandRecord, attemptsIn } from "./record.js";
+import { ErrandRecord } from "./record.js";
 
 export type ErrandState = "QUEUED" | "WORKING" | "PR_OPEN" | "DONE" | "DECLINED";
 export type Effect =
@@ -46,7 +46,7 @@ function planQueued(record: ErrandRecord, obs: Observation, policy: Policy): Pla
   // opened. `amy btw` is meant to cost nothing, and the failure that follows
   // from that is a pile of open pull requests nobody asked to review.
   if (obs.inFlight >= policy.maxInFlight) {
-    const firstLook = attemptsIn(record, "QUEUED") === 0;
+    const firstLook = looksIn(record, "QUEUED") === 0;
     return wait(
       policy.ceilingBackoffMs,
       `${obs.inFlight} errand(s) are already in flight`,
