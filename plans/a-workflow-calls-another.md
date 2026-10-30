@@ -224,13 +224,20 @@ this one, is the natural next step, and it is not in this plan.
       (proof: deferred:assertion:mine.a_copied_callee_is_called)
 - [ ] `amy workflow export --expand` prints a composite diagram Pele parses
       (proof: deferred:test:packages/cli/tests/workflow-export.test.ts)
+- [ ] In the `note-to-plan` scenario, the pull request is opened by a call:
+      the installed executable creates the callee's child record, and the
+      note's record takes the `OPENED` edge with the number the stand-in `gh`
+      gave. The same holds in the errand's scenario, from *the errand is proven
+      end to end* (proof: deferred:assertion:plan.the_pull_request_is_opened_by_a_call)
 - [ ] `note-to-plan` and the errand call `@amykit/workflow-pull-request`
       instead of their own `PR_OPEN`, and their scenarios are unchanged
       (proof: assertion:plan.a_refused_draft_goes_back_to_the_agent)
 
-**Exit condition:** `note-to-plan` and the errand open their pull requests by
-calling one shipped workflow and finish when they did before, configured per caller and bound to
-ports in one `config.yaml`. A workflow three calls deep runs to its end with
+**Exit condition:** in their end-to-end scenarios, run through the installed
+executable, `note-to-plan` and the errand open their pull requests by calling
+one shipped workflow and finish when they did before. Their gates require it,
+and watch `packages/workflow-pull-request/`. The callee is configured per
+caller and bound to ports in one `config.yaml`. A workflow three calls deep runs to its end with
 only the deepest record ever looked at. A cycle is refused at mount. A callee
 copied into somebody's own workflow directory is called the same way as the
 package it came from.
