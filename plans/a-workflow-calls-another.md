@@ -48,7 +48,7 @@ what amy reads, and the binding to a package is in code. The subset that
 gains `call` beside `waiting`, `attention`, `anywhere` and `returns`.
 
 **A workflow declares its signature.** `defineWorkflow`
-([a workflow is three pieces](a-workflow-is-three-pieces.md)) gains three
+([a workflow is three pieces](../docs/design/a-workflow-is-three-pieces.md)) gains three
 optional members:
 
 - `input`: what a caller must pass, as a schema, the way `configSchema` types a

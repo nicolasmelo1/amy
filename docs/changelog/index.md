@@ -104,6 +104,13 @@ window. So a plugin does not render: it describes, and the renderer draws.
 
 
 
+### Workflows can now declare one decision per diagram state, compose pure `before` and `after` filters around those decisions, and provide `discover`, `observe`, `actions`, and `remember` as individual runtime pieces. `extend` mounts supporting infrastructure from the same declaration. Legacy `plan`/`runtime` declarations and raw plugins remain supported, while mixing the legacy and new declaration members is refused at boot.
+
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
+
+`amy workflow new` now writes a runnable diagram-backed three-piece workflow.
+The shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.
+
 ### `amy update` reaches the release. It said `nothing to move` with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):
 
 `patch` · `@amykit/cli`

@@ -31,7 +31,7 @@ contract look heavier than it is:
 [the host lends the checkout](../docs/design/the-host-lends-the-checkout.md),
 [a workflow is a Mermaid diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md),
 [a workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md),
-[a workflow is three pieces](a-workflow-is-three-pieces.md),
+[a workflow is three pieces](../docs/design/a-workflow-is-three-pieces.md),
 [waiting is not trying](waiting-is-not-trying.md) and
 [a workflow calls another](a-workflow-calls-another.md) change the
 contract these pages describe, so this comes after all nine, and rewrites them
