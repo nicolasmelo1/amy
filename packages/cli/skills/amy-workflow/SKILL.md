@@ -33,7 +33,26 @@ amy needs. Node runs `index.ts` from there unbuilt (22.18 or later), and
 `npm run build` compiles `dist/` for anything that installs it into
 `node_modules`, where Node will not run TypeScript.
 `check` drives that lifecycle against its stub world before it touches real
-work. When the process becomes useful to more than one machine, give it a
+work.
+
+**The shape is a diagram the person owns.** `workflow.mmd` beside the
+workflow is an ordinary Mermaid `stateDiagram-v2` — it renders on GitHub and
+in Obsidian with nothing installed — and amy reads the states, where work
+starts, waits and ends from it when the workflow mounts. A workflow with one
+declares no `states`, `waiting` or `terminal`; declaring them as well is
+refused at boot. One drawn somewhere else becomes a workflow that mounts:
+
+```sh
+amy workflow new oncall --from oncall.mmd
+amy workflow check oncall   # lists each decision not written yet, and each arrow not walked
+```
+
+amy reads `[*] --> S` (the start, once), `S --> [*]` (an end), `A --> B` and
+`A --> B: label` (a label is prose, never interpreted), and four classes:
+`waiting`, `attention` (waits on the person whose work it is), `anywhere`
+(reachable from any state that is not terminal) and `returns` (leaves to where
+the record came from). Composite states, `<<choice>>`, `<<fork>>`, `<<join>>`
+and concurrent regions are refused by line: a record is in one flat state. When the process becomes useful to more than one machine, give it a
 scoped name, drop the `private` flag the scaffold wrote, and `npm publish` in
 that directory; nothing needs to move.
 
@@ -43,9 +62,12 @@ that directory; nothing needs to move.
 answer I would give and why, so the cheap move is agreeing and the expensive
 move is the one you think about.
 
-**Each round redraws the workflow.** After every answer, show the machine as
-it now stands, as a diff against the round before — so the cost of an answer
-is visible at the moment it is given, not at the end.
+**Each round ends by editing the diagram.** After every answer, change
+`workflow.mmd` — or, before any file is written, the diagram you are holding
+— and show it as a diff against the round before, so the cost of an answer is
+visible at the moment it is given, not at the end. Then write the decisions
+the diagram asks for: one per state it draws, and every move one of its
+arrows. A move it does not draw fails the check, naming both ends.
 
 **Stop when nothing is left assumed**, not after N questions. If a question
 cannot be answered without seeing the thing run, say so and stop asking it:
@@ -67,9 +89,14 @@ Write no files until the shape is settled and the person says go.
 > on something it will not solve.
 
 ```diff
- paged ──► triaged ──► acting ──► resolved
-             │
-+            ├──(3 failed tries)──► stuck
+ stateDiagram-v2
+     [*] --> paged
+     paged --> triaged
+     triaged --> acting
+     acting --> resolved
++    acting --> stuck: three failed tries
+     resolved --> [*]
++    class stuck attention
 ```
 
 Then the next question, which is now *"what does `stuck` do — comment on the
@@ -88,8 +115,9 @@ the frontier, not a checklist.
 3. **What are the steps between?** Name them as states. Five is usually
    plenty; a workflow with twelve is two workflows.
 4. **Which steps wait on somebody else?** A wait is not a failure — it is a
-   state that makes no move until the world moves. These become
-   `waitingStates`, and they are why the loop can be cheap.
+   state that makes no move until the world moves. These get `class S waiting`
+   in the diagram (`attention` when it is the owner being waited on), and they
+   are why the loop can be cheap.
 5. **What does each step actually do?** One entry per action in the runtime's
    `actions`: a handler, or `{ port, method }` when a mounted port already does
    it. "An agent does it" is one call to the `agent` port and four lines.
@@ -108,7 +136,8 @@ amy --workflow oncall status               # where its work stands right now
 ```
 
 Then find its directory — `workflows.<name>.workflow` in `.amy/config.yaml`
-names it — and read `plan()` before asking anything. Two rules for an edit:
+names it — and read its `workflow.mmd` (`amy workflow export <name>` prints
+it) and `plan()` before asking anything. Two rules for an edit:
 
 - **A state that has records in it cannot simply disappear.** Ask what happens
   to the work sitting in it: migrate it to the nearest state, or drain it
@@ -116,8 +145,8 @@ names it — and read `plan()` before asking anything. Two rules for an edit:
   refuse to load.
 - **Renaming a state is deleting one and adding another.** Same question.
 
-Re-run the walkthrough test after every edit. It is the test that catches the
-state you forgot to connect.
+Re-run the walkthrough test and `amy workflow check` after every edit. They
+catch the state you forgot to connect, and the move the diagram does not draw.
 
 ## The two halves
 
@@ -148,6 +177,11 @@ Anything remembered about a transition — the state an escalation interrupted,
 say — is folded from `moved`, never from `record.state`.
 
 ## What a workflow declares
+
+A workflow drawn as a diagram declares no states at all: `defineWorkflow`
+takes them from `workflow.mmd`, and every decision may start as the core's
+`notWritten()` stub, which settles the record saying so instead of guessing a
+move. One written by hand without a diagram declares them, as below.
 
 ```js
 const workflow = {

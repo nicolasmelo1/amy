@@ -85,7 +85,7 @@ import { amyHome } from "./home.js";
 import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
-import { checkWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
+import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
@@ -2373,9 +2373,10 @@ workflowCommand
   .command("new")
   .description("Write an editable workflow under ~/.amy/workflows")
   .argument("<name>", "one directory name, such as oncall")
-  .action((name: string) => {
+  .option("--from <file>", "a Mermaid stateDiagram-v2 to copy in as the workflow's shape, every decision a stub")
+  .action((name: string, options: { from?: string }) => {
     try {
-      const directory = writeWorkflow(home, name, loadConfig(home));
+      const directory = writeWorkflow(home, name, loadConfig(home), options.from);
       console.log(`wrote ${directory}`);
       console.log(`check it with: amy workflow check ${name}`);
     } catch (error) {
@@ -2389,14 +2390,39 @@ workflowCommand
   .description("Drive a workflow's lifecycle against its stub world")
   .argument("<name>", "the configured workflow to check")
   .action(async (name: string) => {
-    const problems = await checkWorkflow(home, name, loadConfig(home), pluginsRootResolver(home, paths(home).plugins));
+    const { problems, stubs, drawnNotWalked } = await inspectWorkflow(home, name, loadConfig(home), pluginsRootResolver(home, paths(home).plugins));
+    // What is left to write is said whether or not the walk is green: for a
+    // workflow still being written, it is the to-do list.
+    for (const state of stubs) console.log(`not written yet: the decision for ${state}`);
+    for (const edge of drawnNotWalked) console.log(`drawn, not walked: ${edge.from} → ${edge.to}`);
     if (problems.length === 0) {
-      console.log(`${name} settles: its walkthrough is green`);
+      console.log(stubs.length > 0 ? `${name} mounts: ${stubs.length} decision(s) are not written yet` : `${name} settles: its walkthrough is green`);
       return;
     }
     console.error(`${name} does not pass its walkthrough:`);
     for (const problem of problems) console.error(`  ${problem}`);
     process.exitCode = 1;
+  });
+
+workflowCommand
+  .command("export")
+  .description("Print a workflow's diagram, which renders wherever Mermaid does")
+  .argument("<name>", "the configured workflow to export")
+  .option("--work <id>", "mark the state this piece of work is in")
+  .action(async (name: string, options: { work?: string }) => {
+    try {
+      const config = loadConfig(home);
+      const profile = profiles(config, home)[name];
+      const record = options.work === undefined || !profile ? undefined : new FileStore<AnyRecord>(profilePaths(home, profile).records).load(options.work);
+      if (options.work !== undefined && !record) throw new Error(`${name} keeps no record for ${options.work}`);
+      process.stdout.write(await exportWorkflow(home, name, config, {
+        ...(record ? { state: record.state } : {}),
+        resolve: pluginsRootResolver(home, paths(home).plugins),
+      }));
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
   });
 
 workflowCommand

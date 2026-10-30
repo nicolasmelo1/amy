@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Plugin } from "@amykit/core";
+import { drawn } from "./drawn.js";
 import { localWorkflow } from "./workflow.js";
 import { packageEntrySpecifier } from "./spec.js";
 
@@ -39,13 +40,15 @@ export async function load(
 
   for (const spec of specs) {
     try {
-      const module = (await import(resolve(spec))) as { plugin?: Plugin };
+      const specifier = resolve(spec);
+      const module = (await import(specifier)) as { plugin?: Plugin };
       if (!module.plugin) {
         problems.push(`${spec}: imported, but exports no \`plugin\``);
         continue;
       }
-      plugins.push(module.plugin);
-      bySpec.set(spec, module.plugin);
+      const plugin = drawn(module.plugin, specifier);
+      plugins.push(plugin);
+      bySpec.set(spec, plugin);
     } catch (error) {
       problems.push(missing(spec, error, pluginsRoot));
     }

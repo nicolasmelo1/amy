@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { applyPlan, BRANCH_SETTINGS, Builds, CommandRunner, lendCheckouts, isDeferred, isPortBinding, movedBy, Plugin, PluginContext, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { applyPlan, BRANCH_SETTINGS, Builds, cameFrom, CommandRunner, connects, DIAGRAM_FILE, DrawnTransition, lendCheckouts, isDeferred, isPortBinding, markState, movedBy, notWrittenIn, Plugin, PluginContext, readDiagram, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 import { AmyConfig, writeWorkflowProfile } from "./config.js";
+import { drawn } from "./drawn.js";
 
 /** The directory where one machine keeps workflows that belong only to it. */
 export function workflowsDirectory(home: string): string {
@@ -38,10 +39,13 @@ export function workflowSpecifier(home: string, spec: string): string {
  * types and runs it from this directory as it is; it refuses TypeScript under
  * `node_modules`, so what is published is what `npm run build` compiles.
  */
-export function writeWorkflow(home: string, name: string, config: AmyConfig): string {
+export function writeWorkflow(home: string, name: string, config: AmyConfig, from?: string): string {
   if (!isLocalName(name)) {
     throw new Error("a workflow name is one directory name: letters, numbers, hyphens and underscores");
   }
+  // Read before anything is written, so a diagram amy cannot read is refused
+  // with its line and leaves no half-made directory behind.
+  const drawn = from === undefined ? undefined : readDiagram(fs.readFileSync(from, "utf-8"), from);
 
   const directory = path.join(workflowsDirectory(home), name);
   if (fs.existsSync(directory)) {
@@ -64,8 +68,14 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig): st
     devDependencies: { [TESTKIT]: `^${groupVersion()}`, typescript: TYPESCRIPT },
   }, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "tsconfig.json"), JSON.stringify(SCAFFOLD_TSCONFIG, null, 2) + "\n", "utf-8");
-  fs.writeFileSync(path.join(directory, "index.ts"), scaffold(name), "utf-8");
-  fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuite(), "utf-8");
+  if (drawn) {
+    fs.writeFileSync(path.join(directory, DIAGRAM_FILE), drawn.text, "utf-8");
+    fs.writeFileSync(path.join(directory, "index.ts"), scaffoldFromDiagram(name, drawn.states), "utf-8");
+    fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuiteFromDiagram(), "utf-8");
+  } else {
+    fs.writeFileSync(path.join(directory, "index.ts"), scaffold(name), "utf-8");
+    fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuite(), "utf-8");
+  }
   linkCore(directory);
   writeGuardrails(directory);
   writeWorkflowProfile(home, name, name, config);
@@ -121,12 +131,57 @@ export async function checkWorkflow(
   config: AmyConfig,
   resolve: (spec: string) => string = (spec) => workflowSpecifier(home, spec),
 ): Promise<string[]> {
+  return [...(await inspectWorkflow(home, name, config, resolve)).problems];
+}
+
+/** What a check found: what is wrong, and what is only not written or not walked yet. */
+export interface WorkflowCheck {
+  readonly problems: readonly string[];
+  /** States whose decision is still a `notWritten()` stub. */
+  readonly stubs: readonly string[];
+  /** Arrows the diagram draws that the walkthrough never took. */
+  readonly drawnNotWalked: readonly DrawnTransition[];
+}
+
+/**
+ * Drives a workflow's lifecycle against its stub world, holding every move
+ * to its diagram when it has one, and says what is left to write.
+ *
+ * A move the diagram does not draw is a problem, naming both ends. A
+ * decision that is still a stub and an arrow nothing walked are the to-do
+ * list of a workflow being written, not a failure of one.
+ */
+export async function inspectWorkflow(
+  home: string,
+  name: string,
+  config: AmyConfig,
+  resolve: (spec: string) => string = (spec) => workflowSpecifier(home, spec),
+): Promise<WorkflowCheck> {
   const profile = config.workflows[name];
-  if (!profile) return [`there is no \`${name}\` workflow in the config`];
+  if (!profile) return { problems: [`there is no \`${name}\` workflow in the config`], stubs: [], drawnNotWalked: [] };
 
   const registered = await registeredWorkflow(home, profile.workflow, resolve);
-  if (typeof registered === "string") return [registered];
+  if (typeof registered === "string") return { problems: [registered], stubs: [], drawnNotWalked: [] };
   return drive(registered);
+}
+
+/**
+ * A configured workflow's diagram, as text that renders anywhere Mermaid
+ * does, with one state marked when a piece of work is given.
+ */
+export async function exportWorkflow(
+  home: string,
+  name: string,
+  config: AmyConfig,
+  options: { readonly state?: string; readonly resolve?: (spec: string) => string } = {},
+): Promise<string> {
+  const profile = config.workflows[name];
+  if (!profile) throw new Error(`there is no \`${name}\` workflow in the config`);
+  const registered = await registeredWorkflow(home, profile.workflow, options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
+  if (typeof registered === "string") throw new Error(registered);
+  const diagram = registered.workflow.diagram;
+  if (!diagram) throw new Error(`${name} has no ${DIAGRAM_FILE}: its states are declared in its code, so there is no diagram to export`);
+  return options.state === undefined ? diagram.text : markState(diagram, options.state);
 }
 
 interface RegisteredWorkflow {
@@ -163,8 +218,9 @@ async function registeredWorkflow(home: string, spec: string, resolve: (spec: st
 
 async function importedPlugin(spec: string, resolve: (spec: string) => string): Promise<Plugin | string> {
   try {
-    const loaded = (await import(resolve(spec))) as { plugin?: Plugin };
-    return loaded.plugin ?? `${spec}: imported, but exports no \`plugin\``;
+    const specifier = resolve(spec);
+    const loaded = (await import(specifier)) as { plugin?: Plugin };
+    return loaded.plugin ? drawn(loaded.plugin, specifier) : `${spec}: imported, but exports no \`plugin\``;
   } catch (error) {
     const unbuilt = (error as { code?: unknown }).code === "ERR_UNKNOWN_FILE_EXTENSION"
       ? "; this Node cannot run TypeScript unbuilt, which takes 22.18 or later"
@@ -209,23 +265,49 @@ function context(
   };
 }
 
-async function drive({ workflow, runtime, now }: RegisteredWorkflow): Promise<string[]> {
+async function drive({ workflow, runtime, now }: RegisteredWorkflow): Promise<WorkflowCheck> {
   const unimplemented = unimplementedActions(workflow, runtime);
-  if (unimplemented.length > 0) return unimplemented;
+  if (unimplemented.length > 0) return { problems: unimplemented, stubs: [], drawnNotWalked: [] };
   const created = recordFor(workflow, runtime, now);
-  if (typeof created === "string") return [created];
+  if (typeof created === "string") return { problems: [created], stubs: [], drawnNotWalked: [] };
   let record = created;
   const reached = new Set<string>();
+  const walked = new Set<string>();
+  let stopped = false;
   const problems = record.state === workflow.initialState ? [] : [`${workflow.name}: newRecord starts at \`${record.state}\`, not \`${workflow.initialState}\``];
 
   for (let move = 0; move < 32 && problems.length === 0; move += 1) {
     reached.add(record.state);
     const next = await moveOnce(workflow, runtime, record, now);
     if (typeof next === "string") { problems.push(next); break; }
+    if (next.kind === "stub") { stopped = true; break; }
     if (next.kind === "settled" || next.kind === "wait") break;
+    walked.add(`${record.state}\u0000${next.record.state}`);
     record = next.record;
   }
-  return [...problems, ...completionProblems(workflow, record, reached)];
+  const stubs = await stubsIn(workflow, runtime, created);
+  return {
+    // A walk that stopped at a decision nobody has written yet says nothing
+    // about where the finished workflow ends: the stubs are the to-do list.
+    problems: stopped ? problems : [...problems, ...completionProblems(workflow, record, reached)],
+    stubs,
+    drawnNotWalked: (workflow.diagram?.transitions ?? []).filter((edge) => !walked.has(`${edge.from}\u0000${edge.to}`)),
+  };
+}
+
+/** Every drawn state whose decision is still a stub, asked one state at a time. */
+async function stubsIn(workflow: Workflow, runtime: WorkflowRuntime, first: WorkRecord): Promise<string[]> {
+  const stubs: string[] = [];
+  for (const state of workflow.diagram?.states ?? []) {
+    try {
+      const record = { ...first, state };
+      if (notWrittenIn(workflow.plan(record, await runtime.observe(record), runtime.policy)) === state) stubs.push(state);
+    } catch {
+      // A decision that cannot be asked out of turn is written; it is the
+      // walk's to judge, not this list's.
+    }
+  }
+  return stubs;
 }
 
 /** Declared actions with nothing behind them, which the mount would refuse at boot. */
@@ -246,16 +328,20 @@ function recordFor(workflow: Workflow, runtime: WorkflowRuntime, now: () => Date
   catch (error) { return `${workflow.name}: newRecord failed — ${message(error)}`; }
 }
 
-async function moveOnce(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord, now: () => Date): Promise<{ kind: "advance"; record: WorkRecord } | { kind: "settled" } | { kind: "wait" } | string> {
+async function moveOnce(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord, now: () => Date): Promise<{ kind: "advance"; record: WorkRecord } | { kind: "settled" } | { kind: "stub" } | { kind: "wait" } | string> {
   try {
     const observation = await runtime.observe(record);
     const plan = workflow.plan(record, observation, runtime.policy);
     const [missing] = undeclaredIn(runtime, plan);
     if (missing) return `${workflow.name}: plan emits \`${missing}\`, which its runtime never declared in \`actions\``;
-    if (plan.kind === "settled") return { kind: "settled" };
+    if (plan.kind === "settled") return notWrittenIn(plan) === record.state ? { kind: "stub" } : { kind: "settled" };
     if (plan.kind === "wait") return waitingProblem(workflow, runtime, record);
     if (plan.kind === "act") return `${workflow.name}: did not settle; it kept acting in \`${record.state}\``;
     if (!workflow.states.includes(plan.to)) return `${workflow.name}: advances to undeclared state \`${plan.to}\``;
+    const diagram = workflow.diagram;
+    if (diagram && !connects(diagram, record.state, plan.to, cameFrom(record.history, record.state))) {
+      return `${workflow.name}: \`${record.state}\` moves to \`${plan.to}\`, and ${DIAGRAM_FILE} draws no arrow from \`${record.state}\` to \`${plan.to}\``;
+    }
     const folded = runtime.apply(applyPlan(record, plan, now()), plan, {}, observation, now(), movedBy(record, plan));
     return folded.state === plan.to ? { kind: "advance", record: folded } : `${workflow.name}: one look did not make the transition it claimed`;
   } catch (error) { return `${workflow.name}: could not plan \`${record.state}\` — ${message(error)}`; }
@@ -376,6 +462,67 @@ import { runtime, workflow } from "./index.ts";
 conforms(workflow, {
   runner: { describe, it },
   runtime: () => runtime(),
+  worlds: [{ name: "a piece of work arrives" }],
+});
+`;
+}
+
+/**
+ * A workflow whose shape is somebody's diagram, copied in beside it.
+ *
+ * It declares no states: the host reads them from `workflow.mmd`. Every
+ * decision is a `notWritten()` stub, so it mounts as it is, settles rather
+ * than guesses a move, and `amy workflow check` lists what is left to write.
+ */
+function scaffoldFromDiagram(name: string, states: readonly string[]): string {
+  const decisions = states.map((state) => `  ${JSON.stringify(state)}: notWritten(),`).join("\n");
+  return `// This workflow's shape is workflow.mmd beside this file: the states, where
+// work starts, waits and ends. Write one decision per state below; each is a
+// stub until then. \`amy workflow check ${name}\` lists what is left to write.
+import { defineWorkflow, notWritten, type ConfigSchema, type Plan, type WorkRecord } from "@amykit/core";
+
+// One decision per state the diagram draws: where this piece of work goes next.
+const decide: Record<string, (record: WorkRecord) => Plan> = {
+${decisions}
+};
+
+export const runtimeParts = () => ({
+  found: async () => ["example"],
+  observe: async () => ({}),
+  // Every action a decision may emit, keyed by name, and what runs it: a
+  // handler, or { port, method } for a mounted port the host calls.
+  actions: {},
+  // Called as (record, plan, outcomes, observation, now, moved). \`record\`
+  // has already moved: read where it came from in \`moved.from\`.
+  apply: (record: WorkRecord) => record,
+});
+
+export const plugin = defineWorkflow({
+  name: ${JSON.stringify(name)},
+  configSchema: {} satisfies ConfigSchema,
+  policy: {},
+  needs: {},
+  plan: (record: WorkRecord) => decide[record.state]!(record),
+  record: () => ({}),
+  runtime: runtimeParts,
+});
+`;
+}
+
+/** The suite for a workflow drawn as a diagram, bound to it the way amy mounts it. */
+function scaffoldSuiteFromDiagram(): string {
+  return `import { describe, it } from "node:test";
+import { withDiagramBeside } from "@amykit/core";
+import { conforms } from "${TESTKIT}";
+import { plugin, runtimeParts } from "./index.ts";
+
+// The workflow as amy mounts it: its states read from workflow.mmd beside it.
+// Red until every decision is written; each finding is one left to write.
+const drawn = withDiagramBeside(plugin, import.meta.url);
+
+conforms(drawn.workflow, {
+  runner: { describe, it },
+  runtime: () => ({ ...runtimeParts(), policy: {}, newRecord: drawn.newRecord }),
   worlds: [{ name: "a piece of work arrives" }],
 });
 `;
