@@ -46,7 +46,12 @@ request. A row that needs one the registry does not have adds it here first.
   and every write lands on them the way the matching `amy` command's would.
 - Paths are versioned, `/v1/…`, and owned by one domain each.
 - Every request carries `Authorization: Bearer <token>`; `401 session.unauthorized`
-  is declared on every operation and not repeated below.
+  is declared on every operation and not repeated below. There are two
+  exceptions, and only two: `receiveGitHubEvent` and `receiveLinearEvent`. A
+  tool's webhook cannot carry amy's token, so those two are authenticated by
+  the tool's signature instead, verified before anything is read, and they
+  carry no session either. They are the only routes that answer without the
+  token, and every other operation, `listEventSources` included, keeps both.
 - Every request after `openSession` carries `X-Amy-Session: <sessionId>`, so
   the server knows which client asked and which stream an operation's later
   events go to — an ask's answer, a shell's output. A session belongs to the
@@ -173,6 +178,14 @@ alone already shows live work.
 | `startGrooming` | `POST /v1/grooming/sessions` | Request `{ profile, ticketId }`. `201 { groomingId, briefId }`; `422 grooming.no_brief_phase`. Writes: the brief, through the brief port. |
 | `getGrooming` | `GET /v1/grooming/sessions/{groomingId}` | `{ briefId, revision, green, sections[{ name, text, refusals[] }], transcript[] }`. `404 grooming.not_found`. |
 | `addGroomingTurn` | `POST /v1/grooming/sessions/{groomingId}/turns` | Request `{ text }`. `202 { turnId }`; the next question and the reran check arrive through `grooming.detail`. Writes: the brief. Never the tracker. |
+
+### `events` — what a tool reports · *an event is a reason to look*
+
+| Operation | Method and path | What it does |
+| :-- | :-- | :-- |
+| `receiveGitHubEvent` | `POST /v1/events/github` | A GitHub webhook, verified by `X-Hub-Signature-256` against the configured secret before anything is read. `202` once translated and queued; `401 events.bad_signature`; `204` for an event no mounted workflow names. Carries no session or bearer token: the signature is the authentication. Writes: the queue and the event log. |
+| `receiveLinearEvent` | `POST /v1/events/linear` | A Linear webhook, verified by `Linear-Signature` (HMAC-SHA256 of the raw body). Same answers and writes as GitHub's. |
+| `listEventSources` | `GET /v1/events/sources` | Per mounted source: whether events are arriving, when the last one did, and the polling cadence behind it — what `amy doctor` prints. |
 
 ### `workplace` — the checkout · *the workplace opens where you work*
 

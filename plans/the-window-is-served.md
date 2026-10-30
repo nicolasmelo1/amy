@@ -145,7 +145,9 @@ request, and no operation the registry does not list.
       (proof: deferred:assertion:server.a_client_needs_nothing_but_the_server)
 - [ ] Two clients connected at once receive the same patch for the same change
       (proof: deferred:assertion:server.every_client_sees_the_same_change)
-- [ ] A connection without the token is refused, on the socket as over TCP
+- [ ] A connection without the token is refused, on the socket as over TCP,
+      on every route except the two webhook receivers *an event is a reason to
+      look* adds, which refuse a bad signature instead
       (proof: deferred:assertion:server.nothing_answers_without_the_token)
 - [ ] The server listens on loopback unless told otherwise, and its socket is
       `0600` (proof: deferred:assertion:server.it_listens_on_loopback_by_default)
