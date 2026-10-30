@@ -48,7 +48,7 @@ cp "$entry.clean" "$entry"
 
 diagram="$work/home/.amy/workflows/oncall/workflow.mmd"
 cp "$diagram" "$diagram.clean"
-python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$diagram" '    done --> [*]' '    received --> stranded\n    stranded --> done\n    done --> [*]'
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3].encode().decode("unicode_escape")))' "$diagram" '    done --> [*]' '    received --> stranded\n    stranded --> done\n    done --> [*]'
 if "$amy" workflow check oncall >/dev/null 2>&1; then unreachable=1; else unreachable=0; fi
 record mine.a_state_nothing_reaches_is_refused "$unreachable"
 mv "$diagram.clean" "$diagram"

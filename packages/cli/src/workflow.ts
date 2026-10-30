@@ -439,7 +439,7 @@ function scaffold(name: string): string {
 // \`amy workflow check ${name}\` drives this file before it drives real work,
 // and \`npm test\` runs the machine's own suite over it. Node runs it as it is;
 // \`npm run build\` compiles it for publishing.
-import { act, advance, defineWorkflow, settled, type ConfigSchema, type Plan, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
+import { act, advance, defineWorkflow, settled, type ConfigSchema, type Plan, type WorkflowPieceContext, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
 
 export const decide: Record<string, (record: WorkRecord) => Plan> = {
   received: () => advance("done", "the work was received"),
@@ -448,6 +448,19 @@ export const decide: Record<string, (record: WorkRecord) => Plan> = {
 export const discover = async () => ["example"];
 export const observe = async (_record: WorkRecord) => ({});
 export const actions = {};
+const defaultTestScope: WorkflowPieceContext<ConfigSchema, object, {}> = {
+  ports: {}, config: {}, policy: {}, checkouts: {} as never, ctx: {} as never,
+};
+function testActions(scope: WorkflowPieceContext<ConfigSchema, object, {}>): WorkflowRuntime["actions"] {
+  return Object.fromEntries(
+    Object.entries(actions).map(([name, implementation]) => [
+      name,
+      typeof implementation === "function"
+        ? (effect, work) => implementation(scope as never, work, effect as never)
+        : implementation,
+    ]),
+  ) as WorkflowRuntime["actions"];
+}
 export function remember(record: WorkRecord): WorkRecord { return record; }
 
 export const plugin = defineWorkflow({
@@ -464,8 +477,11 @@ export const plugin = defineWorkflow({
 });
 
 // The suite builds a fresh runtime and uses the core-owned record constructor.
-export function runtime(newRecord = plugin.newRecord): WorkflowRuntime {
-  return { found: discover, observe, actions, apply: remember, policy: {}, newRecord };
+export function runtime(
+  newRecord = plugin.newRecord,
+  scope: WorkflowPieceContext<ConfigSchema, object, {}> = defaultTestScope,
+): WorkflowRuntime {
+  return { found: discover, observe, actions: testActions(scope), apply: remember, policy: {}, newRecord };
 }
 `;
 }
@@ -497,7 +513,7 @@ function scaffoldFromDiagram(name: string, states: readonly string[]): string {
   return `// This workflow's shape is workflow.mmd beside this file: the states, where
 // work starts, waits and ends. Write one decision per state below; each is a
 // stub until then. \`amy workflow check ${name}\` lists what is left to write.
-import { defineWorkflow, notWritten, type ConfigSchema, type Plan, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
+import { defineWorkflow, notWritten, type ConfigSchema, type Plan, type WorkflowPieceContext, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
 
 // One decision per state the diagram draws: where this piece of work goes next.
 const decide: Record<string, (record: WorkRecord) => Plan> = {
@@ -507,6 +523,19 @@ ${decisions}
 export const discover = async () => ["example"];
 export const observe = async (_record: WorkRecord) => ({});
 export const actions = {};
+const defaultTestScope: WorkflowPieceContext<ConfigSchema, object, {}> = {
+  ports: {}, config: {}, policy: {}, checkouts: {} as never, ctx: {} as never,
+};
+function testActions(scope: WorkflowPieceContext<ConfigSchema, object, {}>): WorkflowRuntime["actions"] {
+  return Object.fromEntries(
+    Object.entries(actions).map(([name, implementation]) => [
+      name,
+      typeof implementation === "function"
+        ? (effect, work) => implementation(scope as never, work, effect as never)
+        : implementation,
+    ]),
+  ) as WorkflowRuntime["actions"];
+}
 export function remember(record: WorkRecord): WorkRecord { return record; }
 
 export const plugin = defineWorkflow({
@@ -526,8 +555,11 @@ export const plugin = defineWorkflow({
   remember: (_scope, record) => remember(record),
 });
 
-export function runtime(newRecord = plugin.newRecord): WorkflowRuntime {
-  return { found: discover, observe, actions, apply: remember, policy: {}, newRecord };
+export function runtime(
+  newRecord = plugin.newRecord,
+  scope: WorkflowPieceContext<ConfigSchema, object, {}> = defaultTestScope,
+): WorkflowRuntime {
+  return { found: discover, observe, actions: testActions(scope), apply: remember, policy: {}, newRecord };
 }
 `;
 }

@@ -57,6 +57,14 @@ export type WorkflowAction<S extends ConfigSchema, P extends object, N extends N
   effect: Effect,
 ) => Promise<void>;
 
+// The declaration accepts domain-narrowed handlers from `workflowActions()`
+// while contextual typing an inline handler against the core's open Action.
+// Method parameters are bivariant; the runtime adapter still owns the cast at
+// the one point where a keyed handler is dispatched from an open action.
+type DeclarationAction<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O> = {
+  run(scope: WorkflowPieceContext<S, P, N>, work: ActionContext<R, O>, effect: Action): Promise<void>;
+}["run"];
+
 /**
  * Contextually types each handler from its action's own payload.
  *
@@ -191,8 +199,11 @@ interface PiecesDeclaration<S extends ConfigSchema, States extends readonly [str
   readonly progress?: ProgressPolicy | ((scope: WorkflowPieceContext<S, P, N>) => ProgressPolicy | undefined);
   observe(scope: WorkflowPieceContext<S, P, N>, record: R): Promise<O>;
   readonly actions:
-    | Readonly<Record<string, WorkflowAction<S, P, N, R, O> | ActionSpec>>
-    | ((scope: WorkflowPieceContext<S, P, N>) => Readonly<Record<string, WorkflowAction<S, P, N, R, O> | ActionSpec>>);
+    // `workflowActions()` narrows each handler's final argument to the action
+    // named by its key. The declaration is the boundary that erases that
+    // domain payload back to the core's open action vocabulary.
+    | Readonly<Record<string, DeclarationAction<S, P, N, R, O> | ActionSpec>>
+    | ((scope: WorkflowPieceContext<S, P, N>) => Readonly<Record<string, DeclarationAction<S, P, N, R, O> | ActionSpec>>);
   remember?(
     scope: WorkflowPieceContext<S, P, N>, record: R, outcomes: Record<string, unknown>, observation: O,
     moved: Moved | null, decision: Plan, now: Date,

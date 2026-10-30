@@ -361,6 +361,28 @@ it("types an action handler by the payload named in its key", () => {
   });
 
   expect(Object.keys(actions)).toEqual(["announce"]);
+
+  void defineWorkflow({
+    name: "typed-action-declaration",
+    configSchema: {}, policy: {}, needs: {}, states: ["NEW"], terminal: ["NEW"],
+    record: () => ({}),
+    decide: { NEW: () => settled("done") },
+    observe: async () => ({}),
+    actions,
+  });
+
+  void defineWorkflow({
+    name: "inline-action-declaration",
+    configSchema: {}, policy: {}, needs: {}, states: ["NEW"], terminal: ["NEW"],
+    record: () => ({}),
+    decide: { NEW: () => settled("done") },
+    observe: async () => ({}),
+    actions: {
+      announce: async (_scope, _work, effect) => {
+        expectTypeOf(effect.type).toEqualTypeOf<string>();
+      },
+    },
+  });
 });
 
 // This is a compile-time contract: the declaration gives direct constructors

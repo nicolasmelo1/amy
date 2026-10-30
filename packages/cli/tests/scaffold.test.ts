@@ -176,6 +176,31 @@ describe("a workflow of your own", () => {
     expect(run.stdout).toContain("index.ts");
   });
 
+  it("adapts a keyed three-piece action with the suite's supplied scope", async () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+    const entry = path.join(directory, "index.ts");
+    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8")
+      .replace("act, advance, defineWorkflow, settled", "act, advance, defineWorkflow, settled, workflowActions")
+      .replace("export const actions = {};", `export const actions = workflowActions<{ type: "announce"; text: string }>()({
+  announce: async (scope, _work, effect) => {
+    if ((scope.config as { marker?: string }).marker !== "test" || effect.text !== "hello") throw new Error("wrong test action context");
+  },
+});`));
+
+    const run = tscIn(directory);
+    expect(run.status, run.stdout + run.stderr).toBe(0);
+
+    const built = (await import(pathToFileURL(path.join(directory, "dist", "index.js")).href)) as {
+      runtime(newRecord?: import("@amykit/core").WorkflowRuntime["newRecord"], scope?: unknown): import("@amykit/core").WorkflowRuntime;
+    };
+    const handler = built.runtime(undefined, { config: { marker: "test" } }).actions.announce;
+    if (typeof handler !== "function") throw new Error("the scaffold did not adapt its action");
+    await expect(handler(
+      { type: "announce", text: "hello" },
+      { record: {} as import("@amykit/core").WorkRecord, observation: {}, outcomes: {} },
+    )).resolves.toBeUndefined();
+  });
+
   it("builds the JavaScript it publishes, since Node will not run TypeScript from node_modules", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as { main: string; files: string[] };
