@@ -77,7 +77,12 @@ calls: {
 },
 ```
 
-- `input` maps the caller's record to the callee's input, typed both ways.
+Every member is optional, because a call is often a one-off that takes
+nothing and returns nothing. The smallest call is `REVIEW: call(review)`.
+
+- `input` maps the caller's record to the callee's input, typed both ways. It
+  is required only when the callee declares an `input`, and refused when the
+  callee declares none.
 - `config` is the callee's settings for this call, validated against its schema
   at boot.
 - `ports` binds each of the callee's `needs` to a port the root has mounted,
@@ -85,12 +90,17 @@ calls: {
   whole tree is therefore configured once, at the root, in `config.yaml`. A
   need nothing satisfies is refused at boot with the full call path, for example
   `oncall → REVIEW → FIX: needs code-host`.
-- `output` folds each return value into the caller's record. It needs one entry
-  per terminal state of the callee: a missing one, or one for a state the
-  callee does not have, is refused by name.
+- `output` folds a return value into the caller's record. It needs an entry only
+  for the terminal states whose `output` the callee declares, and only when the
+  caller keeps that value. An entry for a state the callee does not have, or
+  for one that returns nothing, is refused by name. A caller may also ignore a
+  return value it has no use for.
 
-A call state needs a `calls` entry and no `decide` key. The call is its
-decision.
+What is never optional is the edge. Every terminal state of the callee needs
+an edge out of the call state in the caller's diagram, named after it,
+because that edge is where the caller goes when the callee ends there. A
+terminal state with no edge is refused at boot by name. A call state needs a
+`calls` entry and no `decide` key. The call is its decision.
 
 **Calls nest without limit, and never in a circle.** A callee may call others.
 At mount, amy builds the graph of calls from every workflow in the tree and
@@ -146,7 +156,13 @@ workflow and a call holds the rest.
 ## The first callee
 
 `@amykit/workflow-pull-request` is the workflow all three shipped ones repeat.
-It takes a repository, a branch and a body as input, opens the pull request,
+It needs a `code-host` and names no host: it reads and writes only through the
+`CodeHost` port, so the same callee opens a pull request on GitHub today and a
+merge request on GitLab or Bitbucket once a plugin implements that port. The
+caller's `config.yaml` picks the adapter. A method the port only offers
+optionally is declared as a capability the callee needs, and a host without it
+is refused at boot by name. It takes a repository, a branch and a body as
+input, opens the pull request,
 waits on its review, and returns `MERGED` with its number or `CLOSED` with the
 reason. `note-to-plan` and the errand call it in place of their own `PR_OPEN`.
 `ticket-to-qa` calls it where its review loop starts, if that loop fits the
@@ -155,11 +171,19 @@ does not fit, the plan says which part stayed in `ticket-to-qa`, and why.
 
 ## Acceptance criteria
 
-- [ ] A call state with no `calls` entry, a call whose `output` misses one of
-      the callee's terminal states or names one it does not have, and a callee
-      need no mounted port satisfies are each refused at boot, by name and
-      call path
+- [ ] A call state with no `calls` entry, a callee terminal state with no edge
+      out of the call state, an `output` entry for a state that returns
+      nothing or does not exist, an `input` for a callee that takes none, and
+      a callee need no mounted port satisfies are each refused at boot, by name
+      and call path
       (proof: deferred:test:packages/core/tests/calls.test.ts)
+- [ ] `call(callee)` with no input, config, ports or output mounts and runs a
+      callee that declares none of them
+      (proof: deferred:test:packages/core/tests/calls.test.ts)
+- [ ] `@amykit/workflow-pull-request` runs unchanged against a second
+      `CodeHost` adapter that is not GitHub, and refuses one missing a
+      capability it declares
+      (proof: deferred:test:packages/workflow-pull-request/tests/hosts.test.ts)
 - [ ] A cycle of calls at any depth is refused at mount, naming every workflow
       on it (proof: deferred:test:packages/core/tests/calls.test.ts)
 - [ ] A call three deep runs to the end: the caller's record waits without
