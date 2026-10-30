@@ -15,9 +15,22 @@ update, and Slack sends message events. amy hears none of them.
 
 ## What changes
 
-**An event puts a look on the queue, and changes nothing else.** An event
-source turns what a tool reports into an item on the existing queue, for the
-work it concerns, with a priority set by the event's kind. The look that item
+**An event brings a look forward, and changes nothing else.** An event source
+turns what a tool reports into a look for the work it concerns, at a priority
+set by the event's kind. It never adds a second look beside one that exists.
+`Queue.promote` already says why: two items for one piece of work each chain
+their own successor, and the queue forks into two chains that both spend an
+agent (`packages/core/src/ports/Queue.ts`). So, for the work an event
+concerns:
+
+- **A look is pending:** the event promotes it to now and raises its priority
+  with `reprioritize`.
+- **A look is running:** the event is coalesced into it. The look marks its
+  item, and the successor `Worker.advance` enqueues is due at once instead of
+  after the backoff, so what happened during the look is read by the next one.
+- **No look exists:** only then does the event enqueue one.
+
+However many events arrive for one piece of work, it has one chain of looks. The look that item
 causes is an ordinary look:
 
 - `observe` reads the world;
@@ -121,8 +134,11 @@ build.
       priority, and the look it causes is an ordinary look that reads the
       world rather than the payload
       (proof: deferred:test:plugins/serial-engine/tests/Worker.test.ts)
-- [ ] The same event delivered twice, or two out of order, makes no more moves
-      than one look would
+- [ ] An event for work with a pending look promotes and reprioritises that
+      look rather than adding one, an event during a running look makes its
+      successor due at once, and only work with no look gets a new item; the
+      same event delivered twice, or two out of order, makes no more moves than
+      one look would
       (proof: deferred:test:plugins/serial-engine/tests/Worker.test.ts)
 - [ ] A waiting state with an event edge wakes on that event without waiting
       for its backoff, and a dotted label nothing publishes is refused at boot

@@ -32,10 +32,14 @@ stateDiagram-v2
     split --> TASK_A
     split --> TASK_B
     split --> TASK_C
-    TASK_A --> merge
-    TASK_B --> merge
-    TASK_C --> merge
-    merge --> INTEGRATED
+    TASK_A --> merge: DONE
+    TASK_A --> merge: DECLINED
+    TASK_B --> merge: DONE
+    TASK_B --> merge: DECLINED
+    TASK_C --> merge: DONE
+    TASK_C --> merge: DECLINED
+    merge --> INTEGRATED: every lane is done
+    merge --> ESCALATED: a lane declined
     class TASK_A, TASK_B, TASK_C call
 ```
 
@@ -52,9 +56,16 @@ own state, history and attempts:
   starts its callee at once.
 - **Input per lane.** Each lane takes its input from its own call binding:
   `TASK_A` gets the first task, `TASK_B` the second.
-- **At the join,** the caller moves on only when every lane has ended. It
-  takes the join's edge with every lane's output folded in, keyed by the lane's
-  state.
+- **Into the join, the call contract holds.** A lane is a call, so every
+  terminal state of its callee needs an edge out of the lane, labelled with
+  that state (*a workflow calls another*). In a fork, each of those edges leads
+  to the join. A lane terminal with no edge into the join is refused at boot,
+  as it would be anywhere else.
+- **At the join,** the caller moves on only when every lane has ended. The
+  join is the caller's decision point: its `decide` key reads which terminal
+  state each lane ended in, with every lane's output folded in and keyed by the
+  lane's state. It picks one of the join's outgoing edges. The join holds no
+  record of its own. It is where the caller's record waits until it decides.
 - **When a lane escalates,** its siblings carry on, and the caller waits in the
   join. The join reports which lanes are done and which one needs the person.
 
@@ -68,8 +79,23 @@ contend for the same things:
   pieces of work shared one tree. A lane's checkout comes from
   `ctx.checkouts()` (*the host lends the checkout*), one worktree per lane
   ([the worktree is the workplace](../docs/design/the-worktree-is-the-workplace.md)).
-  Two lanes on the same branch are refused at boot, because they would write
-  the same tree.
+  Separate worktrees do not stop two lanes from writing one branch.
+  `Git.prepareBranch()` checks a branch out with `--ignore-other-worktrees`,
+  and which branch a lane uses is known only at run time, from its input. So
+  the host keeps an atomic lease per repository and branch, taken the way the
+  file queue takes a claim, before any checkout or mutation. A lane that asks
+  for a branch another lane holds waits on it. That wait costs no attempt
+  (*waiting is not trying*), and the lane looks again when the lease is
+  released. Boot refuses only a conflict it can see without running anything:
+  two call bindings whose branch is the same literal.
+- **The revision a lane checks.** A lane that checks the caller's work, not
+  writes its own, needs the caller's change, not the base.
+  `WorktreeManager.acquire()` makes a new worktree detached at the
+  repository's base (`plugins/file-worktree/src/manager.ts`). So a call binding
+  may pass `revision`: the commit the caller's record holds. The host then
+  lends that lane a worktree detached at that commit, read-only for the lane.
+  Every lane of the fork sees the same commit, and none of them can move the
+  caller's branch.
 - **An agent.** Every lane's run passes the same budget check before the call,
   and a usage limit refunds the attempt (*waiting is not trying*). Three lanes
   hitting the limit wait, they do not fail.
@@ -102,8 +128,10 @@ stateDiagram-v2
     IMPLEMENTING --> checks
     checks --> GATE
     checks --> SELF_REVIEW
-    GATE --> verdict
-    SELF_REVIEW --> verdict
+    GATE --> verdict: GREEN
+    GATE --> verdict: RED
+    SELF_REVIEW --> verdict: APPROVED
+    SELF_REVIEW --> verdict: CHANGES_ASKED
     verdict --> IMPLEMENTING: either found something
     verdict --> PR_OPEN: both are clean
     class GATE, SELF_REVIEW call
@@ -111,7 +139,9 @@ stateDiagram-v2
 
 The `ticket-to-qa` scenario
 (`.software-factory/evidence/ticket-to-qa-scenario.sh`) drives it end to end
-through the installed executable, against its stand-in world. It runs once
+through the installed executable, against its stand-in world. Both lanes are
+bound with the implementation's commit as `revision`, and the scenario asserts
+that the gate and the self-review each checked that commit and not the base. It runs once
 under the serial engine and once under the concurrent one, and both runs must
 reach the same record.
 
@@ -132,14 +162,24 @@ the factory floor: you see where the line backs up.
 - [ ] A lane that escalates leaves its siblings running, and the caller waits
       in the join saying which lane needs the person
       (proof: deferred:test:packages/workflow-testkit/tests/lanes.test.ts)
-- [ ] Two lanes never share a worktree, and two lanes on one branch are refused
-      at boot (proof: deferred:test:packages/core/tests/lanes.test.ts)
+- [ ] Two lanes never share a worktree. Two lanes that ask for one repository
+      and branch at run time take its lease in turn: the second waits without
+      an attempt and goes on when the lease is released. Boot refuses only
+      bindings whose branch is the same literal
+      (proof: deferred:test:packages/core/tests/lanes.test.ts)
+- [ ] A lane bound with `revision` checks a worktree detached at that commit,
+      and cannot move the caller's branch
+      (proof: deferred:test:packages/core/tests/lanes.test.ts)
+- [ ] A lane terminal with no labelled edge into the join is refused at boot,
+      and the join's `decide` reads every lane's terminal state and output
+      (proof: deferred:test:packages/core/tests/diagram.test.ts)
 - [ ] Under the serial engine, the lanes reach the same end state, in turn,
       as under the concurrent one, in the `ticket-to-qa` scenario
       (proof: deferred:assertion:lifecycle.lanes_end_the_same_serial_or_concurrent)
 - [ ] In the `ticket-to-qa` scenario, a change the gate refuses and the
       self-review would approve goes back to the implementation once, carrying
-      both lanes' findings, and the next round reaches `PR_OPEN`
+      both lanes' findings, both lanes checked the implementation's commit,
+      and the next round reaches `PR_OPEN`
       (proof: deferred:assertion:lifecycle.gate_and_self_review_run_as_two_lanes)
 
 **Exit condition:** `ticket-to-qa`'s scenario runs its gate and its self-review

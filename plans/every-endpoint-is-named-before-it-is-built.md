@@ -46,7 +46,12 @@ request. A row that needs one the registry does not have adds it here first.
   and every write lands on them the way the matching `amy` command's would.
 - Paths are versioned, `/v1/…`, and owned by one domain each.
 - Every request carries `Authorization: Bearer <token>`; `401 session.unauthorized`
-  is declared on every operation and not repeated below.
+  is declared on every operation and not repeated below. There are two
+  exceptions, and only two: `receiveGitHubEvent` and `receiveLinearEvent`. A
+  tool's webhook cannot carry amy's token, so those two are authenticated by
+  the tool's signature instead, verified before anything is read, and they
+  carry no session either. They are the only routes that answer without the
+  token, and every other operation, `listEventSources` included, keeps both.
 - Every request after `openSession` carries `X-Amy-Session: <sessionId>`, so
   the server knows which client asked and which stream an operation's later
   events go to — an ask's answer, a shell's output. A session belongs to the
