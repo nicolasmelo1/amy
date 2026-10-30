@@ -91,4 +91,15 @@ describe("FileStopSwitch", () => {
 
     await expect(heard).resolves.toBe("pulled mid-run");
   });
+
+  it("delivers a stop once when the event and fallback poll both see it", async () => {
+    let calls = 0;
+    const unwatch = stop.watch(() => { calls += 1; });
+
+    stop.request("once");
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    unwatch();
+
+    expect(calls).toBe(1);
+  });
 });

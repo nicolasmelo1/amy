@@ -45,7 +45,9 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig, fro
   }
   // Read before anything is written, so a diagram amy cannot read is refused
   // with its line and leaves no half-made directory behind.
-  const drawn = from === undefined ? undefined : readDiagram(fs.readFileSync(from, "utf-8"), from);
+  const drawn = from === undefined
+    ? readDiagram(scaffoldDiagram(), `${name}/${DIAGRAM_FILE}`)
+    : readDiagram(fs.readFileSync(from, "utf-8"), from);
 
   const directory = path.join(workflowsDirectory(home), name);
   if (fs.existsSync(directory)) {
@@ -61,7 +63,7 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig, fro
     main: "./dist/index.js",
     types: "./dist/index.d.ts",
     // The diagram is the workflow's shape: a package without it cannot mount.
-    files: drawn ? ["dist", DIAGRAM_FILE] : ["dist"],
+    files: ["dist", DIAGRAM_FILE],
     scripts: { build: "tsc", typecheck: "tsc --noEmit", test: "node --test", prepack: "npm run build" },
     // A dependency, not a dev one: the published `dist/index.d.ts` imports
     // its types, as every shipped workflow package does.
@@ -69,14 +71,9 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig, fro
     devDependencies: { [TESTKIT]: `^${groupVersion()}`, typescript: TYPESCRIPT },
   }, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "tsconfig.json"), JSON.stringify(SCAFFOLD_TSCONFIG, null, 2) + "\n", "utf-8");
-  if (drawn) {
-    fs.writeFileSync(path.join(directory, DIAGRAM_FILE), drawn.text, "utf-8");
-    fs.writeFileSync(path.join(directory, "index.ts"), scaffoldFromDiagram(name, drawn.states), "utf-8");
-    fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuiteFromDiagram(), "utf-8");
-  } else {
-    fs.writeFileSync(path.join(directory, "index.ts"), scaffold(name), "utf-8");
-    fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuite(), "utf-8");
-  }
+  fs.writeFileSync(path.join(directory, DIAGRAM_FILE), drawn.text, "utf-8");
+  fs.writeFileSync(path.join(directory, "index.ts"), from === undefined ? scaffold(name) : scaffoldFromDiagram(name, drawn.states), "utf-8");
+  fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuiteFromDiagram(), "utf-8");
   linkCore(directory);
   writeGuardrails(directory);
   writeWorkflowProfile(home, name, name, config);
@@ -438,50 +435,46 @@ function groupVersion(): string {
 }
 
 function scaffold(name: string): string {
-  return `// This workflow belongs to this machine. Edit the states and the two halves below.
+  return `// This workflow belongs to this machine. Edit workflow.mmd and the pieces below.
 // \`amy workflow check ${name}\` drives this file before it drives real work,
 // and \`npm test\` runs the machine's own suite over it. Node runs it as it is;
 // \`npm run build\` compiles it for publishing.
-import { defineWorkflow, planning, type ConfigSchema, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
+import { act, advance, defineWorkflow, settled, type ConfigSchema, type Plan, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
 
-type State = "received" | "done";
-type Effect = { type: string };
-const { act, advance, settled } = planning<State, Effect>();
-
-const runtimeParts = () => ({
-  found: async () => ["example"],
-  observe: async () => ({}),
-  // Every action the plan may emit, keyed by name, and what runs it: a
-  // handler, or { port, method } for a mounted port the host calls.
-  actions: {},
-  // Called as (record, plan, outcomes, observation, now, moved). \`record\`
-  // has already moved: read where it came from in \`moved.from\`, never in
-  // \`record.state\`. \`moved\` is null when the plan did not advance.
-  apply: (record: WorkRecord) => record,
-});
+export const decide: Record<string, (record: WorkRecord) => Plan> = {
+  received: () => advance("done", "the work was received"),
+  done: () => settled("the workflow is complete"),
+};
+export const discover = async () => ["example"];
+export const observe = async (_record: WorkRecord) => ({});
+export const actions = {};
+export function remember(record: WorkRecord): WorkRecord { return record; }
 
 export const plugin = defineWorkflow({
   name: ${JSON.stringify(name)},
-  states: ["received", "done"],
-  waiting: [],
-  terminal: ["done"],
   configSchema: {} satisfies ConfigSchema,
   policy: {},
   needs: {},
-  plan: (record: WorkRecord) =>
-    record.state === "received"
-      ? advance("done", "the work was received")
-      : settled("the workflow is complete"),
+  decide,
   record: () => ({}),
-  runtime: runtimeParts,
+  discover,
+  observe: (_scope, record) => observe(record),
+  actions,
+  remember: (_scope, record) => remember(record),
 });
 
-export const workflow = plugin.workflow;
-
 // The suite builds a fresh runtime and uses the core-owned record constructor.
-export function runtime(): WorkflowRuntime {
-  return { ...runtimeParts(), policy: {}, newRecord: plugin.newRecord };
+export function runtime(newRecord = plugin.newRecord): WorkflowRuntime {
+  return { found: discover, observe, actions, apply: remember, policy: {}, newRecord };
 }
+`;
+}
+
+function scaffoldDiagram(): string {
+  return `stateDiagram-v2
+    [*] --> received
+    received --> done: the work was received
+    done --> [*]
 `;
 }
 
@@ -492,21 +485,6 @@ export function runtime(): WorkflowRuntime {
  * kit takes whichever runner it is handed. A world is one situation the
  * workflow can be in, and adding one is how a new state gets proven.
  */
-function scaffoldSuite(): string {
-  return `import { describe, it } from "node:test";
-import { conforms } from "${TESTKIT}";
-import { runtime, workflow } from "./index.ts";
-
-// Each world is a situation this workflow can be in. Give one a \`meanwhile\`
-// for what the outside world does while the workflow waits.
-conforms(workflow, {
-  runner: { describe, it },
-  runtime: () => runtime(),
-  worlds: [{ name: "a piece of work arrives" }],
-});
-`;
-}
-
 /**
  * A workflow whose shape is somebody's diagram, copied in beside it.
  *
@@ -519,33 +497,38 @@ function scaffoldFromDiagram(name: string, states: readonly string[]): string {
   return `// This workflow's shape is workflow.mmd beside this file: the states, where
 // work starts, waits and ends. Write one decision per state below; each is a
 // stub until then. \`amy workflow check ${name}\` lists what is left to write.
-import { defineWorkflow, notWritten, type ConfigSchema, type Plan, type WorkRecord } from "@amykit/core";
+import { defineWorkflow, notWritten, type ConfigSchema, type Plan, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
 
 // One decision per state the diagram draws: where this piece of work goes next.
 const decide: Record<string, (record: WorkRecord) => Plan> = {
 ${decisions}
 };
 
-export const runtimeParts = () => ({
-  found: async () => ["example"],
-  observe: async () => ({}),
-  // Every action a decision may emit, keyed by name, and what runs it: a
-  // handler, or { port, method } for a mounted port the host calls.
-  actions: {},
-  // Called as (record, plan, outcomes, observation, now, moved). \`record\`
-  // has already moved: read where it came from in \`moved.from\`.
-  apply: (record: WorkRecord) => record,
-});
+export const discover = async () => ["example"];
+export const observe = async (_record: WorkRecord) => ({});
+export const actions = {};
+export function remember(record: WorkRecord): WorkRecord { return record; }
 
 export const plugin = defineWorkflow({
   name: ${JSON.stringify(name)},
   configSchema: {} satisfies ConfigSchema,
   policy: {},
   needs: {},
-  plan: (record: WorkRecord) => decide[record.state]!(record),
+  decide,
   record: () => ({}),
-  runtime: runtimeParts,
+  discover,
+  observe: (_scope, record) => observe(record),
+  // Every action a decision may emit, keyed by name, and what runs it: a
+  // handler, or { port, method } for a mounted port the host calls.
+  actions,
+  // Called as (record, plan, outcomes, observation, now, moved). \`record\`
+  // has already moved: read where it came from in \`moved.from\`.
+  remember: (_scope, record) => remember(record),
 });
+
+export function runtime(newRecord = plugin.newRecord): WorkflowRuntime {
+  return { found: discover, observe, actions, apply: remember, policy: {}, newRecord };
+}
 `;
 }
 
@@ -554,7 +537,7 @@ function scaffoldSuiteFromDiagram(): string {
   return `import { describe, it } from "node:test";
 import { withDiagramBeside } from "@amykit/core";
 import { conforms } from "${TESTKIT}";
-import { plugin, runtimeParts } from "./index.ts";
+import { plugin, runtime } from "./index.ts";
 
 // The workflow as amy mounts it: its states read from workflow.mmd beside it.
 // Red until every decision is written; each finding is one left to write.
@@ -562,7 +545,7 @@ const drawn = withDiagramBeside(plugin, import.meta.url);
 
 conforms(drawn.workflow, {
   runner: { describe, it },
-  runtime: () => ({ ...runtimeParts(), policy: {}, newRecord: drawn.newRecord }),
+  runtime: () => runtime(drawn.newRecord),
   worlds: [{ name: "a piece of work arrives" }],
 });
 `;

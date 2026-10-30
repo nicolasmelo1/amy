@@ -2,12 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
+import { ActionSpec } from "./actions.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
 import { deferred } from "./deferred.js";
 import { Plugin, PluginContext, Registry, Workflow } from "./plugin.js";
 import { WorkflowRuntime } from "./runtime.js";
-import { Action, Plan, WorkRecord } from "./work.js";
+import { Action, Moved, Plan, WorkRecord } from "./work.js";
+import { ActionContext, ActionImplementation, FoundWork, ProgressPolicy } from "./runtime.js";
 import { WORKFLOW_RUNTIME } from "./runtime.js";
 
 const PORT_NEED = Symbol("workflow-port-need");
@@ -27,13 +29,45 @@ export function optional<T>(): PortNeed<T, true> {
 }
 
 type Needs = Readonly<Record<string, PortNeed<unknown, boolean>>>;
-type PortsOf<N extends Needs> = {
+export type PortsOf<N extends Needs> = {
   readonly [K in keyof N]: N[K] extends PortNeed<infer T, true> ? T | undefined
     : N[K] extends PortNeed<infer T, false> ? T
       : never;
 };
 
 export type WorkflowRuntimeParts<R extends WorkRecord, O> = Omit<WorkflowRuntime<R, O>, "policy" | "newRecord">;
+
+/** Everything an individual runtime piece can use, built once at mount. */
+export type WorkflowPieceContext<S extends ConfigSchema, P extends object, N extends Needs> = {
+  readonly ports: PortsOf<N>;
+  readonly config: ConfigOf<S>;
+  readonly policy: P;
+  readonly checkouts: Checkouts;
+  readonly ctx: PluginContext<ConfigOf<S>>;
+};
+
+/** One state-sized pure decision. */
+export type WorkflowDecision<R extends WorkRecord, O, P, State extends string = string, Effect extends Action = Action> =
+  (record: R, observation: O, policy: P) => Plan<State, Effect>;
+
+/** One action implementation, with the mounted workflow context in front. */
+export type WorkflowAction<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O, Effect extends Action = Action> = (
+  scope: WorkflowPieceContext<S, P, N>,
+  work: ActionContext<R, O>,
+  effect: Effect,
+) => Promise<void>;
+
+/**
+ * Contextually types each handler from its action's own payload.
+ *
+ * A workflow supplies its effect union once, and each key then receives only
+ * the matching member instead of the core's deliberately open Action shape.
+ */
+export function workflowActions<Effect extends Action>() {
+  return <S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O>(
+    actions: { readonly [Name in Effect["type"]]: WorkflowAction<S, P, N, R, O, Extract<Effect, { type: Name }>> },
+  ) => actions;
+}
 
 type Claims<S extends ConfigSchema, P extends object> =
   | readonly string[]
@@ -65,12 +99,28 @@ interface Shape {
 }
 
 /** The four typed constructors a pure workflow plan returns. */
+export function act<Effect extends Action>(why: string, ...effects: Effect[]): Extract<Plan<string, Effect>, { kind: "act" }> {
+  return { kind: "act", effects, why };
+}
+
+export function advance<State extends string, Effect extends Action>(to: State, why: string, ...effects: Effect[]): Plan<State, Effect> {
+  return { kind: "advance", to, effects, why };
+}
+
+export function wait<Effect extends Action>(retryAfterMs: number, why: string, ...effects: Effect[]): Extract<Plan<string, Effect>, { kind: "wait" }> {
+  return { kind: "wait", retryAfterMs, why, effects };
+}
+
+export function settled(why: string): Extract<Plan, { kind: "settled" }> {
+  return { kind: "settled", why };
+}
+
 export function planning<State extends string, Effect extends Action>() {
   return {
-    act: (why: string, ...effects: Effect[]): Plan => ({ kind: "act", effects, why }),
-    advance: (to: State, why: string, ...effects: Effect[]): Plan => ({ kind: "advance", to, effects, why }),
-    wait: (retryAfterMs: number, why: string, ...effects: Effect[]): Plan => ({ kind: "wait", retryAfterMs, why, effects }),
-    settled: (why: string): Plan => ({ kind: "settled", why }),
+    act: (why: string, ...effects: Effect[]): Plan => act(why, ...effects),
+    advance: (to: State, why: string, ...effects: Effect[]): Plan => advance(to, why, ...effects),
+    wait: (retryAfterMs: number, why: string, ...effects: Effect[]): Plan => wait(retryAfterMs, why, ...effects),
+    settled,
   };
 }
 
@@ -92,14 +142,13 @@ export function notWrittenIn(plan: Plan): string | undefined {
   return plan.kind === "settled" ? NOT_WRITTEN.exec(plan.why)?.[1] : undefined;
 }
 
-export function defineWorkflow<
-  const S extends ConfigSchema,
-  const States extends readonly [string, ...string[]],
+interface DeclarationBase<
+  S extends ConfigSchema,
+  States extends readonly [string, ...string[]],
   P extends object,
-  const N extends Needs,
+  N extends Needs,
   R extends WorkRecord,
-  O,
->(declaration: {
+> {
   readonly name: string;
   readonly pluginName?: string;
   /**
@@ -116,8 +165,14 @@ export function defineWorkflow<
   readonly trackerWrites?: Claims<S, P>;
   readonly codeHostWrites?: Claims<S, P>;
   runtimePolicy?(args: { readonly ports: PortsOf<N>; readonly config: ConfigOf<S>; readonly policy: P }): P;
-  plan(record: R, observation: O, policy: P): Plan;
   record(workId: string): Omit<R, keyof WorkRecord>;
+  /** Registers the supporting half of a workflow: ports, queues, actions or harnesses. */
+  extend?(registry: Registry, ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
+}
+
+interface LegacyDeclaration<S extends ConfigSchema, States extends readonly [string, ...string[]], P extends object, N extends Needs, R extends WorkRecord, O>
+  extends DeclarationBase<S, States, P, N, R> {
+  plan(record: R, observation: O, policy: P): Plan;
   runtime(args: {
     readonly ports: PortsOf<N>;
     readonly config: ConfigOf<S>;
@@ -125,12 +180,44 @@ export function defineWorkflow<
     readonly checkouts: Checkouts;
     readonly ctx: PluginContext<ConfigOf<S>>;
   }): WorkflowRuntimeParts<R, O>;
-}): WorkflowPlugin<R, O, P> {
+}
+
+interface PiecesDeclaration<S extends ConfigSchema, States extends readonly [string, ...string[]], P extends object, N extends Needs, R extends WorkRecord, O>
+  extends DeclarationBase<S, States, P, N, R> {
+  readonly decide: Readonly<Record<string, WorkflowDecision<R, O, P, States[number]>>>;
+  before?(record: R, observation: O, policy: P): Plan<States[number]> | undefined;
+  after?(decision: Plan<States[number]>, record: R, observation: O, policy: P): Plan<States[number]>;
+  discover?(scope: WorkflowPieceContext<S, P, N>): Promise<readonly (string | FoundWork)[]>;
+  readonly progress?: ProgressPolicy | ((scope: WorkflowPieceContext<S, P, N>) => ProgressPolicy | undefined);
+  observe(scope: WorkflowPieceContext<S, P, N>, record: R): Promise<O>;
+  readonly actions:
+    | Readonly<Record<string, WorkflowAction<S, P, N, R, O> | ActionSpec>>
+    | ((scope: WorkflowPieceContext<S, P, N>) => Readonly<Record<string, WorkflowAction<S, P, N, R, O> | ActionSpec>>);
+  remember?(
+    scope: WorkflowPieceContext<S, P, N>, record: R, outcomes: Record<string, unknown>, observation: O,
+    moved: Moved | null, decision: Plan, now: Date,
+  ): R;
+  readonly plan?: never;
+  readonly runtime?: never;
+}
+
+type WorkflowDeclaration<S extends ConfigSchema, States extends readonly [string, ...string[]], P extends object, N extends Needs, R extends WorkRecord, O> =
+  | LegacyDeclaration<S, States, P, N, R, O>
+  | PiecesDeclaration<S, States, P, N, R, O>;
+
+export function defineWorkflow<
+  const S extends ConfigSchema,
+  const States extends readonly [string, ...string[]],
+  P extends object,
+  const N extends Needs,
+  R extends WorkRecord,
+  O,
+>(declaration: WorkflowDeclaration<S, States, P, N, R, O>): WorkflowPlugin<R, O, P> {
   return drawnWith(declaration, undefined);
 }
 
 type Declaration<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O> =
-  Parameters<typeof defineWorkflow<S, readonly [string, ...string[]], P, N, R, O>>[0];
+  WorkflowDeclaration<S, readonly [string, ...string[]], P, N, R, O>;
 
 /** The plugin for a declaration, shaped by the diagram the host read beside it, or by its own lists. */
 function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O>(
@@ -162,20 +249,29 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
       if (typeof shape === "string") refused();
       const ctx = untyped as PluginContext<ConfigOf<S>>;
       const policy = policyFor(declaration.name, declaration.policy, ctx.config.policy);
-      const workflow = workflowFor(declaration, shape as Shape, policy, ctx.config);
-      registry.workflow(workflow as Workflow<never, never>);
-      registry.contribute(WORKFLOW_RUNTIME, workflow.name, deferred(() => {
-        const ports = portsFor(declaration.name, declaration.needs, ctx) as PortsOf<N>;
-        const runtimePolicy = declaration.runtimePolicy?.({ ports, config: ctx.config, policy }) ?? policy;
-        const runtime = declaration.runtime({
-          ports,
-          config: ctx.config,
-          policy: runtimePolicy,
-          checkouts: ctx.checkouts(),
-          ctx,
-        });
-        return completeRuntime(runtime, runtimePolicy, newRecord);
-      }));
+      declarationMode(declaration);
+      if ("decide" in declaration) decisionsFit(declaration.name, (shape as Shape).states, declaration.decide);
+      const registerWorkflow = () => {
+        const workflow = workflowFor(declaration, shape as Shape, policy, ctx.config);
+        registry.workflow(workflow as Workflow<never, never>);
+        registry.contribute(WORKFLOW_RUNTIME, workflow.name, deferred(() => {
+          const ports = portsFor(declaration.name, declaration.needs, ctx) as PortsOf<N>;
+          const runtimePolicy = declaration.runtimePolicy?.({ ports, config: ctx.config, policy }) ?? policy;
+          const args = {
+            ports,
+            config: ctx.config,
+            policy: runtimePolicy,
+            checkouts: ctx.checkouts(),
+            ctx,
+          };
+          const runtime = "runtime" in declaration && declaration.runtime
+            ? declaration.runtime(args)
+            : runtimeFromPieces(declaration as PiecesDeclaration<S, readonly [string, ...string[]], P, N, R, O>, args);
+          return completeRuntime(runtime, runtimePolicy, newRecord);
+        }));
+      };
+      const extended = declaration.extend?.(registry, ctx);
+      return extended instanceof Promise ? extended.then(registerWorkflow) : registerWorkflow();
     },
   } satisfies Omit<WorkflowPlugin<R, O, P>, "workflow"> & Drawable;
   // A workflow with no states cannot be read until something gives it some,
@@ -296,7 +392,10 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     readonly name: string;
     readonly trackerWrites?: Claims<S, P>;
     readonly codeHostWrites?: Claims<S, P>;
-    plan(record: R, observation: O, policy: P): Plan;
+    plan?(record: R, observation: O, policy: P): Plan;
+    readonly decide?: Readonly<Record<string, WorkflowDecision<R, O, P>>>;
+    before?(record: R, observation: O, policy: P): Plan | undefined;
+    after?(decision: Plan, record: R, observation: O, policy: P): Plan;
   },
   shape: Shape,
   policy: P,
@@ -321,7 +420,66 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     ...(shape.diagram ? { diagram: shape.diagram } : {}),
     trackerWrites: claims(declaration.trackerWrites),
     codeHostWrites: claims(declaration.codeHostWrites),
-    plan: (record, observation, chosen) => declaration.plan(record as R, observation, chosen),
+    plan: (record, observation, chosen) => {
+      const current = record as R;
+      if (declaration.plan) return declaration.plan(current, observation, chosen);
+      const early = declaration.before?.(current, observation, chosen);
+      const decision = early ?? declaration.decide?.[current.state]?.(current, observation, chosen);
+      if (!decision) throw new Error(`${declaration.name} has no decision for state \`${current.state}\``);
+      return declaration.after?.(decision, current, observation, chosen) ?? decision;
+    },
+  };
+}
+
+const LEGACY_MEMBERS = ["plan", "runtime"] as const;
+const PIECE_MEMBERS = ["decide", "before", "after", "discover", "observe", "actions", "remember"] as const;
+
+function declarationMode(declaration: object): void {
+  const legacy = LEGACY_MEMBERS.filter((key) => key in declaration);
+  const pieces = PIECE_MEMBERS.filter((key) => key in declaration);
+  if (legacy.length > 0 && pieces.length > 0) {
+    throw new Error(`a workflow declaration cannot mix legacy ${legacy.map((key) => `\`${key}\``).join(", ")} with ${pieces.map((key) => `\`${key}\``).join(", ")}`);
+  }
+  if (pieces.length > 0) {
+    for (const required of ["decide", "observe", "actions"] as const) {
+      if (!(required in declaration)) throw new Error(`a three-piece workflow declaration must provide \`${required}\``);
+    }
+    return;
+  }
+  if (legacy.length !== LEGACY_MEMBERS.length) throw new Error("a legacy workflow declaration must provide both `plan` and `runtime`");
+}
+
+function decisionsFit(workflow: string, states: readonly string[], decide: Readonly<Record<string, unknown>>): void {
+  const names = Object.keys(decide);
+  const missing = states.filter((state) => !Object.hasOwn(decide, state));
+  const extra = names.filter((state) => !states.includes(state));
+  if (missing.length === 0 && extra.length === 0) return;
+  const details = [
+    ...(missing.length ? [`missing ${missing.map((state) => `\`${state}\``).join(", ")}`] : []),
+    ...(extra.length ? [`extra ${extra.map((state) => `\`${state}\``).join(", ")}`] : []),
+  ];
+  throw new Error(`the ${workflow} workflow's \`decide\` does not match its states: ${details.join("; ")}`);
+}
+
+function runtimeFromPieces<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O>(
+  declaration: PiecesDeclaration<S, readonly [string, ...string[]], P, N, R, O>,
+  scope: WorkflowPieceContext<S, P, N>,
+): WorkflowRuntimeParts<R, O> {
+  const actions = Object.create(null) as Record<string, ActionImplementation<R, O>>;
+  const declared = typeof declaration.actions === "function" ? declaration.actions(scope) : declaration.actions;
+  for (const [name, implementation] of Object.entries(declared)) {
+    actions[name] = typeof implementation === "function"
+      ? (effect, work) => (implementation as WorkflowAction<S, P, N, R, O>)(scope, work, effect)
+      : implementation;
+  }
+  const progress = typeof declaration.progress === "function" ? declaration.progress(scope) : declaration.progress;
+  return {
+    ...(progress ? { progress } : {}),
+    found: () => declaration.discover?.(scope) ?? Promise.resolve([]),
+    observe: (record) => declaration.observe(scope, record),
+    actions,
+    apply: (record, decision, outcomes, observation, now, moved) =>
+      declaration.remember?.(scope, record, outcomes, observation, moved, decision, now) ?? record,
   };
 }
 

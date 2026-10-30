@@ -40,13 +40,25 @@ export class FileStopSwitch implements StopSwitch {
     fs.mkdirSync(directory, { recursive: true });
 
     // Watching the directory rather than the file, because the file does not
-    // exist yet and that is the event worth hearing about.
+    // exist yet and that is the event worth hearing about. The poll is the
+    // fallback for a dropped/coalesced filesystem event, which must not leave
+    // a running machine blind to its stop request.
+    let closed = false;
+    let delivered = false;
+    const deliver = () => {
+      if (closed || delivered || !this.isRequested()) return;
+      delivered = true;
+      onRequested(this.reason() ?? "no reason given");
+    };
     const watcher = fs.watch(directory, (_event, name) => {
-      if (name === path.basename(this.file) && this.isRequested()) {
-        onRequested(this.reason() ?? "no reason given");
-      }
+      if (name === path.basename(this.file)) deliver();
     });
+    const poll = setInterval(deliver, 50);
 
-    return () => watcher.close();
+    return () => {
+      closed = true;
+      clearInterval(poll);
+      watcher.close();
+    };
   }
 }

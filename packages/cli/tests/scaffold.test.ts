@@ -51,14 +51,14 @@ describe("a workflow of your own", () => {
 
   it("refuses a state its walkthrough never reaches", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
-    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
-      'states: ["received", "done"]',
-      'states: ["received", "done", "stranded"]',
+    const diagram = path.join(directory, "workflow.mmd");
+    fs.writeFileSync(diagram, fs.readFileSync(diagram, "utf-8").replace(
+      "    done --> [*]",
+      "    received --> stranded\n    stranded --> done\n    done --> [*]",
     ));
 
-    await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toContain(
-      "oncall: declares `stranded`, but its walkthrough never reaches it",
+    expect((await checkWorkflow(home, "oncall", loadConfig(home))).join("; ")).toContain(
+      "the oncall workflow's `decide` does not match its states: missing `stranded`",
     );
   });
 
@@ -78,7 +78,7 @@ describe("a workflow of your own", () => {
   it("refuses an action declared with nothing behind it, before driving anything", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
-    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("actions: {},", "actions: { page: undefined },"));
+    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("export const actions = {};", "export const actions = { page: undefined };"));
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([
       "oncall: declares `page` with no implementation — give it a handler, or a port and a method",
@@ -102,6 +102,7 @@ describe("a workflow of your own", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
     fs.writeFileSync(entry, RAW_PLUGIN.replace("USES_ACTIONS", "usesActions: [],"));
+    fs.rmSync(path.join(directory, "workflow.mmd"));
     fs.mkdirSync(path.join(directory, "node_modules", "@amykit"), { recursive: true });
     const mountedCore = path.join(directory, "node_modules", "@amykit", "core");
     if (!fs.existsSync(mountedCore)) {
@@ -125,16 +126,16 @@ describe("a workflow of your own", () => {
 
   it("writes a suite that goes red, naming the state, when a state cannot be reached", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
-    fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
-      'states: ["received", "done"]',
-      'states: ["received", "done", "stranded"]',
+    const diagram = path.join(directory, "workflow.mmd");
+    fs.writeFileSync(diagram, fs.readFileSync(diagram, "utf-8").replace(
+      "    done --> [*]",
+      "    received --> stranded\n    stranded --> done\n    done --> [*]",
     ));
 
     const run = suiteOf(directory);
 
     expect(run.status).not.toBe(0);
-    expect(run.stdout).toContain("`stranded` is declared, and no world reaches it");
+    expect(run.stdout + run.stderr).toContain("`stranded` is declared, and no world reaches it");
   });
 
   it("names the testkit it runs at this command's own version", () => {
@@ -182,7 +183,7 @@ describe("a workflow of your own", () => {
     const run = tscIn(directory);
 
     expect(run.status, run.stdout + run.stderr).toBe(0);
-    expect(manifest.files).toEqual(["dist"]);
+    expect(manifest.files).toEqual(["dist", "workflow.mmd"]);
     const built = (await import(pathToFileURL(path.join(directory, manifest.main)).href)) as { plugin?: { name: string } };
     expect(built.plugin?.name).toBe("workflow-oncall");
   });

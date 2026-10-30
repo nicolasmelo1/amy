@@ -30,19 +30,19 @@ export interface WorkRecord {
   history: Transition[];
 }
 
-export type Plan =
+export type Plan<State extends string = string, Effect extends Action = Action> =
   /**
    * Do the work, stay in this state, and look again straight away. The next
    * look sees whatever the actions recorded, which is how a pure decision
    * function drives work that takes minutes or hours.
    */
-  | { kind: "act"; effects: Action[]; why: string }
-  | { kind: "advance"; to: string; effects: Action[]; why: string }
+  | { kind: "act"; effects: Effect[]; why: string }
+  | { kind: "advance"; to: State; effects: Effect[]; why: string }
   /**
    * Nothing to do until the outside world moves. May still carry actions, so
    * a workflow can say why it is stuck without leaving the state.
    */
-  | { kind: "wait"; retryAfterMs: number; why: string; effects: Action[] }
+  | { kind: "wait"; retryAfterMs: number; why: string; effects: Effect[] }
   /** Terminal, do not queue anything else. */
   | { kind: "settled"; why: string };
 

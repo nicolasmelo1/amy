@@ -1,4 +1,4 @@
-export type { ErrandState } from "./state.js";
+export type { Effect, ErrandState } from "./decide.js";
 
 export { attemptsIn } from "./record.js";
 export type { AttemptOutcome, ErrandRecord } from "./record.js";
@@ -9,16 +9,15 @@ export type { Observation, Policy } from "./observation.js";
 export { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./task-file.js";
 export { errandPrompt } from "./prompt.js";
 
-export { act, advance, settled, wait } from "./effects.js";
-export type { Effect } from "./effects.js";
+export { act, advance, settled, wait } from "@amykit/core";
 
 export { applyErrandPlan, applyOutcomes } from "./outcomes.js";
 export type { EffectOutcomes } from "./outcomes.js";
 
-export { plan } from "./machine.js";
+export { decide, plan } from "./decide.js";
 
-export { errandRuntime } from "./runtime.js";
-export type { ErrandRuntimeConfig, ErrandRuntimeDeps } from "./runtime.js";
+export { errandRuntime } from "./actions.js";
+export type { ErrandRuntimeConfig, ErrandRuntimeDeps } from "./actions.js";
 
 export { configSchema, plugin } from "./plugin.js";
 

@@ -14,7 +14,7 @@ import {
   Store,
   WorkflowRuntimeParts,
 } from "@amykit/core";
-import { Effect } from "./effects.js";
+import type { Effect } from "./decide.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes } from "./outcomes.js";
 import { ErrandRecord } from "./record.js";

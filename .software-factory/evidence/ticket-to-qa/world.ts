@@ -350,6 +350,12 @@ workflows:
     workflow: "@amykit/workflow-ticket-to-qa"
 defaultWorkflow: tickets
 
+# Package updates have their own installed scenario. This one drives more
+# than twenty single-move invocations and must not turn its twentieth move
+# into a registry call unrelated to the lifecycle under proof.
+autoUpdate:
+  enabled: false
+
 repos:
   - ${REPO}
   - ${OTHER_REPO}

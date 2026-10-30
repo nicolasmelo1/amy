@@ -230,6 +230,17 @@ else
     record update.a_daemon_updates_only_at_its_lifecycle_boundary 1
   fi
 fi
+# The detached reaper holds its due marker through the update. Starting the
+# foreground daemon before that marker clears correctly refuses, so wait for
+# the same durable boundary the command observes rather than racing it.
+for attempt in $(seq 1 30); do
+  if ! test -e .amy/workflows/oncall/auto-update-daemon &&
+     ! test -e .amy/workflows/oncall/auto-update-daemon.claiming &&
+     ! test -e .amy/workflows/oncall/auto-update-daemon.claimed; then
+    break
+  fi
+  sleep 1
+done
 # A directly-driven daemon owns the same schedule and becomes visible while it
 # runs, so update can never replace its files. After timing runs only after its
 # foreground loop has returned and its record is gone.
@@ -237,8 +248,12 @@ rm -f .amy/lifecycle.log
 : > "$requests"
 "$amy" --workflow oncall daemon --every 1 > "$work/direct-daemon.log" 2>&1 &
 direct=$!
-sleep 1
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  test -f .amy/daemon.pid && break
+  sleep 1
+done
 if ! test -f .amy/daemon.pid; then
+  cat "$work/direct-daemon.log" >&2 || true
   record update.direct_daemon_uses_the_configured_schedule 1
 else
   kill -TERM "$direct"

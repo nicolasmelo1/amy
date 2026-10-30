@@ -33,9 +33,9 @@ of four things:
 
 | Kind | Fields | What it means |
 | :-- | :-- | :-- |
-| `act` | `kind: "act"`<br>`effects: Action[]`<br>`why: string` | Do the work, stay in this state, and look again straight away. The next look sees whatever the actions recorded, which is how a pure decision function drives work that takes minutes or hours. |
-| `advance` | `kind: "advance"`<br>`to: string`<br>`effects: Action[]`<br>`why: string` |  |
-| `wait` | `kind: "wait"`<br>`retryAfterMs: number`<br>`why: string`<br>`effects: Action[]` | Nothing to do until the outside world moves. May still carry actions, so a workflow can say why it is stuck without leaving the state. |
+| `act` | `kind: "act"`<br>`effects: Effect[]`<br>`why: string` | Do the work, stay in this state, and look again straight away. The next look sees whatever the actions recorded, which is how a pure decision function drives work that takes minutes or hours. |
+| `advance` | `kind: "advance"`<br>`to: State`<br>`effects: Effect[]`<br>`why: string` |  |
+| `wait` | `kind: "wait"`<br>`retryAfterMs: number`<br>`why: string`<br>`effects: Effect[]` | Nothing to do until the outside world moves. May still carry actions, so a workflow can say why it is stuck without leaving the state. |
 | `settled` | `kind: "settled"`<br>`why: string` | Terminal, do not queue anything else. |
 
 <!-- amy:end plan-kinds -->

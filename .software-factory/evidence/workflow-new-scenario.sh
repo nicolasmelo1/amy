@@ -46,10 +46,12 @@ if "$amy" workflow check oncall >/dev/null 2>&1; then spinning=1; else spinning=
 record mine.a_workflow_that_spins_is_refused "$spinning"
 cp "$entry.clean" "$entry"
 
-python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'states: ["received", "done"]' 'states: ["received", "done", "stranded"]'
+diagram="$work/home/.amy/workflows/oncall/workflow.mmd"
+cp "$diagram" "$diagram.clean"
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$diagram" '    done --> [*]' '    received --> stranded\n    stranded --> done\n    done --> [*]'
 if "$amy" workflow check oncall >/dev/null 2>&1; then unreachable=1; else unreachable=0; fi
 record mine.a_state_nothing_reaches_is_refused "$unreachable"
-cp "$entry.clean" "$entry"
+mv "$diagram.clean" "$diagram"
 
 python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'advance("done", "the work was received")' 'advance("done", "the work was received", { type: "page" })'
 if "$amy" workflow check oncall >/dev/null 2>&1; then missing=1; else missing=0; fi
@@ -80,7 +82,7 @@ record guardrails.an_every_over_nothing_is_refused "$?"
 
 # The scaffold's own fold, now that it is TypeScript `sf` can read.
 cp "$entry" "$entry.clean"
-python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'apply: (record: WorkRecord) => record,' 'apply: (record: WorkRecord) => (record.state === "received" ? { ...record, paged: true } : record),'
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'export function remember(record: WorkRecord): WorkRecord { return record; }' 'export function remember(record: WorkRecord): WorkRecord { return record.state === "received" ? { ...record, paged: true } : record; }'
 if sf check --root "$workflow" --rule L6.FOLD_READS_A_MOVED_RECORD >/dev/null 2>&1; then fold=1; else fold=0; fi
 record guardrails.a_fold_reading_the_moved_state_is_refused "$fold"
 mv "$entry.clean" "$entry"

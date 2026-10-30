@@ -16,10 +16,10 @@ import { ScriptedRunner } from "@amykit/test-fixtures";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { PlanRecord } from "../src/record.js";
 import { newRecord } from "./drawn.js";
-import { PlanState } from "../src/state.js";
+import { PlanState } from "../src/decide.js";
 import { Note, Notes } from "../src/ports/Notes.js";
 import { PlanCheck } from "../src/ports/PlanCheck.js";
-import { planRuntime } from "../src/runtime.js";
+import { planRuntime } from "../src/actions.js";
 
 /** The handler this runtime declared for one action, as the handler it is. */
 function handler(runtime: ReturnType<typeof planRuntime>, name: string): ActionHandler<PlanRecord, Observation> {
