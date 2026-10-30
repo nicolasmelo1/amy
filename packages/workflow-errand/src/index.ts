@@ -1,4 +1,3 @@
-export { ERRAND_STATES, WAITING_STATES, isTerminal, isWaiting } from "./state.js";
 export type { ErrandState } from "./state.js";
 
 export { attemptsIn } from "./record.js";
@@ -21,6 +20,6 @@ export { plan } from "./machine.js";
 export { errandRuntime } from "./runtime.js";
 export type { ErrandRuntimeConfig, ErrandRuntimeDeps } from "./runtime.js";
 
-export { configSchema, errand, newRecord, plugin } from "./plugin.js";
+export { configSchema, plugin } from "./plugin.js";
 
 export type { NewTask, Task, Tasks } from "./ports/Tasks.js";

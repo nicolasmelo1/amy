@@ -1445,3 +1445,27 @@ describe("an escalation answered on the ticket", () => {
     expect(prompts.find((p) => p.step === "implement")?.prompt).toContain("- ada decided, and this settles it: use USD instead");
   });
 });
+
+describe("HUMAN_REVIEW, after asking again", () => {
+  const ASKED = "2026-09-03T12:00:00.000Z";
+  const askedAgain = record("HUMAN_REVIEW", {
+    reviewer: "ada",
+    history: [{ at: ASKED, from: "RE_REVIEW", to: "HUMAN_REVIEW", why: "asking ada to look again" }],
+  });
+  const changesRequested = (submittedAt: string, state: "CHANGES_REQUESTED" | "APPROVED" = "CHANGES_REQUESTED") => observation({
+    pullRequest: pullRequest({ reviewDecision: state, reviews: [review({ state, submittedAt })] }),
+  });
+
+  it("waits for the reviewer when the only review on the head is the one that sent it back", () => {
+    // Nothing was pushed, so the head is the one they asked changes on.
+    // Reading that review as the answer would ask again on every look.
+    const decided = plan(askedAgain, changesRequested("2026-09-03T11:00:00.000Z"), policy);
+
+    expect(expectWait(decided).why).toContain("ada to look again");
+  });
+
+  it("reads a review submitted since it asked as the answer", () => {
+    expect(expectAdvance(plan(askedAgain, changesRequested("2026-09-03T12:30:00.000Z", "APPROVED"), policy)).to).toBe("APPROVED");
+    expect(expectAdvance(plan(askedAgain, changesRequested("2026-09-03T12:30:00.000Z"), policy)).to).toBe("RE_REVIEW");
+  });
+});

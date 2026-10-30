@@ -1,5 +1,6 @@
 import { PullRequestView, ReviewSubmission, ReviewThread } from "@amykit/core";
-import { DEFAULT_POLICY, Observation, Policy, Roster, Ticket, TicketRecord, TicketState, newRecord } from "@amykit/workflow-ticket-to-qa";
+import { DEFAULT_POLICY, Observation, Policy, Roster, Ticket, TicketRecord, TicketState } from "@amykit/workflow-ticket-to-qa";
+import { newTicketRecord as newRecord } from "./ticket-to-qa.js";
 /** A Thursday, so workday rules apply unless a test says otherwise. */
 export const WORKDAY = new Date("2026-09-03T12:00:00.000Z");
 /** A Saturday. */

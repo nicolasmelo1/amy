@@ -2,7 +2,8 @@ import { describe, it } from "vitest";
 import { AttemptOutcome, lendCheckouts, Harness, PullRequestView, Store } from "@amykit/core";
 import { World, conforms } from "@amykit/workflow-testkit";
 import { ScriptedRunner, fakeHost, fakeRun, pullRequest, whenArgsInclude } from "@amykit/test-fixtures";
-import { DEFAULT_POLICY, Note, PlanRecord, newRecord, noteToPlan, planRuntime } from "../src/index.js";
+import { DEFAULT_POLICY, Note, PlanRecord, planRuntime } from "../src/index.js";
+import { newRecord, workflow as noteToPlan } from "./drawn.js";
 
 const REPO = "acme/widgets";
 
@@ -25,6 +26,7 @@ class NoteWorld implements World {
     readonly name: string,
     private readonly note: Note,
     inFlight = 0,
+    private readonly redChecks = 1,
   ) {
     this.others = Array.from({ length: inFlight }, (_, index) => ({
       ...newRecord(`other-${index}`, new Date(note.writtenAt)),
@@ -64,10 +66,11 @@ class NoteWorld implements World {
     if (open) open.state = "DONE";
   }
 
-  /** Red the first time, so `CHECKED` sends the draft back once before it holds. */
+  /** Red the first `redChecks` times, so `CHECKED` sends the draft back before it holds — or until it gives up. */
   private check(now: () => Date): AttemptOutcome {
     this.checks += 1;
-    return { ok: this.checks > 1, output: this.checks > 1 ? "ok" : "the plan has no exit condition", at: now().toISOString() };
+    const ok = this.checks > this.redChecks;
+    return { ok, output: ok ? "ok" : "the plan has no exit condition", at: now().toISOString() };
   }
 }
 
@@ -87,6 +90,9 @@ describe("note-to-plan", () => {
       new NoteWorld("a note about a repository plans are written into", note(REPO)),
       new NoteWorld("a note about somewhere plans are not written", note("acme/elsewhere")),
       new NoteWorld("a note that arrives while two plans are unread", note(REPO), 2),
+      new NoteWorld("a note no draft of which gets past the check", note(REPO), 0, Number.POSITIVE_INFINITY),
     ],
+    // Shipped, so every arrow its diagram draws is one some world walks.
+    everyEdge: true,
   });
 });

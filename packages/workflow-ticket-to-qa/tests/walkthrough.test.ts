@@ -5,7 +5,7 @@ import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
 import { PullRequestView, ReviewSubmission, ReviewThread, actionsOf } from "@amykit/core";
 import { Observation } from "../src/observation.js";
 import { TicketRecord } from "../src/record.js";
-import { newRecord } from "../src/plugin.js";
+import { newRecord } from "./drawn.js";
 import { TicketState } from "../src/state.js";
 import { WORKDAY, policy, roster, ticket } from "@amykit/test-fixtures";
 
@@ -60,6 +60,15 @@ class FakeWorld {
   private now(): Date {
     this.clock += 1000;
     return new Date(this.clock);
+  }
+
+  /**
+   * When a look is folded, on the world's clock — the one the reviews are
+   * stamped on — as the engine stamps both with the one `now`. Whether a
+   * review came after the request it answers depends on it.
+   */
+  stamp(): Date {
+    return this.now();
   }
 
   private nextHead(): string {
@@ -263,7 +272,7 @@ function drive(world: FakeWorld, limit = 80): { record: TicketRecord; states: Ti
 
     const outcomes = world.execute(record, actionsOf(decision) as Effect[]);
     const before = record.state;
-    record = applyTicketPlan(record, decision, outcomes, new Date(Date.now() + step));
+    record = applyTicketPlan(record, decision, outcomes, world.stamp());
 
     if (record.state !== before) {
       states.push(record.state);

@@ -3,7 +3,6 @@ export type { Ticket } from "./ticket.js";
 
 export type { Comment } from "@amykit/core";
 
-export { TICKET_STATES, WAITING_STATES, isTerminal, isWaiting } from "./state.js";
 export type { TicketState } from "./state.js";
 
 export { attemptsIn, disagreements, judgedThreadIds } from "./record.js";
@@ -46,7 +45,7 @@ export { plan } from "./machine.js";
 export { ticketRuntime, workIdFor } from "./runtime.js";
 export type { TicketGit, TicketRuntimeConfig, TicketRuntimeDeps } from "./runtime.js";
 
-export { WORKFLOW_DATA, configSchema, newRecord, plugin, ticketToQa } from "./plugin.js";
+export { WORKFLOW_DATA, configSchema, plugin } from "./plugin.js";
 export type { Provider } from "./plugin.js";
 
 export type {

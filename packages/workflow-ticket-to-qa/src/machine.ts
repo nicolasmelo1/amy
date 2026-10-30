@@ -47,8 +47,9 @@ function retire(obs: Observation): Plan {
 
 /**
  * One planner per state. A record rather than a switch, so the compiler is
- * what proves no state was forgotten: a state added to `TICKET_STATES` and
- * not here does not build.
+ * what proves no state was forgotten: a state added to `TicketState` and
+ * not here does not build, and one drawn in `workflow.mmd` and not in
+ * `TicketState` is a move the walkthrough refuses.
  */
 const PLANNERS: Record<TicketState, Planner> = {
   DISCOVERED: (record) => planDiscovered(record),
@@ -529,6 +530,11 @@ function planHumanReview(record: TicketRecord, obs: Observation, policy: Policy)
     );
   }
 
+  const askedAgain = askedAgainAt(record);
+  if (askedAgain !== undefined && !reviewedSince(pr, reviewer, askedAgain)) {
+    return wait(policy.pollBackoffMs, `waiting for ${reviewer} to look again at ${pr.headSha.slice(0, 7)}`);
+  }
+
   if (pr.reviewDecision === "APPROVED") {
     return advance("APPROVED", `${reviewer} approved the current head`);
   }
@@ -543,6 +549,25 @@ function planHumanReview(record: TicketRecord, obs: Observation, policy: Policy)
   }
 
   return wait(policy.pollBackoffMs, `${reviewer} commented without deciding`);
+}
+
+/**
+ * When this round of review was asked for again, if it was.
+ *
+ * Nothing pushed since the reviewer asked for changes leaves their review on
+ * the head, and reading it as the answer to the request just made sends the
+ * work straight back to ask again, without ever waiting.
+ */
+function askedAgainAt(record: TicketRecord): string | undefined {
+  const last = record.history.at(-1);
+  return last?.from === "RE_REVIEW" && last.to === "HUMAN_REVIEW" ? last.at : undefined;
+}
+
+/** A review the reviewer submitted after `since`, compared as instants rather than as text. */
+function reviewedSince(pr: PullRequestView, reviewer: string, since: string): boolean {
+  const who = reviewer.toLowerCase();
+  const after = Date.parse(since);
+  return pr.reviews.some((review) => review.author.toLowerCase() === who && Date.parse(review.submittedAt) > after);
 }
 
 function planHumanFix(record: TicketRecord, obs: Observation, policy: Policy): Plan {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fakeGit, fakeTracker, ticket, ticketWorkerDeps } from "@amykit/test-fixtures";
-import { newRecord } from "../src/index.js";
+import { newRecord } from "./drawn.js";
 
 const clock = new Date("2026-10-03T12:00:00.000Z");
 

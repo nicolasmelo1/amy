@@ -6,7 +6,7 @@ import { plan } from "../src/machine.js";
 import { Observation, Policy } from "../src/observation.js";
 import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
 import { TicketRecord } from "../src/record.js";
-import { newRecord } from "../src/plugin.js";
+import { newRecord } from "./drawn.js";
 import { TicketState } from "../src/state.js";
 
 const policy: Policy = { ...machinePolicy, writes: "operator" };

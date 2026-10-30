@@ -18,11 +18,10 @@ import {
   Policy,
   Roster,
   TicketGit,
-  newRecord,
   ticketRuntime,
-  ticketToQa,
   Tracker,
 } from "@amykit/workflow-ticket-to-qa";
+import { newTicketRecord as newRecord, ticketToQa } from "./ticket-to-qa.js";
 import { fakeAgent, fakeGate, fakeGit, fakeHost, fakeTracker, runtimeConfig, workerConfig } from "./fakes.js";
 import { roster } from "./builders.js";
 

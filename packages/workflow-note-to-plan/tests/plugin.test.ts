@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { HostServices, Plugin, WORKFLOW_RUNTIME, mount, mountedActions, unmetNeeds } from "@amykit/core";
-import { plugin as noteToPlan } from "../src/plugin.js";
+import { plugin as noteToPlan } from "./drawn.js";
 
 const host: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },

@@ -25,7 +25,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "workflow.mmd"
   ],
   "dependencies": {
     "@amykit/core": "^0.6.0"
