@@ -365,6 +365,19 @@ it("types all four planning helpers against the workflow's states and effects", 
   expect(settled("done").kind).toBe("settled");
 });
 
+it("marks an act that only prepares the try, with or without the typed helpers", () => {
+  const { act: typedAct } = planning<"NEW", { type: "prepare-branch" }>();
+
+  expect(act("prepare", { attempt: false }, { type: "prepare-branch" })).toEqual({
+    kind: "act", why: "prepare", effects: [{ type: "prepare-branch" }], attempt: false,
+  });
+  expect(typedAct("prepare", { attempt: false }, { type: "prepare-branch" })).toEqual({
+    kind: "act", why: "prepare", effects: [{ type: "prepare-branch" }], attempt: false,
+  });
+  expect(act("try", { type: "prepare-branch" })).not.toHaveProperty("attempt");
+  expect(act("nothing to carry").effects).toEqual([]);
+});
+
 it("types an action handler by the payload named in its key", () => {
   const actions = workflowActions<{ type: "announce"; text: string }>()({
     announce: async (_scope, _work, effect) => {

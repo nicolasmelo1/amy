@@ -115,12 +115,18 @@ export function act<Effect extends Action>(why: string, ...effects: Effect[]): E
 export function act<Effect extends Action>(why: string, options: { attempt: false }, ...effects: Effect[]): Extract<Plan<string, Effect>, { kind: "act" }>;
 export function act<Effect extends Action>(
   why: string,
-  first?: Effect | { attempt: false },
-  ...rest: Effect[]
+  ...rest: (Effect | { attempt: false })[]
 ): Extract<Plan<string, Effect>, { kind: "act" }> {
-  const options = first && "attempt" in first && !("type" in first) ? first : undefined;
-  const effects = options ? rest : first === undefined ? [] : [first as Effect, ...rest];
-  return { kind: "act", effects, why, ...(options ? { attempt: false } : {}) };
+  return actOf(why, rest);
+}
+
+function actOf<Effect extends Action>(
+  why: string,
+  [first, ...rest]: (Effect | { attempt: false })[],
+): Extract<Plan<string, Effect>, { kind: "act" }> {
+  const notATry = !!first && !("type" in first) && first.attempt === false;
+  const effects = (notATry || first === undefined ? rest : [first, ...rest]) as Effect[];
+  return { kind: "act", effects, why, ...(notATry ? { attempt: false } : {}) };
 }
 
 export function advance<State extends string, Effect extends Action>(to: State, why: string, ...effects: Effect[]): Plan<State, Effect> {
@@ -136,8 +142,13 @@ export function settled(why: string): Extract<Plan, { kind: "settled" }> {
 }
 
 export function planning<State extends string, Effect extends Action>() {
+  // Written out rather than named, so a workflow re-exporting it can name it.
+  const typedAct: {
+    (why: string, ...effects: Effect[]): Plan;
+    (why: string, options: { attempt: false }, ...effects: Effect[]): Plan;
+  } = (why: string, ...rest: (Effect | { attempt: false })[]): Plan => actOf(why, rest);
   return {
-    act: (why: string, ...effects: Effect[]): Plan => act(why, ...effects),
+    act: typedAct,
     advance: (to: State, why: string, ...effects: Effect[]): Plan => advance(to, why, ...effects),
     wait: (retryAfterMs: number, why: string, ...effects: Effect[]): Plan => wait(retryAfterMs, why, ...effects),
     settled,

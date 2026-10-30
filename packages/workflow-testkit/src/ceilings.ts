@@ -1,4 +1,4 @@
-import { Plan, WorkRecord, applyPlan, movedBy } from "@amykit/core";
+import { Plan, WorkRecord, applyPlan, looksIn, movedBy } from "@amykit/core";
 import { Finding } from "./finding.js";
 import { describe, replay, sameMove } from "./plans.js";
 import { AnyWorkflow, Look, Walk, replayActions } from "./walk.js";
@@ -89,7 +89,7 @@ function holdsAreNotTries(workflow: AnyWorkflow, walk: Walk, extraLooks: number)
     const state = look.record.state;
     const longer: WorkRecord = {
       ...look.record,
-      looks: { ...(look.record.looks ?? look.record.attempts), [state]: (look.record.looks?.[state] ?? look.record.attempts[state] ?? 0) + extraLooks },
+      looks: { ...(look.record.looks ?? look.record.attempts), [state]: looksIn(look.record, state) + extraLooks },
     };
     // Compared as moves, not word for word: an escalation whose reason
     // quotes the attempt count is the same decision with a different number

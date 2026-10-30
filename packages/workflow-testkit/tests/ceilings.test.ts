@@ -1,17 +1,16 @@
-import { WorkRecord } from "@amykit/core";
+import { WorkRecord, attemptsIn, looksIn } from "@amykit/core";
 import { describe, expect, it } from "vitest";
 import { Finding, conformance } from "../src/index.js";
 import { act, advance, runtimeOf, settled, wait, workflowOf } from "./machines.js";
 
 interface Implementing extends WorkRecord {
   implemented?: boolean;
-  tries?: number;
 }
 
 /**
  * The shape that escalated a real ticket: a hold on a checkout another ticket
  * was standing in, counted against the ceiling on implementation attempts.
- * `countsTheHold` is the defect; the other half keeps its own count of tries.
+ * `countsTheHold` is the defect, reading looks; the other half reads attempts.
  */
 function implementing(countsTheHold: boolean) {
   return workflowOf<{ checkoutHeld: boolean }>({
@@ -24,7 +23,7 @@ function implementing(countsTheHold: boolean) {
       if (record.state === "done") return settled();
       if (observation.checkoutHeld) return wait();
       if (current.implemented) return advance("done");
-      const tries = countsTheHold ? (record.looks?.implementing ?? record.attempts.implementing ?? 0) : (current.tries ?? 0);
+      const tries = countsTheHold ? looksIn(record, "implementing") : attemptsIn(record, "implementing");
       return tries >= 3 ? advance("escalated", "escalate") : act("implement");
     },
   });
@@ -42,8 +41,7 @@ function aSharedCheckout() {
           },
           escalate: async () => {},
         },
-        apply: (record, outcomes) =>
-          outcomes.implemented ? { ...record, implemented: true, tries: (record.tries ?? 0) + 1 } : record,
+        apply: (record, outcomes) => (outcomes.implemented ? { ...record, implemented: true } : record),
       }),
     worlds: [{ name: "a checkout another ticket holds", meanwhile: [() => { checkout.checkoutHeld = false; }] }],
   };
@@ -65,7 +63,7 @@ describe("ceilings", () => {
     ]);
   });
 
-  it("passes the same hold when the workflow counts its own tries", async () => {
+  it("passes the same hold when the ceiling reads attempts, which a wait never spends", async () => {
     expect(ceilingsOf(await conformance(implementing(false), aSharedCheckout()))).toEqual([]);
   });
 
@@ -77,7 +75,7 @@ describe("ceilings", () => {
       plan: (record, observation) => {
         if (record.state !== "asking") return record.state === "done" ? settled() : wait();
         if (observation.answered) return advance("done");
-        return (record.looks?.asking ?? record.attempts.asking ?? 0) >= 3 ? advance("escalated", "escalate") : wait();
+        return looksIn(record, "asking") >= 3 ? advance("escalated", "escalate") : wait();
       },
     });
 

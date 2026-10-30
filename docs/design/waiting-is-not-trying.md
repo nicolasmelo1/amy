@@ -47,6 +47,9 @@ through `looks`, so it rejects a workflow that treats waiting as an agent try.
 - [x] A state held for the checkout over more looks than its ceiling allows
       escalates on the hold's own bound, never on the attempts ceiling
       (proof: test:packages/workflow-testkit/tests/ceilings.test.ts)
+- [x] Three attempts allowed, a tree held for five looks and prepared before
+      every try, escalates after three runs of the agent and says three
+      (proof: test:packages/core/tests/work.test.ts)
 
 **Exit condition:** a workflow allowing three implementation attempts, whose
 tree is held for five looks and prepared once before every try, escalates only
