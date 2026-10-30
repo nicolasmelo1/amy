@@ -1,0 +1,148 @@
+{
+  "scenario": "workflow-three-pieces",
+  "status": "passed",
+  "goal": "I want one diagram-backed workflow declaration whose decisions and runtime pieces run unchanged after installation, while the shipped lifecycle still retries a refused draft.",
+  "artifact": {
+    "package": "@amykit/core",
+    "entry": "defineWorkflow and amy workflow new",
+    "built_by": "scripts/install.sh"
+  },
+  "observed": {
+    "assertions_run": 33,
+    "assertions_failed": 0
+  },
+  "assertions": [
+    {
+      "type": "mine.the_scaffold_runs_before_it_is_edited",
+      "status": "passed"
+    },
+    {
+      "type": "mine.a_directory_name_is_a_workflow",
+      "status": "passed"
+    },
+    {
+      "type": "mine.the_scaffold_is_a_publishable_package",
+      "status": "passed"
+    },
+    {
+      "type": "mine.a_workflow_that_spins_is_refused",
+      "status": "passed"
+    },
+    {
+      "type": "mine.a_state_nothing_reaches_is_refused",
+      "status": "passed"
+    },
+    {
+      "type": "mine.an_action_with_no_port_is_refused",
+      "status": "passed"
+    },
+    {
+      "type": "guardrails.the_scaffold_passes_its_own_check",
+      "status": "passed"
+    },
+    {
+      "type": "guardrails.every_guardrail_fires_on_its_fixture",
+      "status": "passed"
+    },
+    {
+      "type": "guardrails.a_branch_reset_is_refused",
+      "status": "passed"
+    },
+    {
+      "type": "guardrails.an_every_over_nothing_is_refused",
+      "status": "passed"
+    },
+    {
+      "type": "guardrails.a_fold_reading_the_moved_state_is_refused",
+      "status": "passed"
+    },
+    {
+      "type": "mine.a_diagram_becomes_a_workflow",
+      "status": "passed"
+    },
+    {
+      "type": "plan.work_injected_by_command_reaches_the_queue",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_note_in_the_watched_directory_is_discovered",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_is_resolved_against_a_tracker",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_refused_draft_goes_back_to_the_agent",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_agent_is_told_what_the_check_said",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_reaches_a_pull_request_until_the_check_is_green",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_plan_carries_an_exit_condition_and_a_place_in_the_order",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_pull_request_is_opened_in_the_repository_the_note_is_about",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_pull_request_names_the_friction_it_came_from",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_new_is_opened_past_the_ceiling",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_ceiling_is_said_once",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_note_about_another_repository_is_handed_back",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_tick_that_gives_up_leaves_a_note_behind",
+      "status": "passed"
+    },
+    {
+      "type": "plan.both_workflows_run_on_the_same_installed_binary",
+      "status": "passed"
+    },
+    {
+      "type": "plan.each_workflow_keeps_its_own_queue_and_records",
+      "status": "passed"
+    },
+    {
+      "type": "plan.what_the_agent_spent_lands_in_the_shared_log",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_lifecycle_walks_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "plan.every_drawn_edge_is_walked",
+      "status": "passed"
+    },
+    {
+      "type": "plan.one_look_makes_at_most_one_move",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_machine_settles_instead_of_spinning",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_run_leaves_nothing_behind",
+      "status": "passed"
+    }
+  ]
+}

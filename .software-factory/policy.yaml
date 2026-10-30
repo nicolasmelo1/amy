@@ -381,6 +381,29 @@ gates:
       - "guardrails.an_every_over_nothing_is_refused"
       - "guardrails.a_fold_reading_the_moved_state_is_refused"
 
+  # The framework contract spans the core declaration, the scaffold that
+  # teaches it, and the shipped workflows that exercise both halves. These
+  # are existing installed scenarios gathered under the design that changed
+  # the contract; no assertion is inferred from a unit test.
+  workflow-three-pieces:
+    activation:
+      - "packages/core/src/define-workflow.ts"
+      - "packages/core/src/action-ports.ts"
+      - "packages/core/src/index.ts"
+      - "packages/cli/src/workflow.ts"
+      - "packages/workflow-errand/src/**"
+      - "packages/workflow-errand/workflow.mmd"
+      - "packages/workflow-note-to-plan/src/**"
+      - "packages/workflow-note-to-plan/workflow.mmd"
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "packages/workflow-ticket-to-qa/workflow.mmd"
+    evidence: ".software-factory/evidence/workflow-three-pieces.json"
+    plan: "docs/design/a-workflow-is-three-pieces.md"
+    required_assertions:
+      - "mine.the_scaffold_runs_before_it_is_edited"
+      - "plan.a_refused_draft_goes_back_to_the_agent"
+
+
   # One CLI adds or removes a mounted package; these are the paths that make
   # that promise true, so changing one expires the proof.
   amy-add-remove:

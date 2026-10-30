@@ -54,7 +54,7 @@ describe("a workflow ships with its guardrails", () => {
   it("keeps the guardrails out of the package a workflow publishes", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(factory, "..", "package.json"), "utf-8")) as { files: string[] };
 
-    expect(manifest.files).toEqual(["dist"]);
+    expect(manifest.files).toEqual(["dist", "workflow.mmd"]);
   });
 });
 

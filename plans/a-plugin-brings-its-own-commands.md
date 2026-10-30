@@ -15,7 +15,7 @@ every module in an installed app's `management/commands` directory. Rails
 lets an engine load its own Rake tasks and generators through its railtie.
 In both, the framework owns the entry point and what is installed fills it.
 amy is a framework for workflows the way Rails is one for web applications
-([a workflow is three pieces](a-workflow-is-three-pieces.md)), and its
+([a workflow is three pieces](../docs/design/a-workflow-is-three-pieces.md)), and its
 entry point should work the same way.
 
 ## What changes

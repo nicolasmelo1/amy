@@ -25,9 +25,17 @@ import { discussionBefore, discussing, readAs, settledDiscussion } from "./discu
  * tracker, a code host, a repository or an agent.
  */
 export function plan(record: TicketRecord, obs: Observation, policy: Policy): Plan {
-  if (obs.retired && record.state !== "DONE") return retire(obs);
-  const decided = PLANNERS[record.state](record, obs, policy);
-  return policy.writes === "operator" ? handOver(decided, record, obs, policy) : decided;
+  const early = before(record, obs, policy);
+  const decided = early ?? decide[record.state](record, obs, policy);
+  return after(decided, record, obs, policy);
+}
+
+export function before(record: TicketRecord, obs: Observation, _policy: Policy): Plan | undefined {
+  return obs.retired && record.state !== "DONE" ? retire(obs) : undefined;
+}
+
+export function after(decision: Plan, record: TicketRecord, obs: Observation, policy: Policy): Plan {
+  return policy.writes === "operator" ? handOver(decision, record, obs, policy) : decision;
 }
 
 type Planner = (record: TicketRecord, obs: Observation, policy: Policy) => Plan;
@@ -51,7 +59,7 @@ function retire(obs: Observation): Plan {
  * not here does not build, and one drawn in `workflow.mmd` and not in
  * `TicketState` is a move the walkthrough refuses.
  */
-const PLANNERS: Record<TicketState, Planner> = {
+export const decide: Record<TicketState, Planner> = {
   DISCOVERED: (record) => planDiscovered(record),
   CLARIFYING: planClarifying,
   READY: () => advance("IMPLEMENTING", "nothing is blocking the implementation"),

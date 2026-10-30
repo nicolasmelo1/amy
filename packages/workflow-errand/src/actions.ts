@@ -1,12 +1,8 @@
 import {
   ActionContext,
   ActionHandler,
-  AgentRun,
   baseBranchFor,
   CodeHost,
-  Event,
-  EventKind,
-  EventLog,
   Git,
   Harness,
   Notifier,
@@ -14,7 +10,7 @@ import {
   Store,
   WorkflowRuntimeParts,
 } from "@amykit/core";
-import { Effect } from "./effects.js";
+import type { Effect } from "./decide.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes } from "./outcomes.js";
 import { ErrandRecord } from "./record.js";
@@ -44,7 +40,6 @@ export interface ErrandRuntimeDeps {
   now: () => Date;
   config: ErrandRuntimeConfig;
   policy: Policy;
-  log?: EventLog;
 }
 
 type Context = ActionContext<ErrandRecord, Observation>;
@@ -60,43 +55,6 @@ const IN_FLIGHT = ["WORKING", "PR_OPEN"];
 export function errandRuntime(
   deps: ErrandRuntimeDeps,
 ): WorkflowRuntimeParts<ErrandRecord, Observation> {
-  const record = (kind: EventKind, rest: Omit<Event, "at" | "kind"> = {}): void => {
-    try {
-      deps.log?.append({ at: deps.now().toISOString(), kind, ...rest });
-    } catch {
-      // The engine is what tells the operator its log is broken; two voices
-      // for one outage is one too many.
-    }
-  };
-
-  const announce = async (text: string, ctx: Context): Promise<void> => {
-    try {
-      await deps.notifier.announce({ text, workId: ctx.record.id, state: ctx.record.state });
-    } catch (error) {
-      record("notify.failed", {
-        workId: ctx.record.id,
-        state: ctx.record.state,
-        detail: { error: error instanceof Error ? error.message : String(error), text },
-      });
-    }
-  };
-
-  const recordAgentRun = (ctx: Context, run: AgentRun): void => {
-    record("agent.run", {
-      workId: ctx.record.id,
-      state: ctx.record.state,
-      detail: {
-        harness: run.harness,
-        model: run.model,
-        outcome: run.outcome,
-        durationMs: run.durationMs,
-        costSource: run.costSource,
-        ...(run.costUsd === undefined ? {} : { costUsd: run.costUsd }),
-        ...(run.tokens === undefined ? {} : { tokens: { ...run.tokens } }),
-      },
-    });
-  };
-
   const requireTask = (workId: string): Task => {
     const found = deps.tasks.get(workId);
     if (!found) throw new Error(`the task ${workId} is not in the tasks directory any more`);
@@ -116,7 +74,6 @@ export function errandRuntime(
         deps.git.pathFor(task.repo, task.id),
         { workId: ctx.record.id, step: "run-errand" },
       );
-      recordAgentRun(ctx, reply.run);
 
       const at = deps.now().toISOString();
       if (reply.run.outcome !== "completed") {
@@ -155,8 +112,10 @@ export function errandRuntime(
       });
     },
 
+    // Standalone, a word the operator was owed fails the action; mounted, the
+    // plugin hands this to the host's best-effort `announce` instead.
     "announce": async (effect, ctx) => {
-      await announce(effect.text, ctx);
+      await deps.notifier.announce({ text: effect.text, workId: ctx.record.id, state: ctx.record.state });
     },
   };
 

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { Plan, PullRequestView, actionsOf } from "@amykit/core";
-import { plan } from "../src/machine.js";
+import { plan } from "../src/decide.js";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { EffectOutcomes, applyErrandPlan } from "../src/outcomes.js";
 import { ErrandRecord } from "../src/record.js";
 import { newRecord } from "./drawn.js";
-import { ErrandState } from "../src/state.js";
+import { ErrandState } from "../src/decide.js";
 import { Task } from "../src/ports/Tasks.js";
 
 const NOW = new Date("2026-09-05T10:00:00.000Z");

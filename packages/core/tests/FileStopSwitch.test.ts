@@ -57,6 +57,26 @@ describe("FileStopSwitch", () => {
     expect(new FileStopSwitch(file).isRequested()).toBe(true);
   });
 
+  it("tells a watcher once per request, and again after a release", async () => {
+    const heard: string[] = [];
+    const unwatch = stop.watch((reason) => heard.push(reason));
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 150));
+
+    try {
+      stop.request("first");
+      await settle();
+      expect(heard).toEqual(["first"]);
+
+      stop.clear();
+      await settle();
+      stop.request("second");
+      await settle();
+      expect(heard).toEqual(["first", "second"]);
+    } finally {
+      unwatch();
+    }
+  });
+
   it("creates the directory it was pointed at", () => {
     const deep = new FileStopSwitch(path.join(root, "a", "b", "STOP"));
 
@@ -90,5 +110,16 @@ describe("FileStopSwitch", () => {
     setTimeout(() => stop.request("pulled mid-run"), 20);
 
     await expect(heard).resolves.toBe("pulled mid-run");
+  });
+
+  it("delivers a stop once when the event and fallback poll both see it", async () => {
+    let calls = 0;
+    const unwatch = stop.watch(() => { calls += 1; });
+
+    stop.request("once");
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    unwatch();
+
+    expect(calls).toBe(1);
   });
 });

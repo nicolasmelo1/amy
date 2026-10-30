@@ -1,5 +1,5 @@
 import { WorkRecord } from "@amykit/core";
-import { ErrandState } from "./state.js";
+import type { ErrandState } from "./decide.js";
 
 export interface AttemptOutcome {
   ok: boolean;

@@ -1,4 +1,4 @@
-export type { PlanState } from "./state.js";
+export type { Effect, PlanState } from "./decide.js";
 
 export { attemptsIn } from "./record.js";
 export type { AttemptOutcome, PlanRecord } from "./record.js";
@@ -15,16 +15,15 @@ export {
 } from "./plan-file.js";
 export { draftPrompt } from "./prompt.js";
 
-export { act, advance, settled, wait } from "./effects.js";
-export type { Effect } from "./effects.js";
+export { act, advance, settled, wait } from "@amykit/core";
 
 export { applyNotePlan, applyOutcomes } from "./outcomes.js";
 export type { EffectOutcomes } from "./outcomes.js";
 
-export { plan } from "./machine.js";
+export { decide, plan } from "./decide.js";
 
-export { planRuntime } from "./runtime.js";
-export type { PlanRuntimeConfig, PlanRuntimeDeps } from "./runtime.js";
+export { planRuntime } from "./actions.js";
+export type { PlanRuntimeConfig, PlanRuntimeDeps } from "./actions.js";
 
 export { configSchema, plugin } from "./plugin.js";
 

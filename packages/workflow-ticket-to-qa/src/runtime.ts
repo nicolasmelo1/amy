@@ -83,6 +83,12 @@ export interface TicketRuntimeDeps {
   /** Optional, so a runtime with no log still runs. */
   log?: EventLog;
   /**
+   * Whether this runtime writes `agent.run` itself. Mounted, the host already
+   * writes one for every reply of the agent it hands an action, and a second
+   * line would make the budget count the run twice.
+   */
+  accountsAgentRuns?: boolean;
+  /**
    * The mounted brief store, when one is. Optional on purpose: an install
    * whose tickets carry no briefs is a real install, and the runtime resolves
    * what a ticket references rather than reaching for the store on its own.
@@ -162,6 +168,7 @@ export function ticketRuntime(
    * downstream has to guess which.
    */
   const recordAgentRun = (ctx: Context, run: AgentRun): void => {
+    if (deps.accountsAgentRuns === false) return;
     record("agent.run", {
       workId: ctx.record.id,
       state: ctx.record.state,

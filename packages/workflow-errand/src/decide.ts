@@ -1,7 +1,22 @@
-import { Plan } from "@amykit/core";
-import { act, advance, settled, wait } from "./effects.js";
+import { Plan, act, advance, settled, wait } from "@amykit/core";
 import { Observation, Policy } from "./observation.js";
 import { ErrandRecord, attemptsIn } from "./record.js";
+
+export type ErrandState = "QUEUED" | "WORKING" | "PR_OPEN" | "DONE" | "DECLINED";
+export type Effect =
+  | { type: "run-errand"; finding?: string }
+  | { type: "open-pull-request" }
+  | { type: "announce"; text: string };
+
+type Decision = (record: ErrandRecord, observation: Observation, policy: Policy) => Plan;
+
+export const decide = {
+  QUEUED: planQueued,
+  WORKING: planWorking,
+  PR_OPEN: (_record, observation) => planPullRequestOpen(observation),
+  DONE: () => settled("the errand is done, and whoever asked was told"),
+  DECLINED: () => settled("nothing was done, and the operator was told why"),
+} satisfies Record<ErrandState, Decision>;
 
 /**
  * Decides the single next move for one task.
@@ -12,18 +27,7 @@ import { ErrandRecord, attemptsIn } from "./record.js";
  * not a change" is a finished errand rather than a failed one.
  */
 export function plan(record: ErrandRecord, obs: Observation, policy: Policy): Plan {
-  switch (record.state) {
-    case "QUEUED":
-      return planQueued(record, obs, policy);
-    case "WORKING":
-      return planWorking(record, obs, policy);
-    case "PR_OPEN":
-      return planPullRequestOpen(obs);
-    case "DONE":
-      return settled("the errand is done, and whoever asked was told");
-    case "DECLINED":
-      return settled("nothing was done, and the operator was told why");
-  }
+  return decide[record.state](record, obs, policy);
 }
 
 function planQueued(record: ErrandRecord, obs: Observation, policy: Policy): Plan {
