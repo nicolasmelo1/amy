@@ -234,6 +234,8 @@ export class Worker {
     // engine is the half that does not. The move is handed over as well,
     // because the record the runtime gets has already made it.
     const delayMs = retryAfter(decision, outcomes, this.deps.config.retryDelayMs);
+    // The hold starts when the look ends: an agent cut off after minutes must
+    // still be held for the whole delay its outcome named.
     this.deps.queue.enqueue(
       {
         workId: item.workId,
@@ -242,7 +244,7 @@ export class Worker {
         progress: progress.next,
         priority: item.priority,
       },
-      now,
+      this.deps.now(),
     );
 
     this.deps.queue.complete(item);

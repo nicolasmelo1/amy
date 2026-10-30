@@ -113,6 +113,37 @@ describe("reachability", () => {
     expect(findings).toContainEqual({ property: "reachability", message: "`received` is declared, and no world reaches it" });
     expect(findings).toContainEqual({ property: "reachability", message: "`done` is declared, and no world reaches it" });
   });
+
+  it("lets the world move while a look that was never a try is held", async () => {
+    // A run cut off by a quota is held like a wait, so the quota can clear in
+    // the meantime instead of the walk retrying it until it runs out of looks.
+    const quota = { exhausted: true };
+    const implementing = workflowOf({
+      states: ["implementing", "done"],
+      terminal: ["done"],
+      plan: (record) => {
+        if (record.state === "done") return settled();
+        return (record as WorkRecord & { implemented?: boolean }).implemented ? advance("done") : act("implement");
+      },
+    });
+
+    const findings = await conformance(implementing, {
+      runtime: () =>
+        runtimeOf<WorkRecord & { implemented?: boolean }>("implementing", {
+          observe: () => ({}),
+          actions: {
+            implement: async (_action, ctx) => {
+              ctx.outcomes.implementation = quota.exhausted ? { notATry: true, retryAfterMs: 60_000 } : { done: true };
+            },
+          },
+          apply: (record, outcomes) =>
+            (outcomes.implementation as { done?: boolean } | undefined)?.done ? { ...record, implemented: true } : record,
+        }),
+      worlds: [{ name: "a quota that clears", meanwhile: [() => { quota.exhausted = false; }] }],
+    });
+
+    expect(findings).toEqual([]);
+  });
 });
 
 function straightMachine() {

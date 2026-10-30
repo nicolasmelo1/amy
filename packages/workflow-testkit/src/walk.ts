@@ -8,11 +8,15 @@ import {
   applyPlan,
   implementationOf,
   movedBy,
+  notATryIn,
   runAction,
   undeclaredIn,
 } from "@amykit/core";
 import { Finding, Property, message } from "./finding.js";
 import { Clock, World } from "./world.js";
+
+/** The engine holds a refunded look for its retry delay; the walk names one. */
+const REFUNDED_HOLD_MS = 60_000;
 
 /** The workflow and its runtime with their types let go of, which is all a walk needs. */
 export type AnyWorkflow = Workflow<unknown, unknown>;
@@ -113,7 +117,7 @@ async function drive(workflow: AnyWorkflow, runtime: AnyRuntime, first: WorkReco
     if (look.next.state !== record.state) worldMoved = false;
     record = look.next;
 
-    if (plan.kind !== "wait") {
+    if (look.holdMs === undefined) {
       walk.clock.pass(1000);
       continue;
     }
@@ -123,7 +127,7 @@ async function drive(workflow: AnyWorkflow, runtime: AnyRuntime, first: WorkReco
     // worlds, whether any of them gets the work out of here.
     const next = pending.shift();
     if (!next) return;
-    walk.clock.pass(plan.retryAfterMs);
+    walk.clock.pass(look.holdMs);
     if (!(await meanwhile(next, walk.fail))) return;
     worldMoved = true;
   }
@@ -146,7 +150,7 @@ async function lookOnce(
   runtime: AnyRuntime,
   record: WorkRecord,
   { clock, worldMoved, fail, port }: Drive & { worldMoved: boolean },
-): Promise<{ look: Look; next: WorkRecord } | undefined> {
+): Promise<{ look: Look; next: WorkRecord; holdMs?: number } | undefined> {
   const at = clock.now();
   let observation: unknown;
   try {
@@ -176,7 +180,14 @@ async function lookOnce(
     () => runtime.apply(applyPlan(record, plan, at, outcomes), plan, outcomes, observation, at, movedBy(record, plan)),
     (error) => fail("walk", `folding a look in \`${record.state}\` threw — ${error}`),
   );
-  return next ? { look, next } : undefined;
+  return next ? { look, next, holdMs: holdOf(plan, outcomes) } : undefined;
+}
+
+/** A wait holds, and so does a look whose outcome says it was never a try. */
+function holdOf(plan: Plan, outcomes: Record<string, unknown>): number | undefined {
+  if (plan.kind === "wait") return plan.retryAfterMs;
+  const refunded = plan.kind === "act" ? notATryIn(outcomes) : undefined;
+  return refunded ? (refunded.retryAfterMs ?? REFUNDED_HOLD_MS) : undefined;
 }
 
 /** Calls every action a plan carries, the way the engine would, and keeps what they produced. */
