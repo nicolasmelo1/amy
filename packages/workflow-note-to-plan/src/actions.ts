@@ -1,12 +1,8 @@
 import {
   ActionContext,
   ActionHandler,
-  AgentRun,
   baseBranchFor,
   CodeHost,
-  Event,
-  EventKind,
-  EventLog,
   Git,
   Harness,
   Notifier,
@@ -15,7 +11,7 @@ import {
   Store,
   WorkflowRuntimeParts,
 } from "@amykit/core";
-import { Effect } from "./effects.js";
+import type { Effect } from "./decide.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
 import { PlanRecord } from "./record.js";
@@ -55,8 +51,6 @@ export interface PlanRuntimeDeps {
   now: () => Date;
   config: PlanRuntimeConfig;
   policy: Policy;
-  /** Optional, so a runtime with no log still runs. */
-  log?: EventLog;
 }
 
 type Context = ActionContext<PlanRecord, Observation>;
@@ -78,45 +72,6 @@ const IN_FLIGHT = ["DRAFTED", "CHECKED", "PR_OPEN"];
  * learn nothing to do it.
  */
 export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRecord, Observation> {
-  /** Appends to the log if there is one, and shrugs if it throws. */
-  const record = (kind: EventKind, rest: Omit<Event, "at" | "kind"> = {}): void => {
-    try {
-      deps.log?.append({ at: deps.now().toISOString(), kind, ...rest });
-    } catch {
-      // The engine is what tells the operator its log is broken; two voices
-      // for one outage is one too many.
-    }
-  };
-
-  /** Says something to the operator, and never lets that cost a note. */
-  const announce = async (text: string, ctx: Context): Promise<void> => {
-    try {
-      await deps.notifier.announce({ text, workId: ctx.record.id, state: ctx.record.state });
-    } catch (error) {
-      record("notify.failed", {
-        workId: ctx.record.id,
-        state: ctx.record.state,
-        detail: { error: error instanceof Error ? error.message : String(error), text },
-      });
-    }
-  };
-
-  const recordAgentRun = (ctx: Context, run: AgentRun): void => {
-    record("agent.run", {
-      workId: ctx.record.id,
-      state: ctx.record.state,
-      detail: {
-        harness: run.harness,
-        model: run.model,
-        outcome: run.outcome,
-        durationMs: run.durationMs,
-        costSource: run.costSource,
-        ...(run.costUsd === undefined ? {} : { costUsd: run.costUsd }),
-        ...(run.tokens === undefined ? {} : { tokens: { ...run.tokens } }),
-      },
-    });
-  };
-
   const requireNote = (workId: string): Note => {
     const found = deps.notes.get(workId);
     if (!found) {
@@ -139,7 +94,6 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRec
         deps.git.pathFor(note.repo, note.id),
         { workId: ctx.record.id, step: "draft-plan" },
       );
-      recordAgentRun(ctx, reply.run);
 
       const at = deps.now().toISOString();
       if (reply.run.outcome !== "completed") {
@@ -190,8 +144,10 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRec
       });
     },
 
+    // Standalone, a word the operator was owed fails the action; mounted, the
+    // plugin hands this to the host's best-effort `announce` instead.
     "announce": async (effect, ctx) => {
-      await announce(effect.text, ctx);
+      await deps.notifier.announce({ text: effect.text, workId: ctx.record.id, state: ctx.record.state });
     },
   };
 

@@ -1,6 +1,6 @@
 # A workflow is three pieces
 
-[A workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md)
+[A workflow is one declaration](a-workflow-is-one-declaration.md)
 gave every workflow one `defineWorkflow` call in place of two registrations,
 a `required()` per port, a hand-merged policy and the core's half of the
 record. What an author still hands it is the shape of the old contract:
@@ -12,7 +12,7 @@ record. What an author still hands it is the shape of the old contract:
   built by hand from the ports.
 
 The first is the diagram's to say ([a workflow is a Mermaid
-diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md)). The other two are where a
+diagram](a-workflow-is-a-mermaid-diagram.md)). The other two are where a
 workflow's size still goes to things every workflow writes the same way: the
 `switch`, the rules that hold for every state and are wrapped around it, and
 the object the runtime assembles. amy is a framework for workflows the way
@@ -24,7 +24,7 @@ Like Rails, a workflow is three pieces, always in the same place:
 
 | Rails | amy | What it says |
 | --- | --- | --- |
-| `routes.rb` | `workflow.mmd` | where work can go ([a workflow is a Mermaid diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md)) |
+| `routes.rb` | `workflow.mmd` | where work can go ([a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md)) |
 | a controller | `decide` | where this piece of work goes next, given what the world says |
 | models and jobs | `actions` | what happens in the world: an agent run, a branch, a message |
 
@@ -45,7 +45,7 @@ export default defineWorkflow({
   },
 
   actions: {
-    run: ({ agent }, work, effect) => agent.run(effect.prompt),
+    run: ({ ports }, work, effect) => ports.agent.run(effect.prompt),
   },
 });
 ```
@@ -75,7 +75,15 @@ export default defineWorkflow({
   `before`, the state's decision and `after` compose into the one pure
   `plan()` the host already calls.
 - **`actions` declare and implement at once,** as the runtime's `actions`
-  already do. Each receives the ports `needs` asked for.
+  already do. Each receives the ports `needs` asked for, bound to the work:
+  every reply from `agent` writes an `agent.run` line naming the work and its
+  state, so the budget sees what it cost. Beside the ports an action gets
+  `announce(text)`, a word to the operator whose failure becomes a
+  `notify.failed` line instead of a failed action. `ports.notifier` stays
+  strict, because a message the work depends on, such as a write handed to the
+  operator, must fail the action when nobody heard it. The errand,
+  note-to-plan and ticket-to-qa each wrote both duties by hand, and a workflow
+  that forgot the first spent money the ceiling never counted.
 - **`remember` folds what the actions produced into the record,** given the
   record, the outcomes, the observation and the move. It is the runtime's
   `apply`, renamed for what it does. A workflow that keeps nothing beyond the
@@ -104,7 +112,7 @@ writes: a `workflow.mmd` and an `index.ts`. A raw `Plugin` that registers a work
 working, and the installed `workflow-oncall` fixture stays written that way, so
 the gate that drives it keeps proving the contract underneath.
 
-It comes after [a workflow is a Mermaid diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md),
+It comes after [a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md),
 which gives `decide` the states it is checked against. The declarations
 written against the delivered call keep mounting while each workflow moves:
 `states`, `plan` and `runtime` are still accepted beside the new members, and
@@ -112,28 +120,40 @@ refused only together with them.
 
 ## Acceptance criteria
 
-- [ ] A workflow with a diagram declares no `states`, `waiting` or `terminal`,
+- [x] A workflow with a diagram declares no `states`, `waiting` or `terminal`,
       and its `decide` has one key per state the diagram draws: a missing or
       extra key is refused at boot by name
-      (proof: deferred:test:packages/core/tests/define-workflow.test.ts)
-- [ ] `before` answers ahead of every state's decision and `after` sees every
+      (proof: test:packages/core/tests/define-workflow.test.ts)
+- [x] `before` answers ahead of every state's decision and `after` sees every
       decision, and the three compose into one pure `plan()`
-      (proof: deferred:test:packages/core/tests/define-workflow.test.ts)
-- [ ] `actions`, `remember`, `discover` and `observe` replace `runtime`, each
+      (proof: test:packages/core/tests/define-workflow.test.ts)
+- [x] `actions`, `remember`, `discover` and `observe` replace `runtime`, each
       receiving the typed ports, and a declaration that still passes `runtime`
       keeps mounting
-      (proof: deferred:test:packages/core/tests/define-workflow.test.ts)
-- [ ] A workflow that also mounts a queue, a port with actions bound to its
+      (proof: test:packages/core/tests/define-workflow.test.ts)
+- [x] The `agent` an action receives writes one `agent.run` for every reply,
+      a failed agent still fails the action, `announce` turns a failed word
+      into `notify.failed`, and `ports.notifier` stays strict
+      (proof: test:packages/core/tests/action-ports.test.ts)
+- [x] A workflow that also mounts a queue, a port with actions bound to its
       methods and a harness switched on by config does so through `extend`, in
       the same call
-      (proof: deferred:test:packages/core/tests/define-workflow.test.ts)
-- [ ] What `amy workflow new` writes is a `workflow.mmd` and an `index.ts`
+      (proof: test:packages/core/tests/define-workflow.test.ts)
+- [x] What `amy workflow new` writes is a `workflow.mmd` and an `index.ts`
       using the three pieces, and it runs before anybody edits it
       (proof: assertion:mine.the_scaffold_runs_before_it_is_edited)
-- [ ] The three shipped workflows walk their scenarios unchanged
+- [x] The three shipped workflows walk their scenarios unchanged
       (proof: assertion:plan.a_refused_draft_goes_back_to_the_agent)
 
 **Exit condition:** the errand and note-to-plan are each a `workflow.mmd` and
 one `defineWorkflow` call with `decide` and `actions`, with no `state.ts`,
 `effects.ts` or separate runtime left; `ticket-to-qa`'s call adds only the
 decisions that are its own; and every scenario the e2e script runs is green.
+
+The implementation keeps the old declaration mode as an explicit pair:
+`plan` and `runtime` still mount together, while any attempt to mix either
+with the new members is refused at boot. Raw plugins remain below that layer
+and continue to register both halves by hand. The shipped errand and
+note-to-plan now split their source by the framework vocabulary —
+`decide.ts` and `actions.ts` — and ticket-to-qa retains its public machine and
+runtime exports while its declaration uses the same composition.

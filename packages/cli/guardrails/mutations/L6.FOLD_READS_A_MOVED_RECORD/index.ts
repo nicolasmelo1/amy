@@ -2,8 +2,5 @@
 export const workflow = {
   plan: (record: { state: string }) => (record.state === "received" ? "advance" : "settled"),
 };
-export function runtime() {
-  return {
-    apply: (record: { state: string; paged?: boolean }) => (record.state === "received" ? { ...record, paged: true } : record),
-  };
-}
+export const remember = (record: { state: string; paged?: boolean }) =>
+  record.state === "received" ? { ...record, paged: true } : record;

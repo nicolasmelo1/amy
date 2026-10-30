@@ -32,7 +32,15 @@ describe("amy workflow export", () => {
     const file = path.join(home, "oncall.mmd");
     fs.writeFileSync(file, DRAWN);
     writeWorkflow(home, "oncall", DEFAULT_CONFIG, file);
-    writeWorkflow(home, "bare", loadConfig(home));
+    const bare = writeWorkflow(home, "bare", loadConfig(home));
+    fs.rmSync(path.join(bare, "workflow.mmd"));
+    fs.writeFileSync(path.join(bare, "index.ts"), `import { defineWorkflow } from "@amykit/core";
+export const plugin = defineWorkflow({
+  name: "bare", states: ["done"], terminal: ["done"], configSchema: {}, policy: {}, needs: {},
+  plan: () => ({ kind: "settled", why: "done" }), record: () => ({}),
+  runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
+});
+`);
   });
   afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 

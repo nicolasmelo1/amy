@@ -67,7 +67,7 @@ workflow has to undo a count by hand.
 
 **The helpers say which they read.** The core exports `looksIn(record, state)`
 and `attemptsIn(record, state)` beside `advance`, `act`, `wait` and `settled`
-([a workflow is three pieces](a-workflow-is-three-pieces.md)), so no
+([a workflow is three pieces](../docs/design/a-workflow-is-three-pieces.md)), so no
 workflow writes either. Each first-look check in the shipped workflows moves to
 `looksIn`, each ceiling stays on `attemptsIn`, and `ticket-to-qa`'s bounded
 wait for a reviewer (`looks = attemptsIn(record, "REVIEWER_ASSIGNED")`)

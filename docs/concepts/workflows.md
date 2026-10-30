@@ -33,9 +33,9 @@ of four things:
 
 | Kind | Fields | What it means |
 | :-- | :-- | :-- |
-| `act` | `kind: "act"`<br>`effects: Action[]`<br>`why: string` | Do the work, stay in this state, and look again straight away. The next look sees whatever the actions recorded, which is how a pure decision function drives work that takes minutes or hours. |
-| `advance` | `kind: "advance"`<br>`to: string`<br>`effects: Action[]`<br>`why: string` |  |
-| `wait` | `kind: "wait"`<br>`retryAfterMs: number`<br>`why: string`<br>`effects: Action[]` | Nothing to do until the outside world moves. May still carry actions, so a workflow can say why it is stuck without leaving the state. |
+| `act` | `kind: "act"`<br>`effects: Effect[]`<br>`why: string` | Do the work, stay in this state, and look again straight away. The next look sees whatever the actions recorded, which is how a pure decision function drives work that takes minutes or hours. |
+| `advance` | `kind: "advance"`<br>`to: State`<br>`effects: Effect[]`<br>`why: string` |  |
+| `wait` | `kind: "wait"`<br>`retryAfterMs: number`<br>`why: string`<br>`effects: Effect[]` | Nothing to do until the outside world moves. May still carry actions, so a workflow can say why it is stuck without leaving the state. |
 | `settled` | `kind: "settled"`<br>`why: string` | Terminal, do not queue anything else. |
 
 <!-- amy:end plan-kinds -->
@@ -97,6 +97,19 @@ planned without being declared. The mount refuses at boot, by name, a key whose
 value is neither, a port nothing mounted, or a method the port does not have.
 The engine refuses a plan that carries a name the map does not, before any of
 that plan's actions run.
+
+An action written in a three-piece declaration receives its ports from the
+host, bound to the work. Every reply from `agent` writes an `agent.run` line
+against the work and its state, which is what the budget adds up, so an action
+never writes one itself. The agent's own failures are not swallowed, and still
+fail the action.
+
+Beside the ports, an action gets `announce(text)`: a word to the operator that
+is only worth saying. A channel that fails becomes a `notify.failed` line
+rather than a failed action, because a channel somebody misconfigured must
+never cost a move. `ports.notifier` stays strict, for a message the work
+depends on: a write handed to the operator that nobody heard has to fail the
+action, so the look is tried again rather than recorded as said.
 
 ## One declaration mounts both halves
 

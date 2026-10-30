@@ -1,7 +1,24 @@
-import { Plan } from "@amykit/core";
-import { act, advance, settled, wait } from "./effects.js";
+import { Plan, act, advance, settled, wait } from "@amykit/core";
 import { Observation, Policy } from "./observation.js";
 import { PlanRecord, attemptsIn } from "./record.js";
+
+export type PlanState = "NOTED" | "DRAFTED" | "CHECKED" | "PR_OPEN" | "DONE" | "DECLINED";
+export type Effect =
+  | { type: "draft-plan"; finding?: string }
+  | { type: "check-plan" }
+  | { type: "open-pull-request" }
+  | { type: "announce"; text: string };
+
+type Decision = (record: PlanRecord, observation: Observation, policy: Policy) => Plan;
+
+export const decide = {
+  NOTED: planNoted,
+  DRAFTED: (record, _observation, policy) => planDrafted(record, policy),
+  CHECKED: (record) => planChecked(record),
+  PR_OPEN: (_record, observation) => planPullRequestOpen(observation),
+  DONE: () => settled("the plan is on a pull request, and merging it is somebody else's call"),
+  DECLINED: () => settled("nothing was written, and the operator was told why"),
+} satisfies Record<PlanState, Decision>;
 
 /**
  * Decides the single next move for one note.
@@ -11,20 +28,7 @@ import { PlanRecord, attemptsIn } from "./record.js";
  * have in flight, and that is a number rather than somebody's answer.
  */
 export function plan(record: PlanRecord, obs: Observation, policy: Policy): Plan {
-  switch (record.state) {
-    case "NOTED":
-      return planNoted(record, obs, policy);
-    case "DRAFTED":
-      return planDrafted(record, policy);
-    case "CHECKED":
-      return planChecked(record);
-    case "PR_OPEN":
-      return planPullRequestOpen(obs);
-    case "DONE":
-      return settled("the plan is on a pull request, and merging it is somebody else's call");
-    case "DECLINED":
-      return settled("nothing was written, and the operator was told why");
-  }
+  return decide[record.state](record, obs, policy);
 }
 
 function planNoted(record: PlanRecord, obs: Observation, policy: Policy): Plan {

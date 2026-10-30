@@ -33,8 +33,9 @@ export { deferred, isDeferred } from "./deferred.js";
 export { Builds } from "./builds.js";
 export type { Deferred } from "./deferred.js";
 
-export { defineWorkflow, diagramBeside, notWritten, notWrittenIn, optional, planning, port, withDiagram, withDiagramBeside } from "./define-workflow.js";
-export type { PortNeed, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";
+export { act, advance, defineWorkflow, diagramBeside, notWritten, notWrittenIn, optional, planning, port, settled, wait, withDiagram, withDiagramBeside, workflowActions } from "./define-workflow.js";
+export type { ActionDuties } from "./action-ports.js";
+export type { PortNeed, PortsOf, WorkflowAction, WorkflowActionScope, WorkflowDecision, WorkflowPieceContext, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";
 
 export type {
   Engine,

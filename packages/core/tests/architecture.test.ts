@@ -131,7 +131,7 @@ describe("a mount builds once, and only the core knows when", () => {
   });
 });
 
-describe("a workflow is one declaration", () => {
+describe("a workflow is three pieces", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
   const workflows = ["workflow-errand", "workflow-note-to-plan", "workflow-ticket-to-qa"];
 
@@ -147,15 +147,22 @@ describe("a workflow is one declaration", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("uses the core planning helpers and leaves record construction to the declaration", () => {
-    const offenders = workflows.flatMap((name) => {
+  it("gives the small workflows decide and actions, with no obsolete four-file machine", () => {
+    const offenders = workflows.slice(0, 2).flatMap((name) => {
       const directory = path.join(root, "packages", name, "src");
-      const effects = fs.readFileSync(path.join(directory, "effects.ts"), "utf8");
+      const plugin = fs.readFileSync(path.join(directory, "plugin.ts"), "utf8");
       const record = fs.readFileSync(path.join(directory, "record.ts"), "utf8");
-      return effects.includes("planning<") && !/export function newRecord/.test(record) ? [] : [name];
+      const obsolete = ["state.ts", "effects.ts", "machine.ts", "runtime.ts"].some((file) => fs.existsSync(path.join(directory, file)));
+      return /\bdecide,/.test(plugin) && /\bactions:/.test(plugin) && !obsolete && !/export function newRecord/.test(record) ? [] : [name];
     });
 
     expect(offenders).toEqual([]);
+  });
+
+  it("wires ticket-to-qa's own before, decisions and after without removing its public machine", () => {
+    const source = fs.readFileSync(path.join(root, "packages/workflow-ticket-to-qa/src/plugin.ts"), "utf8");
+    expect(source).toMatch(/\bbefore,\s*\n\s*decide,\s*\n\s*after,/);
+    expect(source).not.toMatch(/\bplan,|\bruntime:/);
   });
 });
 

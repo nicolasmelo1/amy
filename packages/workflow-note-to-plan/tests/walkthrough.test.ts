@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { Plan, PullRequestView, actionsOf } from "@amykit/core";
-import { plan } from "../src/machine.js";
+import { plan } from "../src/decide.js";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { EffectOutcomes, applyNotePlan } from "../src/outcomes.js";
 import { PlanRecord } from "../src/record.js";
 import { newRecord } from "./drawn.js";
-import { PlanState } from "../src/state.js";
+import { PlanState } from "../src/decide.js";
 import { Note } from "../src/ports/Notes.js";
 
 const NOW = new Date("2026-09-04T20:00:00.000Z");
