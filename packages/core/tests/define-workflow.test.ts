@@ -340,6 +340,17 @@ describe("a workflow in three pieces", () => {
     const outcome = await mount([mixed], {}, HOST);
     expect(!outcome.ok && outcome.problems.join("; ")).toContain("cannot mix legacy");
   });
+
+  it("refuses a legacy declaration with piece-only progress", async () => {
+    const mixed = defineWorkflow({
+      name: "mixed-progress", configSchema: schema, states: ["DONE"], terminal: ["DONE"], policy: {}, needs: {},
+      record: () => ({}), plan: () => ({ kind: "settled", why: "done" }),
+      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record: WorkRecord) => record }),
+      progress: { port: "tracker", method: "update" },
+    } as never);
+    const outcome = await mount([mixed], {}, HOST);
+    expect(!outcome.ok && outcome.problems.join("; ")).toContain("cannot mix legacy `plan`, `runtime` with `progress`");
+  });
 });
 
 it("types all four planning helpers against the workflow's states and effects", () => {

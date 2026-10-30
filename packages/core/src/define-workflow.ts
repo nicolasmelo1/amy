@@ -443,7 +443,7 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
 }
 
 const LEGACY_MEMBERS = ["plan", "runtime"] as const;
-const PIECE_MEMBERS = ["decide", "before", "after", "discover", "observe", "actions", "remember"] as const;
+const PIECE_MEMBERS = ["decide", "before", "after", "discover", "progress", "observe", "actions", "remember"] as const;
 
 function declarationMode(declaration: object): void {
   const legacy = LEGACY_MEMBERS.filter((key) => key in declaration);

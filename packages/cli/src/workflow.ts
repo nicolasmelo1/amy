@@ -550,8 +550,8 @@ export const plugin = defineWorkflow({
   // Every action a decision may emit, keyed by name, and what runs it: a
   // handler, or { port, method } for a mounted port the host calls.
   actions,
-  // Called as (record, plan, outcomes, observation, now, moved). \`record\`
-  // has already moved: read where it came from in \`moved.from\`.
+  // Called as (scope, record, outcomes, observation, moved, decision, now).
+  // \`record\` has already moved: read where it came from in \`moved.from\`.
   remember: (_scope, record) => remember(record),
 });
 
