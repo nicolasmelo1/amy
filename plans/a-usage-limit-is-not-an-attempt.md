@@ -30,7 +30,7 @@ prose is the thing the harness was built not to do.
 
 **A rate limit with nowhere to go is a wait.** When the ladder ends on
 `rate-limited`, the step's action returns `{ notATry: true, retryAfterMs }`
-([waiting is not trying](waiting-is-not-trying.md)). The attempt was charged
+([waiting is not trying](../docs/design/waiting-is-not-trying.md)). The attempt was charged
 when the `act` was applied, before the run's result was known, and this is
 what gives it back: the engine moves the count from attempts to looks in the
 same save, so `attemptsIn` is unchanged. The workflow waits — until the
