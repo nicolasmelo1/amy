@@ -68,7 +68,7 @@ const LEFT_FOR_THE_RENDERER: readonly RegExp[] = [
   /^direction\s+(TB|BT|LR|RL)\s*$/,
   /^accTitle\s*:/,
   /^accDescr\s*:/,
-  /^note\s+(left|right)\s+of\s+\S+\s*:/,
+  /^note\s+(left|right)\s+of\s+[^\s:]+\s*:/,
 ];
 
 interface Reading {
@@ -76,7 +76,8 @@ interface Reading {
   readonly initial: string[];
   readonly terminal: Set<string>;
   readonly classes: Map<DiagramClass, Set<string>>;
-  readonly classLines: Map<string, number>;
+  /** Every state a line names outside an arrow — a class, a style, a note — and the first line naming it. */
+  readonly named: Map<string, number>;
   readonly transitions: DrawnTransition[];
 }
 
@@ -92,7 +93,7 @@ export function readDiagram(text: string, source = DIAGRAM_FILE): Diagram {
     initial: [],
     terminal: new Set(),
     classes: new Map(DIAGRAM_CLASSES.map((name) => [name, new Set<string>()])),
-    classLines: new Map(),
+    named: new Map(),
     transitions: [],
   };
   const lines = text.split(/\r?\n/);
@@ -103,6 +104,7 @@ export function readDiagram(text: string, source = DIAGRAM_FILE): Diagram {
     const line = lines[index]!.trim();
     const number = index + 1;
     if (line === "") continue;
+    for (const state of namedBy(line)) if (!reading.named.has(state)) reading.named.set(state, number);
     const block = blockEnd(lines, index, line, source);
     if (block !== undefined) {
       index = block;
@@ -134,7 +136,7 @@ function header(lines: readonly string[], from: number, source: string): number 
 
 /** A multi-line `note … end note` or `accDescr { … }` is prose, skipped whole. Returns the index of its last line. */
 function blockEnd(lines: readonly string[], index: number, line: string, source: string): number | undefined {
-  if (/^note\s+(left|right)\s+of\s+\S+\s*$/.test(line)) {
+  if (/^note\s+(left|right)\s+of\s+[^\s:]+\s*$/.test(line)) {
     return closingLine(lines, index, (next) => next === "end note", "a `note` is never closed with `end note`", source);
   }
   if (!/^accDescr\s*\{/.test(line)) return undefined;
@@ -154,11 +156,12 @@ function closingLine(lines: readonly string[], index: number, closes: (line: str
 }
 
 function readLine(line: string, number: number, reading: Reading, source: string): void {
-  // Prose first: a comment or a note may mention `<<choice>>` or `:::`
-  // without drawing either.
+  // Prose first: a comment, a note or a label may mention `<<choice>>` or
+  // `:::` without drawing either.
   if (LEFT_FOR_THE_RENDERER.some((pattern) => pattern.test(line))) return;
+  const drawn = withoutLabel(line);
   for (const [pattern, reason] of REFUSED) {
-    if (pattern.test(line)) throw new DiagramError(number, reason, source);
+    if (pattern.test(drawn)) throw new DiagramError(number, reason, source);
   }
 
   const arrow = arrowIn(line);
@@ -168,6 +171,28 @@ function readLine(line: string, number: number, reading: Reading, source: string
   if (marked) return readClass(marked.states, marked.name, number, reading);
 
   throw new DiagramError(number, `\`${line}\` is not a line amy reads; it reads \`A --> B\`, \`[*] --> A\`, \`A --> [*]\` and \`class A name\``, source);
+}
+
+/** An arrow's line up to its label: the label's first colon is one with no colon beside it. */
+function withoutLabel(line: string): string {
+  const at = line.indexOf("-->");
+  if (at < 0) return line;
+  const label = line.slice(at + 3).search(/(?<!:):(?!:)/);
+  return label < 0 ? line : line.slice(0, at + 3 + label);
+}
+
+/**
+ * The states a line names without drawing them: a `class` of any name, a
+ * `style`, a `note`. Each has to be a state an arrow draws, or the diagram
+ * renders a state the workflow does not have.
+ */
+function namedBy(line: string): string[] {
+  const marked = classIn(line);
+  if (marked) return marked.states;
+  const styled = /^style\s+(\S+)\s/.exec(line);
+  if (styled) return styled[1]!.split(",").map((state) => state.trim());
+  const noted = /^note\s+(?:left|right)\s+of\s+([^\s:]+)/.exec(line);
+  return noted ? [noted[1]!] : [];
 }
 
 /** `A --> B`, or `A --> B: label`. Everything after the first colon is the label, arrows included. */
@@ -212,7 +237,6 @@ function readClass(states: readonly string[], name: string, number: number, read
   if (!(DIAGRAM_CLASSES as readonly string[]).includes(name)) return;
   for (const state of states) {
     reading.classes.get(name as DiagramClass)!.add(state);
-    if (!reading.classLines.has(state)) reading.classLines.set(state, number);
   }
 }
 
@@ -225,8 +249,8 @@ function settle(reading: Reading, text: string, source: string): Diagram {
   if (reading.initial.length > 1) {
     throw new DiagramError(0, `\`[*]\` leads to ${reading.initial.map((state) => `\`${state}\``).join(" and ")}; a workflow starts in one state`, source);
   }
-  for (const [state, line] of reading.classLines) {
-    if (!reading.states.includes(state)) throw new DiagramError(line, `\`${state}\` is given a class, and no transition draws it`, source);
+  for (const [state, line] of reading.named) {
+    if (!reading.states.includes(state)) throw new DiagramError(line, `\`${state}\` is named here, and no transition draws it`, source);
   }
   if (reading.terminal.size === 0) throw new DiagramError(0, "no `STATE --> [*]` names a state where the work ends", source);
 

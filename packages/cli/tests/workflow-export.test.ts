@@ -4,6 +4,7 @@ import path from "node:path";
 import { parse } from "pele";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
+import { pluginsRootResolver } from "../src/loader.js";
 import { exportWorkflow, writeWorkflow } from "../src/workflow.js";
 
 const DRAWN = `stateDiagram-v2
@@ -55,6 +56,26 @@ describe("amy workflow export", () => {
       .replace("  needs: {},", "  needs: { tracker: port() },"));
 
     await expect(exportWorkflow(home, "oncall", loadConfig(home), { state: "PAGED" })).resolves.toContain("class PAGED current");
+  });
+
+  it("reads the diagram without a configuration only the mount validates", async () => {
+    const index = path.join(home, "workflows", "oncall", "index.ts");
+    fs.writeFileSync(index, fs.readFileSync(index, "utf-8").replace(
+      "  needs: {},",
+      "  needs: {},\n  trackerWrites: ({ config }: { config: Record<string, unknown> }) => ((config.repos as string[]).includes(\"acme/widgets\") ? [\"comment\"] : []),",
+    ));
+
+    await expect(exportWorkflow(home, "oncall", loadConfig(home))).resolves.toBe(DRAWN);
+  });
+
+  it("resolves a workflow configured by a path relative to amy's home, wherever it runs", async () => {
+    const config = loadConfig(home);
+    const relative = { ...config, workflows: { ...config.workflows, oncall: { ...config.workflows.oncall!, workflow: "./workflows/oncall/index.ts" } } };
+
+    // The resolver the command uses, which takes a directory to its entry.
+    const resolve = pluginsRootResolver(home, path.join(home, "plugins"));
+
+    await expect(exportWorkflow(home, "oncall", relative, { resolve })).resolves.toBe(DRAWN);
   });
 
   it("refuses a state the diagram does not draw, and a workflow that has no diagram", async () => {

@@ -161,7 +161,7 @@ export async function inspectWorkflow(
   const profile = config.workflows[name];
   if (!profile) return { problems: [`there is no \`${name}\` workflow in the config`], stubs: [], drawnNotWalked: [] };
 
-  const registered = await registeredWorkflow(home, profile.workflow, resolve);
+  const registered = await registeredWorkflow(home, homeRelative(home, profile.workflow), resolve);
   if (typeof registered === "string") return { problems: [registered], stubs: [], drawnNotWalked: [] };
   return drive(registered);
 }
@@ -178,11 +178,30 @@ export async function exportWorkflow(
 ): Promise<string> {
   const profile = config.workflows[name];
   if (!profile) throw new Error(`there is no \`${name}\` workflow in the config`);
-  const registered = await registration(home, profile.workflow, options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
-  if (typeof registered === "string") throw new Error(registered);
-  const diagram = registered.workflow.diagram;
+  const diagram = await shapeOf(home, homeRelative(home, profile.workflow), options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
   if (!diagram) throw new Error(`${name} has no ${DIAGRAM_FILE}: its states are declared in its code, so there is no diagram to export`);
   return options.state === undefined ? diagram.text : markState(diagram, options.state);
+}
+
+/**
+ * The diagram a configured workflow was bound to, read the cheapest way that
+ * says it: a declaration carries its workflow unregistered, so nothing reads
+ * a configuration only the mount validates. A plugin that registers its
+ * workflow by hand is registered to ask.
+ */
+async function shapeOf(home: string, spec: string, resolve: (spec: string) => string): Promise<Workflow["diagram"]> {
+  const plugin = await importedPlugin(spec, resolve);
+  if (typeof plugin === "string") throw new Error(plugin);
+  const declared = (plugin as { workflow?: Workflow }).workflow;
+  if (declared) return declared.diagram;
+  const registered = await registration(home, spec, resolve);
+  if (typeof registered === "string") throw new Error(registered);
+  return registered.workflow.diagram;
+}
+
+/** A configured path is relative to amy's home, as the mount resolves it, not to wherever the command runs. */
+function homeRelative(home: string, spec: string): string {
+  return spec.startsWith(".") ? path.resolve(home, spec) : spec;
 }
 
 interface RegisteredWorkflow {

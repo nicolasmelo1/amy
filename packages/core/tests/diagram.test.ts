@@ -85,7 +85,7 @@ describe("what amy refuses, by name and line", () => {
   });
 
   it("refuses a class on a state nothing draws, and `[*] --> [*]`", () => {
-    expect(refusal("stateDiagram-v2\n[*] --> A\nA --> [*]\nclass Z waiting\n").message).toMatch(/line 4: `Z` is given a class/);
+    expect(refusal("stateDiagram-v2\n[*] --> A\nA --> [*]\nclass Z waiting\n").message).toMatch(/line 4: `Z` is named here, and no transition draws it/);
     expect(refusal("stateDiagram-v2\n[*] --> [*]\n").message).toMatch(/line 2: `\[\*\] --> \[\*\]` draws no state/);
   });
 
@@ -98,6 +98,24 @@ describe("what amy refuses, by name and line", () => {
     const diagram = readDiagram("stateDiagram-v2\n%% do not use <<choice>> here\n[*] --> A\nnote right of A: avoid the ::: shorthand\nA --> [*]\n");
 
     expect(diagram.states).toEqual(["A"]);
+  });
+
+  it("reads a label as prose, even one that mentions a refused construct", () => {
+    const diagram = readDiagram("stateDiagram-v2\n[*] --> A\nA --> B: avoid <<choice>> and ::: here\nB --> [*]\n");
+
+    expect(diagram.transitions).toEqual([{ from: "A", to: "B", label: "avoid <<choice>> and ::: here" }]);
+  });
+
+  it("reads a one-line note with no space after its colon", () => {
+    expect(readDiagram("stateDiagram-v2\n[*] --> A\nnote right of A:example\nA --> [*]\n").states).toEqual(["A"]);
+  });
+
+  it.each([
+    ["a style", "style Z fill:red"],
+    ["a note", "note right of Z: never drawn"],
+    ["a class amy does not read", "class Z decorative"],
+  ])("refuses %s naming a state no arrow draws, so what renders is what mounts", (_name, line) => {
+    expect(refusal(`stateDiagram-v2\n[*] --> A\nA --> [*]\n${line}\n`).message).toMatch(/line 4: `Z` is named here, and no transition draws it/);
   });
 
   it("names the file it was told the diagram came from", () => {
