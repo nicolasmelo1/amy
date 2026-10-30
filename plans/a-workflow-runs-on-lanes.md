@@ -86,6 +86,35 @@ time, up to the number of lanes the mounted diagrams draw. It keeps the file
 queue's atomic claim, one move per look, and the budget check before the call.
 It is a plugin, as `docs/concepts/the-engine.md` says it should be.
 
+**`ticket-to-qa` is the first workflow on lanes, and its scenario is the
+proof.** Today it runs the gate, then the self-review, one after the other
+(`CHECKED → SELF_REVIEW` in its `workflow.mmd`). One ticket showed what that
+order costs. A stronger model approved the change twice, and the gate refused
+it twice, on rules the reviewer never saw. The implementation was sent back
+with half the findings each time. With lanes, `CHECKED` forks into a `GATE`
+lane and a `SELF_REVIEW` lane, each a call. They join, and the
+implementation gets both sets of findings in one round:
+
+```mermaid
+stateDiagram-v2
+    state checks <<fork>>
+    state verdict <<join>>
+    IMPLEMENTING --> checks
+    checks --> GATE
+    checks --> SELF_REVIEW
+    GATE --> verdict
+    SELF_REVIEW --> verdict
+    verdict --> IMPLEMENTING: either found something
+    verdict --> PR_OPEN: both are clean
+    class GATE, SELF_REVIEW call
+```
+
+The `ticket-to-qa` scenario
+(`.software-factory/evidence/ticket-to-qa-scenario.sh`) drives it end to end
+through the installed executable, against its stand-in world. It runs once
+under the serial engine and once under the concurrent one, and both runs must
+reach the same record.
+
 **The window draws lanes as lines.** The fork's lanes are drawn side by side,
 each with its record's mark. A join shows how many lanes have arrived. That is
 the factory floor: you see where the line backs up.
@@ -105,12 +134,18 @@ the factory floor: you see where the line backs up.
       (proof: deferred:test:packages/workflow-testkit/tests/lanes.test.ts)
 - [ ] Two lanes never share a worktree, and two lanes on one branch are refused
       at boot (proof: deferred:test:packages/core/tests/lanes.test.ts)
-- [ ] Under the serial engine, three lanes reach the same end state, in turn,
-      as under the concurrent one
-      (proof: deferred:assertion:plan.lanes_end_the_same_serial_or_concurrent)
+- [ ] Under the serial engine, the lanes reach the same end state, in turn,
+      as under the concurrent one, in the `ticket-to-qa` scenario
+      (proof: deferred:assertion:lifecycle.lanes_end_the_same_serial_or_concurrent)
+- [ ] In the `ticket-to-qa` scenario, a change the gate refuses and the
+      self-review would approve goes back to the implementation once, carrying
+      both lanes' findings, and the next round reaches `PR_OPEN`
+      (proof: deferred:assertion:lifecycle.gate_and_self_review_run_as_two_lanes)
 
-**Exit condition:** a workflow that draws a fork into three call states runs
-three tasks of one feature at once, each in its own worktree. It joins when
-all three have ended. It shows the person which lane escalated, while the
-other two keep going. The number of lanes is the number of lines in its
+**Exit condition:** `ticket-to-qa`'s scenario runs its gate and its self-review
+as two lanes and sends one round of findings from both back to the
+implementation. It reaches the same record under the serial and the
+concurrent engine, and the `ticket-to-qa` gate requires both assertions. A
+lane that escalates leaves the other running, and the join says which lane
+needs the person. The number of lanes is the number of lines in its
 `workflow.mmd`, and nothing else.

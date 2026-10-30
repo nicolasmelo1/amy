@@ -68,6 +68,18 @@ of every workflow with that key, in order, each with its history and evidence
 (*an escalation brings its evidence*). The window draws the same, so splitting
 one long workflow into short ones costs the person no view.
 
+**`ticket-to-qa` is the first workflow split this way.** Its review loop,
+`PR_OPEN` through `HUMAN_FIX` and `RE_REVIEW`, becomes
+`@amykit/workflow-review-round`. That workflow starts on
+`code-host.review.submitted`, is keyed by the ticket, and ends when the round
+is settled and pushed. `ticket-to-qa` ends when the pull request is open, and
+the merge and the QA handoff are a third short workflow started by
+`code-host.pull-request.merged`. The `ticket-to-qa` scenario drives all three
+through the installed executable, with signed webhooks posted to `amy serve`
+on the loopback (*an event is a reason to look*). Its assertions require two
+things: that two reviews posted a minute apart make one round, and that
+`amy show` tells the ticket's whole story across the three workflows.
+
 **What is not split.** A wait in the middle of a piece of work stays a state
 that an event wakes: `CLARIFYING` waiting on a reply is still part of the run
 that asked. A workflow starts on an event only when what follows is a new
@@ -85,10 +97,19 @@ the docs say which to reach for.
 - [ ] `amy show <key>` lists every run of every workflow with that key, in
       order, with each one's history and evidence
       (proof: deferred:test:packages/cli/tests/show.test.ts)
+- [ ] In the `ticket-to-qa` scenario, the ticket's work runs as three
+      workflows started by events, two reviews a minute apart make one round,
+      and `amy show` tells the ticket's story across all three
+      (proof: deferred:assertion:lifecycle.a_review_round_is_its_own_workflow)
 - [ ] A workflow whose `[*]` edge names no event is discovered exactly as before
       (proof: assertion:plan.a_refused_draft_goes_back_to_the_agent)
 
-**Exit condition:** a ticket's work is two shipped-style workflows instead of
-one loop. One builds the change and opens the pull request. The other starts
-on each review, settles it and pushes. Two reviews in a minute make one round,
-and `amy show` tells the whole ticket as one story across both.
+**Exit condition:** in the `ticket-to-qa` scenario, a ticket's work runs as
+three workflows instead of one loop:
+
+- one builds the change and opens the pull request;
+- one starts on each review, settles it and pushes;
+- one starts on the merge and hands the ticket to QA.
+
+Two reviews in a minute make one round. `amy show` tells the whole ticket as
+one story, and the `ticket-to-qa` gate requires both assertions.

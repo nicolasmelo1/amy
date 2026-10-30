@@ -89,6 +89,19 @@ polling only.
 - **Polling itself is a source.** It is what a plugin with no events does, and
   it is the reconciliation behind every plugin that has them.
 
+**The shipped workflows prove it, end to end.** The `ticket-to-qa` scenario
+gains a run with `amy serve` up on the loopback, which needs no tunnel. Its
+stand-in `gh` moves a pull request, and the scenario posts the signed webhook
+GitHub would have sent: a recorded `pull_request_review` payload with its
+`X-Hub-Signature-256`. The record must move before its backoff could have run
+out. The same run posts a Linear `Issue` webhook for a ticket created in the
+working status, and the ticket must be picked up. It then posts one payload
+with a bad signature, which must be refused and change nothing. The existing
+runs, which have no events at all, stay as they are, and they are the proof
+that polling still carries everything. The `ticket-to-qa` gate requires the
+new assertions, and adds the event code in `plugins/github/src/**` and
+`plugins/linear/src/**` to what it already watches.
+
 **How to use it is a page, proven like the code.** *Receive events* lives under
 `docs/build/` and covers, for each source:
 
@@ -121,12 +134,19 @@ build.
 - [ ] With no events arriving, discovery and backoffs still find and move every
       piece of work, and `amy doctor` says the source is polling only
       (proof: deferred:assertion:mine.polling_is_the_net_under_events)
+- [ ] In the `ticket-to-qa` scenario, a signed review webhook moves its record
+      before the backoff runs out, a signed Linear webhook gets a new ticket
+      picked up, and a badly signed payload is refused and moves nothing
+      (proof: deferred:assertion:lifecycle.an_event_moves_its_record_before_the_backoff)
 - [ ] *Receive events* sets up each source with only what the page says, and
       every command on it runs in the docs check
       (proof: deferred:test:scripts/docs/tests/examples.test.ts)
 
-**Exit condition:** a review submitted on a pull request moves its record within
-seconds, through the GitHub plugin and a tunnel, and a Linear ticket created in
+**Exit condition:** in the `ticket-to-qa` scenario, a signed review webhook
+moves its record and a signed Linear webhook gets a ticket picked up, both
+before any backoff, and the gate requires it. On a real install, a review
+submitted on a pull request moves its record within seconds, through the
+GitHub plugin and a tunnel, and a Linear ticket created in
 the working status is picked up the same way. With the tunnel down, both still
 happen at the polling cadence. A person sets up either from *Receive events*
 alone.
