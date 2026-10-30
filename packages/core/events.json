@@ -218,6 +218,17 @@
         "repo": "string?",
         "reason": "string"
       }
+    },
+    "workflow.undrawn_transition": {
+      "says": "The work moved between two states the workflow's diagram does not connect. The move was applied.",
+      "requires": [
+        "workId",
+        "state"
+      ],
+      "detail": {
+        "from": "string",
+        "to": "string"
+      }
     }
   }
 }

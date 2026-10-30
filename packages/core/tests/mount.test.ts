@@ -1,4 +1,10 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
+import { DIAGRAM_FILE } from "../src/diagram.js";
+import { defineWorkflow, diagramBeside, withDiagramBeside } from "../src/define-workflow.js";
 import { Plugin, PluginContext, Workflow } from "../src/plugin.js";
 import { HostServices, mount, mountedActions, unmetNeeds } from "../src/mount.js";
 import { ActionContext, WORKFLOW_RUNTIME, WorkflowRuntime } from "../src/runtime.js";
@@ -1421,5 +1427,99 @@ describe("a deferred implementation", () => {
     const outcome = await mount([binder], {}, HOST);
 
     expect(outcome.ok === false && outcome.problems[0]).toContain("the action `page` needs a built port");
+  });
+});
+
+describe("a workflow drawn as a diagram", () => {
+  const DRAWN = "stateDiagram-v2\n    [*] --> QUEUED\n    QUEUED --> WORKING\n    WORKING --> ASKED: needs the owner\n    ASKED --> WORKING\n    WORKING --> DONE\n    DONE --> [*]\n    class QUEUED waiting\n    class ASKED attention\n";
+
+  /** A directory holding a workflow's entry and, when given one, its diagram — the shape a host finds on disk. */
+  function directory(diagram?: string): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-drawn-"));
+    fs.writeFileSync(path.join(root, "package.json"), "{}\n");
+    fs.mkdirSync(path.join(root, "dist"));
+    fs.writeFileSync(path.join(root, "dist", "index.js"), "");
+    if (diagram !== undefined) fs.writeFileSync(path.join(root, DIAGRAM_FILE), diagram);
+    return path.join(root, "dist", "index.js");
+  }
+
+  function declaring(lists: { states?: readonly [string, ...string[]]; waiting?: string[]; terminal?: string[] } = {}) {
+    return defineWorkflow({
+      name: "drawn",
+      ...lists,
+      configSchema: {},
+      policy: {},
+      needs: {},
+      plan: () => ({ kind: "settled", why: "drawn" }),
+      record: () => ({}),
+      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
+    });
+  }
+
+  it("mounts with the states the file beside it draws, and declares none", async () => {
+    const outcome = await mount([withDiagramBeside(declaring(), directory(DRAWN))], {}, HOST);
+
+    expect(outcome.ok).toBe(true);
+    const workflow = outcome.ok ? outcome.mounted.workflow : undefined;
+    expect(workflow?.states).toEqual(["QUEUED", "WORKING", "ASKED", "DONE"]);
+    expect(workflow?.initialState).toBe("QUEUED");
+    expect(workflow?.terminalStates).toEqual(["DONE"]);
+    expect(workflow?.waitingStates).toEqual(["QUEUED", "ASKED"]);
+    expect(workflow?.diagram?.text).toBe(DRAWN);
+  });
+
+  it("starts a record in the state the diagram starts in", () => {
+    const drawn = withDiagramBeside(declaring(), directory(DRAWN));
+
+    expect(drawn.newRecord("w-1", new Date(0)).state).toBe("QUEUED");
+  });
+
+  it("refuses one that declares its states as well as drawing them, naming the workflow and the fields", async () => {
+    const outcome = await mount([withDiagramBeside(declaring({ states: ["QUEUED", "DONE"], terminal: ["DONE"] }), directory(DRAWN))], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/the drawn workflow draws its states in workflow\.mmd and declares `states`, `terminal` as well/);
+  });
+
+  it("refuses a diagram it cannot read with the file and the line", async () => {
+    const entry = directory("stateDiagram-v2\n[*] --> A\nstate pick <<choice>>\nA --> [*]\n");
+    const outcome = await mount([withDiagramBeside(declaring(), entry)], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/workflow\.mmd line 3: `<<choice>>` is not read/);
+  });
+
+  it("refuses a declaration with neither a diagram nor states, and says so when it is read", async () => {
+    const bare = withDiagramBeside(declaring(), directory());
+    const outcome = await mount([bare], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/has no workflow\.mmd beside it and declares no `states`/);
+    expect(() => bare.workflow).toThrow(/has no workflow\.mmd beside it/);
+  });
+
+  it("refuses a workflow registered by hand with a diagram beside it", async () => {
+    const byHand = plugin("workflow-by-hand", { register: (registry) => registry.workflow(WORKFLOW) });
+    const outcome = await mount([withDiagramBeside(byHand, directory(DRAWN))], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/workflow-by-hand registers its workflow by hand and has .*workflow\.mmd beside it/);
+  });
+
+  it("keeps a workflow without a diagram exactly as it declared itself", async () => {
+    const byHand = plugin("workflow-by-hand", { register: (registry) => registry.workflow(WORKFLOW) });
+    const kept = withDiagramBeside(byHand, directory());
+    const outcome = await mount([kept], {}, HOST);
+
+    expect(kept).toBe(byHand);
+    expect(outcome.ok === true && outcome.mounted.workflow?.states).toEqual(["START", "DONE"]);
+    expect(outcome.ok === true && outcome.mounted.workflow?.diagram).toBeUndefined();
+  });
+
+  it("finds the diagram beside a local workflow's own entry, and at a package's root", () => {
+    const local = fs.mkdtempSync(path.join(os.tmpdir(), "amy-local-"));
+    fs.writeFileSync(path.join(local, "index.ts"), "");
+    fs.writeFileSync(path.join(local, DIAGRAM_FILE), DRAWN);
+
+    expect(diagramBeside(pathToFileURL(path.join(local, "index.ts")))?.path).toBe(path.join(local, DIAGRAM_FILE));
+    expect(diagramBeside(directory(DRAWN))?.text).toBe(DRAWN);
+    expect(diagramBeside(directory())).toBeUndefined();
   });
 });
