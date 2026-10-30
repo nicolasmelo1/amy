@@ -110,9 +110,15 @@ only thing refused.
 
 **A call is a child record, and it costs nothing while it runs.**
 
-- **Entering the state.** Entering a call state creates the callee's record
-  under the caller's id: `TBO-1/REVIEW`, and below it `TBO-1/REVIEW/FIX`. The
-  child starts at its initial state with its input.
+- **Entering the state.** Each time the caller enters a call state, a new
+  callee record is created. Its id is the call site plus an invocation number:
+  `TBO-1/REVIEW#1`, and below it `TBO-1/REVIEW#1/FIX#1`. A caller may go
+  through the same call state again (`REVIEW → FIX → REVIEW`), and that is not
+  a cycle in the call graph. That second entry is `TBO-1/REVIEW#2`, a new
+  record, and `#1` keeps its history and output as they were. The caller's
+  record holds the id of the call it is waiting on. A restart therefore resumes
+  that same record. Only a new transition into the call state starts a new
+  one. The child starts at its initial state with its input.
 - **Only the deepest active record is looked at.** A caller in a call state
   waits, but it waits on an event, not a timer. The engine looks at it again
   only when its child reaches an end. So a tree five calls deep is not five
@@ -137,8 +143,12 @@ code names a module: a package specifier or a path.
 
 - `amy add @acme/workflow-review` installs it as a dependency, pinned like any
   plugin, and updated through the normal update path.
-- `amy workflow add @acme/workflow-review --into oncall` copies its diagram and
-  its file into `~/.amy/workflows/oncall/workflows/review/` instead. That is how
+- `amy workflow add @acme/workflow-review --into oncall` copies the whole
+  workflow into `~/.amy/workflows/oncall/workflows/review/` instead: its
+  diagram, its source tree with every file its entry imports by a relative
+  path, and the assets it ships. Its package dependencies are added to the
+  caller's manifest and installed, and a dependency that cannot be resolved
+  refuses the copy before anything is written. That is how
   shadcn/ui hands out components: the source becomes yours to read and change,
   and nothing updates it behind you. The copy is still a workflow, and it is
   called the same way.
@@ -155,19 +165,24 @@ workflow and a call holds the rest.
 
 ## The first callee
 
-`@amykit/workflow-pull-request` is the workflow all three shipped ones repeat.
+`@amykit/workflow-pull-request` is the step all three shipped workflows
+repeat: opening a pull request. It ends as soon as the pull request exists,
+because `note-to-plan` and the errand finish there today: a pull request open
+with no review is their `DONE`
+(`packages/workflow-note-to-plan/tests/machine.test.ts`). Following the
+review to a merge is a different workflow, which can call this one.
 It needs a `code-host` and names no host: it reads and writes only through the
 `CodeHost` port, so the same callee opens a pull request on GitHub today and a
 merge request on GitLab or Bitbucket once a plugin implements that port. The
 caller's `config.yaml` picks the adapter. A method the port only offers
 optionally is declared as a capability the callee needs, and a host without it
 is refused at boot by name. It takes a repository, a branch and a body as
-input, opens the pull request,
-waits on its review, and returns `MERGED` with its number or `CLOSED` with the
-reason. `note-to-plan` and the errand call it in place of their own `PR_OPEN`.
-`ticket-to-qa` calls it where its review loop starts, if that loop fits the
-callee once `ticket-to-qa`'s reviewer roster becomes the callee's input. If it
-does not fit, the plan says which part stayed in `ticket-to-qa`, and why.
+input, finds or opens the pull request, and returns `OPENED` with its number
+and URL, or `REFUSED` with the host's reason. `note-to-plan` and the errand call
+it in place of their own `PR_OPEN`, so each finishes when it did before.
+`ticket-to-qa` calls it where it opens its pull request. Its review loop stays
+its own in this row. Extracting that loop as a second callee, which would call
+this one, is the natural next step, and it is not in this plan.
 
 ## Acceptance criteria
 
@@ -184,6 +199,13 @@ does not fit, the plan says which part stayed in `ticket-to-qa`, and why.
       `CodeHost` adapter that is not GitHub, and refuses one missing a
       capability it declares
       (proof: deferred:test:packages/workflow-pull-request/tests/hosts.test.ts)
+- [ ] A caller that enters the same call state twice gets two callee records,
+      `#1` and `#2`, each with its own history and output, and a restart
+      during `#2` resumes `#2` rather than starting `#3`
+      (proof: deferred:test:packages/workflow-testkit/tests/calls.test.ts)
+- [ ] `amy workflow add --into` copies a multi-file callee whose relative
+      imports and package dependencies still resolve, and refuses one whose
+      dependency cannot (proof: deferred:test:packages/cli/tests/workflow-add.test.ts)
 - [ ] A cycle of calls at any depth is refused at mount, naming every workflow
       on it (proof: deferred:test:packages/core/tests/calls.test.ts)
 - [ ] A call three deep runs to the end: the caller's record waits without
@@ -206,8 +228,8 @@ does not fit, the plan says which part stayed in `ticket-to-qa`, and why.
       instead of their own `PR_OPEN`, and their scenarios are unchanged
       (proof: assertion:plan.a_refused_draft_goes_back_to_the_agent)
 
-**Exit condition:** `note-to-plan` and the errand open and follow their pull
-requests by calling one shipped workflow, configured per caller and bound to
+**Exit condition:** `note-to-plan` and the errand open their pull requests by
+calling one shipped workflow and finish when they did before, configured per caller and bound to
 ports in one `config.yaml`. A workflow three calls deep runs to its end with
 only the deepest record ever looked at. A cycle is refused at mount. A callee
 copied into somebody's own workflow directory is called the same way as the
