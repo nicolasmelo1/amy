@@ -201,6 +201,23 @@ describe("a workflow of your own", () => {
     )).resolves.toBeUndefined();
   });
 
+  it("starts a record from its runtime's default, read from the diagram beside it", async () => {
+    const drawn = path.join(home, "oncall.mmd");
+    fs.writeFileSync(drawn, "stateDiagram-v2\n    [*] --> PAGED\n    PAGED --> [*]\n");
+
+    for (const [name, from] of [["plain", undefined], ["imported", drawn]] as const) {
+      const directory = writeWorkflow(home, name, DEFAULT_CONFIG, from);
+      const run = tscIn(directory);
+      expect(run.status, run.stdout + run.stderr).toBe(0);
+
+      const built = (await import(pathToFileURL(path.join(directory, "dist", "index.js")).href)) as {
+        runtime(): import("@amykit/core").WorkflowRuntime;
+      };
+      const record = built.runtime().newRecord("w-1", new Date("2026-10-30T00:00:00Z"));
+      expect(record.state).toBe(from ? "PAGED" : "received");
+    }
+  });
+
   it("builds the JavaScript it publishes, since Node will not run TypeScript from node_modules", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as { main: string; files: string[] };

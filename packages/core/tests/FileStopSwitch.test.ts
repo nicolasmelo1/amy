@@ -57,6 +57,26 @@ describe("FileStopSwitch", () => {
     expect(new FileStopSwitch(file).isRequested()).toBe(true);
   });
 
+  it("tells a watcher once per request, and again after a release", async () => {
+    const heard: string[] = [];
+    const unwatch = stop.watch((reason) => heard.push(reason));
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 150));
+
+    try {
+      stop.request("first");
+      await settle();
+      expect(heard).toEqual(["first"]);
+
+      stop.clear();
+      await settle();
+      stop.request("second");
+      await settle();
+      expect(heard).toEqual(["first", "second"]);
+    } finally {
+      unwatch();
+    }
+  });
+
   it("creates the directory it was pointed at", () => {
     const deep = new FileStopSwitch(path.join(root, "a", "b", "STOP"));
 

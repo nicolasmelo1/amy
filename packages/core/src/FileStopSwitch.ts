@@ -43,10 +43,17 @@ export class FileStopSwitch implements StopSwitch {
     // exist yet and that is the event worth hearing about. The poll is the
     // fallback for a dropped/coalesced filesystem event, which must not leave
     // a running machine blind to its stop request.
+    // Once per request, not once per watcher: a cleared file re-arms it, so a
+    // pause after a resume still ends the children of a long `amy run`.
     let closed = false;
     let delivered = false;
     const deliver = () => {
-      if (closed || delivered || !this.isRequested()) return;
+      if (closed) return;
+      if (!this.isRequested()) {
+        delivered = false;
+        return;
+      }
+      if (delivered) return;
       delivered = true;
       onRequested(this.reason() ?? "no reason given");
     };
