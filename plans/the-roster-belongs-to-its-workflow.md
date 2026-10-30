@@ -53,8 +53,11 @@ the original is renamed `roster.yaml.moved` rather than deleted. A roster left
 at the old place, with no copy in the profile, is a red `doctor` check that
 names the `mv`. It is never read silently from there.
 
-**The quickstart loses a step.** It becomes `init`, `doctor`, `discover`,
-`tick`. The roster appears in the ticket-to-qa README and in what
+**The quickstart loses a step.** It becomes `init`, `add <workflow>`,
+`doctor`, `start`: a fresh install has no workflow until `add` names one, and
+`start` is the normal path because its loop already discovers on every pass.
+`discover` and `tick` stay in the quickstart as the way to watch one move
+before trusting the loop, not as steps it needs. The roster appears in the ticket-to-qa README and in what
 `amy add @amykit/workflow-ticket-to-qa` prints when it finishes, because that
 is the point where somebody has chosen to work with reviewers.
 
@@ -72,7 +75,10 @@ is the point where somebody has chosen to work with reviewers.
       no-op the second time
       (proof: deferred:assertion:update.the_roster_moves_into_its_profile)
 - [ ] The word `roster` appears nowhere under `packages/cli/src`, and the CLI
-      does not depend on any workflow package
+      does not depend on `@amykit/workflow-ticket-to-qa`. Its imports of the
+      other workflows' types are
+      [the config is written by what is mounted](the-config-is-written-by-what-is-mounted.md)'s
+      to remove
       (proof: deferred:test:mutation fixture for the-host-names-no-roster)
 
 **Exit condition:** in the errand's scenario, through the installed

@@ -77,10 +77,22 @@ a commented example teaches more than the schema does.
 **`amy config explain` is where a setting is found.** It prints every setting
 of the machine and of each mounted plugin, with type, default and description,
 generated from the schemas, and `amy config explain <plugin>` narrows it to
-one. `checkConfigTemplate` keeps its purpose and changes what it checks. It no
-longer requires every setting in the template. It requires every setting to
-have a description in its schema, so `explain` has nothing to leave out, and it
-still parses and boots what `init` and `add` write.
+one.
+
+A schema that says `policy` is a `record` hides what is in it. The errand's
+`maxAttempts` and its default of 2 live in `observation.ts`, beside the
+`DEFAULT_POLICY` that `defineWorkflow` merges, and nowhere in
+`configSchema` (`packages/workflow-errand/src/plugin.ts`). So each setting
+inside `policy` is declared in the schema too, with its type, default and
+description, and the mount refuses a workflow whose `policy` defaults name a
+key the schema does not, or whose schema default differs from the one the
+decision actually reads.
+
+`checkConfigTemplate` keeps its purpose and changes what it checks. It no
+longer requires every setting in the template. It requires every setting,
+nested ones included, to have a description in its schema, so `explain` has
+nothing to leave out, and it still parses and boots what `init` and `add`
+write.
 
 **`amy update` moves an existing config, once.** The top-level keys that moved
 are rewritten under the profiles that mount the workflow reading them, the
@@ -96,9 +108,14 @@ word.
       block that boots without being edited
       (proof: deferred:assertion:errand.init_and_add_write_a_config_that_boots)
 - [ ] `amy config explain` lists every setting of every mounted plugin with
-      its default and description, and a setting a schema declares without a
+      its default and description, the errand's `policy.maxAttempts` with its
+      default of 2 among them, and a setting a schema declares without a
       description fails the build naming it
       (proof: deferred:test:packages/cli/tests/config-explain.test.ts)
+- [ ] A workflow whose `policy` defaults carry a key its schema does not
+      declare, or a default the schema states differently, is refused at
+      mount, naming the key
+      (proof: deferred:test:packages/core/tests/define-workflow.test.ts)
 - [ ] The serial engine's retry delay does not change when the ticket
       workflow's `pollBackoffMs` does
       (proof: deferred:assertion:lifecycle.the_engine_retries_on_its_own_delay)
