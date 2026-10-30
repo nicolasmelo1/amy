@@ -45,6 +45,13 @@ fs.appendFileSync(
   })}\n`,
 );
 
+// Nobody can write a plan for this one: the attempt is logged, as every call
+// is, and fails, so the note is handed back once the attempts run out.
+if (prompt.includes("a plan nobody can write")) {
+  process.stderr.write("the stand-in agent could not make sense of this repository\n");
+  process.exit(1);
+}
+
 const script = JSON.parse(fs.readFileSync(scriptFile, "utf-8")) as { attempts: Record<string, number> };
 script.attempts[planPath] = (script.attempts[planPath] ?? 0) + 1;
 fs.writeFileSync(scriptFile, `${JSON.stringify(script, null, 2)}\n`, "utf-8");

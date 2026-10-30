@@ -27,11 +27,14 @@ if (repo === "" || reportPath === "") {
   process.exit(2);
 }
 const dist = (relative: string): Promise<unknown> => import(pathToFileURL(path.join(repo, relative)).href);
-const { dispatchesTo } = (await dist("packages/core/dist/index.js")) as typeof import("@amykit/core");
+const { dispatchesTo, withDiagramBeside } = (await dist("packages/core/dist/index.js")) as typeof import("@amykit/core");
 const { SlackApi, SlackConversation } = (await dist("plugins/slack/dist/index.js")) as typeof import("@amykit/plugin-slack");
 const { FileQueue } = (await dist("plugins/file-queue/dist/index.js")) as typeof import("@amykit/plugin-file-queue");
 const { Worker } = (await dist("plugins/serial-engine/dist/index.js")) as typeof import("@amykit/plugin-serial-engine");
-const { DEFAULT_POLICY, newRecord, ticketRuntime, ticketToQa } = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
+const { DEFAULT_POLICY, plugin, ticketRuntime } = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
+// The workflow as the host mounts it, shaped by the diagram at its package root.
+const drawn = withDiagramBeside(plugin, pathToFileURL(path.join(repo, "packages/workflow-ticket-to-qa/dist/index.js")));
+const { newRecord, workflow: ticketToQa } = drawn;
 
 const CHANNEL = "C0WORK";
 const OWNER = "U0ADA";

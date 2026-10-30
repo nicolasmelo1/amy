@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "a-workflow-of-your-own",
-  "implementation_sha256": "23570f938b5866a657f5d094ba91989af5c8d2b5691b61ac4e87ab762ff3981d",
+  "implementation_sha256": "64c4b97cfcf6375d285c3312af0a67a937092b09990ce786b0f96a329d9068ae",
   "runs": [
     {
       "scenario": "a-workflow-of-your-own",
       "status": "passed",
       "actor": "Claude (agent), installing the command alone and writing a private workflow with .software-factory/evidence/workflow-new-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/workflow-new-run.json",
-      "report_sha256": "5e325c7279264b83f0c480c1571137a38622212bfe68215d38d8b56af0887307",
+      "report_sha256": "6c1ea8bd7a707c2d43f1b8c63e3c7d254a1386eca8ca521853247f5e0da00ff2",
       "required_assertions": []
     }
   ]

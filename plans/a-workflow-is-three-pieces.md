@@ -12,7 +12,7 @@ record. What an author still hands it is the shape of the old contract:
   built by hand from the ports.
 
 The first is the diagram's to say ([a workflow is a Mermaid
-diagram](a-workflow-is-a-mermaid-diagram.md)). The other two are where a
+diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md)). The other two are where a
 workflow's size still goes to things every workflow writes the same way: the
 `switch`, the rules that hold for every state and are wrapped around it, and
 the object the runtime assembles. amy is a framework for workflows the way
@@ -24,7 +24,7 @@ Like Rails, a workflow is three pieces, always in the same place:
 
 | Rails | amy | What it says |
 | --- | --- | --- |
-| `routes.rb` | `workflow.mmd` | where work can go ([a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md)) |
+| `routes.rb` | `workflow.mmd` | where work can go ([a workflow is a Mermaid diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md)) |
 | a controller | `decide` | where this piece of work goes next, given what the world says |
 | models and jobs | `actions` | what happens in the world: an agent run, a branch, a message |
 
@@ -104,7 +104,7 @@ writes: a `workflow.mmd` and an `index.ts`. A raw `Plugin` that registers a work
 working, and the installed `workflow-oncall` fixture stays written that way, so
 the gate that drives it keeps proving the contract underneath.
 
-It comes after [a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md),
+It comes after [a workflow is a Mermaid diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md),
 which gives `decide` the states it is checked against. The declarations
 written against the delivered call keep mounting while each workflow moves:
 `states`, `plan` and `runtime` are still accepted beside the new members, and

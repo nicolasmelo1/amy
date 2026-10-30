@@ -144,6 +144,10 @@ what the gate requires:
 - `plan.the_lifecycle_walks_in_order`
 - `plan.one_look_makes_at_most_one_move`
 - `plan.the_machine_settles_instead_of_spinning`
+- `plan.every_drawn_edge_is_walked`, added by
+  [a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md): every
+  arrow the installed package's `workflow.mmd` draws is one some note in the
+  run took, including a draft that never gets past the agent
 
 ## What going through the seam found
 

@@ -293,6 +293,11 @@
           "description": ""
         },
         {
+          "title": "A workflow is a Mermaid diagram",
+          "path": "/design/a-workflow-is-a-mermaid-diagram",
+          "description": ""
+        },
+        {
           "title": "A workflow is one declaration",
           "path": "/design/a-workflow-is-one-declaration",
           "description": ""
@@ -901,6 +906,11 @@
           "depth": 3,
           "title": "**A view is data.**",
           "slug": "a-view-is-data"
+        },
+        {
+          "depth": 3,
+          "title": "**A workflow is a Mermaid diagram.** A workflow's shape is the workflow.mmd beside it — an ordinary stateDiagram-v2 that GitHub and Obsidian render — and the host reads its states, start, waits and ends from it when the workflow mounts; defineWorkflow's states, waiting and terminal are required only without one, and declaring both is refused at boot. readDiagram, connects, markState, withDiagramBeside and the notWritten() stub are in the core, Mermaid-checked against Pele in its tests. The engine logs a move the diagram does not draw as workflow.undrawn_transition and makes it anyway; the testkit fails one, and with everyEdge an arrow no world walks. amy workflow new --from <file.mmd> turns a diagram into a workflow that mounts with every decision a stub, amy workflow check lists the stubs and the arrows not walked, and amy workflow export [--work <id>] prints the diagram with a record's state marked. StateMachine takes an optional diagram. The three shipped workflows are each drawn as one and lose their state lists and their exported unmounted errand, noteToPlan, ticketToQa and newRecord; bind a plugin with withDiagramBeside(plugin, entry) instead. ticket-to-qa no longer asks a reviewer again on every look when nothing was pushed since they requested changes.",
+          "slug": "a-workflow-is-a-mermaid-diagram-a-workflows-shape-is-the-workflowmmd-beside-it-an-ordinary-statediagram-v2-that-github-and-obsidian-render-and-the-host-reads-its-states-start-waits-and-ends-from-it-when-the-workflow-mounts-defineworkflows-states-waiting-and-terminal-are-required-only-without-one-and-declaring-both-is-refused-at-boot-readdiagram-connects-markstate-withdiagrambeside-and-the-notwritten-stub-are-in-the-core-mermaid-checked-against-pele-in-its-tests-the-engine-logs-a-move-the-diagram-does-not-draw-as-workflowundrawntransition-and-makes-it-anyway-the-testkit-fails-one-and-with-everyedge-an-arrow-no-world-walks-amy-workflow-new---from-filemmd-turns-a-diagram-into-a-workflow-that-mounts-with-every-decision-a-stub-amy-workflow-check-lists-the-stubs-and-the-arrows-not-walked-and-amy-workflow-export---work-id-prints-the-diagram-with-a-records-state-marked-statemachine-takes-an-optional-diagram-the-three-shipped-workflows-are-each-drawn-as-one-and-lose-their-state-lists-and-their-exported-unmounted-errand-notetoplan-tickettoqa-and-newrecord-bind-a-plugin-with-withdiagrambesideplugin-entry-instead-ticket-to-qa-no-longer-asks-a-reviewer-again-on-every-look-when-nothing-was-pushed-since-they-requested-changes"
         },
         {
           "depth": 3,
@@ -2106,6 +2116,38 @@
           "depth": 2,
           "title": "The rule",
           "slug": "the-rule"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-is-a-mermaid-diagram",
+      "file": "docs/design/a-workflow-is-a-mermaid-diagram.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-is-a-mermaid-diagram.md",
+      "title": "A workflow is a Mermaid diagram",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "What this is not",
+          "slug": "what-this-is-not"
+        },
+        {
+          "depth": 2,
+          "title": "What was delivered",
+          "slug": "what-was-delivered"
         },
         {
           "depth": 2,
@@ -3789,6 +3831,11 @@
           "depth": 3,
           "title": "amy workflow check",
           "slug": "amy-workflow-check"
+        },
+        {
+          "depth": 3,
+          "title": "amy workflow export",
+          "slug": "amy-workflow-export"
         },
         {
           "depth": 3,
@@ -5923,6 +5970,25 @@
         "summary": "the work stayed put, to be looked at again later"
       },
       {
+        "kind": "workflow.undrawn_transition",
+        "says": "The work moved between two states the workflow's diagram does not connect. The move was applied.",
+        "requires": [
+          "workId",
+          "state"
+        ],
+        "detail": [
+          {
+            "field": "from",
+            "type": "string"
+          },
+          {
+            "field": "to",
+            "type": "string"
+          }
+        ],
+        "summary": "the work moved where the workflow's diagram draws no arrow"
+      },
+      {
         "kind": "worktree.removed",
         "says": "A worktree was removed, and why it was safe to remove.",
         "requires": [],
@@ -6488,6 +6554,27 @@
         {
           "path": [
             "workflow",
+            "export"
+          ],
+          "description": "Print a workflow's diagram, which renders wherever Mermaid does",
+          "arguments": [
+            {
+              "name": "<name>",
+              "required": true,
+              "description": "the configured workflow to export"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--work <id>",
+              "description": "mark the state this piece of work is in"
+            }
+          ],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "workflow",
             "list"
           ],
           "description": "Every workflow this install can drive",
@@ -6508,7 +6595,12 @@
               "description": "one directory name, such as oncall"
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "flags": "--from <file>",
+              "description": "a Mermaid stateDiagram-v2 to copy in as the workflow's shape, every decision a stub"
+            }
+          ],
           "isDefault": false
         },
         {
@@ -8088,6 +8180,7 @@
           "packages/core/src/operator.ts",
           "packages/core/src/runtime.ts",
           "packages/workflow-ticket-to-qa/src/**",
+          "packages/workflow-ticket-to-qa/workflow.mmd",
           "plugins/linear/src/**",
           "plugins/serial-engine/src/**",
           "plugins/github/src/**",
@@ -8158,6 +8251,7 @@
           "packages/core/src/ports/Conversation.ts",
           "packages/core/src/actions.ts",
           "packages/workflow-ticket-to-qa/src/**",
+          "packages/workflow-ticket-to-qa/workflow.mmd",
           "plugins/slack/src/**",
           "plugins/serial-engine/src/**"
         ],
@@ -8193,6 +8287,7 @@
           "mine.a_workflow_that_spins_is_refused",
           "mine.a_state_nothing_reaches_is_refused",
           "mine.an_action_with_no_port_is_refused",
+          "mine.a_diagram_becomes_a_workflow",
           "guardrails.the_scaffold_passes_its_own_check",
           "guardrails.every_guardrail_fires_on_its_fixture",
           "guardrails.a_branch_reset_is_refused",
@@ -8393,6 +8488,7 @@
         "name": "note-to-plan",
         "activation": [
           "packages/workflow-note-to-plan/src/**",
+          "packages/workflow-note-to-plan/workflow.mmd",
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
           "plugins/file-notes/src/**",
@@ -8422,7 +8518,8 @@
           "plan.what_the_agent_spent_lands_in_the_shared_log",
           "plan.the_lifecycle_walks_in_order",
           "plan.one_look_makes_at_most_one_move",
-          "plan.the_machine_settles_instead_of_spinning"
+          "plan.the_machine_settles_instead_of_spinning",
+          "plan.every_drawn_edge_is_walked"
         ],
         "scenario": ".software-factory/evidence/note-to-plan-scenario.sh"
       },
@@ -8580,6 +8677,7 @@
         "name": "ticket-to-qa",
         "activation": [
           "packages/workflow-ticket-to-qa/src/**",
+          "packages/workflow-ticket-to-qa/workflow.mmd",
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
           "plugins/file-store/src/**",
@@ -9267,6 +9365,50 @@
           },
           {
             "package": "@amykit/ui",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-workflow-is-a-mermaid-diagram",
+        "title": "**A workflow is a Mermaid diagram.** A workflow's shape is the `workflow.mmd` beside it — an ordinary `stateDiagram-v2` that GitHub and Obsidian render — and the host reads its states, start, waits and ends from it when the workflow mounts; `defineWorkflow`'s `states`, `waiting` and `terminal` are required only without one, and declaring both is refused at boot. `readDiagram`, `connects`, `markState`, `withDiagramBeside` and the `notWritten()` stub are in the core, Mermaid-checked against Pele in its tests. The engine logs a move the diagram does not draw as `workflow.undrawn_transition` and makes it anyway; the testkit fails one, and with `everyEdge` an arrow no world walks. `amy workflow new --from <file.mmd>` turns a diagram into a workflow that mounts with every decision a stub, `amy workflow check` lists the stubs and the arrows not walked, and `amy workflow export [--work <id>]` prints the diagram with a record's state marked. `StateMachine` takes an optional `diagram`. The three shipped workflows are each drawn as one and lose their state lists and their exported unmounted `errand`, `noteToPlan`, `ticketToQa` and `newRecord`; bind a plugin with `withDiagramBeside(plugin, entry)` instead. `ticket-to-qa` no longer asks a reviewer again on every look when nothing was pushed since they requested changes.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/ui",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/ui-conformance",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-testkit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],

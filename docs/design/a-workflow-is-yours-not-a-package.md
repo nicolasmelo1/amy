@@ -85,6 +85,11 @@ teaches the boot refusal instead of the shape.
       (proof: assertion:guardrails.an_every_over_nothing_is_refused)
 - [x] It refuses a fold that reads the moved record's state
       (proof: assertion:guardrails.a_fold_reading_the_moved_state_is_refused)
+- [x] A diagram drawn in another tool becomes a workflow of your own that
+      mounts as it is, every decision a stub its check lists, and exports with
+      a piece of work's state marked — added by
+      [a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md)
+      (proof: assertion:mine.a_diagram_becomes_a_workflow)
 
 **Exit condition:** somebody who has never published anything describes their
 process to `/amy-workflow`, and ends with a workflow in `~/.amy/workflows`

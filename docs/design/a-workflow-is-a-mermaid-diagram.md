@@ -24,7 +24,7 @@ a few pieces, always in the same place, and everything else derived from them
 by convention. The diagram is the first of the three pieces, the one that says
 where work can go. Deciding where it goes next, and doing it, are the other two
 and stay in code, in the same `defineWorkflow` that
-[a workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md) gives every
+[a workflow is one declaration](a-workflow-is-one-declaration.md) gives every
 workflow.
 
 ## What changes
@@ -183,39 +183,103 @@ diagram still mounts.
   diagram, drawn and editable as text. This row gives that editor the file to
   edit and the check to run on save.
 
+## What was delivered
+
+The reader is `readDiagram` in `@amykit/core` (`packages/core/src/diagram.ts`):
+the six line forms, the four classes, everything else left to the renderer
+or refused by name and line. `connects` answers whether the diagram joins two
+states, through an arrow, an `anywhere` state or a `returns` state going back
+to where the record came from. `markState` adds the two lines `export --work`
+prints. Pele is a development dependency of the core's and the CLI's tests,
+and nothing else.
+
+`defineWorkflow`'s `states`, `waiting` and `terminal` are optional.
+`withDiagramBeside(plugin, entry)` is how a host hands a workflow its
+diagram: the CLI's loader, `amy workflow check`, `amy workflow export` and the
+docs generator all call it with the entry they imported, and it finds
+`workflow.mmd` beside a local workflow's entry or at a package's root. A
+declaration that declares its states as well is refused at boot naming the
+fields, a diagram amy cannot read is refused with its file and line, and a
+raw `Plugin` with a diagram beside it is refused, because it already says its
+states in code. A workflow with neither says so when it is mounted or read.
+`attention` states wait, as far as the engine is concerned, so a workflow's
+`waitingStates` is both classes in the order the diagram draws them.
+
+`Workflow` gains an optional `diagram`. The serial engine writes
+`workflow.undrawn_transition` (`packages/core/events.json`) for a move it does
+not connect and makes the move anyway. The testkit's seventh property, *every
+move is one the diagram draws*, fails an undrawn move naming both ends, and
+with `everyEdge: true` an arrow no world walks. `amy workflow check` holds a
+walk to the diagram the same way and lists stubs and unwalked arrows as the
+to-do list, not as failures. `notWritten()` is the core's stub, and
+`notWrittenIn(plan)` reads one back.
+
+The three shipped workflows each have a `workflow.mmd`, shipped in their
+package, and no list of states, waits or ends at runtime. Each keeps a
+TypeScript union of its state names, because that is what types its
+decisions — `PLANNERS: Record<TicketState, Planner>` is still what proves no
+state was forgotten until *a workflow is three pieces* moves that check to the
+diagram; it is never read when the workflow mounts, and a name in it the
+diagram does not draw is a move the walkthrough refuses. Their exported
+`errand`, `noteToPlan`, `ticketToQa` and `newRecord` are gone: they were the
+unmounted declaration, which has no states until a host reads its diagram. A
+consumer binds it with `withDiagramBeside(plugin, entry)`.
+
+Walking every arrow found one the shipped `ticket-to-qa` could not rest on:
+a reviewer who asks for changes, every thread judged and nothing pushed, sent
+the work from `HUMAN_REVIEW` to `RE_REVIEW` and back on every look, asking
+again each time, because the review that sent it back was still on the head.
+`HUMAN_REVIEW` now waits, after asking again, for a review submitted since it
+asked.
+
+The StateMachine primitive takes an optional `diagram`, the conformance
+world's work profile is drawn from one and its personal profile is not, and
+the golden is relocked. The window's Workflows canvas, which says a workflow
+has no diagram, arrives with [amy has a window](../../plans/amy-has-a-window.md);
+there is no window yet to say it in. The boot check of one decision per drawn
+state arrives with [a workflow is three pieces](../../plans/a-workflow-is-three-pieces.md),
+as this plan said it would; until then `amy workflow check` finds every stub
+by asking each drawn state.
+
+The errand has no gate, so its diagram is held by its conformance suite
+alone until [the errand is proven end to end](../../plans/the-errand-is-proven-end-to-end.md).
+The note-to-plan, ticket-to-qa, a-private-workflow-composes and
+a-question-is-not-an-answer gates add their workflow's `workflow.mmd` to
+their activation.
+
 ## Acceptance criteria
 
-- [ ] The subset reads the initial, terminal, waiting, attention, `anywhere`
+- [x] The subset reads the initial, terminal, waiting, attention, `anywhere`
       and `returns` states and every transition of a diagram, and refuses each
       unsupported construct by name and line
-      (proof: deferred:test:packages/core/tests/diagram.test.ts)
-- [ ] Every diagram the subset accepts parses under Pele as a state diagram
+      (proof: test:packages/core/tests/diagram.test.ts)
+- [x] Every diagram the subset accepts parses under Pele as a state diagram
       with the same states, transitions and classes
-      (proof: deferred:test:packages/core/tests/diagram-mermaid.test.ts)
-- [ ] A workflow with a `workflow.mmd` beside it mounts with the states the
+      (proof: test:packages/core/tests/diagram-mermaid.test.ts)
+- [x] A workflow with a `workflow.mmd` beside it mounts with the states the
       file draws and declares none, and one that declares them as well is
       refused by name
-      (proof: deferred:test:packages/core/tests/mount.test.ts)
-- [ ] An `advance` to a state the diagram does not connect fails the walk,
+      (proof: test:packages/core/tests/mount.test.ts)
+- [x] An `advance` to a state the diagram does not connect fails the walk,
       naming both ends; a move to an `anywhere` state or back out of a
       `returns` state does not; and an edge no walk took is listed
-      (proof: deferred:test:packages/workflow-testkit/tests/transitions.test.ts)
-- [ ] Changing a shipped workflow's diagram makes the gate that drives it
-      stale (proof: deferred:test:mutation fixture for L3.GATE_HAS_FRESH_EVIDENCE)
-- [ ] Each shipped workflow's walkthrough takes every edge its diagram draws
-      (proof: deferred:assertion:plan.every_drawn_edge_is_walked)
-- [ ] `amy workflow new --from` turns a diagram into a workflow that mounts,
+      (proof: test:packages/workflow-testkit/tests/transitions.test.ts)
+- [x] Changing a shipped workflow's diagram makes the gate that drives it
+      stale (proof: test:packages/cli/tests/diagram-gates.test.ts)
+- [x] Each shipped workflow's walkthrough takes every edge its diagram draws
+      (proof: assertion:plan.every_drawn_edge_is_walked)
+- [x] `amy workflow new --from` turns a diagram into a workflow that mounts,
       whose stubs settle rather than move, and whose check lists every stub
       and every edge not walked
-      (proof: deferred:assertion:mine.a_diagram_becomes_a_workflow)
-- [ ] `amy workflow export --work` prints a diagram Mermaid's parser accepts,
+      (proof: assertion:mine.a_diagram_becomes_a_workflow)
+- [x] `amy workflow export --work` prints a diagram Mermaid's parser accepts,
       with the record's state marked
-      (proof: deferred:test:packages/cli/tests/workflow-export.test.ts)
-- [ ] Every `StateMachine` for a workflow with a diagram carries it, one for a
+      (proof: test:packages/cli/tests/workflow-export.test.ts)
+- [x] Every `StateMachine` for a workflow with a diagram carries it, one for a
       workflow without carries its states and no diagram, and the golden is
       relocked
-      (proof: deferred:assertion:frame.nothing_moved_since_it_was_approved)
-- [ ] A workflow with no diagram, written by hand, still mounts and is driven
+      (proof: assertion:frame.nothing_moved_since_it_was_approved)
+- [x] A workflow with no diagram, written by hand, still mounts and is driven
       (proof: assertion:plugins.a_workflow_from_outside_this_repository_mounts)
 
 **Exit condition:** each of the three shipped workflows is a `workflow.mmd`

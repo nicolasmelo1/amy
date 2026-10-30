@@ -242,6 +242,8 @@ gates:
   ticket-to-qa:
     activation:
       - "packages/workflow-ticket-to-qa/src/**"
+      # Its shape: a changed diagram is a changed workflow.
+      - "packages/workflow-ticket-to-qa/workflow.mmd"
       - "packages/agent-kit/src/**"
       - "packages/cli/src/**"
       - "plugins/file-store/src/**"
@@ -319,6 +321,8 @@ gates:
   note-to-plan:
     activation:
       - "packages/workflow-note-to-plan/src/**"
+      # Its shape: a changed diagram is a changed workflow.
+      - "packages/workflow-note-to-plan/workflow.mmd"
       - "packages/agent-kit/src/**"
       - "packages/cli/src/**"
       - "plugins/file-notes/src/**"
@@ -348,6 +352,7 @@ gates:
       - "plan.the_lifecycle_walks_in_order"
       - "plan.one_look_makes_at_most_one_move"
       - "plan.the_machine_settles_instead_of_spinning"
+      - "plan.every_drawn_edge_is_walked"
 
   # config.ts is here because `workflow new` writes a profile as well as a
   # directory: `writeWorkflowProfile` is what makes the scaffold drivable, and
@@ -369,6 +374,7 @@ gates:
       - "mine.a_workflow_that_spins_is_refused"
       - "mine.a_state_nothing_reaches_is_refused"
       - "mine.an_action_with_no_port_is_refused"
+      - "mine.a_diagram_becomes_a_workflow"
       - "guardrails.the_scaffold_passes_its_own_check"
       - "guardrails.every_guardrail_fires_on_its_fixture"
       - "guardrails.a_branch_reset_is_refused"
@@ -537,6 +543,8 @@ gates:
       - "packages/core/src/operator.ts"
       - "packages/core/src/runtime.ts"
       - "packages/workflow-ticket-to-qa/src/**"
+      # Its shape: a changed diagram is a changed workflow.
+      - "packages/workflow-ticket-to-qa/workflow.mmd"
       - "plugins/linear/src/**"
       - "plugins/serial-engine/src/**"
       - "plugins/github/src/**"
@@ -621,6 +629,8 @@ gates:
       - "packages/core/src/ports/Conversation.ts"
       - "packages/core/src/actions.ts"
       - "packages/workflow-ticket-to-qa/src/**"
+      # Its shape: a changed diagram is a changed workflow.
+      - "packages/workflow-ticket-to-qa/workflow.mmd"
       - "plugins/slack/src/**"
       - "plugins/serial-engine/src/**"
     evidence: ".software-factory/evidence/a-question-is-not-an-answer.json"

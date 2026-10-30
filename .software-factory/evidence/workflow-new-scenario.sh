@@ -85,6 +85,39 @@ if sf check --root "$workflow" --rule L6.FOLD_READS_A_MOVED_RECORD >/dev/null 2>
 record guardrails.a_fold_reading_the_moved_state_is_refused "$fold"
 mv "$entry.clean" "$entry"
 
+# A workflow drawn in another tool: the diagram is copied in beside a
+# scaffold whose every decision is a stub, it mounts as it is — the check
+# registers it and builds its runtime — the stubs settle rather than move,
+# the check lists each one and every arrow nothing walked, and the export of
+# a piece of work marks where it stands in a diagram Mermaid still reads.
+cat > "$work/pager.mmd" <<'MMD'
+stateDiagram-v2
+    [*] --> PAGED
+    PAGED --> ACKNOWLEDGED: somebody took it
+    PAGED --> ESCALATED: nobody did
+    ESCALATED --> ACKNOWLEDGED
+    ACKNOWLEDGED --> [*]
+    class PAGED waiting
+MMD
+drawn=0
+"$amy" workflow new pager --from "$work/pager.mmd" >/dev/null 2>&1 || drawn=1
+cmp -s "$work/pager.mmd" "$work/home/.amy/workflows/pager/workflow.mmd" || drawn=1
+grep -q 'states:' "$work/home/.amy/workflows/pager/index.ts" && drawn=1
+checked=$("$amy" workflow check pager 2>&1) || drawn=1
+printf '%s\n' "$checked" | grep -q "pager mounts: 3 decision(s) are not written yet" || drawn=1
+for state in PAGED ACKNOWLEDGED ESCALATED; do
+  printf '%s\n' "$checked" | grep -q "not written yet: the decision for $state" || drawn=1
+done
+for edge in "PAGED → ACKNOWLEDGED" "PAGED → ESCALATED" "ESCALATED → ACKNOWLEDGED"; do
+  printf '%s\n' "$checked" | grep -q "drawn, not walked: $edge" || drawn=1
+done
+mkdir -p "$work/home/.amy/pager/records"
+printf '{"id":"page-1","state":"ESCALATED","updatedAt":"2026-10-29T12:00:00.000Z","attempts":{},"history":[]}\n' > "$work/home/.amy/pager/records/page-1.json"
+exported=$("$amy" workflow export pager --work page-1 2>&1) || drawn=1
+printf '%s\n' "$exported" | grep -q '^stateDiagram-v2' || drawn=1
+printf '%s\n' "$exported" | grep -q '^    class ESCALATED current$' || drawn=1
+record mine.a_diagram_becomes_a_workflow "$drawn"
+
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
 total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)
 status=passed

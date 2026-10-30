@@ -21,6 +21,8 @@ import {
   OTHER_REPO,
   REPO,
   SLUG,
+  UNWRITABLE,
+  UNWRITABLE_REPO,
   build,
   configure,
   fileOnBranch,
@@ -115,6 +117,9 @@ interface State {
   byHand: PlanRecord | null;
   foreign: PlanRecord | null;
   broken: PlanRecord | null;
+  unwritable: PlanRecord | null;
+  /** The arrows the installed package's `workflow.mmd` draws, as `FROM>TO`. */
+  diagram: string[];
   host: CodeHost;
   agentCalls: AgentCall[];
   checkCalls: CheckCall[];
@@ -227,6 +232,22 @@ function run(root: string): Look[] {
   return trail;
 }
 
+/**
+ * The arrows the installed workflow's diagram draws, read from the package
+ * the run mounted rather than from this checkout: a package that left its
+ * diagram out could not have mounted, and this says which file it was.
+ */
+function installedDiagram(root: string): string[] {
+  const file = path.join(root, "home", ".amy", "plugins", "node_modules", "@amykit", "workflow-note-to-plan", "workflow.mmd");
+  if (!fs.existsSync(file)) return [];
+  const name = /^[A-Za-z_]\w*$/;
+  return fs.readFileSync(file, "utf-8").split("\n").flatMap((line) => {
+    const [from = "", rest = ""] = line.split("-->");
+    const to = rest.split(":")[0]!.trim();
+    return name.test(from.trim()) && name.test(to) ? [`${from.trim()}>${to}`] : [];
+  });
+}
+
 function transitionsOf(record: PlanRecord | null): string[] {
   return (record?.history ?? []).map((move) => `${move.from}>${move.to}`);
 }
@@ -282,6 +303,14 @@ function walkthrough(): State {
     "utf-8",
   );
 
+  // Five: a note about a repository plans are written into, which the agent
+  // never manages to draft. It is handed back once the attempts run out.
+  fs.writeFileSync(
+    path.join(notesDir(root), "unwritable.md"),
+    `---\nrepo: ${UNWRITABLE_REPO}\n---\n\n${UNWRITABLE}\n`,
+    "utf-8",
+  );
+
   const rediscovered = plans(root, ["discover"]);
   const trail = run(root);
 
@@ -315,6 +344,8 @@ function walkthrough(): State {
     byHand: recordFor(root, "by-hand"),
     foreign: recordFor(root, "not-mine"),
     broken: recordFor(root, "will-break"),
+    unwritable: recordFor(root, "unwritable"),
+    diagram: installedDiagram(root),
     host: read<CodeHost>(path.join(worldDir(root), "code-host.json")),
     agentCalls: lines<AgentCall>(path.join(worldDir(root), "claude.log")),
     checkCalls: lines<CheckCall>(path.join(worldDir(root), "sf.log")),
@@ -496,7 +527,7 @@ function boundaryChecks(state: State): Check[] {
       "plan.each_workflow_keeps_its_own_queue_and_records",
       state.ticketQueue.length === 0 &&
         state.planQueue.length === 0 &&
-        state.records.length === 4 &&
+        state.records.length === 5 &&
         !state.ticketStatus.out.includes("ticket-to-qa"),
     ],
     [
@@ -514,6 +545,14 @@ function lifecycleChecks(state: State): Check[] {
     [
       "plan.the_lifecycle_walks_in_order",
       transitionsOf(state.first).join(",") === EXPECTED.join(","),
+    ],
+    [
+      // Every arrow the installed diagram draws is one some note in this run
+      // took: the walkthrough leaves nothing drawn and never walked.
+      "plan.every_drawn_edge_is_walked",
+      state.diagram.length === 7 &&
+        state.unwritable?.state === "DECLINED" &&
+        state.diagram.every((edge) => state.records.some((record) => transitionsOf(record).includes(edge))),
     ],
     [
       "plan.one_look_makes_at_most_one_move",
