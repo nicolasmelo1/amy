@@ -174,6 +174,14 @@ alone already shows live work.
 | `getGrooming` | `GET /v1/grooming/sessions/{groomingId}` | `{ briefId, revision, green, sections[{ name, text, refusals[] }], transcript[] }`. `404 grooming.not_found`. |
 | `addGroomingTurn` | `POST /v1/grooming/sessions/{groomingId}/turns` | Request `{ text }`. `202 { turnId }`; the next question and the reran check arrive through `grooming.detail`. Writes: the brief. Never the tracker. |
 
+### `events` — what a tool reports · *an event is a reason to look*
+
+| Operation | Method and path | What it does |
+| :-- | :-- | :-- |
+| `receiveGitHubEvent` | `POST /v1/events/github` | A GitHub webhook, verified by `X-Hub-Signature-256` against the configured secret before anything is read. `202` once translated and queued; `401 events.bad_signature`; `204` for an event no mounted workflow names. Carries no session or bearer token: the signature is the authentication. Writes: the queue and the event log. |
+| `receiveLinearEvent` | `POST /v1/events/linear` | A Linear webhook, verified by `Linear-Signature` (HMAC-SHA256 of the raw body). Same answers and writes as GitHub's. |
+| `listEventSources` | `GET /v1/events/sources` | Per mounted source: whether events are arriving, when the last one did, and the polling cadence behind it — what `amy doctor` prints. |
+
 ### `workplace` — the checkout · *the workplace opens where you work*
 
 | Operation | Method and path | What it does |
