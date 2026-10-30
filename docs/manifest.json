@@ -4463,6 +4463,11 @@
         },
         {
           "depth": 3,
+          "title": "L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE",
+          "slug": "l4adeliveredplankeepsnopromise"
+        },
+        {
+          "depth": 3,
           "title": "L4.CLAIM_CITES_ITS_EVIDENCE",
           "slug": "l4claimcitesitsevidence"
         },
@@ -9043,6 +9048,13 @@
         "enabled": true,
         "settings": {},
         "title": "A gate activated by touched paths needs digest-verified, non-stale evidence",
+        "reason": ""
+      },
+      {
+        "id": "L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE",
+        "enabled": true,
+        "settings": {},
+        "title": "A delivered plan keeps no promise it did not prove",
         "reason": ""
       },
       {

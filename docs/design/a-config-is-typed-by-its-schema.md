@@ -42,9 +42,9 @@ strings narrows it once, in one named function, rather than at every read.
 
 - [x] A plugin reading a `number` field as a `string` fails to typecheck, and
       one reading an optional field without handling `undefined` does too
-      (proof: deferred:test:packages/core/tests/config-schema.types.test.ts)
+      (proof: test:packages/core/tests/config-schema.types.test.ts)
 - [x] A `default` of the wrong type fails to typecheck
-      (proof: deferred:test:packages/core/tests/config-schema.types.test.ts)
+      (proof: test:packages/core/tests/config-schema.types.test.ts)
 - [x] A plugin still written as `const plugin: Plugin = {…}` compiles and mounts
       unchanged
       (proof: assertion:plugins.a_workflow_from_outside_this_repository_mounts)

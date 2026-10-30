@@ -60,6 +60,7 @@ held to a gate that is proven to work.
 | `L2.POLICY_ONLY_TIGHTENS` | The guardrail may be strengthened, never quietly weakened |
 | `L3.GATE_COVERS_THE_PLAN` | A gate requires every check its plan's criteria name |
 | `L3.GATE_HAS_FRESH_EVIDENCE` | A gate activated by touched paths needs digest-verified, non-stale evidence |
+| `L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE` | A delivered plan keeps no promise it did not prove |
 | `L4.CLAIM_CITES_ITS_EVIDENCE` | Every marked promise names the gate that proves it |
 | `L4.DOC_LINKS_RESOLVE` | Repo-relative documentation links resolve |
 | `L4.EVERY_RULE_HAS_A_WHY` | Every enabled rule is cited in prose, and every citation resolves |

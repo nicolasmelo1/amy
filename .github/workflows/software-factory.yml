@@ -60,6 +60,16 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref || 'main' }}
         run: sf check --allow-commands --changed "origin/$BASE_REF"
+      # Which plans this pull request advances, read off the gates its paths
+      # activate and the plan files it edits, so the checks page says what the
+      # change is for without anybody having to name it. Refusing a delivered
+      # plan that still owes something is L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE's
+      # job, in the step above; this one only names.
+      - name: Name the plans this change advances
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: npx tsx scripts/report-advanced-plans.ts "origin/$BASE_REF"
 
   # The npm half of the gate. Until now nothing here ran outside a laptop:
   # the tests, the linter, the dead-code detector and the audit were all one

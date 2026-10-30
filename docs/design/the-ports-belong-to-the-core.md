@@ -52,11 +52,15 @@ without the core learning what a workflow's policy means.
       (proof: test:packages/core/tests/ports.test.ts)
 - [x] `workflow-ticket-to-qa` still exports them, from the core
       (proof: test:packages/workflow-ticket-to-qa/tests/index.test.ts)
-- [x] A workflow declares its dependencies as the core's contracts and nothing
-      is restated by hand
-      (proof: unspecified:the proof is the diff that deletes a private workflow's hand-rolled deps type, in a repository this one does not contain)
 - [x] The install scenario still drives a ticket with the plugins resolving one
       copy of the core (proof: test:.software-factory/evidence/installed-plugins-scenario.sh)
+
+**Proven outside this repository.** Not an acceptance criterion here, because
+nothing in this repository can prove it, and a delivered plan keeps only the
+criteria it proved: a workflow declares its dependencies as the core's
+contracts and nothing is restated by hand. The proof is the diff that deletes a
+private workflow's hand-rolled deps type, in a repository this one does not
+contain.
 
 **Exit condition:** a workflow nobody shipped declares every port it needs by
 importing `@amykit/core`, and no plugin in the install depends on a workflow

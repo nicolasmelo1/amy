@@ -56,10 +56,10 @@ migration with its own plan if it is wanted — not a side effect of this one.
 
 - [x] `checkouts()` resolves a repository's base from the calling plugin's own
       `baseBranch`, falling back to its `defaultBranch`
-      (proof: deferred:test:packages/core/tests/checkouts.test.ts)
+      (proof: test:packages/core/tests/checkouts.test.ts)
 - [x] A worktree port mounted by a plugin listed after the caller is the one
       its `Git` resolves paths through
-      (proof: deferred:test:packages/core/tests/checkouts.test.ts)
+      (proof: test:packages/core/tests/checkouts.test.ts)
 - [x] Nothing outside `packages/core` constructs a `Git`
       (proof: test:packages/core/tests/architecture.test.ts)
 - [x] A ticket still has its work cut from, and its pull request opened

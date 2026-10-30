@@ -114,10 +114,12 @@ Linear change lands beside the existing `ISSUE_FIELDS` mapping tests.
       freeze (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
 - [x] A ticket carries its labels
       (proof: test:plugins/linear/tests/LinearTracker.test.ts)
-- [x] The private workflow deletes both adapters
-      (proof: unspecified:the deletion happens in a repository this one does
-      not contain; what this plan ships is every port method the adapters
-      were compensating for)
+
+**Proven outside this repository.** Not an acceptance criterion here, because
+nothing in this repository can prove it, and a delivered plan keeps only the
+criteria it proved: the private workflow deletes both adapters. The deletion
+happens in a repository this one does not contain; what this plan ships is
+every port method the adapters were compensating for.
 
 **Exit condition:** a workflow that needs what the plugins know asks the
 mounted plugin, and no registry ever again says there are two code hosts

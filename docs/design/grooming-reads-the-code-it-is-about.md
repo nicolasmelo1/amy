@@ -68,23 +68,23 @@ workflow, which owns policy. The core parses no section.
 
 ## Acceptance criteria
 
-- [ ] A grooming step receives one base-source snapshot per repository its
+- [x] A grooming step receives one base-source snapshot per repository its
       feature names, resolved through the same checkout map a work item uses,
       and a repository with no explicit entry is refused at boot naming it
       (proof: test:packages/cli/tests/slices.test.ts)
-- [ ] The source view handed to a grooming step reads that repository's
+- [x] The source view handed to a grooming step reads that repository's
       configured base branch, whatever the standing working tree was on when
       the tick started
       (proof: assertion:groom.the_step_reads_the_base_branch)
-- [ ] A grooming step is handed no checkout path, branch, worktree or runner, only the id of the commit it reads at;
+- [x] A grooming step is handed no checkout path, branch, worktree or runner, only the id of the commit it reads at;
       its source port can only read base-branch Git objects and cannot create a
       branch, commit or worktree
       (proof: test:packages/workflow-feature-grooming/tests/groom.test.ts)
-- [ ] A second grooming run over the same feature rewrites the brief, bumps the
+- [x] A second grooming run over the same feature rewrites the brief, bumps the
       revision, keeps every question already logged, and retires the work the
       first run produced that it no longer wants
       (proof: assertion:groom.a_second_run_retires_what_it_cut)
-- [ ] An install whose workflow declares no grooming step behaves exactly as it
+- [x] An install whose workflow declares no grooming step behaves exactly as it
       does today, with no config change
       (proof: test:packages/cli/tests/slices.test.ts)
 

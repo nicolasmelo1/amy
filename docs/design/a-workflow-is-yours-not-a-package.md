@@ -57,23 +57,23 @@ teaches the boot refusal instead of the shape.
 
 ## Acceptance criteria
 
-- [ ] `amy workflow new` produces a workflow that drives work unedited
+- [x] `amy workflow new` produces a workflow that drives work unedited
       (proof: assertion:mine.the_scaffold_runs_before_it_is_edited)
-- [ ] It is resolved from `~/.amy/workflows` by its directory name
+- [x] It is resolved from `~/.amy/workflows` by its directory name
       (proof: assertion:mine.a_directory_name_is_a_workflow)
-- [ ] `amy workflow check` fails a lifecycle that does not settle
+- [x] `amy workflow check` fails a lifecycle that does not settle
       (proof: assertion:mine.a_workflow_that_spins_is_refused)
-- [ ] It fails one that claims a state it never reaches
+- [x] It fails one that claims a state it never reaches
       (proof: assertion:mine.a_state_nothing_reaches_is_refused)
-- [ ] It fails one whose plan emits an action no port answers
+- [x] It fails one whose plan emits an action no port answers
       (proof: assertion:mine.an_action_with_no_port_is_refused)
-- [ ] The scaffold is a package `npm publish` accepts, with nothing moved
+- [x] The scaffold is a package `npm publish` accepts, with nothing moved
       (proof: test:packages/cli/tests/scaffold.test.ts)
-- [ ] A scoped package and a local directory can both be configured, and the
+- [x] A scoped package and a local directory can both be configured, and the
       directory wins on a name collision
       (proof: test:packages/cli/tests/loader.test.ts)
-- [ ] `/amy-workflow` writes a directory by default and names publishing as a
-      later choice (proof: unspecified:the skill is prose, and only a reader checks it)
+- [x] `/amy-workflow` writes a directory by default and names publishing as a
+      later choice (proof: test:packages/cli/tests/workflow-skill.test.ts)
 - [x] The scaffold's own `sf check` is green before it is edited — see
       [the guardrails ship with the workflow](the-guardrails-ship-with-the-workflow.md)
       (proof: assertion:guardrails.the_scaffold_passes_its_own_check)

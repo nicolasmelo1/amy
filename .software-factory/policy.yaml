@@ -817,6 +817,9 @@ rules:
   # L1 — Every renderer in the workspace passes the frame's conformance script (docs/design/the-frame-is-closed.md)
   L1.EVERY_RENDERER_HOLDS_THE_FRAME:
     enabled: true
+  # L4 — A delivered plan keeps no promise it did not prove
+  L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE:
+    enabled: true
   # L1 — A comment block stays under the line ceiling
   L1.COMMENT_STAYS_SUCCINCT:
     enabled: true
