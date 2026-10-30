@@ -6,7 +6,7 @@ import { EnqueueRequest, Moved, Plan, WorkflowRuntime, WorkRecord, acceptsAction
 import { Worker } from "../src/Worker.js";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { DEFAULT_POLICY } from "@amykit/workflow-ticket-to-qa";
-import { newRecord } from "@amykit/workflow-ticket-to-qa";
+import { newTicketRecord as newRecord } from "@amykit/test-fixtures";
 import { HEAD, WORKDAY, botReview, pullRequest, thread, ticket,
   TicketWorkerOverrides,
 } from "@amykit/test-fixtures";

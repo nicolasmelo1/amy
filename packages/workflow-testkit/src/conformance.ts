@@ -5,6 +5,7 @@ import { Finding, PROPERTIES, Property, distinct } from "./finding.js";
 import { folds } from "./folds.js";
 import { handlers } from "./handlers.js";
 import { reachability } from "./reachability.js";
+import { transitions } from "./transitions.js";
 import { AnyRuntime, AnyWorkflow, walk } from "./walk.js";
 import { ConformanceOptions, World } from "./world.js";
 
@@ -12,7 +13,7 @@ import { ConformanceOptions, World } from "./world.js";
 const THURSDAY_NOON = new Date("2026-09-03T12:00:00.000Z");
 
 /**
- * Walks every world and asks the five machine-shaped questions of what it saw.
+ * Walks every world and asks the machine-shaped questions of what it saw.
  *
  * Returns what failed rather than throwing, so a caller can assert on one
  * finding; `conforms` is the version that becomes tests.
@@ -47,6 +48,7 @@ export async function conformance<R extends WorkRecord, O, P, W extends World<R>
     ...spent,
     ...folds(machine, walks),
     ...escalation(machine, walks, options.givesUp ?? []),
+    ...transitions(machine, walks, options.everyEdge ?? false),
   ]).sort((a, b) => order(a.property) - order(b.property));
 }
 

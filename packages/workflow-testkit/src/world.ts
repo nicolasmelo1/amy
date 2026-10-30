@@ -61,6 +61,14 @@ export interface ConformanceOptions<R extends WorkRecord, O, W extends World<R>>
    * named here. This is for a workflow that gives up some other way.
    */
   readonly givesUp?: readonly string[];
+  /**
+   * Whether an arrow the diagram draws and no world walks is a failure.
+   *
+   * Off, a move the diagram does not draw still fails, and an arrow nobody
+   * walked is only the to-do list of a workflow still being written. On, for
+   * a finished workflow whose worlds walk every arrow it draws.
+   */
+  readonly everyEdge?: boolean;
   /** How many looks one world may take before it is called a spin. Default 200. */
   readonly maxLooks?: number;
   /**
