@@ -56,8 +56,10 @@ names the `mv`. It is never read silently from there.
 **The quickstart loses a step.** It becomes `init`, `add <workflow>`,
 `doctor`, `start`: a fresh install has no workflow until `add` names one, and
 `start` is the normal path because its loop already discovers on every pass.
-`discover` and `tick` stay in the quickstart as the way to watch one move
-before trusting the loop, not as steps it needs. The roster appears in the ticket-to-qa README and in what
+`tick` stays in the quickstart as the way to watch one move before trusting
+the loop, not as a step it needs; it discovers first once
+[a plugin brings its own commands](a-plugin-brings-its-own-commands.md) folds
+`discover` into it. The roster appears in the ticket-to-qa README and in what
 `amy add @amykit/workflow-ticket-to-qa` prints when it finishes, because that
 is the point where somebody has chosen to work with reviewers.
 
