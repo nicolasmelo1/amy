@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**55 rules shipped**, 47 enabled here, 8 switched off, 47 carrying a mutation fixture, 1 violations frozen.
+**56 rules shipped**, 48 enabled here, 8 switched off, 48 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -23,7 +23,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L1** | Grain | how the code reads | 7 | 6 |
 | **L2** | Contract | no drift from the source of truth | 7 | 7 |
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
-| **L4** | Cadence | docs, plans and rules stay attached | 8 | 7 |
+| **L4** | Cadence | docs, plans and rules stay attached | 9 | 8 |
 | **L5** | Meta | the guardrail is proven to fire | 2 | 2 |
 | **L6** | Hazard | the defect classes this repository hunts | 12 | 9 |
 
@@ -328,6 +328,16 @@ When a change touches a gate's activation paths, that gate's evidence manifest m
 **Fix.** Re-run the proof against the real thing and regenerate the manifest with `sf seal <gate>`. If the run cannot pass, the finding is the product behaviour, not the gate. If the finding is the actor, the fix is not a better word in the manifest — it is running the scenario as the customer would meet it. Never hand-edit a digest.
 
 ## L4 — Cadence: docs, plans and rules stay attached
+
+### L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE
+
+**A delivered plan keeps no promise it did not prove**
+
+Every acceptance criterion in docs/design/ is ticked, cites no deferred or unspecified proof, and every assertion it cites is required by a gate and every test it cites exists.
+
+**Why.** A plan is delivered when it moves from plans/ to docs/design/, and from then on nothing asks whether it is done. L3.GATE_COVERS_THE_PLAN only covers the criteria that are not deferred, so a plan could move carrying a deferred proof, an open box or a proof nobody runs, and look finished. Ten delivered notes had done exactly that before this rule existed. A criterion that is not proven yet belongs to a plan in plans/, where the board keeps asking.
+
+**Fix.** Run `npm run check:delivered` and read which line each finding names. If the proof exists, tick the box and cite it. If it does not, build it, or move the criterion into a plan in plans/ and list that plan in plans/next-steps.md. A claim no check in this repository can prove is not a criterion here: say where it is proven, outside the list.
 
 ### L4.CLAIM_CITES_ITS_EVIDENCE
 

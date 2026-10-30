@@ -1,0 +1,26 @@
+id: L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE
+layer: L4
+title: A delivered plan keeps no promise it did not prove
+severity: critical
+statement: >-
+  Every acceptance criterion in docs/design/ is ticked, cites no deferred or
+  unspecified proof, and every assertion it cites is required by a gate and
+  every test it cites exists.
+why: >-
+  A plan is delivered when it moves from plans/ to docs/design/, and from then
+  on nothing asks whether it is done. L3.GATE_COVERS_THE_PLAN only covers the
+  criteria that are not deferred, so a plan could move carrying a deferred
+  proof, an open box or a proof nobody runs, and look finished. Ten delivered
+  notes had done exactly that before this rule existed. A criterion that is not
+  proven yet belongs to a plan in plans/, where the board keeps asking.
+fix: >-
+  Run `npm run check:delivered` and read which line each
+  finding names. If the proof exists, tick the box and cite it. If it does not,
+  build it, or move the criterion into a plan in plans/ and list that plan in
+  plans/next-steps.md. A claim no check in this repository can prove is not a
+  criterion here: say where it is proven, outside the list.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/scripts/check-delivered-plans.ts"'

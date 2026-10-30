@@ -324,6 +324,17 @@
       "must_live_in": 0,
       "must_not_live_in": 0
     },
+    "L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE": {
+      "severity": "critical",
+      "scope": 0,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
     "L4.CLAIM_CITES_ITS_EVIDENCE": {
       "severity": "medium",
       "scope": 2,

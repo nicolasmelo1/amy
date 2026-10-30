@@ -106,23 +106,23 @@ gate saw, and the event-log line for each removal.
 
 ## Acceptance criteria
 
-- [ ] Two work items in the same repository implement and gate concurrently
+- [x] Two work items in the same repository implement and gate concurrently
       without branch or dirty-tree interference
       (proof: assertion:worktree.two_items_in_one_repository_run_concurrently)
-- [ ] Agent, gate and git effects for an item receive only its own
+- [x] Agent, gate and git effects for an item receive only its own
       worktree path (proof: assertion:worktree.the_agent_the_gate_and_git_effects_receive_the_own_path)
-- [ ] A crash, escalation, failed action or dirty tree never triggers
+- [x] A crash, escalation, failed action or dirty tree never triggers
       automatic deletion (proof: assertion:worktree.a_crash_or_dirty_tree_never_deletes_a_worktree)
-- [ ] A terminal, clean worktree is prunable after retention and the
+- [x] A terminal, clean worktree is prunable after retention and the
       removal is logged (proof: assertion:worktree.a_terminal_clean_tree_is_prunable_after_retention)
-- [ ] `amy worktrees list` names state, workflow, work id, repository,
+- [x] `amy worktrees list` names state, workflow, work id, repository,
       branch, cleanliness and retention eligibility
       (proof: assertion:worktree.the_list_names_state_workflow_repo_branch_and_cleanliness)
-- [ ] An orphaned worktree is offered for recovery before pruning
+- [x] An orphaned worktree is offered for recovery before pruning
       (proof: assertion:worktree.an_orphaned_tree_is_offered_for_recovery)
-- [ ] Preparing another item never resets or repoints an existing ticket
+- [x] Preparing another item never resets or repoints an existing ticket
       branch (proof: assertion:worktree.preparing_an_item_never_repoints_the_shared_checkout_branch)
-- [ ] Existing installs keep their uncommitted work and both roots are
+- [x] Existing installs keep their uncommitted work and both roots are
       reported by `amy doctor`
       (proof: test:packages/cli/tests/doctor.test.ts)
 

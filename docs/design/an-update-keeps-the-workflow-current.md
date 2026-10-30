@@ -52,23 +52,23 @@ state and the npm invocation log. Add:
 
 ## Acceptance criteria
 
-- [ ] A config that names no `autoUpdate` block runs the update before its
+- [x] A config that names no `autoUpdate` block runs the update before its
       workflow and records that run
       (proof: assertion:update.default_auto_update_runs_before_a_workflow)
-- [ ] `timing: after` runs the update after the workflow has finished
+- [x] `timing: after` runs the update after the workflow has finished
       (proof: assertion:update.auto_update_can_run_after_a_workflow)
-- [ ] `everyRuns` invokes update only on the configured ordinal and survives a
+- [x] `everyRuns` invokes update only on the configured ordinal and survives a
       process restart
       (proof: assertion:update.auto_update_respects_its_cadence)
-- [ ] `enabled: false` invokes no update subprocess
+- [x] `enabled: false` invokes no update subprocess
       (proof: assertion:update.auto_update_can_be_disabled)
-- [ ] A zero, non-integer or unknown timing is refused before a workflow is
+- [x] A zero, non-integer or unknown timing is refused before a workflow is
       assembled or advanced
       (proof: assertion:update.invalid_auto_update_settings_refuse_before_work)
-- [ ] A daemon updates before it starts or after it ends, never beneath a live
+- [x] A daemon updates before it starts or after it ends, never beneath a live
       loop
       (proof: assertion:update.a_daemon_updates_only_at_its_lifecycle_boundary)
-- [ ] A failed scheduled update fails the workflow invocation and names the
+- [x] A failed scheduled update fails the workflow invocation and names the
       update's refusal
       (proof: test:packages/cli/tests/auto-update.test.ts)
 

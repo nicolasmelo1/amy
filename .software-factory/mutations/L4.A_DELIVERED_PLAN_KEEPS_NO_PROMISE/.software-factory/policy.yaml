@@ -1,0 +1,11 @@
+# Mutation fixture for L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE:
+    enabled: true

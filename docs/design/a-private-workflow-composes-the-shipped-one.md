@@ -317,9 +317,11 @@ unnoticed.
 
 ### The private workflow
 
-- [ ] The private workflow that prompted this deletes its checkout, readers,
-      queue and operator adapters and imports `ticket-to-qa`
-      (proof: unspecified:it is private; its own plan holds the measurement)
+**Proven outside this repository.** Not an acceptance criterion here, because
+nothing in this repository can prove it, and a delivered plan keeps only the
+criteria it proved: the private workflow that prompted this deletes its
+checkout, readers, queue and operator adapters and imports `ticket-to-qa`. It
+is private, and its own plan holds the measurement.
 
 ## Not here
 

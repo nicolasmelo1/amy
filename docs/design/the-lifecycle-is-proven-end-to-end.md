@@ -207,9 +207,6 @@ drives, not a field existing somewhere in the middle.
       goes away is a list that grows until nobody reads it. `--all` still shows
       it, and the log still keeps what it did
       (proof: assertion:lifecycle.finished_work_leaves_the_listing)
-- [ ] One real ticket, in the real tracker, with a real reviewer
-      (proof: deferred:the stand-ins cannot prove somebody else's schema, and
-      this is the step that has to happen with a person watching)
 
 **Exit condition:** `npm run e2e` drives the installed executable through the
 whole lifecycle against a world of stand-ins, twice, with no credential and no
@@ -218,6 +215,7 @@ those assertions passing; and touching the lifecycle, the engine, the CLI or
 any adapter it rests on turns `sf check` red until the run is repeated and
 resealed.
 
-What this does not close is the last criterion above. It is the one that needs
-a person, and it is cheaper to take once everything above it has already been
-shown to hold.
+What this does not close is one real ticket, in the real tracker, with a real
+reviewer. It needs a person, and it is cheaper to take once everything above it
+has already been shown to hold, so it is its own plan:
+[one real ticket walks the lifecycle](../../plans/one-real-ticket-walks-the-lifecycle.md).
