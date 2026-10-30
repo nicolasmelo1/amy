@@ -734,7 +734,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }
@@ -1192,7 +1215,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }
@@ -1616,7 +1662,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }
@@ -2040,7 +2109,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }
@@ -2529,7 +2621,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }
@@ -3039,7 +3154,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }
@@ -3535,7 +3673,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }
@@ -4026,7 +4187,30 @@
                         "IN_REVIEW",
                         "DONE"
                       ],
-                      "current": "ESCALATED"
+                      "current": "ESCALATED",
+                      "transitions": [
+                        {
+                          "from": "DISCOVERED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "IN_REVIEW"
+                        },
+                        {
+                          "from": "IMPLEMENTING",
+                          "to": "ESCALATED"
+                        },
+                        {
+                          "from": "ESCALATED",
+                          "to": "IMPLEMENTING"
+                        },
+                        {
+                          "from": "IN_REVIEW",
+                          "to": "DONE"
+                        }
+                      ],
+                      "diagram": "stateDiagram-v2\n    [*] --> DISCOVERED\n    DISCOVERED --> IMPLEMENTING\n    IMPLEMENTING --> IN_REVIEW\n    IMPLEMENTING --> ESCALATED: the gate stayed red\n    ESCALATED --> IMPLEMENTING\n    IN_REVIEW --> DONE\n    DONE --> [*]\n    class ESCALATED attention\n    class IN_REVIEW waiting\n"
                     },
                     "children": []
                   }

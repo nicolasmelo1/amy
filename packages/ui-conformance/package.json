@@ -35,6 +35,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@amykit/core": "^0.6.0",
     "@amykit/plugin-ui-stub": "^0.6.0"
   }
 }

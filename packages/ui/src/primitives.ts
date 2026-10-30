@@ -37,7 +37,19 @@ export interface ButtonProps extends Holds { readonly intent: Intent }
 export interface LinkProps extends Holds { readonly href: string }
 export interface InputProps { readonly name: string; readonly value?: string; readonly placeholder?: string; readonly intent?: Intent }
 export interface TimelineProps { readonly entries: readonly TimelineEntry[] }
-export interface StateMachineProps { readonly states: readonly string[]; readonly current?: string; readonly transitions?: readonly Transition[] }
+/**
+ * A workflow's states, and, when the workflow has one, the Mermaid diagram
+ * they were read from. A renderer that draws in a webview hands `diagram` to
+ * a Mermaid renderer; one that draws characters draws `states` and
+ * `transitions`, which the server read out of the same text. Neither parses
+ * Mermaid itself. A workflow without a diagram carries its states alone.
+ */
+export interface StateMachineProps {
+  readonly states: readonly string[];
+  readonly current?: string;
+  readonly transitions?: readonly Transition[];
+  readonly diagram?: string;
+}
 export interface LogProps { readonly lines: readonly string[] }
 export interface CodeProps extends Holds { readonly language?: string }
 export type DiffProps = Holds;
