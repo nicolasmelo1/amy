@@ -41,6 +41,34 @@ describe("a delivered plan", () => {
     ]);
   });
 
+  it("refuses a criterion that names no proof, open or ticked, without borrowing the next one's", () => {
+    expect(judge([
+      "- [ ] Nobody proved this",
+      "- [x] Nor this",
+      "- [ ] This one is proven (proof: assertion:gate.it_works)",
+    ].join("\n"))).toEqual([
+      "docs/design/x.md:1 is delivered with a criterion still open — prove it and tick it, or move it to a plan in plans/",
+      "docs/design/x.md:1 names no proof, so nothing says it holds — cite the check that proves it",
+      "docs/design/x.md:2 names no proof, so nothing says it holds — cite the check that proves it",
+      "docs/design/x.md:3 is delivered with a criterion still open — prove it and tick it, or move it to a plan in plans/",
+    ]);
+  });
+
+  it("checks every proof a criterion names, not only the first", () => {
+    expect(judge([
+      "- [x] Both halves (proof: assertion:gate.it_works)",
+      "      and the other (proof: deferred:test:tests/later.test.ts)",
+    ].join("\n"))).toEqual([
+      "docs/design/x.md:1 cites a deferred proof, so it was delivered without one — build it, or move the criterion to a plan in plans/",
+    ]);
+  });
+
+  it("checks a test at the repository's root like any other path", () => {
+    expect(judge("- [x] A (proof: test:missing.test.ts)")).toEqual([
+      "docs/design/x.md:1 cites missing.test.ts, which does not exist",
+    ]);
+  });
+
   it("reads a proof that cites two things separated by a comma", () => {
     expect(judge("- [x] A (proof: assertion:gate.it_works, and test:tests/it.test.ts for all five)")).toEqual([]);
   });

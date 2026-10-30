@@ -17,14 +17,15 @@ export interface DeliveredInput {
   readonly exists: (path: string) => boolean;
 }
 
-/** One acceptance criterion: a checkbox, its text, and the proof it cites. */
+/** One acceptance criterion: a checkbox, and every proof it cites. */
 interface Criterion {
   readonly line: number;
   readonly ticked: boolean;
-  readonly proof: string;
+  readonly proofs: readonly string[];
 }
 
-const CRITERION = /^- \[( |x)\] [\s\S]*?\(proof: ([^)]*)\)/gm;
+const BOX = /^- \[( |x)\] /;
+const PROOF_MARKER = /\(proof: ([^)]*)\)/g;
 const PROOF = /\b(assertion|test|command|deferred|unspecified):(\S+)/g;
 
 export function deliveredPromises(input: DeliveredInput): string[] {
@@ -36,26 +37,51 @@ export function deliveredPromises(input: DeliveredInput): string[] {
       if (!criterion.ticked) {
         problems.push(`${at} is delivered with a criterion still open — prove it and tick it, or move it to a plan in plans/`);
       }
-      for (const [, kind, target] of criterion.proof.matchAll(PROOF)) {
-        const cited = target!.replace(/[,.;]+$/, "");
-        if (kind === "deferred" || kind === "unspecified") {
-          problems.push(`${at} cites a ${kind} proof, so it was delivered without one — build it, or move the criterion to a plan in plans/`);
-        } else if (kind === "assertion" && !input.requiredAssertions.has(cited)) {
-          problems.push(`${at} cites the assertion ${cited}, and no gate requires it, so nothing proves it`);
-        } else if (kind === "test" && cited.includes("/") && !input.exists(cited)) {
-          problems.push(`${at} cites ${cited}, which does not exist`);
-        }
+      if (criterion.proofs.length === 0) {
+        problems.push(`${at} names no proof, so nothing says it holds — cite the check that proves it`);
       }
+      for (const proof of criterion.proofs) problems.push(...unprovenIn(at, proof, input));
     }
   }
 
   return problems;
 }
 
+/** What one proof marker cites that does not hold: a debt, an assertion nobody runs, a missing test. */
+function unprovenIn(at: string, proof: string, input: DeliveredInput): string[] {
+  const problems: string[] = [];
+  for (const [, kind, target] of proof.matchAll(PROOF)) {
+    const cited = target!.replace(/[,.;]+$/, "");
+    if (kind === "deferred" || kind === "unspecified") {
+      problems.push(`${at} cites a ${kind} proof, so it was delivered without one — build it, or move the criterion to a plan in plans/`);
+    } else if (kind === "assertion" && !input.requiredAssertions.has(cited)) {
+      problems.push(`${at} cites the assertion ${cited}, and no gate requires it, so nothing proves it`);
+    } else if (kind === "test" && !input.exists(cited)) {
+      problems.push(`${at} cites ${cited}, which does not exist`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * Each checkbox and the indented lines under it, read as one block, so a
+ * criterion with no proof never borrows the next one's.
+ */
 function criteriaIn(text: string): Criterion[] {
-  return [...text.matchAll(CRITERION)].map((match) => ({
-    line: text.slice(0, match.index).split("\n").length,
-    ticked: match[1] === "x",
-    proof: match[2]!.replace(/\s+/g, " "),
-  }));
+  const lines = text.split("\n");
+  const criteria: Criterion[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const box = BOX.exec(lines[index]!);
+    if (!box) continue;
+    let end = index + 1;
+    while (end < lines.length && /^\s+\S/.test(lines[end]!)) end += 1;
+    const block = lines.slice(index, end).join(" ").replace(/\s+/g, " ");
+    criteria.push({
+      line: index + 1,
+      ticked: box[1] === "x",
+      proofs: [...block.matchAll(PROOF_MARKER)].map((match) => match[1]!),
+    });
+    index = end - 1;
+  }
+  return criteria;
 }
