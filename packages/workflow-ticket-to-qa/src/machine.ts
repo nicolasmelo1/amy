@@ -556,18 +556,24 @@ function planHumanReview(record: TicketRecord, obs: Observation, policy: Policy)
  *
  * Nothing pushed since the reviewer asked for changes leaves their review on
  * the head, and reading it as the answer to the request just made sends the
- * work straight back to ask again, without ever waiting.
+ * work straight back to ask again, without ever waiting. Under `writes:
+ * operator` the request is the operator's, made when the turn was said, and
+ * a review since then is the answer even if it came before the record moved.
  */
 function askedAgainAt(record: TicketRecord): string | undefined {
   const last = record.history.at(-1);
-  return last?.from === "RE_REVIEW" && last.to === "HUMAN_REVIEW" ? last.at : undefined;
+  if (last?.from !== "RE_REVIEW" || last.to !== "HUMAN_REVIEW") return undefined;
+  // Keyed as `handOver` keyed it while the record was in RE_REVIEW: one round per entry into it.
+  const round = record.history.filter((moved) => moved.to === "RE_REVIEW").length;
+  return record.handedOverAt?.[`request-review@${record.reviewer}@round${round}`] ?? last.at;
 }
 
-/** A review the reviewer submitted after `since`, compared as instants rather than as text. */
+/** One review by the reviewer, on the current head, submitted after `since` — all three on the same review. */
 function reviewedSince(pr: PullRequestView, reviewer: string, since: string): boolean {
   const who = reviewer.toLowerCase();
   const after = Date.parse(since);
-  return pr.reviews.some((review) => review.author.toLowerCase() === who && Date.parse(review.submittedAt) > after);
+  return pr.reviews.some((review) =>
+    review.author.toLowerCase() === who && review.commitSha === pr.headSha && Date.parse(review.submittedAt) > after);
 }
 
 function planHumanFix(record: TicketRecord, obs: Observation, policy: Policy): Plan {

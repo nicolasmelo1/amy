@@ -103,7 +103,7 @@ export function readDiagram(text: string, source = DIAGRAM_FILE): Diagram {
     const line = lines[index]!.trim();
     const number = index + 1;
     if (line === "") continue;
-    const block = blockEnd(lines, index, line);
+    const block = blockEnd(lines, index, line, source);
     if (block !== undefined) {
       index = block;
       continue;
@@ -133,24 +133,33 @@ function header(lines: readonly string[], from: number, source: string): number 
 }
 
 /** A multi-line `note … end note` or `accDescr { … }` is prose, skipped whole. Returns the index of its last line. */
-function blockEnd(lines: readonly string[], index: number, line: string): number | undefined {
-  if (/^note\s+(left|right)\s+of\s+\S+\s*$/.test(line)) return closingLine(lines, index, (next) => next === "end note");
+function blockEnd(lines: readonly string[], index: number, line: string, source: string): number | undefined {
+  if (/^note\s+(left|right)\s+of\s+\S+\s*$/.test(line)) {
+    return closingLine(lines, index, (next) => next === "end note", "a `note` is never closed with `end note`", source);
+  }
   if (!/^accDescr\s*\{/.test(line)) return undefined;
-  return /\}\s*$/.test(line) ? index : closingLine(lines, index, (next) => /\}\s*$/.test(next));
+  return /\}\s*$/.test(line) ? index : closingLine(lines, index, (next) => /\}\s*$/.test(next), "an `accDescr {` is never closed with `}`", source);
 }
 
-function closingLine(lines: readonly string[], index: number, closes: (line: string) => boolean): number {
+/**
+ * The line a block closes on. One left open is refused at the line that
+ * opened it: Mermaid would not draw it, and what follows would be read as
+ * prose rather than as states.
+ */
+function closingLine(lines: readonly string[], index: number, closes: (line: string) => boolean, unclosed: string, source: string): number {
   for (let at = index + 1; at < lines.length; at += 1) {
     if (closes(lines[at]!.trim())) return at;
   }
-  return lines.length;
+  throw new DiagramError(index + 1, unclosed, source);
 }
 
 function readLine(line: string, number: number, reading: Reading, source: string): void {
+  // Prose first: a comment or a note may mention `<<choice>>` or `:::`
+  // without drawing either.
+  if (LEFT_FOR_THE_RENDERER.some((pattern) => pattern.test(line))) return;
   for (const [pattern, reason] of REFUSED) {
     if (pattern.test(line)) throw new DiagramError(number, reason, source);
   }
-  if (LEFT_FOR_THE_RENDERER.some((pattern) => pattern.test(line))) return;
 
   const arrow = arrowIn(line);
   if (arrow) return readTransition(arrow.from, arrow.to, arrow.label, number, reading, source);

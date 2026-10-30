@@ -34,6 +34,12 @@ describe("a workflow drawn in another tool", () => {
     expect(index).toContain('"ESCALATED": notWritten(),');
   });
 
+  it("publishes the diagram with the package, since an installed copy without it cannot mount", () => {
+    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG, file);
+
+    expect(JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")).files).toEqual(["dist", "workflow.mmd"]);
+  });
+
   it("mounts, and its check lists every stub and every arrow not walked, as a to-do list rather than a failure", async () => {
     writeWorkflow(home, "oncall", DEFAULT_CONFIG, file);
 

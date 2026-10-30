@@ -89,6 +89,17 @@ describe("what amy refuses, by name and line", () => {
     expect(refusal("stateDiagram-v2\n[*] --> [*]\n").message).toMatch(/line 2: `\[\*\] --> \[\*\]` draws no state/);
   });
 
+  it("refuses a note or a description block that is never closed, at the line that opened it", () => {
+    expect(refusal("stateDiagram-v2\n[*] --> A\nA --> [*]\nnote right of A\n  never closed\n").message).toMatch(/line 4: a `note` is never closed/);
+    expect(refusal("stateDiagram-v2\n[*] --> A\naccDescr {\nA --> [*]\n").message).toMatch(/line 3: an `accDescr \{` is never closed/);
+  });
+
+  it("reads prose that mentions a refused construct as prose", () => {
+    const diagram = readDiagram("stateDiagram-v2\n%% do not use <<choice>> here\n[*] --> A\nnote right of A: avoid the ::: shorthand\nA --> [*]\n");
+
+    expect(diagram.states).toEqual(["A"]);
+  });
+
   it("names the file it was told the diagram came from", () => {
     expect(() => readDiagram("stateDiagram-v2\n--\n", "/w/oncall/workflow.mmd")).toThrow(/^\/w\/oncall\/workflow\.mmd line 2: /);
   });

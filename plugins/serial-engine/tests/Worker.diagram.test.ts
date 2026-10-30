@@ -38,7 +38,7 @@ describe("a move the diagram does not draw", () => {
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  function look(at: string, to: string, history: WorkRecord["history"] = []): Promise<unknown> {
+  function look(at: string, to: string, history: WorkRecord["history"] = [], apply: WorkflowRuntime["apply"] = (record) => record): Promise<unknown> {
     const plan: Plan = { kind: "advance", to, effects: [], why: `to ${to}` };
     const workflow: Workflow = {
       name: "drawn",
@@ -54,7 +54,7 @@ describe("a move the diagram does not draw", () => {
       found: async () => [],
       observe: async () => ({}),
       actions: {},
-      apply: (record) => record,
+      apply,
       newRecord: (id, now) => ({ id, state: DIAGRAM.initial, updatedAt: now.toISOString(), attempts: {}, history: [] }),
     };
     records.save({ id: "w-1", state: at, updatedAt: clock.toISOString(), attempts: {}, history } as unknown as Parameters<InMemoryStore["save"]>[0]);
@@ -78,6 +78,15 @@ describe("a move the diagram does not draw", () => {
     expect(log.of("workflow.undrawn_transition")).toEqual([
       expect.objectContaining({ workId: "w-1", state: "QUEUED", detail: { from: "QUEUED", to: "DONE" } }),
     ]);
+  });
+
+  it("writes nothing when the move was not made, because the fold threw", async () => {
+    await look("QUEUED", "DONE", [], () => {
+      throw new Error("the fold broke");
+    });
+
+    expect(records.load("w-1")?.state).toBe("QUEUED");
+    expect(log.of("workflow.undrawn_transition")).toEqual([]);
   });
 
   it("writes nothing for a drawn move, a move to an `anywhere` state, or back out of a `returns` state", async () => {

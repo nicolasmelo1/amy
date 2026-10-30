@@ -48,6 +48,15 @@ describe("amy workflow export", () => {
     expect(Object.entries(classes).filter(([, names]) => names.includes("current")).map(([id]) => id)).toEqual(["ESCALATED"]);
   });
 
+  it("reads the diagram without building a runtime whose ports only a mount has", async () => {
+    const index = path.join(home, "workflows", "oncall", "index.ts");
+    fs.writeFileSync(index, fs.readFileSync(index, "utf-8")
+      .replace("import { defineWorkflow, notWritten,", "import { defineWorkflow, notWritten, port,")
+      .replace("  needs: {},", "  needs: { tracker: port() },"));
+
+    await expect(exportWorkflow(home, "oncall", loadConfig(home), { state: "PAGED" })).resolves.toContain("class PAGED current");
+  });
+
   it("refuses a state the diagram does not draw, and a workflow that has no diagram", async () => {
     await expect(exportWorkflow(home, "oncall", loadConfig(home), { state: "LOST" })).rejects.toThrow(/draws no `LOST`/);
     await expect(exportWorkflow(home, "bare", loadConfig(home))).rejects.toThrow(/bare has no workflow\.mmd: its states are declared in its code/);

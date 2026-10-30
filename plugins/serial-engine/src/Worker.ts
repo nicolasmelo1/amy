@@ -205,7 +205,6 @@ export class Worker {
       return parked;
     }
 
-    this.undrawn(item, record, decision);
     const outcomes = await this.execute(observation, record, decision);
     const progress = this.progressAfter(item, record, decision, actions, outcomes);
     // The core folds state, attempts and history; the runtime folds the domain.
@@ -220,6 +219,9 @@ export class Worker {
       movedBy(record, decision),
     );
     this.deps.records.save(next);
+    // Only once the move is saved: an action or a fold that threw left the
+    // work where it was, and the line would claim a move that never happened.
+    this.undrawn(item, record, decision);
     if (progress.parked) {
       this.park({ ...item, progress: progress.next }, progress.parked, now);
       return progress.parked;
@@ -606,7 +608,7 @@ export class Worker {
   }
 
   /**
-   * Writes down a move the workflow's diagram does not connect.
+   * Writes down a move the workflow's diagram does not connect, once it is saved.
    *
    * The move is still made: refusing it would leave somebody's work stuck
    * because of a drawing mistake, and the log is where the drawing gets fixed.

@@ -1469,3 +1469,40 @@ describe("HUMAN_REVIEW, after asking again", () => {
     expect(expectAdvance(plan(askedAgain, changesRequested("2026-09-03T12:30:00.000Z"), policy)).to).toBe("RE_REVIEW");
   });
 });
+
+describe("HUMAN_REVIEW, after asking again, reads one review for all three", () => {
+  const ASKED = "2026-09-03T12:00:00.000Z";
+  const asked = (overrides: Partial<Parameters<typeof record>[1]> = {}) => record("HUMAN_REVIEW", {
+    reviewer: "ada",
+    history: [
+      { at: "2026-09-03T10:00:00.000Z", from: "HUMAN_FIX", to: "RE_REVIEW", why: "every comment was addressed" },
+      { at: ASKED, from: "RE_REVIEW", to: "HUMAN_REVIEW", why: "asking ada to look again" },
+    ],
+    ...overrides,
+  });
+
+  it("does not take an old review of the head and a new review of an older commit as an answer", () => {
+    const obs = observation({
+      pullRequest: pullRequest({
+        reviewDecision: "CHANGES_REQUESTED",
+        reviews: [
+          review({ state: "CHANGES_REQUESTED", submittedAt: "2026-09-03T11:00:00.000Z" }),
+          review({ state: "CHANGES_REQUESTED", commitSha: OLD_HEAD, submittedAt: "2026-09-03T12:30:00.000Z" }),
+        ],
+      }),
+    });
+
+    expect(expectWait(plan(asked(), obs, policy)).why).toContain("ada to look again");
+  });
+
+  it("under writes: operator, reads a review since the operator was asked, even one before the record moved", () => {
+    // The operator asked at 11:30, ada answered at 11:45, and the record only
+    // moved to HUMAN_REVIEW at 12:00, when the review was seen.
+    const operator = asked({ handedOver: ["request-review@ada@round1"], handedOverAt: { "request-review@ada@round1": "2026-09-03T11:30:00.000Z" } });
+    const obs = observation({
+      pullRequest: pullRequest({ reviewDecision: "APPROVED", reviews: [review({ state: "APPROVED", submittedAt: "2026-09-03T11:45:00.000Z" })] }),
+    });
+
+    expect(expectAdvance(plan(operator, obs, { ...policy, writes: "operator" })).to).toBe("APPROVED");
+  });
+});

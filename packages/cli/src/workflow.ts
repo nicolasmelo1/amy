@@ -60,7 +60,8 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig, fro
     type: "module",
     main: "./dist/index.js",
     types: "./dist/index.d.ts",
-    files: ["dist"],
+    // The diagram is the workflow's shape: a package without it cannot mount.
+    files: drawn ? ["dist", DIAGRAM_FILE] : ["dist"],
     scripts: { build: "tsc", typecheck: "tsc --noEmit", test: "node --test", prepack: "npm run build" },
     // A dependency, not a dev one: the published `dist/index.d.ts` imports
     // its types, as every shipped workflow package does.
@@ -177,7 +178,7 @@ export async function exportWorkflow(
 ): Promise<string> {
   const profile = config.workflows[name];
   if (!profile) throw new Error(`there is no \`${name}\` workflow in the config`);
-  const registered = await registeredWorkflow(home, profile.workflow, options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
+  const registered = await registration(home, profile.workflow, options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
   if (typeof registered === "string") throw new Error(registered);
   const diagram = registered.workflow.diagram;
   if (!diagram) throw new Error(`${name} has no ${DIAGRAM_FILE}: its states are declared in its code, so there is no diagram to export`);
@@ -191,6 +192,32 @@ interface RegisteredWorkflow {
 }
 
 async function registeredWorkflow(home: string, spec: string, resolve: (spec: string) => string): Promise<RegisteredWorkflow | string> {
+  const registered = await registration(home, spec, resolve);
+  if (typeof registered === "string") return registered;
+  const { workflow, contributions, builds, problems, now } = registered;
+
+  builds.buildAll();
+  if (problems.length > 0) return problems.join("; ");
+
+  const runtime = contributions.get("workflow-runtime")?.get(workflow.name) as WorkflowRuntime | undefined;
+  return runtime ? { workflow, runtime, now } : `${workflow.name}: contributed no runtime, so nothing here knows how to run its actions`;
+}
+
+interface Registration {
+  workflow: Workflow;
+  contributions: Map<string, Map<string, object>>;
+  builds: Builds;
+  problems: string[];
+  now: () => Date;
+}
+
+/**
+ * The workflow a plugin registers, with nothing deferred built yet.
+ *
+ * Enough to read its shape: building its runtime would ask for the ports it
+ * needs, and only a mount has them.
+ */
+async function registration(home: string, spec: string, resolve: (spec: string) => string): Promise<Registration | string> {
   const plugin = await importedPlugin(spec, resolve);
   if (typeof plugin === "string") return plugin;
 
@@ -207,13 +234,7 @@ async function registeredWorkflow(home: string, spec: string, resolve: (spec: st
   } catch (error) {
     return `${spec}: failed to register — ${message(error)}`;
   }
-  if (!workflow) return `${spec}: registered no workflow`;
-
-  builds.buildAll();
-  if (problems.length > 0) return problems.join("; ");
-
-  const runtime = contributions.get("workflow-runtime")?.get(workflow.name) as WorkflowRuntime | undefined;
-  return runtime ? { workflow, runtime, now } : `${workflow.name}: contributed no runtime, so nothing here knows how to run its actions`;
+  return workflow ? { workflow, contributions, builds, problems, now } : `${spec}: registered no workflow`;
 }
 
 async function importedPlugin(spec: string, resolve: (spec: string) => string): Promise<Plugin | string> {
