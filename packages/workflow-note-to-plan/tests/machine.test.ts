@@ -3,7 +3,7 @@ import { Plan } from "@amykit/core";
 import { plan } from "../src/machine.js";
 import { DEFAULT_POLICY, Observation, Policy } from "../src/observation.js";
 import { PlanRecord } from "../src/record.js";
-import { newRecord } from "../src/plugin.js";
+import { newRecord } from "./drawn.js";
 import { PlanState } from "../src/state.js";
 import { Note } from "../src/ports/Notes.js";
 

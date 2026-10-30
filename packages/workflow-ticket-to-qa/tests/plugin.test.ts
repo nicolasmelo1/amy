@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, deferred, dispatchesTo, mount, mountedActions } from "@amykit/core";
 import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amykit/test-fixtures";
-import { WORKFLOW_DATA, plugin } from "../src/plugin.js";
+import { WORKFLOW_DATA } from "../src/plugin.js";
+import { plugin } from "./drawn.js";
 
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },

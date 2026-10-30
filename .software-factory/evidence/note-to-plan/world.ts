@@ -13,6 +13,13 @@ import { execFileSync } from "node:child_process";
 
 export const REPO = "acme/amy";
 export const OTHER_REPO = "acme/software-factory";
+/**
+ * A repository plans are written into, where the agent never manages to
+ * write one: every draft fails, so the note is handed back once the attempts
+ * run out. Its own repository, so the ceiling the other notes meet is not
+ * what holds it.
+ */
+export const UNWRITABLE_REPO = "acme/nobody-can-plan";
 /** A repository this install does not write plans into. */
 export const FOREIGN_REPO = "acme/somewhere-else";
 
@@ -20,6 +27,8 @@ export const FOREIGN_REPO = "acme/somewhere-else";
 export const FRICTION =
   "the relay retries a harness that already said it was out of quota";
 export const BY_HAND = "the gate output is truncated before the agent ever sees it";
+/** The note the stand-in agent cannot draft, in words it recognises. */
+export const UNWRITABLE = "a plan nobody can write, about a repository the agent cannot make sense of";
 
 export const SLUG = "the-relay-retries-a-harness-that-already-said";
 export const BY_HAND_SLUG = "the-gate-output-is-truncated-before-the-agent";
@@ -108,7 +117,7 @@ const CODE_HOST_STATE: CodeHost = {
   nextNumber: 41,
   /** Where the code host is not answering, which is what a bad day looks like. */
   refuse: [OTHER_REPO],
-  repos: { [REPO]: { pulls: [] }, [OTHER_REPO]: { pulls: [] } },
+  repos: { [REPO]: { pulls: [] }, [OTHER_REPO]: { pulls: [] }, [UNWRITABLE_REPO]: { pulls: [] } },
 };
 
 /**
@@ -140,10 +149,16 @@ defaultBranch: main
 # than five. In production this is five.
 maxItemAttempts: 1
 
+# Off, because nothing in this run reaches the internet, and an update check
+# every twentieth command would ask the real registry.
+autoUpdate:
+  enabled: false
+
 plans:
   repos:
     - ${REPO}
     - ${OTHER_REPO}
+    - ${UNWRITABLE_REPO}
   check:
     default:
       - sf check
@@ -178,6 +193,7 @@ export function build(root: string, { source }: { source: string }): void {
 
   repository(root, REPO);
   repository(root, OTHER_REPO);
+  repository(root, UNWRITABLE_REPO);
 
   const world = path.join(root, "world");
   write(path.join(world, "code-host.json"), CODE_HOST_STATE);

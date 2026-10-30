@@ -19,6 +19,7 @@ other half is identical in every workflow anybody will write:
 | a wait does not spend the ceiling that decides when to give up | a waiting state that gives up after enough looks at an unchanged world, or a hold counted against the attempts of the work after it |
 | an empty collection concludes nothing | a decision that rests on `[].every(...)` being true |
 | giving up has a way out, and only one | a giving-up state that is terminal, or one left before the world moved |
+| every move is one the diagram draws | a move between two states the workflow's `workflow.mmd` connects with no arrow, naming both ends; with `everyEdge: true`, an arrow it draws that no world walks |
 
 Each finding names the state, the action or the world to go and look at.
 

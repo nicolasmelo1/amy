@@ -31,7 +31,9 @@ export type EventKind =
   /** A worktree was removed, and why it was safe to remove. */
   | "worktree.removed"
   /** A worktree removal was asked for and refused, and why. */
-  | "worktree.retained";
+  | "worktree.retained"
+  /** A move the workflow's diagram does not draw, applied rather than refused. */
+  | "workflow.undrawn_transition";
 
 /**
  * Every kind, with the one line that says what it means.
@@ -66,6 +68,7 @@ export const EVENT_KINDS: Readonly<Record<EventKind, string>> = {
   "notify.failed": "an announcement never reached anybody",
   "worktree.removed": "a worktree was removed, and why it was safe to",
   "worktree.retained": "a worktree removal was refused, and why",
+  "workflow.undrawn_transition": "the work moved where the workflow's diagram draws no arrow",
 };
 
 /**

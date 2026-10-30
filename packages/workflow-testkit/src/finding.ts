@@ -2,7 +2,7 @@
  * The machine-shaped half of a workflow, one property at a time.
  *
  * None of them is domain knowledge, which is why one kit can check every
- * workflow anybody will write. `walk` is the precondition for the other five:
+ * workflow anybody will write. `walk` is the precondition for the others:
  * a world the runtime cannot even be driven through proves nothing else.
  */
 export const PROPERTIES = {
@@ -12,6 +12,7 @@ export const PROPERTIES = {
   ceilings: "a wait does not spend the ceiling that decides when to give up",
   folds: "an empty collection concludes nothing",
   escalation: "giving up has a way out, and only one",
+  transitions: "every move is one the diagram draws",
 } as const;
 
 export type Property = keyof typeof PROPERTIES;

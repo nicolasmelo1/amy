@@ -4,6 +4,7 @@ import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
 import { Deferred } from "./deferred.js";
+import { Diagram } from "./diagram.js";
 import { Plan, WorkRecord } from "./work.js";
 import { Queue } from "./ports/Queue.js";
 import { Store } from "./ports/Store.js";
@@ -23,6 +24,14 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
   readonly waitingStates: readonly string[];
   readonly initialState: string;
   readonly terminalStates: readonly string[];
+  /**
+   * The diagram the states were read from, when the workflow has one.
+   *
+   * What every view draws, and what a move is checked against: an advance to
+   * a state it does not connect is still applied, and written to the event
+   * log, because refusing it would leave somebody's work stuck on a drawing.
+   */
+  readonly diagram?: Diagram;
   /**
    * The actions are not declared here. They are the keys of the runtime's
    * `actions`, where each one is declared and implemented at once — two

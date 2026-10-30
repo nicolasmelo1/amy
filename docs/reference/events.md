@@ -39,6 +39,7 @@ Every line also carries `at`, `kind` and `build`. See
 | `work.recovered` | This work is moving again, after however many attempts had failed. | `workId`, `state` |
 | `work.settled` | The work reached a terminal state and left the queue. | `workId`, `state` |
 | `work.waiting` | The work stayed where it was, to be looked at again later. | `workId`, `state` |
+| `workflow.undrawn_transition` | The work moved between two states the workflow's diagram does not connect. The move was applied. | `workId`, `state` |
 | `worktree.removed` | A worktree was removed, and why it was safe to remove. | _nothing beyond `at` and `kind`_ |
 | `worktree.retained` | A worktree removal was refused, and why it was held. | _nothing beyond `at` and `kind`_ |
 
@@ -176,6 +177,13 @@ Every line also carries `at`, `kind` and `build`. See
 | :-- | :-- |
 | `from` | `string` |
 | `why` | `string` |
+
+**`workflow.undrawn_transition`**
+
+| Field | Type |
+| :-- | :-- |
+| `from` | `string` |
+| `to` | `string` |
 
 **`worktree.removed`**
 

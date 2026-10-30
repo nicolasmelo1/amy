@@ -22,7 +22,6 @@ import { plan } from "./machine.js";
 import { DEFAULT_POLICY, Policy } from "./observation.js";
 import { Roster } from "./roster.js";
 import { ticketRuntime } from "./runtime.js";
-import { TICKET_STATES, WAITING_STATES } from "./state.js";
 
 export const WORKFLOW_DATA = "workflow-data";
 
@@ -66,9 +65,6 @@ type Context = PluginContext<ConfigOf<typeof configSchema>>;
 export const plugin = defineWorkflow({
   name: "ticket-to-qa",
   pluginName: "@amykit/workflow-ticket-to-qa",
-  states: TICKET_STATES,
-  waiting: WAITING_STATES,
-  terminal: ["DONE"],
   configSchema,
   policy: DEFAULT_POLICY,
   needs: {
@@ -116,8 +112,6 @@ export const plugin = defineWorkflow({
   }),
 });
 
-export const ticketToQa = plugin.workflow;
-export const newRecord = plugin.newRecord;
 
 function writesOf(policy: Policy): Policy["writes"] {
   if (policy.writes !== "machine" && policy.writes !== "operator") {

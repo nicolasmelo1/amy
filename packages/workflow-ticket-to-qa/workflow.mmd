@@ -1,0 +1,49 @@
+stateDiagram-v2
+    %% A ticket in the tracker's working status, walked to a QA handoff.
+    %% Dashed states wait on a reviewer; bold ones on the person whose ticket
+    %% it is. ESCALATED goes back to where the escalation stopped the work.
+    classDef waiting stroke-dasharray: 4 4
+    classDef attention stroke-width:3px
+
+    [*] --> DISCOVERED
+    DISCOVERED --> CLARIFYING: it leaves questions open
+    DISCOVERED --> READY: it can be done as written
+    CLARIFYING --> READY: the question was answered
+    READY --> IMPLEMENTING
+    IMPLEMENTING --> CHECKED: the agent finished
+    CHECKED --> IMPLEMENTING: the gate is red
+    CHECKED --> SELF_REVIEW: the gate is green
+    SELF_REVIEW --> PR_OPEN
+    PR_OPEN --> COPILOT_WAIT: the pull request exists
+    COPILOT_WAIT --> COPILOT_FIX: open automated threads
+    COPILOT_FIX --> COPILOT_WAIT: every thread judged
+    COPILOT_WAIT --> REVIEWER_ASSIGNED: nothing automated outstanding
+    REVIEWER_ASSIGNED --> HUMAN_REVIEW: a reviewer was asked
+    HUMAN_REVIEW --> HUMAN_FIX: open threads
+    HUMAN_FIX --> ESCALATED: too large, or a comment needs the owner
+    HUMAN_FIX --> RE_REVIEW: every comment addressed
+    HUMAN_REVIEW --> RE_REVIEW: every thread judged
+    RE_REVIEW --> HUMAN_REVIEW: asked to look again
+    RE_REVIEW --> REVIEWER_ASSIGNED: no reviewer recorded
+    HUMAN_REVIEW --> REVIEWER_ASSIGNED: no reviewer recorded
+    HUMAN_REVIEW --> APPROVED
+    APPROVED --> QA_HANDOFF
+    QA_HANDOFF --> DONE
+
+    IMPLEMENTING --> ESCALATED: the agent failed every attempt
+    CHECKED --> ESCALATED: the gate stayed red
+    COPILOT_FIX --> ESCALATED: too large for an agent
+    REVIEWER_ASSIGNED --> ESCALATED: the forge says the branch is broken
+
+    COPILOT_WAIT --> PR_OPEN: no pull request
+    COPILOT_FIX --> PR_OPEN: no pull request
+    REVIEWER_ASSIGNED --> PR_OPEN: no pull request
+    HUMAN_REVIEW --> PR_OPEN: no pull request
+    HUMAN_FIX --> PR_OPEN: no pull request
+
+    DONE --> [*]
+
+    note right of ESCALATED: returns to the state it was escalated from
+    class COPILOT_WAIT,HUMAN_REVIEW waiting
+    class CLARIFYING,ESCALATED attention
+    class ESCALATED returns

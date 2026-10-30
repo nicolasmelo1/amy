@@ -1,0 +1,19 @@
+stateDiagram-v2
+    %% A piece of friction becomes a plan on a pull request, or is handed back.
+    %% NOTED waits only when the ceiling on plans in flight is reached; nothing
+    %% here waits on a person, because the pull request at the end is somebody
+    %% else's to merge.
+    classDef waiting stroke-dasharray: 4 4
+
+    [*] --> NOTED
+    NOTED --> DRAFTED
+    DRAFTED --> CHECKED
+    CHECKED --> DRAFTED: check is red
+    CHECKED --> PR_OPEN
+    PR_OPEN --> DONE
+    NOTED --> DECLINED: not a repository I write into
+    DRAFTED --> DECLINED: no draft in the attempts allowed
+    DONE --> [*]
+    DECLINED --> [*]
+
+    class NOTED waiting

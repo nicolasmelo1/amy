@@ -19,6 +19,8 @@ import {
   WorkflowRuntime,
   actionsOf,
   applyPlan,
+  cameFrom,
+  connects,
   dispatchesTo,
   implementationOf,
   isPortBinding,
@@ -217,6 +219,9 @@ export class Worker {
       movedBy(record, decision),
     );
     this.deps.records.save(next);
+    // Only once the move is saved: an action or a fold that threw left the
+    // work where it was, and the line would claim a move that never happened.
+    this.undrawn(item, record, decision);
     if (progress.parked) {
       this.park({ ...item, progress: progress.next }, progress.parked, now);
       return progress.parked;
@@ -600,6 +605,23 @@ export class Worker {
       const why = error instanceof Error ? error.message : String(error);
       console.error(`amy cannot write its event log, and is carrying on without it: ${why}`);
     }
+  }
+
+  /**
+   * Writes down a move the workflow's diagram does not connect, once it is saved.
+   *
+   * The move is still made: refusing it would leave somebody's work stuck
+   * because of a drawing mistake, and the log is where the drawing gets fixed.
+   */
+  private undrawn(item: QueueItem, record: WorkRecord, decision: Plan): void {
+    const diagram = this.deps.workflow.diagram;
+    if (!diagram || decision.kind !== "advance") return;
+    if (connects(diagram, record.state, decision.to, cameFrom(record.history, record.state))) return;
+    this.record("workflow.undrawn_transition", {
+      workId: item.workId,
+      state: record.state,
+      detail: { from: record.state, to: decision.to },
+    });
   }
 
   /** So a log that throws on every call says so once, not eight times. */

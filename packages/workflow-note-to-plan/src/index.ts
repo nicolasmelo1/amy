@@ -1,4 +1,3 @@
-export { PLAN_STATES, WAITING_STATES, isTerminal, isWaiting } from "./state.js";
 export type { PlanState } from "./state.js";
 
 export { attemptsIn } from "./record.js";
@@ -27,7 +26,7 @@ export { plan } from "./machine.js";
 export { planRuntime } from "./runtime.js";
 export type { PlanRuntimeConfig, PlanRuntimeDeps } from "./runtime.js";
 
-export { configSchema, newRecord, noteToPlan, plugin } from "./plugin.js";
+export { configSchema, plugin } from "./plugin.js";
 
 export type { NewNote, Note, Notes } from "./ports/Notes.js";
 export type { PlanCheck } from "./ports/PlanCheck.js";

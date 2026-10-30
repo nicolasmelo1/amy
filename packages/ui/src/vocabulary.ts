@@ -79,7 +79,7 @@ export const VOCABULARY: Readonly<Record<Primitive, PrimitiveSpec>> = {
   },
   Timeline: { props: { entries: required("entries") }, children: "none" },
   StateMachine: {
-    props: { states: required("strings"), current: optional("string"), transitions: optional("transitions") },
+    props: { states: required("strings"), current: optional("string"), transitions: optional("transitions"), diagram: optional("string") },
     children: "none",
   },
   Log: { props: { lines: required("strings") }, children: "none" },

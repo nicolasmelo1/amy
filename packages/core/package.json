@@ -27,5 +27,8 @@
   "files": [
     "dist",
     "events.json"
-  ]
+  ],
+  "devDependencies": {
+    "pele": "^1.12.0"
+  }
 }

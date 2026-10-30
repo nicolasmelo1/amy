@@ -15,6 +15,42 @@ interface WorldRecord {
 
 const STATES = ["DISCOVERED", "IMPLEMENTING", "ESCALATED", "IN_REVIEW", "DONE"];
 
+/**
+ * Each profile's workflow, as the server would hand it to a view: the work
+ * profile's is drawn as a diagram, whose states and arrows the server read
+ * out of the text; the personal one declares its states in code, and has
+ * neither a diagram nor an arrow to draw.
+ */
+const WORKFLOWS: Readonly<Record<string, { readonly states: readonly string[]; readonly transitions?: readonly { from: string; to: string }[]; readonly diagram?: string }>> = {
+  work: {
+    states: STATES,
+    transitions: [
+      { from: "DISCOVERED", to: "IMPLEMENTING" },
+      { from: "IMPLEMENTING", to: "IN_REVIEW" },
+      { from: "IMPLEMENTING", to: "ESCALATED" },
+      { from: "ESCALATED", to: "IMPLEMENTING" },
+      { from: "IN_REVIEW", to: "DONE" },
+    ],
+    diagram: [
+      "stateDiagram-v2",
+      "    [*] --> DISCOVERED",
+      "    DISCOVERED --> IMPLEMENTING",
+      "    IMPLEMENTING --> IN_REVIEW",
+      "    IMPLEMENTING --> ESCALATED: the gate stayed red",
+      "    ESCALATED --> IMPLEMENTING",
+      "    IN_REVIEW --> DONE",
+      "    DONE --> [*]",
+      "    class ESCALATED attention",
+      "    class IN_REVIEW waiting",
+      "",
+    ].join("\n"),
+  },
+  personal: { states: STATES },
+};
+
+/** The diagram the conformance world draws its work profile from, for a test to read with the core's own reader. */
+export const WORK_DIAGRAM = WORKFLOWS.work!.diagram!;
+
 export const WORLD = {
   clock: "2026-10-28T12:00:00.000Z",
   profiles: ["work", "personal"],
@@ -194,10 +230,21 @@ function canvas(frame: Frame, state: WindowState, record: WorldRecord | undefine
   }
   return {
     header: element("Row", {}, [element("Text", {}, record.id), element("Badge", {}, record.state), element("Text", {}, record.title)]),
-    machine: element("StateMachine", { states: STATES, current: record.state }),
+    machine: machine(record),
     tabs,
     body: body(record, state.tab),
   };
+}
+
+/** The record's workflow: with its diagram and the arrows read from it when it has one, its states alone when it has not. */
+function machine(record: WorldRecord): Node {
+  const workflow = WORKFLOWS[record.profile] ?? { states: STATES };
+  return element("StateMachine", {
+    states: [...workflow.states],
+    current: record.state,
+    ...(workflow.transitions ? { transitions: workflow.transitions.map((edge) => ({ ...edge })) } : {}),
+    ...(workflow.diagram ? { diagram: workflow.diagram } : {}),
+  });
 }
 
 /** The window as the server would describe it: per region, a tree for each thing it holds. */

@@ -15,7 +15,6 @@ import { DEFAULT_POLICY } from "./observation.js";
 import { ErrandRecord } from "./record.js";
 import { Tasks } from "./ports/Tasks.js";
 import { errandRuntime } from "./runtime.js";
-import { ERRAND_STATES, WAITING_STATES } from "./state.js";
 
 export const configSchema = {
   repos: {
@@ -35,9 +34,6 @@ export const configSchema = {
 export const plugin = defineWorkflow({
   name: "errand",
   pluginName: "@amykit/workflow-errand",
-  states: ERRAND_STATES,
-  waiting: WAITING_STATES,
-  terminal: ["DONE", "DECLINED"],
   configSchema,
   policy: DEFAULT_POLICY,
   needs: {
@@ -65,5 +61,3 @@ export const plugin = defineWorkflow({
   }),
 });
 
-export const errand = plugin.workflow;
-export const newRecord = plugin.newRecord;

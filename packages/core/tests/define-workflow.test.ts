@@ -8,6 +8,8 @@ import {
   WorkflowRuntimeParts,
   defineWorkflow,
   mount,
+  notWritten,
+  notWrittenIn,
   optional,
   planning,
   port,
@@ -216,4 +218,19 @@ it("types all four planning helpers against the workflow's states and effects", 
   expect(advance("DONE", "finished").kind).toBe("advance");
   expect(wait(1000, "waiting").kind).toBe("wait");
   expect(settled("done").kind).toBe("settled");
+});
+
+describe("a decision nobody has written yet", () => {
+  it("settles the record, naming its state, rather than guessing a move", () => {
+    const stub = notWritten();
+    const plan = stub({ id: "w-1", state: "TRIAGED", updatedAt: "", attempts: {}, history: [] });
+
+    expect(plan).toEqual({ kind: "settled", why: "the decision for `TRIAGED` is not written yet" });
+    expect(notWrittenIn(plan)).toBe("TRIAGED");
+  });
+
+  it("is told apart from a decision that settles on its own", () => {
+    expect(notWrittenIn({ kind: "settled", why: "the work is done" })).toBeUndefined();
+    expect(notWrittenIn({ kind: "advance", to: "DONE", effects: [], why: "the decision for `X` is not written yet" })).toBeUndefined();
+  });
 });

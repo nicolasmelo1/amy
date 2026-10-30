@@ -8,10 +8,10 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 20,
+    "assertions_run": 21,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
-    "looks": 47,
+    "looks": 53,
     "transitions": [
       "NOTED>DRAFTED",
       "DRAFTED>CHECKED",
@@ -32,18 +32,20 @@
       "NOTED>DECLINED"
     ],
     "gave_up": "PR_OPEN",
-    "agent_calls": 6,
+    "agent_calls": 9,
     "check_calls": 6,
     "gh_calls": 8,
     "pull_requests": {
       "acme/amy": 2,
-      "acme/software-factory": 0
+      "acme/software-factory": 0,
+      "acme/nobody-can-plan": 0
     },
     "notes_left": [
       "by-hand.md",
       "not-mine.md",
-      "note-2026-10-29T150217806.md",
-      "note-2026-10-29T150226301.md",
+      "note-2026-10-30T004627970.md",
+      "note-2026-10-30T004635646.md",
+      "unwritable.md",
       "will-break.md"
     ],
     "budget": "new work: allowed"
@@ -115,6 +117,10 @@
     },
     {
       "type": "plan.the_lifecycle_walks_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "plan.every_drawn_edge_is_walked",
       "status": "passed"
     },
     {

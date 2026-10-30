@@ -29,7 +29,7 @@ contract look heavier than it is:
 [a mount builds once](../docs/design/a-mount-builds-once.md),
 [a config is typed by its schema](../docs/design/a-config-is-typed-by-its-schema.md),
 [the host lends the checkout](../docs/design/the-host-lends-the-checkout.md),
-[a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md),
+[a workflow is a Mermaid diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md),
 [a workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md),
 [a workflow is three pieces](a-workflow-is-three-pieces.md),
 [waiting is not trying](waiting-is-not-trying.md) and

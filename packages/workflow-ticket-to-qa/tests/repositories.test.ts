@@ -17,11 +17,11 @@ import {
   ticket,
 } from "@amykit/test-fixtures";
 import { plan } from "../src/machine.js";
-import { ticketToQa } from "../src/plugin.js";
+import { workflow as ticketToQa } from "./drawn.js";
 import { DEFAULT_POLICY } from "../src/observation.js";
 import { TicketRecord } from "../src/record.js";
 import { ticketRuntime, TicketRuntimeDeps, workIdFor } from "../src/runtime.js";
-import { plugin } from "../src/plugin.js";
+import { plugin } from "./drawn.js";
 
 const BACKEND = "Northwind/northwind-backend";
 const FRONTEND = "Northwind/northwind-frontend";

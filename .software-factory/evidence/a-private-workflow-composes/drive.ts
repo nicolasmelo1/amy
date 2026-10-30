@@ -48,6 +48,8 @@ const { GitHubCodeHost } = (await dist("plugins/github/dist/index.js")) as typeo
 const { FileQueue } = (await dist("plugins/file-queue/dist/index.js")) as typeof import("@amykit/plugin-file-queue");
 const { Worker } = (await dist("plugins/serial-engine/dist/index.js")) as typeof import("@amykit/plugin-serial-engine");
 const ticketToQa = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
+// The workflow as the host mounts it, shaped by the diagram at its package root.
+const drawnTicketToQa = core.withDiagramBeside(ticketToQa.plugin, pathToFileURL(path.join(repo, "packages/workflow-ticket-to-qa/dist/index.js")));
 
 /** A thread and a pull request as this run writes them, with what the shared world leaves out. */
 type Thread = WorldThread & { path?: string };
@@ -433,13 +435,14 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   record("compose.a_handed_off_write_is_said_in_the_works_thread", posted.length === 1 && posted[0]?.includes("Open a pull request") === true && announced.length === 0, posted);
 
   const claims: Workflow<never, never>[] = [];
-  void ticketToQa.plugin.register(standIn<Registry>({ workflow: (w) => claims.push(w), contribute: () => {} }), standIn<PluginContext>({ config: { policy: { writes: "operator" } } }));
+  void drawnTicketToQa.register(standIn<Registry>({ workflow: (w) => claims.push(w), contribute: () => {} }), standIn<PluginContext>({ config: { policy: { writes: "operator" } } }));
   record("compose.handed_off_the_declaration_claims_no_writes", claims[0]?.trackerWrites?.length === 0 && claims[0].codeHostWrites?.length === 0 && !Object.keys(runtime.actions).some((name) => ["ask-question", "escalate", "open-pull-request", "resolve-review-thread", "assign-reviewer", "request-rereview", "hand-off-to-qa"].includes(name)));
 }
 
 /* The decisions a review found wrong, asked of the built machine. */
 {
-  const { plan, DEFAULT_POLICY, newRecord } = ticketToQa;
+  const { plan, DEFAULT_POLICY } = ticketToQa;
+  const newRecord = drawnTicketToQa.newRecord;
   const operator = { ...DEFAULT_POLICY, writes: "operator" as const };
   const roster: Roster = { confirmedOn: new Date().toISOString().slice(0, 10), reviewers: [{ tracker: "ada@example.test", host: "ada", available: true }], qa: { tracker: "grace@example.test", host: "grace", available: true } };
   const head = "a".repeat(40);
@@ -510,7 +513,7 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   }).observe(rec("HUMAN_FIX", { reviewer: "ada" }));
   const stopped = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO]), DEFAULT_POLICY);
   const resumed = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO, REPO]), DEFAULT_POLICY);
-  record("compose.a_retired_work_item_resumes_when_its_repository_returns", stopped.kind === "settled" && resumed.kind !== "settled" && !ticketToQa.ticketToQa.terminalStates.includes("HUMAN_FIX"), { stopped: stopped.kind, resumed: resumed.kind });
+  record("compose.a_retired_work_item_resumes_when_its_repository_returns", stopped.kind === "settled" && resumed.kind !== "settled" && !drawnTicketToQa.workflow.terminalStates.includes("HUMAN_FIX"), { stopped: stopped.kind, resumed: resumed.kind });
 
   const refused = await ticketToQa.ticketRuntime({
     tracker: standIn<Tracker>({ inProgress: async () => [{ ...obs({}).ticket, repos: [REPO, OTHER_REPO] }] }),

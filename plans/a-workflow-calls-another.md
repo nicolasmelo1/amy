@@ -44,7 +44,7 @@ The edges out of a call state are named for the callee's terminal states. They
 are the return values the caller handles. Mermaid has no `import` or `include`,
 and its state syntax needs none for this: the label is prose, the class is
 what amy reads, and the binding to a package is in code. The subset that
-[a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md) reads
+[a workflow is a Mermaid diagram](../docs/design/a-workflow-is-a-mermaid-diagram.md) reads
 gains `call` beside `waiting`, `attention`, `anywhere` and `returns`.
 
 **A workflow declares its signature.** `defineWorkflow`

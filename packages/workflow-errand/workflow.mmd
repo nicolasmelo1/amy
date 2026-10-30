@@ -1,0 +1,18 @@
+stateDiagram-v2
+    %% Something said in passing, done by an agent: a pull request when it
+    %% changed something, an answer when it was a question, or handed back.
+    %% QUEUED waits only when the ceiling on errands in flight is reached;
+    %% nothing here waits on a person, or it would have been a ticket.
+    classDef waiting stroke-dasharray: 4 4
+
+    [*] --> QUEUED
+    QUEUED --> WORKING
+    WORKING --> PR_OPEN: it changed something
+    PR_OPEN --> DONE
+    WORKING --> DONE: it was a question, and it has an answer
+    QUEUED --> DECLINED: not a repository I work in
+    WORKING --> DECLINED: not done in the attempts allowed
+    DONE --> [*]
+    DECLINED --> [*]
+
+    class QUEUED waiting

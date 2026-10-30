@@ -56,6 +56,7 @@
     "@amykit/plugin-serial-engine": "^0.6.0",
     "@amykit/test-fixtures": "^0.1.0",
     "@amykit/workflow-errand": "^0.6.0",
-    "@amykit/workflow-note-to-plan": "^0.6.0"
+    "@amykit/workflow-note-to-plan": "^0.6.0",
+    "pele": "^1.12.0"
   }
 }

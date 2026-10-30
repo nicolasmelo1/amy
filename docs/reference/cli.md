@@ -70,6 +70,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy update`](#amy-update) | Move this install forward: both roots, refusing to leave the machine half-updated |
 | [`amy workflow`](#amy-workflow) | What this install can drive, and what it keeps |
 | [`amy workflow check`](#amy-workflow-check) | Drive a workflow's lifecycle against its stub world |
+| [`amy workflow export`](#amy-workflow-export) | Print a workflow's diagram, which renders wherever Mermaid does |
 | [`amy workflow list`](#amy-workflow-list) | Every workflow this install can drive |
 | [`amy workflow new`](#amy-workflow-new) | Write an editable workflow under ~/.amy/workflows |
 | [`amy workflow rm`](#amy-workflow-rm) | Delete a workflow's records, its queue and its entry in the config |
@@ -477,6 +478,22 @@ amy workflow check <name>
 | :-- | :-- | :-- |
 | `<name>` | yes | the configured workflow to check |
 
+### `amy workflow export`
+
+Print a workflow's diagram, which renders wherever Mermaid does
+
+```sh
+amy workflow export [options] <name>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<name>` | yes | the configured workflow to export |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--work <id>` |  | mark the state this piece of work is in |
+
 ### `amy workflow list`
 
 Every workflow this install can drive
@@ -492,12 +509,16 @@ Runs when `amy workflow` is given no subcommand.
 Write an editable workflow under ~/.amy/workflows
 
 ```sh
-amy workflow new <name>
+amy workflow new [options] <name>
 ```
 
 | Argument | Required | What it is |
 | :-- | :-- | :-- |
 | `<name>` | yes | one directory name, such as oncall |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--from <file>` |  | a Mermaid stateDiagram-v2 to copy in as the workflow's shape, every decision a stub |
 
 ### `amy workflow rm`
 

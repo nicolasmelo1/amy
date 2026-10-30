@@ -27,6 +27,22 @@ amy --workflow <name> status --json
 That carries the states, which of them are waiting states, the terminal ones,
 every record with its history, the queue, and whether the loop is running.
 
+**The shape is a file, not something to infer.** A workflow drawn as a
+diagram keeps it in `workflow.mmd` beside it, and that file is what amy reads
+its states, waits and ends from:
+
+```sh
+amy workflow export <name>              # the diagram, as amy reads it
+amy workflow export <name> --work <id>  # the same, with that record's state marked
+```
+
+Show that text rather than drawing your own from the code or the JSON: a
+drawing inferred each time is a drawing nothing checks. It is ordinary
+Mermaid, so it renders as it is in a GitHub comment, an issue or Obsidian, and
+the `--work` form pasted into a pull request shows where the work stands. A
+workflow written by hand without one says so — `export` names it — and only
+then is a drawing from its states the right answer, labelled as yours.
+
 **Pick the smallest view that makes the point.** Skip the preamble. Most
 questions about a workflow are answered by twenty lines of text, and a page
 that has to be opened is a worse answer than one already on the screen.
@@ -63,7 +79,8 @@ PR_OPEN   ███████████ 11   ← waiting
 DONE      ███ 3
 ```
 
-**Mermaid**, when the branching is the point and ASCII would lie about it:
+**The diagram itself**, when the branching is the point and ASCII would lie
+about it — `amy workflow export`, as it is:
 
 ```mermaid
 stateDiagram-v2

@@ -16,7 +16,6 @@ import { PlanRecord } from "./record.js";
 import { Notes } from "./ports/Notes.js";
 import { PlanCheck } from "./ports/PlanCheck.js";
 import { planRuntime } from "./runtime.js";
-import { PLAN_STATES, WAITING_STATES } from "./state.js";
 
 export const configSchema = {
   repos: {
@@ -35,9 +34,6 @@ export const configSchema = {
 export const plugin = defineWorkflow({
   name: "note-to-plan",
   pluginName: "@amykit/workflow-note-to-plan",
-  states: PLAN_STATES,
-  waiting: WAITING_STATES,
-  terminal: ["DONE", "DECLINED"],
   configSchema,
   policy: DEFAULT_POLICY,
   needs: {
@@ -67,5 +63,3 @@ export const plugin = defineWorkflow({
   }),
 });
 
-export const noteToPlan = plugin.workflow;
-export const newRecord = plugin.newRecord;

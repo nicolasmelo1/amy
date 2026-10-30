@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { withDiagramBeside, type Plugin } from "@amykit/core";
 import { workspaceDirectories } from "../lib/repo.js";
 import type {
   AddedAction,
@@ -220,14 +221,18 @@ async function introspect(
   // `@amykit/workflow-feature-grooming` is named for the workflow it serves and
   // exports no machine at all — it mounts ports — and calling it a workflow
   // told every reader to name it under `workflows:`, where boot refuses it.
+  // Shaped by the diagram beside it, the way the host's loader shapes it: a
+  // workflow drawn in `workflow.mmd` declares no states of its own.
+  const plugin = withDiagramBeside(module.plugin as unknown as Plugin, entry) as unknown as IntrospectedPlugin;
   const runtimes = new Map<string, ContributedRuntime>();
-  const registered = await registers(module.plugin, environment, runtimes);
-  const shape = workflowShape(module, runtimes);
+  const machines: unknown[] = [];
+  const registered = await registers(plugin, environment, runtimes, machines);
+  const shape = workflowShape(module, runtimes, machines);
 
   return {
     kind: shape.workflow ? "workflow" : "plugin",
     exports: Object.keys(module).sort(),
-    settings: settingsOf(module.plugin),
+    settings: settingsOf(plugin),
     ...registered,
     ...shape,
   };
@@ -257,6 +262,7 @@ async function registers(
   plugin: IntrospectedPlugin,
   environment: string[],
   runtimes = new Map<string, ContributedRuntime>(),
+  machines: unknown[] = [],
 ): Promise<Registered & { registerProblem?: string }> {
   const seen: Registered = {
     mounts: [],
@@ -275,6 +281,7 @@ async function registers(
     },
     workflow: (workflow) => {
       seen.mountsWorkflow = workflow.name;
+      machines.push(workflow);
     },
     port: (kind) => seen.mounts.push(kind),
     action: (name, spec) => {
@@ -410,8 +417,11 @@ function sample(type: string): unknown {
 function workflowShape(
   module: PackageModule,
   runtimes: Map<string, ContributedRuntime>,
+  registered: readonly unknown[] = [],
 ): { workflow?: WorkflowShape } {
-  const machine = Object.values(module).find(isMachine);
+  // The machine it registered, which is the one its diagram shaped; an
+  // exported one for a package that registers none against a stand-in.
+  const machine = registered.find(isMachine) ?? Object.values(module).find(isMachine);
 
   if (!machine) return {};
 
