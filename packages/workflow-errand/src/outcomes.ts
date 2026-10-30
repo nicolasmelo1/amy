@@ -39,5 +39,5 @@ export function applyErrandPlan(
   observation: Observation,
   now: Date,
 ): ErrandRecord {
-  return applyOutcomes(applyPlan(record, plan, now), outcomes, observation);
+  return applyOutcomes(applyPlan(record, plan, now, outcomes), outcomes, observation);
 }

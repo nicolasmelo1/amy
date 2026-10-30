@@ -57,7 +57,7 @@ const runtime = ticketWorkerDeps().runtime as unknown as WorkflowRuntime<TicketR
 
 function look(current: TicketRecord, seen: Observation, outcomes: Record<string, unknown> = {}): { plan: Plan; next: TicketRecord } {
   const decided = plan(current, seen, policy);
-  const next = runtime.apply(applyPlan(current, decided, WORKDAY), decided, outcomes, seen, WORKDAY, movedBy(current, decided));
+  const next = runtime.apply(applyPlan(current, decided, WORKDAY, outcomes), decided, outcomes, seen, WORKDAY, movedBy(current, decided));
   return { plan: decided, next };
 }
 
@@ -80,16 +80,17 @@ describe("an escalation remembers the state it interrupted", () => {
     });
   }
 
-  it("starts every retry budget again, so a state that gave up on attempts does not give up on its first look back", () => {
+  it("starts every retry budget again, so a state that gave up on attempts or looks does not give up on its first look back", () => {
     const [implementing] = RAISED_FROM;
     const seen = observation();
 
-    const into = look(record("IMPLEMENTING", implementing!.record), seen, {
+    const into = look(record("IMPLEMENTING", { ...implementing!.record, looks: { IMPLEMENTING: policy.maxImplementAttempts } }), seen, {
       escalation: { reason: "failed", askedAt: "2026-09-03T11:00:00.000Z" },
     });
     const back = look(into.next, observation({ escalationAnswered: true })).next;
 
     expect(back.attempts).toEqual({});
+    expect(back.looks).toEqual({});
     expect(plan(back, seen, policy)).toMatchObject({ kind: "act", effects: [{ type: "implement" }] });
   });
 

@@ -1,6 +1,6 @@
 export type { Effect, PlanState } from "./decide.js";
 
-export { attemptsIn } from "./record.js";
+export { attemptsIn, looksIn } from "@amykit/core";
 export type { AttemptOutcome, PlanRecord } from "./record.js";
 
 export { DEFAULT_POLICY } from "./observation.js";

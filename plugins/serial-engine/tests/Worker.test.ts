@@ -484,6 +484,24 @@ describe("Worker dispatch", () => {
     expect(folds).toEqual([null, null]);
   });
 
+  it("refunds a completed action that reports it never became a try and holds the next look", async () => {
+    const retryAfterMs = 60_000;
+    const runtime = thin({
+      implement: async (_action, context) => {
+        context.outcomes.implementation = { notATry: true, retryAfterMs };
+      },
+    });
+
+    await build(runtime, () => ({ kind: "act", why: "the quota stopped it", effects: [{ type: "implement" }] })).tick();
+
+    expect(records.load("W-1")).toMatchObject({
+      attempts: {},
+      looks: { NEW: 1 },
+      outcomes: { implementation: { notATry: true, retryAfterMs } },
+    });
+    expect(queue.pending()[0]?.notBefore).toBe(new Date(WORKDAY.getTime() + retryAfterMs).toISOString());
+  });
+
   it("parks before the next agent run after the configured unchanged evidence ceiling", async () => {
     let runs = 0;
     const runtime: WorkflowRuntime = {

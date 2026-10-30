@@ -25,6 +25,7 @@ import {
   implementationOf,
   isPortBinding,
   movedBy,
+  notATryIn,
   runAction,
   undeclaredIn,
 } from "@amykit/core";
@@ -211,7 +212,7 @@ export class Worker {
     // An action can park itself, so save its fold before returning. A manual
     // release must not replay stale state or bypass its attempt ceiling.
     const next = this.deps.runtime.apply(
-      applyPlan(record, decision, now),
+      applyPlan(record, decision, now, outcomes),
       decision,
       outcomes,
       observation,
@@ -236,7 +237,7 @@ export class Worker {
       {
         workId: item.workId,
         reason: decision.why,
-        delayMs: decision.kind === "wait" ? decision.retryAfterMs : 0,
+        delayMs: retryAfter(decision, outcomes, this.deps.config.retryDelayMs),
         progress: progress.next,
         priority: item.priority,
       },
@@ -649,6 +650,13 @@ export class Worker {
 
 function progressKey(state: string, key: string): string {
   return `${state}:${key}`;
+}
+
+/** A completed action can say it never reached the part that spends a try. */
+function retryAfter(plan: Plan, outcomes: Record<string, unknown>, fallback: number): number {
+  const outcome = notATryIn(outcomes);
+  if (plan.kind === "act" && outcome) return outcome.retryAfterMs ?? fallback;
+  return plan.kind === "wait" ? plan.retryAfterMs : 0;
 }
 
 function isProgress(value: unknown): value is Progress {

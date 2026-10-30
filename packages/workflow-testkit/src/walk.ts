@@ -173,7 +173,7 @@ async function lookOnce(
   if (plan.kind === "settled") return { look, next: record };
 
   const next = attempt(
-    () => runtime.apply(applyPlan(record, plan, at), plan, outcomes, observation, at, movedBy(record, plan)),
+    () => runtime.apply(applyPlan(record, plan, at, outcomes), plan, outcomes, observation, at, movedBy(record, plan)),
     (error) => fail("walk", `folding a look in \`${record.state}\` threw — ${error}`),
   );
   return next ? { look, next } : undefined;

@@ -24,7 +24,7 @@ function implementing(countsTheHold: boolean) {
       if (record.state === "done") return settled();
       if (observation.checkoutHeld) return wait();
       if (current.implemented) return advance("done");
-      const tries = countsTheHold ? (record.attempts.implementing ?? 0) : (current.tries ?? 0);
+      const tries = countsTheHold ? (record.looks?.implementing ?? record.attempts.implementing ?? 0) : (current.tries ?? 0);
       return tries >= 3 ? advance("escalated", "escalate") : act("implement");
     },
   });
@@ -77,7 +77,7 @@ describe("ceilings", () => {
       plan: (record, observation) => {
         if (record.state !== "asking") return record.state === "done" ? settled() : wait();
         if (observation.answered) return advance("done");
-        return (record.attempts.asking ?? 0) >= 3 ? advance("escalated", "escalate") : wait();
+        return (record.looks?.asking ?? record.attempts.asking ?? 0) >= 3 ? advance("escalated", "escalate") : wait();
       },
     });
 

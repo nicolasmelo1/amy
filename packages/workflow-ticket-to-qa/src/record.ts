@@ -89,10 +89,6 @@ export interface TicketRecord extends WorkRecord {
   handedOverAt?: Record<string, string>;
 }
 
-export function attemptsIn(record: TicketRecord, state: TicketState): number {
-  return record.attempts[state] ?? 0;
-}
-
 export function judgedThreadIds(record: TicketRecord): string[] {
   return record.judged.map((j) => j.threadId);
 }

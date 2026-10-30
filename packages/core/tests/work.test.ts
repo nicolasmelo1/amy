@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { WorkRecord, actionsOf, applyPlan } from "../src/work.js";
+import { WorkRecord, actionsOf, applyPlan, attemptsIn, looksIn } from "../src/work.js";
 
 const NOW = new Date("2026-09-03T12:00:00.000Z");
 const LATER = new Date("2026-09-03T13:00:00.000Z");
@@ -20,17 +20,53 @@ function record(state: string, overrides: Partial<WorkRecord> = {}): WorkRecord 
 }
 
 describe("applyPlan", () => {
-  it("counts work done inside a state", () => {
+  it("counts an act as one look and one try", () => {
     const next = applyPlan(record("IMPLEMENTING"), { kind: "act", effects: [{ type: "implement" }], why: "try" }, LATER);
 
     expect(next.attempts.IMPLEMENTING).toBe(1);
+    expect(next.looks?.IMPLEMENTING).toBe(1);
     expect(next.state).toBe("IMPLEMENTING");
   });
 
-  it("counts a wait, so a state can tell its first look from its tenth", () => {
+  it("counts a wait as a look without spending a try", () => {
     const next = applyPlan(record("CLARIFYING"), { kind: "wait", retryAfterMs: 1000, why: "holding", effects: [] }, LATER);
 
-    expect(next.attempts.CLARIFYING).toBe(1);
+    expect(next.attempts.CLARIFYING).toBeUndefined();
+    expect(next.looks?.CLARIFYING).toBe(1);
+  });
+
+  it("counts preparation as a look without spending a try", () => {
+    const next = applyPlan(
+      record("IMPLEMENTING"),
+      { kind: "act", attempt: false, effects: [{ type: "prepare-branch" }], why: "the tree is ready" },
+      LATER,
+    );
+
+    expect(next.attempts.IMPLEMENTING).toBeUndefined();
+    expect(next.looks?.IMPLEMENTING).toBe(1);
+  });
+
+  it("refunds an action whose outcome says the try did not happen", () => {
+    const next = applyPlan(
+      record("IMPLEMENTING", { attempts: { IMPLEMENTING: 2 }, looks: { IMPLEMENTING: 4 } }),
+      { kind: "act", effects: [{ type: "implement" }], why: "try" },
+      LATER,
+      { implementation: { notATry: true } },
+    );
+
+    expect(next.attempts.IMPLEMENTING).toBe(2);
+    expect(next.looks?.IMPLEMENTING).toBe(5);
+  });
+
+  it("gives a saved legacy record its attempts as looks without changing its tries", () => {
+    const next = applyPlan(record("IMPLEMENTING", { attempts: { IMPLEMENTING: 2 } }), {
+      kind: "wait", retryAfterMs: 1000, why: "holding", effects: [],
+    }, LATER);
+
+    expect(next.attempts.IMPLEMENTING).toBe(2);
+    expect(next.looks?.IMPLEMENTING).toBe(3);
+    expect(looksIn(record("IMPLEMENTING", { attempts: { IMPLEMENTING: 2 } }), "IMPLEMENTING")).toBe(2);
+    expect(attemptsIn(next, "IMPLEMENTING")).toBe(2);
   });
 
   it("does not count an advance, since its actions are not retried", () => {

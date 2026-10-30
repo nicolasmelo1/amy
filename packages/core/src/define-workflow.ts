@@ -111,8 +111,16 @@ interface Shape {
 }
 
 /** The four typed constructors a pure workflow plan returns. */
-export function act<Effect extends Action>(why: string, ...effects: Effect[]): Extract<Plan<string, Effect>, { kind: "act" }> {
-  return { kind: "act", effects, why };
+export function act<Effect extends Action>(why: string, ...effects: Effect[]): Extract<Plan<string, Effect>, { kind: "act" }>;
+export function act<Effect extends Action>(why: string, options: { attempt: false }, ...effects: Effect[]): Extract<Plan<string, Effect>, { kind: "act" }>;
+export function act<Effect extends Action>(
+  why: string,
+  first?: Effect | { attempt: false },
+  ...rest: Effect[]
+): Extract<Plan<string, Effect>, { kind: "act" }> {
+  const options = first && "attempt" in first && !("type" in first) ? first : undefined;
+  const effects = options ? rest : first === undefined ? [] : [first as Effect, ...rest];
+  return { kind: "act", effects, why, ...(options ? { attempt: false } : {}) };
 }
 
 export function advance<State extends string, Effect extends Action>(to: State, why: string, ...effects: Effect[]): Plan<State, Effect> {
@@ -251,6 +259,7 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
       state: (shape as Shape).initial,
       updatedAt: now.toISOString(),
       attempts: {},
+      looks: {},
       history: [],
     } as unknown as R;
   };

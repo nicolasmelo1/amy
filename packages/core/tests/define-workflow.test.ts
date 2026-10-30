@@ -127,7 +127,7 @@ describe("defineWorkflow", () => {
     expect(outcome.ok === false && outcome.problems.join("; ")).toContain("example policy.attemptz is not declared");
   });
 
-  it("constructs records with the five core fields and only the declared domain fields", async () => {
+  it("constructs records with the six core fields and only the declared domain fields", async () => {
     const outcome = await mount([workflow(), source], {}, HOST);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("example") as WorkflowRuntime<TestRecord>;
@@ -137,6 +137,7 @@ describe("defineWorkflow", () => {
       state: "NEW",
       updatedAt: "2026-10-29T12:00:00.000Z",
       attempts: {},
+      looks: {},
       history: [],
       customer: "C-1",
     });

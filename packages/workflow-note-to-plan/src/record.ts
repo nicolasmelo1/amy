@@ -27,7 +27,3 @@ export interface PlanRecord extends WorkRecord {
   lastCheck?: AttemptOutcome;
   pullRequestNumber?: number;
 }
-
-export function attemptsIn(record: PlanRecord, state: PlanState): number {
-  return record.attempts[state] ?? 0;
-}

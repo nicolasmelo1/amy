@@ -1,6 +1,6 @@
-import { Plan, act, advance, settled, wait } from "@amykit/core";
+import { Plan, act, advance, attemptsIn, looksIn, settled, wait } from "@amykit/core";
 import { Observation, Policy } from "./observation.js";
-import { PlanRecord, attemptsIn } from "./record.js";
+import { PlanRecord } from "./record.js";
 
 export type PlanState = "NOTED" | "DRAFTED" | "CHECKED" | "PR_OPEN" | "DONE" | "DECLINED";
 export type Effect =
@@ -53,7 +53,7 @@ function planNoted(record: PlanRecord, obs: Observation, policy: Policy): Plan {
   // opened, because an agent spent on a plan that cannot land is spent for
   // nothing.
   if (obs.plansInFlight >= policy.maxOpenPlansPerRepo) {
-    const firstLook = attemptsIn(record, "NOTED") === 0;
+    const firstLook = looksIn(record, "NOTED") === 0;
     return wait(
       policy.ceilingBackoffMs,
       `${obs.plansInFlight} plan(s) are already in flight for ${obs.note.repo}`,

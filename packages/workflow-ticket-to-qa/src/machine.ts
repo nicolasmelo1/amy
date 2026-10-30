@@ -1,9 +1,8 @@
 import { Observation, Policy } from "./observation.js";
-import { Plan, PullRequestView, ReviewThread } from "@amykit/core";
+import { attemptsIn, looksIn, Plan, PullRequestView, ReviewThread } from "@amykit/core";
 import { act, advance, settled, wait } from "./effects.js";
 import {
   TicketRecord,
-  attemptsIn,
   disagreements,
   judgedThreadIds,
 } from "./record.js";
@@ -447,7 +446,7 @@ function planReviewerAssignment(
   // ticket that stops without anybody being told. The remote checks are a
   // gate, so they answer to the same ceiling the local one does.
   if (pr.checks?.state === "running") {
-    const looks = attemptsIn(record, "REVIEWER_ASSIGNED");
+    const looks = looksIn(record, "REVIEWER_ASSIGNED");
     if (looks < policy.maxGateAttempts) {
       return wait(policy.pollBackoffMs, `the checks on ${pr.headSha.slice(0, 7)} have not finished`);
     }
@@ -465,7 +464,7 @@ function planReviewerAssignment(
   const requested = pendingReviewRequest(record, obs, policy);
   if (requested) return requested;
 
-  const firstLook = attemptsIn(record, "REVIEWER_ASSIGNED") === 0;
+  const firstLook = looksIn(record, "REVIEWER_ASSIGNED") === 0;
 
   if (!isConfirmedFor(obs.roster, obs.now)) {
     return holdAndSayOnce(
@@ -657,7 +656,7 @@ function planQaHandoff(record: TicketRecord, obs: Observation, policy: Policy): 
   const joined = joinRepositories(obs, policy);
   if (joined) return joined;
 
-  const firstLook = attemptsIn(record, "QA_HANDOFF") === 0;
+  const firstLook = looksIn(record, "QA_HANDOFF") === 0;
 
   if (!isConfirmedFor(obs.roster, obs.now)) {
     return wait(
