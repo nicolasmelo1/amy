@@ -233,11 +233,12 @@ export class Worker {
     // the second cannot be written without knowing the domain, and this
     // engine is the half that does not. The move is handed over as well,
     // because the record the runtime gets has already made it.
+    const delayMs = retryAfter(decision, outcomes, this.deps.config.retryDelayMs);
     this.deps.queue.enqueue(
       {
         workId: item.workId,
         reason: decision.why,
-        delayMs: retryAfter(decision, outcomes, this.deps.config.retryDelayMs),
+        delayMs,
         progress: progress.next,
         priority: item.priority,
       },
@@ -262,7 +263,7 @@ export class Worker {
       to: next.state,
       plan: decision.kind,
       why: decision.why,
-      retryAfterMs: decision.kind === "wait" ? decision.retryAfterMs : undefined,
+      retryAfterMs: delayMs || undefined,
     };
   }
 

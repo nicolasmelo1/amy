@@ -492,7 +492,11 @@ describe("Worker dispatch", () => {
       },
     });
 
-    await build(runtime, () => ({ kind: "act", why: "the quota stopped it", effects: [{ type: "implement" }] })).tick();
+    const result = await build(runtime, () => ({
+      kind: "act",
+      why: "the quota stopped it",
+      effects: [{ type: "implement" }],
+    })).tick();
 
     expect(records.load("W-1")).toMatchObject({
       attempts: {},
@@ -500,6 +504,7 @@ describe("Worker dispatch", () => {
       outcomes: { implementation: { notATry: true, retryAfterMs } },
     });
     expect(queue.pending()[0]?.notBefore).toBe(new Date(WORKDAY.getTime() + retryAfterMs).toISOString());
+    expect(result).toMatchObject({ kind: "worked", retryAfterMs });
   });
 
   it("parks before the next agent run after the configured unchanged evidence ceiling", async () => {
