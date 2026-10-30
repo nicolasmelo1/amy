@@ -14,7 +14,7 @@ import {
   optional,
   port,
 } from "@amykit/core";
-import { decide } from "./decide.js";
+import { Effect, decide } from "./decide.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
 import { ErrandRecord } from "./record.js";
 import { Tasks } from "./ports/Tasks.js";
@@ -84,7 +84,8 @@ export const plugin = defineWorkflow({
   actions: {
     "run-errand": run,
     "open-pull-request": run,
-    announce: run,
+    // Only worth saying, so a channel that fails never costs the work a move.
+    announce: (scope, _work, effect) => scope.announce((effect as Extract<Effect, { type: "announce" }>).text),
   },
   remember: (scope, record, outcomes, observation, moved, decision, now) =>
     runtimeFor(scope).apply(record, decision, outcomes, observation, now, moved),

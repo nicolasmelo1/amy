@@ -42,7 +42,12 @@ const REPLY: HarnessReply = {
 
 class FixtureHarness implements Harness {
   readonly name = "fixture";
+  readonly #label = "a fixture";
   constructor(private readonly reply: () => Promise<HarnessReply>) {}
+  /** An accessor over a private field, which only finds it with the instance as `this`. */
+  get label(): string {
+    return this.#label;
+  }
   ask(): Promise<HarnessReply> {
     return this.reply();
   }
@@ -55,7 +60,9 @@ const diagram = `stateDiagram-v2
     WORKING --> [*]
 `;
 
-/** One workflow whose two actions only call the ports they were handed. */
+const seen: string[] = [];
+
+/** One workflow whose actions only call what they were handed. */
 const declared = withDiagram(defineWorkflow({
   name: "attended",
   configSchema: schema,
@@ -66,9 +73,11 @@ const declared = withDiagram(defineWorkflow({
   observe: async () => ({}),
   actions: {
     ask: async ({ ports }) => void (await ports.agent.ask("do it", "/work")),
-    say: async ({ ports }, work) => {
+    say: async ({ announce }) => announce("hello"),
+    tell: async ({ ports }, work) => {
       await ports.notifier.announce({ text: "hello", workId: work.record.id, state: work.record.state });
     },
+    look: async ({ ports }) => void seen.push(`${ports.agent.name}: ${(ports.agent as FixtureHarness).label}`),
   },
 }), diagram);
 
@@ -96,6 +105,7 @@ const record = { id: "W-1", state: "WORKING", updatedAt: NOW.toISOString(), atte
 /** The action a workflow declared as a function, which every one here is. */
 const handler = (runtime: WorkflowRuntime, name: string) => runtime.actions[name] as ActionHandler;
 const quiet: Notifier = { announce: async () => undefined };
+const failing: Notifier = { announce: async (_: Announcement) => { throw new Error("no channel"); } };
 
 describe("the ports an action is handed", () => {
   it("write down what every agent run cost, against the work and the state it ran in", async () => {
@@ -129,9 +139,8 @@ describe("the ports an action is handed", () => {
     expect(log.lines).toEqual([]);
   });
 
-  it("never let a lost announcement cost the work a move, and say it was lost", async () => {
+  it("let an announcement the action chose to make be lost without costing the work a move, and say so", async () => {
     const log = logged();
-    const failing: Notifier = { announce: async (_: Announcement) => { throw new Error("no channel"); } };
     const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), failing, log);
 
     await expect(handler(runtime, "say")({ type: "say" }, work(record))).resolves.toBeUndefined();
@@ -144,34 +153,20 @@ describe("the ports an action is handed", () => {
     }]);
   });
 
-  it("keep every other member of a port built as a class", async () => {
-    const seen: string[] = [];
-    const reading = withDiagram(defineWorkflow({
-      name: "reading",
-      configSchema: schema,
-      policy: {},
-      needs,
-      record: () => ({}),
-      decide: { WORKING: () => ({ kind: "settled", why: "done" }) },
-      observe: async () => ({}),
-      actions: { look: async ({ ports }) => void seen.push(ports.agent.name) },
-    }), diagram);
+  it("leave the notifier strict, so a message the work depends on fails the action when nobody heard it", async () => {
+    const log = logged();
+    const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), failing, log);
 
-    const outcome = await mount([reading, {
-      name: "ports",
-      register: (registry) => {
-        registry.port("agent", new FixtureHarness(async () => REPLY));
-        registry.port("notifier", quiet);
-      },
-    }], {}, {
-      runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
-      now: () => NOW,
-      paths: { workspace: "/work", checkouts: {}, state: "/state" },
-    });
-    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
-    const mounted = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("reading") as WorkflowRuntime;
-    await handler(mounted, "look")({ type: "look" }, work(record));
+    await expect(handler(runtime, "tell")({ type: "tell" }, work(record))).rejects.toThrow("no channel");
+    expect(log.lines).toEqual([]);
+  });
 
-    expect(seen).toEqual(["fixture"]);
+  it("keep every other member of a port built as a class, accessors over private fields included", async () => {
+    const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), quiet, logged());
+    seen.length = 0;
+
+    await handler(runtime, "look")({ type: "look" }, work(record));
+
+    expect(seen).toEqual(["fixture: a fixture"]);
   });
 });

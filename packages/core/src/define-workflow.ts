@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
 import { ActionSpec } from "./actions.js";
-import { actionPorts } from "./action-ports.js";
+import { ActionDuties, actionPorts } from "./action-ports.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
 import { deferred } from "./deferred.js";
@@ -51,9 +51,12 @@ export type WorkflowPieceContext<S extends ConfigSchema, P extends object, N ext
 export type WorkflowDecision<R extends WorkRecord, O, P, State extends string = string, Effect extends Action = Action> =
   (record: R, observation: O, policy: P) => Plan<State, Effect>;
 
+/** What an action is handed: the mounted context, with its ports and duties bound to the work. */
+export type WorkflowActionScope<S extends ConfigSchema, P extends object, N extends Needs> = WorkflowPieceContext<S, P, N> & ActionDuties;
+
 /** One action implementation, with the mounted workflow context in front. */
 export type WorkflowAction<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O, Effect extends Action = Action> = (
-  scope: WorkflowPieceContext<S, P, N>,
+  scope: WorkflowActionScope<S, P, N>,
   work: ActionContext<R, O>,
   effect: Effect,
 ) => Promise<void>;
@@ -63,7 +66,7 @@ export type WorkflowAction<S extends ConfigSchema, P extends object, N extends N
 // Method parameters are bivariant; the runtime adapter still owns the cast at
 // the one point where a keyed handler is dispatched from an open action.
 type DeclarationAction<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O> = {
-  run(scope: WorkflowPieceContext<S, P, N>, work: ActionContext<R, O>, effect: Action): Promise<void>;
+  run(scope: WorkflowActionScope<S, P, N>, work: ActionContext<R, O>, effect: Action): Promise<void>;
 }["run"];
 
 /**
@@ -482,7 +485,7 @@ function runtimeFromPieces<S extends ConfigSchema, P extends object, N extends N
   for (const [name, implementation] of Object.entries(declared)) {
     actions[name] = typeof implementation === "function"
       ? (effect, work) => (implementation as WorkflowAction<S, P, N, R, O>)(
-        { ...scope, ports: actionPorts(scope.ports, work, scope.ctx.log, scope.ctx.now) },
+        { ...scope, ...actionPorts(scope.ports, work, scope.ctx.log, scope.ctx.now) },
         work,
         effect,
       )

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, deferred, dispatchesTo, mount, mountedActions } from "@amykit/core";
-import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amykit/test-fixtures";
+import { ActionHandler, Event, HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, deferred, dispatchesTo, mount, mountedActions } from "@amykit/core";
+import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster, ticket } from "@amykit/test-fixtures";
 import { WORKFLOW_DATA } from "../src/plugin.js";
 import { plugin } from "./drawn.js";
 
@@ -73,6 +73,21 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
 
     expect(declared).toContain("hand-off-to-qa");
     expect(declared.filter((name) => typeof runtime.actions[name] !== "function")).toEqual([]);
+  });
+
+  it("writes one agent.run per agent run when mounted, so the budget never counts a run twice", async () => {
+    const lines: Event[] = [];
+    const outcome = await mount([plugin, world], SETTINGS, { ...HOST, log: { append: (event) => void lines.push(event), read: () => lines } });
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("ticket-to-qa") as WorkflowRuntime;
+    const record = runtime.newRecord("PROJ-1", HOST.now());
+
+    await (runtime.actions["self-review"] as ActionHandler)(
+      { type: "self-review" },
+      { record, observation: { ticket: ticket({ id: "PROJ-1" }) }, outcomes: {} },
+    );
+
+    expect(lines.filter((line) => line.kind === "agent.run")).toHaveLength(1);
   });
 
   // The point of doing this at boot: a machine missing a plugin finds out

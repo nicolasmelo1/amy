@@ -112,6 +112,8 @@ export function errandRuntime(
       });
     },
 
+    // Standalone, a word the operator was owed fails the action; mounted, the
+    // plugin hands this to the host's best-effort `announce` instead.
     "announce": async (effect, ctx) => {
       await deps.notifier.announce({ text: effect.text, workId: ctx.record.id, state: ctx.record.state });
     },

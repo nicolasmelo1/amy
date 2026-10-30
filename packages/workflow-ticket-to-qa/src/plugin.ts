@@ -97,6 +97,7 @@ function runtimeFor(scope: Scope): ReturnType<typeof ticketRuntime> {
     briefs: scope.ports.brief,
     now: scope.ctx.now,
     log: scope.ctx.log,
+    accountsAgentRuns: false,
     config: {
       repos: scope.config.repos,
       qaStatusName: scope.config.qaStatusName,

@@ -14,7 +14,7 @@ import {
   optional,
   port,
 } from "@amykit/core";
-import { decide } from "./decide.js";
+import { Effect, decide } from "./decide.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
 import { PlanRecord } from "./record.js";
 import { Notes } from "./ports/Notes.js";
@@ -87,7 +87,8 @@ export const plugin = defineWorkflow({
     "draft-plan": run,
     "check-plan": run,
     "open-pull-request": run,
-    announce: run,
+    // Only worth saying, so a channel that fails never costs the work a move.
+    announce: (scope, _work, effect) => scope.announce((effect as Extract<Effect, { type: "announce" }>).text),
   },
   remember: (scope, record, outcomes, observation, moved, decision, now) =>
     runtimeFor(scope).apply(record, decision, outcomes, observation, now, moved),

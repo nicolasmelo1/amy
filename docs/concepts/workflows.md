@@ -99,12 +99,17 @@ The engine refuses a plan that carries a name the map does not, before any of
 that plan's actions run.
 
 An action written in a three-piece declaration receives its ports from the
-host, and two of them already keep the host's rules. Every reply from `agent`
-writes an `agent.run` line against the work and its state, which is what the
-budget adds up. A failed `announce` on `notifier` becomes a `notify.failed`
-line, because a channel somebody misconfigured must never cost a move. An
-action writes neither line itself. The agent's own failures are not
-swallowed, and still fail the action.
+host, bound to the work. Every reply from `agent` writes an `agent.run` line
+against the work and its state, which is what the budget adds up, so an action
+never writes one itself. The agent's own failures are not swallowed, and still
+fail the action.
+
+Beside the ports, an action gets `announce(text)`: a word to the operator that
+is only worth saying. A channel that fails becomes a `notify.failed` line
+rather than a failed action, because a channel somebody misconfigured must
+never cost a move. `ports.notifier` stays strict, for a message the work
+depends on: a write handed to the operator that nobody heard has to fail the
+action, so the look is tried again rather than recorded as said.
 
 ## One declaration mounts both halves
 

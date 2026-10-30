@@ -162,7 +162,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | `the-event-log-can-be-watched` | `packages/core/src/ports/EventLog.ts`<br>`plugins/file-log/src/**` | 6 |
 | `ticket-to-qa` | `packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-brief-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**` | 49 |
 | `ui-frame` | `packages/ui/**`<br>`packages/ui-conformance/src/**`<br>`plugins/ui-*/src/**` | 11 |
-| `workflow-three-pieces` | `packages/core/src/define-workflow.ts`<br>`packages/core/src/index.ts`<br>`packages/cli/src/workflow.ts`<br>`packages/workflow-errand/src/**`<br>`packages/workflow-errand/workflow.mmd`<br>`packages/workflow-note-to-plan/src/**`<br>`packages/workflow-note-to-plan/workflow.mmd`<br>`packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd` | 2 |
+| `workflow-three-pieces` | `packages/core/src/define-workflow.ts`<br>`packages/core/src/action-ports.ts`<br>`packages/core/src/index.ts`<br>`packages/cli/src/workflow.ts`<br>`packages/workflow-errand/src/**`<br>`packages/workflow-errand/workflow.mmd`<br>`packages/workflow-note-to-plan/src/**`<br>`packages/workflow-note-to-plan/workflow.mmd`<br>`packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd` | 2 |
 
 <!-- amy:end factory-gates -->
 

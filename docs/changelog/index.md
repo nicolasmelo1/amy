@@ -108,9 +108,9 @@ window. So a plugin does not render: it describes, and the renderer draws.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
 
-The `agent` and `notifier` ports an action receives now record every agent
-run as `agent.run` and turn a failed announcement into `notify.failed`, so no
-workflow writes either by hand.
+The `agent` port an action receives now records every run as `agent.run`, and
+an action's `announce(text)` turns a failed announcement into `notify.failed`,
+so no workflow writes either by hand. `ports.notifier` stays strict.
 
 `amy workflow new` now writes a runnable diagram-backed three-piece workflow.
 The shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.

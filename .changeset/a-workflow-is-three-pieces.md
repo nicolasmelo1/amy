@@ -13,9 +13,9 @@ mounts supporting infrastructure from the same declaration. Legacy
 `plan`/`runtime` declarations and raw plugins remain supported, while mixing
 the legacy and new declaration members is refused at boot.
 
-The `agent` and `notifier` ports an action receives now record every agent
-run as `agent.run` and turn a failed announcement into `notify.failed`, so no
-workflow writes either by hand.
+The `agent` port an action receives now records every run as `agent.run`, and
+an action's `announce(text)` turns a failed announcement into `notify.failed`,
+so no workflow writes either by hand. `ports.notifier` stays strict.
 
 `amy workflow new` now writes a runnable diagram-backed three-piece workflow.
 The shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.

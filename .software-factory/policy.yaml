@@ -388,6 +388,7 @@ gates:
   workflow-three-pieces:
     activation:
       - "packages/core/src/define-workflow.ts"
+      - "packages/core/src/action-ports.ts"
       - "packages/core/src/index.ts"
       - "packages/cli/src/workflow.ts"
       - "packages/workflow-errand/src/**"
