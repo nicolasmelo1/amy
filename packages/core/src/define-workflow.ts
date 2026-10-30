@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
 import { ActionSpec } from "./actions.js";
+import { actionPorts } from "./action-ports.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
 import { deferred } from "./deferred.js";
@@ -480,7 +481,11 @@ function runtimeFromPieces<S extends ConfigSchema, P extends object, N extends N
   const declared = typeof declaration.actions === "function" ? declaration.actions(scope) : declaration.actions;
   for (const [name, implementation] of Object.entries(declared)) {
     actions[name] = typeof implementation === "function"
-      ? (effect, work) => (implementation as WorkflowAction<S, P, N, R, O>)(scope, work, effect)
+      ? (effect, work) => (implementation as WorkflowAction<S, P, N, R, O>)(
+        { ...scope, ports: actionPorts(scope.ports, work, scope.ctx.log, scope.ctx.now) },
+        work,
+        effect,
+      )
       : implementation;
   }
   const progress = typeof declaration.progress === "function" ? declaration.progress(scope) : declaration.progress;

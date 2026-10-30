@@ -9498,7 +9498,7 @@
       {
         "id": "a-workflow-is-three-pieces",
         "title": "Workflows can now declare one decision per diagram state, compose pure `before` and `after` filters around those decisions, and provide `discover`, `observe`, `actions`, and `remember` as individual runtime pieces. `extend` mounts supporting infrastructure from the same declaration. Legacy `plan`/`runtime` declarations and raw plugins remain supported, while mixing the legacy and new declaration members is refused at boot.",
-        "body": "`amy workflow new` now writes a runnable diagram-backed three-piece workflow.\nThe shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.",
+        "body": "The `agent` and `notifier` ports an action receives now record every agent\nrun as `agent.run` and turn a failed announcement into `notify.failed`, so no\nworkflow writes either by hand.\n\n`amy workflow new` now writes a runnable diagram-backed three-piece workflow.\nThe shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.",
         "bumps": [
           {
             "package": "@amykit/cli",

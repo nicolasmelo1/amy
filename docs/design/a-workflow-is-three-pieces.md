@@ -75,7 +75,14 @@ export default defineWorkflow({
   `before`, the state's decision and `after` compose into the one pure
   `plan()` the host already calls.
 - **`actions` declare and implement at once,** as the runtime's `actions`
-  already do. Each receives the ports `needs` asked for.
+  already do. Each receives the ports `needs` asked for, and two of them
+  arrive keeping the host's rules: every reply from `agent` writes an
+  `agent.run` line naming the work and its state, so the budget sees what it
+  cost, and a failed announcement on `notifier` becomes a `notify.failed`
+  line instead of a failed action. The errand, note-to-plan and ticket-to-qa
+  each wrote both by hand, and a workflow that forgot the first spent money
+  the ceiling never counted. The agent still fails the action: only a port
+  whose failure cannot make the record a lie is swallowed.
 - **`remember` folds what the actions produced into the record,** given the
   record, the outcomes, the observation and the move. It is the runtime's
   `apply`, renamed for what it does. A workflow that keeps nothing beyond the
@@ -123,6 +130,10 @@ refused only together with them.
       receiving the typed ports, and a declaration that still passes `runtime`
       keeps mounting
       (proof: test:packages/core/tests/define-workflow.test.ts)
+- [x] The `agent` and `notifier` an action receives write `agent.run` for
+      every reply and turn a failed announcement into `notify.failed`, while a
+      failed agent still fails the action
+      (proof: test:packages/core/tests/action-ports.test.ts)
 - [x] A workflow that also mounts a queue, a port with actions bound to its
       methods and a harness switched on by config does so through `extend`, in
       the same call

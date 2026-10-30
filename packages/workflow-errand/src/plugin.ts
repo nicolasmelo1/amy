@@ -58,7 +58,6 @@ function runtimeFor(scope: Scope): ReturnType<typeof errandRuntime> {
     records: scope.ports.store,
     ...scope.checkouts,
     now: scope.ctx.now,
-    log: scope.ctx.log,
     config: { repos: scope.config.repos },
     policy: scope.policy,
   });
