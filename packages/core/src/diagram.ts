@@ -45,6 +45,11 @@ const START = "[*]";
 /** A state is a name of letters, digits and underscores; `[*]` is where work starts and ends. */
 const END = /^(?:[A-Za-z_]\w*|\[\*\])$/;
 const NAME = /^[A-Za-z_]\w*$/;
+/**
+ * Names Mermaid's state grammar takes as keywords, compared without case: a
+ * state called one of them would mount and never render.
+ */
+const RESERVED = new Set(["class", "classdef", "click", "default", "href", "note", "scale", "state", "statediagram", "style"]);
 
 /**
  * Constructs a record in one flat state cannot be in, refused by name rather
@@ -218,6 +223,11 @@ function classIn(line: string): { states: string[]; name: string } | undefined {
 
 function readTransition(from: string, to: string, label: string | undefined, number: number, reading: Reading, source: string): void {
   if (from === START && to === START) throw new DiagramError(number, "`[*] --> [*]` draws no state", source);
+  for (const end of [from, to]) {
+    if (RESERVED.has(end.toLowerCase())) {
+      throw new DiagramError(number, `\`${end}\` is a word Mermaid reads as a keyword, in any case, not as a state; name the state something else`, source);
+    }
+  }
   if (from === START) {
     reading.initial.push(to);
     see(reading, to);

@@ -71,6 +71,22 @@ describe("every diagram amy reads, Mermaid reads the same way", () => {
     expect(pele.classes).toEqual(amy.classes);
   });
 
+  it.each(["default", "State", "NOTE", "class", "classDef", "style", "click", "href", "scale", "stateDiagram"])(
+    "a state named `%s`, which Mermaid reads as a keyword, is refused by both, at the arrow that names it",
+    (name) => {
+      const text = `stateDiagram-v2\n[*] --> A\nA --> ${name}\n${name} --> [*]\n`;
+
+      expect(() => parse(text)).toThrow();
+      expect(() => readDiagram(text)).toThrow(`line 3: \`${name}\` is a word Mermaid reads as a keyword`);
+    },
+  );
+
+  it("a state whose name only looks like a keyword is drawn by both", () => {
+    const text = "stateDiagram-v2\n[*] --> hide\nhide --> end\nend --> direction\ndirection --> defaults\ndefaults --> [*]\n";
+
+    expect(asPele(text).states).toEqual([...readDiagram(text).states].sort());
+  });
+
   it("what amy refuses by name, Mermaid would still draw — so the refusal says why rather than calling it broken", () => {
     const drawable = [
       "stateDiagram-v2\n[*] --> A\nstate Busy {\n  A --> B\n}\nB --> [*]\n",
