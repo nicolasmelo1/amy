@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable through one ticket against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/ticket-to-qa-run.json",
-      "report_sha256": "d772db87b04aa44d617435eb7ff0a01ec557d92070f56b2ab085434a890773bd",
+      "report_sha256": "457e851e493831983a8aca570a7a372e0e4b30fb0c30f7add700ceb0f0974fbf",
       "required_assertions": []
     }
   ]
