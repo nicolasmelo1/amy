@@ -304,11 +304,11 @@ describe("a fork of lanes", () => {
   });
 
   it("runs what the workflow says before any decision against its own world while its lanes run, and folds it there", async () => {
-    let asked: string | undefined;
-    const { workflow, runtime } = await mounted([planner({ asked: () => asked })], HOST);
+    const world: { asked?: string } = {};
+    const { workflow, runtime } = await mounted([planner({ asked: () => world.asked })], HOST);
     const { record: forked } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split" && Object.keys(current.calls ?? {}).length === 3);
 
-    asked = "the release is on Friday";
+    world.asked = "the release is on Friday";
     const { record } = await walk(workflow, runtime, forked, HOST.now(), (current) => ((current as PlannerRecord).said ?? []).length > 0);
 
     expect(record.state).toBe("split");
