@@ -386,9 +386,9 @@ function contextFor(plugin: IntrospectedPlugin): StandInContext {
     // one it only offers optionally still registers here and says what it is.
     port: () => new Proxy({}, { get: (_target, key) => (key === "then" ? undefined : () => undefined) }),
     // The layout the plugin's own settings describe, and a `Git` nothing
-    // here will ever ask to run.
+    // here will ever ask to run — leased to a lane, it is the same `Git`.
     checkouts: () => ({
-      git: {},
+      git: { leasedTo(): object { return this; } },
       layout: { workspaceRoot: SCRATCH, checkouts: {}, defaultBranch: config.defaultBranch ?? "main", baseBranch: config.baseBranch },
     }),
     workflow: () => undefined,

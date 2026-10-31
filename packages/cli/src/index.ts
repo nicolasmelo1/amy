@@ -19,6 +19,7 @@ import {
   Worktree,
   callPath,
   callStanding,
+  laneStanding,
   describeBuild,
   mount,
   parseBudget,
@@ -1026,10 +1027,14 @@ program
   });
 
 /** Where a record stands through the calls it is in, for a workflow that would mount. */
-function standingThroughCalls(workflow: Workflow | undefined, record: WorkRecord): Pick<StatusRecord, "calls" | "attention" | "waitingInACall"> {
+function standingThroughCalls(workflow: Workflow | undefined, record: WorkRecord): Pick<StatusRecord, "calls" | "attention" | "waitingInACall" | "lanes"> {
   const calls = callPath(record).slice(1).map((call) => ({ id: call.id, state: call.state, history: call.history }));
   const standing = workflow ? callStanding(workflow, record) : undefined;
-  return { calls, attention: standing?.attention ?? null, waitingInACall: standing ? calls.length > 0 && standing.waiting : null };
+  const lanes = workflow ? laneStanding(workflow, record).map((lane) => ({
+    lane: lane.lane, id: lane.record.id, state: lane.record.state, ended: lane.ended, attention: lane.attention, history: lane.record.history,
+  })) : [];
+  const inCalls = calls.length > 0 || lanes.some((lane) => !lane.ended);
+  return { calls, attention: standing?.attention ?? null, waitingInACall: standing ? inCalls && standing.waiting : null, ...(lanes.length > 0 ? { lanes } : {}) };
 }
 
 /** How many markdown files a directory holds, and none when there is none. */

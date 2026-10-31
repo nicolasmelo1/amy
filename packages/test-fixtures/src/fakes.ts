@@ -169,6 +169,7 @@ export function fakeGit(changed = true): TicketGit & {
     acquire: async (repo, workId) => tree(repo, workId),
     prepareBranch: vi.fn<TicketGit["prepareBranch"]>().mockResolvedValue(undefined),
     commitAndPush: vi.fn<TicketGit["commitAndPush"]>().mockResolvedValue(changed),
+    headSha: async () => "0".repeat(40),
   };
 }
 

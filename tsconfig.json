@@ -101,6 +101,9 @@
       "path": "plugins/serial-engine"
     },
     {
+      "path": "plugins/concurrent-engine"
+    },
+    {
       "path": "plugins/slack"
     },
     {

@@ -93,6 +93,7 @@ plugins/
 ├── codex                The codex CLI as the agent, over its JSONL event stream.
 ├── command              Any command line tool, reached by a name the config allows.
 ├── command-gate         A gate that runs the target repository's own commands.
+├── concurrent-engine    Advances one work item per tick, moving every lane of a fork at once.
 ├── file-brief-store     Briefs kept as one file per item.
 ├── file-log             The event log kept as one JSON Lines file per day.
 ├── file-notes           Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.
@@ -141,6 +142,7 @@ this repository.
 | `@amykit/plugin-codex` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-command` | plugin | `@amykit/core` |
 | `@amykit/plugin-command-gate` | plugin | `@amykit/core` |
+| `@amykit/plugin-concurrent-engine` | plugin | `@amykit/core`, `@amykit/plugin-serial-engine` |
 | `@amykit/plugin-file-brief-store` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-log` | library | `@amykit/core` |
 | `@amykit/plugin-file-notes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |

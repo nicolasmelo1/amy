@@ -23,9 +23,10 @@ import {
   connects,
   dispatchesTo,
   implementationOf,
-  isPortBinding,
+  laneMoved,
   movedBy,
   notATryIn,
+  portReachedBy,
   runAction,
   undeclaredIn,
 } from "@amykit/core";
@@ -72,6 +73,12 @@ export interface WorkerDeps {
   stop?: StopSwitch;
   /** Optional, so an engine with no ceiling on spending still runs. */
   budget?: Budget;
+  /**
+   * How the lanes of a fork move. `serial`, the default, moves one lane per
+   * look, in turn; `concurrent` moves every lane that has a move at once, one
+   * move each, and folds them into the one record it claimed.
+   */
+  lanes?: "serial" | "concurrent";
 }
 
 /** The one result the budget produces, named so the check can return it. */
@@ -173,7 +180,13 @@ export class Worker {
 
   private async advance(item: QueueItem, record: WorkRecord, now: Date): Promise<TickResult> {
     const observation = await this.deps.runtime.observe(record);
-    const decision = this.deps.workflow.plan(record, observation, this.deps.runtime.policy);
+    const side = this.deps.workflow.everyLane?.(record, observation, this.deps.runtime.policy);
+    if (side && this.deps.lanes === "concurrent") return this.advanceLanes(item, record, observation, side, now);
+    const decision = side ? this.laneInTurn(item, record, side, now) : this.deps.workflow.plan(record, observation, this.deps.runtime.policy);
+    if (decision.kind === "parked") {
+      this.park(item, decision, now);
+      return decision;
+    }
 
     this.record("work.planned", {
       workId: item.workId,
@@ -200,7 +213,7 @@ export class Worker {
 
     const actions = actionsOf(decision);
 
-    const parked = this.parked(record, actions, now) ?? this.progressParked(item, record, actions);
+    const parked = this.parked(record, actions, now) ?? this.progressParked(item, record, actions, accountOf(record, decision));
     if (parked) {
       this.park(item, parked, now);
       return parked;
@@ -267,6 +280,98 @@ export class Worker {
       why: decision.why,
       retryAfterMs: delayMs || undefined,
     };
+  }
+
+  /**
+   * The one lane the serial engine moves, of those that have a move: the
+   * first in turn that the budget and the evidence check allow, so a lane that
+   * may not run never holds its siblings up. A look that failed is tried again
+   * with the turn moved on, so a lane that keeps throwing does not either.
+   * Parked only when no lane may move.
+   */
+  private laneInTurn(item: QueueItem, record: WorkRecord, plans: readonly Plan[], now: Date): Plan | Parked {
+    const allowed = plans.filter((plan) => !this.parked(record, actionsOf(plan), now) && !this.progressParked(item, record, actionsOf(plan), accountOf(record, plan)));
+    if (allowed.length === 0) return this.parked(record, actionsOf(plans[0]!), now) ?? this.progressParked(item, record, actionsOf(plans[0]!), accountOf(record, plans[0]!))!;
+    return allowed[item.attempt % allowed.length]!;
+  }
+
+  /**
+   * One move for every lane that has one, side by side, folded into the one
+   * record this tick claimed.
+   *
+   * Each lane passes the budget check before its call, as any move does; a
+   * lane the budget refuses waits for the next look while the rest go on.
+   * The lanes write to records of their own, so folding them in turn is the
+   * same record whatever order they finished in.
+   */
+  private async advanceLanes(item: QueueItem, record: WorkRecord, observation: unknown, plans: readonly Plan[], now: Date): Promise<TickResult> {
+    // Each lane is asked what any move is asked before its call: the budget,
+    // and whether another agent run would add any evidence.
+    const refusal = (plan: Plan): Parked | null => this.parked(record, actionsOf(plan), now) ?? this.progressParked(item, record, actionsOf(plan), accountOf(record, plan));
+    const allowed = plans.filter((plan) => !refusal(plan));
+    if (allowed.length === 0) {
+      const parked = refusal(plans[0]!)!;
+      this.park(item, parked, now);
+      return parked;
+    }
+    for (const plan of allowed) {
+      this.record("work.planned", { workId: item.workId, state: record.state, detail: { plan: plan.kind, why: plan.why } });
+    }
+    // Settled one by one: a lane that threw must not cost its siblings the
+    // moves they made, and paid for. Theirs are kept; the failure is the
+    // item's, as a serial look's would be.
+    const settled = await Promise.allSettled(allowed.map((plan) => this.execute(observation, record, plan)));
+    const moved = allowed.flatMap((plan, index) => {
+      const result = settled[index]!;
+      return result.status === "fulfilled" ? [{ plan, outcomes: result.value }] : [];
+    });
+    let next = record;
+    for (const { plan, outcomes } of moved) {
+      next = this.deps.runtime.apply(applyPlan(next, plan, now, outcomes), plan, outcomes, observation, now, null);
+    }
+    this.deps.records.save(next);
+    const progress = this.lanesProgress(item, record, moved);
+    const failed = settled.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    // The look failed, and the evidence its other lanes reported still counts:
+    // a retry must not buy them a run past the ceiling.
+    if (failed) return this.recordFailure({ ...item, progress: progress.next }, next, failed.reason);
+    if (progress.parked) {
+      this.park({ ...item, progress: progress.next }, progress.parked, now);
+      return progress.parked;
+    }
+
+    const delayMs = Math.min(...moved.map(({ plan, outcomes }) => retryAfter(plan, outcomes, this.deps.config.retryDelayMs)));
+    this.deps.queue.enqueue({ workId: item.workId, reason: allowed.map((plan) => plan.why).join("; "), delayMs, progress: progress.next, priority: item.priority }, this.deps.now());
+    this.deps.queue.complete(item);
+    this.maybePrune(now);
+    this.record("work.advanced", { workId: item.workId, state: next.state, detail: { from: record.state, why: `${allowed.length} lanes moved` } });
+    await this.announceRecovery(item, next.state);
+
+    return {
+      kind: "worked",
+      workId: item.workId,
+      from: record.state,
+      to: next.state,
+      plan: "act",
+      why: allowed.map((plan) => plan.why).join("; "),
+      retryAfterMs: delayMs || undefined,
+    };
+  }
+
+  /** What every lane's move says about evidence, folded in turn as the serial engine folds one. */
+  private lanesProgress(
+    item: QueueItem,
+    record: WorkRecord,
+    moved: readonly { plan: Plan; outcomes: Record<string, unknown> }[],
+  ): { next: QueueItem["progress"]; parked?: Parked } {
+    let next = item.progress;
+    let parked: Parked | undefined;
+    for (const { plan, outcomes } of moved) {
+      const after = this.progressAfter({ ...item, progress: next }, record, plan, actionsOf(plan), outcomes);
+      next = after.next;
+      parked ??= after.parked;
+    }
+    return { next, ...(parked ? { parked } : {}) };
   }
 
   /**
@@ -351,13 +456,13 @@ export class Worker {
     if (signals.length === 0) return { next: item.progress };
 
     const next = { ...(item.progress ?? {}) };
-    const state = movedBy(record, decision)?.to ?? record.state;
+    const state = movedBy(record, decision)?.to ?? accountOf(record, decision);
     for (const signal of signals) {
       if (signal.kind === "advanced") {
         // The signal came from the state this look started in. Clearing only
         // the destination would resurrect an old ceiling if work later
         // returns here; clear the destination too in case it already held one.
-        delete next[progressKey(record.state, signal.key)];
+        delete next[progressKey(accountOf(record, decision), signal.key)];
         delete next[progressKey(state, signal.key)];
         continue;
       }
@@ -377,8 +482,7 @@ export class Worker {
   private agentActions(actions: readonly Action[]): Action[] {
     return actions.filter((action) => {
       if (dispatchesTo(action.type, "agent")) return true;
-      const implementation = implementationOf(this.deps.runtime, action.type);
-      return isPortBinding(implementation) && implementation.port === "agent";
+      return portReachedBy(implementationOf(this.deps.runtime, action.type)) === "agent";
     });
   }
 
@@ -649,6 +753,16 @@ export class Worker {
   private maybePrune(now: Date): void {
     this.deps.queue.prune(this.deps.config.retentionDays, now);
   }
+}
+
+/**
+ * Where a move's evidence is counted: its state, or, for a lane's move, the
+ * lane within it — so one lane's runs that added nothing never park a sibling
+ * that has not run, and moving lanes in turn or side by side ends the same.
+ */
+function accountOf(record: WorkRecord, plan: Plan): string {
+  const lane = laneMoved(plan);
+  return lane === undefined ? record.state : `${record.state}/${lane}`;
 }
 
 function progressKey(state: string, key: string): string {

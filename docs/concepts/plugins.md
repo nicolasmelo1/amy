@@ -220,6 +220,7 @@ that.
 | `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex` |
 | `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
+| `@amykit/plugin-concurrent-engine` | Advances one work item per tick, moving every lane of a fork at once. | the engine |  |
 | `@amykit/plugin-file-brief-store` | Briefs kept as one file per item. | `brief` |  |
 | `@amykit/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
 | `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |

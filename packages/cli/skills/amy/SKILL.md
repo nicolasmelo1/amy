@@ -128,7 +128,7 @@ them in `~/.amy/roster.yaml` before confirming.
 ## Reading a tick
 
 ```
-PROJ-1239  IMPLEMENTING -> CHECKED  the agent finished, the gate decides if it holds
+PROJ-1239  IMPLEMENTING -> checks  the agent finished; the gate and the review decide if it holds
 PROJ-1201  COPILOT_WAIT  waiting for the automated reviewer to look at a6d7c08 (looking again in 300s)
 ```
 

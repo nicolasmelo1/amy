@@ -9,6 +9,7 @@ import {
   Event,
   EventKind,
   EventLog,
+  Moved,
   Notifier,
   Plan,
   RepoLayout,
@@ -97,7 +98,7 @@ export interface TicketRuntimeDeps {
 }
 
 /** The part of `Git` this workflow drives. */
-export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commitAndPush">;
+export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commitAndPush" | "headSha">;
 
 type Context = ActionContext<TicketRecord, Observation>;
 
@@ -377,38 +378,8 @@ export function ticketRuntime(
       });
       recordAgentRun(ctx, run);
       outcomesOf(ctx).implementation = value;
-    },
-
-    "run-gate": async (_effect, ctx) => {
-      outcomesOf(ctx).gate = await deps.gate.run({ repo: ctx.observation.ticket.repo, workId: ctx.record.id });
-    },
-
-    "self-review": async (_effect, ctx) => {
-      // A workflow-declared half-step, in this workflow's own words: the
-      // work reads itself against the brief before a person is asked to.
-      // The brief travels in the context — the same field every generic
-      // `ask` reads — so a workflow half-step can never silently lose it,
-      // and an install whose ticket carries none asks the question without
-      // it, unchanged.
-      const ticket = ctx.observation.ticket;
-      const reply = await deps.agent.ask(
-        [
-          `The ticket ${ticket.id} was implemented in this repository. Review`,
-          `the change on the current branch against what the work was for,`,
-          `and say what a reviewer should look at first.`,
-          ...(ticket.brief
-            ? [``, `The current brief for the feature this ticket belongs to:`, ``, ticket.brief]
-            : []),
-        ].join("\n"),
-        deps.git.pathFor(ticket.repo, ctx.record.id),
-        { workId: ctx.record.id, step: "self-review", brief: ticket.brief },
-      );
-      recordAgentRun(ctx, reply.run);
-      outcomesOf(ctx).selfReview = {
-        ok: reply.run.outcome === "completed",
-        output: reply.text,
-        at: deps.now().toISOString(),
-      };
+      // The commit both checks are lent: what this attempt left on the branch.
+      outcomesOf(ctx).implemented = { repo: ticket.repo, revision: await deps.git.headSha(ticket.repo, ctx.record.id) };
     },
 
     "open-pull-request": async (_effect, ctx) => {
@@ -644,9 +615,19 @@ export function ticketRuntime(
             }
           : folded;
 
-      return applyTransition(applyOutcomes(current, settled), moved);
+      return toTheChecks(applyTransition(applyOutcomes(current, settled), moved), observation, moved);
     },
   };
+}
+
+/**
+ * The repository both checks run in, held before they start. An
+ * implementation this version made recorded it with its commit; one an older
+ * version made did not, and the checks would have no repository to run in.
+ */
+function toTheChecks(record: TicketRecord, observation: Observation, moved: Moved | null): TicketRecord {
+  if (moved?.to !== "checks" || record.implemented) return record;
+  return { ...record, implemented: { repo: observation.ticket.repo } };
 }
 
 interface Words {
@@ -681,8 +662,8 @@ const BEFORE_A_PULL_REQUEST: readonly TicketRecord["state"][] = [
   "CLARIFYING",
   "READY",
   "IMPLEMENTING",
-  "CHECKED",
-  "SELF_REVIEW",
+  "checks",
+  "verdict",
 ];
 
 /**
@@ -694,7 +675,7 @@ export function workIdFor(ticketId: string, repo: string): string {
   return `${ticketId}@${encodeURIComponent(repo)}`;
 }
 
-function splitWorkId(workId: string): { ticketId: string; repo?: string } {
+export function splitWorkId(workId: string): { ticketId: string; repo?: string } {
   const at = workId.indexOf("@");
   if (at === -1) return { ticketId: workId };
   return { ticketId: workId.slice(0, at), repo: decodeURIComponent(workId.slice(at + 1)) };

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { FileQueue } from "@amykit/plugin-file-queue";
-import { InMemoryStore, WORKDAY, fakeGate, ticketWorkerDeps } from "@amykit/test-fixtures";
+import { InMemoryStore, WORKDAY, ticketWorkerDeps } from "@amykit/test-fixtures";
 import { Worker } from "../src/Worker.js";
 
 /**
@@ -59,15 +59,16 @@ describe("folding a plan into the record", () => {
   });
 
   it("still keeps what only the workflow could fold", async () => {
-    // The gate result is the runtime's half. Losing it would be the other
-    // way to get this wrong.
+    // Where the implementation left the work is the runtime's half: the
+    // commit the checks are lent. Losing it would be the other way to get
+    // this wrong. (The gate itself is a lane now, folded by the mount.)
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    const gate = fakeGate(false, "the gate is red");
-    for (let look = 0; look < 8; look += 1) {
-      await new Worker({ queue, records, ...ticketWorkerDeps({ now: () => clock, gate }) }).tick();
+    for (let look = 0; look < 4; look += 1) {
+      await new Worker({ queue, records, ...ticketWorkerDeps({ now: () => clock }) }).tick();
     }
 
-    expect(records.records.get("PROJ-1239")?.lastGate?.output).toBe("the gate is red");
+    expect(records.records.get("PROJ-1239")?.lastImplementation).toBeDefined();
+    expect(records.records.get("PROJ-1239")?.implemented).toEqual({ repo: "Northwind/northwind-backend", revision: "0".repeat(40) });
   });
 });

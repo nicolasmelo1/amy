@@ -45,6 +45,7 @@ function tally(workflow: AnyWorkflow, walks: readonly Walk[]): Tally {
       seen.reached.add(look.plan.to);
       if (look.plan.to !== state) seen.left.add(state);
     }
+    lanesIn(workflow, look.record, seen);
     const terminal = workflow.terminalStates.includes(state);
     if (look.plan.kind === "settled" && !terminal) {
       seen.findings.push({ property: "reachability", message: `\`${state}\` settles, and is not declared terminal` });
@@ -53,6 +54,22 @@ function tally(workflow: AnyWorkflow, walks: readonly Walk[]): Tally {
     }
   }
   return seen;
+}
+
+/**
+ * A lane is never a record's state: the record waits in the fork. So a lane
+ * is reached when the fork started it, and left when its own record ended.
+ */
+function lanesIn(workflow: AnyWorkflow, record: Walk["looks"][number]["record"], seen: Tally): void {
+  const fork = workflow.diagram?.forks[record.state];
+  for (const lane of fork?.lanes ?? []) {
+    const call = record.lanes?.[lane]?.call;
+    const child = call === undefined ? undefined : record.calls?.[call];
+    if (!child) continue;
+    seen.reached.add(lane);
+    seen.planned.add(lane);
+    if (workflow.calls?.[lane]?.terminalStates.includes(child.state)) seen.left.add(lane);
+  }
 }
 
 function declarationProblems(workflow: AnyWorkflow): Finding[] {

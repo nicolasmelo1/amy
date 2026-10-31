@@ -98,14 +98,14 @@ describe("the handbrake", () => {
       plan: () => ({
         kind: "act",
         why: "two actions, and the brake comes down after the first",
-        effects: [{ type: "ask-question", questions: ["first"] }, { type: "run-gate" }],
+        effects: [{ type: "ask-question", questions: ["first"] }, { type: "announce", text: "second" }],
       }),
     }).tick();
 
     expect(log.kinds()).toContain("stop.enforced");
     expect(log.of("stop.enforced")[0]?.detail).toMatchObject({
       reason: "pulled mid-plan",
-      pending: "run-gate",
+      pending: "announce",
     });
     // The first action ran, the second never started.
     expect(log.of("action.started").map((e) => e.detail?.action)).toEqual(["ask-question"]);

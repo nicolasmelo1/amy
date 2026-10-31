@@ -19,7 +19,7 @@ them wait, which are terminal, and the actions it says it can emit.
 | `@amykit/workflow-errand` | `errand` | 5 | Something said in passing becomes work: capture it, do it, say what happened. |
 | `@amykit/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
 | `@amykit/workflow-pull-request` | `pull-request` | 3 | A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted. |
-| `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 17 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
+| `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 19 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
 
 <!-- amy:end workflow-index -->
 
@@ -108,19 +108,21 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 | 2 | `CLARIFYING` | waiting |
 | 3 | `READY` | working |
 | 4 | `IMPLEMENTING` | working |
-| 5 | `CHECKED` | working |
-| 6 | `SELF_REVIEW` | working |
-| 7 | `PR_OPEN` | working |
-| 8 | `COPILOT_WAIT` | waiting |
-| 9 | `COPILOT_FIX` | working |
-| 10 | `REVIEWER_ASSIGNED` | working |
-| 11 | `HUMAN_REVIEW` | waiting |
-| 12 | `HUMAN_FIX` | working |
-| 13 | `ESCALATED` | waiting |
-| 14 | `RE_REVIEW` | working |
-| 15 | `APPROVED` | working |
-| 16 | `QA_HANDOFF` | working |
-| 17 | `DONE` | terminal |
+| 5 | `checks` | working |
+| 6 | `GATE` | working |
+| 7 | `SELF_REVIEW` | working |
+| 8 | `verdict` | working |
+| 9 | `PR_OPEN` | working |
+| 10 | `COPILOT_WAIT` | waiting |
+| 11 | `COPILOT_FIX` | working |
+| 12 | `REVIEWER_ASSIGNED` | working |
+| 13 | `HUMAN_REVIEW` | waiting |
+| 14 | `HUMAN_FIX` | working |
+| 15 | `ESCALATED` | waiting |
+| 16 | `RE_REVIEW` | working |
+| 17 | `APPROVED` | working |
+| 18 | `QA_HANDOFF` | working |
+| 19 | `DONE` | terminal |
 
 <!-- amy:end workflow-states -->
 

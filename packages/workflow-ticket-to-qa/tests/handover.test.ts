@@ -6,6 +6,7 @@ import { plan } from "../src/machine.js";
 import { Observation, Policy } from "../src/observation.js";
 import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
 import { TicketRecord } from "../src/record.js";
+import { throughTheChecks } from "./checks.js";
 import { newRecord } from "./drawn.js";
 import { TicketState } from "../src/state.js";
 
@@ -104,12 +105,6 @@ class OperatorWorld {
         case "implement":
           outcomes.implementation = { ok: true, output: "", at: at() };
           break;
-        case "run-gate":
-          outcomes.gate = { ok: true, output: "", at: at() };
-          break;
-        case "self-review":
-          outcomes.selfReview = { ok: true, output: "", at: at() };
-          break;
         case "address-threads":
           // Fixed, and the honest forge leaves the thread open: closing it
           // is a write, so it is the operator's.
@@ -139,6 +134,11 @@ function drive(world: OperatorWorld, limit = 120) {
 
   for (let step = 0; step < limit; step += 1) {
     world.advanceWorld(current);
+    if (current.state === "checks") {
+      current = throughTheChecks(current, new Date(WORKDAY.getTime() + step));
+      states.push(current.state);
+      continue;
+    }
     const decision = plan(current, world.observe(), policy);
     if (decision.kind === "settled") return { record: current, states, stillWhileWaiting };
     if (decision.kind === "wait") stillWhileWaiting.push(current.state);

@@ -27,11 +27,12 @@ const RAISED_FROM: { state: TicketState; record: Partial<TicketRecord>; observat
     observation: {},
   },
   {
-    state: "CHECKED",
+    state: "verdict",
     record: {
-      attempts: { CHECKED: policy.maxGateAttempts, IMPLEMENTING: policy.maxImplementAttempts },
+      attempts: { verdict: policy.maxGateAttempts, IMPLEMENTING: policy.maxImplementAttempts },
       lastImplementation: at("10:00", true),
       lastGate: at("10:05", false, "typecheck failed"),
+      lanes: { GATE: { call: "PROJ-1239/GATE#3", end: "RED" }, SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#3", end: "APPROVED" } },
     },
     observation: {},
   },
@@ -105,10 +106,10 @@ describe("an escalation remembers the state it interrupted", () => {
 
   it("leaves the resume point alone on a look that did not move", () => {
     const waiting = record("ESCALATED", {
-      resumeAt: "CHECKED",
+      resumeAt: "verdict",
       escalation: { reason: "red", askedAt: "2026-09-03T11:00:00.000Z" },
     });
 
-    expect(look(waiting, observation()).next.resumeAt).toBe("CHECKED");
+    expect(look(waiting, observation()).next.resumeAt).toBe("verdict");
   });
 });
