@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { FileLeases, HostServices, LEASE_WAIT, NodeCommandRunner, Plugin, WorkRecord, Worktree, WorktreeInfo, mount } from "../src/index.js";
+import { FileLeases, HostServices, LEASE_WAIT, NodeCommandRunner, Plugin, WorkRecord, Worktree, WorktreeInfo, advance, call, defineWorkflow, mount, settled, withDiagram } from "../src/index.js";
 import { PlannerRecord, TaskRecord, Work, mounted, planner, task, walk } from "./forks.js";
 
 /**
@@ -101,6 +101,60 @@ describe("lanes hold what they use", () => {
 
     expect(record.state).toBe("ESCALATED");
     expect(lent()).toEqual([]);
+  });
+
+  it("lends the commit to the lanes of a workflow a lent lane calls, and they cannot move the caller's branch either", async () => {
+    run(checkout, "checkout", "-q", "-b", "amy/feature");
+    const caller = commit(checkout, "the caller's change");
+    run(checkout, "push", "-q", "origin", "amy/feature");
+    const checked: { head: string; moved: string }[] = [];
+    const work: Work = async (scope, record) => {
+      const tree = await scope.checkouts.git.acquire("acme/widgets", record.id);
+      const moved = await scope.checkouts.git.prepareBranch("acme/widgets", "amy/feature", record.id).then(() => "moved", (error: Error) => error.message);
+      checked.push({ head: run(tree, "rev-parse", "HEAD"), moved });
+    };
+    // The lent lane calls a workflow that draws lanes of its own.
+    const review = planner({ name: "review", lanes: ["R1", "R2"], callee: task({ work }) });
+    const outer = withDiagram(defineWorkflow({
+      name: "outer",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      calls: {
+        REVIEW: call(review as never, { revision: (work: PlannerRecord) => work.commit }),
+        OTHER: call(task(), { input: () => ({ task: "other" }) }),
+      },
+      decide: { PLANNED: () => advance("split", "planned"), merge: () => advance("DONE", "met"), DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), `stateDiagram-v2
+    state split <<fork>>
+    state merge <<join>>
+    [*] --> PLANNED
+    PLANNED --> split
+    split --> REVIEW
+    split --> OTHER
+    REVIEW --> merge: INTEGRATED
+    REVIEW --> merge: ESCALATED
+    OTHER --> merge: DONE
+    OTHER --> merge: DECLINED
+    merge --> DONE
+    DONE --> [*]
+    class REVIEW, OTHER call
+`);
+    const { workflow, runtime } = await mounted([trees(), outer], host);
+    const start = { ...runtime.newRecord("PLAN-1", host.now()), commit: caller } as PlannerRecord;
+
+    const { record } = await walk(workflow, runtime, start, host.now());
+
+    expect(record.state).toBe("DONE");
+    expect(checked).toHaveLength(2);
+    for (const lane of checked) {
+      expect(lane.head).toBe(caller);
+      expect(lane.moved).toMatch(/was lent [0-9a-f]{7} to check, and checks it read-only/);
+    }
+    expect(run(bare, "rev-parse", "refs/heads/amy/feature")).toBe(caller);
   });
 
   it("gives a branch another lane holds to the second lane only once the first has ended, and the wait costs it no attempt", async () => {

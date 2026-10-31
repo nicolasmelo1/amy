@@ -109,6 +109,8 @@ ${lanes.map((lane) => `    split --> ${lane}\n    ${lane} --> ${join}: DONE\n   
  * own task as input, and its join reads how each one ended.
  */
 export function planner(options: {
+  /** Its name, for a test that calls one planner from another. */
+  name?: string;
   lanes?: readonly string[];
   diagram?: string;
   callee?: ReturnType<typeof task>;
@@ -126,7 +128,7 @@ export function planner(options: {
   const lanes = options.lanes ?? ["TASK_A", "TASK_B", "TASK_C"];
   const callee = options.callee ?? task();
   return withDiagram(defineWorkflow({
-    name: "planner",
+    name: options.name ?? "planner",
     configSchema: NO_SETTINGS,
     policy: {},
     needs: {},

@@ -25,6 +25,12 @@ const ENTER = Symbol.for("@amykit/core/call-enter");
 const ENTER_FORK = Symbol.for("@amykit/core/fork-enter");
 /** The lane a plan, or an action on it, is a move of. */
 const LANE = Symbol.for("@amykit/core/lane");
+/**
+ * The lanes an action is a move of, outermost first: a lane's own action is
+ * `[A]`; one of a lane inside a workflow that lane calls is `[A, B]`. Each fork
+ * runs it as its head lane's, and hands the rest on.
+ */
+const LANE_PATH = Symbol.for("@amykit/core/lane-path");
 /** The move to the join, once every lane has ended. */
 const JOINED = Symbol.for("@amykit/core/joined");
 
@@ -435,7 +441,7 @@ function laneMove(site: CallSite, record: WorkRecord, observation: unknown): Pla
   const inner = site.workflow.plan(child, laneObservation(observation, site.state), site.runtime?.policy ?? site.policy);
   const plan = carried(child, inner);
   if (plan.kind === "settled") return plan;
-  const effects = plan.effects.map((effect) => Object.assign({ ...effect }, { [LANE]: site.state }));
+  const effects = plan.effects.map((effect) => Object.assign({ ...effect }, { [LANE_PATH]: [site.state, ...(lanePathOf(effect) ?? [])] }));
   return Object.assign({ ...plan, effects }, { [INNER]: inner, [LANE]: site.state });
 }
 
@@ -464,6 +470,17 @@ function arrivals(fork: ForkSite, record: WorkRecord, moves: readonly Plan[]): s
     return `${site.state} ${attention ? "needs the person" : "waits"} in ${child.state}`;
   });
   return [arrived, ...waiting].join("; ");
+}
+
+function lanePathOf(action: object): readonly string[] | undefined {
+  const path = (action as { [LANE_PATH]?: readonly string[] })[LANE_PATH];
+  return path && path.length > 0 ? path : undefined;
+}
+
+/** The action as the lane's own workflow runs it: the lanes inside it, if any, still marked. */
+function inTheLane(action: Action): Action {
+  const [, ...rest] = lanePathOf(action) ?? [];
+  return Object.assign({ ...action }, { [LANE_PATH]: rest });
 }
 
 function laneOf(value: object): string | undefined {
@@ -717,7 +734,7 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
       continue;
     }
     actions[name] = reaching(async (action: Action, context: ActionContext) => {
-      const lane = laneOf(action);
+      const lane = lanePathOf(action)?.[0];
       const fork = forks.get(context.record.state);
       if (fork && lane) return laneAction(fork, lane, name, action, context);
       const site = sites.get(context.record.state);
@@ -797,7 +814,7 @@ async function laneAction(fork: ForkSite, lane: string, name: string, action: Ac
   if (child.revision !== undefined) fork.lent?.set(child.id, child.revision);
   try {
     await runningLane.run(child.id, () =>
-      runAction(implementationOf(site.runtime!, name), action, { record: child, observation: laneObservation(context.observation, lane), outcomes: context.outcomes }, site.port));
+      runAction(implementationOf(site.runtime!, name), inTheLane(action), { record: child, observation: laneObservation(context.observation, lane), outcomes: context.outcomes }, site.port));
   } catch (error) {
     if (!(error instanceof LeaseHeld)) throw error;
     context.outcomes[LEASE_WAIT] = { notATry: true, retryAfterMs: LEASE_WAIT_MS, held: error.message };

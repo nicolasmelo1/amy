@@ -88,7 +88,11 @@ export class Git {
    * and no move is made in it.
    */
   leasedTo(leases: BranchLeases, lent?: (workId: string) => string | undefined): Git {
-    return new Git(this.runner, this.layout, this.worktreesOf, leases, lent);
+    // Composed rather than replaced: a lane lent a commit that calls a
+    // workflow with lanes of its own lends that commit to them too.
+    const outer = this.lentTo;
+    const lentTo = lent && outer ? (workId: string) => lent(workId) ?? outer(workId) : lent ?? outer;
+    return new Git(this.runner, this.layout, this.worktreesOf, leases, lentTo);
   }
 
   private get worktrees(): Worktree | undefined {
