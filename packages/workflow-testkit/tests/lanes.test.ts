@@ -246,6 +246,34 @@ describe("a fork of three lanes", () => {
   });
 });
 
+describe("lanes drawn inside a workflow that is called", () => {
+  it("are walked like the root's, every end told apart", async () => {
+    const outer = withDiagram(defineWorkflow({
+      name: "outer",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { PLAN: call(planner(task([]), [["write", 1], ["review", 1], ["test", 1]]) as never) },
+      decide: { DONE: () => settled("done"), STOPPED: () => settled("stopped") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> PLAN\nPLAN --> DONE: INTEGRATED\nPLAN --> STOPPED: ESCALATED\nDONE --> [*]\nSTOPPED --> [*]\nclass PLAN call\n");
+    const { workflow, runtime } = await mounted([outer]);
+
+    const findings = await conformance(workflow, { runtime: () => runtime, worlds: [{ name: "a plan", workId: "PLAN-1" }], everyEdge: true });
+
+    const messages = findings.map((finding) => finding.message);
+    // Walked: into every lane, and out of every lane at DONE.
+    for (const lane of ["TASK_A", "TASK_B", "TASK_C"]) {
+      expect(messages).not.toContain(`\`PLAN/split\` → \`PLAN/${lane}\` is drawn, and no world walks it`);
+      expect(messages).not.toContain(`\`PLAN/${lane}\` → \`PLAN/merge\` (\`DONE\`) is drawn, and no world walks it`);
+    }
+    // Not walked, and said so by its end: no lane declined.
+    expect(messages).toContain("`PLAN/TASK_A` → `PLAN/merge` (`DECLINED`) is drawn, and no world walks it");
+  });
+});
+
 describe("a lane that escalates", () => {
   it("leaves its siblings running, and the caller waits in the join saying which lane needs the person", async () => {
     const seen: Seen = [];

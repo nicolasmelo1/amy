@@ -38,7 +38,7 @@ export function transitions(workflow: AnyWorkflow, walks: readonly Walk[], every
   }
   if (!everyEdge) return findings;
 
-  const lanes = new Set(Object.values(workflow.diagram?.forks ?? {}).flatMap((fork) => fork.lanes));
+  const lanes = lanesDrawn(workflow as Workflow, "");
   return [
     ...findings,
     ...drawnNotWalked(workflow, walks).map((edge): Finding => ({
@@ -55,6 +55,7 @@ export function transitions(workflow: AnyWorkflow, walks: readonly Walk[], every
  * along them.
  */
 function drawnNotWalked(workflow: AnyWorkflow, walks: readonly Walk[]): DrawnTransition[] {
+  const root = workflow as Workflow;
   const walked = new Set(
     walks.flatMap((walk) => walk.looks)
       .filter((look) => look.plan.kind === "advance")
@@ -64,12 +65,12 @@ function drawnNotWalked(workflow: AnyWorkflow, walks: readonly Walk[]): DrawnTra
     for (const child of callsIn(workflow, walk)) {
       for (const move of child.record.history) walked.add(`${child.at}/${move.from}\u0000${child.at}/${move.to}`);
     }
-    for (const look of walk.looks) for (const edge of laneEdges(workflow, look.record)) walked.add(edge);
+    for (const look of walk.looks) for (const edge of laneEdges(root, look.record, "")) walked.add(edge);
   }
   const seen = new Set<string>();
   // Every end of a lane leads to the same join, so the end is what tells one
   // of those arrows from another.
-  const lanes = new Set(Object.values(workflow.diagram?.forks ?? {}).flatMap((fork) => fork.lanes));
+  const lanes = lanesDrawn(root, "");
   return drawn(workflow, "").filter((edge) => {
     const key = lanes.has(edge.from) ? `${edge.from}\u0000${edge.to}\u0000${edge.label ?? ""}` : `${edge.from}\u0000${edge.to}`;
     if (walked.has(key) || seen.has(key)) return false;
@@ -82,16 +83,29 @@ function drawnNotWalked(workflow: AnyWorkflow, walks: readonly Walk[]): DrawnTra
  * The arrows a record waiting in a fork has walked: from the fork into every
  * lane it started, and from each lane that ended into the join.
  */
-function laneEdges(workflow: AnyWorkflow, record: WorkRecord): string[] {
+function laneEdges(workflow: Workflow, record: WorkRecord, prefix: string): string[] {
   const fork = workflow.diagram?.forks[record.state];
-  if (!fork) return [];
-  return fork.lanes.flatMap((lane) => {
+  const own = (fork?.lanes ?? []).flatMap((lane) => {
     const call = record.lanes?.[lane]?.call;
     const child = call === undefined ? undefined : record.calls?.[call];
     if (!child) return [];
     const ended = workflow.calls?.[lane]?.terminalStates.includes(child.state);
-    return [`${record.state}\u0000${lane}`, ...(ended ? [`${lane}\u0000${fork.join}\u0000${child.state}`] : [])];
+    return [`${prefix}${record.state}\u0000${prefix}${lane}`, ...(ended ? [`${prefix}${lane}\u0000${prefix}${fork!.join}\u0000${child.state}`] : [])];
   });
+  // A callee's own forks, at every depth, named by the call state they sit in.
+  const nested = Object.values(record.calls ?? {}).flatMap((child) => {
+    const state = /\/([A-Za-z_]\w*)#\d+$/.exec(child.id)?.[1];
+    const callee = state ? workflow.calls?.[state] : undefined;
+    return state && callee ? laneEdges(callee, child, `${prefix}${state}/`) : [];
+  });
+  return [...own, ...nested];
+}
+
+/** Every lane drawn, at every depth, named as `drawn` names it. */
+function lanesDrawn(workflow: Workflow, prefix: string): Set<string> {
+  const own = Object.values(workflow.diagram?.forks ?? {}).flatMap((fork) => fork.lanes.map((lane) => `${prefix}${lane}`));
+  const nested = Object.entries(workflow.calls ?? {}).flatMap(([state, callee]) => [...lanesDrawn(callee, `${prefix}${state}/`)]);
+  return new Set([...own, ...nested]);
 }
 
 function drawn(workflow: Workflow, prefix: string): DrawnTransition[] {

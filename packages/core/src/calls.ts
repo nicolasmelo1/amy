@@ -304,7 +304,7 @@ export function composedWorkflow(own: Workflow, sites: ReadonlyMap<string, CallS
     plan: (record, observation, policy) => {
       const fork = forks.get(record.state);
       if (fork) return own.interrupt?.(record, ownObservation(observation), policy) ?? forkPlan(fork, record, observation);
-      const site = sites.get(record.state);
+      const site = callAt(sites, forks, record.state);
       if (!site) return own.plan(record, observation, policy);
       const child = activeCall(record);
       // A record saved in this state before it was a call — an install that
@@ -315,6 +315,17 @@ export function composedWorkflow(own: Workflow, sites: ReadonlyMap<string, CallS
       return carried(child, inner);
     },
   };
+}
+
+/**
+ * The call a record in this state is making — none for a lane, which is
+ * never a record's own state: its fork is. A record that is in one was saved
+ * there by a version before the state was a lane, and is the workflow's own
+ * to move.
+ */
+function callAt(sites: ReadonlyMap<string, CallSite>, forks: ReadonlyMap<string, ForkSite>, state: string): CallSite | undefined {
+  for (const fork of forks.values()) if (fork.lanes.some((lane) => lane.state === state)) return undefined;
+  return sites.get(state);
 }
 
 function returned(site: CallSite, record: WorkRecord, child: WorkRecord): Plan {
@@ -395,7 +406,7 @@ function everyLaneThrough(
   if (forks.has(record.state)) {
     return own.interrupt?.(record, ownObservation(observation), policy) ? undefined : everyLane(forks, record, observation);
   }
-  const site = sites.get(record.state);
+  const site = callAt(sites, forks, record.state);
   const child = activeCall(record);
   if (!site || !child || site.workflow.terminalStates.includes(child.state)) return undefined;
   const moves = site.workflow.everyLane?.(child, childObservation(observation), site.runtime?.policy ?? site.policy);
@@ -476,7 +487,7 @@ function returnedFrom(plan: Plan): string | undefined {
  */
 export function composedRuntime(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSite>, port: PortLookup, forks: ReadonlyMap<string, ForkSite> = new Map()): WorkflowRuntime {
   if (sites.size === 0) return own;
-  const siteOf = (record: WorkRecord): CallSite | undefined => sites.get(record.state);
+  const siteOf = (record: WorkRecord): CallSite | undefined => callAt(sites, forks, record.state);
   const runtimeOf = (site: CallSite): WorkflowRuntime => {
     if (!site.runtime) throw new Error(`the call in \`${site.state}\` to ${site.callee} was never built`);
     return site.runtime;

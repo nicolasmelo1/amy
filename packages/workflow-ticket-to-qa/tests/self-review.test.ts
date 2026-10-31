@@ -193,7 +193,7 @@ describe("a ticket that leaves its repository while it is being checked", () => 
 });
 
 describe("a record an older version left where the checks used to run", () => {
-  it("runs both checks in the ticket's repository, in the work's own tree, though it recorded no implementation", async () => {
+  it.each(["CHECKED", "SELF_REVIEW"])("runs both checks from %s in the ticket's repository, in the work's own tree, though it recorded no implementation", async (state) => {
     let at = clock.getTime();
     const now = () => new Date((at += 1000));
     const seen: { prompt: string; context?: AskContext }[] = [];
@@ -204,7 +204,7 @@ describe("a record an older version left where the checks used to run", () => {
     const fresh = mounted.runtime.newRecord("PROJ-1239", now()) as TicketRecord;
     const legacy = {
       ...fresh,
-      state: "CHECKED",
+      state,
       triage: { clear: true, questions: [], askedQuestions: [], at: now().toISOString() },
       lastImplementation: { ok: true, output: "", at: now().toISOString() },
     } as unknown as TicketRecord;
