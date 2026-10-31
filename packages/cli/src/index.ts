@@ -1026,9 +1026,10 @@ program
   });
 
 /** Where a record stands through the calls it is in, for a workflow that would mount. */
-function standingThroughCalls(workflow: Workflow | undefined, record: WorkRecord): Pick<StatusRecord, "calls" | "attention"> {
+function standingThroughCalls(workflow: Workflow | undefined, record: WorkRecord): Pick<StatusRecord, "calls" | "attention" | "waitingInACall"> {
   const calls = callPath(record).slice(1).map((call) => ({ id: call.id, state: call.state, history: call.history }));
-  return { calls, attention: workflow ? callStanding(workflow, record).attention : null };
+  const standing = workflow ? callStanding(workflow, record) : undefined;
+  return { calls, attention: standing?.attention ?? null, waitingInACall: standing ? calls.length > 0 && standing.waiting : null };
 }
 
 /** How many markdown files a directory holds, and none when there is none. */

@@ -131,7 +131,7 @@ export interface CallStep {
  * that escalates is the root's attention, because the root is what a person
  * sees.
  */
-export function callStanding(workflow: Workflow, record: WorkRecord): { readonly path: readonly CallStep[]; readonly attention: boolean } {
+export function callStanding(workflow: Workflow, record: WorkRecord): { readonly path: readonly CallStep[]; readonly attention: boolean; readonly waiting: boolean } {
   const path: CallStep[] = [];
   let at: Workflow | undefined = workflow;
   for (const step of callPath(record)) {
@@ -140,7 +140,11 @@ export function callStanding(workflow: Workflow, record: WorkRecord): { readonly
     at = at.calls?.[step.state];
   }
   const deepest = path.at(-1)!;
-  return { path, attention: deepest.workflow.diagram?.attention.includes(deepest.record.state) ?? false };
+  return {
+    path,
+    attention: deepest.workflow.diagram?.attention.includes(deepest.record.state) ?? false,
+    waiting: deepest.workflow.waitingStates.includes(deepest.record.state),
+  };
 }
 
 /**
@@ -193,8 +197,10 @@ function returned(site: CallSite, record: WorkRecord, child: WorkRecord): Plan {
 
 /** The child's plan as its caller's engine runs it: a look that stays where the caller is. */
 function carried(child: WorkRecord, inner: Plan): Plan {
+  // A settled child is passed up as it said it, so a decision nobody has
+  // written yet (`notWritten`) still reads as one through its caller.
+  if (inner.kind === "settled") return inner;
   const why = `${child.id}: ${inner.why}`;
-  if (inner.kind === "settled") return { kind: "settled", why };
   const plan: Plan = inner.kind === "wait"
     ? { kind: "wait", retryAfterMs: inner.retryAfterMs, effects: inner.effects, why }
     : { kind: "act", effects: inner.effects, why, attempt: false };

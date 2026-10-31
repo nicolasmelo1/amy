@@ -30,14 +30,14 @@
         "record": {
           "id": "page-1",
           "state": "REVIEW",
-          "updatedAt": "2026-10-31T03:34:10.964Z",
+          "updatedAt": "2026-10-31T03:52:03.732Z",
           "attempts": {},
           "looks": {
             "REVIEW": 2
           },
           "history": [
             {
-              "at": "2026-10-31T03:34:10.739Z",
+              "at": "2026-10-31T03:52:03.504Z",
               "from": "PAGED",
               "to": "REVIEW",
               "why": "a fix is up for review"
@@ -50,14 +50,14 @@
               },
               "id": "page-1/REVIEW#1",
               "state": "ESCALATED",
-              "updatedAt": "2026-10-31T03:34:10.964Z",
+              "updatedAt": "2026-10-31T03:52:03.732Z",
               "attempts": {},
               "looks": {
                 "ESCALATED": 1
               },
               "history": [
                 {
-                  "at": "2026-10-31T03:34:10.850Z",
+                  "at": "2026-10-31T03:52:03.620Z",
                   "from": "READING",
                   "to": "ESCALATED",
                   "why": "nobody can review a change this large without its owner"

@@ -18,9 +18,10 @@ export function expandDiagram(workflow: Workflow, record?: WorkRecord): string {
   const diagram = drawnOf(workflow);
   const lines = [diagram.text.replace(/\s*$/, "")];
   const classes: string[] = [];
+  const taken = new Set(diagram.states);
   for (const state of diagram.calls) {
     const callee = workflow.calls?.[state];
-    if (callee) lines.push("", ...composite(state, callee, "    ", classes));
+    if (callee) lines.push("", ...composite(state, callee, "    ", classes, taken));
   }
   lines.push(...classes);
   const marked = record ? markedPath(workflow, record) : [];
@@ -35,9 +36,10 @@ function drawnOf(workflow: Workflow): Diagram {
   return workflow.diagram;
 }
 
-function composite(prefix: string, callee: Workflow, indent: string, classes: string[]): string[] {
+function composite(prefix: string, callee: Workflow, indent: string, classes: string[], taken: Set<string>): string[] {
   const diagram = drawnOf(callee);
   const id = (state: string): string => `${prefix}__${state}`;
+  claim(prefix, diagram.states.map(id), taken);
   const inner = `${indent}    `;
   const lines = [`${indent}state ${prefix} {`];
   for (const state of diagram.states) lines.push(`${inner}state "${diagram.labels[state] ?? state}" as ${id(state)}`);
@@ -46,7 +48,7 @@ function composite(prefix: string, callee: Workflow, indent: string, classes: st
   for (const state of diagram.terminal) lines.push(`${inner}${id(state)} --> [*]`);
   for (const state of diagram.calls) {
     const called = callee.calls?.[state];
-    if (called) lines.push(...composite(id(state), called, inner, classes));
+    if (called) lines.push(...composite(id(state), called, inner, classes, taken));
   }
   lines.push(`${indent}}`);
   // Outside the block, where a class line is read for any state it names.
@@ -55,6 +57,14 @@ function composite(prefix: string, callee: Workflow, indent: string, classes: st
     if (states.length > 0) classes.push(`    class ${states.map(id).join(",")} ${name}`);
   }
   return lines;
+}
+
+/** Mermaid has one namespace for every id, composite or not, so each drawn id is taken once. */
+function claim(prefix: string, ids: readonly string[], taken: Set<string>): void {
+  for (const id of ids) {
+    if (taken.has(id)) throw new Error(`expanding \`${prefix}\` would draw \`${id}\` twice; rename one of the two states`);
+    taken.add(id);
+  }
 }
 
 /** The id the record is drawn at, at every depth of its call path. */

@@ -15,6 +15,9 @@ import {
   call,
   callPath,
   callStanding,
+  expandDiagram,
+  notWritten,
+  notWrittenIn,
   defineWorkflow,
   implementationOf,
   mount,
@@ -534,6 +537,90 @@ describe("an action a callee declares as a port and a method", () => {
     const { runtime } = await mounted([binding({ agent: "agent-strong" }), agent("agent-strong")]);
 
     expect(typeof runtime.actions["ask-agent"]).toBe("function");
+  });
+});
+
+describe("what a caller says about the call it is in", () => {
+  it("passes up a decision its callee has not written yet as one", async () => {
+    const stub = withDiagram(defineWorkflow({
+      name: "stub",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { DRAFT: notWritten(), DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> DRAFT\nDRAFT --> DONE\nDONE --> [*]\n");
+    const root = withDiagram(defineWorkflow({
+      name: "root",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { WRITE: call(stub) },
+      decide: { FINISHED: () => settled("finished") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WRITE\nWRITE --> FINISHED: DONE\nFINISHED --> [*]\nclass WRITE call\n");
+    const { workflow, runtime } = await mounted([root]);
+    const record = runtime.newRecord("W-5", HOST.now());
+
+    expect(notWrittenIn(workflow.plan(record, await runtime.observe(record), runtime.policy))).toBe("DRAFT");
+  });
+
+  it("is waiting when the record it waits on is", async () => {
+    const holds = withDiagram(defineWorkflow({
+      name: "holds",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { HELD: () => settled("held"), FREED: () => settled("freed") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> HELD\nHELD --> FREED\nFREED --> [*]\nclass HELD waiting\n");
+    const root = withDiagram(defineWorkflow({
+      name: "root",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { HOLD: call(holds) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> HOLD\nHOLD --> DONE: FREED\nDONE --> [*]\nclass HOLD call\n");
+    const { workflow, runtime } = await mounted([root]);
+
+    expect(callStanding(workflow, runtime.newRecord("W-6", HOST.now()))).toMatchObject({ waiting: true, attention: false });
+  });
+
+  it("refuses to expand a call whose drawn ids would collide with a state already there", async () => {
+    const inner = withDiagram(defineWorkflow({
+      name: "inner",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { X: () => settled("x") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> X\nX --> [*]\n");
+    const root = withDiagram(defineWorkflow({
+      name: "root",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { R: call(inner) },
+      decide: { R__X: () => settled("collides") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> R\nR --> R__X: X\nR__X --> [*]\nclass R call\n");
+    const { workflow } = await mounted([root]);
+
+    expect(() => expandDiagram(workflow)).toThrow("expanding `R` would draw `R__X` twice");
   });
 });
 

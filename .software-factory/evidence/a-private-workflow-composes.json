@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable with its writes handed to an operator across two repositories, and the built adapters against real git and a stand-in gh, on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/a-private-workflow-composes-run.json",
-      "report_sha256": "9587c29c2ac6b386a932217631e95f8ff04ed314085a27f462463b8de78a04ef",
+      "report_sha256": "7ebc680a95ce30d31eb2d145cfbb30ea58fc9a0a2f058182b5e1c2b54d770356",
       "required_assertions": []
     }
   ]

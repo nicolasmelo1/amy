@@ -63,4 +63,13 @@ describe("amy status, for work inside a call", () => {
     expect(page).toMatch(/PAGE-1\s+REVIEW › FIX\s+active/);
     expect(page).not.toContain("needs you");
   });
+
+  it("says the root is waiting when the record it waits on is", () => {
+    const held = { ...escalated, calls: [{ id: "PAGE-1/REVIEW#1", state: "HELD", history: [] }], attention: false, waitingInACall: true };
+
+    const page = renderText(statusView(snapshot([held]), { all: false, inbox: INBOX }));
+
+    expect(page).toMatch(/PAGE-1\s+REVIEW › HELD\s+waiting/);
+  });
 });
+

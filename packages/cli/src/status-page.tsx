@@ -17,6 +17,8 @@ export interface StatusRecord {
   readonly calls?: readonly StatusCall[];
   /** Whether the deepest record is waiting on its owner, which makes the root what needs them. */
   readonly attention?: boolean | null;
+  /** Whether the deepest record is waiting on the world, which is what its root is doing too. */
+  readonly waitingInACall?: boolean | null;
 }
 
 /** One call a record is waiting on, as `amy status --json` reports it. */
@@ -76,7 +78,7 @@ function Records(props: { readonly snapshot: StatusSnapshot; readonly all: boole
   const rows = view.shown.map((record) => [
     record.id,
     [record.state, ...(record.calls ?? []).map((call) => call.state)].join(" › "),
-    record.attention ? "attention" : standing(record.state, waiting, terminal),
+    record.attention ? "attention" : record.waitingInACall ? "waiting" : standing(record.state, waiting, terminal),
     record.repo ?? "",
     record.pullRequest ? `#${record.pullRequest}` : "",
   ]);
