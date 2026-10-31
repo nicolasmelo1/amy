@@ -1,6 +1,6 @@
 {
   "name": "@amykit/workflow-pull-request",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
   "type": "module",
   "license": "MIT",
@@ -29,9 +29,9 @@
     "workflow.mmd"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.7.0"
   },
   "devDependencies": {
-    "@amykit/workflow-testkit": "^0.6.0"
+    "@amykit/workflow-testkit": "^0.7.0"
   }
 }
