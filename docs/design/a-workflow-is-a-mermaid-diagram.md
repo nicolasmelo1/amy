@@ -241,8 +241,9 @@ state arrives with [a workflow is three pieces](a-workflow-is-three-pieces.md),
 as this plan said it would; until then `amy workflow check` finds every stub
 by asking each drawn state.
 
-The errand has no gate, so its diagram is held by its conformance suite
-alone until [the errand is proven end to end](../../plans/the-errand-is-proven-end-to-end.md).
+The errand had no gate, so its diagram was held by its conformance suite
+alone until [the errand is proven end to end](the-errand-is-proven-end-to-end.md)
+added the gate that watches it.
 The note-to-plan, ticket-to-qa, a-private-workflow-composes and
 a-question-is-not-an-answer gates add their workflow's `workflow.mmd` to
 their activation.

@@ -393,6 +393,11 @@
           "description": ""
         },
         {
+          "title": "The errand is proven end to end",
+          "path": "/design/the-errand-is-proven-end-to-end",
+          "description": ""
+        },
+        {
           "title": "The event log can be watched",
           "path": "/design/the-event-log-can-be-watched",
           "description": ""
@@ -946,6 +951,11 @@
           "depth": 3,
           "title": "Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.",
           "slug": "plugin-versions-and-unused-workflow-observer-declarations-were-removed-package-manifests-supply-displayed-versions"
+        },
+        {
+          "depth": 3,
+          "title": "**An errand that answered a question is not delivered as an empty pull request.**",
+          "slug": "an-errand-that-answered-a-question-is-not-delivered-as-an-empty-pull-request"
         },
         {
           "depth": 3,
@@ -2823,6 +2833,43 @@
           "depth": 2,
           "title": "What is not proven, and is not pretended",
           "slug": "what-is-not-proven-and-is-not-pretended"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-errand-is-proven-end-to-end",
+      "file": "docs/design/the-errand-is-proven-end-to-end.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-errand-is-proven-end-to-end.md",
+      "title": "The errand is proven end to end",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What the run does",
+          "slug": "what-the-run-does"
+        },
+        {
+          "depth": 2,
+          "title": "What the first run found",
+          "slug": "what-the-first-run-found"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        },
+        {
+          "depth": 2,
+          "title": "What else the run proves, without a criterion",
+          "slug": "what-else-the-run-proves-without-a-criterion"
+        },
+        {
+          "depth": 2,
+          "title": "The files",
+          "slug": "the-files"
         }
       ]
     },
@@ -8470,6 +8517,35 @@
         "scenario": ".software-factory/evidence/bare-install-scenario.sh"
       },
       {
+        "name": "errand",
+        "activation": [
+          "packages/workflow-errand/src/**",
+          "packages/workflow-errand/workflow.mmd",
+          "plugins/file-tasks/src/**",
+          "packages/agent-kit/src/**",
+          "packages/cli/src/**",
+          "packages/core/src/git.ts",
+          "plugins/claude/src/**",
+          "plugins/file-worktree/src/**",
+          "plugins/github/src/**",
+          "plugins/notify-fanout/src/**",
+          "plugins/notify-inbox/src/**",
+          "plugins/serial-engine/src/**"
+        ],
+        "evidence": ".software-factory/evidence/errand.json",
+        "plan": "docs/design/the-errand-is-proven-end-to-end.md",
+        "assertions": [
+          "errand.a_passing_remark_reaches_the_queue",
+          "errand.the_agent_runs_where_the_work_is",
+          "errand.a_change_opens_a_pull_request",
+          "errand.an_unchanged_branch_is_not_delivered",
+          "errand.a_refusal_is_terminal_and_says_why",
+          "errand.the_lifecycle_walks_in_order",
+          "errand.the_profile_keeps_its_own_state"
+        ],
+        "scenario": ".software-factory/evidence/errand-scenario.sh"
+      },
+      {
         "name": "feature-grooming",
         "activation": [
           "packages/workflow-feature-grooming/src/**",
@@ -9699,6 +9775,22 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-errand-is-proven",
+        "title": "**An errand that answered a question is not delivered as an empty pull request.**",
+        "body": "`run-errand` decided whether the errand had changed something by asking\nwhether the push had moved the remote. `prepareBranch` has already created\nthe branch, so publishing it for the first time is a new remote ref whether\nor not it carries a commit — a question reached `PR_OPEN` with no diff in it.\n`Git` grows `commitsAhead(repo, of, workId)`, and the errand commits, asks\nthat question and only pushes when there is something to review; the branch\nof an errand that changed nothing stays local.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "the-event-log-can-be-watched",
