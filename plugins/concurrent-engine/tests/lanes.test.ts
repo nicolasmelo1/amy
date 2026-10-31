@@ -116,6 +116,7 @@ describe("the concurrent engine", () => {
         // An agent that runs and says each run added nothing new.
         registry.port("agent", {
           ask: acceptsAction(async (action, context) => {
+            if ((context.record as TaskRecord).input.task === "broken") throw new Error("the gate's runner is not answering");
             moves.at(-1)!.push((context.record as TaskRecord).input.task);
             return { progress: { kind: "unchanged", key: "tests", detail: "the same test still fails" } };
           }),
@@ -127,7 +128,8 @@ describe("the concurrent engine", () => {
       now: () => new Date("2026-10-31T12:00:00.000Z"),
       paths: { workspace: root, checkouts: {}, state: root },
     };
-    const outcome = await mount([ports, planner(moves, shape), engine], {}, host);
+    // Retried at once, so a failed look is looked at again within the run.
+    const outcome = await mount([ports, planner(moves, shape), engine], { [engine.name]: { retryDelayMs: 0 } }, host);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const driven = outcome.mounted.engine as Engine;
     await driven.discover();
@@ -198,5 +200,12 @@ describe("the concurrent engine", () => {
     expect(ran(side.moves)).toEqual(ran(turn.moves));
     const attempts = (record: WorkRecord) => Object.values(record.calls ?? {}).map((child) => child.attempts.WORKING ?? 0);
     expect(attempts(turn.record)).toEqual(attempts(side.record));
+  });
+
+  it("keeps the evidence the other lanes reported when one lane throws, so a retry buys them no run past the ceiling", async () => {
+    const { moves, results } = await run(concurrent, { agent: true, tasks: [["write", 3], ["broken", 3], ["test", 3]] }, 6);
+
+    expect(results.filter((result) => result.kind === "failed").length).toBeGreaterThan(1);
+    expect(moves.flat().sort()).toEqual(["test", "write"]);
   });
 });

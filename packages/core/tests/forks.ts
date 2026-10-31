@@ -118,6 +118,8 @@ export function planner(options: {
   withdrawn?: () => boolean;
   /** Something somebody asked to be said, read off the world: the plan says it, wherever it is. */
   asked?: () => string | undefined;
+  /** Every saying is handed to somebody else to say, by the workflow's `after`, wherever it was planned. */
+  handsOver?: boolean;
 } = {}): Plugin {
   const lanes = options.lanes ?? ["TASK_A", "TASK_B", "TASK_C"];
   const callee = options.callee ?? task();
@@ -150,7 +152,11 @@ export function planner(options: {
       return undefined;
     },
     observe: async () => ({ withdrawn: options.withdrawn?.() ?? false, asked: options.asked?.() }),
-    actions: { say: async (_scope, work) => { work.outcomes.said = (work.observation as { asked?: string }).asked; } },
+    after: (decision) => (options.handsOver && actionsOf(decision).some((effect) => effect.type === "say") ? act("handing it over", { type: "hand-over" }) : decision),
+    actions: {
+      say: async (_scope, work) => { work.outcomes.said = (work.observation as { asked?: string }).asked; },
+      "hand-over": async (_scope, work) => { work.outcomes.said = `handed over: ${(work.observation as { asked?: string }).asked}`; },
+    },
     remember: (_scope, record: PlannerRecord, outcomes, observation, moved) => {
       // What it said, and what the world it folded asked — the caller's own, wherever it is.
       const said = typeof outcomes.said === "string"

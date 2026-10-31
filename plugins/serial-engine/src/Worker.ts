@@ -313,9 +313,11 @@ export class Worker {
       next = this.deps.runtime.apply(applyPlan(next, plan, now, outcomes), plan, outcomes, observation, now, null);
     }
     this.deps.records.save(next);
-    const failed = settled.find((result): result is PromiseRejectedResult => result.status === "rejected");
-    if (failed) throw failed.reason;
     const progress = this.lanesProgress(item, record, moved);
+    const failed = settled.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    // The look failed, and the evidence its other lanes reported still counts:
+    // a retry must not buy them a run past the ceiling.
+    if (failed) return this.recordFailure({ ...item, progress: progress.next }, next, failed.reason);
     if (progress.parked) {
       this.park({ ...item, progress: progress.next }, progress.parked, now);
       return progress.parked;

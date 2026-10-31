@@ -778,7 +778,14 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     ...(shape.diagram ? { diagram: shape.diagram } : {}),
     trackerWrites: claims(declaration.trackerWrites),
     codeHostWrites: claims(declaration.codeHostWrites),
-    ...(declaration.before ? { interrupt: (record: WorkRecord, observation: O, chosen: P) => declaration.before!(record as R, observation, chosen) } : {}),
+    // What it says before any decision passes through `after` like any plan,
+    // so a write it makes in a fork is handed over as one anywhere else is.
+    ...(declaration.before ? {
+      interrupt: (record: WorkRecord, observation: O, chosen: P) => {
+        const early = declaration.before!(record as R, observation, chosen);
+        return early && (declaration.after?.(early, record as R, observation, chosen) ?? early);
+      },
+    } : {}),
     plan: (record, observation, chosen) => {
       const current = record as R;
       if (declaration.plan) return declaration.plan(current, observation, chosen);

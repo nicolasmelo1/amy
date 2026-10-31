@@ -335,4 +335,15 @@ describe("a fork of lanes", () => {
     expect((record as PlannerRecord).heard).toEqual(["the release is on Friday"]);
     expect(Object.values(record.calls ?? {}).map((child) => child.state)).toEqual(["WORKING", "WORKING", "WORKING"]);
   });
+
+  it("passes what the workflow says before any decision through its `after` while its lanes run, as anywhere else", async () => {
+    const world: { asked?: string } = {};
+    const { workflow, runtime } = await mounted([planner({ asked: () => world.asked, handsOver: true })], HOST);
+    const { record: forked } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split" && Object.keys(current.calls ?? {}).length === 3);
+
+    world.asked = "the release is on Friday";
+    const decided = workflow.plan(forked, await runtime.observe(forked), runtime.policy);
+
+    expect(decided).toMatchObject({ kind: "act", effects: [{ type: "hand-over" }] });
+  });
 });
