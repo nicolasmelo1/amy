@@ -7,6 +7,7 @@
 // precomputed would prove the harness rather than the workflow.
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const world = process.env.AMY_E2E_WORLD;
 if (!world) {
@@ -23,10 +24,11 @@ if (process.argv.includes("--version")) {
 const model = process.argv[process.argv.indexOf("--model") + 1] ?? "";
 const prompt = fs.readFileSync(0, "utf-8");
 
-/** Which sentence of the three this was, read off the prompt rather than told. */
+/** Which sentence of the four this was, read off the prompt rather than told. */
 function kindOf(said: string): string {
   if (said.includes("rewrite the billing ledger from scratch")) return "refusal";
   if (said.includes("check whether the nightly sync still runs against the old bucket")) return "question";
+  if (said.includes("add a changelog entry for the api package")) return "committed";
   if (said.includes("bump the stale dependencies in the api package")) return "change";
   return "unknown";
 }
@@ -105,6 +107,25 @@ if (task === "change") {
   fs.writeFileSync(manifest, `${JSON.stringify(parsed, null, 2)}\n`, "utf-8");
 
   envelope("Raised left-pad in api from 1.0.0 to 1.3.0. Nothing else in the package was stale.", false);
+  process.exit(0);
+}
+
+if (task === "committed") {
+  // The same kind of job, done by an agent that commits as it goes: when the
+  // workflow reaches for the tree there is nothing left in it to commit, and
+  // the work is a commit only. It still has to be delivered.
+  fs.writeFileSync(
+    path.join(process.cwd(), "api", "CHANGELOG.md"),
+    ["# Changelog", "", "## Unreleased", "", "- Raised left-pad to 1.3.0.", ""].join("\n"),
+    "utf-8",
+  );
+  execFileSync("git", ["add", "-A"], { cwd: process.cwd(), stdio: "ignore" });
+  execFileSync("git", ["commit", "-q", "-m", "docs: a changelog entry for the api package"], {
+    cwd: process.cwd(),
+    stdio: "ignore",
+  });
+
+  envelope("Committed the changelog entry; the working tree is clean.", false);
   process.exit(0);
 }
 

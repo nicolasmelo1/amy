@@ -21,10 +21,20 @@ export const CHANGE_TASK = "bump the stale dependencies in the api package";
 export const QUESTION_TASK = "check whether the nightly sync still runs against the old bucket";
 export const REFUSE_TASK = "rewrite the billing ledger from scratch";
 export const FOREIGN_TASK = "rotate the certificates in the old cluster";
+/**
+ * An errand whose agent commits its own work.
+ *
+ * The tree is clean when the workflow goes to commit, which is the case that
+ * says whether "the push published a branch" was ever a fair test for "there
+ * is something to review": the commit exists whether or not the working tree
+ * has a diff in it any more.
+ */
+export const COMMITTED_TASK = "add a changelog entry for the api package";
 
 /** The branch each task is carried on, derived the way the workflow derives it. */
 export const CHANGE_BRANCH = "amy/errand-bump-the-stale-dependencies-in-the";
 export const QUESTION_BRANCH = "amy/errand-check-whether-the-nightly-sync-still";
+export const COMMITTED_BRANCH = "amy/errand-add-a-changelog-entry-for-the";
 
 /** The id the hand-written task gets, because a file is named by its id. */
 export const BY_HAND_ID = "by-hand-question";

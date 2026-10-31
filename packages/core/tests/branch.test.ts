@@ -232,6 +232,61 @@ describe("a commit is not a push", () => {
   });
 });
 
+/**
+ * The question the errand asks before it pushes: not "did a ref appear" but
+ * "is there a commit on it". The base is a remote-tracking ref, so nothing
+ * here can count a branch that was merely created.
+ */
+describe("how many commits a branch holds beyond its base", () => {
+  let root: string;
+  let checkout: string;
+  let bare: string;
+  let saved: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    saved = { ...process.env };
+    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
+
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-ahead-"));
+    bare = path.join(root, "widgets.git");
+    checkout = path.join(root, "checkouts", "widgets");
+    run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
+    run(root, "clone", "-q", bare, checkout);
+    run(checkout, "config", "user.email", "amy@example.test");
+    run(checkout, "config", "user.name", "amy");
+    commit(checkout, "the first commit");
+    run(checkout, "push", "-q", "origin", "main");
+  });
+
+  afterEach(() => {
+    process.env = saved;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  const git = () => new Git(new NodeCommandRunner(), { workspaceRoot: path.join(root, "checkouts"), defaultBranch: "main" });
+
+  it("counts nothing at the base, and every commit after it", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(0);
+
+    commit(checkout, "the work nobody pushed");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(1);
+
+    commit(checkout, "a second round");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(2);
+  });
+
+  it("counts nothing for a branch that was published at the base", async () => {
+    // The ref exists on the origin now, and it still carries no work. This
+    // is the case a push-based answer got wrong: it read the new ref as a
+    // change, and the errand opened a pull request with no diff in it.
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    await git().push("acme/widgets", "amy/item-1");
+
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(0);
+  });
+});
+
 function run(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }

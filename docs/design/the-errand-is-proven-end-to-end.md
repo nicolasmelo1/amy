@@ -22,13 +22,14 @@ can.
 ## What the run does
 
 `errand-scenario.sh` installs the executable into a scratch directory and
-drives it, with the commands an operator types, through four errands in one
+drives it, with the commands an operator types, through five errands in one
 real git repository:
 
 | Said in passing | What the machine must make of it |
 | --- | --- |
 | typed at `amy btw` | a task file, a queue item, an agent, a branch, a pull request |
 | dropped in `~/.amy/tasks/` by hand | the same, found by `amy discover` rather than queued by a command |
+| a sentence the agent commits itself | a clean tree the workflow still has to notice and deliver |
 | a sentence the agent refuses | `DECLINED`, with the refusal on the announcement, after one attempt |
 | a repository this install does not work in | `DECLINED` without spending an agent on it at all |
 
@@ -92,6 +93,9 @@ the criterion holds because the refused errand is asked exactly once.
 - [x] An errand that changed something opens a pull request, and one that
       changed nothing reaches `DONE` without opening one
       (proof: assertion:errand.a_change_opens_a_pull_request)
+- [x] An errand whose agent committed the work itself is delivered from that
+      commit, so a clean working tree is not mistaken for nothing to review
+      (proof: assertion:errand.already_committed_work_is_delivered)
 - [x] An errand that changed nothing leaves no branch on the origin, so there
       is nothing anybody could be asked to review
       (proof: assertion:errand.an_unchanged_branch_is_not_delivered)

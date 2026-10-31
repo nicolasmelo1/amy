@@ -3,7 +3,7 @@
 #
 # Usage: errand-scenario.sh [report-path] [--keep]
 #
-# Builds and installs the executable, then drives it through four errands with
+# Builds and installs the executable, then drives it through five errands with
 # the commands an operator types: `amy btw`, `amy --workflow errand discover`
 # and `... tick`. What it is driven against is a world of stand-ins: a `gh` and
 # a `claude` on the PATH, and one real git repository the work happens in.

@@ -1,4 +1,4 @@
-// Drives the installed `amy` through four errands, and writes down what the
+// Drives the installed `amy` through five errands, and writes down what the
 // world looked like afterwards.
 //
 // Usage: tsx drive.ts <source-dir> <amy-binary> <report-path> [--keep]
@@ -20,6 +20,8 @@ import {
   BY_HAND_SOURCE,
   CHANGE_BRANCH,
   CHANGE_TASK,
+  COMMITTED_BRANCH,
+  COMMITTED_TASK,
   FOREIGN_REPO,
   FOREIGN_TASK,
   QUESTION_BRANCH,
@@ -115,6 +117,7 @@ interface State {
   records: ErrandRecord[];
   change: ErrandRecord | null;
   question: ErrandRecord | null;
+  committed: ErrandRecord | null;
   refusal: ErrandRecord | null;
   foreign: ErrandRecord | null;
   host: CodeHost;
@@ -126,6 +129,7 @@ interface State {
   ledgerBefore: Record<string, string>;
   ledgerAfter: Record<string, string>;
   changeManifest: string;
+  committedChangelog: string;
   leftBehind: boolean;
 }
 
@@ -137,8 +141,9 @@ function amy(root: string, args: string[]): Said {
       ...process.env,
       PATH: `${path.join(root, "bin")}:${process.env.PATH}`,
       HOME: path.join(root, "home"),
-      // Named as well, because an `AMY_HOME` the caller exported wins over
-      // `HOME` and would point the run at a real install.
+      // `HOME` alone is not isolation: an `AMY_HOME` exported by whoever ran
+      // the harness outranks it, and the run would then be driving — and
+      // writing to — the caller's own machine.
       AMY_HOME: amyHome(root),
       AMY_E2E_WORLD: path.join(root, "world"),
       AMY_E2E_ORIGINS: path.join(root, "origins"),
@@ -321,12 +326,13 @@ function taskFile(repo: string, source: string, text: string): string {
 let world = "";
 
 /**
- * One whole run, from an empty directory to four finished errands.
+ * One whole run, from an empty directory to five finished errands.
  *
- * The four are the whole lifecycle: one that changed something, one that was
- * a question, one the agent refused, and one about a repository this install
- * does not work in. The first is the only one that should reach a pull
- * request.
+ * The five are the whole lifecycle: one that changed something, one whose
+ * agent committed the change itself, one that was a question, one the agent
+ * refused, and one about a repository this install does not work in. The
+ * first two reach a pull request; the question and the refusal are delivered
+ * as answers.
  */
 function walkthrough(): State {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-errand-"));
@@ -371,7 +377,15 @@ function walkthrough(): State {
       "utf-8",
     );
 
-    // Four: a repository this install does not work in. Nothing about
+    // Four: an errand whose agent commits its own work, so the tree the
+    // workflow reaches for is clean and the work is a commit only.
+    fs.writeFileSync(
+      path.join(tasksDir(root), "committed-task.md"),
+      taskFile(REPO, "ada, mid-conversation", COMMITTED_TASK),
+      "utf-8",
+    );
+
+    // Five: a repository this install does not work in. Nothing about
     // waiting would make it workable, so it is handed back rather than tried.
     fs.writeFileSync(
       path.join(tasksDir(root), "foreign-task.md"),
@@ -405,6 +419,7 @@ function walkthrough(): State {
       records: records(root),
       change: recordFor(root, taskId),
       question: recordFor(root, BY_HAND_ID),
+      committed: recordFor(root, "committed-task"),
       refusal: recordFor(root, "refusal-task"),
       foreign: recordFor(root, "foreign-task"),
       host: read<CodeHost>(path.join(root, "world", "code-host.json")),
@@ -416,6 +431,7 @@ function walkthrough(): State {
       ledgerBefore,
       ledgerAfter: tree(path.join(amyHome(root), "ledger")),
       changeManifest: fileOnBranch(root, REPO, CHANGE_BRANCH, "api/package.json"),
+      committedChangelog: fileOnBranch(root, REPO, COMMITTED_BRANCH, "api/CHANGELOG.md"),
       leftBehind: fs.existsSync(path.join(process.cwd(), ".amy")),
     };
 
@@ -516,7 +532,7 @@ function workplaceChecks(state: State): Check[] {
     // named — not in the state directory, and not in the standing tree.
     [
       "errand.the_agent_runs_where_the_work_is",
-      state.agentCalls.length === 3 &&
+      state.agentCalls.length === 4 &&
         state.agentCalls.every(
           (call) =>
             `${real(call.cwd)}${path.sep}`.startsWith(trees) &&
@@ -530,16 +546,48 @@ function workplaceChecks(state: State): Check[] {
       // The agent was given the sentence somebody said, and nothing had to
       // ask it twice: the retry is the failure path, not the ordinary one.
       "errand.the_agent_is_asked_once_per_errand",
-      state.agentCalls.filter((call) => call.task === "change").length === 1 &&
-        state.agentCalls.filter((call) => call.task === "question").length === 1 &&
-        state.agentCalls.filter((call) => call.task === "refusal").length === 1 &&
-        state.agentCalls.every((call) => call.prompt.includes(call.task === "change" ? CHANGE_TASK : call.task === "question" ? QUESTION_TASK : REFUSE_TASK)),
+      (
+        [
+          ["change", CHANGE_TASK],
+          ["question", QUESTION_TASK],
+          ["committed", COMMITTED_TASK],
+          ["refusal", REFUSE_TASK],
+        ] as const
+      ).every(([task, text]) => {
+        const forTask = state.agentCalls.filter((call) => call.task === task);
+        return forTask.length === 1 && Boolean(forTask[0]?.prompt.includes(text));
+      }),
     ],
   ];
 }
 
 function deliveryChecks(state: State): Check[] {
-  return [...changeDelivery(state), ...unchangedDelivery(state), ...boundaryDelivery(state)];
+  return [
+    ...changeDelivery(state),
+    ...committedDelivery(state),
+    ...unchangedDelivery(state),
+    ...boundaryDelivery(state),
+  ];
+}
+
+/** Whether an errand the agent had already committed was still delivered. */
+function committedWorkIsDelivered(state: State): boolean {
+  return (
+    state.committed?.state === "DONE" &&
+    state.committed?.changed === true &&
+    state.originBranches.includes(COMMITTED_BRANCH) &&
+    state.committedChangelog.includes("Raised left-pad to 1.3.0") &&
+    pullFor(state, COMMITTED_BRANCH)?.head === COMMITTED_BRANCH
+  );
+}
+
+function committedDelivery(state: State): Check[] {
+  return [
+    // A clean tree is not "nothing to deliver": the agent may have committed
+    // the work itself, and a delivery decided from the working tree alone
+    // would finish with the commit stranded on a local branch.
+    ["errand.already_committed_work_is_delivered", committedWorkIsDelivered(state)],
+  ];
 }
 
 /** Whether the pull request is the one the change asked for. */
@@ -593,6 +641,10 @@ function unchangedDelivery(state: State): Check[] {
         state.change?.changed === true &&
         state.question?.changed === false &&
         state.question?.pullRequestNumber === undefined &&
+        // The branch must not exist at all: a published branch with no
+        // pull request is still a publication nobody asked for, and the
+        // code host's silence alone would not notice it.
+        !state.originBranches.includes(QUESTION_BRANCH) &&
         askedForNoPullRequest(state),
     ],
   ];
@@ -667,9 +719,11 @@ function profileChecks(state: State): Check[] {
       "errand.the_profile_keeps_its_own_state",
       fs.existsSync(path.join(own, "records")) &&
         fs.existsSync(path.join(own, "queue")) &&
-        state.records.length === 4 &&
+        state.records.length === 5 &&
         before === after &&
-        ![state.taskId, BY_HAND_ID, "refusal-task", "foreign-task"].some((id) => id && ledgerNames.includes(id)),
+        ![state.taskId, BY_HAND_ID, "refusal-task", "committed-task", "foreign-task"].some(
+          (id) => id && ledgerNames.includes(id),
+        ),
     ],
     [
       // The same installed binary, and it names the workflow that drove and
@@ -716,6 +770,7 @@ fs.writeFileSync(
         looks: state.trail.length,
         transitions: transitionsOf(state.change),
         question: transitionsOf(state.question),
+        committed: transitionsOf(state.committed),
         refused: transitionsOf(state.refusal),
         declined: transitionsOf(state.foreign),
         agent_calls: state.agentCalls.length,

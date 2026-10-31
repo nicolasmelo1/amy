@@ -1,6 +1,6 @@
 # The test environment
 
-A world four errands are run in, with no tracker in it.
+A world five errands are run in, with no tracker in it.
 
 ```sh
 ./.software-factory/evidence/errand-scenario.sh          # run it
@@ -8,7 +8,7 @@ A world four errands are run in, with no tracker in it.
 ```
 
 It builds and installs the executable, builds the world in a scratch
-directory, and drives four errands with the commands an operator types. It
+directory, and drives five errands with the commands an operator types. It
 takes a few seconds, needs no credential, and talks to nothing outside the
 machine.
 
@@ -26,7 +26,7 @@ said in passing, and does one of three things with it. The edit it makes for
 the first errand is a real edit in the checkout amy prepared, so the commit,
 the push and the pull request that follow are real.
 
-## The four errands
+## The five errands
 
 | | |
 | --- | --- |
@@ -70,7 +70,7 @@ git --git-dir <kept>/origins/amy.git for-each-ref    # the branches that exist
 
 ## Changing what the world does
 
-Everything the run depends on is data in `world.ts`: the repository, the four
+Everything the run depends on is data in `world.ts`: the repository, the five
 sentences, and the config — including the one attempt, which is what makes a
 refusal terminal rather than something the work climbs until it gives up.
 
