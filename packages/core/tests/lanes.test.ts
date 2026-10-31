@@ -233,4 +233,16 @@ describe("the branches a lane holds", () => {
     expect(leases.take("acme/widgets", "amy/c", "someone")).toEqual({ taken: false, holder: "PLAN-1/TASK_AB#1" });
     fs.rmSync(root, { recursive: true, force: true });
   });
+
+  it("are one holder's for a lane and every call inside it, which never wait on each other", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-leases-"));
+    const leases = new FileLeases(root);
+    leases.take("acme/widgets", "amy/a", "PLAN-1/TASK_A#1");
+    leases.take("acme/widgets", "amy/b", "PLAN-1/TASK_A#1/OPEN#1");
+
+    expect(leases.take("acme/widgets", "amy/a", "PLAN-1/TASK_A#1/OPEN#1")).toEqual({ taken: true });
+    expect(leases.take("acme/widgets", "amy/b", "PLAN-1/TASK_A#1")).toEqual({ taken: true });
+    expect(leases.take("acme/widgets", "amy/a", "PLAN-1/TASK_B#1")).toEqual({ taken: false, holder: "PLAN-1/TASK_A#1" });
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });

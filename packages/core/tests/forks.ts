@@ -90,7 +90,7 @@ ${ends}    DONE --> [*]
 `);
 }
 
-export type PlannerRecord = WorkRecord & { state: string; tasks?: string[]; commit?: string; done?: string[]; joinedWith?: unknown };
+export type PlannerRecord = WorkRecord & { state: string; tasks?: string[]; commit?: string; done?: string[]; joinedWith?: unknown; said?: string[]; heard?: string[] };
 
 export const PLANNER = (lanes: readonly string[], join = "merge") => `stateDiagram-v2
     state split <<fork>>
@@ -116,6 +116,8 @@ export function planner(options: {
   revision?: boolean;
   /** Whether the plan was withdrawn, asked of the world on every look, which stops it wherever it is. */
   withdrawn?: () => boolean;
+  /** Something somebody asked to be said, read off the world: the plan says it, wherever it is. */
+  asked?: () => string | undefined;
 } = {}): Plugin {
   const lanes = options.lanes ?? ["TASK_A", "TASK_B", "TASK_C"];
   const callee = options.callee ?? task();
@@ -142,11 +144,20 @@ export function planner(options: {
       ESCALATED: () => settled("escalated"),
     },
     record: () => ({}),
-    before: (_record: PlannerRecord, observation: { withdrawn?: boolean }) => (observation.withdrawn ? settled("the plan was withdrawn; it stops where it is") : undefined),
-    observe: async () => ({ withdrawn: options.withdrawn?.() ?? false }),
-    actions: {},
-    remember: (_scope, record: PlannerRecord, _outcomes, _observation, moved) =>
-      moved?.to === "INTEGRATED" || moved?.to === "ESCALATED" ? { ...record, joinedWith: record.lanes } : record,
+    before: (record: PlannerRecord, observation: { withdrawn?: boolean; asked?: string }) => {
+      if (observation.withdrawn) return settled("the plan was withdrawn; it stops where it is");
+      if (observation.asked && !(record.said ?? []).includes(observation.asked)) return act("saying what was asked", { type: "say" });
+      return undefined;
+    },
+    observe: async () => ({ withdrawn: options.withdrawn?.() ?? false, asked: options.asked?.() }),
+    actions: { say: async (_scope, work) => { work.outcomes.said = (work.observation as { asked?: string }).asked; } },
+    remember: (_scope, record: PlannerRecord, outcomes, observation, moved) => {
+      // What it said, and what the world it folded asked — the caller's own, wherever it is.
+      const said = typeof outcomes.said === "string"
+        ? { ...record, said: [...(record.said ?? []), outcomes.said], heard: [...(record.heard ?? []), String((observation as { asked?: string } | undefined)?.asked)] }
+        : record;
+      return moved?.to === "INTEGRATED" || moved?.to === "ESCALATED" ? { ...said, joinedWith: said.lanes } : said;
+    },
   }), options.diagram ?? PLANNER(lanes));
 }
 

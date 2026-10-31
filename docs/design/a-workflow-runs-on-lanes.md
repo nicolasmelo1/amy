@@ -218,7 +218,7 @@ needs the person. A lane whose decision nobody has written settles the record
 only once its siblings can make no move either. What a workflow says before
 any decision of its own — `ticket-to-qa`'s ticket that left its repository —
 is still heard while its lanes run: a fork's look sees the caller's own world
-too, and a move out of the fork that is not the join lets go of what the lanes
+too, whatever it plans runs and folds against that world, and a move out of the fork that is not the join lets go of what the lanes
 still running held; `callStanding` and the new `laneStanding` say the same, and
 `amy status` draws the lanes side by side, `checks › GATE GREEN ∥ SELF_REVIEW
 REVIEWING (1/2 arrived)`. `expandDiagram` draws a callee's own forks as forks
@@ -244,7 +244,8 @@ repository and branch, exclusively, the way the file queue claims an item, and
 a branch another lane holds is a `LeaseHeld`. The lane's action is not failed
 for it: the look is written down as not a try (`LEASE_WAIT`), the rest of that
 lane's plan does not run — a move it carried is not made — and the record is
-looked at again a second later. A lane lets go of every branch it took when its
+looked at again a second later. A lane and the calls inside it are one holder,
+so neither waits on the other. A lane lets go of every branch it took when its
 record ends, and of every branch a call inside it took. A binding's `revision`
 is held on the lane's record, and the lane's checkouts lend it: whatever tree
 the lane asks for is a worktree of its own detached at that commit, marked

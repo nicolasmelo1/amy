@@ -302,4 +302,18 @@ describe("a fork of lanes", () => {
     expect(decided).toEqual({ kind: "settled", why: "the plan was withdrawn; it stops where it is" });
     expect(workflow.everyLane?.(record, await runtime.observe(record), runtime.policy)).toBeUndefined();
   });
+
+  it("runs what the workflow says before any decision against its own world while its lanes run, and folds it there", async () => {
+    let asked: string | undefined;
+    const { workflow, runtime } = await mounted([planner({ asked: () => asked })], HOST);
+    const { record: forked } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split" && Object.keys(current.calls ?? {}).length === 3);
+
+    asked = "the release is on Friday";
+    const { record } = await walk(workflow, runtime, forked, HOST.now(), (current) => ((current as PlannerRecord).said ?? []).length > 0);
+
+    expect(record.state).toBe("split");
+    expect((record as PlannerRecord).said).toEqual(["the release is on Friday"]);
+    expect((record as PlannerRecord).heard).toEqual(["the release is on Friday"]);
+    expect(Object.values(record.calls ?? {}).map((child) => child.state)).toEqual(["WORKING", "WORKING", "WORKING"]);
+  });
 });

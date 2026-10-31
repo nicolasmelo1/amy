@@ -525,8 +525,8 @@ function ownMove(
   const left = moved ? forks.get(moved.from) : undefined;
   if (left && from === undefined) for (const lane of Object.values(record.lanes ?? {})) left.leases?.release(lane.call);
   const kept = id !== undefined ? returnTo(record, sites, id, moved) : from !== undefined ? joinedInto(record, forks.get(from)!) : record;
-  // Out of a fork, the caller folds its own world, not the lanes'.
-  const observation = left ? ownObservation(look.observation) : look.observation;
+  // In or out of a fork, the caller folds its own world, not the lanes'.
+  const observation = left || forks.has(record.state) ? ownObservation(look.observation) : look.observation;
   return entering(own.apply(kept, plan, outcomes, observation, now, moved), sites, forks, moved, now);
 }
 
@@ -657,7 +657,11 @@ function entering(record: WorkRecord, sites: ReadonlyMap<string, CallSite>, fork
  * caller plans is left exactly as the caller declared it.
  */
 function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSite>, port: PortLookup, forks: ReadonlyMap<string, ForkSite>): Readonly<Record<string, ActionImplementation>> {
-  const actions: Record<string, ActionImplementation> = { ...own.actions };
+  // In a fork, the caller's own actions — whatever its `interrupt` planned —
+  // see the caller's world, not the lanes' it is wrapped in.
+  const actions: Record<string, ActionImplementation> = forks.size === 0 ? { ...own.actions } : Object.fromEntries(
+    Object.keys(own.actions).map((name) => [name, ownInAFork(own, name, port, forks)]),
+  );
   const names = new Set<string>();
   for (const site of sites.values()) for (const name of Object.keys(site.runtime?.actions ?? {})) names.add(name);
   // A lane's action runs against the lane's record, never the caller's, so it
@@ -678,7 +682,7 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
       // A child that has ended plans nothing: what runs now is its caller's
       // return, and the effects on that edge are the caller's own.
       const ended = !child || !site || site.workflow.terminalStates.includes(child.state);
-      if (!site?.runtime || ended) return runAction(implementationOf(own, name), action, context, port);
+      if (!site?.runtime || ended) return runAction(implementationOf(own, name), action, { ...context, observation: forks.has(context.record.state) ? ownObservation(context.observation) : context.observation }, port);
       const observation = childObservation(context.observation);
       await runAction(implementationOf(site.runtime, name), action, { record: child, observation, outcomes: context.outcomes }, site.port);
     }, laneSpends(forks, name));
@@ -698,6 +702,15 @@ function laneSpends(forks: ReadonlyMap<string, ForkSite>, name: string): string 
     return [isPortBinding(implementation) ? site.binding.ports?.[implementation.port] ?? implementation.port : ""];
   })));
   return ports.size === 1 ? [...ports][0] || undefined : undefined;
+}
+
+/** The caller's own action, handed its own world while the record waits in a fork. */
+function ownInAFork(own: WorkflowRuntime, name: string, port: PortLookup, forks: ReadonlyMap<string, ForkSite>): ActionImplementation {
+  const implementation = implementationOf(own, name)!;
+  return reaching(async (action: Action, context: ActionContext) => {
+    const observation = forks.has(context.record.state) ? ownObservation(context.observation) : context.observation;
+    await runAction(implementation, action, { ...context, observation }, port);
+  }, isPortBinding(implementation) ? implementation.port : undefined);
 }
 
 /**

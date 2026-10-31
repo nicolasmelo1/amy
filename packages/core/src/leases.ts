@@ -53,7 +53,8 @@ export class FileLeases implements BranchLeases {
     // A file being written by the process that is taking it reads as nobody
     // yet: asking again is the answer, and the caller does that by waiting.
     if (!held) return { taken: false, holder: "a lane taking it now" };
-    return held.holder === holder ? { taken: true } : { taken: false, holder: held.holder };
+    // A lane and the calls inside it are one holder: neither waits on the other.
+    return related(held.holder, holder) ? { taken: true } : { taken: false, holder: held.holder };
   }
 
   release(holder: string): void {
@@ -61,7 +62,7 @@ export class FileLeases implements BranchLeases {
     for (const name of fs.readdirSync(this.directory)) {
       const file = path.join(this.directory, name);
       const held = this.read(file)?.holder;
-      if (held === holder || held?.startsWith(`${holder}/`)) fs.rmSync(file, { force: true });
+      if (held !== undefined && (held === holder || held.startsWith(`${holder}/`))) fs.rmSync(file, { force: true });
     }
   }
 
@@ -76,4 +77,9 @@ export class FileLeases implements BranchLeases {
       return undefined;
     }
   }
+}
+
+/** One record and another inside it, at any depth, or the same record. */
+function related(one: string, other: string): boolean {
+  return one === other || other.startsWith(`${one}/`) || one.startsWith(`${other}/`);
 }
