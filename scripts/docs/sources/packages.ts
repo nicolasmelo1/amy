@@ -227,7 +227,7 @@ async function introspect(
   const runtimes = new Map<string, ContributedRuntime>();
   const machines: unknown[] = [];
   const registered = await registers(plugin, environment, runtimes, machines);
-  const shape = workflowShape(module, runtimes, machines);
+  const shape = workflowShape(module, runtimes, machines, calledIn(plugin));
 
   return {
     kind: shape.workflow ? "workflow" : "plugin",
@@ -382,7 +382,9 @@ function contextFor(plugin: IntrospectedPlugin): StandInContext {
     log: { append() {}, read: () => [] },
     paths: { workspace: SCRATCH, state: SCRATCH },
     contributions: () => new Map(),
-    port: () => ({}),
+    // Every method a mounted port could offer, so a workflow that requires
+    // one it only offers optionally still registers here and says what it is.
+    port: () => new Proxy({}, { get: (_target, key) => (key === "then" ? undefined : () => undefined) }),
     // The layout the plugin's own settings describe, and a `Git` nothing
     // here will ever ask to run.
     checkouts: () => ({
@@ -418,6 +420,7 @@ function workflowShape(
   module: PackageModule,
   runtimes: Map<string, ContributedRuntime>,
   registered: readonly unknown[] = [],
+  called = false,
 ): { workflow?: WorkflowShape } {
   // The machine it registered, which is the one its diagram shaped; an
   // exported one for a package that registers none against a stand-in.
@@ -433,8 +436,18 @@ function workflowShape(
       terminalStates: [...machine.terminalStates],
       initialState: machine.initialState,
       usesActions: actionsOf(runtimes.get(machine.name)),
+      ...(called ? { called } : {}),
     },
   };
+}
+
+/**
+ * Whether a workflow takes an input, read off the declaration the core keeps
+ * for its callers: one that does is called from another workflow's state.
+ */
+function calledIn(plugin: IntrospectedPlugin): boolean {
+  const callee = (plugin as unknown as Record<symbol, { declaration?: { input?: unknown } } | undefined>)[Symbol.for("@amykit/core/workflow-callee")];
+  return callee?.declaration?.input !== undefined;
 }
 
 function isMachine(value: unknown): value is Machine {

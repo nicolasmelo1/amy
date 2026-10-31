@@ -36,7 +36,7 @@ contract look heavier than it is:
 [a workflow is one declaration](../docs/design/a-workflow-is-one-declaration.md),
 [a workflow is three pieces](../docs/design/a-workflow-is-three-pieces.md),
 [waiting is not trying](../docs/design/waiting-is-not-trying.md),
-[a workflow calls another](a-workflow-calls-another.md) and
+[a workflow calls another](../docs/design/a-workflow-calls-another.md) and
 [a workflow runs on lanes](a-workflow-runs-on-lanes.md) change the
 contract these pages describe, so this comes after all ten, and rewrites them
 once against what exists.

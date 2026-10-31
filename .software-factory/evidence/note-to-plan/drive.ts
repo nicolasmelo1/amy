@@ -19,6 +19,8 @@ import {
   FOREIGN_REPO,
   FRICTION,
   OTHER_REPO,
+  REFUSED_BY_HOST,
+  REFUSING_REPO,
   REPO,
   SLUG,
   UNWRITABLE,
@@ -41,7 +43,7 @@ const keep = process.argv.includes("--keep");
 /** The stand-ins are TypeScript too, and run the way this does: through the repository's tsx. */
 const TSX = path.join(source, "..", "..", "..", "node_modules", ".bin", "tsx");
 
-const MAX_TICKS = 60;
+const MAX_TICKS = 90;
 
 /** Every move the first note makes, in the order it has to make them. */
 const EXPECTED = [
@@ -69,6 +71,11 @@ interface PlanRecord {
   id: string;
   state: string;
   history?: { from: string; to: string }[];
+  pullRequestNumber?: number;
+  /** The call it is waiting on, while it is in one. */
+  calling?: string;
+  /** Every call it made, each the called workflow's own record. */
+  calls?: Record<string, { id: string; state: string; input?: { repo?: string; branch?: string } }>;
 }
 
 /** One line of each stand-in's log. */
@@ -118,6 +125,7 @@ interface State {
   foreign: PlanRecord | null;
   broken: PlanRecord | null;
   unwritable: PlanRecord | null;
+  refused: PlanRecord | null;
   /** The arrows the installed package's `workflow.mmd` draws, as `FROM>TO`. */
   diagram: string[];
   host: CodeHost;
@@ -311,6 +319,15 @@ function walkthrough(): State {
     "utf-8",
   );
 
+  // Six: a note about a repository plans are written into, whose code host
+  // answers that it takes no pull requests. The call to the pull-request
+  // workflow returns REFUSED, and the note is handed back with the reason.
+  fs.writeFileSync(
+    path.join(notesDir(root), "refused.md"),
+    `---\nrepo: ${REFUSING_REPO}\n---\n\nthe status page forgets which profile it is reading\n`,
+    "utf-8",
+  );
+
   const rediscovered = plans(root, ["discover"]);
   const trail = run(root);
 
@@ -345,6 +362,7 @@ function walkthrough(): State {
     foreign: recordFor(root, "not-mine"),
     broken: recordFor(root, "will-break"),
     unwritable: recordFor(root, "unwritable"),
+    refused: recordFor(root, "refused"),
     diagram: installedDiagram(root),
     host: read<CodeHost>(path.join(worldDir(root), "code-host.json")),
     agentCalls: lines<AgentCall>(path.join(worldDir(root), "claude.log")),
@@ -396,6 +414,18 @@ function orderOf(state: State): { drafted: number; checked: number; opened: numb
     call.argv.some((arg) => arg === `/repos/${REPO}/pulls`),
   );
   return { drafted, checked, opened };
+}
+
+/** Whether a note's pull request was opened by its call, and the number came back through it. */
+function openedByACall(record: PlanRecord | null, id: string | undefined, pull: Pull | undefined): boolean {
+  const call = record?.calls?.[`${id}/PR_OPEN#1`];
+  return Boolean(record && pull) &&
+    record!.state === "DONE" &&
+    call?.state === "OPENED" &&
+    call.input?.repo === REPO &&
+    record!.calling === undefined &&
+    record!.pullRequestNumber === pull!.number &&
+    transitionsOf(record).includes("PR_OPEN>DONE");
 }
 
 /** One assertion, before it is reported: its name, and whether it held. */
@@ -494,6 +524,24 @@ function pullChecks(state: State): Check[] {
       state.inbox.filter((note) => note.includes("already open there")).length === 1,
     ],
 
+    // The call.
+    [
+      // Opened by the shipped pull-request workflow, called from PR_OPEN: the
+      // installed executable made the call's own record inside the note's,
+      // and the note took the edge named OPENED holding the number the
+      // stand-in gh gave.
+      "plan.the_pull_request_is_opened_by_a_call",
+      openedByACall(state.first, state.noteId, pull) && openedByACall(state.byHand, "by-hand", pullFor(state, REPO, BY_HAND_SLUG)),
+    ],
+    [
+      "plan.a_refused_pull_request_hands_the_note_back",
+      state.refused?.state === "DECLINED" &&
+        transitionsOf(state.refused).includes("PR_OPEN>DECLINED") &&
+        state.refused.calls?.["refused/PR_OPEN#1"]?.state === "REFUSED" &&
+        (state.host.repos[REFUSING_REPO]?.pulls ?? []).length === 0 &&
+        state.inbox.some((note) => note.includes(REFUSED_BY_HOST)),
+    ],
+
   ];
 }
 
@@ -527,7 +575,7 @@ function boundaryChecks(state: State): Check[] {
       "plan.each_workflow_keeps_its_own_queue_and_records",
       state.ticketQueue.length === 0 &&
         state.planQueue.length === 0 &&
-        state.records.length === 5 &&
+        state.records.length === 6 &&
         !state.ticketStatus.out.includes("ticket-to-qa"),
     ],
     [
@@ -550,7 +598,7 @@ function lifecycleChecks(state: State): Check[] {
       // Every arrow the installed diagram draws is one some note in this run
       // took: the walkthrough leaves nothing drawn and never walked.
       "plan.every_drawn_edge_is_walked",
-      state.diagram.length === 7 &&
+      state.diagram.length === 8 &&
         state.unwritable?.state === "DECLINED" &&
         state.diagram.every((edge) => state.records.some((record) => transitionsOf(record).includes(edge))),
     ],

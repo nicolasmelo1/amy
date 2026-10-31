@@ -1,72 +1,10 @@
 import { describe, it } from "vitest";
-import { Harness, PullRequestView, Store, lendCheckouts } from "@amykit/core";
+import { WorkflowRuntime } from "@amykit/core";
 import { World, conforms } from "@amykit/workflow-testkit";
-import { ScriptedRunner, fakeHost, fakeRun, pullRequest, whenArgsInclude } from "@amykit/test-fixtures";
-import { DEFAULT_POLICY, ErrandRecord, Task, errandRuntime } from "../src/index.js";
-import { newRecord, workflow as errand } from "./drawn.js";
+import { Task } from "../src/index.js";
+import { ErrandWorld } from "./mounted.js";
 
 const REPO = "acme/widgets";
-
-/**
- * One errand's world: the tasks directory, the errands already in flight, an
- * agent that changes something, answers, or cannot get it done, and the code
- * host. One errand in flight finishes each time the machine waits.
- */
-class ErrandWorld implements World {
-  readonly meanwhile: (() => void)[];
-  readonly workId: string;
-  private readonly others: ErrandRecord[];
-  private pr: PullRequestView | null = null;
-
-  constructor(
-    readonly name: string,
-    private readonly task: Task,
-    private readonly agent: "changes" | "answers" | "fails",
-    inFlight = 0,
-  ) {
-    this.others = Array.from({ length: inFlight }, (_, index) => ({
-      ...newRecord(`other-${index}`, new Date(task.addedAt)),
-      state: "WORKING",
-      repo: task.repo,
-    }));
-    this.workId = task.id;
-    this.meanwhile = Array.from({ length: 4 }, () => () => this.oneIsDone());
-  }
-
-  runtime(now: () => Date) {
-    const changes = this.agent === "changes";
-    const runner = new ScriptedRunner([
-      { match: whenArgsInclude("status", "--porcelain"), result: { stdout: changes ? " M package.json\n" : "" } },
-      { match: whenArgsInclude("push"), result: { stdout: changes ? "*\tHEAD:refs/heads/x\t[new branch]\nDone\n" : "Done\n" } },
-    ]);
-    const agent: Harness = {
-      name: "relay",
-      ask: async () => ({ text: "done", run: fakeRun(this.agent === "fails" ? { outcome: "failed", output: "it would not resolve" } : {}) }),
-    };
-    const records: Store<ErrandRecord> = { all: () => [...this.others], load: () => null, save: () => undefined };
-
-    return { ...errandRuntime({
-      tasks: { all: () => [this.task], get: (id) => (id === this.task.id ? this.task : null), add: () => this.task },
-      agent,
-      host: fakeHost(null, {
-        findPullRequest: async () => this.pr,
-        openPullRequest: async () => (this.pr = pullRequest({ number: 41 })).number,
-      }),
-      notifier: { announce: async () => {} },
-      records,
-      git: lendCheckouts(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" }).git,
-      layout: { workspaceRoot: "/checkouts", defaultBranch: "main" },
-      now,
-      config: { repos: [REPO] },
-      policy: DEFAULT_POLICY,
-    }), policy: DEFAULT_POLICY, newRecord };
-  }
-
-  private oneIsDone(): void {
-    const working = this.others.find((other) => other.state === "WORKING");
-    if (working) working.state = "DONE";
-  }
-}
 
 const task = (repo: string): Task => ({
   id: "task-1",
@@ -76,17 +14,41 @@ const task = (repo: string): Task => ({
   addedAt: "2026-09-03T11:00:00.000Z",
 });
 
+/**
+ * One errand's world, mounted the way the host mounts it, so `PR_OPEN` is the
+ * call it is when installed. One errand in flight finishes each time the
+ * machine waits.
+ */
+async function world(name: string, shape: (world: ErrandWorld) => void = () => undefined, repo = REPO, inFlight = 0): Promise<World & { runtime: WorkflowRuntime }> {
+  const fake = new ErrandWorld(task(repo), [REPO]);
+  shape(fake);
+  fake.others = Array.from({ length: inFlight }, (_, index) => ({
+    id: `other-${index}`, state: "WORKING", repo, updatedAt: "2026-09-03T11:00:00.000Z", attempts: {}, history: [],
+  }));
+  const done = (): void => {
+    const working = fake.others.find((other) => other.state === "WORKING");
+    if (working) working.state = "DONE";
+  };
+  const { runtime } = await fake.mounted();
+  return { name, workId: "task-1", runtime, meanwhile: Array.from({ length: 4 }, () => done) };
+}
+
+const worlds = [
+  await world("an errand that changes something"),
+  await world("an errand that was a question", (fake) => { fake.agentChangesSomething = false; }),
+  await world("an errand nobody can get done", (fake) => { fake.agentSucceeds = false; }),
+  await world("an errand about somewhere errands are not done", undefined, "acme/elsewhere"),
+  await world("an errand that arrives while three are in flight", undefined, REPO, 3),
+  await world("an errand whose pull request the code host refuses", (fake) => { fake.refusal = "Pull request creation is disabled"; }),
+];
+
+const { workflow } = await new ErrandWorld(task(REPO)).mounted();
+
 describe("errand", () => {
-  conforms(errand, {
+  conforms(workflow, {
     runner: { describe, it },
-    runtime: (world, now) => world.runtime(now),
-    worlds: [
-      new ErrandWorld("an errand that changes something", task(REPO), "changes"),
-      new ErrandWorld("an errand that was a question", task(REPO), "answers"),
-      new ErrandWorld("an errand nobody can get done", task(REPO), "fails"),
-      new ErrandWorld("an errand about somewhere errands are not done", task("acme/elsewhere"), "changes"),
-      new ErrandWorld("an errand that arrives while three are in flight", task(REPO), "changes", 3),
-    ],
+    runtime: (current) => current.runtime,
+    worlds,
     // Shipped, so every arrow its diagram draws is one some world walks.
     everyEdge: true,
   });

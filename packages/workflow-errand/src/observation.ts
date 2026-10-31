@@ -1,4 +1,3 @@
-import { PullRequestView } from "@amykit/core";
 import { Task } from "./ports/Tasks.js";
 
 /**
@@ -18,8 +17,6 @@ export interface Observation {
    * is the reader's attention and they only have one.
    */
   inFlight: number;
-  /** Null until the errand's branch has a pull request. */
-  pullRequest: PullRequestView | null;
   now: Date;
 }
 

@@ -23,6 +23,7 @@ interface Pull {
 interface CodeHost {
   defaultBranch: string;
   nextNumber: number;
+  decline?: string[];
   repos: Record<string, { pulls: Pull[] }>;
 }
 
@@ -83,6 +84,32 @@ const state = read();
 if (argv.includes("graphql")) {
   const given = fields(argv);
   const repo = `${given.owner}/${given.name}`;
+
+  // A pull request read by its number: the one a call opened, whatever its
+  // branch carries since.
+  if (given.number !== undefined) {
+    const pull = (state.repos[repo]?.pulls ?? []).find((candidate) => String(candidate.number) === given.number);
+    process.stdout.write(`${JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: pull
+            ? {
+                number: pull.number,
+                url: `https://github.example.test/${repo}/pull/${pull.number}`,
+                isDraft: false,
+                reviewDecision: null,
+                headRefOid: headOf(repo, pull.head),
+                headRefName: pull.head,
+                reviewRequests: { nodes: [] },
+                reviews: { nodes: [] },
+                reviewThreads: { nodes: [] },
+              }
+            : null,
+        },
+      },
+    })}\n`);
+    process.exit(0);
+  }
   const found = (state.repos[repo]?.pulls ?? []).find(
     (pull) => pull.head === given.branch && pull.state === "open",
   );
@@ -96,6 +123,8 @@ if (argv.includes("graphql")) {
               ? [
                   {
                     number: found.number,
+                    // Where a person opens it, which is what the errand announces.
+                    url: `https://github.example.test/${repo}/pull/${found.number}`,
                     isDraft: found.draft,
                     reviewDecision: null,
                     headRefOid: headOf(repo, found.head),
@@ -118,6 +147,12 @@ const route = argv.find((arg) => arg.startsWith("/repos/")) ?? "";
 if (route.endsWith("/pulls") && argv.includes("POST")) {
   const repo = route.slice("/repos/".length, route.length - "/pulls".length);
   const given = fields(argv);
+
+  // An answer, in gh's own shape for a 422: the adapter hands it back as a
+  // refusal rather than an outage.
+  if ((state.decline ?? []).includes(given.title ?? "")) {
+    fail("gh: Pull request creation is disabled for this repository (HTTP 422)");
+  }
 
   const pull: Pull = {
     number: state.nextNumber,

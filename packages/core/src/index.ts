@@ -35,6 +35,9 @@ export type { Deferred } from "./deferred.js";
 
 export { act, advance, defineWorkflow, diagramBeside, notWritten, notWrittenIn, optional, planning, port, settled, wait, withDiagram, withDiagramBeside, workflowActions } from "./define-workflow.js";
 export type { ActionDuties } from "./action-ports.js";
+export { CALLED, activeCall, call, callPath, callStanding, isCall } from "./calls.js";
+export { expandDiagram } from "./expand.js";
+export type { Call, CallBinding, CallStep, CalleeReference, Signature } from "./calls.js";
 export type { PortNeed, PortsOf, WorkflowAction, WorkflowActionScope, WorkflowDecision, WorkflowPieceContext, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";
 
 export type {
@@ -75,6 +78,8 @@ export type {
   ReviewThread,
 } from "./ports/CodeHost.js";
 export {
+  CodeHostRefusal,
+  isCodeHostRefusal,
   CODE_HOST_WRITE_CAPABILITIES,
   CODE_HOST_WRITE_FOR_METHOD,
   codeHostWriteFor,

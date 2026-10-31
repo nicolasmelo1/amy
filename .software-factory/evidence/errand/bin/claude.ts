@@ -30,6 +30,7 @@ function kindOf(said: string): string {
   if (said.includes("check whether the nightly sync still runs against the old bucket")) return "question";
   if (said.includes("add a changelog entry for the api package")) return "committed";
   if (said.includes("bump the stale dependencies in the api package")) return "change";
+  if (said.includes("tidy the readme of the api package")) return "closed";
   return "unknown";
 }
 
@@ -107,6 +108,13 @@ if (task === "change") {
   fs.writeFileSync(manifest, `${JSON.stringify(parsed, null, 2)}\n`, "utf-8");
 
   envelope("Raised left-pad in api from 1.0.0 to 1.3.0. Nothing else in the package was stale.", false);
+  process.exit(0);
+}
+
+if (task === "closed") {
+  // A change like any other: what happens to it is the code host's answer.
+  fs.writeFileSync(path.join(process.cwd(), "api", "README.md"), "# api\n\nThe api package.\n", "utf-8");
+  envelope("Tidied the readme of the api package.", false);
   process.exit(0);
 }
 

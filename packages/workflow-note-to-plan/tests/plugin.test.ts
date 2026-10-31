@@ -17,7 +17,9 @@ const PORTS = [
   mounts("notes", "notes", { all: () => [], get: () => null, write: () => null }),
   mounts("agent", "agent", { name: "relay", ask: async () => null }),
   mounts("check", "plan-check", { check: async () => null }),
-  mounts("forge", "code-host", {}),
+  // Asked for by the pull-request workflow `PR_OPEN` calls, which finds a
+  // pull request by its title when its branch was renamed.
+  mounts("forge", "code-host", { findPullRequestMentioning: async () => null }),
   mounts("notifier", "notifier", { announce: async () => undefined }),
   mounts("store", "store", { all: () => [], load: () => null, save: () => undefined }),
 ];
@@ -103,11 +105,12 @@ describe("what the workflow says it needs", () => {
     const outcome = await assemble();
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
+    // `open-pull-request` is the called workflow's, reached through the call.
     expect(mountedActions(outcome.mounted, outcome.mounted.workflow!)).toEqual([
       "draft-plan",
       "check-plan",
-      "open-pull-request",
       "announce",
+      "open-pull-request",
     ]);
   });
 

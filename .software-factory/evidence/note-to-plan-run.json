@@ -8,10 +8,10 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 21,
+    "assertions_run": 23,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
-    "looks": 53,
+    "looks": 69,
     "transitions": [
       "NOTED>DRAFTED",
       "DRAFTED>CHECKED",
@@ -32,19 +32,21 @@
       "NOTED>DECLINED"
     ],
     "gave_up": "PR_OPEN",
-    "agent_calls": 9,
-    "check_calls": 6,
-    "gh_calls": 8,
+    "agent_calls": 11,
+    "check_calls": 8,
+    "gh_calls": 10,
     "pull_requests": {
       "acme/amy": 2,
       "acme/software-factory": 0,
-      "acme/nobody-can-plan": 0
+      "acme/nobody-can-plan": 0,
+      "acme/closed-to-pull-requests": 0
     },
     "notes_left": [
       "by-hand.md",
       "not-mine.md",
-      "note-2026-10-30T235920931.md",
-      "note-2026-10-30T235933545.md",
+      "note-2026-10-31T035127447.md",
+      "note-2026-10-31T035137439.md",
+      "refused.md",
       "unwritable.md",
       "will-break.md"
     ],
@@ -93,6 +95,14 @@
     },
     {
       "type": "plan.the_ceiling_is_said_once",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_pull_request_is_opened_by_a_call",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_refused_pull_request_hands_the_note_back",
       "status": "passed"
     },
     {

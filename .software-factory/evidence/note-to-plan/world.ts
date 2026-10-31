@@ -22,6 +22,13 @@ export const OTHER_REPO = "acme/software-factory";
 export const UNWRITABLE_REPO = "acme/nobody-can-plan";
 /** A repository this install does not write plans into. */
 export const FOREIGN_REPO = "acme/somewhere-else";
+/**
+ * A repository plans are written into, whose code host answers that it will
+ * not take a pull request: the pull-request workflow `PR_OPEN` calls returns
+ * `REFUSED`, and the note is handed back with the host's own words.
+ */
+export const REFUSING_REPO = "acme/closed-to-pull-requests";
+export const REFUSED_BY_HOST = "Pull request creation is disabled for this repository";
 
 /** What an operator types, and what the machine has to make of it. */
 export const FRICTION =
@@ -101,6 +108,7 @@ function repository(root: string, repo: string): void {
 
 /** A pull request as the stand-in code host keeps it. */
 export interface Pull {
+  number: number;
   head: string;
   body: string;
 }
@@ -109,6 +117,8 @@ export interface CodeHost {
   defaultBranch: string;
   nextNumber: number;
   refuse: string[];
+  /** Where the code host answers, and its answer is no. */
+  decline: string[];
   repos: Record<string, { pulls: Pull[] }>;
 }
 
@@ -117,7 +127,8 @@ const CODE_HOST_STATE: CodeHost = {
   nextNumber: 41,
   /** Where the code host is not answering, which is what a bad day looks like. */
   refuse: [OTHER_REPO],
-  repos: { [REPO]: { pulls: [] }, [OTHER_REPO]: { pulls: [] }, [UNWRITABLE_REPO]: { pulls: [] } },
+  decline: [REFUSING_REPO],
+  repos: { [REPO]: { pulls: [] }, [OTHER_REPO]: { pulls: [] }, [UNWRITABLE_REPO]: { pulls: [] }, [REFUSING_REPO]: { pulls: [] } },
 };
 
 /**
@@ -159,6 +170,7 @@ plans:
     - ${REPO}
     - ${OTHER_REPO}
     - ${UNWRITABLE_REPO}
+    - ${REFUSING_REPO}
   check:
     default:
       - sf check
@@ -194,6 +206,7 @@ export function build(root: string, { source }: { source: string }): void {
   repository(root, REPO);
   repository(root, OTHER_REPO);
   repository(root, UNWRITABLE_REPO);
+  repository(root, REFUSING_REPO);
 
   const world = path.join(root, "world");
   write(path.join(world, "code-host.json"), CODE_HOST_STATE);

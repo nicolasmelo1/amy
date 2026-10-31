@@ -1,0 +1,264 @@
+{
+  "scenario": "a-workflow-calls-another",
+  "status": "passed",
+  "goal": "I want to use somebody else's workflow inside my own the way I use a library: copy it into my workflow's directory, call it from a state, and see where my work is through it — and when the workflow I called stops on me, I want my own work to say so, with the reason, without opening the copy.",
+  "artifact": {
+    "package": "@amykit/cli",
+    "entry": "the installed executable, driven by `amy workflow new`, `amy workflow add --into`, `amy discover`, `amy tick`, `amy status` and `amy workflow export --expand`",
+    "built_by": "scripts/install.sh"
+  },
+  "observed": {
+    "assertions_run": 44,
+    "assertions_failed": 0,
+    "runs": {
+      "calls": {
+        "assertions_run": 5,
+        "assertions_failed": 0,
+        "looks": 4,
+        "looked": [
+          "pager@PAGED",
+          "review@READING",
+          "review@ESCALATED"
+        ],
+        "copied": [
+          "index.ts",
+          "package.json",
+          "src",
+          "src/decide.ts",
+          "workflow.mmd"
+        ],
+        "record": {
+          "id": "page-1",
+          "state": "REVIEW",
+          "updatedAt": "2026-10-31T03:52:03.732Z",
+          "attempts": {},
+          "looks": {
+            "REVIEW": 2
+          },
+          "history": [
+            {
+              "at": "2026-10-31T03:52:03.504Z",
+              "from": "PAGED",
+              "to": "REVIEW",
+              "why": "a fix is up for review"
+            }
+          ],
+          "calls": {
+            "page-1/REVIEW#1": {
+              "input": {
+                "change": "the retry storm fix"
+              },
+              "id": "page-1/REVIEW#1",
+              "state": "ESCALATED",
+              "updatedAt": "2026-10-31T03:52:03.732Z",
+              "attempts": {},
+              "looks": {
+                "ESCALATED": 1
+              },
+              "history": [
+                {
+                  "at": "2026-10-31T03:52:03.620Z",
+                  "from": "READING",
+                  "to": "ESCALATED",
+                  "why": "nobody can review a change this large without its owner"
+                }
+              ]
+            }
+          },
+          "calling": "page-1/REVIEW#1"
+        }
+      },
+      "note-to-plan": [
+        "NOTED>DRAFTED",
+        "DRAFTED>CHECKED",
+        "CHECKED>DRAFTED",
+        "DRAFTED>CHECKED",
+        "CHECKED>PR_OPEN",
+        "PR_OPEN>DONE"
+      ],
+      "errand": [
+        "QUEUED>WORKING",
+        "WORKING>PR_OPEN",
+        "PR_OPEN>DONE"
+      ]
+    }
+  },
+  "assertions": [
+    {
+      "type": "mine.a_copied_callee_is_called",
+      "status": "passed"
+    },
+    {
+      "type": "calls.a_callee_escalates_to_its_root",
+      "status": "passed"
+    },
+    {
+      "type": "calls.only_the_deepest_record_is_looked_at",
+      "status": "passed"
+    },
+    {
+      "type": "calls.the_machine_settles_instead_of_spinning",
+      "status": "passed"
+    },
+    {
+      "type": "calls.the_run_leaves_nothing_behind",
+      "status": "passed"
+    },
+    {
+      "type": "plan.work_injected_by_command_reaches_the_queue",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_note_in_the_watched_directory_is_discovered",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_is_resolved_against_a_tracker",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_refused_draft_goes_back_to_the_agent",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_agent_is_told_what_the_check_said",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_reaches_a_pull_request_until_the_check_is_green",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_plan_carries_an_exit_condition_and_a_place_in_the_order",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_pull_request_is_opened_in_the_repository_the_note_is_about",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_pull_request_names_the_friction_it_came_from",
+      "status": "passed"
+    },
+    {
+      "type": "plan.nothing_new_is_opened_past_the_ceiling",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_ceiling_is_said_once",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_pull_request_is_opened_by_a_call",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_refused_pull_request_hands_the_note_back",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_note_about_another_repository_is_handed_back",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_tick_that_gives_up_leaves_a_note_behind",
+      "status": "passed"
+    },
+    {
+      "type": "plan.both_workflows_run_on_the_same_installed_binary",
+      "status": "passed"
+    },
+    {
+      "type": "plan.each_workflow_keeps_its_own_queue_and_records",
+      "status": "passed"
+    },
+    {
+      "type": "plan.what_the_agent_spent_lands_in_the_shared_log",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_lifecycle_walks_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "plan.every_drawn_edge_is_walked",
+      "status": "passed"
+    },
+    {
+      "type": "plan.one_look_makes_at_most_one_move",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_machine_settles_instead_of_spinning",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_run_leaves_nothing_behind",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_passing_remark_reaches_the_queue",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_task_in_the_directory_is_discovered",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_agent_runs_where_the_work_is",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_agent_is_asked_once_per_errand",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_change_opens_a_pull_request",
+      "status": "passed"
+    },
+    {
+      "type": "errand.already_committed_work_is_delivered",
+      "status": "passed"
+    },
+    {
+      "type": "errand.an_unchanged_branch_is_not_delivered",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_task_nobody_works_in_is_handed_back",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_pull_request_is_opened_by_a_call",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_refused_pull_request_hands_the_errand_back",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_refusal_is_terminal_and_says_why",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_lifecycle_walks_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "errand.every_drawn_edge_is_walked",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_run_leaves_nothing_behind",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_profile_keeps_its_own_state",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_installed_machine_mounts_the_workflow",
+      "status": "passed"
+    }
+  ]
+}

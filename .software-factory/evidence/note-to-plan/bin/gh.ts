@@ -23,6 +23,7 @@ interface CodeHost {
   defaultBranch: string;
   nextNumber: number;
   refuse?: string[];
+  decline?: string[];
   repos: Record<string, { pulls: Pull[] }>;
 }
 
@@ -83,6 +84,32 @@ const state = read();
 if (argv.includes("graphql")) {
   const given = fields(argv);
   const repo = `${given.owner}/${given.name}`;
+
+  // A pull request read by its number: the one a call opened, whatever its
+  // branch carries since.
+  if (given.number !== undefined) {
+    const pull = (state.repos[repo]?.pulls ?? []).find((candidate) => String(candidate.number) === given.number);
+    process.stdout.write(`${JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: pull
+            ? {
+                number: pull.number,
+                url: `https://github.example.test/${repo}/pull/${pull.number}`,
+                isDraft: false,
+                reviewDecision: null,
+                headRefOid: headOf(repo, pull.head),
+                headRefName: pull.head,
+                reviewRequests: { nodes: [] },
+                reviews: { nodes: [] },
+                reviewThreads: { nodes: [] },
+              }
+            : null,
+        },
+      },
+    })}\n`);
+    process.exit(0);
+  }
   const found = (state.repos[repo]?.pulls ?? []).find(
     (pull) => pull.head === given.branch && pull.state === "open",
   );
@@ -123,6 +150,12 @@ if (route.endsWith("/pulls") && argv.includes("POST")) {
   // point of this one: it is what leaves a note behind.
   if ((state.refuse ?? []).includes(repo)) {
     fail(`gh: could not open a pull request in ${repo}`);
+  }
+
+  // Where the code host answers, and the answer is no: gh's own shape for a
+  // 422, which is an answer the adapter hands back rather than an outage.
+  if ((state.decline ?? []).includes(repo)) {
+    fail("gh: Pull request creation is disabled for this repository (HTTP 422)");
   }
 
   const pull: Pull = {

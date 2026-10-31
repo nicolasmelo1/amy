@@ -4,12 +4,10 @@ import {
   ActionHandler,
   AgentRun,
   AskContext,
-  CodeHost,
   lendCheckouts,
   Harness,
   HarnessReply,
   Notifier,
-  PullRequestView,
   Store,
 } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
@@ -64,26 +62,6 @@ function fakeStore(records: PlanRecord[] = []): Store<PlanRecord> {
   };
 }
 
-function fakeHost(overrides: Partial<CodeHost> = {}): CodeHost {
-  return {
-    findPullRequest: vi.fn<CodeHost["findPullRequest"]>().mockResolvedValue(null),
-    pullRequestAncestry: vi.fn<NonNullable<CodeHost["pullRequestAncestry"]>>().mockResolvedValue(null),
-    pullRequest: vi.fn<CodeHost["pullRequest"]>().mockResolvedValue(null),
-    openPullRequest: vi.fn<CodeHost["openPullRequest"]>().mockResolvedValue(12),
-    requestReview: vi.fn<CodeHost["requestReview"]>().mockResolvedValue(undefined),
-    resolveReviewThread: vi.fn<CodeHost["resolveReviewThread"]>().mockResolvedValue(undefined),
-    unresolveReviewThread: vi.fn<CodeHost["unresolveReviewThread"]>().mockResolvedValue(undefined),
-    reviewLoad: vi.fn<CodeHost["reviewLoad"]>().mockResolvedValue({}),
-    reviewsRequestedOf: vi.fn<CodeHost["reviewsRequestedOf"]>().mockResolvedValue([]),
-    changesRequestedOf: vi.fn<CodeHost["changesRequestedOf"]>().mockResolvedValue([]),
-    merge: vi.fn<CodeHost["merge"]>().mockResolvedValue(undefined),
-    submitReview: vi.fn<CodeHost["submitReview"]>().mockResolvedValue(undefined),
-    createIssue: vi.fn<CodeHost["createIssue"]>().mockResolvedValue(1204),
-    commitStatuses: vi.fn<CodeHost["commitStatuses"]>().mockResolvedValue([]),
-    ...overrides,
-  };
-}
-
 /** Records what it was asked and by whom, which is what these tests read. */
 function fakeAgent(reply: Partial<HarnessReply> = {}) {
   const asked: { prompt: string; cwd: string; context?: AskContext }[] = [];
@@ -102,7 +80,6 @@ function fakeAgent(reply: Partial<HarnessReply> = {}) {
 function build(options: {
   notes?: Notes;
   store?: Store<PlanRecord>;
-  host?: CodeHost;
   agent?: Harness;
   check?: PlanCheck;
   notifier?: Notifier;
@@ -115,7 +92,6 @@ function build(options: {
     notes: options.notes ?? fakeNotes(),
     agent: options.agent ?? fakeAgent().agent,
     check: options.check ?? { check: async () => ({ ok: true, output: "ok", at: "now" }) },
-    host: options.host ?? fakeHost(),
     notifier: options.notifier ?? { announce: async () => undefined },
     records: options.store ?? fakeStore(),
     git: lendCheckouts(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" }).git,
@@ -195,22 +171,6 @@ describe("looking at the world", () => {
     expect((await observed(build({ store }))).plansInFlight).toBe(0);
   });
 
-  it("does not ask the code host before there could be a pull request", async () => {
-    const host = fakeHost();
-    await observed(build({ host }), record("DRAFTED"));
-
-    expect(host.findPullRequest).not.toHaveBeenCalled();
-  });
-
-  it("asks the code host on the branch the plan was written on", async () => {
-    const host = fakeHost();
-    await observed(build({ host }), record("PR_OPEN"));
-
-    expect(host.findPullRequest).toHaveBeenCalledWith(
-      "acme/widgets",
-      "amy/plan-the-gate-output-is-truncated-before-the-agent",
-    );
-  });
 });
 
 describe("drafting", () => {
@@ -340,34 +300,33 @@ describe("checking", () => {
   });
 });
 
-describe("opening the pull request", () => {
-  it("opens it in the repository the note is about, on the plan's branch", async () => {
-    const host = fakeHost();
-    const runtime = build({ host });
-    const current = record("PR_OPEN");
-    const ctx = context(current, await observed(runtime, current));
+// The pull request is opened by the workflow `PR_OPEN` calls. What this one
+// still owns is what it is opened with, worked out on the move that calls it.
+describe("what the pull request is opened with", () => {
+  async function opening(moved: { from: PlanState; to: PlanState } | null) {
+    const runtime = build();
+    const current = record(moved?.to ?? "CHECKED");
+    const plan = moved ? { kind: "advance" as const, to: moved.to, effects: [], why: "" } : { kind: "act" as const, effects: [], why: "" };
+    return runtime.apply(current, plan, {}, await observed(runtime, current), NOW, moved).opening;
+  }
 
-    await handler(runtime, "open-pull-request")({ type: "open-pull-request" }, ctx);
-
-    expect(host.openPullRequest).toHaveBeenCalledWith(
-      expect.objectContaining({
-        repo: "acme/widgets",
-        branch: "amy/plan-the-gate-output-is-truncated-before-the-agent",
-      }),
-    );
+  it("is the repository the note is about, the plan's branch and the base it opens against", async () => {
+    expect(await opening({ from: "CHECKED", to: "PR_OPEN" })).toMatchObject({
+      repo: "acme/widgets",
+      branch: "amy/plan-the-gate-output-is-truncated-before-the-agent",
+      base: "main",
+    });
   });
 
   it("names the friction it came from in the body", async () => {
-    const host = fakeHost();
-    const runtime = build({ host });
-    const current = record("PR_OPEN");
-    const ctx = context(current, await observed(runtime, current));
+    const body = (await opening({ from: "CHECKED", to: "PR_OPEN" }))?.body;
 
-    await handler(runtime, "open-pull-request")({ type: "open-pull-request" }, ctx);
+    expect(body).toContain("the gate output is truncated");
+    expect(body).toContain("a tick that failed in CHECKED");
+  });
 
-    const request = vi.mocked(host.openPullRequest).mock.calls[0]![0];
-    expect(request.body).toContain("the gate output is truncated");
-    expect(request.body).toContain("a tick that failed in CHECKED");
+  it("is worked out only on the move that makes the call", async () => {
+    expect(await opening(null)).toBeUndefined();
   });
 });
 
@@ -405,30 +364,5 @@ describe("folding what happened back in", () => {
     );
 
     expect(next.lastCheck).toEqual({ ok: false, output: "red", at: "now" });
-  });
-});
-
-describe("the pull request the machine can see", () => {
-  it("is what it was told, so DONE means a pull request genuinely exists", async () => {
-    const view: PullRequestView = {
-      number: 7,
-      url: "https://github.example.test/acme/widgets/pull/7",
-      headSha: "abc",
-      isDraft: false,
-      changedFiles: 3,
-      additions: 40,
-      deletions: 12,
-      reviewDecision: null,
-      checks: { state: "passing", commitSha: "head" },
-      mergeState: "mergeable",
-      merged: false,
-      base: "main",
-      reviews: [],
-      threads: [],
-      requestedReviewers: [],
-    };
-    const host = fakeHost({ findPullRequest: async () => view });
-
-    expect((await observed(build({ host }), record("PR_OPEN"))).pullRequest).toEqual(view);
   });
 });

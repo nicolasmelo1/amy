@@ -91,4 +91,75 @@ export const plugin = defineWorkflow({
     await expect(exportWorkflow(home, "bare", loadConfig(home))).rejects.toThrow(/bare has no workflow\.mmd: its states are declared in its code/);
     await expect(exportWorkflow(home, "nobody", loadConfig(home))).rejects.toThrow(/there is no `nobody` workflow/);
   });
+
+  describe("--expand", () => {
+    const CALLER = `stateDiagram-v2
+    [*] --> PAGED
+    PAGED --> REVIEW
+    state "look at it · review" as REVIEW
+    REVIEW --> RESOLVED: APPROVED
+    REVIEW --> DROPPED: DECLINED
+    RESOLVED --> [*]
+    DROPPED --> [*]
+    class REVIEW call
+`;
+
+    /** A workflow that calls one of its own, copied into its directory the way `amy workflow add --into` leaves it. */
+    function pager(): void {
+      const file = path.join(home, "pager.mmd");
+      fs.writeFileSync(file, CALLER);
+      const directory = writeWorkflow(home, "pager", loadConfig(home), file);
+      fs.writeFileSync(path.join(directory, "index.ts"), `import { call, defineWorkflow, settled } from "@amykit/core";
+import { plugin as review } from "./workflows/review/index.ts";
+export const plugin = defineWorkflow({
+  name: "pager", configSchema: {}, policy: {}, needs: {},
+  calls: { REVIEW: call(review) },
+  decide: { PAGED: () => settled("paged"), RESOLVED: () => settled("resolved"), DROPPED: () => settled("dropped") },
+  record: () => ({}), observe: async () => ({}), actions: {},
+});
+`);
+      const callee = path.join(directory, "workflows", "review");
+      fs.mkdirSync(callee, { recursive: true });
+      fs.writeFileSync(path.join(callee, "workflow.mmd"), "stateDiagram-v2\n    [*] --> READING\n    READING --> APPROVED: it holds\n    READING --> DECLINED\n    APPROVED --> [*]\n    DECLINED --> [*]\n    class READING waiting\n");
+      fs.writeFileSync(path.join(callee, "index.ts"), `import { defineWorkflow, settled, withDiagramBeside } from "@amykit/core";
+export const plugin = withDiagramBeside(defineWorkflow({
+  name: "review", configSchema: {}, policy: {}, needs: {},
+  decide: { READING: () => settled("reading"), APPROVED: () => settled("approved"), DECLINED: () => settled("declined") },
+  record: () => ({}), observe: async () => ({}), actions: {},
+}), import.meta.url);
+`);
+    }
+
+    it("draws each call as a composite state holding the workflow it calls, which Pele parses", async () => {
+      pager();
+
+      const expanded = await exportWorkflow(home, "pager", loadConfig(home), { expand: true });
+      const model = parse(expanded) as unknown as { type: string; states: ReadonlyMap<string, { doc?: readonly unknown[]; classes?: readonly string[] }> };
+
+      expect(model.type).toBe("state");
+      expect(model.states.get("REVIEW")?.doc?.length).toBeGreaterThan(0);
+      expect(model.states.get("REVIEW")?.classes).toContain("call");
+      expect(model.states.get("REVIEW__READING")?.classes).toContain("waiting");
+      expect(expanded).toContain("state REVIEW {");
+      expect(expanded).toContain("REVIEW__READING --> REVIEW__APPROVED: it holds");
+    });
+
+    it("leaves the diagram as drawn without --expand, so the source keeps refusing a composite state", async () => {
+      pager();
+
+      await expect(exportWorkflow(home, "pager", loadConfig(home))).resolves.toBe(CALLER);
+    });
+
+    it("marks a piece of work at every depth of the calls it is in", async () => {
+      pager();
+      const record = {
+        id: "page-1", state: "REVIEW", updatedAt: "", attempts: {}, history: [], calling: "page-1/REVIEW#1",
+        calls: { "page-1/REVIEW#1": { id: "page-1/REVIEW#1", state: "READING", updatedAt: "", attempts: {}, history: [] } },
+      };
+
+      const classes = classesOf(await exportWorkflow(home, "pager", loadConfig(home), { expand: true, record }));
+
+      expect(Object.entries(classes).filter(([, names]) => names.includes("current")).map(([id]) => id).sort()).toEqual(["REVIEW", "REVIEW__READING"]);
+    });
+  });
 });

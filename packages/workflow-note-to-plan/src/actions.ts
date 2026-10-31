@@ -2,15 +2,16 @@ import {
   ActionContext,
   ActionHandler,
   baseBranchFor,
-  CodeHost,
   Git,
   Harness,
+  Moved,
   Notifier,
   Plan,
   RepoLayout,
   Store,
   WorkflowRuntimeParts,
 } from "@amykit/core";
+import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
@@ -38,12 +39,13 @@ export interface PlanRuntimeDeps {
    */
   agent: Harness;
   check: PlanCheck;
-  host: CodeHost;
   notifier: Notifier;
   git: Git;
   /**
    * The layout the `Git` above resolves, named for the one question `Git`
-   * does not answer: what a repository's pull request opens against.
+   * does not answer: what a repository's pull request opens against. The
+   * pull request is opened by the workflow `PR_OPEN` calls; this is how the
+   * note says what to open it against.
    */
   layout: RepoLayout;
   /** Read to count what is already in flight, never written to here. */
@@ -129,21 +131,6 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRec
       );
     },
 
-    "open-pull-request": async (_effect, ctx) => {
-      const { note } = ctx.observation;
-      const slug = slugFor(note);
-
-      outcomesOf(ctx).pullRequestNumber = await deps.host.openPullRequest({
-        repo: note.repo,
-        branch: branchFor(slug),
-        title: pullRequestTitle(slug),
-        base: baseBranchFor(deps.layout, note.repo),
-        // Written out, unlike the ticket workflow's. There is no ticket
-        // behind this one to be the description.
-        body: pullRequestBody(note, slug),
-      });
-    },
-
     // Standalone, a word the operator was owed fails the action; mounted, the
     // plugin hands this to the host's best-effort `announce` instead.
     "announce": async (effect, ctx) => {
@@ -158,20 +145,11 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRec
 
     async observe(current) {
       const note = requireNote(current.id);
-      const slug = slugFor(note);
-
-      // Only asked where it is used, so a note being drafted does not call
-      // the code host once per look for a pull request that cannot exist yet.
-      const pullRequest =
-        current.state === "PR_OPEN"
-          ? await deps.host.findPullRequest(note.repo, branchFor(slug))
-          : null;
 
       return {
         note,
         writable: deps.config.repos.includes(note.repo),
         plansInFlight: inFlightFor(deps.records, note.repo, current.id),
-        pullRequest,
         now: deps.now(),
       };
     },
@@ -196,13 +174,30 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRec
      * record, counting what is in flight for a repository would mean opening
      * every other note to find out what it was about.
      */
-    apply(current, _plan: Plan, outcomes, observation, _now) {
-      return applyOutcomes(current, {
+    apply(current, _plan: Plan, outcomes, observation, _now, moved?: Moved | null) {
+      const next = applyOutcomes(current, {
         ...(outcomes as EffectOutcomes),
         repo: observation.note.repo,
         slug: slugFor(observation.note),
       });
+      // The call's input is read off the record, and the body is the note's
+      // own words, so it is worked out on the move that makes the call.
+      return moved?.to === "PR_OPEN" ? { ...next, opening: openingFor(observation.note, deps.layout) } : next;
     },
+  };
+}
+
+/** What the pull request for a note is opened with. */
+function openingFor(note: Note, layout: RepoLayout): PullRequestInput {
+  const slug = slugFor(note);
+  return {
+    repo: note.repo,
+    branch: branchFor(slug),
+    title: pullRequestTitle(slug),
+    base: baseBranchFor(layout, note.repo),
+    // Written out, unlike the ticket workflow's. There is no ticket behind
+    // this one to be the description.
+    body: pullRequestBody(note, slug),
   };
 }
 

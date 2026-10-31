@@ -30,6 +30,14 @@ export const FOREIGN_TASK = "rotate the certificates in the old cluster";
  * has a diff in it any more.
  */
 export const COMMITTED_TASK = "add a changelog entry for the api package";
+/**
+ * An errand that changes something, in a repository whose code host answers
+ * that it takes no pull request for it: the pull-request workflow `PR_OPEN`
+ * calls returns `REFUSED`, and the errand is handed back with the host's
+ * own words.
+ */
+export const CLOSED_TASK = "tidy the readme of the api package";
+export const REFUSED_BY_HOST = "Pull request creation is disabled for this repository";
 
 /** The branch each task is carried on, derived the way the workflow derives it. */
 export const CHANGE_BRANCH = "amy/errand-bump-the-stale-dependencies-in-the";
@@ -113,6 +121,8 @@ export interface Pull {
 export interface CodeHost {
   defaultBranch: string;
   nextNumber: number;
+  /** Titles the code host answers it will not open a pull request for. */
+  decline: string[];
   repos: Record<string, { pulls: Pull[] }>;
 }
 
@@ -121,6 +131,7 @@ const CODE_HOST_STATE: CodeHost = {
   // Not 1, so the number the announcement carries cannot be the first one
   // anything would guess.
   nextNumber: 41,
+  decline: [CLOSED_TASK],
   repos: { [REPO]: { pulls: [] } },
 };
 

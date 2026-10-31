@@ -179,6 +179,31 @@ export type PullRequestAncestry =
     }
   | { state: "absent" };
 
+const REFUSAL = Symbol.for("@amykit/core/code-host-refusal");
+
+/**
+ * The host answered, and the answer was no: the branch has nothing to merge,
+ * a pull request already exists, the repository takes none.
+ *
+ * Thrown by an adapter instead of a plain error so a workflow can tell an
+ * answer from an outage. An outage is retried by the engine, and asking again
+ * may well work; a refusal is final, and the reason is something a person
+ * should read.
+ */
+export class CodeHostRefusal extends Error {
+  readonly [REFUSAL] = true;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "CodeHostRefusal";
+  }
+}
+
+/** Whether a host's error is its answer rather than its failure, across copies of the core. */
+export function isCodeHostRefusal(error: unknown): error is CodeHostRefusal {
+  return typeof error === "object" && error !== null && (error as Record<symbol, unknown>)[REFUSAL] === true;
+}
+
 /** The capability names a workflow may claim before it mutates the forge. */
 export const CODE_HOST_WRITE_CAPABILITIES = [
   "open-pull-request",
@@ -223,6 +248,7 @@ export interface CodeHost {
    */
   findPullRequestMentioning?(repo: string, id: string): Promise<PullRequestView | null>;
 
+  /** Throws a `CodeHostRefusal` when the host answers that it will not; any other throw is a failure. */
   openPullRequest(request: OpenPullRequestRequest): Promise<number>;
 
   requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>;

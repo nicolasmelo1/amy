@@ -16,7 +16,9 @@ function mounts(name: string, kind: string, impl: object = {}): Plugin {
 const PORTS = [
   mounts("tasks", "tasks", { all: () => [], get: () => null, add: () => null }),
   mounts("agent", "agent", { name: "relay", ask: async () => null }),
-  mounts("forge", "code-host", {}),
+  // Asked for by the pull-request workflow `PR_OPEN` calls, which finds a
+  // pull request by its title when its branch was renamed.
+  mounts("forge", "code-host", { findPullRequestMentioning: async () => null }),
   mounts("notifier", "notifier", { announce: async () => undefined }),
   mounts("store", "store", { all: () => [], load: () => null, save: () => undefined }),
 ];

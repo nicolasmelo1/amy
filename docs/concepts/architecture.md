@@ -83,6 +83,7 @@ packages/
 ├── workflow-errand      Something said in passing becomes work: capture it, do it, say what happened.
 ├── workflow-feature-grooming Feature grooming against read-only base-branch source snapshots.
 ├── workflow-note-to-plan The note-to-plan workflow: friction becomes a plan in the repository it is about.
+├── workflow-pull-request A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.
 ├── workflow-testkit     The tests every workflow needs and nobody writes, driven against a world its author supplies.
 └── workflow-ticket-to-qa The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
 
@@ -129,9 +130,10 @@ this repository.
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/ui` | library | _nothing_ |
 | `@amykit/ui-conformance` | library | `@amykit/ui` |
-| `@amykit/workflow-errand` | workflow | `@amykit/core` |
+| `@amykit/workflow-errand` | workflow | `@amykit/core`, `@amykit/workflow-pull-request` |
 | `@amykit/workflow-feature-grooming` | plugin | `@amykit/core` |
-| `@amykit/workflow-note-to-plan` | workflow | `@amykit/core` |
+| `@amykit/workflow-note-to-plan` | workflow | `@amykit/core`, `@amykit/workflow-pull-request` |
+| `@amykit/workflow-pull-request` | workflow | `@amykit/core` |
 | `@amykit/workflow-testkit` | library | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/agent-kit`, `@amykit/core` |
 | `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |

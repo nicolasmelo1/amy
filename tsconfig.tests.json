@@ -86,6 +86,9 @@
       "@amykit/workflow-errand": [
         "packages/workflow-errand/src/index.ts"
       ],
+      "@amykit/workflow-pull-request": [
+        "packages/workflow-pull-request/src/index.ts"
+      ],
       "@amykit/workflow-note-to-plan": [
         "packages/workflow-note-to-plan/src/index.ts"
       ],
