@@ -33,6 +33,11 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    */
   readonly diagram?: Diagram;
   /**
+   * The workflow each call state calls, by state, for a view that draws a
+   * call as what it calls. Each is itself composed when it calls others.
+   */
+  readonly calls?: Readonly<Record<string, Workflow>>;
+  /**
    * The actions are not declared here. They are the keys of the runtime's
    * `actions`, where each one is declared and implemented at once — two
    * lists of one fact were how an action came to pass the mount with nothing

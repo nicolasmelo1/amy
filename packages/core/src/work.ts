@@ -34,6 +34,16 @@ export interface WorkRecord {
    */
   looks?: Record<string, number>;
   history: Transition[];
+  /**
+   * Every call this record has made, by id (`TBO-1/REVIEW#1`), each a whole
+   * record of the callee's own. Kept after the call returns, so a second
+   * entry into the same state never reuses the first's history.
+   */
+  calls?: Record<string, WorkRecord>;
+  /** The call this record is waiting on, while it is in a call state. */
+  calling?: string;
+  /** What a callee was called with, for a record a caller started. */
+  input?: Record<string, unknown>;
 }
 
 export type Plan<State extends string = string, Effect extends Action = Action> =

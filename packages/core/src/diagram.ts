@@ -32,19 +32,25 @@ export interface Diagram {
   readonly anywhere: readonly string[];
   /** It leaves to the state the record came from. */
   readonly returns: readonly string[];
+  /** It calls another workflow, and its edges out are named for where that one ends. */
+  readonly calls: readonly string[];
+  /** A state's description, from `state "…" as NAME`: prose for a reader, never read as a binding. */
+  readonly labels: Readonly<Record<string, string>>;
   readonly transitions: readonly DrawnTransition[];
   /** The file as it was read, so every view draws the same text. */
   readonly text: string;
 }
 
-/** The four classes amy reads. Any other class is left for whoever renders the file. */
-export const DIAGRAM_CLASSES = ["waiting", "attention", "anywhere", "returns"] as const;
+/** The five classes amy reads. Any other class is left for whoever renders the file. */
+export const DIAGRAM_CLASSES = ["waiting", "attention", "anywhere", "returns", "call"] as const;
 type DiagramClass = (typeof DIAGRAM_CLASSES)[number];
 
 const START = "[*]";
 /** A state is a name of letters, digits and underscores; `[*]` is where work starts and ends. */
 const END = /^(?:[A-Za-z_]\w*|\[\*\])$/;
 const NAME = /^[A-Za-z_]\w*$/;
+/** `state "a description" as NAME`, which names a state and draws nothing. */
+const DESCRIBED = /^state\s+"([^"]*)"\s+as\s+([A-Za-z_]\w*)\s*$/;
 /**
  * Names Mermaid's state grammar takes as keywords, compared without case: a
  * state called one of them would mount and never render.
@@ -83,6 +89,7 @@ interface Reading {
   readonly classes: Map<DiagramClass, Set<string>>;
   /** Every state a line names outside an arrow — a class, a style, a note — and the first line naming it. */
   readonly named: Map<string, number>;
+  readonly labels: Record<string, string>;
   readonly transitions: DrawnTransition[];
 }
 
@@ -99,6 +106,7 @@ export function readDiagram(text: string, source = DIAGRAM_FILE): Diagram {
     terminal: new Set(),
     classes: new Map(DIAGRAM_CLASSES.map((name) => [name, new Set<string>()])),
     named: new Map(),
+    labels: {},
     transitions: [],
   };
   const lines = text.split(/\r?\n/);
@@ -169,13 +177,19 @@ function readLine(line: string, number: number, reading: Reading, source: string
     if (pattern.test(drawn)) throw new DiagramError(number, reason, source);
   }
 
+  const described = DESCRIBED.exec(line);
+  if (described) {
+    reading.labels[described[2]!] = described[1]!;
+    return;
+  }
+
   const arrow = arrowIn(line);
   if (arrow) return readTransition(arrow.from, arrow.to, arrow.label, number, reading, source);
 
   const marked = classIn(line);
   if (marked) return readClass(marked.states, marked.name, number, reading);
 
-  throw new DiagramError(number, `\`${line}\` is not a line amy reads; it reads \`A --> B\`, \`[*] --> A\`, \`A --> [*]\` and \`class A name\``, source);
+  throw new DiagramError(number, `\`${line}\` is not a line amy reads; it reads \`A --> B\`, \`[*] --> A\`, \`A --> [*]\`, \`class A name\` and \`state "description" as A\``, source);
 }
 
 /** An arrow's line up to its label: the label's first colon is one with no colon beside it. */
@@ -196,6 +210,8 @@ function namedBy(line: string): string[] {
   if (marked) return marked.states;
   const styled = /^style\s+(\S+)\s/.exec(line);
   if (styled) return styled[1]!.split(",").map((state) => state.trim());
+  const described = DESCRIBED.exec(line);
+  if (described) return [described[2]!];
   const noted = /^note\s+(?:left|right)\s+of\s+([^\s:]+)/.exec(line);
   return noted ? [noted[1]!] : [];
 }
@@ -274,6 +290,8 @@ function settle(reading: Reading, text: string, source: string): Diagram {
     attention: of("attention"),
     anywhere: of("anywhere"),
     returns: of("returns"),
+    calls: of("call"),
+    labels: reading.labels,
     transitions: reading.transitions,
     text,
   };
