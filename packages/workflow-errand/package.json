@@ -1,6 +1,6 @@
 {
   "name": "@amykit/workflow-errand",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Something said in passing becomes work: capture it, do it, say what happened.",
   "type": "module",
   "license": "MIT",
@@ -29,11 +29,11 @@
     "workflow.mmd"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0",
-    "@amykit/workflow-pull-request": "^0.6.0"
+    "@amykit/core": "^0.7.0",
+    "@amykit/workflow-pull-request": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0",
-    "@amykit/workflow-testkit": "^0.6.0"
+    "@amykit/workflow-testkit": "^0.7.0"
   }
 }
