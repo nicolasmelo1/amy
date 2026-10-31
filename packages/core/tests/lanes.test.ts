@@ -28,6 +28,9 @@ describe("lanes hold what they use", () => {
     checkout = path.join(root, "checkouts", "widgets");
     run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
     run(root, "clone", "-q", bare, checkout);
+    // The machine commits as whoever the checkout says; a CI runner has nobody configured.
+    run(checkout, "config", "user.email", "amy@example.test");
+    run(checkout, "config", "user.name", "amy");
     commit(checkout, "the first commit");
     run(checkout, "push", "-q", "origin", "main");
     host = {
@@ -189,6 +192,9 @@ describe("a lane that waits on a branch, on its way out", () => {
     checkout = path.join(root, "checkouts", "widgets");
     run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
     run(root, "clone", "-q", bare, checkout);
+    // The machine commits as whoever the checkout says; a CI runner has nobody configured.
+    run(checkout, "config", "user.email", "amy@example.test");
+    run(checkout, "config", "user.name", "amy");
     commit(checkout, "the first commit");
     run(checkout, "push", "-q", "origin", "main");
     host = {
@@ -238,6 +244,9 @@ describe("lanes that share one checkout", () => {
     checkout = path.join(root, "checkouts", "widgets");
     run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
     run(root, "clone", "-q", bare, checkout);
+    // The machine commits as whoever the checkout says; a CI runner has nobody configured.
+    run(checkout, "config", "user.email", "amy@example.test");
+    run(checkout, "config", "user.name", "amy");
     commit(checkout, "the first commit");
     run(checkout, "push", "-q", "origin", "main");
     host = {
