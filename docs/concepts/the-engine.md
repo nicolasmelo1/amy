@@ -113,9 +113,17 @@ interface Engine {
 }
 ```
 
-A concurrent engine is a plugin. What it would have to keep is the atomic claim
+A concurrent engine is a plugin. What it has to keep is the atomic claim
 (the file queue already provides it), the one-move-per-look rule, and the budget
 check *before* the call rather than after.
+
+`@amykit/plugin-concurrent-engine` is that plugin, for the lanes of a fork. It
+claims one item as the serial engine does; when the record waits in a fork, it
+moves every lane that has a move at once — one move each, each asked of the
+budget before its call — and folds them into the record it claimed. Name it in
+a profile's plugins instead of `@amykit/plugin-serial-engine`; every other
+workflow runs on it exactly as before. See
+[a workflow runs on lanes](../design/a-workflow-runs-on-lanes.md).
 
 The serial engine carries a gate, because it decides whether a piece of work
 gets lost. See [The gate](../development/the-gate.md).

@@ -181,6 +181,14 @@ drives, not a field existing somewhere in the middle.
       (proof: assertion:worktree.two_items_in_one_repository_run_concurrently)
 - [x] The agent, gate and git branch operations use the ticket's own path
       (proof: assertion:worktree.the_agent_the_gate_and_git_effects_receive_the_own_path)
+- [x] The gate and the self-review run as two lanes of one fork, each in a
+      tree of its own at the implementation's commit, and a change the gate
+      refuses goes back once with what both said — from
+      [a workflow runs on lanes](a-workflow-runs-on-lanes.md)
+      (proof: assertion:lifecycle.gate_and_self_review_run_as_two_lanes)
+- [x] A third world, driven by the engine that moves lanes side by side,
+      reaches the record the serial engine reaches in turn
+      (proof: assertion:lifecycle.lanes_end_the_same_serial_or_concurrent)
 - [x] Dirty or in-flight worktrees are retained rather than automatically removed
       (proof: assertion:worktree.a_crash_or_dirty_tree_never_deletes_a_worktree)
 - [x] A clean terminal worktree past retention is removed and logged

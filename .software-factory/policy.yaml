@@ -256,6 +256,11 @@ gates:
       - "plugins/command-gate/src/**"
       - "plugins/notify-fanout/src/**"
       - "plugins/notify-inbox/src/**"
+      # Its gate and self-review are the lanes of a fork: what composes them,
+      # what holds what they use, and the engine that moves them side by side.
+      - "packages/core/src/calls.ts"
+      - "packages/core/src/leases.ts"
+      - "plugins/concurrent-engine/src/**"
     evidence: ".software-factory/evidence/ticket-to-qa.json"
     plan: "docs/design/the-lifecycle-is-proven-end-to-end.md"
     required_assertions:
@@ -298,6 +303,8 @@ gates:
       - "lifecycle.the_run_leaves_nothing_behind"
       - "worktree.two_items_in_one_repository_run_concurrently"
       - "worktree.the_agent_the_gate_and_git_effects_receive_the_own_path"
+      - "lifecycle.gate_and_self_review_run_as_two_lanes"
+      - "lifecycle.lanes_end_the_same_serial_or_concurrent"
       - "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree"
       - "worktree.a_terminal_clean_tree_is_prunable_after_retention"
       - "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness"

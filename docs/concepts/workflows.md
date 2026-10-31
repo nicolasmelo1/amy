@@ -197,6 +197,43 @@ This is also where the second-workflow defect showed up: every runtime was
 folding the plan into the record twice, so every retry counted as two, and the
 `maxAttempts` ceiling fired at half its configured value.
 
+## Lanes: work that runs side by side
+
+A record is in one state at a time, and that stays true. Work that can run side
+by side is drawn as a `<<fork>>`, and every line out of it is a lane:
+
+```mermaid
+stateDiagram-v2
+    state checks <<fork>>
+    state verdict <<join>>
+    IMPLEMENTING --> checks
+    checks --> GATE
+    checks --> SELF_REVIEW
+    GATE --> verdict: GREEN
+    GATE --> verdict: RED
+    SELF_REVIEW --> verdict: APPROVED
+    SELF_REVIEW --> verdict: CHANGES_ASKED
+    verdict --> IMPLEMENTING: either found something
+    verdict --> PR_OPEN: both are clean
+    class GATE, SELF_REVIEW call
+```
+
+Every lane is a call, so every lane is a record of its own, and each takes its
+input from its own binding. The caller waits in the fork while they run and
+moves to the join when every one has ended; `record.lanes` then holds where
+each ended and what it returned, keyed by lane, for the join's `decide` to
+read. A lane that escalates leaves its siblings running, and the fork says
+which lane needs the person. Each lane's end has an edge into the join, named
+for it, as every call's end does.
+
+There is no setting for how many lanes there are: draw four and there are
+four. The serial engine moves them one look at a time, in turn;
+`@amykit/plugin-concurrent-engine` moves every lane that has a move at once.
+A lane takes a lease on the branch it writes before it checks it out, so two
+lanes never write one branch, and a binding's `revision` lends a lane a tree
+detached at the caller's commit, read-only. See
+[a workflow runs on lanes](../design/a-workflow-runs-on-lanes.md).
+
 ## The shipped workflows
 
 <!-- amy:generated workflow-states -->
@@ -282,19 +319,21 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 | 2 | `CLARIFYING` | waiting |
 | 3 | `READY` | working |
 | 4 | `IMPLEMENTING` | working |
-| 5 | `CHECKED` | working |
-| 6 | `SELF_REVIEW` | working |
-| 7 | `PR_OPEN` | working |
-| 8 | `COPILOT_WAIT` | waiting |
-| 9 | `COPILOT_FIX` | working |
-| 10 | `REVIEWER_ASSIGNED` | working |
-| 11 | `HUMAN_REVIEW` | waiting |
-| 12 | `HUMAN_FIX` | working |
-| 13 | `ESCALATED` | waiting |
-| 14 | `RE_REVIEW` | working |
-| 15 | `APPROVED` | working |
-| 16 | `QA_HANDOFF` | working |
-| 17 | `DONE` | terminal |
+| 5 | `checks` | working |
+| 6 | `GATE` | working |
+| 7 | `SELF_REVIEW` | working |
+| 8 | `verdict` | working |
+| 9 | `PR_OPEN` | working |
+| 10 | `COPILOT_WAIT` | waiting |
+| 11 | `COPILOT_FIX` | working |
+| 12 | `REVIEWER_ASSIGNED` | working |
+| 13 | `HUMAN_REVIEW` | waiting |
+| 14 | `HUMAN_FIX` | working |
+| 15 | `ESCALATED` | waiting |
+| 16 | `RE_REVIEW` | working |
+| 17 | `APPROVED` | working |
+| 18 | `QA_HANDOFF` | working |
+| 19 | `DONE` | terminal |
 
 <!-- amy:end workflow-states -->
 

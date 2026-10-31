@@ -23,6 +23,7 @@
     "plugins/codex/package.json": "03375b29f2beb5d246f3982b2a9e2da4d4e6181087af4de506b170a87de74733",
     "plugins/command-gate/package.json": "5689410b3762b002cea5ae1291920217c316142b1e98a93b7f2e2acdb54a47d8",
     "plugins/command/package.json": "34e3a202da3bbd8132894fa270b1370a639bfad0ab190b479559f8142665e1da",
+    "plugins/concurrent-engine/package.json": "59e8a5aaaedac2da718f07c882b3aa12526b904d8ee5cb34e6085d37848f04d2",
     "plugins/file-brief-store/package.json": "466ac6d1edeb0ba0af87e5edf9eb4503598aba516bfcad32c5be4fb67b0a593a",
     "plugins/file-log/package.json": "edc38b4887ef2d6d2a7fb41de76e9f52cc52cb1a9ecdbcd3b020b57cee866e6b",
     "plugins/file-notes/package.json": "f47da4e924befb44158029d7333730a1a2287166239bf4f3f24141cd8ca37322",

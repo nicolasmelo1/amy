@@ -12,6 +12,7 @@
 // is a promise amy makes and a fake that ignored it would prove nothing.
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 /** What the agent is scripted to do, as the world writes it in `agent.json`. */
 interface Script {
@@ -53,6 +54,12 @@ const STEPS = [
 const step = STEPS.find((candidate) => prompt.includes(candidate.says))?.step ?? "unknown";
 const retry = prompt.includes("A previous attempt did not hold");
 
+/** The commit the tree the agent was handed is at: what a check is about. */
+function headHere(): string | undefined {
+  const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf-8" });
+  return result.status === 0 ? result.stdout.trim() : undefined;
+}
+
 fs.appendFileSync(
   path.join(world, "claude.log"),
   `${JSON.stringify({
@@ -61,6 +68,7 @@ fs.appendFileSync(
     model,
     retry,
     cwd: process.cwd(),
+    head: headHere(),
     prompt,
   })}\n`,
 );
@@ -135,6 +143,9 @@ const ANSWERS: Record<string, () => string> = {
   },
   implement,
   "address-threads": addressThreads,
+  // The review reads the change at the commit it was lent and finds nothing
+  // to stop it: what it says still goes back with a red gate, in one round.
+  "self-review": () => "The total is worked out from the line items; check the rounding first.\nAPPROVED",
   unknown: () => {
     process.stderr.write(`the stand-in agent does not know this prompt:\n${prompt}\n`);
     process.exit(1);

@@ -8,19 +8,20 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 55,
+    "assertions_run": 57,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
-    "looks": 41,
+    "looks": 47,
     "transitions": [
       "DISCOVERED>CLARIFYING",
       "CLARIFYING>READY",
       "READY>IMPLEMENTING",
-      "IMPLEMENTING>CHECKED",
-      "CHECKED>IMPLEMENTING",
-      "IMPLEMENTING>CHECKED",
-      "CHECKED>SELF_REVIEW",
-      "SELF_REVIEW>PR_OPEN",
+      "IMPLEMENTING>checks",
+      "checks>verdict",
+      "verdict>IMPLEMENTING",
+      "IMPLEMENTING>checks",
+      "checks>verdict",
+      "verdict>PR_OPEN",
       "PR_OPEN>COPILOT_WAIT",
       "COPILOT_WAIT>COPILOT_FIX",
       "COPILOT_FIX>COPILOT_WAIT",
@@ -39,10 +40,15 @@
       "DISCOVERED",
       "CLARIFYING",
       "IMPLEMENTING",
-      "CHECKED",
+      "checks",
+      "checks",
+      "checks",
+      "checks",
       "IMPLEMENTING",
-      "CHECKED",
-      "SELF_REVIEW",
+      "checks",
+      "checks",
+      "checks",
+      "checks",
       "PR_OPEN",
       "COPILOT_WAIT",
       "COPILOT_FIX",
@@ -59,28 +65,29 @@
     ],
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at e0654bc and left one comment",
-      "the automated reviewer looked at dbd1ca9 and had nothing to say",
+      "the automated reviewer looked at ff710f4 and left one comment",
+      "the automated reviewer looked at 38ff5c9 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on dbd1ca9",
+      "ada asked for changes on 38ff5c9",
       "the owner settled the disagreement on the ticket",
-      "ada approved dc24256",
-      "the automated reviewer looked at dc24256 and had nothing to say",
-      "the automated reviewer looked at c81dd41 and had nothing to say",
-      "ada approved c81dd41"
+      "ada approved 1652e38",
+      "the automated reviewer looked at 1652e38 and had nothing to say",
+      "the automated reviewer looked at 4b16580 and had nothing to say",
+      "ada approved 4b16580"
     ],
     "agent_calls": [
       "triage",
       "triage",
       "implement",
+      "self-review",
       "implement",
       "self-review",
       "address-threads",
       "address-threads",
       "address-threads"
     ],
-    "gh_calls": 50,
-    "tracker_calls": 59,
+    "gh_calls": 48,
+    "tracker_calls": 65,
     "commits_on_the_branch": [
       "BILL-4021: address review comments",
       "BILL-4021: address review comments",
@@ -94,12 +101,32 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-10-31T03:55:52.352Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-10-31T03:55:52.069Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-10-31T13:32:57.676Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-10-31T13:32:57.399Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
-    "second_run_transitions": 21
+    "second_run_transitions": 22,
+    "concurrent_run_transitions": 22,
+    "concurrent_looks_that_moved_lanes_side_by_side": 4,
+    "gate_runs": [
+      {
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-QqcQFJ/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "e33f4cb6325bd3aca6ebdd31917d53e17bae58ca"
+      },
+      {
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-QqcQFJ/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "ff710f48e88f8b03a7dd6c0d63d22a12e5f3dbb7"
+      }
+    ]
   },
   "assertions": [
+    {
+      "type": "lifecycle.gate_and_self_review_run_as_two_lanes",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.lanes_end_the_same_serial_or_concurrent",
+      "status": "passed"
+    },
     {
       "type": "brief.parent_is_the_tracker_supplied_shared_id",
       "status": "passed"

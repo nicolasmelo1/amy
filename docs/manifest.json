@@ -318,6 +318,11 @@
           "description": ""
         },
         {
+          "title": "A workflow runs on lanes",
+          "path": "/design/a-workflow-runs-on-lanes",
+          "description": ""
+        },
+        {
           "title": "A workflow that claims no writes cannot reach one",
           "path": "/design/a-workflow-that-claims-no-writes-cannot-reach-one",
           "description": ""
@@ -946,6 +951,11 @@
           "depth": 3,
           "title": "Workflows can now declare one decision per diagram state, compose pure before and after filters around those decisions, and provide discover, observe, actions, and remember as individual runtime pieces. extend mounts supporting infrastructure from the same declaration. Legacy plan/runtime declarations and raw plugins remain supported, while mixing the legacy and new declaration members is refused at boot.",
           "slug": "workflows-can-now-declare-one-decision-per-diagram-state-compose-pure-before-and-after-filters-around-those-decisions-and-provide-discover-observe-actions-and-remember-as-individual-runtime-pieces-extend-mounts-supporting-infrastructure-from-the-same-declaration-legacy-planruntime-declarations-and-raw-plugins-remain-supported-while-mixing-the-legacy-and-new-declaration-members-is-refused-at-boot"
+        },
+        {
+          "depth": 3,
+          "title": "**A workflow runs on lanes.** A diagram may draw state X <<fork>> and state Y <<join>>: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.",
+          "slug": "a-workflow-runs-on-lanes-a-diagram-may-draw-state-x-fork-and-state-y-join-every-line-out-of-the-fork-is-a-lane-every-lane-is-a-call-so-a-record-of-its-own-and-the-caller-moves-to-the-join-once-every-lane-has-ended-holding-where-each-ended-and-what-it-returned-keyed-by-lane-there-is-no-setting-for-how-many-the-number-of-lanes-is-the-number-of-lines-drawn-before-this-work-that-could-run-side-by-side-ran-one-piece-after-the-other-or-was-written-by-hand-in-a-runtime-the-diagram-never-showed"
         },
         {
           "depth": 3,
@@ -1591,6 +1601,11 @@
           "depth": 2,
           "title": "Attempts, and why advance does not count",
           "slug": "attempts-and-why-advance-does-not-count"
+        },
+        {
+          "depth": 2,
+          "title": "Lanes: work that runs side by side",
+          "slug": "lanes-work-that-runs-side-by-side"
         },
         {
           "depth": 2,
@@ -2306,6 +2321,43 @@
           "depth": 2,
           "title": "Acceptance criteria",
           "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-runs-on-lanes",
+      "file": "docs/design/a-workflow-runs-on-lanes.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-runs-on-lanes.md",
+      "title": "A workflow runs on lanes",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        },
+        {
+          "depth": 2,
+          "title": "What was built",
+          "slug": "what-was-built"
+        },
+        {
+          "depth": 2,
+          "title": "What changed from the plan",
+          "slug": "what-changed-from-the-plan"
+        },
+        {
+          "depth": 2,
+          "title": "The files",
+          "slug": "the-files"
         }
       ]
     },
@@ -4292,6 +4344,11 @@
           "depth": 3,
           "title": "@amykit/plugin-command-gate",
           "slug": "amykitplugin-command-gate"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/plugin-concurrent-engine",
+          "slug": "amykitplugin-concurrent-engine"
         },
         {
           "depth": 3,
@@ -7420,6 +7477,49 @@
         "environment": []
       },
       {
+        "name": "@amykit/plugin-concurrent-engine",
+        "version": "0.6.0",
+        "kind": "plugin",
+        "description": "Advances one work item per tick, moving every lane of a fork at once.",
+        "directory": "plugins/concurrent-engine",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-concurrent-engine",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/concurrent-engine",
+        "readme": "plugins/concurrent-engine/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "maxItemAttempts",
+            "type": "number",
+            "required": false,
+            "default": 5,
+            "description": "how many times one item may fail before the operator is told and it is dropped"
+          },
+          {
+            "name": "retentionDays",
+            "type": "number",
+            "required": false,
+            "default": 7,
+            "description": "how long a finished queue item is kept before it is pruned"
+          },
+          {
+            "name": "retryDelayMs",
+            "type": "number",
+            "required": false,
+            "default": 300000,
+            "description": "how long a failed item is held before it is looked at again"
+          },
+          {
+            "name": "staleClaimMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long a claimed item may sit before it counts as abandoned"
+          }
+        ],
+        "environment": []
+      },
+      {
         "name": "@amykit/plugin-file-brief-store",
         "version": "0.6.0",
         "kind": "plugin",
@@ -8385,8 +8485,10 @@
         "CLARIFYING",
         "READY",
         "IMPLEMENTING",
-        "CHECKED",
+        "checks",
+        "GATE",
         "SELF_REVIEW",
+        "verdict",
         "PR_OPEN",
         "COPILOT_WAIT",
         "COPILOT_FIX",
@@ -9017,7 +9119,10 @@
           "plugins/claude/src/**",
           "plugins/command-gate/src/**",
           "plugins/notify-fanout/src/**",
-          "plugins/notify-inbox/src/**"
+          "plugins/notify-inbox/src/**",
+          "packages/core/src/calls.ts",
+          "packages/core/src/leases.ts",
+          "plugins/concurrent-engine/src/**"
         ],
         "evidence": ".software-factory/evidence/ticket-to-qa.json",
         "plan": "docs/design/the-lifecycle-is-proven-end-to-end.md",
@@ -9061,6 +9166,8 @@
           "lifecycle.the_run_leaves_nothing_behind",
           "worktree.two_items_in_one_repository_run_concurrently",
           "worktree.the_agent_the_gate_and_git_effects_receive_the_own_path",
+          "lifecycle.gate_and_self_review_run_as_two_lanes",
+          "lifecycle.lanes_end_the_same_serial_or_concurrent",
           "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree",
           "worktree.a_terminal_clean_tree_is_prunable_after_retention",
           "worktree.the_list_names_state_workflow_repo_branch_and_cleanliness",
@@ -9850,6 +9957,38 @@
           },
           {
             "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-workflow-runs-on-lanes",
+        "title": "**A workflow runs on lanes.** A diagram may draw `state X <<fork>>` and `state Y <<join>>`: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.",
+        "body": "A lane that escalates leaves its siblings running, and the fork says which\nlane needs the person — in its wait, in `callStanding`, and in `amy status`,\nwhich draws the lanes side by side. A lane takes a lease on the branch it\nwrites before it checks it out, and a branch another lane holds is a wait that\ncosts no attempt. A binding's `revision` lends a lane a tree detached at the\ncaller's commit, read-only. Refused at boot, by name: a lane that is not a\ncall, a lane that never reaches its join, a join no fork meets at, a decision\nwritten for a fork, and two lanes bound to the same literal branch.\n\n`@amykit/plugin-concurrent-engine` is the serial engine with the lanes of a\nfork moved at once, each asked of the budget before its call. The serial\nengine stays the default, and moves them in turn.\n\n**`ticket-to-qa` runs its gate and its self-review as two lanes.** `CHECKED`\nand `SELF_REVIEW` are gone: a finished implementation goes to `checks`, where\nthe gate and the review both check the implementation's commit, and meet at\n`verdict`. A change either one refuses goes back to the implementation with\nwhat both said, in one round — before, a change the gate refused went back\nwithout what the review would have said, and the review never saw the rules\nthe gate holds. The review now ends on a verdict: a line saying\n`CHANGES_ASKED` sends the work back, anything else approves. The rounds count\ntoward `maxGateAttempts`. A record an older version saved in `CHECKED` or\n`SELF_REVIEW` goes back to `IMPLEMENTING` on its next look, and is checked\nagain in both lanes.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-concurrent-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-testkit",
             "level": "minor"
           },
           {
