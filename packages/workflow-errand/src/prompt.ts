@@ -25,9 +25,30 @@ export function errandPrompt(task: Task, finding?: string): string {
     ``,
     `If it cannot be done as asked — it is already done, it is wrong, or it`,
     `needs a decision nobody made — say so plainly and change nothing. Do not`,
-    `do a different, easier thing instead.`,
+    `do a different, easier thing instead. Then end your reply with this line,`,
+    `and write it for nothing else:`,
+    ``,
+    `${JSON.stringify({ declined: "why, in one sentence" })}`,
     ...(finding
       ? [``, `Your last attempt did not get through. What came back:`, ``, finding]
       : []),
   ].join("\n");
+}
+
+/**
+ * The reason on the line the prompt asks a refusal to end with, if there is one.
+ *
+ * Read off the last line only, so an answer that quotes JSON is not mistaken
+ * for a refusal, and an answer with no such line is an answer.
+ */
+export function declinedIn(reply: string): string | undefined {
+  const last = reply.trim().split("\n").at(-1)?.trim() ?? "";
+  if (!last.startsWith("{")) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(last);
+    const declined = (parsed as { declined?: unknown } | null)?.declined;
+    return typeof declined === "string" && declined.trim() ? declined.trim() : undefined;
+  } catch {
+    return undefined;
+  }
 }

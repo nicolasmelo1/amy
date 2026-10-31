@@ -51,6 +51,8 @@ class World {
   agentSucceeds = true;
   /** Whether what it did left a change to push, or was only an answer. */
   agentChangesSomething = true;
+  /** Why it said it would not do this, when it said so. */
+  agentDeclines: string | undefined;
   private clock = 0;
 
   observe(): Observation {
@@ -74,7 +76,8 @@ class World {
         outcomes.attempt = this.agentSucceeds
           ? { ok: true, output: "raised four minor versions", at }
           : { ok: false, output: "the checkout would not resolve", at };
-        if (this.agentSucceeds) outcomes.changed = this.agentChangesSomething;
+        if (this.agentDeclines) outcomes.declined = this.agentDeclines;
+        else if (this.agentSucceeds) outcomes.changed = this.agentChangesSomething;
       }
       if (action.type === "open-pull-request") {
         this.pullRequest = PULL_REQUEST;
@@ -213,6 +216,21 @@ describe("an errand that cannot be done", () => {
     expect(record.state).toBe("DECLINED");
     expect(record.attempts.WORKING).toBe(DEFAULT_POLICY.maxAttempts);
     expect(moves.at(-1)?.actions).toEqual(["announce"]);
+  });
+
+  it("is handed back after one attempt when the agent says it cannot be done, with its reason", () => {
+    // A refusal is a decision, not a failure: a second attempt would spend an
+    // agent to hear the same answer.
+    const world = new World();
+    world.agentDeclines = "rewriting the ledger needs a decision nobody made";
+
+    const { record, moves } = walk(world);
+
+    expect(DEFAULT_POLICY.maxAttempts).toBeGreaterThan(1);
+    expect(record.state).toBe("DECLINED");
+    expect(record.attempts.WORKING).toBe(1);
+    expect(moves.at(-1)?.why).toBe("the agent said it cannot be done as asked");
+    expect(record.pullRequestNumber).toBeUndefined();
   });
 
   it("does not open a pull request for work that never got done", () => {

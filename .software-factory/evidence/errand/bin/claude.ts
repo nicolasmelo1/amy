@@ -71,12 +71,15 @@ function envelope(result: string, isError: boolean): void {
 }
 
 if (task === "refusal") {
-  // A refusal is an answer, not a crash: the run completed and said no. The
-  // envelope's own error flag is what the machine reads, and the words in
-  // `result` are what the operator is owed.
+  // A refusal is an answer, not a crash: the run completed and said no, on
+  // the line the prompt asked a refusal to end with. That line is what the
+  // machine reads, and its reason is what the operator is owed.
   envelope(
-    "I cannot do that as asked: rewriting the ledger needs a decision nobody made.",
-    true,
+    [
+      "I cannot do that as asked.",
+      JSON.stringify({ declined: "rewriting the ledger needs a decision nobody made" }),
+    ].join("\n"),
+    false,
   );
   process.exit(0);
 }

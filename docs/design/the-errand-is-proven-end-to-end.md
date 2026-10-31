@@ -67,6 +67,20 @@ clean tree is a finished errand again, and the branch stays local. The
 criterion below is the one that holds it: the second errand leaves no branch
 on the origin at all.
 
+## What the review found
+
+The first version of the scenario passed the refusal criterion without the
+workflow meeting it. A refusal came back as an error, and the run set
+`maxAttempts: 1`, so `DECLINED` was the attempt ceiling and not a decision. Under
+the prompt as written, a real agent that refused would have left a clean tree
+and landed in `DONE`, as if it had answered.
+
+The errand now has a word for it. The prompt asks a refusal to end with one
+line, `{"declined": "why"}`. `declinedIn` reads only the last line, so an answer
+that quotes JSON is still an answer. `planWorking` declines on it before it
+looks at attempts. The scenario runs with the production budget of two, and
+the criterion holds because the refused errand is asked exactly once.
+
 ## Acceptance criteria
 
 - [x] A remark typed at `amy btw` is a task file that the next `discover`

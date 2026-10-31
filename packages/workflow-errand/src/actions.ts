@@ -16,7 +16,7 @@ import { EffectOutcomes } from "./outcomes.js";
 import { ErrandRecord } from "./record.js";
 import { Task, Tasks } from "./ports/Tasks.js";
 import { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./task-file.js";
-import { errandPrompt } from "./prompt.js";
+import { declinedIn, errandPrompt } from "./prompt.js";
 
 export interface ErrandRuntimeConfig {
   /** The repositories this install may do an errand in. */
@@ -78,6 +78,15 @@ export function errandRuntime(
       const at = deps.now().toISOString();
       if (reply.run.outcome !== "completed") {
         outcomesOf(ctx).attempt = { ok: false, output: reply.run.output, at };
+        return;
+      }
+
+      // A refusal is the agent's decision, and nothing it left in the tree is
+      // published: it was asked to change nothing.
+      const declined = declinedIn(reply.text);
+      if (declined) {
+        outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
+        outcomesOf(ctx).declined = declined;
         return;
       }
 
@@ -172,6 +181,7 @@ export function errandRuntime(
         slug: current.slug ?? slugFor(observation.task),
         ...(bag.attempt ? { lastAttempt: bag.attempt } : {}),
         ...(bag.changed === undefined ? {} : { changed: bag.changed }),
+        ...(bag.declined === undefined ? {} : { declined: bag.declined }),
         ...(bag.pullRequestNumber === undefined
           ? {}
           : { pullRequestNumber: bag.pullRequestNumber }),

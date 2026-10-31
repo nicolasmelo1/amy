@@ -32,9 +32,8 @@ export const BY_HAND_ID = "by-hand-question";
 export const BY_HAND_SOURCE = "a hook";
 export const BY_HAND_ADDED_AT = "2026-09-05T09:00:00.000Z";
 
-/** What the agent is told in the refusal, which is what the operator must see. */
-export const REFUSAL =
-  "I cannot do that as asked: rewriting the ledger needs a decision nobody made.";
+/** The reason the agent gives on its refusal line, which is what the operator must see. */
+export const REFUSAL = "rewriting the ledger needs a decision nobody made";
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, {
@@ -154,8 +153,9 @@ worktrees:
   root: ${path.join(root, "trees")}
   retentionDays: 7
 
-# One attempt, so an errand the agent refuses costs one look rather than
-# five. In production this is two.
+# One, because no look in this run should throw: a defect that made one
+# throw fails the run at once rather than hiding behind a retry. In
+# production this is two.
 maxItemAttempts: 1
 
 # Off, because nothing in this run reaches the internet, and an update check
@@ -163,11 +163,11 @@ maxItemAttempts: 1
 autoUpdate:
   enabled: false
 
-# One attempt, because a refusal is the end of it: the road to DECLINED is a
-# decision, not a ceiling the work climbs until it gives up.
+# Two attempts, as in production, so a refusal that ends on the first is the
+# agent's decision and not a ceiling the work ran into.
 errands:
   policy:
-    maxAttempts: 1
+    maxAttempts: 2
     maxInFlight: 3
     # Zero, because the queue is the schedule and this run is driven a move at
     # a time. In production this is half an hour.

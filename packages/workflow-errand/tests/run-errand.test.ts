@@ -56,15 +56,15 @@ describe("run-errand", () => {
   });
 
   /** Runs the action once, with an agent that does whatever `work` does in the tree. */
-  async function runErrand(work: (cwd: string) => void): Promise<EffectOutcomes> {
+  async function runErrand(work: (cwd: string) => void, said = "done"): Promise<EffectOutcomes> {
     const layout = { workspaceRoot: path.join(root, "checkouts"), defaultBranch: "main" };
     const agent: Harness = {
       name: "stand-in",
       ask: async (_prompt, cwd) => {
         work(cwd);
         return {
-          text: "done",
-          run: { outcome: "completed", harness: "stand-in", model: "none", costSource: "reported", durationMs: 1, output: "done" },
+          text: said,
+          run: { outcome: "completed", harness: "stand-in", model: "none", costSource: "reported", durationMs: 1, output: said },
         };
       },
     } as Harness;
@@ -113,6 +113,17 @@ describe("run-errand", () => {
 
     expect(outcomes.changed).toBe(false);
     expect(outcomes.attempt?.ok).toBe(true);
+    expect(onOrigin(BRANCH)).toBe(false);
+  });
+
+  it("publishes nothing for an errand the agent refused, whatever it left in the tree", async () => {
+    const outcomes = await runErrand((cwd) => fs.writeFileSync(path.join(cwd, "half.md"), "started\n"), [
+      "I cannot do that as asked.",
+      JSON.stringify({ declined: "it needs a decision nobody made" }),
+    ].join("\n"));
+
+    expect(outcomes.declined).toBe("it needs a decision nobody made");
+    expect(outcomes.changed).toBeUndefined();
     expect(onOrigin(BRANCH)).toBe(false);
   });
 
