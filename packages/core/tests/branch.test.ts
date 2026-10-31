@@ -153,6 +153,18 @@ describe("a commit is not a push", () => {
     expect(await git().commit("acme/widgets", "nothing")).toBe(false);
   });
 
+  it("counts what a branch holds beyond its base, not whether its ref is new", async () => {
+    // A branch cut from main and published unchanged is a new remote ref, so
+    // only the count tells an answer from a change.
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(0);
+
+    fs.writeFileSync(path.join(checkout, "round-1.md"), "one\n");
+    await git().commit("acme/widgets", "round 1");
+
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(1);
+  });
+
   it("pushes every round the remote has not seen, once", async () => {
     await git().prepareBranch("acme/widgets", "amy/item-1");
     fs.writeFileSync(path.join(checkout, "round-1.md"), "one\n");
