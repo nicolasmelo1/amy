@@ -337,44 +337,60 @@ function forksOf(reading: Reading, source: string): Record<string, Fork> {
   const refuse = (why: string): never => {
     throw new DiagramError(0, why, source);
   };
-  const out = (state: string) => reading.transitions.filter((edge) => edge.from === state);
-  const into = (state: string) => reading.transitions.filter((edge) => edge.to === state);
-  const calls = reading.classes.get("call")!;
+  for (const state of [...reading.forks, ...reading.joins]) pseudoFits(reading, state, refuse);
   const forks: Record<string, Fork> = {};
-  for (const state of [...reading.forks, ...reading.joins]) {
-    if (reading.forks.has(state) && reading.joins.has(state)) refuse(`\`${state}\` is drawn as a fork and as a join; a state is one or the other`);
-    if (reading.initial.includes(state) || reading.terminal.has(state)) refuse(`\`${state}\` is a fork or a join, and work neither starts nor ends in one`);
-    if (calls.has(state)) refuse(`\`${state}\` is a fork or a join and a call; the lanes are the calls`);
-  }
   const laned = new Set<string>();
-  for (const fork of reading.forks) {
-    const lanes = out(fork).map((edge) => edge.to);
-    if (lanes.length < 2) refuse(`the fork \`${fork}\` draws ${lanes.length} lane(s); a fork splits work into two or more, and one is a call`);
-    for (const lane of lanes) {
-      if (!calls.has(lane)) refuse(`\`${lane}\` is a lane of the fork \`${fork}\` and not a call: every lane is a record of its own — add \`class ${lane} call\``);
-      if (laned.has(lane)) refuse(`\`${lane}\` is drawn twice out of a fork; each lane is drawn once`);
-      laned.add(lane);
-      const from = into(lane).map((edge) => edge.from).filter((state) => state !== fork);
-      if (from.length > 0) refuse(`\`${lane}\` is a lane of \`${fork}\` and is also reached from \`${from[0]}\`; a lane starts only at its fork`);
-    }
-    const joins = [...new Set(lanes.flatMap((lane) => out(lane).map((edge) => edge.to)))];
-    const join = joins.find((state) => reading.joins.has(state));
-    if (!join) refuse(`the lanes of \`${fork}\` lead to no \`<<join>>\`; draw where they meet again`);
-    for (const lane of lanes) {
-      const elsewhere = out(lane).find((edge) => edge.to !== join);
-      if (elsewhere) refuse(`\`${lane} --> ${elsewhere.to}\` leaves a lane of \`${fork}\` for somewhere other than its join \`${join}\`; every end of a lane leads to the join`);
-      if (out(lane).length === 0) refuse(`\`${lane}\` is a lane of \`${fork}\` and never reaches the join \`${join}\``);
-    }
-    forks[fork] = { lanes, join: join! };
-  }
-  for (const join of reading.joins) {
-    const met = Object.entries(forks).filter(([, fork]) => fork.join === join);
-    if (met.length !== 1) refuse(`the join \`${join}\` is ${met.length === 0 ? "reached by no fork's lanes" : "where two forks meet"}; a join is where one fork's lanes meet again`);
-    const strays = into(join).filter((edge) => !met[0]![1].lanes.includes(edge.from));
-    if (strays.length > 0) refuse(`\`${strays[0]!.from} --> ${join}\` reaches the join from outside its fork; only the lanes lead into a join`);
-    if (out(join).length === 0) refuse(`the join \`${join}\` leads nowhere; draw where the work goes once its lanes have met`);
-  }
+  for (const fork of reading.forks) forks[fork] = forkOf(reading, fork, laned, refuse);
+  for (const join of reading.joins) joinFits(reading, join, forks, refuse);
   return forks;
+}
+
+type Refuse = (why: string) => never;
+
+const out = (reading: Reading, state: string) => reading.transitions.filter((edge) => edge.from === state);
+const into = (reading: Reading, state: string) => reading.transitions.filter((edge) => edge.to === state);
+
+/** A fork or a join is one or the other, never where work starts or ends, and never a call. */
+function pseudoFits(reading: Reading, state: string, refuse: Refuse): void {
+  if (reading.forks.has(state) && reading.joins.has(state)) refuse(`\`${state}\` is drawn as a fork and as a join; a state is one or the other`);
+  if (reading.initial.includes(state) || reading.terminal.has(state)) refuse(`\`${state}\` is a fork or a join, and work neither starts nor ends in one`);
+  if (reading.classes.get("call")!.has(state)) refuse(`\`${state}\` is a fork or a join and a call; the lanes are the calls`);
+}
+
+/** One fork's lanes, each a call started only there, and the join every one of them leads to. */
+function forkOf(reading: Reading, fork: string, laned: Set<string>, refuse: Refuse): Fork {
+  const lanes = out(reading, fork).map((edge) => edge.to);
+  if (lanes.length < 2) refuse(`the fork \`${fork}\` draws ${lanes.length} lane(s); a fork splits work into two or more, and one is a call`);
+  for (const lane of lanes) laneFits(reading, fork, lane, laned, refuse);
+  const join = [...new Set(lanes.flatMap((lane) => out(reading, lane).map((edge) => edge.to)))].find((state) => reading.joins.has(state));
+  if (!join) return refuse(`the lanes of \`${fork}\` lead to no \`<<join>>\`; draw where they meet again`);
+  for (const lane of lanes) meetsAt(reading, fork, lane, join, refuse);
+  return { lanes, join };
+}
+
+function laneFits(reading: Reading, fork: string, lane: string, laned: Set<string>, refuse: Refuse): void {
+  if (!reading.classes.get("call")!.has(lane)) refuse(`\`${lane}\` is a lane of the fork \`${fork}\` and not a call: every lane is a record of its own — add \`class ${lane} call\``);
+  if (laned.has(lane)) refuse(`\`${lane}\` is drawn twice out of a fork; each lane is drawn once`);
+  laned.add(lane);
+  const from = into(reading, lane).map((edge) => edge.from).filter((state) => state !== fork);
+  if (from.length > 0) refuse(`\`${lane}\` is a lane of \`${fork}\` and is also reached from \`${from[0]}\`; a lane starts only at its fork`);
+}
+
+/** Every end of a lane leads to its join, and nowhere else. */
+function meetsAt(reading: Reading, fork: string, lane: string, join: string, refuse: Refuse): void {
+  const edges = out(reading, lane);
+  if (edges.length === 0) refuse(`\`${lane}\` is a lane of \`${fork}\` and never reaches the join \`${join}\``);
+  const elsewhere = edges.find((edge) => edge.to !== join);
+  if (elsewhere) refuse(`\`${lane} --> ${elsewhere.to}\` leaves a lane of \`${fork}\` for somewhere other than its join \`${join}\`; every end of a lane leads to the join`);
+}
+
+/** A join is where one fork's lanes meet, only they lead into it, and it leads somewhere. */
+function joinFits(reading: Reading, join: string, forks: Record<string, Fork>, refuse: Refuse): void {
+  const met = Object.values(forks).filter((fork) => fork.join === join);
+  if (met.length !== 1) refuse(`the join \`${join}\` is ${met.length === 0 ? "reached by no fork's lanes" : "where two forks meet"}; a join is where one fork's lanes meet again`);
+  const strays = into(reading, join).filter((edge) => !met[0]!.lanes.includes(edge.from));
+  if (strays.length > 0) refuse(`\`${strays[0]!.from} --> ${join}\` reaches the join from outside its fork; only the lanes lead into a join`);
+  if (out(reading, join).length === 0) refuse(`the join \`${join}\` leads nowhere; draw where the work goes once its lanes have met`);
 }
 
 /**

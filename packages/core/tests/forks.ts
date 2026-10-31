@@ -22,7 +22,7 @@ import {
   withDiagram,
 } from "../src/index.js";
 
-export const NO_SETTINGS = {} satisfies ConfigSchema;
+const NO_SETTINGS = {} satisfies ConfigSchema;
 
 export type TaskRecord = WorkRecord & { state: "WORKING" | "DONE" | "DECLINED" | "STUCK"; input: { task: string }; worked?: number };
 
@@ -140,7 +140,7 @@ export async function mounted(plugins: readonly Plugin[], host: HostServices): P
 }
 
 /** One look, as the serial engine takes it, and the plan it made. */
-export async function look(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord, now: Date): Promise<{ next: WorkRecord; plan: ReturnType<Workflow["plan"]>; outcomes: Record<string, unknown> } | undefined> {
+async function look(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord, now: Date): Promise<{ next: WorkRecord; plan: ReturnType<Workflow["plan"]>; outcomes: Record<string, unknown> } | undefined> {
   const observation = await runtime.observe(record);
   const plan = workflow.plan(record, observation, runtime.policy);
   if (plan.kind === "settled") return undefined;

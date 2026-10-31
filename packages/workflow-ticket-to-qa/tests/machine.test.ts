@@ -1510,3 +1510,14 @@ describe("HUMAN_REVIEW, after asking again, reads one review for all three", () 
     expect(expectAdvance(plan(operator, obs, { ...policy, writes: "operator" })).to).toBe("APPROVED");
   });
 });
+
+describe("a record an older version saved where the checks used to run", () => {
+  it.each(["CHECKED", "SELF_REVIEW"])("goes back to the implementation from %s, to be checked again in both lanes", (state) => {
+    const r = record("IMPLEMENTING", { lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z") });
+
+    const p = expectAdvance(plan({ ...r, state } as never, observation(), policy));
+
+    expect(p.to).toBe("IMPLEMENTING");
+    expect(p.why).toContain("before they ran as lanes");
+  });
+});

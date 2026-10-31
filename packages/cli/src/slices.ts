@@ -116,13 +116,10 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
       checkouts: config.checkouts,
       retentionDays: config.worktrees.retentionDays,
     },
-    // The engine's, and none of it names a domain.
-    "@amykit/plugin-serial-engine": {
-      staleClaimMs: config.staleClaimMs,
-      retentionDays: config.retentionDays,
-      maxItemAttempts: config.maxItemAttempts,
-      retryDelayMs: config.policy.pollBackoffMs,
-    },
+    // The engine's, and none of it names a domain. The concurrent engine is
+    // the serial one with its lanes moved at once, and takes the same.
+    "@amykit/plugin-serial-engine": engineSlice(config),
+    "@amykit/plugin-concurrent-engine": engineSlice(config),
   };
 
   Object.assign(derived, slackSlice(own.slack));
@@ -379,5 +376,14 @@ export function hostPaths(config: AmyConfig, stateDir: string, profile?: Profile
     checkouts: config.checkouts,
     state: stateDir,
     ...(place?.artifacts ? { artifacts: place.artifacts } : {}),
+  };
+}
+
+function engineSlice(config: AmyConfig): Record<string, unknown> {
+  return {
+    staleClaimMs: config.staleClaimMs,
+    retentionDays: config.retentionDays,
+    maxItemAttempts: config.maxItemAttempts,
+    retryDelayMs: config.policy.pollBackoffMs,
   };
 }

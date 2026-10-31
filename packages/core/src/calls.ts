@@ -218,7 +218,7 @@ export interface ForkSite {
  * with its own input, numbered like any call so a second round never reuses
  * the first's.
  */
-export function enterFork(record: WorkRecord, fork: ForkSite, now: Date): WorkRecord {
+function enterFork(record: WorkRecord, fork: ForkSite, now: Date): WorkRecord {
   let entered = record;
   const lanes: Record<string, Lane> = {};
   for (const site of fork.lanes) {

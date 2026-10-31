@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DiagramError, HostServices, advance, call, cameFrom, connects, defineWorkflow, markState, mount, readDiagram, settled, withDiagram } from "../src/index.js";
+import { parse } from "pele";
+import { DiagramError, HostServices, advance, call, cameFrom, connects, defineWorkflow, expandDiagram, markState, mount, readDiagram, settled, withDiagram } from "../src/index.js";
 import { ESCALATING, LANES, NOTE_TO_PLAN } from "./diagrams.js";
 import { PLANNER, PlannerRecord, mounted, planner, task, walk } from "./forks.js";
 
@@ -258,5 +259,17 @@ describe("a fork of lanes", () => {
       TASK_C: { call: "PLAN-1/TASK_C#1", end: "DONE", output: { did: "test", looks: 1 } },
     });
     expect(record.history.map((step) => `${step.from}>${step.to}`)).toEqual(["PLANNED>split", "split>merge", "merge>ESCALATED"]);
+  });
+
+  it("expands into a composite that draws each lane, marked where its own record is, and Mermaid reads it", async () => {
+    const { workflow, runtime } = await mounted([planner()], HOST);
+    const { record } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split");
+
+    const expanded = expandDiagram(workflow, record);
+
+    expect(expanded).toContain("state split <<fork>>");
+    expect(expanded).toContain("state TASK_A {");
+    expect(expanded).toContain("class split,TASK_A__WORKING,TASK_B__WORKING,TASK_C__WORKING current");
+    expect((parse(expanded) as { type: string }).type).toBe("state");
   });
 });

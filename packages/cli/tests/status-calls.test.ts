@@ -73,3 +73,29 @@ describe("amy status, for work inside a call", () => {
   });
 });
 
+
+describe("amy status, for work waiting on lanes", () => {
+  const forked: StatusRecord = {
+    ...escalated,
+    id: "BILL-1",
+    state: "checks",
+    calls: [],
+    attention: true,
+    lanes: [
+      { lane: "GATE", id: "BILL-1/GATE#1", state: "GREEN", ended: true, attention: false, history: [{ at: "2026-10-30T11:30:00.000Z", from: "CHECKING", to: "GREEN", why: "the gate is green" }] },
+      { lane: "SELF_REVIEW", id: "BILL-1/SELF_REVIEW#1", state: "ESCALATED", ended: false, attention: true, history: [{ at: "2026-10-30T11:40:00.000Z", from: "REVIEWING", to: "ESCALATED", why: "the brief contradicts itself" }] },
+    ],
+  };
+
+  it("draws the lanes side by side, each where its record is, and how many have arrived", () => {
+    const page = renderText(statusView(snapshot([forked]), { all: false, inbox: INBOX }));
+
+    expect(page).toContain("checks › GATE GREEN ∥ SELF_REVIEW ESCALATED (1/2 arrived)");
+  });
+
+  it("says which lane needs the person, with the move that stopped it", () => {
+    const page = renderText(statusView(snapshot([forked]), { all: false, inbox: INBOX }));
+
+    expect(page).toContain("BILL-1 needs you: the lane SELF_REVIEW (BILL-1/SELF_REVIEW#1) stopped in ESCALATED — the brief contradicts itself");
+  });
+});

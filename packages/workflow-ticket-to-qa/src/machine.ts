@@ -33,7 +33,20 @@ export function plan(record: TicketRecord, obs: Observation, policy: Policy): Pl
 }
 
 export function before(record: TicketRecord, obs: Observation, _policy: Policy): Plan | undefined {
-  return obs.retired && record.state !== "DONE" ? retire(obs) : undefined;
+  if (obs.retired && record.state !== "DONE") return retire(obs);
+  return ranTheChecksInTurn(record);
+}
+
+/**
+ * A record an older version saved in `CHECKED` or `SELF_REVIEW`, the two
+ * states the checks were before they ran as lanes. It goes back to the
+ * implementation, which is dated against the gate, so it is checked again in
+ * `checks` rather than published on a check the record no longer explains.
+ */
+function ranTheChecksInTurn(record: TicketRecord): Plan | undefined {
+  const state = record.state as string;
+  if (state !== "CHECKED" && state !== "SELF_REVIEW") return undefined;
+  return advance("IMPLEMENTING", `${state} is where the checks ran before they ran as lanes; checking the work again in both`);
 }
 
 export function after(decision: Plan, record: TicketRecord, obs: Observation, policy: Policy): Plan {
@@ -185,20 +198,24 @@ function isCurrent(check: { at: string } | undefined, record: TicketRecord): boo
  * what the review said about it too.
  */
 function retryContextFor(record: TicketRecord): string | undefined {
-  const gate = isCurrent(record.lastGate, record) && !record.lastGate!.ok ? record.lastGate!.output : undefined;
-  const review = isCurrent(record.lastSelfReview, record) && (gate !== undefined || record.lastSelfReview!.verdict === "CHANGES_ASKED")
-    ? record.lastSelfReview!.output
-    : undefined;
-  if (gate !== undefined || review !== undefined) {
-    return [
-      ...(gate === undefined ? [] : ["The gate said:", gate]),
-      ...(review === undefined ? [] : [...(gate === undefined ? [] : [""]), "The review of the change said:", review]),
-    ].join("\n");
-  }
+  const found = checksFound(record);
+  if (found.length > 0) return found.join("\n\n");
   if (record.lastImplementation && !record.lastImplementation.ok) {
     return record.lastImplementation.output;
   }
   return undefined;
+}
+
+/** What the gate refused and what the review said about the last implementation, each under its name. */
+function checksFound(record: TicketRecord): string[] {
+  const gate = record.lastGate;
+  const review = record.lastSelfReview;
+  const refused = isCurrent(gate, record) && !gate!.ok;
+  const reviewed = isCurrent(review, record) && (refused || review!.verdict === "CHANGES_ASKED");
+  return [
+    ...(refused ? [`The gate said:\n${gate!.output}`] : []),
+    ...(reviewed ? [`The review of the change said:\n${review!.output}`] : []),
+  ];
 }
 
 function planImplementing(record: TicketRecord, policy: Policy): Plan {
