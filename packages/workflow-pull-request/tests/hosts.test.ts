@@ -83,8 +83,6 @@ class MergeRequestHost implements CodeHost {
     if (this.options.down) throw new Error(this.options.down);
     const iid = this.next++;
     this.forgetsBranches = this.forgetAfterOpening;
-    // Merged before the next look, and somebody opened another from the same branch.
-    if (this.replaceAfterOpening) this.opened.push({ ...this.opened.at(-1)!, iid: 99 });
     this.opened.push({
       iid,
       sourceBranch: request.branch,
@@ -93,6 +91,8 @@ class MergeRequestHost implements CodeHost {
       description: request.body,
       draft: request.draft ?? false,
     });
+    // Merged before the next look, and somebody opened another from the same branch.
+    if (this.replaceAfterOpening) this.opened.push({ ...this.opened.at(-1)!, iid: 99 });
     return iid;
   }
 
