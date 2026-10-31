@@ -2403,9 +2403,10 @@ workflowCommand
   .requiredOption("--into <name>", "the workflow of your own it is copied into, under ~/.amy/workflows")
   .action(async (spec: string, options: { into: string }) => {
     try {
-      const target = await addWorkflowInto(home, spec, options.into, { runner: new NodeCommandRunner(), pluginsRoot: paths(home).plugins });
-      console.log(`copied into ${target}`);
-      console.log(`import its \`plugin\` from ./${path.relative(path.join(workflowsDirectory(home), options.into), target)} in ${options.into}, and bind a call state to it with \`call(plugin)\``);
+      const added = await addWorkflowInto(home, spec, options.into, { runner: new NodeCommandRunner(), pluginsRoot: paths(home).plugins });
+      const from = path.relative(path.join(workflowsDirectory(home), options.into), added.entry).split(path.sep).join("/");
+      console.log(`copied into ${added.directory}`);
+      console.log(`import { plugin } from "./${from}" in ${options.into}, and bind a call state to it with \`call(plugin)\``);
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;

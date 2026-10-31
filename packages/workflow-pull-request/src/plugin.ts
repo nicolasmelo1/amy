@@ -45,10 +45,17 @@ const declared = defineWorkflow({
   decide,
   record: () => ({}),
   observe: async (scope, record: PullRequestRecord): Promise<Observation> => {
+    // The host already answered no: that answer is final, and asking the host
+    // anything more could only turn it into an outage.
+    if (record.refusal !== undefined) return { pullRequest: null };
     const host = scope.ports["code-host"];
     const { repo, branch, mentions } = record.input;
     const byBranch = await host.findPullRequest(repo, branch);
-    if (byBranch || mentions === undefined) return { pullRequest: byBranch };
+    if (byBranch) return { pullRequest: byBranch };
+    // One the host opened is read by its number: the branch search finds only
+    // open ones, and a merged, closed or renamed one would be waited on forever.
+    if (record.requested !== undefined) return { pullRequest: await host.pullRequest(repo, record.requested) };
+    if (mentions === undefined) return { pullRequest: null };
     return { pullRequest: (await host.findPullRequestMentioning?.(repo, mentions)) ?? null };
   },
   actions: {

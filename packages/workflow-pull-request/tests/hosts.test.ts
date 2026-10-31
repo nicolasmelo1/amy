@@ -50,11 +50,19 @@ class MergeRequestHost implements CodeHost {
   readonly opened: MergeRequest[] = [];
   private next = 1;
 
+  /** Set to make every read fail, the way a host that went away after answering would. */
+  unreachable = false;
+  /** Set to make the branch search stop finding what it opened, as a merge or a rename would. */
+  forgetsBranches = false;
+  forgetAfterOpening = false;
+
   constructor(private readonly options: { refuse?: string; down?: string; existing?: MergeRequest[] } = {}) {
     this.opened.push(...(options.existing ?? []));
   }
 
   async findPullRequest(repo: string, branch: string): Promise<PullRequestView | null> {
+    if (this.unreachable) throw new Error("connect ECONNREFUSED");
+    if (this.forgetsBranches) return null;
     const found = this.opened.find((request) => request.sourceBranch === branch);
     return found ? this.view(repo, found) : null;
   }
@@ -65,9 +73,14 @@ class MergeRequestHost implements CodeHost {
   }
 
   async openPullRequest(request: OpenPullRequestRequest): Promise<number> {
-    if (this.options.refuse) throw new CodeHostRefusal(this.options.refuse);
+    if (this.options.refuse) {
+      // It answers, and then it is gone.
+      this.unreachable = true;
+      throw new CodeHostRefusal(this.options.refuse);
+    }
     if (this.options.down) throw new Error(this.options.down);
     const iid = this.next++;
+    this.forgetsBranches = this.forgetAfterOpening;
     this.opened.push({
       iid,
       sourceBranch: request.branch,
@@ -248,6 +261,26 @@ describe("the pull-request workflow on a code host that is not GitHub", () => {
     expect(record.state).toBe("STOPPED");
     expect(record.reason).toBe("Another open merge request already exists for this source branch");
     expect(record.calls!["TBO-7/OPEN#1"]!.attempts).toEqual({ OPENING: 1 });
+  });
+
+  it("hands back a refusal it already has without asking the host again, even when the host is gone", async () => {
+    const host = new MergeRequestHost({ refuse: "Pull request creation is disabled" });
+
+    const record = await shipped([shipping(), forge(host)]);
+
+    expect(host.unreachable).toBe(true);
+    expect(record.state).toBe("STOPPED");
+  });
+
+  it("finds the one it opened by its number once the branch search no longer does", async () => {
+    const host = new MergeRequestHost();
+    host.forgetAfterOpening = true;
+
+    const record = await shipped([shipping(), forge(host)]);
+
+    expect(record.state).toBe("SHIPPED");
+    expect(record.number).toBe(1);
+    expect(host.opened).toHaveLength(1);
   });
 
   it("fails the look when the host is down, so the engine retries it rather than calling it a refusal", async () => {

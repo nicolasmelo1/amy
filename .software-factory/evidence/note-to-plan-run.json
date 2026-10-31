@@ -34,7 +34,7 @@
     "gave_up": "PR_OPEN",
     "agent_calls": 11,
     "check_calls": 8,
-    "gh_calls": 11,
+    "gh_calls": 10,
     "pull_requests": {
       "acme/amy": 2,
       "acme/software-factory": 0,
@@ -44,8 +44,8 @@
     "notes_left": [
       "by-hand.md",
       "not-mine.md",
-      "note-2026-10-31T022127234.md",
-      "note-2026-10-31T022137262.md",
+      "note-2026-10-31T024810032.md",
+      "note-2026-10-31T024820076.md",
       "refused.md",
       "unwritable.md",
       "will-break.md"

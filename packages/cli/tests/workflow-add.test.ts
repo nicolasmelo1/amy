@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CommandResult, CommandRunner } from "@amykit/core";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { addWorkflowInto } from "../src/workflow-add.js";
-import { checkWorkflow, exportWorkflow, writeWorkflow } from "../src/workflow.js";
+import { checkWorkflow, exportWorkflow, inspectWorkflow, writeWorkflow } from "../src/workflow.js";
 
 const REPOSITORY = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -92,9 +92,12 @@ describe("amy workflow add --into", () => {
     const npm = new Npm(["yaml"]);
     const caller = path.join(home, "workflows", "oncall");
 
-    const target = await addWorkflowInto(home, reviewPackage(elsewhere, { yaml: "^2.8.1" }), "oncall", { runner: npm });
+    const { directory: target, entry } = await addWorkflowInto(home, reviewPackage(elsewhere, { yaml: "^2.8.1" }), "oncall", { runner: npm });
 
     expect(target).toBe(path.join(caller, "workflows", "review"));
+    expect(entry).toBe(path.join(target, "index.ts"));
+    // Node imports the file a specifier names, so the `.js` written for a `.ts` names the copy.
+    expect(fs.readFileSync(path.join(target, "index.ts"), "utf-8")).toContain('from "./src/decide.ts"');
     const copied = fs.readdirSync(target, { recursive: true }).map(String).sort();
     expect(copied).toEqual(["index.ts", "package.json", "src", "src/decide.ts", "src/words", "src/words/verdict.ts", "workflow.mmd"]);
     expect(npm.installed).toEqual([{ cwd: caller, packages: ["yaml@^2.8.1"] }]);
@@ -123,6 +126,48 @@ export const plugin = defineWorkflow({
     expect(fs.existsSync(path.join(home, "workflows", "oncall", "workflows"))).toBe(false);
     expect(fs.readFileSync(manifest, "utf-8")).toBe(before);
     expect(npm.installed).toEqual([]);
+  });
+
+  it("refuses a callee needing a version of a dependency the caller holds at one it cannot use", async () => {
+    const caller = path.join(home, "workflows", "oncall");
+    const manifest = JSON.parse(fs.readFileSync(path.join(caller, "package.json"), "utf-8")) as { dependencies: Record<string, string> };
+    manifest.dependencies.yaml = "^1.10.0";
+    fs.writeFileSync(path.join(caller, "package.json"), JSON.stringify(manifest));
+    fs.mkdirSync(path.join(caller, "node_modules", "yaml"), { recursive: true });
+    fs.writeFileSync(path.join(caller, "node_modules", "yaml", "package.json"), JSON.stringify({ name: "yaml", version: "1.10.2" }));
+
+    await expect(addWorkflowInto(home, reviewPackage(elsewhere, { yaml: "^2.8.1" }), "oncall", { runner: new Npm(["yaml"]) }))
+      .rejects.toThrow("@acme/workflow-review depends on yaml@^2.8.1, and oncall holds 1.10.2; nothing was copied");
+    expect(fs.existsSync(path.join(caller, "workflows"))).toBe(false);
+  });
+
+  it("keeps a workflow the callee imports with its own diagram and manifest, and checks what it depends on", async () => {
+    const source = reviewPackage(elsewhere, {});
+    const nested = path.join(source, "src", "fix");
+    fs.mkdirSync(nested);
+    fs.writeFileSync(path.join(nested, "workflow.mmd"), "stateDiagram-v2\n    [*] --> FIXING\n    FIXING --> [*]\n");
+    fs.writeFileSync(path.join(nested, "package.json"), JSON.stringify({ name: "workflow-fix", type: "module", dependencies: { "left-pad-that-never-was": "^9.0.0" } }));
+    fs.writeFileSync(path.join(nested, "index.ts"), "export const fix = 1;\n");
+    fs.appendFileSync(path.join(source, "src", "decide.ts"), 'export { fix } from "./fix/index.ts";\n');
+
+    await expect(addWorkflowInto(home, source, "oncall", { runner: new Npm([]) })).rejects.toThrow("left-pad-that-never-was@^9.0.0, which cannot be resolved");
+
+    fs.writeFileSync(path.join(nested, "package.json"), JSON.stringify({ name: "workflow-fix", type: "module" }));
+    const { directory } = await addWorkflowInto(home, source, "oncall", { runner: new Npm([]) });
+    expect(["src/fix/workflow.mmd", "src/fix/package.json", "src/fix/index.ts"].every((file) => fs.existsSync(path.join(directory, file)))).toBe(true);
+  });
+
+  it("copies an installed package whose exports name only its root, entered where its exports say", async () => {
+    const plugins = path.join(home, "plugins");
+    const installed = path.join(plugins, "node_modules", "@acme", "workflow-review");
+    fs.mkdirSync(path.dirname(installed), { recursive: true });
+    fs.cpSync(reviewPackage(elsewhere, {}), installed, { recursive: true });
+    const manifest = JSON.parse(fs.readFileSync(path.join(installed, "package.json"), "utf-8")) as Record<string, unknown>;
+    fs.writeFileSync(path.join(installed, "package.json"), JSON.stringify({ ...manifest, exports: "./index.ts" }));
+
+    const { entry } = await addWorkflowInto(home, "@acme/workflow-review", "oncall", { runner: new Npm([]), pluginsRoot: plugins });
+
+    expect(entry).toBe(path.join(home, "workflows", "oncall", "workflows", "review", "index.ts"));
   });
 
   it("installs nothing the caller already depends on", async () => {
@@ -169,5 +214,36 @@ export const plugin = defineWorkflow({
     await addWorkflowInto(home, callee, "oncall", { runner: new Npm([]) });
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([]);
+  });
+
+  it("holds a copied callee's moves to its own diagram, and lists the arrows it drew and nobody walked", async () => {
+    const callee = path.join(elsewhere, "skip");
+    fs.mkdirSync(callee);
+    fs.writeFileSync(path.join(callee, "package.json"), JSON.stringify({ name: "workflow-skip", type: "module" }));
+    fs.writeFileSync(path.join(callee, "workflow.mmd"), "stateDiagram-v2\n    [*] --> READING\n    READING --> HELD\n    HELD --> APPROVED\n    APPROVED --> [*]\n");
+    fs.writeFileSync(path.join(callee, "index.ts"), `import { advance, defineWorkflow, settled, withDiagramBeside } from "@amykit/core";
+export const plugin = withDiagramBeside(defineWorkflow({
+  name: "skip", configSchema: {}, policy: {}, needs: {},
+  decide: { READING: () => advance("APPROVED", "straight past HELD"), HELD: () => advance("APPROVED", "held"), APPROVED: () => settled("approved") },
+  record: () => ({}), observe: async () => ({}), actions: {},
+}), import.meta.url);
+`);
+    const caller = path.join(home, "workflows", "oncall");
+    fs.writeFileSync(path.join(caller, "workflow.mmd"), "stateDiagram-v2\n    [*] --> PAGED\n    PAGED --> REVIEW\n    REVIEW --> RESOLVED: APPROVED\n    RESOLVED --> [*]\n    class REVIEW call\n");
+    fs.writeFileSync(path.join(caller, "index.ts"), `import { advance, call, defineWorkflow, settled } from "@amykit/core";
+import { plugin as skip } from "./workflows/skip/index.ts";
+export const plugin = defineWorkflow({
+  name: "oncall", configSchema: {}, policy: {}, needs: {},
+  calls: { REVIEW: call(skip) },
+  decide: { PAGED: () => advance("REVIEW", "paged"), RESOLVED: () => settled("resolved") },
+  record: () => ({}), observe: async () => ({}), actions: {},
+});
+`);
+    await addWorkflowInto(home, callee, "oncall", { runner: new Npm([]) });
+
+    const checked = await inspectWorkflow(home, "oncall", loadConfig(home));
+
+    expect(checked.problems).toContain("oncall → REVIEW: `READING` moves to `APPROVED`, and skip's workflow.mmd draws no arrow from `READING` to `APPROVED`");
+    expect(checked.drawnNotWalked.map((edge) => `${edge.from} → ${edge.to}`)).toEqual(["REVIEW/READING → REVIEW/HELD", "REVIEW/HELD → REVIEW/APPROVED"]);
   });
 });

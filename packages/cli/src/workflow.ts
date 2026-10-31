@@ -334,13 +334,45 @@ async function drive({ workflow, runtime, now }: RegisteredWorkflow): Promise<Wo
     record = next.record;
   }
   const stubs = await stubsIn(workflow, runtime, created);
+  const inside = insideCalls(workflow, record, "", walked);
   return {
     // A walk that stopped at a decision nobody has written yet says nothing
     // about where the finished workflow ends: the stubs are the to-do list.
-    problems: stopped ? problems : [...problems, ...completionProblems(workflow, record, reached)],
+    problems: [...problems, ...inside, ...(stopped ? [] : completionProblems(workflow, record, reached))],
     stubs,
-    drawnNotWalked: (workflow.diagram?.transitions ?? []).filter((edge) => !walked.has(`${edge.from}\u0000${edge.to}`)),
+    drawnNotWalked: drawnEdges(workflow, "").filter((edge) => !walked.has(`${edge.from}\u0000${edge.to}`)),
   };
+}
+
+/**
+ * Every move each call made, held to the diagram of the workflow it called
+ * and added to what was walked, named by the call state it happened in
+ * (`REVIEW/READING`). A child keeps its whole history, so the record the walk
+ * ended with says every move made inside it.
+ */
+function insideCalls(workflow: Workflow, record: WorkRecord, prefix: string, walked: Set<string>): string[] {
+  const problems: string[] = [];
+  for (const child of Object.values(record.calls ?? {})) {
+    const state = /\/([A-Za-z_]\w*)#\d+$/.exec(child.id)?.[1];
+    const callee = state ? workflow.calls?.[state] : undefined;
+    if (!state || !callee) continue;
+    const at = `${prefix}${state}/`;
+    for (const move of child.history) {
+      walked.add(`${at}${move.from}\u0000${at}${move.to}`);
+      if (callee.diagram && !connects(callee.diagram, move.from, move.to, cameFrom(child.history.slice(0, child.history.indexOf(move)), move.from))) {
+        problems.push(`${workflow.name} → ${state}: \`${move.from}\` moves to \`${move.to}\`, and ${callee.name}'s ${DIAGRAM_FILE} draws no arrow from \`${move.from}\` to \`${move.to}\``);
+      }
+    }
+    problems.push(...insideCalls(callee, child, at, walked));
+  }
+  return problems;
+}
+
+/** The arrows a workflow draws, and those of every workflow it calls, named by the call state they sit in. */
+function drawnEdges(workflow: Workflow, prefix: string): DrawnTransition[] {
+  const own = (workflow.diagram?.transitions ?? []).map((edge) => ({ ...edge, from: `${prefix}${edge.from}`, to: `${prefix}${edge.to}` }));
+  const called = Object.entries(workflow.calls ?? {}).flatMap(([state, callee]) => drawnEdges(callee, `${prefix}${state}/`));
+  return [...own, ...called];
 }
 
 /** Every drawn state whose decision is still a stub, asked one state at a time. */

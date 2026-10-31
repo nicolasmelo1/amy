@@ -34,7 +34,7 @@
       "QUEUED>DECLINED"
     ],
     "agent_calls": 5,
-    "gh_calls": 9,
+    "gh_calls": 8,
     "pull_requests": {
       "acme/amy": 2
     },
@@ -50,7 +50,7 @@
       "committed-task:DONE",
       "foreign-task:DECLINED",
       "refusal-task:DECLINED",
-      "task-2026-10-31T022148377:DONE"
+      "task-2026-10-31T024831114:DONE"
     ]
   },
   "assertions": [
