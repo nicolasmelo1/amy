@@ -21,7 +21,7 @@ export interface EffectOutcomes {
   clarification?: string[];
   implementation?: AttemptOutcome;
   /** The repository and commit the implementation left the work at. */
-  implemented?: { repo: string; revision: string };
+  implemented?: { repo: string; revision?: string };
   pullRequestNumber?: number;
   reviewer?: string;
   verdicts?: ThreadVerdict[];

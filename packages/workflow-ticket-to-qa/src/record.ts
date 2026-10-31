@@ -53,9 +53,11 @@ export interface TicketRecord extends WorkRecord {
   lastImplementation?: AttemptOutcome;
   /**
    * Where the last implementation left the work: its repository and the
-   * commit, which both checks are lent read-only rather than the base.
+   * commit, which both checks are lent read-only rather than the base. A
+   * record an older version implemented holds only the repository, filled in
+   * on its way to the checks, and is checked in the work's own tree.
    */
-  implemented?: { repo: string; revision: string };
+  implemented?: { repo: string; revision?: string };
   /** What the gate lane said about the last commit it checked. */
   lastGate?: AttemptOutcome;
   /**

@@ -291,6 +291,25 @@ describe("a fork of lanes", () => {
     expect(portReachedBy(implementationOf(runtime, "work"))).toBe("agent");
   });
 
+  it("still says so through a workflow that calls the one whose lanes spend it", async () => {
+    const agent: Plugin = { name: "agent", register: (registry) => registry.port("agent", { ask: acceptsAction(async () => ({})) }) };
+    const forked = planner({ callee: task({ agent: true }) });
+    const outer = withDiagram(defineWorkflow({
+      name: "outer",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      calls: { PLAN: call(forked as never) },
+      decide: { DONE: () => settled("done"), STOPPED: () => settled("stopped") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> PLAN\nPLAN --> DONE: INTEGRATED\nPLAN --> STOPPED: ESCALATED\nDONE --> [*]\nSTOPPED --> [*]\nclass PLAN call\n");
+    const { runtime } = await mounted([agent, outer], HOST);
+
+    expect(portReachedBy(implementationOf(runtime, "work"))).toBe("agent");
+  });
+
   it("hears what the workflow says before any decision while its lanes run, and stops there", async () => {
     let withdrawn = false;
     const { workflow, runtime } = await mounted([planner({ withdrawn: () => withdrawn })], HOST);

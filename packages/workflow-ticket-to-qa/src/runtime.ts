@@ -9,6 +9,7 @@ import {
   Event,
   EventKind,
   EventLog,
+  Moved,
   Notifier,
   Plan,
   RepoLayout,
@@ -614,9 +615,19 @@ export function ticketRuntime(
             }
           : folded;
 
-      return applyTransition(applyOutcomes(current, settled), moved);
+      return toTheChecks(applyTransition(applyOutcomes(current, settled), moved), observation, moved);
     },
   };
+}
+
+/**
+ * The repository both checks run in, held before they start. An
+ * implementation this version made recorded it with its commit; one an older
+ * version made did not, and the checks would have no repository to run in.
+ */
+function toTheChecks(record: TicketRecord, observation: Observation, moved: Moved | null): TicketRecord {
+  if (moved?.to !== "checks" || record.implemented) return record;
+  return { ...record, implemented: { repo: observation.ticket.repo } };
 }
 
 interface Words {

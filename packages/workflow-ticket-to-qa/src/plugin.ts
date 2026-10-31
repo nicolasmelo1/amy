@@ -181,8 +181,9 @@ export const plugin = defineWorkflow({
 
 /** Where the work is and the commit to check, as both checks are called with it. */
 function checkInput(work: TicketRecord): { repo: string; workId: string; revision?: string } {
-  const repo = work.implemented?.repo ?? splitWorkId(work.id).repo ?? "";
-  return { repo, workId: work.id, ...(work.implemented ? { revision: work.implemented.revision } : {}) };
+  const repo = work.implemented?.repo;
+  if (!repo) throw new Error(`${work.id} reached the checks with no repository recorded for its implementation`);
+  return { repo, workId: work.id, ...(work.implemented?.revision ? { revision: work.implemented.revision } : {}) };
 }
 
 function writesOf(policy: Policy): Policy["writes"] {

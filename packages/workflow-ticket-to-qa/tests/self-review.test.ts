@@ -8,6 +8,7 @@ import type { AskContext, BriefStore, Tracker } from "@amykit/core";
 import { drive, mountedTicket } from "./mounted.js";
 import { reviewVerdict } from "../src/lanes.js";
 import type { Ticket } from "../src/ticket.js";
+import type { TicketRecord } from "../src/record.js";
 
 const clock = new Date(WORKDAY);
 
@@ -188,5 +189,31 @@ describe("a ticket that leaves its repository while it is being checked", () => 
     expect(decided.kind).toBe("settled");
     expect(decided.why).toContain("is no longer one of PROJ-1239's repositories");
     expect(seen.some((entry) => entry.context?.step === "self-review")).toBe(false);
+  });
+});
+
+describe("a record an older version left where the checks used to run", () => {
+  it("runs both checks in the ticket's repository, in the work's own tree, though it recorded no implementation", async () => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    const { agent } = recordingAgent(seen, () => now().toISOString());
+    const gated: { repo: string; workId: string }[] = [];
+    const gate = { run: async (workplace: { repo: string; workId: string }) => { gated.push(workplace); return { ok: true, output: "", at: now().toISOString() }; } };
+    const mounted = await mountedTicket({ tracker: trackerFor(() => ticket()), agent: agent as object, gate }, now);
+    const fresh = mounted.runtime.newRecord("PROJ-1239", now()) as TicketRecord;
+    const legacy = {
+      ...fresh,
+      state: "CHECKED",
+      triage: { clear: true, questions: [], askedQuestions: [], at: now().toISOString() },
+      lastImplementation: { ok: true, output: "", at: now().toISOString() },
+    } as unknown as TicketRecord;
+
+    const record = await drive(mounted, legacy, now, (current) => current.state === "verdict");
+
+    expect(record.state).toBe("verdict");
+    expect(record.implemented).toEqual({ repo: ticket().repo });
+    expect(gated).toEqual([{ repo: ticket().repo, workId: "PROJ-1239" }]);
+    expect(seen.filter((entry) => entry.context?.step === "implement")).toEqual([]);
   });
 });

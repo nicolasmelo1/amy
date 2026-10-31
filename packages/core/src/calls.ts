@@ -6,7 +6,7 @@
  * observed or decided. See `docs/design/a-workflow-calls-another.md`.
  */
 
-import { PortLookup, implementationOf, isPortBinding, reaching, runAction } from "./dispatch.js";
+import { PortLookup, implementationOf, isPortBinding, portReachedBy, reaching, runAction } from "./dispatch.js";
 import { BranchLeases, LeaseHeld, runningLane } from "./leases.js";
 import { ActionContext, ActionImplementation, WorkflowRuntime } from "./runtime.js";
 import { Workflow } from "./plugin.js";
@@ -692,7 +692,7 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
       if (!site?.runtime || ended) return runAction(implementationOf(own, name), action, { ...context, observation: forks.has(context.record.state) ? ownObservation(context.observation) : context.observation }, port);
       const observation = childObservation(context.observation);
       await runAction(implementationOf(site.runtime, name), action, { record: child, observation, outcomes: context.outcomes }, site.port);
-    }, laneSpends(forks, name));
+    }, laneSpends(forks, name) ?? spentThroughEveryCall(own, sites, name));
   }
   return actions;
 }
@@ -718,6 +718,24 @@ function ownInAFork(own: WorkflowRuntime, name: string, port: PortLookup, forks:
     const observation = forks.has(context.record.state) ? ownObservation(context.observation) : context.observation;
     await runAction(implementation, action, { ...context, observation }, port);
   }, isPortBinding(implementation) ? implementation.port : undefined);
+}
+
+/**
+ * The port an action spends when every workflow declaring it — the caller and
+ * each callee, through its binding's ports — spends the same one, however it
+ * is dispatched: a callee whose lanes run it still says so to whoever calls it.
+ */
+function spentThroughEveryCall(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSite>, name: string): string | undefined {
+  const ports = new Set<string | undefined>();
+  const mine = implementationOf(own, name);
+  if (mine !== undefined) ports.add(portReachedBy(mine));
+  for (const site of sites.values()) {
+    const implementation = site.runtime && implementationOf(site.runtime, name);
+    if (implementation === undefined) continue;
+    const reached = portReachedBy(implementation);
+    ports.add(reached === undefined ? undefined : site.binding.ports?.[reached] ?? reached);
+  }
+  return ports.size === 1 ? [...ports][0] : undefined;
 }
 
 /**
