@@ -18,7 +18,7 @@
     "assertions_run": 18,
     "assertions_failed": 0,
     "log_lines_written": 50,
-    "node": "v22.22.1"
+    "node": "v22.22.2"
   },
   "assertions": [
     {

@@ -185,6 +185,23 @@ export class Git {
     return (await this.git(repo, "rev-parse", "HEAD")).stdout;
   }
 
+  /**
+   * How many commits the branch in this item's tree holds beyond `of`.
+   *
+   * The question `commitAndPush` cannot answer by itself: a branch published
+   * for the first time is a new remote ref whether or not it carries a
+   * commit, so "a ref appeared" is not "there is something to review".
+   */
+  async commitsAhead(repo: string, of: string, workId?: string): Promise<number> {
+    const result = await this.gitIn(
+      this.cwdFor(repo, workId),
+      "rev-list",
+      "--count",
+      `refs/remotes/origin/${of}..HEAD`,
+    );
+    return Number.parseInt(result.stdout.trim(), 10) || 0;
+  }
+
   async hasChanges(repo: string, workId?: string): Promise<boolean> {
     const status = await this.gitIn(this.cwdFor(repo, workId), "status", "--porcelain");
     return status.stdout.length > 0;

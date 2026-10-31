@@ -1,0 +1,6 @@
+#!/bin/sh
+# The stand-in `gh`, which is gh.ts beside this file. A run copies both onto
+# its PATH and names the repository's tsx in AMY_E2E_TSX; run in place, the
+# repository's own is found from here.
+here=$(dirname "$0")
+exec "${AMY_E2E_TSX:-$here/../../../../node_modules/.bin/tsx}" "$here/gh.ts" "$@"

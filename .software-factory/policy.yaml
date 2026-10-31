@@ -354,6 +354,42 @@ gates:
       - "plan.the_machine_settles_instead_of_spinning"
       - "plan.every_drawn_edge_is_walked"
 
+  # The third workflow, and the shortest road anybody has into this machine:
+  # something said in passing. It has files at both ends — the task file one
+  # process writes and another reads, and the pull request a change becomes —
+  # which is exactly the seam no unit test crosses.
+  #
+  # The activation is the workflow, its shape, the task store, and the halves
+  # an assertion rests on: the commands that write and drive the work, the
+  # harness the sentence is handed to, and the git and forge a change rides
+  # on. A change to any of them means the last run proved an errand that no
+  # longer exists.
+  errand:
+    activation:
+      - "packages/workflow-errand/src/**"
+      # Its shape: a changed diagram is a changed workflow.
+      - "packages/workflow-errand/workflow.mmd"
+      - "plugins/file-tasks/src/**"
+      - "packages/agent-kit/src/**"
+      - "packages/cli/src/**"
+      - "packages/core/src/git.ts"
+      - "plugins/claude/src/**"
+      - "plugins/file-worktree/src/**"
+      - "plugins/github/src/**"
+      - "plugins/notify-fanout/src/**"
+      - "plugins/notify-inbox/src/**"
+      - "plugins/serial-engine/src/**"
+    evidence: ".software-factory/evidence/errand.json"
+    plan: "docs/design/the-errand-is-proven-end-to-end.md"
+    required_assertions:
+      - "errand.a_passing_remark_reaches_the_queue"
+      - "errand.the_agent_runs_where_the_work_is"
+      - "errand.a_change_opens_a_pull_request"
+      - "errand.an_unchanged_branch_is_not_delivered"
+      - "errand.a_refusal_is_terminal_and_says_why"
+      - "errand.the_lifecycle_walks_in_order"
+      - "errand.the_profile_keeps_its_own_state"
+
   # config.ts is here because `workflow new` writes a profile as well as a
   # directory: `writeWorkflowProfile` is what makes the scaffold drivable, and
   # the first two assertions below are false the moment it stops writing a

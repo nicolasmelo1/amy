@@ -81,19 +81,28 @@ export function errandRuntime(
         return;
       }
 
-      // Pushing is what decides whether this was a change or an answer, and
-      // both are successes. A clean tree here means the agent read something
-      // and told us; treating that as a failure would make the errand useless
-      // for half of what people say in passing.
-      const pushed = await deps.git.commitAndPush(
+      // Whether the errand left something to review is a question about
+      // commits, not about refs. `prepareBranch` already created a branch,
+      // and publishing it for the first time is a new remote ref whether or
+      // not it carries a commit — so "the push moved something" answered
+      // yes for every errand that was a question, and opened a pull request
+      // with no diff in it.
+      const committed = await deps.git.commit(
         task.repo,
-        branchFor(slug),
         `chore: ${pullRequestTitle(task).toLowerCase()}`,
         task.id,
       );
+      const changed =
+        committed ||
+        (await deps.git.commitsAhead(task.repo, baseBranchFor(deps.layout, task.repo), task.id)) > 0;
+
+      // Nothing to publish is a finished errand, not a failed one: pushing a
+      // branch that carries no commit only creates a pull request nobody can
+      // act on.
+      if (changed) await deps.git.push(task.repo, branchFor(slug), task.id);
 
       outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
-      outcomesOf(ctx).changed = pushed;
+      outcomesOf(ctx).changed = changed;
     },
 
     "open-pull-request": async (_effect, ctx) => {

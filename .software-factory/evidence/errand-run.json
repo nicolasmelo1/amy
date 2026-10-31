@@ -1,0 +1,101 @@
+{
+  "scenario": "errand",
+  "status": "passed",
+  "goal": "I say a thing in passing and it happens: an errand gets done in the repository it is about, a question gets answered, and something the agent will not do comes back to me with the reason rather than being retried until it gives up. I want a pull request when something changed, and nothing to review when nothing did.",
+  "artifact": {
+    "package": "@amykit/cli",
+    "entry": "the installed executable, driven by `amy btw`, `amy discover` and `amy tick`",
+    "built_by": "scripts/install.sh"
+  },
+  "observed": {
+    "assertions_run": 13,
+    "assertions_failed": 0,
+    "version": "dev (running from source, not an installed build)",
+    "looks": 17,
+    "transitions": [
+      "QUEUED>WORKING",
+      "WORKING>PR_OPEN",
+      "PR_OPEN>DONE"
+    ],
+    "question": [
+      "QUEUED>WORKING",
+      "WORKING>DONE"
+    ],
+    "refused": [
+      "QUEUED>WORKING",
+      "WORKING>DECLINED"
+    ],
+    "declined": [
+      "QUEUED>DECLINED"
+    ],
+    "agent_calls": 3,
+    "gh_calls": 3,
+    "pull_requests": {
+      "acme/amy": 1
+    },
+    "branches": [
+      "amy/errand-bump-the-stale-dependencies-in-the",
+      "main"
+    ],
+    "records": [
+      "by-hand-question:DONE",
+      "foreign-task:DECLINED",
+      "refusal-task:DECLINED",
+      "task-2026-10-31T000515896:DONE"
+    ]
+  },
+  "assertions": [
+    {
+      "type": "errand.a_passing_remark_reaches_the_queue",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_task_in_the_directory_is_discovered",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_agent_runs_where_the_work_is",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_agent_is_asked_once_per_errand",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_change_opens_a_pull_request",
+      "status": "passed"
+    },
+    {
+      "type": "errand.an_unchanged_branch_is_not_delivered",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_task_nobody_works_in_is_handed_back",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_refusal_is_terminal_and_says_why",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_lifecycle_walks_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "errand.every_drawn_edge_is_walked",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_run_leaves_nothing_behind",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_profile_keeps_its_own_state",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_installed_machine_mounts_the_workflow",
+      "status": "passed"
+    }
+  ]
+}
