@@ -112,8 +112,18 @@ type Asking = Agent & { ask(prompt: string, cwd: string, context?: AskContext): 
  * it, which is what every review was before it could say so.
  */
 export function reviewVerdict(text: string): "APPROVED" | "CHANGES_ASKED" {
-  const asked = text.split("\n").some((line) => line.trim().replace(/^verdict:/i, "").trim().toUpperCase().startsWith("CHANGES_ASKED"));
+  const asked = text.split("\n").some((line) => verdictWord(line).startsWith("CHANGES_ASKED"));
   return asked ? "CHANGES_ASKED" : "APPROVED";
+}
+
+/**
+ * A line as a verdict reads, its markdown let go of: a bullet, a quote, a
+ * heading, bold or code around it, and a `Verdict:` before it — an agent
+ * writes the line it is asked for the way it writes any other.
+ */
+function verdictWord(line: string): string {
+  const unmarked = (text: string) => text.replace(/^[\s>*_`#-]+/, "");
+  return unmarked(unmarked(line).replace(/^verdict\s*:?/i, "")).toUpperCase();
 }
 
 export const selfReviewLane = withDiagram(defineWorkflow({

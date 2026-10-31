@@ -134,6 +134,12 @@ describe("the verdict a review ends on", () => {
     ["APPROVED", "looks right\nAPPROVED", "APPROVED"],
     ["no verdict at all, which every review was before it could say one", "look at the boundary first", "APPROVED"],
     ["the words in the middle of a sentence", "nothing here is CHANGES_ASKED worthy", "APPROVED"],
+    ["it in bold", "the rounding is wrong\n**CHANGES_ASKED**: round once", "CHANGES_ASKED"],
+    ["a bold verdict label", "**Verdict:** CHANGES_ASKED", "CHANGES_ASKED"],
+    ["it as a bullet", "- CHANGES_ASKED: name the currency", "CHANGES_ASKED"],
+    ["it in code", "`CHANGES_ASKED`", "CHANGES_ASKED"],
+    ["it as a heading", "## Verdict: CHANGES_ASKED", "CHANGES_ASKED"],
+    ["an approval in bold", "**APPROVED**", "APPROVED"],
   ] as const)("reads %s", (_name, text, verdict) => {
     expect(reviewVerdict(text)).toBe(verdict);
   });
