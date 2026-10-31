@@ -218,14 +218,17 @@ needs the person. A lane whose decision nobody has written settles the record
 only once its siblings can make no move either. What a workflow says before
 any decision of its own — `ticket-to-qa`'s ticket that left its repository —
 is still heard while its lanes run: a fork's look sees the caller's own world
-too, whatever it plans runs and folds against that world, and a move out of the fork that is not the join lets go of what the lanes
-still running held; `callStanding` and the new `laneStanding` say the same, and
+too, whatever it plans runs and folds against that world, and a move out of the fork
+that is not the join lets go of what the lanes still running held, and gives
+back the trees they were lent on the record's next look; `callStanding` and the new `laneStanding` say the same, and
 `amy status` draws the lanes side by side, `checks › GATE GREEN ∥ SELF_REVIEW
 REVIEWING (1/2 arrived)`. `expandDiagram` draws a callee's own forks as forks
 and marks every lane where its record is.
 
 **The engines.** `Workflow.everyLane` hands an engine every lane's move at
-once. The serial engine never asks it. `@amykit/plugin-concurrent-engine` is
+once. The serial engine asks it too, and moves one: the first in turn that the
+budget and the evidence check allow, so a lane that may not run never holds
+its siblings up, and a look that failed is retried with the turn moved on. `@amykit/plugin-concurrent-engine` is
 the serial worker with `lanes: "concurrent"`: it claims one queue item as
 before, asks the budget before each lane's call — a lane it refuses waits while
 the rest go on, and a lane's action bound to the agent still says so through

@@ -501,6 +501,7 @@ export function composedRuntime(own: WorkflowRuntime, sites: ReadonlyMap<string,
       return site ? enterCall(record, site, now) : record;
     },
     observe: async (record) => {
+      if (record.abandoned?.length) await returnTreesOf(record.abandoned, port("worktree") as Worktree | undefined);
       const fork = forks.get(record.state);
       if (fork) return observeFork(own, fork, record, runtimeOf, port);
       const site = siteOf(record);
@@ -512,7 +513,9 @@ export function composedRuntime(own: WorkflowRuntime, sites: ReadonlyMap<string,
       return { [CALLED]: await runtimeOf(site).observe(child) };
     },
     actions: composedActions(own, sites, port, forks),
-    apply: (record, plan, outcomes, observation, now, moved) => {
+    apply: (looked, plan, outcomes, observation, now, moved) => {
+      // The look that folds this has already given the abandoned lanes' trees back.
+      const { abandoned: _given, ...record } = looked;
       const inner = innerOf(plan);
       const lane = laneOf(plan);
       const fork = forks.get(record.state);
@@ -541,11 +544,25 @@ function ownMove(
   const id = returnedFrom(plan);
   const from = (plan as Plan & { [JOINED]?: string })[JOINED];
   const left = moved ? forks.get(moved.from) : undefined;
-  if (left && from === undefined) for (const lane of Object.values(record.lanes ?? {})) left.leases?.release(lane.call);
-  const kept = id !== undefined ? returnTo(record, sites, id, moved) : from !== undefined ? joinedInto(record, forks.get(from)!) : record;
+  const abandoned = left && from === undefined ? abandon(left, record) : undefined;
+  const base = abandoned ? { ...record, abandoned } : record;
+  const kept = id !== undefined ? returnTo(base, sites, id, moved) : from !== undefined ? joinedInto(base, forks.get(from)!) : base;
   // In or out of a fork, the caller folds its own world, not the lanes'.
   const observation = left || forks.has(record.state) ? ownObservation(look.observation) : look.observation;
   return entering(own.apply(kept, plan, outcomes, observation, now, moved), sites, forks, moved, now);
+}
+
+/**
+ * The lanes of a fork left other than through its join: what they held goes
+ * back now, and the trees they were lent on the record's next look.
+ */
+function abandon(fork: ForkSite, record: WorkRecord): string[] {
+  const ids = fork.lanes.map((site) => record.lanes?.[site.state]?.call).filter((id): id is string => id !== undefined);
+  for (const id of ids) {
+    fork.leases?.release(id);
+    fork.lent?.delete(id);
+  }
+  return ids;
 }
 
 /**
@@ -578,10 +595,16 @@ async function observeFork(
  * every round would otherwise leave two trees behind each time.
  */
 async function returnTrees(fork: ForkSite, record: WorkRecord, worktree: Worktree | undefined): Promise<void> {
-  if (!worktree) return;
-  const ids = new Set(fork.lanes.map((site) => record.lanes?.[site.state]?.call));
+  const ids = fork.lanes.map((site) => record.lanes?.[site.state]?.call).filter((id): id is string => id !== undefined);
+  await returnTreesOf(ids, worktree);
+}
+
+/** Removes the trees lent to these lane records, if any were. */
+async function returnTreesOf(ids: readonly string[], worktree: Worktree | undefined): Promise<void> {
+  if (!worktree || ids.length === 0) return;
+  const lanes = new Set(ids);
   for (const tree of await worktree.states()) {
-    if (ids.has(tree.workId)) await worktree.release(tree.workId, tree.repo, { force: true });
+    if (lanes.has(tree.workId)) await worktree.release(tree.workId, tree.repo, { force: true });
   }
 }
 

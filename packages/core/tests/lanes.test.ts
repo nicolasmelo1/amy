@@ -85,6 +85,24 @@ describe("lanes hold what they use", () => {
     expect(seen.every((tree) => path.dirname(path.dirname(tree)) === path.join(root, "trees"))).toBe(true);
   });
 
+  it("takes back the trees lent to lanes a record left running, when it leaves their fork other than through the join", async () => {
+    let escalated = false;
+    const work: Work = async (scope, record) => {
+      await scope.checkouts.git.acquire("acme/widgets", record.id);
+    };
+    const { workflow, runtime } = await mounted([trees(), planner({ callee: task({ looks: 3, work }), escalated: () => escalated })], host);
+    const forked = await walk(workflow, runtime, runtime.newRecord("PLAN-1", host.now()), host.now(), (current) =>
+      current.state === "split" && Object.values(current.calls ?? {}).every((child) => ((child as TaskRecord).worked ?? 0) >= 1));
+    const lent = () => fs.readdirSync(path.join(root, "trees")).filter((name) => fs.existsSync(path.join(root, "trees", name, "acme-widgets")));
+    expect(lent()).toHaveLength(3);
+
+    escalated = true;
+    const { record } = await walk(workflow, runtime, forked.record, host.now());
+
+    expect(record.state).toBe("ESCALATED");
+    expect(lent()).toEqual([]);
+  });
+
   it("gives a branch another lane holds to the second lane only once the first has ended, and the wait costs it no attempt", async () => {
     // Both lanes learn their branch only when they run, from their own task.
     const work: Work = async (scope, record) => {

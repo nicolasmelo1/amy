@@ -49,7 +49,7 @@ function planner(moves: Moves, shape: Shape = {}): Plugin {
         work.outcomes.worked = true;
       },
     },
-    remember: (_scope, record: TaskRecord, outcomes) => (outcomes.worked ? { ...record, worked: (record.worked ?? 0) + 1 } : record),
+    remember: (_scope, record: TaskRecord, outcomes) => (outcomes.worked || outcomes.work ? { ...record, worked: (record.worked ?? 0) + 1 } : record),
   }), "stateDiagram-v2\n[*] --> WORKING\nWORKING --> DONE\nDONE --> [*]\n");
   const forked = withDiagram(defineWorkflow({
     name: "planner",
@@ -117,7 +117,10 @@ describe("the concurrent engine", () => {
         registry.port("agent", {
           ask: acceptsAction(async (action, context) => {
             if ((context.record as TaskRecord).input.task === "broken") throw new Error("the gate's runner is not answering");
-            moves.at(-1)!.push((context.record as TaskRecord).input.task);
+            const name = (context.record as TaskRecord).input.task;
+            moves.at(-1)!.push(name);
+            // A lane whose name says it is getting somewhere reports so; any other added nothing.
+            if (name.startsWith("good")) return { progress: { kind: "advanced", key: "tests" } };
             return { progress: { kind: "unchanged", key: "tests", detail: "the same test still fails" } };
           }),
         });
@@ -207,5 +210,22 @@ describe("the concurrent engine", () => {
 
     expect(results.filter((result) => result.kind === "failed").length).toBeGreaterThan(1);
     expect(moves.flat().sort()).toEqual(["test", "write"]);
+  });
+
+  it("lets the other lanes run on in turn when one may not, and ends where moving them side by side does", async () => {
+    const shape: Shape = { agent: true, tasks: [["stuck", 3], ["good-a", 3], ["good-b", 3]] };
+    const turn = await run(serial, shape, 16);
+    const side = await run(concurrent, shape, 10);
+
+    const attempts = (record: WorkRecord) => Object.values(record.calls ?? {}).map((child) => [child.input?.task, child.state, child.attempts.WORKING ?? 0]);
+    expect(attempts(turn.record)).toEqual([["stuck", "WORKING", 1], ["good-a", "DONE", 3], ["good-b", "DONE", 3]]);
+    expect(attempts(side.record)).toEqual(attempts(turn.record));
+  });
+
+  it("moves the turn past a lane that keeps throwing, so its siblings still finish in turn", async () => {
+    const { record } = await run(serial, { tasks: [["broken", 2], ["write", 2], ["test", 2]] }, 20);
+
+    const states = Object.values(record.calls ?? {}).map((child) => [child.input?.task, child.state]);
+    expect(states).toEqual([["broken", "WORKING"], ["write", "DONE"], ["test", "DONE"]]);
   });
 });

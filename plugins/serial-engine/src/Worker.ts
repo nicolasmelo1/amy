@@ -180,9 +180,13 @@ export class Worker {
 
   private async advance(item: QueueItem, record: WorkRecord, now: Date): Promise<TickResult> {
     const observation = await this.deps.runtime.observe(record);
-    const side = this.deps.lanes === "concurrent" ? this.deps.workflow.everyLane?.(record, observation, this.deps.runtime.policy) : undefined;
-    if (side) return this.advanceLanes(item, record, observation, side, now);
-    const decision = this.deps.workflow.plan(record, observation, this.deps.runtime.policy);
+    const side = this.deps.workflow.everyLane?.(record, observation, this.deps.runtime.policy);
+    if (side && this.deps.lanes === "concurrent") return this.advanceLanes(item, record, observation, side, now);
+    const decision = side ? this.laneInTurn(item, record, side, now) : this.deps.workflow.plan(record, observation, this.deps.runtime.policy);
+    if (decision.kind === "parked") {
+      this.park(item, decision, now);
+      return decision;
+    }
 
     this.record("work.planned", {
       workId: item.workId,
@@ -276,6 +280,19 @@ export class Worker {
       why: decision.why,
       retryAfterMs: delayMs || undefined,
     };
+  }
+
+  /**
+   * The one lane the serial engine moves, of those that have a move: the
+   * first in turn that the budget and the evidence check allow, so a lane that
+   * may not run never holds its siblings up. A look that failed is tried again
+   * with the turn moved on, so a lane that keeps throwing does not either.
+   * Parked only when no lane may move.
+   */
+  private laneInTurn(item: QueueItem, record: WorkRecord, plans: readonly Plan[], now: Date): Plan | Parked {
+    const allowed = plans.filter((plan) => !this.parked(record, actionsOf(plan), now) && !this.progressParked(item, record, actionsOf(plan), accountOf(record, plan)));
+    if (allowed.length === 0) return this.parked(record, actionsOf(plans[0]!), now) ?? this.progressParked(item, record, actionsOf(plans[0]!), accountOf(record, plans[0]!))!;
+    return allowed[item.attempt % allowed.length]!;
   }
 
   /**

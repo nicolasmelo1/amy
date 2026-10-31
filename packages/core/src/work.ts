@@ -55,6 +55,12 @@ export interface WorkRecord {
    * `revision`. It is checked in a tree detached at that commit, read-only.
    */
   revision?: string;
+  /**
+   * The lanes a record left running when it moved out of their fork other
+   * than through the join, by their records' ids: the trees they were lent
+   * go back on its next look.
+   */
+  abandoned?: string[];
 }
 
 /** One lane of a fork, as its caller holds it. */

@@ -120,6 +120,8 @@ export function planner(options: {
   asked?: () => string | undefined;
   /** Every saying is handed to somebody else to say, by the workflow's `after`, wherever it was planned. */
   handsOver?: boolean;
+  /** Whether the plan was escalated, asked of the world on every look: it leaves for `ESCALATED` wherever it is. */
+  escalated?: () => boolean;
 } = {}): Plugin {
   const lanes = options.lanes ?? ["TASK_A", "TASK_B", "TASK_C"];
   const callee = options.callee ?? task();
@@ -146,12 +148,13 @@ export function planner(options: {
       ESCALATED: () => settled("escalated"),
     },
     record: () => ({}),
-    before: (record: PlannerRecord, observation: { withdrawn?: boolean; asked?: string }) => {
+    before: (record: PlannerRecord, observation: { withdrawn?: boolean; asked?: string; escalated?: boolean }) => {
       if (observation.withdrawn) return settled("the plan was withdrawn; it stops where it is");
+      if (observation.escalated && record.state !== "ESCALATED") return advance("ESCALATED", "escalated before its lanes met");
       if (observation.asked && !(record.said ?? []).includes(observation.asked)) return act("saying what was asked", { type: "say" });
       return undefined;
     },
-    observe: async () => ({ withdrawn: options.withdrawn?.() ?? false, asked: options.asked?.() }),
+    observe: async () => ({ withdrawn: options.withdrawn?.() ?? false, asked: options.asked?.(), escalated: options.escalated?.() ?? false }),
     after: (decision) => (options.handsOver && actionsOf(decision).some((effect) => effect.type === "say") ? act("handing it over", { type: "hand-over" }) : decision),
     actions: {
       say: async (_scope, work) => { work.outcomes.said = (work.observation as { asked?: string }).asked; },
