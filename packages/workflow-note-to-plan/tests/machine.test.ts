@@ -22,7 +22,6 @@ function observation(overrides: Partial<Observation> = {}): Observation {
     note: NOTE,
     writable: true,
     plansInFlight: 0,
-    pullRequest: null,
     now: NOW,
     ...overrides,
   };
@@ -208,35 +207,11 @@ describe("CHECKED", () => {
   });
 });
 
+// The pull request is opened by the workflow `PR_OPEN` calls, so the state
+// has no decision here; where it leads is the end that workflow reached.
 describe("PR_OPEN", () => {
-  it("opens one when the branch has none", () => {
-    expect(actions(plan(record("PR_OPEN"), observation(), policy))).toEqual([
-      "open-pull-request",
-    ]);
-  });
-
-  it("is done once the pull request exists, because merging it is not its call", () => {
-    const seen = observation({
-      pullRequest: {
-        number: 12,
-        url: "https://github.example.test/acme/widgets/pull/12",
-        headSha: "abc",
-        isDraft: false,
-        changedFiles: 3,
-        additions: 40,
-        deletions: 12,
-        reviewDecision: null,
-        checks: { state: "passing", commitSha: "head" },
-        mergeState: "mergeable",
-        merged: false,
-        base: "main",
-        reviews: [],
-        threads: [],
-        requestedReviewers: [],
-      },
-    });
-
-    expect(plan(record("PR_OPEN"), seen, policy)).toMatchObject({ kind: "advance", to: "DONE" });
+  it("is a call, decided by the workflow it calls rather than here", () => {
+    expect(() => plan(record("PR_OPEN"), observation(), policy)).toThrow("`PR_OPEN` is a call");
   });
 });
 

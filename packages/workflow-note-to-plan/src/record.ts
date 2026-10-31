@@ -1,4 +1,5 @@
 import { WorkRecord } from "@amykit/core";
+import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { PlanState } from "./decide.js";
 
 export interface AttemptOutcome {
@@ -25,5 +26,9 @@ export interface PlanRecord extends WorkRecord {
   slug?: string;
   lastDraft?: AttemptOutcome;
   lastCheck?: AttemptOutcome;
+  /** What the pull request is opened with, worked out when the note reaches `PR_OPEN`: its call is passed this. */
+  opening?: PullRequestInput;
   pullRequestNumber?: number;
+  /** What the code host said when it would not open the pull request. */
+  refusal?: string;
 }

@@ -6,5 +6,4 @@ import { plugin as declared } from "../src/plugin.js";
  * package's root, which is where its states, waits and ends are drawn.
  */
 export const plugin = withDiagramBeside(declared, import.meta.url);
-export const workflow = plugin.workflow;
 export const newRecord = plugin.newRecord;

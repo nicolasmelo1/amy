@@ -5,18 +5,18 @@ import { ErrandRecord } from "./record.js";
 export type ErrandState = "QUEUED" | "WORKING" | "PR_OPEN" | "DONE" | "DECLINED";
 export type Effect =
   | { type: "run-errand"; finding?: string }
-  | { type: "open-pull-request" }
   | { type: "announce"; text: string };
 
 type Decision = (record: ErrandRecord, observation: Observation, policy: Policy) => Plan;
 
+// `PR_OPEN` is a call: the pull-request workflow decides it, and the end it
+// reaches says where the errand goes.
 export const decide = {
   QUEUED: planQueued,
   WORKING: planWorking,
-  PR_OPEN: (_record, observation) => planPullRequestOpen(observation),
   DONE: () => settled("the errand is done, and whoever asked was told"),
   DECLINED: () => settled("nothing was done, and the operator was told why"),
-} satisfies Record<ErrandState, Decision>;
+} satisfies Record<Exclude<ErrandState, "PR_OPEN">, Decision>;
 
 /**
  * Decides the single next move for one task.
@@ -27,6 +27,7 @@ export const decide = {
  * not a change" is a finished errand rather than a failed one.
  */
 export function plan(record: ErrandRecord, obs: Observation, policy: Policy): Plan {
+  if (record.state === "PR_OPEN") throw new Error("`PR_OPEN` is a call, decided by the pull-request workflow it calls");
   return decide[record.state](record, obs, policy);
 }
 
@@ -104,16 +105,4 @@ function planWorking(record: ErrandRecord, obs: Observation, policy: Policy): Pl
     type: "run-errand",
     finding: record.lastAttempt?.ok === false ? record.lastAttempt.output : undefined,
   });
-}
-
-function planPullRequestOpen(obs: Observation): Plan {
-  if (obs.pullRequest) {
-    // The link, not the number. This is read on a phone more often than
-    // anywhere else, and a number is something you have to go and look up.
-    return advance("DONE", `pull request #${obs.pullRequest.number} carries the errand`, {
-      type: "announce",
-      text: `Done, and it is a draft for you to look at:\n\n${obs.task.text}\n\n${obs.pullRequest.url}`,
-    });
-  }
-  return act("the branch has no pull request yet", { type: "open-pull-request" });
 }

@@ -6,19 +6,19 @@ export type PlanState = "NOTED" | "DRAFTED" | "CHECKED" | "PR_OPEN" | "DONE" | "
 export type Effect =
   | { type: "draft-plan"; finding?: string }
   | { type: "check-plan" }
-  | { type: "open-pull-request" }
   | { type: "announce"; text: string };
 
 type Decision = (record: PlanRecord, observation: Observation, policy: Policy) => Plan;
 
+// `PR_OPEN` is a call: the pull-request workflow decides it, and the end it
+// reaches says where the note goes.
 export const decide = {
   NOTED: planNoted,
   DRAFTED: (record, _observation, policy) => planDrafted(record, policy),
   CHECKED: (record) => planChecked(record),
-  PR_OPEN: (_record, observation) => planPullRequestOpen(observation),
   DONE: () => settled("the plan is on a pull request, and merging it is somebody else's call"),
   DECLINED: () => settled("nothing was written, and the operator was told why"),
-} satisfies Record<PlanState, Decision>;
+} satisfies Record<Exclude<PlanState, "PR_OPEN">, Decision>;
 
 /**
  * Decides the single next move for one note.
@@ -28,6 +28,7 @@ export const decide = {
  * have in flight, and that is a number rather than somebody's answer.
  */
 export function plan(record: PlanRecord, obs: Observation, policy: Policy): Plan {
+  if (record.state === "PR_OPEN") throw new Error("`PR_OPEN` is a call, decided by the pull-request workflow it calls");
   return decide[record.state](record, obs, policy);
 }
 
@@ -142,11 +143,4 @@ function planChecked(record: PlanRecord): Plan {
   // draft, so it acts again and picks the finding up as its context. That
   // keeps every retry counted in exactly one place.
   return advance("DRAFTED", "the check is red, back to the agent with the finding");
-}
-
-function planPullRequestOpen(obs: Observation): Plan {
-  if (obs.pullRequest) {
-    return advance("DONE", `pull request #${obs.pullRequest.number} carries the plan`);
-  }
-  return act("the branch has no pull request yet", { type: "open-pull-request" });
 }

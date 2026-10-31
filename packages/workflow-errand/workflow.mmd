@@ -2,13 +2,16 @@ stateDiagram-v2
     %% Something said in passing, done by an agent: a pull request when it
     %% changed something, an answer when it was a question, or handed back.
     %% QUEUED waits only when the ceiling on errands in flight is reached;
-    %% nothing here waits on a person, or it would have been a ticket.
+    %% nothing here waits on a person, or it would have been a ticket. PR_OPEN
+    %% calls the shipped pull-request workflow, and leaves on the end it reached.
     classDef waiting stroke-dasharray: 4 4
 
     [*] --> QUEUED
     QUEUED --> WORKING
     WORKING --> PR_OPEN: it changed something
-    PR_OPEN --> DONE
+    state "open the pull request · @amykit/workflow-pull-request" as PR_OPEN
+    PR_OPEN --> DONE: OPENED
+    PR_OPEN --> DECLINED: REFUSED
     WORKING --> DONE: it was a question, and it has an answer
     QUEUED --> DECLINED: not a repository I work in
     WORKING --> DECLINED: refused, or not done in the attempts allowed
@@ -16,3 +19,4 @@ stateDiagram-v2
     DECLINED --> [*]
 
     class QUEUED waiting
+    class PR_OPEN call

@@ -1,4 +1,5 @@
 import { WorkRecord } from "@amykit/core";
+import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { ErrandState } from "./decide.js";
 
 export interface AttemptOutcome {
@@ -31,5 +32,12 @@ export interface ErrandRecord extends WorkRecord {
   changed?: boolean;
   /** Why the agent said it would not do this, which no retry changes. */
   declined?: string;
+  /** What the pull request is opened with, worked out when the errand reaches `PR_OPEN`: its call is passed this. */
+  opening?: PullRequestInput;
   pullRequestNumber?: number;
+  pullRequestUrl?: string;
+  /** What the code host said when it would not open the pull request. */
+  refusal?: string;
+  /** What was asked, kept when the errand reaches `PR_OPEN` so the edge out of the call can say it. */
+  asked?: string;
 }

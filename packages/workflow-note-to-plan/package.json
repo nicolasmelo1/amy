@@ -29,7 +29,8 @@
     "workflow.mmd"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.6.0",
+    "@amykit/workflow-pull-request": "^0.6.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0",

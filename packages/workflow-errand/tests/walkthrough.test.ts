@@ -1,14 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { Plan, PullRequestView, actionsOf } from "@amykit/core";
-import { plan } from "../src/decide.js";
-import { DEFAULT_POLICY, Observation } from "../src/observation.js";
-import { EffectOutcomes, applyErrandPlan } from "../src/outcomes.js";
-import { ErrandRecord } from "../src/record.js";
-import { newRecord } from "./drawn.js";
-import { ErrandState } from "../src/decide.js";
+import { DEFAULT_POLICY } from "../src/observation.js";
 import { Task } from "../src/ports/Tasks.js";
-
-const NOW = new Date("2026-09-05T10:00:00.000Z");
+import { ErrandWorld, PULL_REQUEST_URL, walk } from "./mounted.js";
 
 const TASK: Task = {
   id: "task-1",
@@ -18,305 +11,202 @@ const TASK: Task = {
   addedAt: "2026-09-05T09:00:00.000Z",
 };
 
-const PULL_REQUEST: PullRequestView = {
-  number: 41,
-  url: "https://github.example.test/acme/widgets/pull/41",
-  headSha: "abc",
-  isDraft: false,
-  changedFiles: 3,
-  additions: 40,
-  deletions: 12,
-  reviewDecision: null,
-  checks: { state: "passing", commitSha: "head" },
-  mergeState: "mergeable",
-  merged: false,
-  base: "main",
-  reviews: [],
-  threads: [],
-  requestedReviewers: [],
-};
-
-/**
- * The world, as a thing the machine can only change by acting on it.
- *
- * The rule the other two walkthroughs keep is kept here: the world moves only
- * in response to an action, never on its own, so nothing passes because an
- * answer happened to be there before the question was asked.
- */
-class World {
-  pullRequest: PullRequestView | null = null;
-  inFlight = 0;
-  workable = true;
-  /** Whether the agent gets it done at all. */
-  agentSucceeds = true;
-  /** Whether what it did left a change to push, or was only an answer. */
-  agentChangesSomething = true;
-  /** Why it said it would not do this, when it said so. */
-  agentDeclines: string | undefined;
-  private clock = 0;
-
-  observe(): Observation {
-    return {
-      task: TASK,
-      workable: this.workable,
-      inFlight: this.inFlight,
-      pullRequest: this.pullRequest,
-      now: NOW,
-    };
-  }
-
-  perform(decision: Plan): EffectOutcomes {
-    const outcomes: EffectOutcomes = {};
-
-    for (const action of actionsOf(decision)) {
-      this.clock += 1;
-      const at = new Date(NOW.getTime() + this.clock * 1000).toISOString();
-
-      if (action.type === "run-errand") {
-        outcomes.attempt = this.agentSucceeds
-          ? { ok: true, output: "raised four minor versions", at }
-          : { ok: false, output: "the checkout would not resolve", at };
-        if (this.agentDeclines) outcomes.declined = this.agentDeclines;
-        else if (this.agentSucceeds) outcomes.changed = this.agentChangesSomething;
-      }
-      if (action.type === "open-pull-request") {
-        this.pullRequest = PULL_REQUEST;
-        outcomes.pullRequestNumber = PULL_REQUEST.number;
-      }
-    }
-
-    return outcomes;
-  }
-}
-
-interface Move {
-  from: ErrandState;
-  to: ErrandState;
-  actions: string[];
-  why: string;
-}
-
-/** Drives the machine until it settles, or throws if it never does. */
-function walk(world: World, limit = 40): { record: ErrandRecord; moves: Move[] } {
-  let record = newRecord(TASK.id, NOW);
-  const moves: Move[] = [];
-
-  for (let step = 0; step < limit; step += 1) {
-    const observation = world.observe();
-    const decision = plan(record, observation, DEFAULT_POLICY);
-    if (decision.kind === "settled") return { record, moves };
-
-    const outcomes = world.perform(decision);
-    const before = record.state;
-    record = applyErrandPlan(record, decision, { ...outcomes }, observation, NOW);
-
-    moves.push({
-      from: before,
-      to: record.state,
-      actions: actionsOf(decision).map((a) => a.type),
-      why: decision.why,
-    });
-
-    // A wait that changes nothing would spin forever here, and that is what
-    // this loop is for: the ceiling is the only wait, and it is released by
-    // the world rather than by another look.
-    if (decision.kind === "wait") return { record, moves };
-  }
-
-  throw new Error(`the machine never settled: ${moves.map((m) => m.to).join(" -> ")}`);
+// Walked through the mount, so `PR_OPEN` is the call it is when installed:
+// the pull-request workflow takes its own looks inside it, and the errand
+// moves on only once that workflow has reached an end.
+async function walked(world = new ErrandWorld(TASK)) {
+  return walk(await world.mounted(), TASK.id);
 }
 
 describe("an errand walking to a pull request", () => {
-  it("reaches DONE, so no state is a dead end", () => {
-    expect(walk(new World()).record.state).toBe("DONE");
+  it("reaches DONE, so no state is a dead end", async () => {
+    expect((await walked()).record.state).toBe("DONE");
   });
 
-  it("walks the lifecycle in order", () => {
-    const { moves } = walk(new World());
+  it("walks the lifecycle in order, the call's own looks inside PR_OPEN", async () => {
+    const { looks } = await walked();
 
-    expect(["QUEUED", ...moves.map((move) => move.to)]).toEqual([
+    expect(["QUEUED", ...looks.map((look) => look.to)]).toEqual([
       "QUEUED",
       "WORKING",
       "WORKING",
+      "PR_OPEN",
+      // The called workflow opens it, then finds it, then the errand returns.
       "PR_OPEN",
       "PR_OPEN",
       "DONE",
     ]);
   });
 
-  it("makes at most one move per look", () => {
-    for (const move of walk(new World()).moves) {
-      expect(move.actions.length).toBeLessThanOrEqual(1);
+  it("makes at most one move per look", async () => {
+    for (const look of (await walked()).looks) {
+      expect(look.actions.length).toBeLessThanOrEqual(1);
     }
   });
 
-  it("settles instead of spinning: driven past the end, nothing moves", () => {
-    const world = new World();
-    const { record } = walk(world);
+  it("settles instead of spinning: driven past the end, nothing moves", async () => {
+    const world = new ErrandWorld(TASK);
+    const mounted = await world.mounted();
+    const { record } = await walk(mounted, TASK.id);
 
-    const after = plan(record, world.observe(), DEFAULT_POLICY);
+    const after = mounted.workflow.plan(record, await mounted.runtime.observe(record), mounted.runtime.policy);
     expect(after.kind).toBe("settled");
   });
 
-  it("opens the pull request that carries the change", () => {
-    expect(walk(new World()).record.pullRequestNumber).toBe(41);
+  it("opens the pull request that carries the change, by a call", async () => {
+    const { record } = await walked();
+
+    expect(record.pullRequestNumber).toBe(41);
+    expect(record.calls?.["task-1/PR_OPEN#1"]?.state).toBe("OPENED");
   });
 });
 
 describe("an errand that was a question rather than a change", () => {
-  it("is finished, not failed", () => {
+  function asked(): ErrandWorld {
+    const world = new ErrandWorld(TASK);
+    world.agentChangesSomething = false;
+    return world;
+  }
+
+  it("is finished, not failed", async () => {
     // Half of what people say in passing is "check whether X". Treating a
     // clean tree as a failure would make this useless for all of it.
-    const world = new World();
-    world.agentChangesSomething = false;
-
-    const { record, moves } = walk(world);
+    const { record, looks } = await walked(asked());
 
     expect(record.state).toBe("DONE");
-    expect(moves.map((move) => move.to)).toEqual(["WORKING", "WORKING", "DONE"]);
+    expect(looks.map((look) => look.to)).toEqual(["WORKING", "WORKING", "DONE"]);
   });
 
-  it("tells whoever asked what the answer was", () => {
-    const world = new World();
-    world.agentChangesSomething = false;
-
-    const said = walk(world)
-      .moves.flatMap((move) => move.actions)
-      .filter((action) => action === "announce");
+  it("tells whoever asked what the answer was", async () => {
+    const said = (await walked(asked())).looks.flatMap((look) => look.actions).filter((action) => action === "announce");
 
     expect(said).toHaveLength(1);
   });
 
-  it("opens no pull request, because there is nothing to review", () => {
-    const world = new World();
-    world.agentChangesSomething = false;
+  it("opens no pull request, because there is nothing to review", async () => {
+    const world = asked();
 
-    expect(walk(world).record.pullRequestNumber).toBeUndefined();
+    expect((await walked(world)).record.pullRequestNumber).toBeUndefined();
     expect(world.pullRequest).toBeNull();
+    expect(world.opened).toEqual([]);
   });
 });
 
 describe("an errand that cannot be done", () => {
-  it("is handed back when it is about a repository this install does not work in", () => {
-    const world = new World();
-    world.workable = false;
-
-    const { record, moves } = walk(world);
+  it("is handed back when it is about a repository this install does not work in", async () => {
+    const { record, looks } = await walked(new ErrandWorld(TASK, ["acme/elsewhere"]));
 
     expect(record.state).toBe("DECLINED");
-    expect(moves[0]?.actions).toEqual(["announce"]);
+    expect(looks[0]?.actions).toEqual(["announce"]);
   });
 
-  it("is handed back after the attempts run out, saying what went wrong", () => {
-    const world = new World();
+  it("is handed back after the attempts run out, saying what went wrong", async () => {
+    const world = new ErrandWorld(TASK);
     world.agentSucceeds = false;
 
-    const { record, moves } = walk(world);
+    const { record, looks } = await walked(world);
 
     expect(record.state).toBe("DECLINED");
     expect(record.attempts.WORKING).toBe(DEFAULT_POLICY.maxAttempts);
-    expect(moves.at(-1)?.actions).toEqual(["announce"]);
+    expect(looks.at(-1)?.actions).toEqual(["announce"]);
   });
 
-  it("is handed back after one attempt when the agent says it cannot be done, with its reason", () => {
+  it("is handed back after one attempt when the agent says it cannot be done, with its reason", async () => {
     // A refusal is a decision, not a failure: a second attempt would spend an
     // agent to hear the same answer.
-    const world = new World();
+    const world = new ErrandWorld(TASK);
     world.agentDeclines = "rewriting the ledger needs a decision nobody made";
 
-    const { record, moves } = walk(world);
+    const { record, looks } = await walked(world);
 
     expect(DEFAULT_POLICY.maxAttempts).toBeGreaterThan(1);
     expect(record.state).toBe("DECLINED");
     expect(record.attempts.WORKING).toBe(1);
-    expect(moves.at(-1)?.why).toBe("the agent said it cannot be done as asked");
+    expect(looks.at(-1)?.plan.why).toBe("the agent said it cannot be done as asked");
     expect(record.pullRequestNumber).toBeUndefined();
   });
 
-  it("does not open a pull request for work that never got done", () => {
-    const world = new World();
+  it("does not open a pull request for work that never got done", async () => {
+    const world = new ErrandWorld(TASK);
     world.agentSucceeds = false;
 
-    expect(walk(world).record.pullRequestNumber).toBeUndefined();
+    expect((await walked(world)).record.pullRequestNumber).toBeUndefined();
+  });
+});
+
+describe("a pull request the code host refuses", () => {
+  it("hands the errand back with the host's reason and the branch, said on the way out of the call", async () => {
+    const world = new ErrandWorld(TASK);
+    world.refusal = "Pull request creation is disabled for this repository";
+
+    const { record, looks } = await walked(world);
+
+    expect(record.state).toBe("DECLINED");
+    expect(looks.map((look) => `${look.from}>${look.to}`)).toContain("PR_OPEN>DECLINED");
+    const told = world.said.filter((text) => text.includes("Pull request creation is disabled"));
+    expect(told).toHaveLength(1);
+    expect(told[0]).toContain(TASK.text);
+    expect(told[0]).toContain("amy/");
   });
 });
 
 describe("the ceiling on how many are in flight", () => {
-  it("holds rather than starting another", () => {
-    const world = new World();
-    world.inFlight = DEFAULT_POLICY.maxInFlight;
+  function crowded(): ErrandWorld {
+    const world = new ErrandWorld(TASK);
+    world.others = Array.from({ length: DEFAULT_POLICY.maxInFlight }, (_, index) => ({
+      id: `other-${index}`, state: "WORKING", repo: TASK.repo, updatedAt: "", attempts: {}, history: [],
+    }));
+    return world;
+  }
 
-    const { record, moves } = walk(world);
+  it("holds rather than starting another", async () => {
+    const { record, looks } = await walked(crowded());
 
     expect(record.state).toBe("QUEUED");
-    expect(moves.at(-1)?.actions).toEqual(["announce"]);
+    expect(looks.at(-1)?.actions).toEqual(["announce"]);
   });
 
-  it("says it once, not on every look", () => {
+  it("says it once, not on every look", async () => {
     // The point of `amy btw` is that capturing costs nothing, so the ceiling
     // is reached often. A machine that said so every time would be the reason
     // somebody turns the notifications off.
-    const world = new World();
-    world.inFlight = DEFAULT_POLICY.maxInFlight;
+    const world = crowded();
+    const mounted = await world.mounted();
+    let { record } = await walk(mounted, TASK.id);
+    for (let look = 0; look < 3; look += 1) record = (await walk(mounted, TASK.id, record)).record;
 
-    let record = newRecord(TASK.id, NOW);
-    const said: string[] = [];
-
-    for (let look = 0; look < 4; look += 1) {
-      const decision = plan(record, world.observe(), DEFAULT_POLICY);
-      said.push(...actionsOf(decision).map((action) => action.type));
-      record = applyErrandPlan(record, decision, {}, world.observe(), NOW);
-    }
-
-    expect(said.filter((action) => action === "announce")).toHaveLength(1);
+    expect(world.said.filter((text) => text.includes("I am holding an errand"))).toHaveLength(1);
   });
 
-  it("starts it once the pile clears", () => {
-    const world = new World();
-    world.inFlight = DEFAULT_POLICY.maxInFlight;
-    walk(world);
+  it("starts it once the pile clears", async () => {
+    const world = crowded();
+    const mounted = await world.mounted();
+    const { record } = await walk(mounted, TASK.id);
 
-    world.inFlight = 0;
-    expect(walk(world).record.state).toBe("DONE");
+    world.others = [];
+    expect((await walk(mounted, TASK.id, record)).record.state).toBe("DONE");
   });
 });
 
 describe("what the errand says, and where it says it", () => {
-  it("opens its pull request as a draft, because nobody asked for it", () => {
+  it("opens its pull request as a draft, because nobody asked for it", async () => {
     // Work somebody is waiting on is not a draft. An errand is something to
     // look at when you want to, and the state it opens in should say so.
-    const world = new World();
-    const opened: boolean[] = [];
+    const world = new ErrandWorld(TASK);
 
-    let record = newRecord(TASK.id, NOW);
-    for (let look = 0; look < 6; look += 1) {
-      const decision = plan(record, world.observe(), DEFAULT_POLICY);
-      if (decision.kind === "settled") break;
-      for (const action of actionsOf(decision)) {
-        if (action.type === "open-pull-request") opened.push(true);
-      }
-      record = applyErrandPlan(record, decision, world.perform(decision), world.observe(), NOW);
-    }
+    await walked(world);
 
-    expect(opened).toEqual([true]);
+    expect(world.opened.map((request) => request.draft)).toEqual([true]);
   });
 
-  it("announces the link rather than the number", () => {
+  it("announces the link rather than the number", async () => {
     // Read on a phone more often than anywhere else, and a number is a thing
     // you have to go and look up.
-    const world = new World();
-    let record = newRecord(TASK.id, NOW);
-    const said: string[] = [];
+    const world = new ErrandWorld(TASK);
 
-    for (let look = 0; look < 8; look += 1) {
-      const decision = plan(record, world.observe(), DEFAULT_POLICY);
-      if (decision.kind === "settled") break;
-      for (const action of actionsOf(decision)) {
-        if (action.type === "announce") said.push(String(action.text));
-      }
-      record = applyErrandPlan(record, decision, world.perform(decision), world.observe(), NOW);
-    }
+    await walked(world);
 
-    expect(said.join("\n")).toContain(PULL_REQUEST.url);
+    const told = world.said.find((text) => text.includes(PULL_REQUEST_URL));
+    expect(told).toContain(TASK.text);
   });
 });

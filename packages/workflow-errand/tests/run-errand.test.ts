@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ActionContext, ActionHandler, CodeHost, Harness, NodeCommandRunner, Notifier, Store, lendCheckouts } from "@amykit/core";
+import { ActionContext, ActionHandler, Harness, NodeCommandRunner, Notifier, Store, lendCheckouts } from "@amykit/core";
 import { errandRuntime } from "../src/actions.js";
 import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { EffectOutcomes } from "../src/outcomes.js";
@@ -73,7 +73,6 @@ describe("run-errand", () => {
     const runtime = errandRuntime({
       tasks: { add: () => task, all: () => [task], get: () => task },
       agent,
-      host: {} as CodeHost,
       notifier: {} as Notifier,
       git: checkoutGit,
       layout,
@@ -85,7 +84,7 @@ describe("run-errand", () => {
     const outcomes: Record<string, unknown> = {};
     const context: ActionContext<ErrandRecord, Observation> = {
       record: { id: task.id, state: "WORKING", updatedAt: task.addedAt, attempts: {}, history: [] } as ErrandRecord,
-      observation: { task, workable: true, inFlight: 0, pullRequest: null, now: new Date(task.addedAt) },
+      observation: { task, workable: true, inFlight: 0, now: new Date(task.addedAt) },
       outcomes,
     };
     const runErrandAction = runtime.actions?.["run-errand"] as ActionHandler<ErrandRecord, Observation>;

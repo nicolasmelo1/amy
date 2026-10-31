@@ -2,14 +2,16 @@ import {
   ActionContext,
   ActionHandler,
   baseBranchFor,
-  CodeHost,
   Git,
   Harness,
+  Moved,
   Notifier,
+  Plan,
   RepoLayout,
   Store,
   WorkflowRuntimeParts,
 } from "@amykit/core";
+import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes } from "./outcomes.js";
@@ -27,7 +29,6 @@ export interface ErrandRuntimeDeps {
   tasks: Tasks;
   /** The same mounted port the other workflows reach, at its generic level. */
   agent: Harness;
-  host: CodeHost;
   notifier: Notifier;
   git: Git;
   /**
@@ -123,22 +124,6 @@ export function errandRuntime(
       outcomesOf(ctx).changed = changed;
     },
 
-    "open-pull-request": async (_effect, ctx) => {
-      const { task } = ctx.observation;
-
-      outcomesOf(ctx).pullRequestNumber = await deps.host.openPullRequest({
-        repo: task.repo,
-        branch: branchFor(slugFor(task)),
-        title: pullRequestTitle(task),
-        base: baseBranchFor(deps.layout, task.repo),
-        body: pullRequestBody(task, ctx.record.lastAttempt?.output ?? ""),
-        // A draft, because nobody asked for this at the moment it landed.
-        // Work somebody is waiting on is not a draft; an errand is something
-        // to look at when you want to.
-        draft: true,
-      });
-    },
-
     // Standalone, a word the operator was owed fails the action; mounted, the
     // plugin hands this to the host's best-effort `announce` instead.
     "announce": async (effect, ctx) => {
@@ -154,19 +139,10 @@ export function errandRuntime(
     async observe(current) {
       const task = requireTask(current.id);
 
-      // Only asked where it is used, so an errand being worked on does not
-      // call the code host once per look for a pull request that cannot
-      // exist yet.
-      const pullRequest =
-        current.state === "PR_OPEN"
-          ? await deps.host.findPullRequest(task.repo, branchFor(slugFor(task)))
-          : null;
-
       return {
         task,
         workable: deps.config.repos.includes(task.repo),
         inFlight: inFlightExcept(deps.records, current.id),
-        pullRequest,
         now: deps.now(),
       };
     },
@@ -182,20 +158,33 @@ export function errandRuntime(
       ]),
     ),
 
-    apply(current, _plan, outcomes, observation) {
+    apply(current, _plan: Plan, outcomes, observation, _now, moved?: Moved | null) {
       const bag = outcomes as EffectOutcomes;
-      return {
+      const next: ErrandRecord = {
         ...current,
         repo: current.repo ?? observation.task.repo,
         slug: current.slug ?? slugFor(observation.task),
         ...(bag.attempt ? { lastAttempt: bag.attempt } : {}),
         ...(bag.changed === undefined ? {} : { changed: bag.changed }),
         ...(bag.declined === undefined ? {} : { declined: bag.declined }),
-        ...(bag.pullRequestNumber === undefined
-          ? {}
-          : { pullRequestNumber: bag.pullRequestNumber }),
       };
+      // The call's input is read off the record, and the body carries what
+      // the agent said, so it is worked out on the move that makes the call.
+      return moved?.to === "PR_OPEN"
+        ? { ...next, opening: openingFor(observation.task, next, deps.layout), asked: observation.task.text }
+        : next;
     },
+  };
+}
+
+/** What the pull request for an errand is opened with. */
+function openingFor(task: Task, record: ErrandRecord, layout: RepoLayout): PullRequestInput {
+  return {
+    repo: task.repo,
+    branch: branchFor(slugFor(task)),
+    title: pullRequestTitle(task),
+    base: baseBranchFor(layout, task.repo),
+    body: pullRequestBody(task, record.lastAttempt?.output ?? ""),
   };
 }
 

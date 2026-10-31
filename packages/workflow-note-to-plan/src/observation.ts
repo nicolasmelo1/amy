@@ -1,4 +1,3 @@
-import { PullRequestView } from "@amykit/core";
 import { Note } from "./ports/Notes.js";
 
 /**
@@ -19,8 +18,6 @@ export interface Observation {
    * being rationed is somebody's attention, and that is one pile.
    */
   plansInFlight: number;
-  /** Null until the plan's branch has a pull request. */
-  pullRequest: PullRequestView | null;
   now: Date;
 }
 

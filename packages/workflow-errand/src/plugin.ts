@@ -3,22 +3,24 @@ import {
   Action,
   ActionContext,
   ActionHandler,
-  CodeHost,
   ConfigSchema,
   Harness,
   Notifier,
   Store,
   WorkflowPieceContext,
   Worktree,
+  call,
   defineWorkflow,
   optional,
   port,
 } from "@amykit/core";
+import { plugin as pullRequest } from "@amykit/workflow-pull-request";
 import { Effect, decide } from "./decide.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
 import { ErrandRecord } from "./record.js";
 import { Tasks } from "./ports/Tasks.js";
 import { errandRuntime } from "./actions.js";
+import { branchFor } from "./task-file.js";
 
 export const configSchema = {
   repos: {
@@ -38,7 +40,6 @@ export const configSchema = {
 const needs = {
   tasks: port<Tasks>(),
   agent: port<Harness>(),
-  "code-host": port<CodeHost>(),
   notifier: port<Notifier>(),
   store: port<Store<ErrandRecord>>(),
   worktree: optional<Worktree>(),
@@ -53,7 +54,6 @@ function runtimeFor(scope: Scope): ReturnType<typeof errandRuntime> {
   const runtime = errandRuntime({
     tasks: scope.ports.tasks,
     agent: scope.ports.agent,
-    host: scope.ports["code-host"],
     notifier: scope.ports.notifier,
     records: scope.ports.store,
     ...scope.checkouts,
@@ -70,6 +70,15 @@ async function run(scope: Scope, work: ActionContext<ErrandRecord, Observation>,
   await handler(effect, work);
 }
 
+/**
+ * An errand saved in `PR_OPEN` before it was a call worked out nothing to
+ * pass, so it is opened with what its record still says, against the host's
+ * default.
+ */
+function openingAfterUpgrade(work: ErrandRecord) {
+  return { repo: work.repo ?? "", branch: branchFor(work.slug ?? work.id), title: work.slug ?? work.id, body: work.lastAttempt?.output ?? "" };
+}
+
 export const plugin = defineWorkflow({
   name: "errand",
   pluginName: "@amykit/workflow-errand",
@@ -77,13 +86,39 @@ export const plugin = defineWorkflow({
   policy: DEFAULT_POLICY,
   needs,
   codeHostWrites: ["open-pull-request"],
+  calls: {
+    // A draft, because nobody asked for this at the moment it landed. Work
+    // somebody is waiting on is not a draft; an errand is something to look
+    // at when you want to.
+    PR_OPEN: call(pullRequest, {
+      input: (work: ErrandRecord) => work.opening ?? openingAfterUpgrade(work),
+      config: { draft: true },
+      output: {
+        OPENED: (work: ErrandRecord, out) => ({ ...work, pullRequestNumber: out.number, pullRequestUrl: out.url }),
+        REFUSED: (work: ErrandRecord, out) => ({ ...work, refusal: out.reason }),
+      },
+      effects: {
+        // The link, not the number. This is read on a phone more often than
+        // anywhere else, and a number is something you have to go and look up.
+        OPENED: (work: ErrandRecord, out) => [{
+          type: "announce",
+          text: `Done, and it is a draft for you to look at:\n\n${work.asked ?? work.slug ?? work.id}\n\n${out.url}`,
+        }],
+        REFUSED: (work: ErrandRecord, out) => [{
+          type: "announce",
+          text:
+            `I did this, and the code host would not open a pull request for it:\n\n${work.asked ?? work.slug ?? work.id}\n\n` +
+            `${out.reason}\n\nThe branch is \`${work.opening?.branch ?? "unknown"}\`.`,
+        }],
+      },
+    }),
+  },
   decide,
   record: () => ({}),
   discover: (scope) => runtimeFor(scope).found(),
   observe: (scope, record) => runtimeFor(scope).observe(record),
   actions: {
     "run-errand": run,
-    "open-pull-request": run,
     // Only worth saying, so a channel that fails never costs the work a move.
     announce: (scope, _work, effect) => scope.announce((effect as Extract<Effect, { type: "announce" }>).text),
   },

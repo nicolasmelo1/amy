@@ -10,7 +10,6 @@ import { AttemptOutcome, PlanRecord } from "./record.js";
 export interface EffectOutcomes {
   draft?: AttemptOutcome;
   check?: AttemptOutcome;
-  pullRequestNumber?: number;
   /** Copied off the note on the first look, so the ceiling can be counted. */
   repo?: string;
   slug?: string;
@@ -30,9 +29,6 @@ export function applyOutcomes(record: PlanRecord, outcomes: EffectOutcomes): Pla
   if (outcomes.slug) next.slug = outcomes.slug;
   if (outcomes.draft) next.lastDraft = outcomes.draft;
   if (outcomes.check) next.lastCheck = outcomes.check;
-  if (outcomes.pullRequestNumber !== undefined) {
-    next.pullRequestNumber = outcomes.pullRequestNumber;
-  }
 
   return next;
 }
