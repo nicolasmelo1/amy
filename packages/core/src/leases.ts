@@ -33,7 +33,12 @@ export class LeaseHeld extends Error {
  * exclusive create, so two processes asking at once cannot both be told yes.
  */
 export class FileLeases implements BranchLeases {
-  constructor(private readonly directory: string) {}
+  /** The directory, or how to find it once a lease is first asked for. */
+  constructor(private readonly where: string | (() => string)) {}
+
+  private get directory(): string {
+    return typeof this.where === "function" ? this.where() : this.where;
+  }
 
   take(repo: string, branch: string, holder: string): { readonly taken: true } | { readonly taken: false; readonly holder: string } {
     fs.mkdirSync(this.directory, { recursive: true });

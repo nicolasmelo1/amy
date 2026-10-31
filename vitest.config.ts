@@ -49,6 +49,7 @@ export default defineConfig({
       "@amykit/plugin-file-notes": resolve(here, "plugins/file-notes/src/index.ts"),
       "@amykit/plugin-plan-check": resolve(here, "plugins/plan-check/src/index.ts"),
       "@amykit/plugin-serial-engine": resolve(here, "plugins/serial-engine/src/index.ts"),
+      "@amykit/plugin-concurrent-engine": resolve(here, "plugins/concurrent-engine/src/index.ts"),
       "@amykit/plugin-linear": resolve(here, "plugins/linear/src/index.ts"),
       "@amykit/plugin-github": resolve(here, "plugins/github/src/index.ts"),
       "@amykit/plugin-claude": resolve(here, "plugins/claude/src/index.ts"),

@@ -72,6 +72,12 @@ export interface WorkerDeps {
   stop?: StopSwitch;
   /** Optional, so an engine with no ceiling on spending still runs. */
   budget?: Budget;
+  /**
+   * How the lanes of a fork move. `serial`, the default, moves one lane per
+   * look, in turn; `concurrent` moves every lane that has a move at once, one
+   * move each, and folds them into the one record it claimed.
+   */
+  lanes?: "serial" | "concurrent";
 }
 
 /** The one result the budget produces, named so the check can return it. */
@@ -173,6 +179,8 @@ export class Worker {
 
   private async advance(item: QueueItem, record: WorkRecord, now: Date): Promise<TickResult> {
     const observation = await this.deps.runtime.observe(record);
+    const side = this.deps.lanes === "concurrent" ? this.deps.workflow.everyLane?.(record, observation) : undefined;
+    if (side) return this.advanceLanes(item, record, observation, side, now);
     const decision = this.deps.workflow.plan(record, observation, this.deps.runtime.policy);
 
     this.record("work.planned", {
@@ -265,6 +273,50 @@ export class Worker {
       to: next.state,
       plan: decision.kind,
       why: decision.why,
+      retryAfterMs: delayMs || undefined,
+    };
+  }
+
+  /**
+   * One move for every lane that has one, side by side, folded into the one
+   * record this tick claimed.
+   *
+   * Each lane passes the budget check before its call, as any move does; a
+   * lane the budget refuses waits for the next look while the rest go on.
+   * The lanes write to records of their own, so folding them in turn is the
+   * same record whatever order they finished in.
+   */
+  private async advanceLanes(item: QueueItem, record: WorkRecord, observation: unknown, plans: readonly Plan[], now: Date): Promise<TickResult> {
+    const allowed = plans.filter((plan) => !this.parked(record, actionsOf(plan), now));
+    if (allowed.length === 0) {
+      const parked = this.parked(record, actionsOf(plans[0]!), now)!;
+      this.park(item, parked, now);
+      return parked;
+    }
+    for (const plan of allowed) {
+      this.record("work.planned", { workId: item.workId, state: record.state, detail: { plan: plan.kind, why: plan.why } });
+    }
+    const outcomes = await Promise.all(allowed.map((plan) => this.execute(observation, record, plan)));
+    let next = record;
+    allowed.forEach((plan, index) => {
+      next = this.deps.runtime.apply(applyPlan(next, plan, now, outcomes[index]), plan, outcomes[index]!, observation, now, null);
+    });
+    this.deps.records.save(next);
+
+    const delayMs = Math.min(...allowed.map((plan, index) => retryAfter(plan, outcomes[index]!, this.deps.config.retryDelayMs)));
+    this.deps.queue.enqueue({ workId: item.workId, reason: allowed.map((plan) => plan.why).join("; "), delayMs, progress: item.progress, priority: item.priority }, this.deps.now());
+    this.deps.queue.complete(item);
+    this.maybePrune(now);
+    this.record("work.advanced", { workId: item.workId, state: next.state, detail: { from: record.state, why: `${allowed.length} lanes moved` } });
+    await this.announceRecovery(item, next.state);
+
+    return {
+      kind: "worked",
+      workId: item.workId,
+      from: record.state,
+      to: next.state,
+      plan: "act",
+      why: allowed.map((plan) => plan.why).join("; "),
       retryAfterMs: delayMs || undefined,
     };
   }

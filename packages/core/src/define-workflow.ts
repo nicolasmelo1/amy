@@ -374,7 +374,7 @@ function assemble(
   const policy = policyFor(declaration.name, declaration.policy, config?.policy);
   // Only a workflow with lanes holds branches, and only its lanes take them.
   const forked = Object.keys(shape.diagram?.forks ?? {}).length > 0;
-  const leases = ctx && forked ? new FileLeases(nodePath.join(ctx.paths.state, "leases")) : undefined;
+  const leases = ctx && forked ? new FileLeases(() => nodePath.join(ctx.paths.state, "leases")) : undefined;
   const sites = callSites(declaration, shape, ctx, policy, path, trail, leases);
   const forks = forkSites(shape, sites, path, leases);
   // Judged at mount, as it always was: a module's exported declaration is
