@@ -172,15 +172,15 @@ function readLine(line: string, number: number, reading: Reading, source: string
   // Prose first: a comment, a note or a label may mention `<<choice>>` or
   // `:::` without drawing either.
   if (LEFT_FOR_THE_RENDERER.some((pattern) => pattern.test(line))) return;
-  const drawn = withoutLabel(line);
-  for (const [pattern, reason] of REFUSED) {
-    if (pattern.test(drawn)) throw new DiagramError(number, reason, source);
-  }
-
+  // A description is prose too, whatever it mentions.
   const described = DESCRIBED.exec(line);
   if (described) {
     reading.labels[described[2]!] = described[1]!;
     return;
+  }
+  const drawn = withoutLabel(line);
+  for (const [pattern, reason] of REFUSED) {
+    if (pattern.test(drawn)) throw new DiagramError(number, reason, source);
   }
 
   const arrow = arrowIn(line);

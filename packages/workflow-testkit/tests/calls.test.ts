@@ -278,3 +278,57 @@ describe("one callee called from two sites", () => {
     expect([record.first, record.second]).toEqual([1, 3]);
   });
 });
+
+describe("the kit, over a call tree", () => {
+  type Leaf = WorkRecord & { state: "READING" | "HELD" | "APPROVED" };
+
+  function tree(skips: boolean): Plugin {
+    const leaf = withDiagram(defineWorkflow({
+      name: "review",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: {
+        READING: () => (skips ? advance("APPROVED", "straight past HELD") : advance("HELD", "read")),
+        HELD: () => advance("APPROVED", "held"),
+        APPROVED: () => settled("approved"),
+      },
+      record: () => ({}),
+      observe: async (_scope, _record: Leaf) => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> READING\nREADING --> HELD\nHELD --> APPROVED\nAPPROVED --> [*]\n");
+    return withDiagram(defineWorkflow({
+      name: "pager",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { REVIEW: call(leaf) },
+      decide: { PAGED: () => advance("REVIEW", "paged"), RESOLVED: () => settled("resolved") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> PAGED\nPAGED --> REVIEW\nREVIEW --> RESOLVED: APPROVED\nRESOLVED --> [*]\nclass REVIEW call\n");
+  }
+
+  async function findings(skips: boolean): Promise<string[]> {
+    const { workflow, runtime } = await mounted([tree(skips)]);
+    return (await conformance(workflow, { runtime: () => runtime, worlds: [{ name: "a page", workId: "P-1" }], everyEdge: true }))
+      .filter((finding) => finding.property === "transitions")
+      .map((finding) => finding.message);
+  }
+
+  it("finds a callee moving along an arrow its own diagram does not draw", async () => {
+    expect(await findings(true)).toContain(
+      "a page: in the call `REVIEW`, `READING` moves to `APPROVED`, and review's diagram draws no arrow from `READING` to `APPROVED`",
+    );
+  });
+
+  it("finds an arrow a callee draws that no world walks", async () => {
+    expect(await findings(true)).toContain("`REVIEW/READING` → `REVIEW/HELD` is drawn, and no world walks it");
+  });
+
+  it("finds nothing when every move inside the call is drawn and every arrow walked", async () => {
+    expect(await findings(false)).toEqual([]);
+  });
+});
+

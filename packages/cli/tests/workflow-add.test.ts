@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CommandResult, CommandRunner } from "@amykit/core";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
-import { addWorkflowInto } from "../src/workflow-add.js";
+import { addWorkflowInto, relativeImports } from "../src/workflow-add.js";
 import { checkWorkflow, exportWorkflow, inspectWorkflow, writeWorkflow } from "../src/workflow.js";
 
 const REPOSITORY = fileURLToPath(new URL("../../../", import.meta.url));
@@ -246,4 +246,54 @@ export const plugin = defineWorkflow({
     expect(checked.problems).toContain("oncall → REVIEW: `READING` moves to `APPROVED`, and skip's workflow.mmd draws no arrow from `READING` to `APPROVED`");
     expect(checked.drawnNotWalked.map((edge) => `${edge.from} → ${edge.to}`)).toEqual(["REVIEW/READING → REVIEW/HELD", "REVIEW/HELD → REVIEW/APPROVED"]);
   });
+
+  it("refuses two copied manifests asking for one package at two ranges", async () => {
+    const source = reviewPackage(elsewhere, { yaml: "^1.10.0" });
+    const nested = path.join(source, "src", "fix");
+    fs.mkdirSync(nested);
+    fs.writeFileSync(path.join(nested, "package.json"), JSON.stringify({ name: "workflow-fix", type: "module", dependencies: { yaml: "^2.8.1" } }));
+    fs.writeFileSync(path.join(nested, "index.ts"), "export const fix = 1;\n");
+    fs.appendFileSync(path.join(source, "src", "decide.ts"), 'export { fix } from "./fix/index.ts";\n');
+
+    await expect(addWorkflowInto(home, source, "oncall", { runner: new Npm(["yaml"]) }))
+      .rejects.toThrow("yaml at both ^1.10.0 and ^2.8.1, and the copy can only hold one");
+  });
+
+  it("does not take a prerelease the caller holds for the release a callee asks for", async () => {
+    const caller = path.join(home, "workflows", "oncall");
+    const manifest = JSON.parse(fs.readFileSync(path.join(caller, "package.json"), "utf-8")) as { dependencies: Record<string, string> };
+    manifest.dependencies.yaml = "2.8.1-rc.1";
+    fs.writeFileSync(path.join(caller, "package.json"), JSON.stringify(manifest));
+    fs.mkdirSync(path.join(caller, "node_modules", "yaml"), { recursive: true });
+    fs.writeFileSync(path.join(caller, "node_modules", "yaml", "package.json"), JSON.stringify({ name: "yaml", version: "2.8.1-rc.1" }));
+
+    await expect(addWorkflowInto(home, reviewPackage(elsewhere, { yaml: "^2.8.1" }), "oncall", { runner: new Npm(["yaml"]) }))
+      .rejects.toThrow("yaml@^2.8.1, and oncall holds 2.8.1-rc.1");
+  });
 });
+
+describe("the imports a copy follows", () => {
+  it("reads a specifier with a comment between the tokens, and every kind of import", () => {
+    const text = [
+      'import { decide } from /* implementation */ "./decide.js";',
+      'export * from "./words.ts";',
+      "import './side-effect.ts';",
+      'const later = await import ( "./later.ts" );',
+      'import { stringify } from "yaml";',
+    ].join("\n");
+
+    expect(relativeImports(text)).toEqual(["./decide.js", "./words.ts", "./side-effect.ts", "./later.ts"]);
+  });
+
+  it("does not read an import written inside a comment or a string", () => {
+    const text = [
+      '// import { old } from "./old.ts";',
+      "/* export * from './gone.ts'; */",
+      'const example = "import x from \'./example.ts\'";',
+      "const template = `import y from './template.ts'`;",
+    ].join("\n");
+
+    expect(relativeImports(text)).toEqual([]);
+  });
+});
+

@@ -50,12 +50,14 @@ const declared = defineWorkflow({
     if (record.refusal !== undefined) return { pullRequest: null };
     const host = scope.ports["code-host"];
     const { repo, branch, mentions } = record.input;
+    // The one this call opened is read by its number first: the branch may
+    // since carry another, and a merged or closed one is still this call's.
+    if (record.requested !== undefined) {
+      const opened = await host.pullRequest(repo, record.requested);
+      if (opened) return { pullRequest: opened };
+    }
     const byBranch = await host.findPullRequest(repo, branch);
-    if (byBranch) return { pullRequest: byBranch };
-    // One the host opened is read by its number: the branch search finds only
-    // open ones, and a merged, closed or renamed one would be waited on forever.
-    if (record.requested !== undefined) return { pullRequest: await host.pullRequest(repo, record.requested) };
-    if (mentions === undefined) return { pullRequest: null };
+    if (byBranch || mentions === undefined) return { pullRequest: byBranch };
     return { pullRequest: (await host.findPullRequestMentioning?.(repo, mentions)) ?? null };
   },
   actions: {

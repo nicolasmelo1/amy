@@ -55,6 +55,7 @@ class MergeRequestHost implements CodeHost {
   /** Set to make the branch search stop finding what it opened, as a merge or a rename would. */
   forgetsBranches = false;
   forgetAfterOpening = false;
+  replaceAfterOpening = false;
 
   constructor(private readonly options: { refuse?: string; down?: string; existing?: MergeRequest[] } = {}) {
     this.opened.push(...(options.existing ?? []));
@@ -63,7 +64,8 @@ class MergeRequestHost implements CodeHost {
   async findPullRequest(repo: string, branch: string): Promise<PullRequestView | null> {
     if (this.unreachable) throw new Error("connect ECONNREFUSED");
     if (this.forgetsBranches) return null;
-    const found = this.opened.find((request) => request.sourceBranch === branch);
+    // The newest on the branch, the way a host's search answers.
+    const found = [...this.opened].reverse().find((request) => request.sourceBranch === branch);
     return found ? this.view(repo, found) : null;
   }
 
@@ -81,6 +83,8 @@ class MergeRequestHost implements CodeHost {
     if (this.options.down) throw new Error(this.options.down);
     const iid = this.next++;
     this.forgetsBranches = this.forgetAfterOpening;
+    // Merged before the next look, and somebody opened another from the same branch.
+    if (this.replaceAfterOpening) this.opened.push({ ...this.opened.at(-1)!, iid: 99 });
     this.opened.push({
       iid,
       sourceBranch: request.branch,
@@ -281,6 +285,15 @@ describe("the pull-request workflow on a code host that is not GitHub", () => {
     expect(record.state).toBe("SHIPPED");
     expect(record.number).toBe(1);
     expect(host.opened).toHaveLength(1);
+  });
+
+  it("returns the one it opened, not a newer one the same branch carries by the next look", async () => {
+    const host = new MergeRequestHost();
+    host.replaceAfterOpening = true;
+
+    const record = await shipped([shipping(), forge(host)]);
+
+    expect(record.number).toBe(1);
   });
 
   it("fails the look when the host is down, so the engine retries it rather than calling it a refusal", async () => {

@@ -187,11 +187,64 @@ function directoriesOf(root: string, files: readonly string[]): Set<string> {
   return directories;
 }
 
-/** The specifiers of `import … from "./x"`, `export … from "./x"` and `import("./x")`. */
-function relativeImports(text: string): string[] {
+/**
+ * The relative specifiers a module imports: the string after `from`, after a
+ * bare `import`, or inside `import(…)`. Read token by token, so a comment
+ * between the tokens is skipped and an import written inside a comment or
+ * another string is not one.
+ */
+export function relativeImports(text: string): string[] {
   const found = new Set<string>();
-  for (const match of text.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)["'](\.{1,2}\/[^"']+)["']/g)) found.add(match[1]!);
+  let previous = "";
+  for (const token of tokens(text)) {
+    if (token.kind === "string" && ["from", "import", "import("].includes(previous) && /^\.{1,2}\//.test(token.value)) found.add(token.value);
+    previous = token.kind === "punctuation" && token.value === "(" && previous === "import" ? "import(" : token.kind === "string" ? "string" : token.value;
+  }
   return [...found];
+}
+
+type Token = { readonly kind: "string" | "word" | "punctuation"; readonly value: string };
+
+/** A module's code as words, punctuation and plain strings, with comments and template literals left out. */
+function* tokens(text: string): Generator<Token> {
+  for (let at = 0; at < text.length;) {
+    const [token, next] = tokenAt(text, at);
+    if (token) yield token;
+    at = next;
+  }
+}
+
+/** The token that starts at `at`, if any, and where the next one may start. */
+function tokenAt(text: string, at: number): [Token | undefined, number] {
+  const char = text[at]!;
+  if (char === "/" && text[at + 1] === "/") return [undefined, lineEnd(text, at)];
+  if (char === "/" && text[at + 1] === "*") return [undefined, commentEnd(text, at)];
+  if (char === "\"" || char === "'" || char === "`") {
+    const end = stringEnd(text, at, char);
+    return [char === "`" ? { kind: "punctuation", value: "`" } : { kind: "string", value: text.slice(at + 1, end) }, end + 1];
+  }
+  if (/\s/.test(char)) return [undefined, at + 1];
+  const word = /^[A-Za-z_$][\w$]*/.exec(text.slice(at, at + 64))?.[0];
+  return word ? [{ kind: "word", value: word }, at + word.length] : [{ kind: "punctuation", value: char }, at + 1];
+}
+
+function lineEnd(text: string, from: number): number {
+  const end = text.indexOf("\n", from);
+  return end < 0 ? text.length : end;
+}
+
+function commentEnd(text: string, from: number): number {
+  const end = text.indexOf("*/", from + 2);
+  return end < 0 ? text.length : end + 2;
+}
+
+/** Where a string that opens at `from` closes, past every escaped quote. */
+function stringEnd(text: string, from: number, quote: string): number {
+  for (let at = from + 1; at < text.length; at += 1) {
+    if (text[at] === "\\") at += 1;
+    else if (text[at] === quote) return at;
+  }
+  return text.length;
 }
 
 /** A relative specifier as a file: as written, or the TypeScript a `.js` specifier stands for. */
@@ -225,7 +278,14 @@ async function dependenciesToInstall(
 ): Promise<string[]> {
   const needed: string[] = [];
   const problems: string[] = [];
-  for (const [dependency, range] of wantedBy(files)) {
+  for (const [dependency, ranges] of wantedBy(files)) {
+    // Every copied module resolves the caller's one copy of a package, so
+    // two ranges for it are one too many.
+    if (ranges.size > 1) {
+      problems.push(`${dependency} at both ${[...ranges].join(" and ")}, and the copy can only hold one`);
+      continue;
+    }
+    const [range] = [...ranges] as [string];
     const held = owned.dependencies?.[dependency];
     const problem = held === undefined
       ? await unresolvable(runner, dependency, range)
@@ -239,12 +299,14 @@ async function dependenciesToInstall(
   return needed;
 }
 
-/** Every dependency any manifest in the copy names, the deepest one's range last. */
-function wantedBy(files: readonly Copied[]): Map<string, string> {
-  const wanted = new Map<string, string>();
+/** Every range any manifest in the copy asks of each dependency. */
+function wantedBy(files: readonly Copied[]): Map<string, Set<string>> {
+  const wanted = new Map<string, Set<string>>();
   for (const { file } of files) {
     if (path.basename(file) !== "package.json") continue;
-    for (const [dependency, range] of Object.entries(manifestAt(path.dirname(file)).dependencies ?? {})) wanted.set(dependency, range);
+    for (const [dependency, range] of Object.entries(manifestAt(path.dirname(file)).dependencies ?? {})) {
+      wanted.set(dependency, (wanted.get(dependency) ?? new Set()).add(range));
+    }
   }
   return wanted;
 }
@@ -267,8 +329,9 @@ function installedVersion(caller: string, dependency: string): string | undefine
   return (JSON.parse(fs.readFileSync(file, "utf-8")) as { version?: string }).version;
 }
 
+/** A plain `x.y.z`; a prerelease or build suffix is not compared, so it is not read. */
 function versionOf(value: string): number[] | undefined {
-  const parts = /^(\d+)\.(\d+)\.(\d+)/.exec(value);
+  const parts = /^(\d+)\.(\d+)\.(\d+)$/.exec(value);
   return parts ? parts.slice(1, 4).map(Number) : undefined;
 }
 

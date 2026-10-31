@@ -84,6 +84,32 @@ const state = read();
 if (argv.includes("graphql")) {
   const given = fields(argv);
   const repo = `${given.owner}/${given.name}`;
+
+  // A pull request read by its number: the one a call opened, whatever its
+  // branch carries since.
+  if (given.number !== undefined) {
+    const pull = (state.repos[repo]?.pulls ?? []).find((candidate) => String(candidate.number) === given.number);
+    process.stdout.write(`${JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: pull
+            ? {
+                number: pull.number,
+                url: `https://github.example.test/${repo}/pull/${pull.number}`,
+                isDraft: false,
+                reviewDecision: null,
+                headRefOid: headOf(repo, pull.head),
+                headRefName: pull.head,
+                reviewRequests: { nodes: [] },
+                reviews: { nodes: [] },
+                reviewThreads: { nodes: [] },
+              }
+            : null,
+        },
+      },
+    })}\n`);
+    process.exit(0);
+  }
   const found = (state.repos[repo]?.pulls ?? []).find(
     (pull) => pull.head === given.branch && pull.state === "open",
   );
