@@ -6,7 +6,7 @@
  * observed or decided. See `docs/design/a-workflow-calls-another.md`.
  */
 
-import { PortLookup, implementationOf, runAction } from "./dispatch.js";
+import { PortLookup, implementationOf, isPortBinding, runAction } from "./dispatch.js";
 import { ActionImplementation, WorkflowRuntime } from "./runtime.js";
 import { Workflow } from "./plugin.js";
 import { Action, Moved, Plan, WorkRecord, applyPlan, movedBy } from "./work.js";
@@ -303,6 +303,11 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
   const names = new Set<string>();
   for (const site of sites.values()) for (const name of Object.keys(site.runtime?.actions ?? {})) names.add(name);
   for (const name of names) {
+    const shared = sharedBinding(own, sites, name);
+    if (shared) {
+      actions[name] = shared;
+      continue;
+    }
     actions[name] = async (action: Action, context) => {
       const site = sites.get(context.record.state);
       const child = activeCall(context.record);
@@ -315,4 +320,21 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
     };
   }
   return actions;
+}
+
+/**
+ * The port and method every workflow in a call declares for an action, when
+ * they all declare the same one and no call rebinds that port: kept as it is
+ * rather than wrapped, so the engine can still read what it reaches — the
+ * budget asks whether an action spends the agent by the binding it declares.
+ */
+function sharedBinding(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSite>, name: string): ActionImplementation | undefined {
+  const declared = [own, ...[...sites.values()].map((site) => site.runtime!)]
+    .map((runtime) => implementationOf(runtime, name))
+    .filter((implementation) => implementation !== undefined);
+  const [first] = declared;
+  if (!isPortBinding(first)) return undefined;
+  const same = declared.every((implementation) => isPortBinding(implementation) && implementation.port === first.port && implementation.method === first.method);
+  const rebound = [...sites.values()].some((site) => site.binding.ports?.[first.port] !== undefined);
+  return same && !rebound ? first : undefined;
 }

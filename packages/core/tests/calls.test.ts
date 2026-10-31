@@ -494,3 +494,46 @@ describe("where work stands through its calls", () => {
     expect(standing.path.map((step) => `${step.workflow.name}:${step.record.id}@${step.record.state}`)).toEqual(["root:W-3@ASK", "asks:W-3/ASK#1@ASKED"]);
   });
 });
+
+describe("an action a callee declares as a port and a method", () => {
+  function binding(ports?: Record<string, string>): Plugin {
+    const callee = withDiagram(defineWorkflow({
+      name: "asks-the-agent",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { ASKING: () => settled("asked") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: { "ask-agent": { port: "agent", method: "ask" } },
+    }), "stateDiagram-v2\n[*] --> ASKING\nASKING --> [*]\n");
+    return withDiagram(defineWorkflow({
+      name: "root",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { ASK: call(callee, ports ? { ports } : {}) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> ASK\nASK --> DONE: ASKING\nDONE --> [*]\nclass ASK call\n");
+  }
+  const agent = (kind: string): Plugin => ({
+    name: kind,
+    register: (registry) => registry.port(kind, { ask: Object.assign(async () => "asked", { [Symbol.for("amykit.acceptsAction")]: true }) }),
+  });
+
+  it("is kept as the binding it is, so the engine still sees what the action spends", async () => {
+    const { runtime } = await mounted([binding(), agent("agent")]);
+
+    expect(runtime.actions["ask-agent"]).toEqual({ port: "agent", method: "ask" });
+  });
+
+  it("is run through the call when the call rebinds its port", async () => {
+    const { runtime } = await mounted([binding({ agent: "agent-strong" }), agent("agent-strong")]);
+
+    expect(typeof runtime.actions["ask-agent"]).toBe("function");
+  });
+});
+

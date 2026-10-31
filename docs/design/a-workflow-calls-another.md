@@ -140,6 +140,14 @@ only thing refused.
 - **Each record keeps its own history.** Each child has its own `attempts`,
   `looks`, evidence and kept runs, so nothing a callee counts can push a caller
   over its ceiling.
+- **The machine's own limits are the root's.** The budget and the
+  evidence policy a workflow opts into (*no retry is free*) are the engine's,
+  and the engine holds one queue item per root, so they are read off the
+  root: a callee's own `progress` is not applied inside a call. An action a
+  callee declares as a port and a method stays that binding in the composed
+  runtime whenever nothing makes it ambiguous, so the budget still sees an
+  action that spends the agent; one whose port the call rebinds runs through
+  the call.
 
 **What a callee does is bounded by its caller.** A callee's write claims must
 fit inside its caller's claims, so installing a workflow cannot hand it a
