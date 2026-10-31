@@ -82,8 +82,8 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("ticket-to-qa") as WorkflowRuntime;
     const record = runtime.newRecord("PROJ-1", HOST.now());
 
-    await (runtime.actions["self-review"] as ActionHandler)(
-      { type: "self-review" },
+    await (runtime.actions["triage"] as ActionHandler)(
+      { type: "triage" },
       { record, observation: { ticket: ticket({ id: "PROJ-1" }) }, outcomes: {} },
     );
 

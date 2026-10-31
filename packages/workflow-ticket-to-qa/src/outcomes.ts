@@ -20,9 +20,8 @@ export interface EffectOutcomes {
   /** The conversation a triage read, when it was reading an answer. */
   clarification?: string[];
   implementation?: AttemptOutcome;
-  gate?: AttemptOutcome;
-  /** What the self-review said, so the record holds the latest one. */
-  selfReview?: AttemptOutcome;
+  /** The repository and commit the implementation left the work at. */
+  implemented?: { repo: string; revision: string };
   pullRequestNumber?: number;
   reviewer?: string;
   verdicts?: ThreadVerdict[];
@@ -53,10 +52,7 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   if (outcomes.triage) next.triage = outcomes.triage;
   if (outcomes.clarification?.length) next.clarification = outcomes.clarification;
   if (outcomes.implementation) next.lastImplementation = outcomes.implementation;
-  if (outcomes.gate) next.lastGate = outcomes.gate;
-  // The newest review of itself, exactly like the newest gate output: the
-  // record holds what the last look said, never a running history.
-  if (outcomes.selfReview) next.lastSelfReview = outcomes.selfReview;
+  if (outcomes.implemented) next.implemented = outcomes.implemented;
   if (outcomes.pullRequestNumber !== undefined) {
     next.pullRequestNumber = outcomes.pullRequestNumber;
   }
@@ -100,6 +96,11 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
  */
 export function applyTransition(record: TicketRecord, moved: Moved | null): TicketRecord {
   if (!moved) return record;
+  // A round of checks is counted where it is judged, so the ceiling on
+  // rounds speaks about checks that found something, whichever lane did.
+  if (moved.to === "verdict" && moved.from === "checks") {
+    return { ...record, attempts: { ...record.attempts, verdict: (record.attempts.verdict ?? 0) + 1 } };
+  }
   if (moved.to === "ESCALATED" && moved.from !== "ESCALATED") {
     return { ...record, resumeAt: moved.from as TicketState };
   }

@@ -1,18 +1,21 @@
-import { describe, it } from "vitest";
+import { beforeAll, describe, it } from "vitest";
 import {
   Agent,
   AskContext,
   AttemptOutcome,
   CodeHost,
+  CommandRunner,
   Comment,
   HarnessReply,
   PullRequestView,
   Tracker,
+  WorkflowRuntime,
 } from "@amykit/core";
 import { World, conforms } from "@amykit/workflow-testkit";
-import { fakeHost, fakeRun, fakeTracker, pullRequest, roster, runtimeConfig, thread, ticket } from "@amykit/test-fixtures";
-import { DEFAULT_POLICY, ThreadVerdict, TicketGit, TicketRecord, ticketRuntime } from "../src/index.js";
+import { fakeHost, fakeRun, fakeTracker, pullRequest, thread, ticket } from "@amykit/test-fixtures";
+import { ThreadVerdict, TicketRecord } from "../src/index.js";
 import { newRecord, workflow as ticketToQa } from "./drawn.js";
+import { mountedTicket } from "./mounted.js";
 
 const BOT = "copilot-pull-request-reviewer[bot]";
 
@@ -30,6 +33,8 @@ interface Road {
   readonly clear?: boolean;
   readonly implementFails?: boolean;
   readonly gateRed?: boolean;
+  /** The review asks for changes the first time it reads the change. */
+  readonly reviewAsks?: boolean;
   readonly moves?: number;
 }
 
@@ -59,7 +64,9 @@ class TicketWorld implements World {
   private gateRuns = 0;
   private humanReviewCount = 0;
   private humanThreadAnswered = 0;
+  private reviews = 0;
   private now: () => Date = () => new Date();
+  private mounted: WorkflowRuntime | undefined;
 
   constructor(name: string, private readonly road: Road = {}) {
     this.name = name;
@@ -70,21 +77,21 @@ class TicketWorld implements World {
     this.meanwhile = Array.from({ length: road.moves ?? 12 }, () => () => this.somebodyMoves());
   }
 
-  runtime(now: () => Date) {
+  /**
+   * Mounted as the host mounts it, so the gate and the review run as the
+   * lanes of `checks`; its clock is the walk's, read when asked.
+   */
+  async mount(): Promise<void> {
+    this.mounted = (await mountedTicket(
+      { tracker: this.tracker(), host: this.host(), agent: this.agent(), gate: { run: async () => this.gate() } },
+      () => this.now(),
+      this.git(),
+    )).runtime;
+  }
+
+  runtime(now: () => Date): WorkflowRuntime {
     this.now = now;
-    return { ...ticketRuntime({
-      tracker: this.tracker(),
-      host: this.host(),
-      agent: this.agent(),
-      gate: { run: async () => this.gate() },
-      notifier: { announce: async () => {} },
-      roster: () => roster({ confirmedOn: now().toISOString().slice(0, 10) }),
-      now,
-      git: this.git(),
-      layout: { workspaceRoot: "/tmp/amy-conformance", defaultBranch: "main" },
-      config: runtimeConfig,
-      policy: DEFAULT_POLICY,
-    }), policy: DEFAULT_POLICY, newRecord };
+    return this.mounted!;
   }
 
   /** What the people around the ticket do next, one move per wait. */
@@ -191,29 +198,35 @@ class TicketWorld implements World {
           return { text: "", run: fakeRun({ outcome: "failed", output: "it would not compile" }) };
         }
         if (context?.step === "implement") this.changed = true;
-        return { text: "looks right against the ticket", run: fakeRun() };
+        if (context?.step === "self-review" && this.road.reviewAsks && this.reviews++ === 0) {
+          return { text: "CHANGES_ASKED: the total is rounded twice", run: fakeRun() };
+        }
+        return { text: "looks right against the ticket\nAPPROVED", run: fakeRun() };
       },
     };
   }
 
-  /** A tree for the ticket and a branch that always takes the commit. */
-  private git(): TicketGit {
+  /**
+   * A git that answers the way a real one would about this world's tree: the
+   * agent only edits files, and the head moves when, and only when, the
+   * runtime commits them.
+   */
+  private git(): CommandRunner {
     return {
-      pathFor: () => "/tmp/amy-conformance/tree",
-      acquire: async () => "/tmp/amy-conformance/tree",
-      prepareBranch: async () => {},
-      // The agent only edits files. The head moves when, and only when, the
-      // runtime commits and pushes them — which is what a real git does.
-      commitAndPush: async () => {
-        if (!this.changed) return false;
-        this.changed = false;
-        this.push();
-        return true;
+      run: async (_command, args) => {
+        let stdout = "";
+        if (args[0] === "status") stdout = this.changed ? " M invoice.md\n" : "";
+        if (args[0] === "commit") {
+          this.changed = false;
+          this.push();
+        }
+        if (args[0] === "rev-parse") stdout = `${String(this.heads).padStart(40, "0")}\n`;
+        return { ok: true, exitCode: 0, stdout, stderr: "" };
       },
     };
   }
 
-  /** Red the first time, so `CHECKED` is left both ways. */
+  /** Red the first time, so the verdict is reached both ways. */
   private gate(): AttemptOutcome {
     this.gateRuns += 1;
     if (this.road.gateRed) return { ok: false, output: "1 test failed", at: this.now().toISOString() };
@@ -221,11 +234,7 @@ class TicketWorld implements World {
   }
 }
 
-describe("ticket-to-qa", () => {
-  conforms(ticketToQa, {
-    runner: { describe, it },
-    runtime: (world, now) => world.runtime(now),
-    worlds: [
+const WORLDS: TicketWorld[] = [
       new TicketWorld("a ticket that takes the long road to QA"),
       new TicketWorld("a ticket clear as written", { clear: true }),
       new TicketWorld("an implementation the agent never finishes", { clear: true, implementFails: true, moves: 0 }),
@@ -253,7 +262,18 @@ describe("ticket-to-qa", () => {
         }),
         moves: 0,
       }),
-    ],
+      new TicketWorld("a review that asks for changes the gate did not", { clear: true, reviewAsks: true, moves: 0 }),
+];
+
+describe("ticket-to-qa", () => {
+  beforeAll(async () => {
+    for (const world of WORLDS) await world.mount();
+  });
+
+  conforms(ticketToQa, {
+    runner: { describe, it },
+    runtime: (world, now) => (world as TicketWorld).runtime(now),
+    worlds: WORLDS,
     // Shipped, so every arrow its diagram draws is one some world walks.
     everyEdge: true,
   });

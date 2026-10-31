@@ -6,15 +6,14 @@ const LATER = new Date("2026-09-03T13:00:00.000Z");
 
 describe("applyOutcomes", () => {
   it("stores the outcomes the actions produced", () => {
-    const next = applyOutcomes(record("CHECKED"), {
-      gate: { ok: false, output: "lint: 3 problems", at: LATER.toISOString() },
+    const next = applyOutcomes(record("IMPLEMENTING"), {
+      implementation: { ok: true, output: "done", at: LATER.toISOString() },
+      implemented: { repo: "acme/widgets", revision: "c0ffee" },
     });
 
-    expect(next.lastGate).toEqual({
-      ok: false,
-      output: "lint: 3 problems",
-      at: LATER.toISOString(),
-    });
+    expect(next.lastImplementation).toEqual({ ok: true, output: "done", at: LATER.toISOString() });
+    // The commit both checks are lent next.
+    expect(next.implemented).toEqual({ repo: "acme/widgets", revision: "c0ffee" });
   });
 
   it("adds a verdict for a thread it has not judged before", () => {
@@ -67,14 +66,22 @@ describe("applyOutcomes", () => {
 describe("applyTicketPlan", () => {
   it("folds what the core knows and what only this workflow knows, in one call", () => {
     const next = applyTicketPlan(
-      record("CHECKED"),
-      { kind: "advance", to: "PR_OPEN", effects: [], why: "the gate is green" },
-      { gate: { ok: true, output: "", at: LATER.toISOString() } },
+      record("IMPLEMENTING"),
+      { kind: "advance", to: "checks", effects: [], why: "the agent finished" },
+      { implementation: { ok: true, output: "", at: LATER.toISOString() } },
       LATER,
     );
 
-    expect(next.state).toBe("PR_OPEN");
-    expect(next.lastGate?.ok).toBe(true);
+    expect(next.state).toBe("checks");
+    expect(next.lastImplementation?.ok).toBe(true);
     expect(next.history).toHaveLength(1);
+  });
+
+  it("counts a round of checks each time the lanes meet at the verdict, and not on the way back from the owner", () => {
+    const met = applyTicketPlan(record("checks", { attempts: { verdict: 1 } }), { kind: "advance", to: "verdict", effects: [], why: "both ended" }, {}, LATER);
+    const back = applyTicketPlan(record("ESCALATED", { attempts: { verdict: 3 } }), { kind: "advance", to: "verdict", effects: [], why: "answered" }, {}, LATER);
+
+    expect(met.attempts.verdict).toBe(2);
+    expect(back.attempts).toEqual({});
   });
 });

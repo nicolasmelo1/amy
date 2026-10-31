@@ -6,7 +6,7 @@ import {
   disagreements,
   judgedThreadIds,
 } from "./record.js";
-import { TicketState } from "./state.js";
+import { DecidedState, TicketState } from "./state.js";
 import {
   automatedReviewerSawHead,
   hasReviewedHead,
@@ -24,6 +24,9 @@ import { discussionBefore, discussing, readAs, settledDiscussion } from "./discu
  * tracker, a code host, a repository or an agent.
  */
 export function plan(record: TicketRecord, obs: Observation, policy: Policy): Plan {
+  if (record.state === "checks") {
+    throw new Error(`${record.id} is in \`checks\`, which its lanes move: drive the mounted workflow, which composes them`);
+  }
   const early = before(record, obs, policy);
   const decided = early ?? decide[record.state](record, obs, policy);
   return after(decided, record, obs, policy);
@@ -58,13 +61,12 @@ function retire(obs: Observation): Plan {
  * not here does not build, and one drawn in `workflow.mmd` and not in
  * `TicketState` is a move the walkthrough refuses.
  */
-export const decide: Record<TicketState, Planner> = {
+export const decide: Record<DecidedState, Planner> = {
   DISCOVERED: (record) => planDiscovered(record),
   CLARIFYING: planClarifying,
   READY: () => advance("IMPLEMENTING", "nothing is blocking the implementation"),
   IMPLEMENTING: (record, _obs, policy) => planImplementing(record, policy),
-  CHECKED: (record, _obs, policy) => planChecked(record, policy),
-  SELF_REVIEW: (record) => planSelfReview(record),
+  verdict: (record, _obs, policy) => planVerdict(record, policy),
   PR_OPEN: (_record, obs) => planPullRequestOpen(obs),
   COPILOT_WAIT: planAutomatedReviewWait,
   COPILOT_FIX: planAutomatedReviewFix,
@@ -170,16 +172,28 @@ function implementationIsCurrent(record: TicketRecord): boolean {
   return attempt.at > record.lastGate.at;
 }
 
-function gateIsCurrent(record: TicketRecord): boolean {
-  const gate = record.lastGate;
-  if (!gate) return false;
+/** Whether a check ran after the last implementation, and so is about it. */
+function isCurrent(check: { at: string } | undefined, record: TicketRecord): boolean {
+  if (!check) return false;
   if (!record.lastImplementation) return true;
-  return gate.at > record.lastImplementation.at;
+  return check.at > record.lastImplementation.at;
 }
 
+/**
+ * What the next implementation is told: everything both checks found about
+ * the last one, in one round, so a change the gate refuses goes back with
+ * what the review said about it too.
+ */
 function retryContextFor(record: TicketRecord): string | undefined {
-  if (record.lastGate && !record.lastGate.ok && gateIsCurrent(record)) {
-    return record.lastGate.output;
+  const gate = isCurrent(record.lastGate, record) && !record.lastGate!.ok ? record.lastGate!.output : undefined;
+  const review = isCurrent(record.lastSelfReview, record) && (gate !== undefined || record.lastSelfReview!.verdict === "CHANGES_ASKED")
+    ? record.lastSelfReview!.output
+    : undefined;
+  if (gate !== undefined || review !== undefined) {
+    return [
+      ...(gate === undefined ? [] : ["The gate said:", gate]),
+      ...(review === undefined ? [] : [...(gate === undefined ? [] : [""]), "The review of the change said:", review]),
+    ].join("\n");
   }
   if (record.lastImplementation && !record.lastImplementation.ok) {
     return record.lastImplementation.output;
@@ -189,7 +203,7 @@ function retryContextFor(record: TicketRecord): string | undefined {
 
 function planImplementing(record: TicketRecord, policy: Policy): Plan {
   if (implementationIsCurrent(record) && record.lastImplementation?.ok) {
-    return advance("CHECKED", "the agent finished, the gate decides if it holds");
+    return advance("checks", "the agent finished; the gate and the review decide if it holds");
   }
 
   const attempts = attemptsIn(record, "IMPLEMENTING");
@@ -213,45 +227,34 @@ function planImplementing(record: TicketRecord, policy: Policy): Plan {
   });
 }
 
-function planChecked(record: TicketRecord, policy: Policy): Plan {
-  if (!gateIsCurrent(record)) {
-    return act("the gate has not run against this implementation", { type: "run-gate" });
+/**
+ * Where the gate and the self-review meet, each having checked the same
+ * commit. Both clean is a pull request; either finding something sends the
+ * implementation back with both findings at once, until the rounds run out.
+ */
+function planVerdict(record: TicketRecord, policy: Policy): Plan {
+  const gate = record.lanes?.GATE?.end;
+  const review = record.lanes?.SELF_REVIEW?.end;
+  if (gate === "GREEN" && review === "APPROVED") {
+    return advance("PR_OPEN", "the gate is green and the review found nothing to stop it");
   }
 
-  if (record.lastGate?.ok) {
-    return advance("SELF_REVIEW", "the gate is green");
-  }
-
-  const attempts = attemptsIn(record, "CHECKED");
-  if (attempts >= policy.maxGateAttempts) {
-    return advance("ESCALATED", `the gate stayed red across ${attempts} attempts`, {
+  const found = [gate === "RED" ? "the gate is red" : undefined, review === "CHANGES_ASKED" ? "the review asked for changes" : undefined]
+    .filter((said) => said !== undefined)
+    .join(" and ");
+  const rounds = attemptsIn(record, "verdict");
+  if (rounds >= policy.maxGateAttempts) {
+    return advance("ESCALATED", `the checks found something across ${rounds} rounds`, {
       type: "escalate",
-      reason: `The gate stayed red across ${attempts} attempts. Last output:\n${record.lastGate?.output ?? "none"}`,
+      reason: `The checks found something across ${rounds} rounds. Last time:\n${retryContextFor(record) ?? "nothing was said"}`,
       threadIds: [],
     });
   }
 
-  // No effect here on purpose. IMPLEMENTING sees that the gate ran after the
-  // last attempt, so it acts again and picks the gate output up as its retry
+  // No effect here on purpose. IMPLEMENTING sees that the checks ran after
+  // the last attempt, so it acts again and picks both up as its retry
   // context. That keeps every retry counted in exactly one place.
-  return advance("IMPLEMENTING", "the gate is red, back to the agent with its output");
-}
-
-/**
- * The half-step between a green gate and a published pull request.
- *
- * The review runs once per implementation: a record that carries a self
- * review has been read against its brief, and one that does not has not.
- * Re-running it on every look would ask the same question of the same tree
- * until a reviewer existed, which is what `lastSelfReview` is not for.
- */
-function planSelfReview(record: TicketRecord): Plan {
-  if (record.lastSelfReview) {
-    return advance("PR_OPEN", "the work has read itself against the brief");
-  }
-  return act("the change has not been reviewed against what it was for", {
-    type: "self-review",
-  });
+  return advance("IMPLEMENTING", `${found || "a check did not end clean"}, back to the agent with what both said`);
 }
 
 function planPullRequestOpen(obs: Observation): Plan {

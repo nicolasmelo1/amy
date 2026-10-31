@@ -3,9 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { FileBriefStore } from "@amykit/plugin-file-store";
-import { InMemoryStore, WORKDAY, ticket, ticketWorkerDeps } from "@amykit/test-fixtures";
-import { Worker } from "@amykit/plugin-serial-engine";
+import { WORKDAY, ticket } from "@amykit/test-fixtures";
 import type { AskContext, BriefStore, Tracker } from "@amykit/core";
+import { drive, mountedTicket } from "./mounted.js";
+import { reviewVerdict } from "../src/lanes.js";
 import type { Ticket } from "../src/ticket.js";
 
 const clock = new Date(WORKDAY);
@@ -52,39 +53,16 @@ const trackerFor = (read: () => Ticket): Tracker =>
     createFollowUp: vi.fn(async () => "PROJ-9999"),
   }) as unknown as Tracker;
 
-async function driveToSelfReview(
-  overrides: { tracker: Tracker; agent: unknown; briefs?: BriefStore; gate?: unknown; now?: () => Date },
-  ticks = 8,
-) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-self-review-"));
-  const queue = new (await import("@amykit/plugin-file-queue")).FileQueue(path.join(root, "queue"));
-  const records = new InMemoryStore();
-  queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
-
-  // A clock that moves: the machine decides what is "current" by comparing
-  // timestamps, so a frozen one makes a green gate look older than the
-  // implementation it checked and the ticket never leaves CHECKED.
+/**
+ * Drives the mounted workflow until both checks have met at the verdict: the
+ * self-review is a lane of `checks` now, which only exists once composed.
+ */
+async function driveToSelfReview(overrides: { tracker: Tracker; agent: unknown; briefs?: BriefStore; gate?: unknown; now?: () => Date }) {
   let at = clock.getTime();
-  const worker = new Worker({
-    queue,
-    records,
-    // The drive needs the machine to reach the gate green, which the fake
-    // gate says on the first run, and the fixture's ticket worker deps hold
-    // the same defaults every other runtime test drives with.
-    ...ticketWorkerDeps({
-      tracker: overrides.tracker,
-      agent: overrides.agent as never,
-      briefs: overrides.briefs,
-      gate: overrides.gate as never,
-      // The fakes' clock when the test has one: the implementation is stamped
-      // by the machine's clock and the gate by the fake's, and a gate that
-      // looks older than what it checked never vouches for it.
-      now: overrides.now ?? (() => new Date((at += 1000))),
-    }),
-  });
-  for (let look = 0; look < ticks; look += 1) await worker.tick();
-
-  return { record: records.records.get("PROJ-1239"), root };
+  const now = overrides.now ?? (() => new Date((at += 1000)));
+  const mounted = await mountedTicket({ tracker: overrides.tracker, agent: overrides.agent as object, gate: overrides.gate as object, brief: overrides.briefs }, now);
+  const record = await drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.lastSelfReview !== undefined);
+  return { record };
 }
 
 describe("the self-review half-step", () => {
@@ -146,5 +124,16 @@ describe("the self-review half-step", () => {
     expect(ask?.prompt).not.toContain("The current brief");
     expect(ask?.context?.brief).toBeUndefined();
     expect(record?.lastSelfReview?.ok).toBe(true);
+  });
+});
+describe("the verdict a review ends on", () => {
+  it.each([
+    ["a line saying CHANGES_ASKED", "the total rounds twice\nCHANGES_ASKED: round once", "CHANGES_ASKED"],
+    ["a verdict line saying it", "Verdict: CHANGES_ASKED", "CHANGES_ASKED"],
+    ["APPROVED", "looks right\nAPPROVED", "APPROVED"],
+    ["no verdict at all, which every review was before it could say one", "look at the boundary first", "APPROVED"],
+    ["the words in the middle of a sentence", "nothing here is CHANGES_ASKED worthy", "APPROVED"],
+  ] as const)("reads %s", (_name, text, verdict) => {
+    expect(reviewVerdict(text)).toBe(verdict);
   });
 });

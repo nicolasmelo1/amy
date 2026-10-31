@@ -195,12 +195,12 @@ describe("IMPLEMENTING", () => {
     ]);
   });
 
-  it("hands a finished implementation to the gate", () => {
+  it("hands a finished implementation to both checks at once", () => {
     const r = record("IMPLEMENTING", {
       lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
     });
 
-    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("CHECKED");
+    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("checks");
   });
 
   it("does not trust an implementation that predates the last gate run", () => {
@@ -211,7 +211,31 @@ describe("IMPLEMENTING", () => {
 
     const p = expectAct(plan(r, observation(), policy));
 
-    expect(p.effects).toEqual([{ type: "implement", retryContext: "lint: 3 problems" }]);
+    expect(p.effects).toEqual([{ type: "implement", retryContext: "The gate said:\nlint: 3 problems" }]);
+  });
+
+  it("carries what both checks found in one round: the gate's refusal and the review beside it", () => {
+    const r = record("IMPLEMENTING", {
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "lint: 3 problems"),
+      lastSelfReview: { ...attempt(true, "2026-09-03T10:05:00.000Z", "the total rounds twice"), verdict: "APPROVED" },
+    });
+
+    const p = expectAct(plan(r, observation(), policy));
+
+    expect(p.effects).toEqual([{ type: "implement", retryContext: "The gate said:\nlint: 3 problems\n\nThe review of the change said:\nthe total rounds twice" }]);
+  });
+
+  it("carries the review alone when only the review asked for changes", () => {
+    const r = record("IMPLEMENTING", {
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
+      lastSelfReview: { ...attempt(true, "2026-09-03T10:05:00.000Z", "CHANGES_ASKED: name the currency"), verdict: "CHANGES_ASKED" },
+    });
+
+    expect(expectAct(plan(r, observation(), policy)).effects).toEqual([
+      { type: "implement", retryContext: "The review of the change said:\nCHANGES_ASKED: name the currency" },
+    ]);
   });
 
   it("escalates instead of retrying forever", () => {
@@ -227,66 +251,46 @@ describe("IMPLEMENTING", () => {
   });
 });
 
-describe("CHECKED", () => {
-  it("runs the gate against a fresh implementation", () => {
-    const r = record("CHECKED", {
-      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
-    });
-
-    expect(expectAct(plan(r, observation(), policy)).effects).toEqual([{ type: "run-gate" }]);
+describe("verdict", () => {
+  const met = (gate: "GREEN" | "RED", review: "APPROVED" | "CHANGES_ASKED") => ({
+    GATE: { call: "PROJ-1239/GATE#1", end: gate },
+    SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#1", end: review },
   });
 
-  it("opens the pull request on green", () => {
-    const r = record("CHECKED", {
-      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
-      lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
-    });
+  it("opens the pull request when the gate is green and the review found nothing", () => {
+    const r = record("verdict", { lanes: met("GREEN", "APPROVED") });
 
-    // Green no longer publishes: the work reads itself against the brief
-    // first, and only then does a pull request exist for a person.
-    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("SELF_REVIEW");
+    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("PR_OPEN");
   });
 
-  it("asks the work to review itself before publishing, then publishes", () => {
-    const fresh = record("SELF_REVIEW", {
-      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
-      lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
-    });
+  it.each([
+    ["the gate is red", "RED", "APPROVED"],
+    ["the review asked for changes", "GREEN", "CHANGES_ASKED"],
+    ["the gate is red and the review asked for changes", "RED", "CHANGES_ASKED"],
+  ] as const)("sends the work back to the agent when %s", (said, gate, review) => {
+    const r = record("verdict", { attempts: { verdict: 1 }, lanes: met(gate, review) });
 
-    const ask = expectAct(plan(fresh, observation(), policy));
-    expect(ask.effects).toEqual([{ type: "self-review" }]);
+    const p = expectAdvance(plan(r, observation(), policy));
 
-    const read = record("SELF_REVIEW", {
-      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
-      lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
-      lastSelfReview: attempt(true, "2026-09-03T10:06:00.000Z"),
-    });
-
-    expect(expectAdvance(plan(read, observation(), policy)).to).toBe("PR_OPEN");
+    expect(p.to).toBe("IMPLEMENTING");
+    expect(p.why).toContain(said);
+    // The retry context is picked up by IMPLEMENTING itself, so the bounce
+    // carries no effect and the attempt is counted in exactly one place.
+    expect(p.effects).toEqual([]);
   });
 
-  it("sends a red gate back to the agent", () => {
-    const r = record("CHECKED", {
+  it("escalates checks that keep finding something", () => {
+    const r = record("verdict", {
+      attempts: { verdict: policy.maxGateAttempts },
+      lanes: met("RED", "APPROVED"),
       lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
       lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "typecheck failed"),
     });
 
     const p = expectAdvance(plan(r, observation(), policy));
 
-    expect(p.to).toBe("IMPLEMENTING");
-    // The retry context is picked up by IMPLEMENTING itself, so the bounce
-    // carries no effect and the attempt is counted in exactly one place.
-    expect(p.effects).toEqual([]);
-  });
-
-  it("escalates a gate that stays red", () => {
-    const r = record("CHECKED", {
-      attempts: { CHECKED: policy.maxGateAttempts },
-      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
-      lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "typecheck failed"),
-    });
-
-    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("ESCALATED");
+    expect(p.to).toBe("ESCALATED");
+    expect(p.effects[0]).toMatchObject({ type: "escalate", reason: expect.stringContaining("typecheck failed") });
   });
 });
 
@@ -1186,13 +1190,13 @@ describe("a discussion of a disagreement", () => {
 
 describe("under answer, the first unmarked reply", () => {
   it("still resumes escalated work, as it always did", () => {
-    const r = record("ESCALATED", { resumeAt: "CHECKED", escalation: { reason: "r", askedAt: "2026-09-03T10:00:00.000Z" } });
+    const r = record("ESCALATED", { resumeAt: "verdict", escalation: { reason: "r", askedAt: "2026-09-03T10:00:00.000Z" } });
     const obs = observation({
       escalationAnswered: true,
       conversation: [{ author: "ada", body: "why?", at: "2026-09-03T10:05:00.000Z", fromAmy: false }],
     });
 
-    expect(expectAdvance(plan(r, obs, policy)).to).toBe("CHECKED");
+    expect(expectAdvance(plan(r, obs, policy)).to).toBe("verdict");
   });
 });
 

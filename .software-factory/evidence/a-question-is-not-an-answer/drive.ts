@@ -174,6 +174,7 @@ function world(conversationPolicy: Policy["conversation"]) {
         commits.push(args);
         return true;
       },
+      headSha: async () => "0".repeat(40),
     },
     layout: { workspaceRoot: dir, defaultBranch: "main" },
   };
