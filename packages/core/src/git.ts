@@ -77,15 +77,18 @@ export class Git {
     private readonly layout: RepoLayout,
     private readonly worktreesOf?: Worktree | (() => Worktree | undefined),
     private readonly leases?: BranchLeases,
+    private readonly lentTo?: (workId: string) => string | undefined,
   ) {}
 
   /**
    * The same checkouts, for a lane: a branch is taken before it is checked
    * out or pushed, and a branch another lane holds is a `LeaseHeld`, which
-   * the lane waits on rather than fails.
+   * the lane waits on rather than fails. `lent` names the commit a lane was
+   * lent, if any: that lane's tree is detached at it whatever it asks for,
+   * and no move is made in it.
    */
-  leasedTo(leases: BranchLeases): Git {
-    return new Git(this.runner, this.layout, this.worktreesOf, leases);
+  leasedTo(leases: BranchLeases, lent?: (workId: string) => string | undefined): Git {
+    return new Git(this.runner, this.layout, this.worktreesOf, leases, lent);
   }
 
   private get worktrees(): Worktree | undefined {
@@ -115,6 +118,8 @@ export class Git {
    * The shared mode remains a no-op path lookup.
    */
   async acquire(repo: string, workId?: string): Promise<string> {
+    const lent = workId === undefined ? undefined : this.lentTo?.(workId);
+    if (lent !== undefined) return this.atRevision(repo, lent, workId!);
     const worktrees = this.worktrees;
     if (worktrees && workId !== undefined) return worktrees.acquire(workId, repo);
     return this.pathFor(repo);
@@ -230,7 +235,7 @@ export class Git {
   private mayMove(repo: string, branch: string | undefined, workId: string | undefined): void {
     if (workId === undefined) return;
     const worktrees = this.worktrees;
-    const lent = worktrees ? lentIn(worktrees.pathFor(workId, repo)) : undefined;
+    const lent = this.lentTo?.(workId) ?? (worktrees ? lentIn(worktrees.pathFor(workId, repo)) : undefined);
     if (lent) {
       throw new Error(`${workId} was lent ${lent.slice(0, 7)} to check, and checks it read-only: it cannot move ${branch ?? "a branch"} in ${repo}`);
     }

@@ -15,7 +15,7 @@ type TaskRecord = WorkRecord & { input: { task: string; looks: number }; worked?
 /** Every lane's move, by tick, in the order the moves were made. */
 type Moves = string[][];
 
-function planner(moves: Moves): Plugin {
+function planner(moves: Moves, tasks: [string, number][] = [["write", 1], ["review", 2], ["test", 3]]): Plugin {
   const task = withDiagram(defineWorkflow({
     name: "task",
     configSchema: NO_SETTINGS,
@@ -34,13 +34,14 @@ function planner(moves: Moves): Plugin {
     observe: async () => ({}),
     actions: {
       work: async (_scope, work) => {
-        moves.at(-1)!.push((work.record as TaskRecord).input.task);
+        const name = (work.record as TaskRecord).input.task;
+        if (name === "broken") throw new Error("the gate's runner is not answering");
+        moves.at(-1)!.push(name);
         work.outcomes.worked = true;
       },
     },
     remember: (_scope, record: TaskRecord, outcomes) => (outcomes.worked ? { ...record, worked: (record.worked ?? 0) + 1 } : record),
   }), "stateDiagram-v2\n[*] --> WORKING\nWORKING --> DONE\nDONE --> [*]\n");
-  const tasks: [string, number][] = [["write", 1], ["review", 2], ["test", 3]];
   return withDiagram(defineWorkflow({
     name: "planner",
     configSchema: NO_SETTINGS,
@@ -80,7 +81,7 @@ describe("the concurrent engine", () => {
   });
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  async function run(engine: Plugin): Promise<{ moves: Moves; record: WorkRecord }> {
+  async function run(engine: Plugin, tasks?: [string, number][], ticks = 30): Promise<{ moves: Moves; record: WorkRecord; results: { kind: string }[] }> {
     const moves: Moves = [];
     const records = new InMemoryStore();
     const ports: Plugin = {
@@ -96,16 +97,18 @@ describe("the concurrent engine", () => {
       now: () => new Date("2026-10-31T12:00:00.000Z"),
       paths: { workspace: root, checkouts: {}, state: root },
     };
-    const outcome = await mount([ports, planner(moves), engine], {}, host);
+    const outcome = await mount([ports, planner(moves, tasks), engine], {}, host);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const driven = outcome.mounted.engine as Engine;
     await driven.discover();
-    for (let tick = 0; tick < 30; tick += 1) {
+    const results: { kind: string }[] = [];
+    for (let tick = 0; tick < ticks; tick += 1) {
       moves.push([]);
       const result = (await driven.tick()) as { kind: string };
+      results.push(result);
       if (result.kind === "idle") break;
     }
-    return { moves: moves.filter((tick) => tick.length > 0), record: records.load("PLAN-1")! };
+    return { moves: moves.filter((tick) => tick.length > 0), record: records.load("PLAN-1")!, results };
   }
 
   it("moves every lane that has a move in one tick, one move each", async () => {
@@ -127,5 +130,14 @@ describe("the concurrent engine", () => {
       calls: Object.fromEntries(Object.entries(record.calls ?? {}).map(([id, child]) => [id, { state: child.state, attempts: child.attempts, history: child.history.map((step) => step.to) }])),
     });
     expect(shape(side.record)).toEqual(shape(turn.record));
+  });
+
+  it("keeps the moves the other lanes made when one lane throws, and fails the look", async () => {
+    // Two ticks: the first enters the fork, the second moves the lanes.
+    const { record, results } = await run(concurrent, [["write", 1], ["broken", 1], ["test", 1]], 2);
+
+    expect(results.at(-1)).toMatchObject({ kind: "failed", error: "the gate's runner is not answering" });
+    const worked = Object.values(record.calls ?? {}).map((child) => [child.input?.task, child.attempts.WORKING ?? 0]);
+    expect(worked).toEqual([["write", 1], ["broken", 0], ["test", 1]]);
   });
 });

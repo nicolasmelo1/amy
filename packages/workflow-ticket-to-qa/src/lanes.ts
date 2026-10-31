@@ -41,17 +41,18 @@ export type Finding = AttemptOutcome & { revision?: string };
 type GateRecord = WorkRecord & { state: "CHECKING" | "GREEN" | "RED"; input: CheckInput; result?: Finding };
 
 /**
- * Where a check runs: a tree of its own detached at the commit, when a
- * worktree is mounted to lend one, and the work's own tree when not — a
- * shared checkout is already on the work's branch.
+ * Where a check runs: its own tree, which the host lends detached at the
+ * commit the lane was bound to, when a worktree is mounted to lend one; and
+ * the work's own tree when not — a shared checkout is already on the work's
+ * branch.
  */
 async function treeFor(
-  git: { atRevision(repo: string, revision: string, workId: string): Promise<string>; acquire(repo: string, workId?: string): Promise<string> },
+  git: { acquire(repo: string, workId?: string): Promise<string> },
   worktree: Worktree | undefined,
   record: WorkRecord & { input: CheckInput },
 ): Promise<{ readonly path: string; readonly workId: string }> {
-  const { repo, workId, revision } = record.input;
-  if (worktree && revision) return { path: await git.atRevision(repo, revision, record.id), workId: record.id };
+  const { repo, workId } = record.input;
+  if (worktree && record.revision) return { path: await git.acquire(repo, record.id), workId: record.id };
   return { path: await git.acquire(repo, workId), workId };
 }
 
@@ -161,8 +162,18 @@ export const selfReviewLane = withDiagram(defineWorkflow({
         tree.path,
         { workId: record.id, step: "self-review", brief: ticket.brief },
       );
+      // A review that did not finish found nothing either way, so it never
+      // ends the lane. Out of quota, it was not a try and waits; anything
+      // else fails the look, the way every other agent step here does.
+      if (reply.run.outcome === "rate-limited") {
+        work.outcomes.waited = { notATry: true };
+        return;
+      }
+      if (reply.run.outcome !== "completed") {
+        throw new Error(`self-review did not complete: ${reply.run.outcome} on ${reply.run.harness}${reply.run.output ? `\n\n${reply.run.output}` : ""}`);
+      }
       work.outcomes.result = {
-        ok: reply.run.outcome === "completed",
+        ok: true,
         output: reply.text,
         at: scope.ctx.now().toISOString(),
         verdict: reviewVerdict(reply.text),

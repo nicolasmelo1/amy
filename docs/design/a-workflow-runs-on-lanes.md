@@ -214,7 +214,8 @@ fork is refused, because its lanes move it.
 is — the turn is the fork's look count, so they take turns — and a lane that
 waits gives its turn to the next. Only when every lane still running waits
 does the record wait, and its `why` says how many have arrived and which lane
-needs the person; `callStanding` and the new `laneStanding` say the same, and
+needs the person. A lane whose decision nobody has written settles the record
+only once its siblings can make no move either; `callStanding` and the new `laneStanding` say the same, and
 `amy status` draws the lanes side by side, `checks › GATE GREEN ∥ SELF_REVIEW
 REVIEWING (1/2 arrived)`. `expandDiagram` draws a callee's own forks as forks
 and marks every lane where its record is.
@@ -223,8 +224,10 @@ and marks every lane where its record is.
 once. The serial engine never asks it. `@amykit/plugin-concurrent-engine` is
 the serial worker with `lanes: "concurrent"`: it claims one queue item as
 before, asks the budget before each lane's call — a lane it refuses waits while
-the rest go on — runs the moves concurrently, and folds each into the one
-record it claimed. Each lane writes to its own record, so the order the moves
+the rest go on, and a lane's action bound to the agent still says so through
+the dispatcher that runs it — runs the moves concurrently, and folds each into
+the one record it claimed. A lane that throws fails the look as a serial look
+would, and the moves its siblings made are kept rather than paid for twice. Each lane writes to its own record, so the order the moves
 finish in cannot change the result, which is what the unit test and the third
 scenario world both compare.
 
@@ -233,12 +236,16 @@ scenario world both compare.
 repository and branch, exclusively, the way the file queue claims an item, and
 a branch another lane holds is a `LeaseHeld`. The lane's action is not failed
 for it: the look is written down as not a try (`LEASE_WAIT`), the rest of that
-lane's plan does not run, and the record is looked at again a second later. A
-lane lets go of every branch it took when its record ends. A binding's
-`revision` is held on the lane's record, and `Git.atRevision` lends a tree
-detached at it — a worktree of the lane's own — marked inside its git directory
-so `prepareBranch`, `commit` and `push` all refuse it, naming the commit. When
-the lanes meet, the host takes their trees back.
+lane's plan does not run — a move it carried is not made — and the record is
+looked at again a second later. A lane lets go of every branch it took when its
+record ends, and of every branch a call inside it took. A binding's `revision`
+is held on the lane's record, and the lane's checkouts lend it: whatever tree
+the lane asks for is a worktree of its own detached at that commit, marked
+inside its git directory, and `prepareBranch`, `commit` and `push` all refuse
+it, naming the commit. The lane declares nothing for it. What the host's `Git`
+does not stop is an agent running `git` itself in that tree; that is the rule
+that an agent never touches git, enforced where every other step is. When the
+lanes meet, the host takes their trees back.
 
 **`ticket-to-qa`.** `CHECKED` and `SELF_REVIEW` are gone. `IMPLEMENTING --> checks`;
 `GATE` and `SELF_REVIEW` are `ticket-gate` and `ticket-self-review`, two
@@ -279,7 +286,7 @@ queue is the only schedule there is.
 | `packages/core/src/diagram.ts` | `<<fork>>` and `<<join>>`, read and refused |
 | `packages/core/src/calls.ts` | the fork's plan, its observation, its fold, `everyLane`, `laneStanding` |
 | `packages/core/src/leases.ts` | `FileLeases` and `LeaseHeld` |
-| `packages/core/src/git.ts` | `leasedTo`, `atRevision`, and the refusals in a lent tree |
+| `packages/core/src/git.ts` | `leasedTo`, the tree lent at a revision, and the refusals in it |
 | `plugins/concurrent-engine/` | the engine that moves lanes side by side |
 | `packages/workflow-ticket-to-qa/src/lanes.ts` | the gate and the self-review, as callees |
 | `.software-factory/evidence/ticket-to-qa/drive.ts` | the two lane assertions, and the third world |

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { HostServices, LEASE_WAIT, NodeCommandRunner, Plugin, WorkRecord, Worktree, WorktreeInfo, mount } from "../src/index.js";
+import { FileLeases, HostServices, LEASE_WAIT, NodeCommandRunner, Plugin, WorkRecord, Worktree, WorktreeInfo, mount } from "../src/index.js";
 import { PlannerRecord, TaskRecord, Work, mounted, planner, task, walk } from "./forks.js";
 
 /**
@@ -118,14 +118,15 @@ describe("lanes hold what they use", () => {
     expect(unnamed.ok).toBe(true);
   });
 
-  it("lends a lane bound with `revision` a tree detached at that commit, and it cannot move the caller's branch", async () => {
+  it("lends a lane bound with `revision` a tree detached at that commit, whatever it asks for, and it cannot move the caller's branch", async () => {
     run(checkout, "checkout", "-q", "-b", "amy/feature");
     const caller = commit(checkout, "the caller's change");
     run(checkout, "push", "-q", "origin", "amy/feature");
     const checked: { head: string; branch: string; moved: string[] }[] = [];
     const work: Work = async (scope, record) => {
       const git = scope.checkouts.git;
-      const tree = await git.atRevision("acme/widgets", record.revision!, record.id);
+      // The lane asks for its tree as any piece of work would; the host lends it at the commit.
+      const tree = await git.acquire("acme/widgets", record.id);
       const moved: string[] = [];
       for (const attempt of [
         () => git.prepareBranch("acme/widgets", "amy/feature", record.id),
@@ -167,3 +168,69 @@ function commit(cwd: string, message: string): string {
   run(cwd, "-c", "user.name=amy", "-c", "user.email=amy@example.test", "commit", "-q", "-m", message);
   return run(cwd, "rev-parse", "HEAD");
 }
+
+describe("a lane that waits on a branch, on its way out", () => {
+  let root: string;
+  let checkout: string;
+  let bare: string;
+  let saved: NodeJS.ProcessEnv;
+  let host: HostServices;
+
+  beforeEach(() => {
+    saved = { ...process.env };
+    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-out-"));
+    bare = path.join(root, "widgets.git");
+    checkout = path.join(root, "checkouts", "widgets");
+    run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
+    run(root, "clone", "-q", bare, checkout);
+    commit(checkout, "the first commit");
+    run(checkout, "push", "-q", "origin", "main");
+    host = {
+      runner: new NodeCommandRunner(),
+      now: () => new Date("2026-10-31T12:00:00.000Z"),
+      paths: { workspace: path.join(root, "checkouts"), checkouts: {}, state: path.join(root, "state") },
+    };
+  });
+
+  afterEach(() => {
+    process.env = saved;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("stays where it is rather than ending without the work its move carried", async () => {
+    // Shared checkout: no worktree, so the lanes' work lands on one branch in turn.
+    const work: Work = async (scope, record) => {
+      await scope.checkouts.git.prepareBranch("acme/widgets", "amy/shared", record.id);
+      fs.writeFileSync(path.join(checkout, `${record.input.task}-${record.worked ?? 0}.md`), "work\n");
+      await scope.checkouts.git.commitAndPush("acme/widgets", "amy/shared", `${record.input.task} ${record.worked ?? 0}`, record.id);
+    };
+    const { workflow, runtime } = await mounted([planner({ lanes: ["TASK_A", "TASK_B"], callee: task({ looks: (name) => (name === "first" ? 1 : 0), finishWorking: true, work }) })], host);
+    const start = { ...runtime.newRecord("PLAN-1", host.now()), tasks: ["first", "second"] } as PlannerRecord;
+
+    const walked = await walk(workflow, runtime, start, host.now());
+
+    expect(walked.outcomes.some((outcomes) => outcomes[LEASE_WAIT] !== undefined)).toBe(true);
+    expect(walked.record.state).toBe("INTEGRATED");
+    // The second lane's only move carries its work, and the first holds the
+    // branch: it waited, and moved once the branch was free, work and all.
+    expect(run(bare, "log", "--format=%s", "amy/shared").split("\n")).toEqual(["second 0", "first 1", "first 0", "the first commit"]);
+  });
+});
+
+describe("the branches a lane holds", () => {
+  it("go back with the lane, those its own calls took included, and nobody else's", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-leases-"));
+    const leases = new FileLeases(root);
+    leases.take("acme/widgets", "amy/a", "PLAN-1/TASK_A#1");
+    leases.take("acme/widgets", "amy/b", "PLAN-1/TASK_A#1/OPEN#1");
+    leases.take("acme/widgets", "amy/c", "PLAN-1/TASK_AB#1");
+
+    leases.release("PLAN-1/TASK_A#1");
+
+    expect(leases.take("acme/widgets", "amy/a", "someone")).toEqual({ taken: true });
+    expect(leases.take("acme/widgets", "amy/b", "someone")).toEqual({ taken: true });
+    expect(leases.take("acme/widgets", "amy/c", "someone")).toEqual({ taken: false, holder: "PLAN-1/TASK_AB#1" });
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+});

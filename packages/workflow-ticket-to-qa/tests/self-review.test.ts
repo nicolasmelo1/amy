@@ -137,3 +137,37 @@ describe("the verdict a review ends on", () => {
     expect(reviewVerdict(text)).toBe(verdict);
   });
 });
+
+describe("a self-review that did not finish", () => {
+  const agentThat = (outcome: "rate-limited" | "failed") => ({
+    ask: vi.fn(async (_prompt: string, _cwd: string, context?: AskContext) => {
+      const run = { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" } as const;
+      if (context?.step === "triage") return { text: '{"clear": true}', run };
+      if (context?.step === "self-review") return { text: "", run: { ...run, outcome } };
+      return { text: "done", run };
+    }),
+  });
+
+  it("never approves the change when it ran out of quota: it waits, and it was not a try", async () => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    const mounted = await mountedTicket({ tracker: trackerFor(() => ticket()), agent: agentThat("rate-limited") }, now);
+
+    const record = await drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.state === "verdict", 20);
+
+    expect(record.state).toBe("checks");
+    expect(record.lastSelfReview).toBeUndefined();
+    const review = record.calls![`PROJ-1239/SELF_REVIEW#1`]!;
+    expect(review.state).toBe("REVIEWING");
+    expect(review.attempts.REVIEWING ?? 0).toBe(0);
+  });
+
+  it("fails the look when it did not complete for any other reason", async () => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    const mounted = await mountedTicket({ tracker: trackerFor(() => ticket()), agent: agentThat("failed") }, now);
+
+    await expect(drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.state === "verdict", 20))
+      .rejects.toThrow(/self-review did not complete: failed on fake/);
+  });
+});

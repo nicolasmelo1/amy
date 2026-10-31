@@ -34,8 +34,20 @@ export type Work = (scope: WorkflowPieceContext<typeof NO_SETTINGS, object, Reco
  * says so, and stuck — an end with no edge in a caller that forgets it —
  * never, unless the test draws it.
  */
-export function task(options: { looks?: number; work?: Work; ends?: "two" | "three"; waitsOn?: string } = {}) {
-  const looks = options.looks ?? 1;
+export function task(options: {
+  /** How many looks the work takes, for every task or by task. */
+  looks?: number | ((task: string) => number);
+  work?: Work;
+  ends?: "two" | "three";
+  waitsOn?: string;
+  /** A task whose decision nobody has written yet. */
+  unwritten?: string;
+  /** The last look works on its way to `DONE`: an advance carrying the work, rather than an act before it. */
+  finishWorking?: boolean;
+  /** How the work is wired: a handler (the default), or the agent's `ask`, as a port and a method. */
+  agent?: boolean;
+} = {}) {
+  const looksFor = (record: TaskRecord): number => (typeof options.looks === "function" ? options.looks(record.input.task) : options.looks ?? 1);
   const ends = options.ends === "three" ? "    WORKING --> STUCK\n    STUCK --> [*]\n" : "";
   return withDiagram(defineWorkflow({
     name: "task",
@@ -50,6 +62,9 @@ export function task(options: { looks?: number; work?: Work; ends?: "two" | "thr
     decide: {
       WORKING: (record: TaskRecord) => {
         if (record.input.task === options.waitsOn) return { kind: "wait", retryAfterMs: 60_000, effects: [], why: "waiting on its owner" };
+        if (record.input.task === options.unwritten) return settled(`the decision for \`${record.state}\` is not written yet`);
+        const looks = looksFor(record);
+        if (options.finishWorking && (record.worked ?? 0) === looks) return advance("DONE", "done, working on the way out", { type: "work" });
         if (record.input.task.startsWith("refuse")) return advance("DECLINED", "refused");
         return (record.worked ?? 0) < looks ? act(`working on ${record.input.task}`, { type: "work" }) : advance("DONE", "done");
       },
@@ -59,7 +74,7 @@ export function task(options: { looks?: number; work?: Work; ends?: "two" | "thr
     },
     record: () => ({}),
     observe: async () => ({}),
-    actions: {
+    actions: options.agent ? { work: { port: "agent", method: "ask" } } : {
       work: async (scope, work) => {
         const said = await options.work?.(scope as never, work.record as TaskRecord);
         work.outcomes.worked = said ?? true;

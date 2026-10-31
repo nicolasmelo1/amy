@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "pele";
-import { DiagramError, HostServices, advance, call, cameFrom, connects, defineWorkflow, expandDiagram, markState, mount, readDiagram, settled, withDiagram } from "../src/index.js";
+import { DiagramError, HostServices, Plugin, acceptsAction, advance, call, cameFrom, connects, defineWorkflow, expandDiagram, implementationOf, markState, mount, notWrittenIn, portReachedBy, readDiagram, settled, withDiagram } from "../src/index.js";
 import { ESCALATING, LANES, NOTE_TO_PLAN } from "./diagrams.js";
 import { PLANNER, PlannerRecord, mounted, planner, task, walk } from "./forks.js";
 
@@ -271,5 +271,23 @@ describe("a fork of lanes", () => {
     expect(expanded).toContain("state TASK_A {");
     expect(expanded).toContain("class split,TASK_A__WORKING,TASK_B__WORKING,TASK_C__WORKING current");
     expect((parse(expanded) as { type: string }).type).toBe("state");
+  });
+
+  it("lets the other lanes run to their ends when one has a decision nobody wrote, and settles only then", async () => {
+    const { workflow, runtime } = await mounted([planner({ callee: task({ unwritten: "task_b" }) })], HOST);
+
+    const { record, plans } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now());
+
+    expect(record.state).toBe("split");
+    expect(Object.values(record.calls ?? {}).map((child) => child.state)).toEqual(["DONE", "WORKING", "DONE"]);
+    expect(plans.at(-1)!.kind).not.toBe("settled");
+    expect(notWrittenIn(workflow.plan(record, await runtime.observe(record), runtime.policy))).toBe("WORKING");
+  });
+
+  it("still says which port a lane's action spends, so the budget is asked before a lane spends the agent", async () => {
+    const agent: Plugin = { name: "agent", register: (registry) => registry.port("agent", { ask: acceptsAction(async () => ({})) }) };
+    const { runtime } = await mounted([agent, planner({ callee: task({ agent: true }) })], HOST);
+
+    expect(portReachedBy(implementationOf(runtime, "work"))).toBe("agent");
   });
 });

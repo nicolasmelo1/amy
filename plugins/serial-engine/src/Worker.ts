@@ -23,9 +23,9 @@ import {
   connects,
   dispatchesTo,
   implementationOf,
-  isPortBinding,
   movedBy,
   notATryIn,
+  portReachedBy,
   runAction,
   undeclaredIn,
 } from "@amykit/core";
@@ -296,14 +296,23 @@ export class Worker {
     for (const plan of allowed) {
       this.record("work.planned", { workId: item.workId, state: record.state, detail: { plan: plan.kind, why: plan.why } });
     }
-    const outcomes = await Promise.all(allowed.map((plan) => this.execute(observation, record, plan)));
-    let next = record;
-    allowed.forEach((plan, index) => {
-      next = this.deps.runtime.apply(applyPlan(next, plan, now, outcomes[index]), plan, outcomes[index]!, observation, now, null);
+    // Settled one by one: a lane that threw must not cost its siblings the
+    // moves they made, and paid for. Theirs are kept; the failure is the
+    // item's, as a serial look's would be.
+    const settled = await Promise.allSettled(allowed.map((plan) => this.execute(observation, record, plan)));
+    const moved = allowed.flatMap((plan, index) => {
+      const result = settled[index]!;
+      return result.status === "fulfilled" ? [{ plan, outcomes: result.value }] : [];
     });
+    let next = record;
+    for (const { plan, outcomes } of moved) {
+      next = this.deps.runtime.apply(applyPlan(next, plan, now, outcomes), plan, outcomes, observation, now, null);
+    }
     this.deps.records.save(next);
+    const failed = settled.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (failed) throw failed.reason;
 
-    const delayMs = Math.min(...allowed.map((plan, index) => retryAfter(plan, outcomes[index]!, this.deps.config.retryDelayMs)));
+    const delayMs = Math.min(...moved.map(({ plan, outcomes }) => retryAfter(plan, outcomes, this.deps.config.retryDelayMs)));
     this.deps.queue.enqueue({ workId: item.workId, reason: allowed.map((plan) => plan.why).join("; "), delayMs, progress: item.progress, priority: item.priority }, this.deps.now());
     this.deps.queue.complete(item);
     this.maybePrune(now);
@@ -429,8 +438,7 @@ export class Worker {
   private agentActions(actions: readonly Action[]): Action[] {
     return actions.filter((action) => {
       if (dispatchesTo(action.type, "agent")) return true;
-      const implementation = implementationOf(this.deps.runtime, action.type);
-      return isPortBinding(implementation) && implementation.port === "agent";
+      return portReachedBy(implementationOf(this.deps.runtime, action.type)) === "agent";
     });
   }
 

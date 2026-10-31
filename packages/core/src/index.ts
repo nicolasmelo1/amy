@@ -23,6 +23,7 @@ export {
   declaredActions,
   implementationOf,
   isPortBinding,
+  portReachedBy,
   runAction,
   undeclaredIn,
   unrunnable,

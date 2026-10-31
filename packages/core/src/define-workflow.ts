@@ -375,8 +375,9 @@ function assemble(
   // Only a workflow with lanes holds branches, and only its lanes take them.
   const forked = Object.keys(shape.diagram?.forks ?? {}).length > 0;
   const leases = ctx && forked ? new FileLeases(() => nodePath.join(ctx.paths.state, "leases")) : undefined;
-  const sites = callSites(declaration, shape, ctx, policy, path, trail, leases);
-  const forks = forkSites(shape, sites, path, leases);
+  const lent = new Map<string, string>();
+  const sites = callSites(declaration, shape, ctx, policy, path, trail, leases && { leases, lent });
+  const forks = forkSites(shape, sites, path, leases && { leases, lent });
   // Judged at mount, as it always was: a module's exported declaration is
   // read by suites that walk it to find exactly this kind of mistake.
   if (ctx && "decide" in declaration && declaration.decide) decisionsFit(declaration.name, shape.states, declaration.decide, [...sites.keys()], [...forks.keys()]);
@@ -432,7 +433,7 @@ function callSites(
   policy: object,
   path: readonly string[],
   trail: readonly string[],
-  leases?: BranchLeases,
+  held?: LaneHolds,
 ): Map<string, PendingSite> {
   const sites = new Map<string, PendingSite>();
   const declared = declaration.calls ?? {};
@@ -452,7 +453,7 @@ function callSites(
       throw new Error(`${where}: \`${state}\` is a call state with no \`calls\` entry — bind it with \`${state}: call(workflow)\``);
     }
     const lane = Object.values(shape.diagram!.forks).some((fork) => fork.lanes.includes(state));
-    sites.set(state, callSite(declaration, shape, ctx, policy, path, trail, state, binding, lane ? leases : undefined));
+    sites.set(state, callSite(declaration, shape, ctx, policy, path, trail, state, binding, lane ? held : undefined));
   }
   return sites;
 }
@@ -464,7 +465,7 @@ function callSites(
  * and that much can be seen without running anything; a branch only known
  * at run time is held to a lease instead, and the second lane waits for it.
  */
-function forkSites(shape: Shape, sites: ReadonlyMap<string, CallSite>, path: readonly string[], leases?: BranchLeases): Map<string, ForkSite> {
+function forkSites(shape: Shape, sites: ReadonlyMap<string, CallSite>, path: readonly string[], held?: LaneHolds): Map<string, ForkSite> {
   const forks = new Map<string, ForkSite>();
   for (const [state, fork] of Object.entries(shape.diagram?.forks ?? {})) {
     const lanes = fork.lanes.map((lane) => sites.get(lane)!);
@@ -478,7 +479,7 @@ function forkSites(shape: Shape, sites: ReadonlyMap<string, CallSite>, path: rea
       }
       written.set(branch, site.state);
     }
-    forks.set(state, { state, join: fork.join, lanes, ...(leases ? { leases } : {}) });
+    forks.set(state, { state, join: fork.join, lanes, ...(held ?? {}) });
   }
   return forks;
 }
@@ -492,7 +493,7 @@ function callSite(
   trail: readonly string[],
   state: string,
   binding: Call,
-  leases?: BranchLeases,
+  held?: LaneHolds,
 ): PendingSite {
   const at = `${[...path, state].join(" → ")}`;
   const callee = calleeOf(binding, at);
@@ -515,7 +516,7 @@ function callSite(
     port: (kind) => ctx.port(bound(kind)),
     ...(ctx.workflowPort ? { workflowPort: (kind: string) => ctx.workflowPort!(bound(kind)) } : {}),
     // A lane takes a branch before it moves it, so two lanes never write one.
-    ...(leases ? { checkouts: () => leasedCheckouts(ctx.checkouts(), leases) } : {}),
+    ...(held ? { checkouts: () => leasedCheckouts(ctx.checkouts(), held) } : {}),
   };
   const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, name]);
   if (ctx) claimsFit(caller, ctx.config, policy, declaration, settings.config, assembled.policy, at);
@@ -534,8 +535,22 @@ function callSite(
   };
 }
 
-function leasedCheckouts(checkouts: Checkouts, leases: BranchLeases): Checkouts {
-  return { ...checkouts, git: checkouts.git.leasedTo(leases) };
+/** What the lanes of a fork hold: the branches they took, and the commit each was lent. */
+interface LaneHolds {
+  readonly leases: BranchLeases;
+  readonly lent: Map<string, string>;
+}
+
+/**
+ * A lane's checkouts: leased, and lent its caller's commit when bound with
+ * one — read for the lane's record and every call under it.
+ */
+function leasedCheckouts(checkouts: Checkouts, held: LaneHolds): Checkouts {
+  const lent = (workId: string): string | undefined => {
+    for (const [id, revision] of held.lent) if (workId === id || workId.startsWith(`${id}/`)) return revision;
+    return undefined;
+  };
+  return { ...checkouts, git: checkouts.git.leasedTo(held.leases, lent) };
 }
 
 function calleeOf(binding: Call, at: string): Callable {

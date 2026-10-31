@@ -221,6 +221,10 @@ describe("a fork of three lanes", () => {
           name: "a plan with a lane that declines",
           start: (now) => ({ ...runtime.newRecord("PLAN-2", now), tasks: [["write", 1], ["decline", 0], ["test", 1]] }) as PlanRecord,
         },
+        {
+          name: "a plan whose outer lanes decline",
+          start: (now) => ({ ...runtime.newRecord("PLAN-3", now), tasks: [["decline", 0], ["write", 1], ["decline", 0]] }) as PlanRecord,
+        },
       ],
       everyEdge: true,
     });
@@ -228,6 +232,17 @@ describe("a fork of three lanes", () => {
     // The arrows inside a lane are the callee's to walk, and these worlds
     // only send one lane to its owner and one to a refusal.
     expect(findings.filter((finding) => !/`TASK_[AC]\//.test(finding.message))).toEqual([]);
+  });
+
+  it("tells one end of a lane from another, though both lead to the one join", async () => {
+    const { workflow, runtime } = await mounted([planner(task([]), [["write", 1], ["decline", 0], ["test", 1]])]);
+
+    const findings = await conformance(workflow, { runtime: () => runtime, worlds: [{ name: "a plan", workId: "PLAN-1" }], everyEdge: true });
+
+    const messages = findings.map((finding) => finding.message);
+    expect(messages).toContain("`TASK_A` → `merge` (`DECLINED`) is drawn, and no world walks it");
+    expect(messages).toContain("`TASK_B` → `merge` (`DONE`) is drawn, and no world walks it");
+    expect(messages).not.toContain("`TASK_A` → `merge` (`DONE`) is drawn, and no world walks it");
   });
 });
 

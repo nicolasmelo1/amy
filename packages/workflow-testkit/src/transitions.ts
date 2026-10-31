@@ -38,11 +38,12 @@ export function transitions(workflow: AnyWorkflow, walks: readonly Walk[], every
   }
   if (!everyEdge) return findings;
 
+  const lanes = new Set(Object.values(workflow.diagram?.forks ?? {}).flatMap((fork) => fork.lanes));
   return [
     ...findings,
     ...drawnNotWalked(workflow, walks).map((edge): Finding => ({
       property: "transitions",
-      message: `\`${edge.from}\` → \`${edge.to}\` is drawn, and no world walks it`,
+      message: `\`${edge.from}\` → \`${edge.to}\`${lanes.has(edge.from) && edge.label ? ` (\`${edge.label}\`)` : ""} is drawn, and no world walks it`,
     })),
   ];
 }
@@ -66,8 +67,11 @@ function drawnNotWalked(workflow: AnyWorkflow, walks: readonly Walk[]): DrawnTra
     for (const look of walk.looks) for (const edge of laneEdges(workflow, look.record)) walked.add(edge);
   }
   const seen = new Set<string>();
+  // Every end of a lane leads to the same join, so the end is what tells one
+  // of those arrows from another.
+  const lanes = new Set(Object.values(workflow.diagram?.forks ?? {}).flatMap((fork) => fork.lanes));
   return drawn(workflow, "").filter((edge) => {
-    const key = `${edge.from}\u0000${edge.to}`;
+    const key = lanes.has(edge.from) ? `${edge.from}\u0000${edge.to}\u0000${edge.label ?? ""}` : `${edge.from}\u0000${edge.to}`;
     if (walked.has(key) || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -86,7 +90,7 @@ function laneEdges(workflow: AnyWorkflow, record: WorkRecord): string[] {
     const child = call === undefined ? undefined : record.calls?.[call];
     if (!child) return [];
     const ended = workflow.calls?.[lane]?.terminalStates.includes(child.state);
-    return [`${record.state}\u0000${lane}`, ...(ended ? [`${lane}\u0000${fork.join}`] : [])];
+    return [`${record.state}\u0000${lane}`, ...(ended ? [`${lane}\u0000${fork.join}\u0000${child.state}`] : [])];
   });
 }
 

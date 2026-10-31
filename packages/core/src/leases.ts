@@ -12,7 +12,7 @@ import path from "node:path";
 export interface BranchLeases {
   /** Takes the branch for `holder`, or says who holds it. Taking one already held by the same holder is a yes. */
   take(repo: string, branch: string, holder: string): { readonly taken: true } | { readonly taken: false; readonly holder: string };
-  /** Lets go of every branch `holder` took. */
+  /** Lets go of every branch `holder` took, and every branch a record under it (`holder/…`) took. */
   release(holder: string): void;
 }
 
@@ -60,7 +60,8 @@ export class FileLeases implements BranchLeases {
     if (!fs.existsSync(this.directory)) return;
     for (const name of fs.readdirSync(this.directory)) {
       const file = path.join(this.directory, name);
-      if (this.read(file)?.holder === holder) fs.rmSync(file, { force: true });
+      const held = this.read(file)?.holder;
+      if (held === holder || held?.startsWith(`${holder}/`)) fs.rmSync(file, { force: true });
     }
   }
 

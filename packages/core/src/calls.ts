@@ -6,7 +6,7 @@
  * observed or decided. See `docs/design/a-workflow-calls-another.md`.
  */
 
-import { PortLookup, implementationOf, isPortBinding, runAction } from "./dispatch.js";
+import { PortLookup, implementationOf, isPortBinding, reaching, runAction } from "./dispatch.js";
 import { BranchLeases, LeaseHeld } from "./leases.js";
 import { ActionContext, ActionImplementation, WorkflowRuntime } from "./runtime.js";
 import { Workflow } from "./plugin.js";
@@ -211,6 +211,12 @@ export interface ForkSite {
   readonly lanes: readonly CallSite[];
   /** The branches its lanes hold, let go of as each one ends. */
   readonly leases?: BranchLeases;
+  /**
+   * The commit each running lane was lent, by the lane record's id, read by
+   * the lanes' checkouts: a lane bound with `revision` is handed a tree
+   * detached at it whatever it asks for, and every move there is refused.
+   */
+  readonly lent?: Map<string, string>;
 }
 
 /**
@@ -352,10 +358,12 @@ function forkPlan(fork: ForkSite, record: WorkRecord, observation: unknown): Pla
   const running = inTurn(fork, record);
   if (running.length === 0) return joined(fork, record);
   const moves = running.map((site) => laneMove(site, record, observation));
+  // A lane whose decision is not written yet settles; its siblings still
+  // move, and the record settles on it only once nothing else can.
+  const moving = moves.find((move) => move.kind !== "wait" && move.kind !== "settled");
+  if (moving) return moving;
   const settled = moves.find((move) => move.kind === "settled");
   if (settled) return settled;
-  const moving = moves.find((move) => move.kind !== "wait");
-  if (moving) return moving;
   const soonest = Math.min(...moves.map((move) => (move.kind === "wait" ? move.retryAfterMs : 0)));
   const first = moves[0] as Extract<Plan, { kind: "wait" }>;
   return Object.assign({ ...first, retryAfterMs: soonest, why: `every lane of ${fork.state} waits — ${arrivals(fork, record, moves)}` }, { [LANE]: laneOf(first), [INNER]: innerOf(first) });
@@ -366,8 +374,7 @@ function everyLane(forks: ReadonlyMap<string, ForkSite>, record: WorkRecord, obs
   const fork = forks.get(record.state);
   if (!fork || !started(fork, record)) return undefined;
   const moves = inTurn(fork, record).map((site) => laneMove(site, record, observation));
-  if (moves.some((move) => move.kind === "settled")) return undefined;
-  const moving = moves.filter((move) => move.kind !== "wait");
+  const moving = moves.filter((move) => move.kind !== "wait" && move.kind !== "settled");
   return moving.length > 1 ? moving : undefined;
 }
 
@@ -520,8 +527,18 @@ function foldedLane(
 ): WorkRecord {
   const site = fork.lanes.find((candidate) => candidate.state === lane)!;
   const child = laneRecord(record, lane)!;
+  // A lane that waited on a branch made no move, whatever its plan said:
+  // it looked, it stays where it is, and nothing it planned is folded.
+  if (outcomes[LEASE_WAIT]) {
+    const waited: Plan = { kind: "wait", retryAfterMs: LEASE_WAIT_MS, effects: [], why: "waiting on a branch another lane holds" };
+    return { ...record, calls: { ...record.calls, [child.id]: applyPlan(child, waited, now) } };
+  }
   const next = runtimeOf(site).apply(applyPlan(child, inner, now, outcomes), inner, outcomes, observation, now, movedBy(child, inner));
-  if (hasEnded(site, next)) fork.leases?.release(next.id);
+  // Every branch the lane took goes back with it, those its own calls took included.
+  if (hasEnded(site, next)) {
+    fork.leases?.release(next.id);
+    fork.lent?.delete(next.id);
+  }
   return { ...record, calls: { ...record.calls, [next.id]: next } };
 }
 
@@ -599,7 +616,7 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
       actions[name] = shared;
       continue;
     }
-    actions[name] = async (action: Action, context) => {
+    actions[name] = reaching(async (action: Action, context: ActionContext) => {
       const lane = laneOf(action);
       const fork = forks.get(context.record.state);
       if (fork && lane) return laneAction(fork, lane, name, action, context);
@@ -611,9 +628,23 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
       if (!site?.runtime || ended) return runAction(implementationOf(own, name), action, context, port);
       const observation = childObservation(context.observation);
       await runAction(implementationOf(site.runtime, name), action, { record: child, observation, outcomes: context.outcomes }, site.port);
-    };
+    }, laneSpends(forks, name));
   }
   return actions;
+}
+
+/**
+ * The port a lane's action spends, when every lane declaring it binds it to
+ * the same one: the dispatcher still says so, so the budget is asked before
+ * a lane spends the agent as before any other move.
+ */
+function laneSpends(forks: ReadonlyMap<string, ForkSite>, name: string): string | undefined {
+  const ports = new Set([...forks.values()].flatMap((fork) => fork.lanes.flatMap((site) => {
+    const implementation = site.runtime && implementationOf(site.runtime, name);
+    if (implementation === undefined) return [];
+    return [isPortBinding(implementation) ? site.binding.ports?.[implementation.port] ?? implementation.port : ""];
+  })));
+  return ports.size === 1 ? [...ports][0] || undefined : undefined;
 }
 
 /**
@@ -627,6 +658,7 @@ async function laneAction(fork: ForkSite, lane: string, name: string, action: Ac
   if (context.outcomes[LEASE_WAIT]) return;
   const site = fork.lanes.find((candidate) => candidate.state === lane)!;
   const child = laneRecord(context.record, lane)!;
+  if (child.revision !== undefined) fork.lent?.set(child.id, child.revision);
   try {
     await runAction(implementationOf(site.runtime!, name), action, { record: child, observation: laneObservation(context.observation, lane), outcomes: context.outcomes }, site.port);
   } catch (error) {
