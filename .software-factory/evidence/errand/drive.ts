@@ -137,6 +137,9 @@ function amy(root: string, args: string[]): Said {
       ...process.env,
       PATH: `${path.join(root, "bin")}:${process.env.PATH}`,
       HOME: path.join(root, "home"),
+      // Named as well, because an `AMY_HOME` the caller exported wins over
+      // `HOME` and would point the run at a real install.
+      AMY_HOME: amyHome(root),
       AMY_E2E_WORLD: path.join(root, "world"),
       AMY_E2E_ORIGINS: path.join(root, "origins"),
       AMY_E2E_TSX: TSX,
@@ -586,6 +589,7 @@ function unchangedDelivery(state: State): Check[] {
     [
       "errand.an_unchanged_branch_is_not_delivered",
       state.originBranches.includes(CHANGE_BRANCH) &&
+        !state.originBranches.includes(QUESTION_BRANCH) &&
         state.change?.changed === true &&
         state.question?.changed === false &&
         state.question?.pullRequestNumber === undefined &&
