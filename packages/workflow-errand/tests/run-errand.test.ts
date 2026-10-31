@@ -56,7 +56,7 @@ describe("run-errand", () => {
   });
 
   /** Runs the action once, with an agent that does whatever `work` does in the tree. */
-  async function runErrand(work: (cwd: string) => void, said = "done"): Promise<EffectOutcomes> {
+  async function runErrand(work: (cwd: string) => void, said = "done", task: Task = TASK): Promise<EffectOutcomes> {
     const layout = { workspaceRoot: path.join(root, "checkouts"), defaultBranch: "main" };
     const agent: Harness = {
       name: "stand-in",
@@ -70,7 +70,7 @@ describe("run-errand", () => {
     } as Harness;
     const { git: checkoutGit } = lendCheckouts(new NodeCommandRunner(), layout);
     const runtime = errandRuntime({
-      tasks: { add: () => TASK, all: () => [TASK], get: () => TASK },
+      tasks: { add: () => task, all: () => [task], get: () => task },
       agent,
       host: {} as CodeHost,
       notifier: {} as Notifier,
@@ -78,13 +78,13 @@ describe("run-errand", () => {
       layout,
       records: { all: () => [] } as unknown as Store<ErrandRecord>,
       now: () => new Date("2026-09-05T10:00:00.000Z"),
-      config: { repos: [TASK.repo] },
+      config: { repos: [task.repo] },
       policy: DEFAULT_POLICY,
     });
     const outcomes: Record<string, unknown> = {};
     const context: ActionContext<ErrandRecord, Observation> = {
-      record: { id: TASK.id, state: "WORKING", updatedAt: TASK.addedAt, attempts: {}, history: [] } as ErrandRecord,
-      observation: { task: TASK, workable: true, inFlight: 0, pullRequest: null, now: new Date(TASK.addedAt) },
+      record: { id: task.id, state: "WORKING", updatedAt: task.addedAt, attempts: {}, history: [] } as ErrandRecord,
+      observation: { task, workable: true, inFlight: 0, pullRequest: null, now: new Date(task.addedAt) },
       outcomes,
     };
     const runErrandAction = runtime.actions?.["run-errand"] as ActionHandler<ErrandRecord, Observation>;
@@ -124,6 +124,23 @@ describe("run-errand", () => {
 
     expect(outcomes.declined).toBe("it needs a decision nobody made");
     expect(outcomes.changed).toBeUndefined();
+    expect(onOrigin(BRANCH)).toBe(false);
+  });
+
+  it("leaves a shared checkout clean for the next errand after a refusal", async () => {
+    // With no worktree plugin every errand works in the one checkout, so what
+    // a refusal left behind would otherwise be committed by the next errand.
+    await runErrand((cwd) => fs.writeFileSync(path.join(cwd, "half.md"), "started\n"), [
+      "I cannot do that as asked.",
+      JSON.stringify({ declined: "it needs a decision nobody made" }),
+    ].join("\n"));
+    const next: Task = { ...TASK, id: "T-2", text: "check whether the nightly sync still runs" };
+
+    const outcomes = await runErrand(() => {}, "it still runs", next);
+
+    expect(outcomes.changed).toBe(false);
+    expect(onOrigin(branchFor(slugFor(next)))).toBe(false);
+    expect(fs.existsSync(path.join(checkout, "half.md"))).toBe(false);
     expect(onOrigin(BRANCH)).toBe(false);
   });
 

@@ -155,7 +155,9 @@ done as asked, but nothing read it. A refusal that changed nothing landed in
 until the attempts ran out. A refusal now ends with one line,
 `{"declined": "why"}`. The errand reads that line and goes from `WORKING` to
 `DECLINED` without another attempt, telling the operator the reason.
-Nothing the agent left in the tree is published.
+Nothing the agent left in the tree is published. It is kept on the errand's
+own branch, which stays local, so a shared checkout reaches the next errand
+clean.
 
 ### **The event log can be watched, from any process.**
 

@@ -82,9 +82,11 @@ export function errandRuntime(
       }
 
       // A refusal is the agent's decision, and nothing it left in the tree is
-      // published: it was asked to change nothing.
+      // published. Whatever it left is kept on this errand's own branch, which
+      // is never pushed, so a shared checkout reaches the next errand clean.
       const declined = declinedIn(reply.text);
       if (declined) {
+        await deps.git.commit(task.repo, "chore: what a refused errand left behind", task.id);
         outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
         outcomesOf(ctx).declined = declined;
         return;
