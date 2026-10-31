@@ -67,7 +67,13 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * that is not waiting, for an engine that moves lanes side by side.
    * Undefined when there are not two to make; `plan` then says the one.
    */
-  everyLane?(record: WorkRecord, observation: Observation): readonly Plan[] | undefined;
+  everyLane?(record: WorkRecord, observation: Observation, policy: Policy): readonly Plan[] | undefined;
+  /**
+   * What the workflow says before any state's own decision — a ticket that
+   * left the working status stops where it is — asked even while a record
+   * waits in a fork, where the lanes decide and its own decisions do not.
+   */
+  interrupt?(record: WorkRecord, observation: Observation, policy: Policy): Plan | undefined;
 }
 
 /** Advances work. Serial by default, but replaceable like everything else. */

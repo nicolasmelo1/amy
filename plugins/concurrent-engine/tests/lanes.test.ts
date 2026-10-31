@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ConfigSchema, Engine, HostServices, Plugin, WorkRecord, act, advance, call, defineWorkflow, mount, settled, withDiagram } from "@amykit/core";
+import { ConfigSchema, Engine, HostServices, Plugin, WorkRecord, acceptsAction, act, advance, call, defineWorkflow, mount, settled, withDiagram } from "@amykit/core";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { plugin as serial } from "@amykit/plugin-serial-engine";
 import { InMemoryStore } from "@amykit/test-fixtures";
@@ -15,7 +15,16 @@ type TaskRecord = WorkRecord & { input: { task: string; looks: number }; worked?
 /** Every lane's move, by tick, in the order the moves were made. */
 type Moves = string[][];
 
-function planner(moves: Moves, tasks: [string, number][] = [["write", 1], ["review", 2], ["test", 3]]): Plugin {
+interface Shape {
+  readonly tasks?: [string, number][];
+  /** The lanes spend the agent, as a port and a method, and say they added no evidence. */
+  readonly agent?: boolean;
+  /** The fork is drawn inside a workflow the root calls, not in the root. */
+  readonly nested?: boolean;
+}
+
+function planner(moves: Moves, shape: Shape = {}): Plugin {
+  const tasks = shape.tasks ?? [["write", 1], ["review", 2], ["test", 3]];
   const task = withDiagram(defineWorkflow({
     name: "task",
     configSchema: NO_SETTINGS,
@@ -32,7 +41,7 @@ function planner(moves: Moves, tasks: [string, number][] = [["write", 1], ["revi
     },
     record: () => ({}),
     observe: async () => ({}),
-    actions: {
+    actions: shape.agent ? { work: { port: "agent", method: "ask" } } : {
       work: async (_scope, work) => {
         const name = (work.record as TaskRecord).input.task;
         if (name === "broken") throw new Error("the gate's runner is not answering");
@@ -42,11 +51,12 @@ function planner(moves: Moves, tasks: [string, number][] = [["write", 1], ["revi
     },
     remember: (_scope, record: TaskRecord, outcomes) => (outcomes.worked ? { ...record, worked: (record.worked ?? 0) + 1 } : record),
   }), "stateDiagram-v2\n[*] --> WORKING\nWORKING --> DONE\nDONE --> [*]\n");
-  return withDiagram(defineWorkflow({
+  const forked = withDiagram(defineWorkflow({
     name: "planner",
     configSchema: NO_SETTINGS,
     policy: {},
     needs: {},
+    ...(shape.agent ? { progress: { maxUnchanged: 1, handoff: "park" as const } } : {}),
     calls: Object.fromEntries(["TASK_A", "TASK_B", "TASK_C"].map((lane, index) => [lane, call(task, { input: () => ({ task: tasks[index]![0], looks: tasks[index]![1] }) })])),
     decide: {
       PLANNED: () => advance("split", "planned"),
@@ -72,6 +82,19 @@ function planner(moves: Moves, tasks: [string, number][] = [["write", 1], ["revi
     INTEGRATED --> [*]
     class TASK_A, TASK_B, TASK_C call
 `);
+  if (!shape.nested) return forked;
+  return withDiagram(defineWorkflow({
+    name: "outer",
+    configSchema: NO_SETTINGS,
+    policy: {},
+    needs: {},
+    calls: { WORK: call(forked) },
+    decide: { DONE: () => settled("done") },
+    record: () => ({}),
+    discover: async () => ["PLAN-1"],
+    observe: async () => ({}),
+    actions: {},
+  }), "stateDiagram-v2\n[*] --> WORK\nWORK --> DONE: INTEGRATED\nDONE --> [*]\nclass WORK call\n");
 }
 
 describe("the concurrent engine", () => {
@@ -81,7 +104,7 @@ describe("the concurrent engine", () => {
   });
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  async function run(engine: Plugin, tasks?: [string, number][], ticks = 30): Promise<{ moves: Moves; record: WorkRecord; results: { kind: string }[] }> {
+  async function run(engine: Plugin, shape: Shape = {}, ticks = 30): Promise<{ moves: Moves; record: WorkRecord; results: { kind: string; reason?: string }[] }> {
     const moves: Moves = [];
     const records = new InMemoryStore();
     const ports: Plugin = {
@@ -90,6 +113,13 @@ describe("the concurrent engine", () => {
         registry.queue(new FileQueue(path.join(root, engine.name.replace(/\W/g, "-"))));
         registry.store(records);
         registry.port("notifier", { announce: async () => undefined });
+        // An agent that runs and says each run added nothing new.
+        registry.port("agent", {
+          ask: acceptsAction(async (action, context) => {
+            moves.at(-1)!.push((context.record as TaskRecord).input.task);
+            return { progress: { kind: "unchanged", key: "tests", detail: "the same test still fails" } };
+          }),
+        });
       },
     };
     const host: HostServices = {
@@ -97,14 +127,14 @@ describe("the concurrent engine", () => {
       now: () => new Date("2026-10-31T12:00:00.000Z"),
       paths: { workspace: root, checkouts: {}, state: root },
     };
-    const outcome = await mount([ports, planner(moves, tasks), engine], {}, host);
+    const outcome = await mount([ports, planner(moves, shape), engine], {}, host);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const driven = outcome.mounted.engine as Engine;
     await driven.discover();
-    const results: { kind: string }[] = [];
+    const results: { kind: string; reason?: string }[] = [];
     for (let tick = 0; tick < ticks; tick += 1) {
       moves.push([]);
-      const result = (await driven.tick()) as { kind: string };
+      const result = (await driven.tick()) as { kind: string; reason?: string };
       results.push(result);
       if (result.kind === "idle") break;
     }
@@ -134,10 +164,26 @@ describe("the concurrent engine", () => {
 
   it("keeps the moves the other lanes made when one lane throws, and fails the look", async () => {
     // Two ticks: the first enters the fork, the second moves the lanes.
-    const { record, results } = await run(concurrent, [["write", 1], ["broken", 1], ["test", 1]], 2);
+    const { record, results } = await run(concurrent, { tasks: [["write", 1], ["broken", 1], ["test", 1]] }, 2);
 
     expect(results.at(-1)).toMatchObject({ kind: "failed", error: "the gate's runner is not answering" });
     const worked = Object.values(record.calls ?? {}).map((child) => [child.input?.task, child.attempts.WORKING ?? 0]);
     expect(worked).toEqual([["write", 1], ["broken", 0], ["test", 1]]);
+  });
+
+  it("moves the lanes of a fork drawn inside a workflow the root calls side by side too", async () => {
+    const { moves, record } = await run(concurrent, { nested: true });
+
+    expect(moves).toEqual([["write", "review", "test"], ["review", "test"], ["test"]]);
+    expect(record.state).toBe("DONE");
+  });
+
+  it("asks each lane whether another agent run would add any evidence, and parks when none would", async () => {
+    const { moves, results } = await run(concurrent, { agent: true, tasks: [["write", 3], ["review", 3], ["test", 3]] }, 6);
+
+    // One round side by side; every lane said nothing changed, and the next
+    // round is refused before any agent is asked again.
+    expect(moves).toEqual([["write", "review", "test"]]);
+    expect(results.some((result) => result.kind === "parked" && /would add no evidence/.test(result.reason ?? ""))).toBe(true);
   });
 });

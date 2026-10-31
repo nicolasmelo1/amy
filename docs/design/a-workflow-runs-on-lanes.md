@@ -215,7 +215,11 @@ is — the turn is the fork's look count, so they take turns — and a lane that
 waits gives its turn to the next. Only when every lane still running waits
 does the record wait, and its `why` says how many have arrived and which lane
 needs the person. A lane whose decision nobody has written settles the record
-only once its siblings can make no move either; `callStanding` and the new `laneStanding` say the same, and
+only once its siblings can make no move either. What a workflow says before
+any decision of its own — `ticket-to-qa`'s ticket that left its repository —
+is still heard while its lanes run: a fork's look sees the caller's own world
+too, and a move out of the fork that is not the join lets go of what the lanes
+still running held; `callStanding` and the new `laneStanding` say the same, and
 `amy status` draws the lanes side by side, `checks › GATE GREEN ∥ SELF_REVIEW
 REVIEWING (1/2 arrived)`. `expandDiagram` draws a callee's own forks as forks
 and marks every lane where its record is.
@@ -226,8 +230,11 @@ the serial worker with `lanes: "concurrent"`: it claims one queue item as
 before, asks the budget before each lane's call — a lane it refuses waits while
 the rest go on, and a lane's action bound to the agent still says so through
 the dispatcher that runs it — runs the moves concurrently, and folds each into
-the one record it claimed. A lane that throws fails the look as a serial look
-would, and the moves its siblings made are kept rather than paid for twice. Each lane writes to its own record, so the order the moves
+the one record it claimed. Each lane is asked, as any move is, whether another
+agent run would add evidence, and the progress every lane reported is folded
+in turn. A lane that throws fails the look as a serial look would, and the
+moves its siblings made are kept rather than paid for twice. A fork drawn
+inside a workflow the root calls is moved side by side as well. Each lane writes to its own record, so the order the moves
 finish in cannot change the result, which is what the unit test and the third
 scenario world both compare.
 
@@ -254,7 +261,8 @@ implementation now records the repository and commit it left. They meet at
 `verdict`: both clean is `PR_OPEN`; either finding something is `IMPLEMENTING`,
 whose retry context now carries what the gate said and what the review said, in
 one round. The rounds are counted at the verdict and escalate at
-`maxGateAttempts`, as the gate's attempts used to. The review ends on a
+`maxGateAttempts`, as the gate's attempts used to. A record an older version
+saved in `CHECKED` or `SELF_REVIEW` goes straight to `checks`. The review ends on a
 verdict: a line saying `CHANGES_ASKED` sends the work back, and anything else
 approves, which is what every review was before it could say so. Without a
 worktree port the checks run in the work's own tree, as before.

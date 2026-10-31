@@ -778,6 +778,7 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     ...(shape.diagram ? { diagram: shape.diagram } : {}),
     trackerWrites: claims(declaration.trackerWrites),
     codeHostWrites: claims(declaration.codeHostWrites),
+    ...(declaration.before ? { interrupt: (record: WorkRecord, observation: O, chosen: P) => declaration.before!(record as R, observation, chosen) } : {}),
     plan: (record, observation, chosen) => {
       const current = record as R;
       if (declaration.plan) return declaration.plan(current, observation, chosen);

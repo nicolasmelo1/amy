@@ -39,14 +39,15 @@ export function before(record: TicketRecord, obs: Observation, _policy: Policy):
 
 /**
  * A record an older version saved in `CHECKED` or `SELF_REVIEW`, the two
- * states the checks were before they ran as lanes. It goes back to the
- * implementation, which is dated against the gate, so it is checked again in
- * `checks` rather than published on a check the record no longer explains.
+ * states the checks were before they ran as lanes. Its implementation is
+ * already done, so it goes straight to `checks` and is checked again in both
+ * lanes — not back to the agent, which would pay for the same work twice, and
+ * not on to a pull request on a check the record no longer explains.
  */
 function ranTheChecksInTurn(record: TicketRecord): Plan | undefined {
   const state = record.state as string;
   if (state !== "CHECKED" && state !== "SELF_REVIEW") return undefined;
-  return advance("IMPLEMENTING", `${state} is where the checks ran before they ran as lanes; checking the work again in both`);
+  return advance("checks", `${state} is where the checks ran before they ran as lanes; checking the work again in both`);
 }
 
 export function after(decision: Plan, record: TicketRecord, obs: Observation, policy: Policy): Plan {

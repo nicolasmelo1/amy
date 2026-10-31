@@ -179,7 +179,7 @@ export class Worker {
 
   private async advance(item: QueueItem, record: WorkRecord, now: Date): Promise<TickResult> {
     const observation = await this.deps.runtime.observe(record);
-    const side = this.deps.lanes === "concurrent" ? this.deps.workflow.everyLane?.(record, observation) : undefined;
+    const side = this.deps.lanes === "concurrent" ? this.deps.workflow.everyLane?.(record, observation, this.deps.runtime.policy) : undefined;
     if (side) return this.advanceLanes(item, record, observation, side, now);
     const decision = this.deps.workflow.plan(record, observation, this.deps.runtime.policy);
 
@@ -287,9 +287,12 @@ export class Worker {
    * same record whatever order they finished in.
    */
   private async advanceLanes(item: QueueItem, record: WorkRecord, observation: unknown, plans: readonly Plan[], now: Date): Promise<TickResult> {
-    const allowed = plans.filter((plan) => !this.parked(record, actionsOf(plan), now));
+    // Each lane is asked what any move is asked before its call: the budget,
+    // and whether another agent run would add any evidence.
+    const refusal = (plan: Plan): Parked | null => this.parked(record, actionsOf(plan), now) ?? this.progressParked(item, record, actionsOf(plan));
+    const allowed = plans.filter((plan) => !refusal(plan));
     if (allowed.length === 0) {
-      const parked = this.parked(record, actionsOf(plans[0]!), now)!;
+      const parked = refusal(plans[0]!)!;
       this.park(item, parked, now);
       return parked;
     }
@@ -311,9 +314,14 @@ export class Worker {
     this.deps.records.save(next);
     const failed = settled.find((result): result is PromiseRejectedResult => result.status === "rejected");
     if (failed) throw failed.reason;
+    const progress = this.lanesProgress(item, record, moved);
+    if (progress.parked) {
+      this.park({ ...item, progress: progress.next }, progress.parked, now);
+      return progress.parked;
+    }
 
     const delayMs = Math.min(...moved.map(({ plan, outcomes }) => retryAfter(plan, outcomes, this.deps.config.retryDelayMs)));
-    this.deps.queue.enqueue({ workId: item.workId, reason: allowed.map((plan) => plan.why).join("; "), delayMs, progress: item.progress, priority: item.priority }, this.deps.now());
+    this.deps.queue.enqueue({ workId: item.workId, reason: allowed.map((plan) => plan.why).join("; "), delayMs, progress: progress.next, priority: item.priority }, this.deps.now());
     this.deps.queue.complete(item);
     this.maybePrune(now);
     this.record("work.advanced", { workId: item.workId, state: next.state, detail: { from: record.state, why: `${allowed.length} lanes moved` } });
@@ -328,6 +336,22 @@ export class Worker {
       why: allowed.map((plan) => plan.why).join("; "),
       retryAfterMs: delayMs || undefined,
     };
+  }
+
+  /** What every lane's move says about evidence, folded in turn as the serial engine folds one. */
+  private lanesProgress(
+    item: QueueItem,
+    record: WorkRecord,
+    moved: readonly { plan: Plan; outcomes: Record<string, unknown> }[],
+  ): { next: QueueItem["progress"]; parked?: Parked } {
+    let next = item.progress;
+    let parked: Parked | undefined;
+    for (const { plan, outcomes } of moved) {
+      const after = this.progressAfter({ ...item, progress: next }, record, plan, actionsOf(plan), outcomes);
+      next = after.next;
+      parked ??= after.parked;
+    }
+    return { next, ...(parked ? { parked } : {}) };
   }
 
   /**

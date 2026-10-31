@@ -38,6 +38,9 @@ export const CALLED = "@amykit/called";
 /** Where a caller's observation keeps each running lane's, by lane state. */
 export const LANED = "@amykit/laned";
 
+/** Where a fork's observation keeps the caller's own world, for what it says before the lanes do. */
+const OWN = "@amykit/own";
+
 /**
  * Where the outcome of a look a lane spent waiting on a branch is written:
  * not a try, and looked at again shortly, when the lane holding it may have
@@ -297,10 +300,10 @@ export function composedWorkflow(own: Workflow, sites: ReadonlyMap<string, CallS
   return {
     ...own,
     calls: Object.fromEntries([...sites].map(([state, site]) => [state, site.workflow])),
-    ...(forks.size > 0 ? { everyLane: (record: WorkRecord, observation: unknown) => everyLane(forks, record, observation) } : {}),
+    everyLane: (record, observation, policy) => everyLaneThrough(own, sites, forks, record, observation, policy),
     plan: (record, observation, policy) => {
       const fork = forks.get(record.state);
-      if (fork) return forkPlan(fork, record, observation);
+      if (fork) return own.interrupt?.(record, ownObservation(observation), policy) ?? forkPlan(fork, record, observation);
       const site = sites.get(record.state);
       if (!site) return own.plan(record, observation, policy);
       const child = activeCall(record);
@@ -367,6 +370,35 @@ function forkPlan(fork: ForkSite, record: WorkRecord, observation: unknown): Pla
   const soonest = Math.min(...moves.map((move) => (move.kind === "wait" ? move.retryAfterMs : 0)));
   const first = moves[0] as Extract<Plan, { kind: "wait" }>;
   return Object.assign({ ...first, retryAfterMs: soonest, why: `every lane of ${fork.state} waits — ${arrivals(fork, record, moves)}` }, { [LANE]: laneOf(first), [INNER]: innerOf(first) });
+}
+
+/**
+ * Every move the lanes can make on this look — of the fork the record waits
+ * in, or of one inside the call it is in, at any depth — or undefined when
+ * there are not two, or the workflow has something to say first.
+ */
+function everyLaneThrough(
+  own: Workflow,
+  sites: ReadonlyMap<string, CallSite>,
+  forks: ReadonlyMap<string, ForkSite>,
+  record: WorkRecord,
+  observation: unknown,
+  policy: unknown,
+): readonly Plan[] | undefined {
+  if (forks.has(record.state)) {
+    return own.interrupt?.(record, ownObservation(observation), policy) ? undefined : everyLane(forks, record, observation);
+  }
+  const site = sites.get(record.state);
+  const child = activeCall(record);
+  if (!site || !child || site.workflow.terminalStates.includes(child.state)) return undefined;
+  const moves = site.workflow.everyLane?.(child, childObservation(observation), site.runtime?.policy ?? site.policy);
+  return moves?.map((move) => carried(child, move));
+}
+
+/** The caller's own world in a fork's observation — which, once every lane has ended, is all it holds. */
+function ownObservation(observation: unknown): unknown {
+  const held = observation as Record<string, unknown> | undefined;
+  return held && Object.hasOwn(held, OWN) ? held[OWN] : observation;
 }
 
 /** Every move the lanes of a fork can make on this look, one per lane that is not waiting, for an engine that moves them side by side. */
@@ -471,12 +503,31 @@ export function composedRuntime(own: WorkflowRuntime, sites: ReadonlyMap<string,
       const site = siteOf(record);
       if (site && (plan as Plan & { [ENTER]?: true })[ENTER]) return enterCall(record, site, now);
       if (inner && site) return folded(record, site, runtimeOf(site), inner, outcomes, childObservation(observation), now);
-      const id = returnedFrom(plan);
-      const from = (plan as Plan & { [JOINED]?: string })[JOINED];
-      const kept = id !== undefined ? returnTo(record, sites, id, moved) : from !== undefined ? joinedInto(record, forks.get(from)!) : record;
-      return entering(own.apply(kept, plan, outcomes, observation, now, moved), sites, forks, moved, now);
+      return ownMove(own, sites, forks, { record, plan, outcomes, observation, now, moved });
     },
   };
+}
+
+/**
+ * A move the caller makes itself: back from a call, on from the join, or out
+ * of a fork interrupted before its lanes met — whose lanes still running stop
+ * where they are and let go of the branches they held.
+ */
+function ownMove(
+  own: WorkflowRuntime,
+  sites: ReadonlyMap<string, CallSite>,
+  forks: ReadonlyMap<string, ForkSite>,
+  look: { record: WorkRecord; plan: Plan; outcomes: Record<string, unknown>; observation: unknown; now: Date; moved: Moved | null },
+): WorkRecord {
+  const { record, plan, outcomes, now, moved } = look;
+  const id = returnedFrom(plan);
+  const from = (plan as Plan & { [JOINED]?: string })[JOINED];
+  const left = moved ? forks.get(moved.from) : undefined;
+  if (left && from === undefined) for (const lane of Object.values(record.lanes ?? {})) left.leases?.release(lane.call);
+  const kept = id !== undefined ? returnTo(record, sites, id, moved) : from !== undefined ? joinedInto(record, forks.get(from)!) : record;
+  // Out of a fork, the caller folds its own world, not the lanes'.
+  const observation = left ? ownObservation(look.observation) : look.observation;
+  return entering(own.apply(kept, plan, outcomes, observation, now, moved), sites, forks, moved, now);
 }
 
 /**
@@ -491,14 +542,16 @@ async function observeFork(
   runtimeOf: (site: CallSite) => WorkflowRuntime,
   port: PortLookup,
 ): Promise<unknown> {
-  if (!started(fork, record)) return { [LANED]: {} };
+  if (!started(fork, record)) return { [LANED]: {}, [OWN]: await own.observe(record) };
   const running = inTurn(fork, record);
   if (running.length === 0) {
     await returnTrees(fork, record, port("worktree") as Worktree | undefined);
     return own.observe(record);
   }
   const seen = await Promise.all(running.map(async (site) => [site.state, await runtimeOf(site).observe(laneRecord(record, site.state)!)] as const));
-  return { [LANED]: Object.fromEntries(seen) };
+  // The caller's own world too, so what it says before any decision — a
+  // ticket that left the working status — is heard while its lanes run.
+  return { [LANED]: Object.fromEntries(seen), [OWN]: await own.observe(record) };
 }
 
 /**

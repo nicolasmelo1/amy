@@ -1512,12 +1512,18 @@ describe("HUMAN_REVIEW, after asking again, reads one review for all three", () 
 });
 
 describe("a record an older version saved where the checks used to run", () => {
-  it.each(["CHECKED", "SELF_REVIEW"])("goes back to the implementation from %s, to be checked again in both lanes", (state) => {
-    const r = record("IMPLEMENTING", { lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z") });
+  it.each(["CHECKED", "SELF_REVIEW"])("goes from %s straight to both checks, without implementing again", (state) => {
+    // What a record that got that far holds: an implementation, and a green
+    // gate newer than it.
+    const r = record("IMPLEMENTING", {
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(true, "2026-09-03T10:05:00.000Z"),
+    });
 
     const p = expectAdvance(plan({ ...r, state } as never, observation(), policy));
 
-    expect(p.to).toBe("IMPLEMENTING");
+    expect(p.to).toBe("checks");
+    expect(p.effects).toEqual([]);
     expect(p.why).toContain("before they ran as lanes");
   });
 });

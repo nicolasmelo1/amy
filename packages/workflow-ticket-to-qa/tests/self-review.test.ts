@@ -171,3 +171,22 @@ describe("a self-review that did not finish", () => {
       .rejects.toThrow(/self-review did not complete: failed on fake/);
   });
 });
+
+describe("a ticket that leaves its repository while it is being checked", () => {
+  it("stops where it is, without running the checks still pending", async () => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    let left = false;
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    const { agent } = recordingAgent(seen, () => now().toISOString());
+    const mounted = await mountedTicket({ tracker: trackerFor(() => (left ? { ...ticket(), repos: ["acme/elsewhere"] } : ticket())), agent: agent as object }, now);
+    const forked = await drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.state === "checks" && Object.keys(current.calls ?? {}).length === 2);
+
+    left = true;
+    const decided = mounted.workflow.plan(forked, await mounted.runtime.observe(forked), mounted.runtime.policy);
+
+    expect(decided.kind).toBe("settled");
+    expect(decided.why).toContain("is no longer one of PROJ-1239's repositories");
+    expect(seen.some((entry) => entry.context?.step === "self-review")).toBe(false);
+  });
+});

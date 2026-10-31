@@ -168,8 +168,9 @@ without what the review would have said, and the review never saw the rules
 the gate holds. The review now ends on a verdict: a line saying
 `CHANGES_ASKED` sends the work back, anything else approves. The rounds count
 toward `maxGateAttempts`. A record an older version saved in `CHECKED` or
-`SELF_REVIEW` goes back to `IMPLEMENTING` on its next look, and is checked
-again in both lanes.
+`SELF_REVIEW` goes straight to `checks` on its next look and is checked again
+in both lanes, without implementing again. A ticket that leaves its repository
+while it is being checked stops where it is, as it did in `CHECKED`.
 
 ### `amy update` reaches the release. It said `nothing to move` with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):
 

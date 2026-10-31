@@ -290,4 +290,16 @@ describe("a fork of lanes", () => {
 
     expect(portReachedBy(implementationOf(runtime, "work"))).toBe("agent");
   });
+
+  it("hears what the workflow says before any decision while its lanes run, and stops there", async () => {
+    let withdrawn = false;
+    const { workflow, runtime } = await mounted([planner({ withdrawn: () => withdrawn })], HOST);
+    const { record } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split" && Object.keys(current.calls ?? {}).length === 3);
+
+    withdrawn = true;
+    const decided = workflow.plan(record, await runtime.observe(record), runtime.policy);
+
+    expect(decided).toEqual({ kind: "settled", why: "the plan was withdrawn; it stops where it is" });
+    expect(workflow.everyLane?.(record, await runtime.observe(record), runtime.policy)).toBeUndefined();
+  });
 });

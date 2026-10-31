@@ -114,6 +114,8 @@ export function planner(options: {
   callee?: ReturnType<typeof task>;
   branch?: (lane: string) => string | undefined;
   revision?: boolean;
+  /** Whether the plan was withdrawn, asked of the world on every look, which stops it wherever it is. */
+  withdrawn?: () => boolean;
 } = {}): Plugin {
   const lanes = options.lanes ?? ["TASK_A", "TASK_B", "TASK_C"];
   const callee = options.callee ?? task();
@@ -140,7 +142,8 @@ export function planner(options: {
       ESCALATED: () => settled("escalated"),
     },
     record: () => ({}),
-    observe: async () => ({}),
+    before: (_record: PlannerRecord, observation: { withdrawn?: boolean }) => (observation.withdrawn ? settled("the plan was withdrawn; it stops where it is") : undefined),
+    observe: async () => ({ withdrawn: options.withdrawn?.() ?? false }),
     actions: {},
     remember: (_scope, record: PlannerRecord, _outcomes, _observation, moved) =>
       moved?.to === "INTEGRATED" || moved?.to === "ESCALATED" ? { ...record, joinedWith: record.lanes } : record,
