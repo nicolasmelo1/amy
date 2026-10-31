@@ -8,10 +8,10 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 14,
+    "assertions_run": 16,
     "assertions_failed": 0,
-    "version": "0.6.0 (c692ff1, built 2026-10-31T01:08:46Z)",
-    "looks": 25,
+    "version": "dev (running from source, not an installed build)",
+    "looks": 39,
     "transitions": [
       "QUEUED>WORKING",
       "WORKING>PR_OPEN",
@@ -33,22 +33,24 @@
     "declined": [
       "QUEUED>DECLINED"
     ],
-    "agent_calls": 4,
-    "gh_calls": 6,
+    "agent_calls": 5,
+    "gh_calls": 9,
     "pull_requests": {
       "acme/amy": 2
     },
     "branches": [
       "amy/errand-add-a-changelog-entry-for-the",
       "amy/errand-bump-the-stale-dependencies-in-the",
+      "amy/errand-tidy-the-readme-of-the-api",
       "main"
     ],
     "records": [
       "by-hand-question:DONE",
+      "closed-task:DECLINED",
       "committed-task:DONE",
       "foreign-task:DECLINED",
       "refusal-task:DECLINED",
-      "task-2026-10-31T010856063:DONE"
+      "task-2026-10-31T022148377:DONE"
     ]
   },
   "assertions": [
@@ -82,6 +84,14 @@
     },
     {
       "type": "errand.a_task_nobody_works_in_is_handed_back",
+      "status": "passed"
+    },
+    {
+      "type": "errand.the_pull_request_is_opened_by_a_call",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_refused_pull_request_hands_the_errand_back",
       "status": "passed"
     },
     {

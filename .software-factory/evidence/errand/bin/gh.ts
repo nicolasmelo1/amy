@@ -23,6 +23,7 @@ interface Pull {
 interface CodeHost {
   defaultBranch: string;
   nextNumber: number;
+  decline?: string[];
   repos: Record<string, { pulls: Pull[] }>;
 }
 
@@ -96,6 +97,8 @@ if (argv.includes("graphql")) {
               ? [
                   {
                     number: found.number,
+                    // Where a person opens it, which is what the errand announces.
+                    url: `https://github.example.test/${repo}/pull/${found.number}`,
                     isDraft: found.draft,
                     reviewDecision: null,
                     headRefOid: headOf(repo, found.head),
@@ -118,6 +121,12 @@ const route = argv.find((arg) => arg.startsWith("/repos/")) ?? "";
 if (route.endsWith("/pulls") && argv.includes("POST")) {
   const repo = route.slice("/repos/".length, route.length - "/pulls".length);
   const given = fields(argv);
+
+  // An answer, in gh's own shape for a 422: the adapter hands it back as a
+  // refusal rather than an outage.
+  if ((state.decline ?? []).includes(given.title ?? "")) {
+    fail("gh: Pull request creation is disabled for this repository (HTTP 422)");
+  }
 
   const pull: Pull = {
     number: state.nextNumber,

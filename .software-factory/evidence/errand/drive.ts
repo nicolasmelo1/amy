@@ -20,6 +20,7 @@ import {
   BY_HAND_SOURCE,
   CHANGE_BRANCH,
   CHANGE_TASK,
+  CLOSED_TASK,
   COMMITTED_BRANCH,
   COMMITTED_TASK,
   FOREIGN_REPO,
@@ -27,6 +28,7 @@ import {
   QUESTION_BRANCH,
   QUESTION_TASK,
   REFUSAL,
+  REFUSED_BY_HOST,
   REFUSE_TASK,
   REPO,
   build,
@@ -49,7 +51,7 @@ const keep = process.argv.includes("--keep");
 /** The stand-ins are TypeScript too, and run the way this does: through the repository's tsx. */
 const TSX = path.join(source, "..", "..", "..", "node_modules", ".bin", "tsx");
 
-const MAX_TICKS = 60;
+const MAX_TICKS = 90;
 
 /** Every move the errand that changed something makes, in the order it must. */
 const EXPECTED = ["QUEUED>WORKING", "WORKING>PR_OPEN", "PR_OPEN>DONE"];
@@ -75,6 +77,10 @@ interface ErrandRecord {
   history?: { from: string; to: string; why: string }[];
   changed?: boolean;
   pullRequestNumber?: number;
+  /** The call it is waiting on, while it is in one. */
+  calling?: string;
+  /** Every call it made, each the called workflow's own record. */
+  calls?: Record<string, { id: string; state: string; input?: { repo?: string; branch?: string } }>;
 }
 
 /** One line of the stand-in agent's log. */
@@ -119,6 +125,7 @@ interface State {
   question: ErrandRecord | null;
   committed: ErrandRecord | null;
   refusal: ErrandRecord | null;
+  closed: ErrandRecord | null;
   foreign: ErrandRecord | null;
   host: CodeHost;
   agentCalls: AgentCall[];
@@ -393,6 +400,14 @@ function walkthrough(): State {
       "utf-8",
     );
 
+    // Six: a change whose pull request the code host answers it will not
+    // open. The call returns REFUSED, and the errand is handed back.
+    fs.writeFileSync(
+      path.join(tasksDir(root), "closed-task.md"),
+      taskFile(REPO, "ada, mid-conversation", CLOSED_TASK),
+      "utf-8",
+    );
+
     const discovered = errand(root, ["discover"]);
     const rediscovered = errand(root, ["discover"]);
     const trail = run(root);
@@ -421,6 +436,7 @@ function walkthrough(): State {
       question: recordFor(root, BY_HAND_ID),
       committed: recordFor(root, "committed-task"),
       refusal: recordFor(root, "refusal-task"),
+      closed: recordFor(root, "closed-task"),
       foreign: recordFor(root, "foreign-task"),
       host: read<CodeHost>(path.join(root, "world", "code-host.json")),
       agentCalls: lines<AgentCall>(path.join(root, "world", "claude.log")),
@@ -532,7 +548,7 @@ function workplaceChecks(state: State): Check[] {
     // named — not in the state directory, and not in the standing tree.
     [
       "errand.the_agent_runs_where_the_work_is",
-      state.agentCalls.length === 4 &&
+      state.agentCalls.length === 5 &&
         state.agentCalls.every(
           (call) =>
             `${real(call.cwd)}${path.sep}`.startsWith(trees) &&
@@ -552,6 +568,7 @@ function workplaceChecks(state: State): Check[] {
           ["question", QUESTION_TASK],
           ["committed", COMMITTED_TASK],
           ["refusal", REFUSE_TASK],
+          ["closed", CLOSED_TASK],
         ] as const
       ).every(([task, text]) => {
         const forTask = state.agentCalls.filter((call) => call.task === task);
@@ -667,8 +684,42 @@ function boundaryDelivery(state: State): Check[] {
   ];
 }
 
+/** Whether an errand's pull request was opened by its call, and the number came back through it. */
+function openedByACall(state: State, record: ErrandRecord | null, branch: string): boolean {
+  const call = record?.calls?.[`${record.id}/PR_OPEN#1`];
+  const pull = pullFor(state, branch);
+  return record?.state === "DONE" &&
+    call?.state === "OPENED" &&
+    call.input?.branch === branch &&
+    record.calling === undefined &&
+    pull !== undefined &&
+    record.pullRequestNumber === pull.number &&
+    transitionsOf(record).includes("PR_OPEN>DONE");
+}
+
 function refusalChecks(state: State): Check[] {
   return [
+    [
+      // Opened by the shipped pull-request workflow, called from PR_OPEN: the
+      // installed executable made the call's record inside the errand's, and
+      // the errand took the edge named OPENED holding the number the stand-in
+      // gh gave, and said where it is on the way out.
+      "errand.the_pull_request_is_opened_by_a_call",
+      openedByACall(state, state.change, CHANGE_BRANCH) &&
+        openedByACall(state, state.committed, COMMITTED_BRANCH) &&
+        state.inbox.some((note) =>
+          note.includes("Done, and it is a draft for you to look at") &&
+          note.includes(CHANGE_TASK) &&
+          note.includes(`https://github.example.test/${REPO}/pull/${pullFor(state, CHANGE_BRANCH)?.number}`)),
+    ],
+    [
+      "errand.a_refused_pull_request_hands_the_errand_back",
+      state.closed?.state === "DECLINED" &&
+        transitionsOf(state.closed).join(",") === "QUEUED>WORKING,WORKING>PR_OPEN,PR_OPEN>DECLINED" &&
+        state.closed.calls?.["closed-task/PR_OPEN#1"]?.state === "REFUSED" &&
+        !(state.host.repos[REPO]?.pulls ?? []).some((pull) => pull.title === CLOSED_TASK) &&
+        state.inbox.some((note) => note.includes(REFUSED_BY_HOST) && note.includes(CLOSED_TASK)),
+    ],
     [
       "errand.a_refusal_is_terminal_and_says_why",
       state.refusal?.state === "DECLINED" &&
@@ -694,7 +745,7 @@ function lifecycleChecks(state: State): Check[] {
       // Every arrow the installed diagram draws is one some errand in this
       // run took: nothing is drawn and never walked.
       "errand.every_drawn_edge_is_walked",
-      state.diagram.length === 6 && state.diagram.every((edge) => walked.has(edge)),
+      state.diagram.length === 7 && state.diagram.every((edge) => walked.has(edge)),
     ],
     [
       // One terminal state is not a crash and not a fall: the engine said so
@@ -718,9 +769,9 @@ function profileChecks(state: State): Check[] {
       "errand.the_profile_keeps_its_own_state",
       fs.existsSync(path.join(own, "records")) &&
         fs.existsSync(path.join(own, "queue")) &&
-        state.records.length === 5 &&
+        state.records.length === 6 &&
         before === after &&
-        ![state.taskId, BY_HAND_ID, "refusal-task", "committed-task", "foreign-task"].some(
+        ![state.taskId, BY_HAND_ID, "refusal-task", "committed-task", "foreign-task", "closed-task"].some(
           (id) => id && ledgerNames.includes(id),
         ),
     ],

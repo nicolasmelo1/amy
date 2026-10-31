@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 33,
+    "assertions_run": 35,
     "assertions_failed": 0
   },
   "assertions": [
@@ -102,6 +102,14 @@
     },
     {
       "type": "plan.the_ceiling_is_said_once",
+      "status": "passed"
+    },
+    {
+      "type": "plan.the_pull_request_is_opened_by_a_call",
+      "status": "passed"
+    },
+    {
+      "type": "plan.a_refused_pull_request_hands_the_note_back",
       "status": "passed"
     },
     {

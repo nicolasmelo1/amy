@@ -330,6 +330,11 @@ gates:
       - "plugins/agent-relay/src/**"
       - "plugins/serial-engine/src/**"
       - "plugins/github/src/**"
+      # Its pull request is opened by a call: the callee, and the core that
+      # makes the call, are as much this workflow as its own source.
+      - "packages/workflow-pull-request/src/**"
+      - "packages/workflow-pull-request/workflow.mmd"
+      - "packages/core/src/calls.ts"
     evidence: ".software-factory/evidence/note-to-plan.json"
     plan: "docs/design/friction-becomes-a-plan.md"
     required_assertions:
@@ -353,6 +358,8 @@ gates:
       - "plan.one_look_makes_at_most_one_move"
       - "plan.the_machine_settles_instead_of_spinning"
       - "plan.every_drawn_edge_is_walked"
+      - "plan.the_pull_request_is_opened_by_a_call"
+      - "plan.a_refused_pull_request_hands_the_note_back"
 
   # The third workflow, and the shortest road anybody has into this machine:
   # something said in passing. It has files at both ends — the task file one
@@ -379,6 +386,11 @@ gates:
       - "plugins/notify-fanout/src/**"
       - "plugins/notify-inbox/src/**"
       - "plugins/serial-engine/src/**"
+      # Its pull request is opened by a call: the callee, and the core that
+      # makes the call, are as much this workflow as its own source.
+      - "packages/workflow-pull-request/src/**"
+      - "packages/workflow-pull-request/workflow.mmd"
+      - "packages/core/src/calls.ts"
     evidence: ".software-factory/evidence/errand.json"
     plan: "docs/design/the-errand-is-proven-end-to-end.md"
     required_assertions:
@@ -390,6 +402,36 @@ gates:
       - "errand.a_refusal_is_terminal_and_says_why"
       - "errand.the_lifecycle_walks_in_order"
       - "errand.the_profile_keeps_its_own_state"
+      - "errand.the_pull_request_is_opened_by_a_call"
+      - "errand.a_refused_pull_request_hands_the_errand_back"
+
+  # A workflow calls another the way code calls a function. What only an
+  # installed machine can say: that a workflow of somebody's own calls one
+  # copied into it and shows where its work stopped through the call, and
+  # that the two shipped workflows open their pull requests by calling one.
+  # The activation is the call itself, the callee they share, and the
+  # commands that copy, draw and report one.
+  a-workflow-calls-another:
+    activation:
+      - "packages/core/src/calls.ts"
+      - "packages/core/src/expand.ts"
+      - "packages/core/src/define-workflow.ts"
+      - "packages/core/src/diagram.ts"
+      - "packages/workflow-pull-request/src/**"
+      - "packages/workflow-pull-request/workflow.mmd"
+      - "packages/cli/src/workflow-add.ts"
+      - "packages/cli/src/workflow.ts"
+      - "packages/cli/src/status-page.tsx"
+    evidence: ".software-factory/evidence/a-workflow-calls-another.json"
+    plan: "docs/design/a-workflow-calls-another.md"
+    required_assertions:
+      - "mine.a_copied_callee_is_called"
+      - "calls.a_callee_escalates_to_its_root"
+      - "calls.only_the_deepest_record_is_looked_at"
+      - "plan.the_pull_request_is_opened_by_a_call"
+      - "errand.the_pull_request_is_opened_by_a_call"
+      - "plan.a_refused_draft_goes_back_to_the_agent"
+      - "errand.the_lifecycle_walks_in_order"
 
   # config.ts is here because `workflow new` writes a profile as well as a
   # directory: `writeWorkflowProfile` is what makes the scaffold drivable, and
