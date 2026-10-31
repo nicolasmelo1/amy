@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "plugin-serial-engine",
-  "implementation_sha256": "6de1660328d57c43a42f596bec878c163c94f1b05e77d10303e7ceb88099da47",
+  "implementation_sha256": "f02deab8d9b8e402140b0a95e30cb1891d6173fae2105e2684d0ff8ffd393dd7",
   "runs": [
     {
       "scenario": "plugin-serial-engine",
