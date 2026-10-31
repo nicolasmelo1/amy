@@ -303,4 +303,31 @@ describe("a lane that escalates", () => {
     expect(resumed.record.state).toBe("INTEGRATED");
     expect(seen).toEqual(["write", "test", "write", "test", "ask"]);
   });
+
+  it("says which lane needs the person when the escalation is inside a call that lane made", async () => {
+    // Each lane's workflow calls the task, so the task that asks is two records deep.
+    const wrapper = withDiagram(defineWorkflow({
+      name: "wrapper",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      input: {
+        task: { type: "string", required: true, description: "what this lane does" },
+        looks: { type: "number", required: true, description: "how many looks the work takes" },
+      },
+      output: { DONE: () => ({ did: "wrapped" }) },
+      calls: { X: call(task([]), { input: (work: WorkRecord) => work.input as { task: string; looks: number } }) },
+      decide: { DONE: () => settled("done"), DECLINED: () => settled("declined") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> X\nX --> DONE: DONE\nX --> DECLINED: DECLINED\nDONE --> [*]\nDECLINED --> [*]\nclass X call\n");
+    const { workflow, runtime } = await mounted([planner(wrapper as never, [["ask", 1], ["ask", 1], ["ask", 1]])]);
+
+    const { trail } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()));
+
+    const why = trail.at(-1)!.why;
+    expect(why).toMatch(/^every lane of split waits — 0 of 3 arrived/);
+    for (const lane of ["TASK_A", "TASK_B", "TASK_C"]) expect(why).toContain(`${lane} needs the person in X`);
+  });
 });

@@ -103,6 +103,23 @@ describe("lanes hold what they use", () => {
     expect(lent()).toEqual([]);
   });
 
+  it("lends a lane bound with `revision` its commit from its very first look, before it has done anything", async () => {
+    run(checkout, "checkout", "-q", "-b", "amy/feature");
+    const caller = commit(checkout, "the caller's change");
+    run(checkout, "push", "-q", "origin", "amy/feature");
+    const firstSeen = new Map<string, string>();
+    const sees: Work = async (scope, record) => {
+      const tree = await scope.checkouts.git.acquire("acme/widgets", record.id);
+      if (!firstSeen.has(record.id)) firstSeen.set(record.id, run(tree, "rev-parse", "HEAD"));
+    };
+    const { workflow, runtime } = await mounted([trees(), planner({ lanes: ["TASK_A", "TASK_B"], revision: true, callee: task({ sees }) })], host);
+    const start = { ...runtime.newRecord("PLAN-1", host.now()), commit: caller } as PlannerRecord;
+
+    await walk(workflow, runtime, start, host.now());
+
+    expect([...firstSeen.values()]).toEqual([caller, caller]);
+  });
+
   it("lends the commit to the lanes of a workflow a lent lane calls, and they cannot move the caller's branch either", async () => {
     run(checkout, "checkout", "-q", "-b", "amy/feature");
     const caller = commit(checkout, "the caller's change");

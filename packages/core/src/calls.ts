@@ -466,7 +466,8 @@ function arrivals(fork: ForkSite, record: WorkRecord, moves: readonly Plan[]): s
   const waiting = moves.map((move) => {
     const site = fork.lanes.find((candidate) => candidate.state === laneOf(move))!;
     const child = laneRecord(record, site.state)!;
-    const attention = site.workflow.diagram?.attention.includes(child.state) ?? false;
+    // Read at the lane's deepest record, as `laneStanding` reads it.
+    const attention = callStanding(site.workflow, child).attention;
     return `${site.state} ${attention ? "needs the person" : "waits"} in ${child.state}`;
   });
   return [arrived, ...waiting].join("; ");
@@ -600,6 +601,11 @@ async function observeFork(
   if (running.length === 0) {
     await returnTrees(fork, record, port("worktree") as Worktree | undefined);
     return own.observe(record);
+  }
+  // Lent before anything looks: a lane reads its tree at its commit from its first observation on.
+  for (const site of running) {
+    const child = laneRecord(record, site.state)!;
+    if (child.revision !== undefined) fork.lent?.set(child.id, child.revision);
   }
   const seen = await Promise.all(running.map(async (site) => [site.state, await runtimeOf(site).observe(laneRecord(record, site.state)!)] as const));
   // The caller's own world too, so what it says before any decision — a

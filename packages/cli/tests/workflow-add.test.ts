@@ -247,6 +247,37 @@ export const plugin = defineWorkflow({
     expect(checked.drawnNotWalked.map((edge) => `${edge.from} → ${edge.to}`)).toEqual(["REVIEW/READING → REVIEW/HELD", "REVIEW/HELD → REVIEW/APPROVED"]);
   });
 
+  it("walks a workflow whose lanes run side by side, and counts the lanes and their arrows as walked", async () => {
+    const callee = path.join(elsewhere, "task");
+    fs.mkdirSync(callee);
+    fs.writeFileSync(path.join(callee, "package.json"), JSON.stringify({ name: "workflow-task", type: "module" }));
+    fs.writeFileSync(path.join(callee, "workflow.mmd"), "stateDiagram-v2\n    [*] --> WORKING\n    WORKING --> DONE\n    DONE --> [*]\n");
+    fs.writeFileSync(path.join(callee, "index.ts"), `import { advance, defineWorkflow, settled, withDiagramBeside } from "@amykit/core";
+export const plugin = withDiagramBeside(defineWorkflow({
+  name: "task", configSchema: {}, policy: {}, needs: {},
+  decide: { WORKING: () => advance("DONE", "done"), DONE: () => settled("done") },
+  record: () => ({}), observe: async () => ({}), actions: {},
+}), import.meta.url);
+`);
+    const caller = path.join(home, "workflows", "oncall");
+    fs.writeFileSync(path.join(caller, "workflow.mmd"), "stateDiagram-v2\n    state split <<fork>>\n    state merge <<join>>\n    [*] --> PAGED\n    PAGED --> split\n    split --> A\n    split --> B\n    A --> merge: DONE\n    B --> merge: DONE\n    merge --> RESOLVED\n    RESOLVED --> [*]\n    class A, B call\n");
+    fs.writeFileSync(path.join(caller, "index.ts"), `import { advance, call, defineWorkflow, settled } from "@amykit/core";
+import { plugin as task } from "./workflows/task/index.ts";
+export const plugin = defineWorkflow({
+  name: "oncall", configSchema: {}, policy: {}, needs: {},
+  calls: { A: call(task), B: call(task) },
+  decide: { PAGED: () => advance("split", "paged"), merge: () => advance("RESOLVED", "met"), RESOLVED: () => settled("resolved") },
+  record: () => ({}), observe: async () => ({}), actions: {},
+});
+`);
+    await addWorkflowInto(home, callee, "oncall", { runner: new Npm([]) });
+
+    const checked = await inspectWorkflow(home, "oncall", loadConfig(home));
+
+    expect(checked.problems).toEqual([]);
+    expect(checked.drawnNotWalked).toEqual([]);
+  });
+
   it("refuses two copied manifests asking for one package at two ranges", async () => {
     const source = reviewPackage(elsewhere, { yaml: "^1.10.0" });
     const nested = path.join(source, "src", "fix");

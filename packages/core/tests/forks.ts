@@ -46,6 +46,8 @@ export function task(options: {
   finishWorking?: boolean;
   /** How the work is wired: a handler (the default), or the agent's `ask`, as a port and a method. */
   agent?: boolean;
+  /** What the task looks at in its world before it decides, given the scope it was mounted with. */
+  sees?: Work;
 } = {}) {
   const looksFor = (record: TaskRecord): number => (typeof options.looks === "function" ? options.looks(record.input.task) : options.looks ?? 1);
   const ends = options.ends === "three" ? "    WORKING --> STUCK\n    STUCK --> [*]\n" : "";
@@ -73,7 +75,7 @@ export function task(options: {
       ...(options.ends === "three" ? { STUCK: () => settled("stuck") } : {}),
     },
     record: () => ({}),
-    observe: async () => ({}),
+    observe: async (scope, record) => (options.sees ? { seen: await options.sees(scope as never, record as TaskRecord) } : {}),
     actions: options.agent ? { work: { port: "agent", method: "ask" } } : {
       work: async (scope, work) => {
         const said = await options.work?.(scope as never, work.record as TaskRecord);
