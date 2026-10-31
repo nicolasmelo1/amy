@@ -22,6 +22,7 @@ export {
   acceptsAction,
   declaredActions,
   implementationOf,
+  declaredBinding,
   isPortBinding,
   portReachedBy,
   runAction,

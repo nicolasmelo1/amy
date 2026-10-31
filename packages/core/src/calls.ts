@@ -6,7 +6,8 @@
  * observed or decided. See `docs/design/a-workflow-calls-another.md`.
  */
 
-import { PortLookup, implementationOf, isPortBinding, portReachedBy, reaching, runAction } from "./dispatch.js";
+import { PortLookup, declaredBinding, implementationOf, isPortBinding, reaching, runAction } from "./dispatch.js";
+import { ActionSpec } from "./actions.js";
 import { BranchLeases, LeaseHeld, runningLane } from "./leases.js";
 import { ActionContext, ActionImplementation, WorkflowRuntime } from "./runtime.js";
 import { Workflow } from "./plugin.js";
@@ -700,8 +701,9 @@ function entering(record: WorkRecord, sites: ReadonlyMap<string, CallSite>, fork
 function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSite>, port: PortLookup, forks: ReadonlyMap<string, ForkSite>): Readonly<Record<string, ActionImplementation>> {
   // In a fork, the caller's own actions — whatever its `interrupt` planned —
   // see the caller's world, not the lanes' it is wrapped in.
+  // A port and a method never reads the world, so it is left as declared.
   const actions: Record<string, ActionImplementation> = forks.size === 0 ? { ...own.actions } : Object.fromEntries(
-    Object.keys(own.actions).map((name) => [name, ownInAFork(own, name, port, forks)]),
+    Object.entries(own.actions).map(([name, implementation]) => [name, isPortBinding(implementation) ? implementation : ownInAFork(own, name, port, forks)]),
   );
   const names = new Set<string>();
   for (const site of sites.values()) for (const name of Object.keys(site.runtime?.actions ?? {})) names.add(name);
@@ -736,22 +738,33 @@ function composedActions(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSi
  * the same one: the dispatcher still says so, so the budget is asked before
  * a lane spends the agent as before any other move.
  */
-function laneSpends(forks: ReadonlyMap<string, ForkSite>, name: string): string | undefined {
-  const ports = new Set([...forks.values()].flatMap((fork) => fork.lanes.flatMap((site) => {
+function laneSpends(forks: ReadonlyMap<string, ForkSite>, name: string): ActionSpec | undefined {
+  return agreed([...forks.values()].flatMap((fork) => fork.lanes.flatMap((site) => {
     const implementation = site.runtime && implementationOf(site.runtime, name);
-    if (implementation === undefined) return [];
-    return [isPortBinding(implementation) ? site.binding.ports?.[implementation.port] ?? implementation.port : ""];
+    return implementation === undefined ? [] : [bindingThrough(site, implementation)];
   })));
-  return ports.size === 1 ? [...ports][0] || undefined : undefined;
+}
+
+/** What a callee's declared binding is, as its caller's ports name it. */
+function bindingThrough(site: CallSite, implementation: unknown): ActionSpec | undefined {
+  const bound = declaredBinding(implementation);
+  return bound && { ...bound, port: site.binding.ports?.[bound.port] ?? bound.port };
+}
+
+/** The one binding every declaration agrees on, or none when any differs or runs none. */
+function agreed(bindings: readonly (ActionSpec | undefined)[]): ActionSpec | undefined {
+  const [first] = bindings;
+  if (!first || bindings.length === 0) return undefined;
+  return bindings.every((binding) => binding?.port === first.port && binding.method === first.method) ? first : undefined;
 }
 
 /** The caller's own action, handed its own world while the record waits in a fork. */
 function ownInAFork(own: WorkflowRuntime, name: string, port: PortLookup, forks: ReadonlyMap<string, ForkSite>): ActionImplementation {
   const implementation = implementationOf(own, name)!;
-  return reaching(async (action: Action, context: ActionContext) => {
+  return async (action: Action, context: ActionContext) => {
     const observation = forks.has(context.record.state) ? ownObservation(context.observation) : context.observation;
     await runAction(implementation, action, { ...context, observation }, port);
-  }, isPortBinding(implementation) ? implementation.port : undefined);
+  };
 }
 
 /**
@@ -759,17 +772,15 @@ function ownInAFork(own: WorkflowRuntime, name: string, port: PortLookup, forks:
  * each callee, through its binding's ports — spends the same one, however it
  * is dispatched: a callee whose lanes run it still says so to whoever calls it.
  */
-function spentThroughEveryCall(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSite>, name: string): string | undefined {
-  const ports = new Set<string | undefined>();
+function spentThroughEveryCall(own: WorkflowRuntime, sites: ReadonlyMap<string, CallSite>, name: string): ActionSpec | undefined {
   const mine = implementationOf(own, name);
-  if (mine !== undefined) ports.add(portReachedBy(mine));
-  for (const site of sites.values()) {
-    const implementation = site.runtime && implementationOf(site.runtime, name);
-    if (implementation === undefined) continue;
-    const reached = portReachedBy(implementation);
-    ports.add(reached === undefined ? undefined : site.binding.ports?.[reached] ?? reached);
-  }
-  return ports.size === 1 ? [...ports][0] : undefined;
+  return agreed([
+    ...(mine === undefined ? [] : [declaredBinding(mine)]),
+    ...[...sites.values()].flatMap((site) => {
+      const implementation = site.runtime && implementationOf(site.runtime, name);
+      return implementation === undefined ? [] : [bindingThrough(site, implementation)];
+    }),
+  ]);
 }
 
 /**

@@ -41,13 +41,23 @@ const REACHES = Symbol.for("@amykit/core/reaches");
  * run against the lane's own record. What a budget asks before the call.
  */
 export function portReachedBy(implementation: unknown): string | undefined {
-  if (isPortBinding(implementation)) return implementation.port;
-  return (implementation as { [REACHES]?: string } | undefined)?.[REACHES];
+  return declaredBinding(implementation)?.port;
 }
 
-/** A dispatcher that runs a declared port and method, still saying which port it reaches. */
-export function reaching<T extends object>(dispatcher: T, port: string | undefined): T {
-  return port === undefined ? dispatcher : Object.assign(dispatcher, { [REACHES]: port });
+/**
+ * The port and method an action is declared to run, whether it is that
+ * binding itself or a dispatcher the host built around it — so what the
+ * mount checks of a binding (which port, whether it writes, whether the
+ * workflow claimed the write) it checks however the action is dispatched.
+ */
+export function declaredBinding(implementation: unknown): ActionSpec | undefined {
+  if (isPortBinding(implementation)) return implementation;
+  return (implementation as { [REACHES]?: ActionSpec } | undefined)?.[REACHES];
+}
+
+/** A dispatcher that runs a declared port and method, still saying which it runs. */
+export function reaching<T extends object>(dispatcher: T, binding: ActionSpec | undefined): T {
+  return binding === undefined ? dispatcher : Object.assign(dispatcher, { [REACHES]: binding });
 }
 
 /** The actions a runtime declares: the keys of its map, and nothing else. */

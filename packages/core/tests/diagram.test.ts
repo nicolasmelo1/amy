@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "pele";
-import { DiagramError, HostServices, Plugin, acceptsAction, advance, call, cameFrom, connects, defineWorkflow, expandDiagram, implementationOf, markState, mount, notWrittenIn, portReachedBy, readDiagram, settled, withDiagram } from "../src/index.js";
+import { DiagramError, HostServices, Plugin, acceptsAction, unmetNeeds, advance, call, cameFrom, connects, defineWorkflow, expandDiagram, implementationOf, markState, mount, notWrittenIn, portReachedBy, readDiagram, settled, withDiagram } from "../src/index.js";
 import { ESCALATING, LANES, NOTE_TO_PLAN } from "./diagrams.js";
 import { PLANNER, PlannerRecord, mounted, planner, task, walk } from "./forks.js";
 
@@ -345,5 +345,51 @@ describe("a fork of lanes", () => {
     const decided = workflow.plan(forked, await runtime.observe(forked), runtime.policy);
 
     expect(decided).toMatchObject({ kind: "act", effects: [{ type: "hand-over" }] });
+  });
+
+  describe("what a forked workflow's actions are held to at boot", () => {
+    const ports: Plugin = {
+      name: "ports",
+      register: (registry) => {
+        registry.port("tracker", { comment: acceptsAction(async () => undefined) });
+        registry.port("notifier", { announce: async () => undefined });
+        registry.port("agent", { ask: acceptsAction(async () => ({})) });
+      },
+    };
+    const forked = (actions: Record<string, { port: string; method: string }>, trackerWrites: string[] = []) => withDiagram(defineWorkflow({
+      name: "planner",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      trackerWrites,
+      // The lanes' own action is a port and a method too, named by no catalogue.
+      calls: Object.fromEntries(["TASK_A", "TASK_B", "TASK_C"].map((lane) => [lane, call(task({ agent: true }), { input: () => ({ task: lane }) })])),
+      decide: { PLANNED: () => advance("split", "planned"), merge: () => advance("INTEGRATED", "joined"), INTEGRATED: () => settled("integrated"), ESCALATED: () => settled("escalated") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions,
+    }), PLANNER(["TASK_A", "TASK_B", "TASK_C"]));
+    const problems = async (plugin: Plugin): Promise<string[]> => {
+      const outcome = await mount([ports, plugin], {}, HOST);
+      if (!outcome.ok) return outcome.problems;
+      return unmetNeeds(outcome.mounted, outcome.mounted.workflow!);
+    };
+
+    it("refuses a tracker write it did not claim, as it would without the fork", async () => {
+      expect((await problems(forked({ announce: { port: "tracker", method: "comment" } }))).join("; "))
+        .toMatch(/action `announce` writes the tracker \(`comment`\), but the workflow does not claim that capability/);
+    });
+
+    it("mounts a port-bound action of its own the catalogue does not name, when it claims the write", async () => {
+      const said = await problems(forked({ note: { port: "tracker", method: "comment" } }, ["comment"]));
+
+      expect(said.filter((problem) => problem.includes("`note`"))).toEqual([]);
+    });
+
+    it("reads a lane's port-bound action as the binding it is, not as an action nothing defines", async () => {
+      const said = await problems(forked({}));
+
+      expect(said.filter((problem) => problem.includes("nothing defines it"))).toEqual([]);
+    });
   });
 });
