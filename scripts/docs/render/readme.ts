@@ -36,14 +36,7 @@ function readmeFor(entry: MountedFact): string {
     "",
     entry.kind === "workflow" ? workflowIntro() : pluginIntro(entry),
     "",
-    "## Install",
-    "",
-    "```sh",
-    `# Add ${entry.name} to amy.yaml, then install configured plugins:`,
-    "amy init --install",
-    "```",
-    "",
-    mountLine(entry),
+    ...(entry.workflow?.called ? calling(entry) : installing(entry)),
   ];
 
   if (entry.kind === "workflow" && entry.workflow) {
@@ -98,6 +91,43 @@ function workflowIntro(): string {
   ].join("\n");
 }
 
+function installing(entry: MountedFact): string[] {
+  return [
+    "## Install",
+    "",
+    "```sh",
+    `# Add ${entry.name} to amy.yaml, then install configured plugins:`,
+    "amy init --install",
+    "```",
+    "",
+    mountLine(entry),
+  ];
+}
+
+/** A workflow that takes an input is called from a state of another, never mounted on its own. */
+function calling(entry: MountedFact): string[] {
+  const ends = entry.workflow?.terminalStates ?? [];
+  return [
+    "## Calling it",
+    "",
+    "It takes an input, so it is called from a state of another workflow rather than mounted",
+    "as a profile. Depend on it from the package that calls it, mark the state `call` in that",
+    `workflow's diagram, draw an edge out of it named for each end (${ends.map((end) => `\`${end}\``).join(", ")}), and bind it:`,
+    "",
+    "```ts",
+    `import { plugin as ${camel(entry.workflow?.name ?? "callee")} } from "${entry.name}";`,
+    "",
+    `calls: { STATE: call(${camel(entry.workflow?.name ?? "callee")}, { input: (work) => ({ /* … */ }) }) },`,
+    "```",
+    "",
+    "Its settings below are set per call site, with `config` on the binding.",
+  ];
+}
+
+function camel(name: string): string {
+  return name.replace(/-(\w)/g, (_match, letter: string) => letter.toUpperCase());
+}
+
 function mountLine(entry: MountedFact): string {
   return [
     "Then name it in `~/.amy/config.yaml`:",
@@ -140,15 +170,16 @@ function configuration(entry: MountedFact): string {
     ].join("\n");
   }
 
+  const value = (setting: MountedFact["settings"][number]): string =>
+    setting.default !== undefined ? JSON.stringify(setting.default) : `<${setting.type}>`;
+  // A called workflow is configured where it is called, so its settings are
+  // shown as the binding's `config`, never as a slice of `config.yaml`.
+  const example = entry.workflow?.called
+    ? ["```ts", `call(${camel(entry.workflow.name)}, { config: { ${entry.settings.map((setting) => `${setting.name}: ${value(setting)}`).join(", ")} } })`, "```"]
+    : ["```yaml", "plugins:", `  "${entry.name}":`, ...entry.settings.map((setting) => `    ${setting.name}: ${value(setting)}`), "```"];
+
   return [
-    "```yaml",
-    "plugins:",
-    `  "${entry.name}":`,
-    ...entry.settings.map(
-      (setting) =>
-        `    ${setting.name}: ${setting.default !== undefined ? JSON.stringify(setting.default) : `<${setting.type}>`}`,
-    ),
-    "```",
+    ...example,
     "",
     table(
       ["Setting", "Type", "Required", "Default", "What it is"],

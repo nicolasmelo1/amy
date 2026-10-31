@@ -110,6 +110,8 @@ export interface WorkflowShape {
   terminalStates: string[];
   initialState: string;
   usesActions: string[];
+  /** Declares an input, so a caller binds a state to it rather than a profile mounting it. */
+  called?: boolean;
 }
 
 type PackageKind = "unbuilt" | "cli" | "unloadable" | "library" | "plugin" | "workflow";

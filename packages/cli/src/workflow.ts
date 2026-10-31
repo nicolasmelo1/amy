@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { applyPlan, BRANCH_SETTINGS, Builds, cameFrom, CommandRunner, connects, DIAGRAM_FILE, DrawnTransition, lendCheckouts, isDeferred, isPortBinding, markState, movedBy, notWrittenIn, Plugin, PluginContext, readDiagram, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
+import { applyPlan, BRANCH_SETTINGS, Builds, callPath, cameFrom, CommandRunner, connects, DIAGRAM_FILE, DrawnTransition, expandDiagram, lendCheckouts, isDeferred, isPortBinding, markState, movedBy, notWrittenIn, Plan, Plugin, PluginContext, readDiagram, Registry, undeclaredIn, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
 import { AmyConfig, writeWorkflowProfile } from "./config.js";
 import { drawn } from "./drawn.js";
 
@@ -166,34 +166,45 @@ export async function inspectWorkflow(
 /**
  * A configured workflow's diagram, as text that renders anywhere Mermaid
  * does, with one state marked when a piece of work is given.
+ *
+ * Expanded, each call is drawn as what it calls, and a piece of work is
+ * marked at every depth of the calls it is in.
  */
 export async function exportWorkflow(
   home: string,
   name: string,
   config: AmyConfig,
-  options: { readonly state?: string; readonly resolve?: (spec: string) => string } = {},
+  options: {
+    readonly state?: string;
+    readonly record?: WorkRecord;
+    readonly expand?: boolean;
+    readonly resolve?: (spec: string) => string;
+  } = {},
 ): Promise<string> {
   const profile = config.workflows[name];
   if (!profile) throw new Error(`there is no \`${name}\` workflow in the config`);
-  const diagram = await shapeOf(home, homeRelative(home, profile.workflow), options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
+  const workflow = await shapeOf(home, homeRelative(home, profile.workflow), options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
+  const diagram = workflow.diagram;
   if (!diagram) throw new Error(`${name} has no ${DIAGRAM_FILE}: its states are declared in its code, so there is no diagram to export`);
-  return options.state === undefined ? diagram.text : markState(diagram, options.state);
+  if (options.expand) return expandDiagram(workflow, options.record ?? (options.state === undefined ? undefined : { id: name, state: options.state, updatedAt: "", attempts: {}, history: [] }));
+  const state = options.state ?? options.record?.state;
+  return state === undefined ? diagram.text : markState(diagram, state);
 }
 
 /**
- * The diagram a configured workflow was bound to, read the cheapest way that
+ * The workflow a configured spec was bound to, read the cheapest way that
  * says it: a declaration carries its workflow unregistered, so nothing reads
  * a configuration only the mount validates. A plugin that registers its
  * workflow by hand is registered to ask.
  */
-async function shapeOf(home: string, spec: string, resolve: (spec: string) => string): Promise<Workflow["diagram"]> {
+async function shapeOf(home: string, spec: string, resolve: (spec: string) => string): Promise<Workflow> {
   const plugin = await importedPlugin(spec, resolve);
   if (typeof plugin === "string") throw new Error(plugin);
   const declared = (plugin as { workflow?: Workflow }).workflow;
-  if (declared) return declared.diagram;
+  if (declared) return declared;
   const registered = await registration(home, spec, resolve);
   if (typeof registered === "string") throw new Error(registered);
-  return registered.workflow.diagram;
+  return registered.workflow;
 }
 
 /** A configured path is relative to amy's home, as the mount resolves it, not to wherever the command runs. */
@@ -373,7 +384,7 @@ async function moveOnce(workflow: Workflow, runtime: WorkflowRuntime, record: Wo
     if (missing) return `${workflow.name}: plan emits \`${missing}\`, which its runtime never declared in \`actions\``;
     if (plan.kind === "settled") return notWrittenIn(plan) === record.state ? { kind: "stub" } : { kind: "settled" };
     if (plan.kind === "wait") return waitingProblem(workflow, runtime, record);
-    if (plan.kind === "act") return `${workflow.name}: did not settle; it kept acting in \`${record.state}\``;
+    if (plan.kind === "act") return movedInACall(workflow, runtime, record, plan, observation, now);
     if (!workflow.states.includes(plan.to)) return `${workflow.name}: advances to undeclared state \`${plan.to}\``;
     const diagram = workflow.diagram;
     if (diagram && !connects(diagram, record.state, plan.to, cameFrom(record.history, record.state))) {
@@ -382,6 +393,19 @@ async function moveOnce(workflow: Workflow, runtime: WorkflowRuntime, record: Wo
     const folded = runtime.apply(applyPlan(record, plan, now()), plan, {}, observation, now(), movedBy(record, plan));
     return folded.state === plan.to ? { kind: "advance", record: folded } : `${workflow.name}: one look did not make the transition it claimed`;
   } catch (error) { return `${workflow.name}: could not plan \`${record.state}\` — ${message(error)}`; }
+}
+
+/**
+ * A look inside a call is its caller's `act`: the caller stays where it is
+ * while the workflow it called moves. That is progress, not acting in place,
+ * when the record's path through its calls changed.
+ */
+function movedInACall(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord, plan: Plan, observation: unknown, now: () => Date): { kind: "advance"; record: WorkRecord } | string {
+  const folded = runtime.apply(applyPlan(record, plan, now()), plan, {}, observation, now(), null);
+  const where = (current: WorkRecord) => callPath(current).map((step) => `${step.id}@${step.state}`).join(">");
+  return where(folded) === where(record)
+    ? `${workflow.name}: did not settle; it kept acting in \`${record.state}\``
+    : { kind: "advance", record: folded };
 }
 
 async function waitingProblem(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord): Promise<{ kind: "wait" } | string> {

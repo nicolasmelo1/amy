@@ -13,6 +13,17 @@ export interface StatusRecord {
   readonly updatedAt: string;
   readonly attempts: Readonly<Record<string, number>>;
   readonly history: readonly Transition[];
+  /** Every record this one is waiting on through its calls, deepest last, each with its own trail. */
+  readonly calls?: readonly StatusCall[];
+  /** Whether the deepest record is waiting on its owner, which makes the root what needs them. */
+  readonly attention?: boolean | null;
+}
+
+/** One call a record is waiting on, as `amy status --json` reports it. */
+interface StatusCall {
+  readonly id: string;
+  readonly state: string;
+  readonly history: readonly Transition[];
 }
 
 /** The loop that is running, as its own record says. */
@@ -64,12 +75,34 @@ function Records(props: { readonly snapshot: StatusSnapshot; readonly all: boole
 
   const rows = view.shown.map((record) => [
     record.id,
-    record.state,
-    standing(record.state, waiting, terminal),
+    [record.state, ...(record.calls ?? []).map((call) => call.state)].join(" › "),
+    record.attention ? "attention" : standing(record.state, waiting, terminal),
     record.repo ?? "",
     record.pullRequest ? `#${record.pullRequest}` : "",
   ]);
   return <Table columns={COLUMNS} rows={rows} />;
+}
+
+/**
+ * Work that stopped inside a call, shown with its root: where in the tree it
+ * stopped, and the move that put it there, so nobody has to open the record
+ * to find out which call is waiting on them.
+ */
+function Stopped(props: { readonly records: readonly StatusRecord[] }): Node {
+  const stopped = props.records.filter(stoppedInACall);
+  return (
+    <Section>
+      {stopped.map((record) => {
+        const deepest = record.calls!.at(-1)!;
+        const last = deepest.history.at(-1);
+        return <Text tone="warning">{`${record.id} needs you: ${deepest.id} stopped in ${deepest.state}${last ? ` — ${last.why}` : ""}`}</Text>;
+      })}
+    </Section>
+  );
+}
+
+function stoppedInACall(record: StatusRecord): boolean {
+  return Boolean(record.attention) && (record.calls?.length ?? 0) > 0;
 }
 
 function loopLine(snapshot: StatusSnapshot): string {
@@ -98,6 +131,7 @@ export function statusView(snapshot: StatusSnapshot, options: StatusOptions): No
         <Text>{loopLine(snapshot)}</Text>
         {snapshot.notes > 0 && <Text>{`notes: ${snapshot.notes} written down`}</Text>}
       </Section>
+      {records.shown.some(stoppedInACall) && <Stopped records={records.shown} />}
       {snapshot.needsInput > 0 && (
         <Text tone="warning">{`${snapshot.needsInput} question(s) waiting for you in ${options.inbox}`}</Text>
       )}

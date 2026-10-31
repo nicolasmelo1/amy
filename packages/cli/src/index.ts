@@ -15,7 +15,10 @@ import {
   FileStopSwitch,
   NodeCommandRunner,
   WorkRecord,
+  Workflow,
   Worktree,
+  callPath,
+  callStanding,
   describeBuild,
   mount,
   parseBudget,
@@ -37,7 +40,7 @@ import { WorktreeManager } from "@amykit/plugin-file-worktree";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
 import { renderText } from "@amykit/ui";
-import { statusView, type StatusSnapshot } from "./status-page.js";
+import { statusView, type StatusRecord, type StatusSnapshot } from "./status-page.js";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -86,6 +89,7 @@ import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from 
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
+import { addWorkflowInto } from "./workflow-add.js";
 import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
@@ -1005,6 +1009,7 @@ program
           updatedAt: record.updatedAt,
           attempts: record.attempts,
           history: record.history,
+          ...standingThroughCalls(workflow as Workflow | undefined, record),
         })),
         queue: {
           due: queue.ready(now).length,
@@ -1019,6 +1024,12 @@ program
       };
     }
   });
+
+/** Where a record stands through the calls it is in, for a workflow that would mount. */
+function standingThroughCalls(workflow: Workflow | undefined, record: WorkRecord): Pick<StatusRecord, "calls" | "attention"> {
+  const calls = callPath(record).slice(1).map((call) => ({ id: call.id, state: call.state, history: call.history }));
+  return { calls, attention: workflow ? callStanding(workflow, record).attention : null };
+}
 
 /** How many markdown files a directory holds, and none when there is none. */
 function countIn(directory: string): number {
@@ -2386,6 +2397,22 @@ workflowCommand
   });
 
 workflowCommand
+  .command("add")
+  .description("Copy a workflow into one of your own, to call it there as code you own")
+  .argument("<spec>", "a package amy installed, or a path to a workflow's directory or entry")
+  .requiredOption("--into <name>", "the workflow of your own it is copied into, under ~/.amy/workflows")
+  .action(async (spec: string, options: { into: string }) => {
+    try {
+      const target = await addWorkflowInto(home, spec, options.into, { runner: new NodeCommandRunner(), pluginsRoot: paths(home).plugins });
+      console.log(`copied into ${target}`);
+      console.log(`import its \`plugin\` from ./${path.relative(path.join(workflowsDirectory(home), options.into), target)} in ${options.into}, and bind a call state to it with \`call(plugin)\``);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
+
+workflowCommand
   .command("check")
   .description("Drive a workflow's lifecycle against its stub world")
   .argument("<name>", "the configured workflow to check")
@@ -2409,14 +2436,16 @@ workflowCommand
   .description("Print a workflow's diagram, which renders wherever Mermaid does")
   .argument("<name>", "the configured workflow to export")
   .option("--work <id>", "mark the state this piece of work is in")
-  .action(async (name: string, options: { work?: string }) => {
+  .option("--expand", "draw each call as the workflow it calls, for reading; with --work, mark the work at every depth")
+  .action(async (name: string, options: { work?: string; expand?: boolean }) => {
     try {
       const config = loadConfig(home);
       const profile = profiles(config, home)[name];
       const record = options.work === undefined || !profile ? undefined : new FileStore<AnyRecord>(profilePaths(home, profile).records).load(options.work);
       if (options.work !== undefined && !record) throw new Error(`${name} keeps no record for ${options.work}`);
       process.stdout.write(await exportWorkflow(home, name, config, {
-        ...(record ? { state: record.state } : {}),
+        ...(record ? { record: record as WorkRecord } : {}),
+        ...(options.expand ? { expand: true } : {}),
         resolve: pluginsRootResolver(home, paths(home).plugins),
       }));
     } catch (error) {
