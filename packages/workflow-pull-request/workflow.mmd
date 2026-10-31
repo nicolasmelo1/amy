@@ -1,0 +1,10 @@
+stateDiagram-v2
+    %% A pull request for a branch its caller prepared, or the host's reason
+    %% there is none. Called, never mounted on its own: it ends as soon as the
+    %% pull request exists, and whatever follows is the caller's.
+
+    [*] --> OPENING
+    OPENING --> OPENED: the host has a pull request on the branch
+    OPENING --> REFUSED: the host answered that it will not
+    OPENED --> [*]
+    REFUSED --> [*]

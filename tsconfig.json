@@ -5,6 +5,9 @@
       "path": "./packages/workflow-errand"
     },
     {
+      "path": "./packages/workflow-pull-request"
+    },
+    {
       "path": "./plugins/command"
     },
     {

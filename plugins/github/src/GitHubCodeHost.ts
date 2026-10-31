@@ -1,6 +1,7 @@
 import {
   ChecksView,
   CodeHost,
+  CodeHostRefusal,
   CommandRunner,
   MergeState,
   OpenPullRequestRequest,
@@ -311,7 +312,7 @@ export class GitHubCodeHost implements CodeHost {
     // would answer a question already settled in the config.
     const base = request.base ?? this.config.baseBranch?.[request.repo] ?? (await this.defaultBranch(request.repo));
 
-    const created = await this.gh([
+    const created = await this.refusedOn422(() => this.gh([
       "api",
       "--method",
       "POST",
@@ -329,7 +330,7 @@ export class GitHubCodeHost implements CodeHost {
       // string "false" is true to the API.
       "-F",
       `draft=${request.draft === true}`,
-    ]);
+    ]));
 
     const parsed = JSON.parse(created) as { number?: number };
     if (typeof parsed.number !== "number") {
@@ -585,6 +586,21 @@ export class GitHubCodeHost implements CodeHost {
     }
 
     return parsed.data;
+  }
+
+  /**
+   * GitHub's 422 is its answer — nothing to merge, one already open — and
+   * every other failure is the network or the token, which asking again may
+   * fix. The port says which one this was.
+   */
+  private async refusedOn422<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      const said = error instanceof Error ? error.message : String(error);
+      if (/\bHTTP 422\b/.test(said)) throw new CodeHostRefusal(said);
+      throw error;
+    }
   }
 
   private async gh(args: readonly string[]): Promise<string> {
