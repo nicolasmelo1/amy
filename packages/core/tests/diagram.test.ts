@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DiagramError, cameFrom, connects, markState, readDiagram } from "../src/index.js";
-import { ESCALATING, NOTE_TO_PLAN } from "./diagrams.js";
+import { DiagramError, HostServices, advance, call, cameFrom, connects, defineWorkflow, markState, mount, readDiagram, settled, withDiagram } from "../src/index.js";
+import { ESCALATING, LANES, NOTE_TO_PLAN } from "./diagrams.js";
+import { PLANNER, PlannerRecord, mounted, planner, task, walk } from "./forks.js";
 
 describe("the subset amy reads", () => {
   it("reads the initial, terminal and waiting states and every transition", () => {
@@ -56,8 +57,8 @@ describe("what amy refuses, by name and line", () => {
     ["a composite state", "state Busy {", /composite state/],
     ["the end of a composite state", "}", /composite state/],
     ["a choice", "state pick <<choice>>", /<<choice>>/],
-    ["a fork", "state split <<fork>>", /<<fork>>/],
-    ["a join", "state merge <<join>>", /<<join>>/],
+    ["a fork written anywhere but a line of its own", "A --> B <<fork>>", /<<fork>>/],
+    ["a join written anywhere but a line of its own", "A --> B <<join>>", /<<join>>/],
     ["a concurrent region", "--", /concurrent region/],
     ["the class shorthand", "A --> C:::waiting", /:::/],
     ["a line outside the subset", "A : a description", /is not a line amy reads/],
@@ -156,5 +157,106 @@ describe("what the diagram connects", () => {
     expect(marked.endsWith("    class CHECKED current\n")).toBe(true);
     expect(readDiagram(marked).states).toEqual(plan.states);
     expect(() => markState(plan, "LOST")).toThrow(/draws no `LOST`/);
+  });
+});
+
+describe("a fork of lanes", () => {
+  const HOST: HostServices = {
+    runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+    now: () => new Date("2026-10-31T12:00:00.000Z"),
+    paths: { workspace: "/work", checkouts: {}, state: "/state" },
+  };
+  const refusal = (text: string): string => {
+    try {
+      readDiagram(text);
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error("it was read");
+  };
+
+  it("reads each fork with the lanes drawn out of it and the join they meet at", () => {
+    const diagram = readDiagram(LANES);
+
+    expect(diagram.forks).toEqual({ split: { lanes: ["TASK_A", "TASK_B", "TASK_C"], join: "merge" } });
+    expect(diagram.calls).toEqual(["TASK_A", "TASK_B", "TASK_C"]);
+    expect(diagram.states).toContain("split");
+    expect(diagram.states).toContain("merge");
+    // The record waits in the fork and moves to the join: that move is drawn by the lanes.
+    expect(connects(diagram, "split", "merge")).toBe(true);
+    expect(connects(diagram, "PLANNED", "merge")).toBe(false);
+  });
+
+  it("mounts a diagram whose every lane is a call", async () => {
+    const outcome = await mount([planner()], {}, HOST);
+
+    expect(outcome.ok).toBe(true);
+  });
+
+  it("refuses a lane that is not a call, naming it", () => {
+    const text = LANES.replace("class TASK_A, TASK_B, TASK_C call", "class TASK_A, TASK_C call");
+
+    expect(refusal(text)).toMatch(/`TASK_B` is a lane of the fork `split` and not a call/);
+  });
+
+  it("refuses a join a lane never reaches", () => {
+    const silent = LANES.replace("    TASK_C --> merge: DONE\n    TASK_C --> merge: DECLINED\n", "");
+    const astray = LANES.replace("TASK_C --> merge: DECLINED", "TASK_C --> ESCALATED: DECLINED");
+
+    expect(refusal(silent)).toMatch(/`TASK_C` is a lane of `split` and never reaches the join `merge`/);
+    expect(refusal(astray)).toMatch(/`TASK_C --> ESCALATED` leaves a lane of `split` for somewhere other than its join `merge`/);
+  });
+
+  it("refuses a join no fork's lanes meet at, and a fork of one lane", () => {
+    expect(refusal(LANES.replace("state merge <<join>>", "state merge <<join>>\n    state lonely <<join>>").replace("ESCALATED --> [*]", "ESCALATED --> lonely\n    lonely --> INTEGRATED\n    INTEGRATED --> ESCALATED\n    ESCALATED --> [*]")))
+      .toMatch(/the join `lonely` is reached by no fork's lanes|reaches the join from outside its fork/);
+    expect(refusal("stateDiagram-v2\n    state split <<fork>>\n    state merge <<join>>\n    [*] --> A\n    A --> split\n    split --> L\n    L --> merge: DONE\n    merge --> B\n    B --> [*]\n    class L call\n"))
+      .toMatch(/the fork `split` draws 1 lane\(s\)/);
+  });
+
+  it("refuses at boot a lane whose callee can end where no edge into the join is named", async () => {
+    const outcome = await mount([planner({ callee: task({ ends: "three" }) })], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toMatch(/planner → TASK_A: task can end at `STUCK`, and no edge out of `TASK_A` is named `STUCK`/);
+  });
+
+  it("refuses a decision written for a fork, which its lanes move", async () => {
+    const declared = planner();
+    const outcome = await mount([withDiagram(defineWorkflow({
+      name: "planner",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      calls: { TASK_A: call(task(), { input: () => ({ task: "a" }) }), TASK_B: call(task(), { input: () => ({ task: "b" }) }), TASK_C: call(task(), { input: () => ({ task: "c" }) }) },
+      decide: {
+        PLANNED: () => advance("split", "planned"),
+        split: () => settled("never"),
+        merge: () => advance("INTEGRATED", "joined"),
+        INTEGRATED: () => settled("integrated"),
+        ESCALATED: () => settled("escalated"),
+      },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), PLANNER(["TASK_A", "TASK_B", "TASK_C"]))], {}, HOST);
+
+    expect(declared.name).toBe("workflow-planner");
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toMatch(/`split` is a fork, moved by its lanes; the join is where the decision is/);
+  });
+
+  it("hands the join's decision every lane's end and output, keyed by lane", async () => {
+    const { workflow, runtime } = await mounted([planner()], HOST);
+    const start = { ...runtime.newRecord("PLAN-1", HOST.now()), tasks: ["write", "refuse the docs", "test"] } as PlannerRecord;
+
+    const { record } = await walk(workflow, runtime, start, HOST.now());
+
+    expect(record.state).toBe("ESCALATED");
+    expect((record as PlannerRecord).joinedWith).toEqual({
+      TASK_A: { call: "PLAN-1/TASK_A#1", end: "DONE", output: { did: "write", looks: 1 } },
+      TASK_B: { call: "PLAN-1/TASK_B#1", end: "DECLINED", output: { refused: "refuse the docs" } },
+      TASK_C: { call: "PLAN-1/TASK_C#1", end: "DONE", output: { did: "test", looks: 1 } },
+    });
+    expect(record.history.map((step) => `${step.from}>${step.to}`)).toEqual(["PLANNED>split", "split>merge", "merge>ESCALATED"]);
   });
 });

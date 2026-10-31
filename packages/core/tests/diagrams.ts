@@ -46,3 +46,25 @@ stateDiagram-v2
     class ASKED returns
     class WORKING decorative
 `;
+
+/** The plan's own fork of three lanes, each a call, meeting at one join. */
+export const LANES = `stateDiagram-v2
+    state split <<fork>>
+    state merge <<join>>
+    [*] --> PLANNED
+    PLANNED --> split
+    split --> TASK_A
+    split --> TASK_B
+    split --> TASK_C
+    TASK_A --> merge: DONE
+    TASK_A --> merge: DECLINED
+    TASK_B --> merge: DONE
+    TASK_B --> merge: DECLINED
+    TASK_C --> merge: DONE
+    TASK_C --> merge: DECLINED
+    merge --> INTEGRATED: every lane is done
+    merge --> ESCALATED: a lane declined
+    INTEGRATED --> [*]
+    ESCALATED --> [*]
+    class TASK_A, TASK_B, TASK_C call
+`;

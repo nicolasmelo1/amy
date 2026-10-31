@@ -62,6 +62,12 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    */
   readonly codeHostWrites?: readonly string[];
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
+  /**
+   * Every move a record waiting in a fork can make at once, one per lane
+   * that is not waiting, for an engine that moves lanes side by side.
+   * Undefined when there are not two to make; `plan` then says the one.
+   */
+  everyLane?(record: WorkRecord, observation: Observation): readonly Plan[] | undefined;
 }
 
 /** Advances work. Serial by default, but replaceable like everything else. */

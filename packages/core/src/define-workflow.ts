@@ -1,12 +1,13 @@
 import fs from "node:fs";
-import path from "node:path";
+import nodePath from "node:path";
 import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
 import { ActionSpec } from "./actions.js";
 import { ActionDuties, actionPorts } from "./action-ports.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema, validateConfig } from "./config-schema.js";
-import { Call, CallSite, Signature, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
+import { Call, CallSite, ForkSite, Signature, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
+import { BranchLeases, FileLeases } from "./leases.js";
 import { PortLookup } from "./dispatch.js";
 import { deferred } from "./deferred.js";
 import { Plugin, PluginContext, Registry, Workflow } from "./plugin.js";
@@ -371,10 +372,14 @@ function assemble(
 ): Assembled {
   const config = ctx?.config;
   const policy = policyFor(declaration.name, declaration.policy, config?.policy);
-  const sites = callSites(declaration, shape, ctx, policy, path, trail);
+  // Only a workflow with lanes holds branches, and only its lanes take them.
+  const forked = Object.keys(shape.diagram?.forks ?? {}).length > 0;
+  const leases = ctx && forked ? new FileLeases(nodePath.join(ctx.paths.state, "leases")) : undefined;
+  const sites = callSites(declaration, shape, ctx, policy, path, trail, leases);
+  const forks = forkSites(shape, sites, path, leases);
   // Judged at mount, as it always was: a module's exported declaration is
   // read by suites that walk it to find exactly this kind of mistake.
-  if (ctx && "decide" in declaration && declaration.decide) decisionsFit(declaration.name, shape.states, declaration.decide, [...sites.keys()]);
+  if (ctx && "decide" in declaration && declaration.decide) decisionsFit(declaration.name, shape.states, declaration.decide, [...sites.keys()], [...forks.keys()]);
   const own = (workId: string, now: Date, input?: unknown): WorkRecord => ({
     ...declaration.record(workId),
     ...(input === undefined ? {} : { input: input as Record<string, unknown> }),
@@ -390,7 +395,7 @@ function assemble(
     const site = sites.get(record.state);
     return site ? enterCall(record, site, now) : record;
   };
-  const workflow = composedWorkflow(workflowFor(declaration, shape, policy, config as ConfigOf<ConfigSchema> | undefined), sites);
+  const workflow = composedWorkflow(workflowFor(declaration, shape, policy, config as ConfigOf<ConfigSchema> | undefined), sites, forks);
 
   const runtime = (): WorkflowRuntime => {
     if (!ctx) throw new Error(`the ${declaration.name} workflow is not mounted, so it has no runtime`);
@@ -403,7 +408,7 @@ function assemble(
       : runtimeFromPieces(declaration as PiecesDeclaration<ConfigSchema, readonly [string, ...string[]], object, Needs, WorkRecord, unknown>, args);
     for (const site of sites.values()) site.runtime = (site as PendingSite).build();
     const lookup: PortLookup = (kind) => (ctx.workflowPort ?? ctx.port)(kind);
-    return composedRuntime(completeRuntime(parts, runtimePolicy, (workId, now) => own(workId, now)), sites, lookup);
+    return composedRuntime(completeRuntime(parts, runtimePolicy, (workId, now) => own(workId, now)), sites, lookup, forks);
   };
 
   return { workflow, policy, newRecord, runtime };
@@ -427,6 +432,7 @@ function callSites(
   policy: object,
   path: readonly string[],
   trail: readonly string[],
+  leases?: BranchLeases,
 ): Map<string, PendingSite> {
   const sites = new Map<string, PendingSite>();
   const declared = declaration.calls ?? {};
@@ -445,9 +451,36 @@ function callSites(
     if (!isCall(binding)) {
       throw new Error(`${where}: \`${state}\` is a call state with no \`calls\` entry — bind it with \`${state}: call(workflow)\``);
     }
-    sites.set(state, callSite(declaration, shape, ctx, policy, path, trail, state, binding));
+    const lane = Object.values(shape.diagram!.forks).some((fork) => fork.lanes.includes(state));
+    sites.set(state, callSite(declaration, shape, ctx, policy, path, trail, state, binding, lane ? leases : undefined));
   }
   return sites;
+}
+
+/**
+ * Every fork the diagram draws, its lanes bound to their calls.
+ *
+ * Two lanes of one fork that name the same branch would write it at once,
+ * and that much can be seen without running anything; a branch only known
+ * at run time is held to a lease instead, and the second lane waits for it.
+ */
+function forkSites(shape: Shape, sites: ReadonlyMap<string, CallSite>, path: readonly string[], leases?: BranchLeases): Map<string, ForkSite> {
+  const forks = new Map<string, ForkSite>();
+  for (const [state, fork] of Object.entries(shape.diagram?.forks ?? {})) {
+    const lanes = fork.lanes.map((lane) => sites.get(lane)!);
+    const written = new Map<string, string>();
+    for (const site of lanes) {
+      const branch = site.binding.branch;
+      if (branch === undefined) continue;
+      const other = written.get(branch);
+      if (other !== undefined) {
+        throw new Error(`${[...path, state].join(" → ")}: \`${other}\` and \`${site.state}\` both write the branch \`${branch}\`; two lanes of one fork write two branches`);
+      }
+      written.set(branch, site.state);
+    }
+    forks.set(state, { state, join: fork.join, lanes, ...(leases ? { leases } : {}) });
+  }
+  return forks;
 }
 
 function callSite(
@@ -459,6 +492,7 @@ function callSite(
   trail: readonly string[],
   state: string,
   binding: Call,
+  leases?: BranchLeases,
 ): PendingSite {
   const at = `${[...path, state].join(" → ")}`;
   const callee = calleeOf(binding, at);
@@ -480,6 +514,8 @@ function callSite(
     config: settings.config,
     port: (kind) => ctx.port(bound(kind)),
     ...(ctx.workflowPort ? { workflowPort: (kind: string) => ctx.workflowPort!(bound(kind)) } : {}),
+    // A lane takes a branch before it moves it, so two lanes never write one.
+    ...(leases ? { checkouts: () => leasedCheckouts(ctx.checkouts(), leases) } : {}),
   };
   const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, name]);
   if (ctx) claimsFit(caller, ctx.config, policy, declaration, settings.config, assembled.policy, at);
@@ -496,6 +532,10 @@ function callSite(
     port: (kind) => ctx && (ctx.workflowPort ?? ctx.port)(bound(kind)),
     build: () => assembled.runtime(),
   };
+}
+
+function leasedCheckouts(checkouts: Checkouts, leases: BranchLeases): Checkouts {
+  return { ...checkouts, git: checkouts.git.leasedTo(leases) };
 }
 
 function calleeOf(binding: Call, at: string): Callable {
@@ -622,18 +662,18 @@ function shapeOf(
  */
 export function diagramBeside(entry: string | URL): { readonly path: string; readonly text: string } | undefined {
   const file = entry instanceof URL || entry.startsWith("file:") ? fileURLToPath(entry) : entry;
-  for (const directory of [path.dirname(file), packageRoot(path.dirname(file))]) {
+  for (const directory of [nodePath.dirname(file), packageRoot(nodePath.dirname(file))]) {
     if (directory === undefined) continue;
-    const candidate = path.join(directory, DIAGRAM_FILE);
+    const candidate = nodePath.join(directory, DIAGRAM_FILE);
     if (fs.existsSync(candidate)) return { path: candidate, text: fs.readFileSync(candidate, "utf-8") };
   }
   return undefined;
 }
 
 function packageRoot(from: string): string | undefined {
-  for (let directory = from; ; directory = path.dirname(directory)) {
-    if (fs.existsSync(path.join(directory, "package.json"))) return directory;
-    if (path.dirname(directory) === directory) return undefined;
+  for (let directory = from; ; directory = nodePath.dirname(directory)) {
+    if (fs.existsSync(nodePath.join(directory, "package.json"))) return directory;
+    if (nodePath.dirname(directory) === directory) return undefined;
   }
 }
 
@@ -752,18 +792,22 @@ function declarationMode(declaration: object): void {
   if (legacy.length !== LEGACY_MEMBERS.length) throw new Error("a legacy workflow declaration must provide both `plan` and `runtime`");
 }
 
-function decisionsFit(workflow: string, states: readonly string[], decide: Readonly<Record<string, unknown>>, calls: readonly string[]): void {
+function decisionsFit(workflow: string, states: readonly string[], decide: Readonly<Record<string, unknown>>, calls: readonly string[], forks: readonly string[]): void {
   const names = Object.keys(decide);
-  const decided = states.filter((state) => !calls.includes(state));
+  const decided = states.filter((state) => !calls.includes(state) && !forks.includes(state));
   const missing = decided.filter((state) => !Object.hasOwn(decide, state));
   const extra = names.filter((state) => !states.includes(state));
   // A call is its own decision: the callee decides, and its ends say where the caller goes.
   const called = names.filter((state) => calls.includes(state));
-  if (missing.length === 0 && extra.length === 0 && called.length === 0) return;
+  // A fork too: its lanes decide, and the join is where the caller does.
+  const forked = names.filter((state) => forks.includes(state));
+  if (missing.length === 0 && extra.length === 0 && called.length === 0 && forked.length === 0) return;
+  const named = (list: readonly string[]) => list.map((state) => `\`${state}\``).join(", ");
   const details = [
-    ...(missing.length ? [`missing ${missing.map((state) => `\`${state}\``).join(", ")}`] : []),
-    ...(extra.length ? [`extra ${extra.map((state) => `\`${state}\``).join(", ")}`] : []),
-    ...(called.length ? [`${called.map((state) => `\`${state}\``).join(", ")} ${called.length === 1 ? "is a call state" : "are call states"}, decided by the workflow called there`] : []),
+    ...(missing.length ? [`missing ${named(missing)}`] : []),
+    ...(extra.length ? [`extra ${named(extra)}`] : []),
+    ...(called.length ? [`${named(called)} ${called.length === 1 ? "is a call state" : "are call states"}, decided by the workflow called there`] : []),
+    ...(forked.length ? [`${named(forked)} ${forked.length === 1 ? "is a fork" : "are forks"}, moved by its lanes; the join is where the decision is`] : []),
   ];
   throw new Error(`the ${workflow} workflow's \`decide\` does not match its states: ${details.join("; ")}`);
 }

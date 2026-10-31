@@ -4,10 +4,10 @@ export type { OperatorChannel, OperatorChannels } from "./operator.js";
 export type { ActionSpec, PortKind } from "./actions.js";
 
 export { actionsOf, applyPlan, attemptsIn, looksIn, movedBy, notATryIn } from "./work.js";
-export type { Action, Moved, NotATry, Plan, Transition, WorkRecord } from "./work.js";
+export type { Action, Lane, Moved, NotATry, Plan, Transition, WorkRecord } from "./work.js";
 export { DIAGRAM_CLASSES, DIAGRAM_FILE, cameFrom, connects, markState, readDiagram } from "./diagram.js";
 export { DiagramError } from "./errors.js";
-export type { Diagram, DrawnTransition } from "./diagram.js";
+export type { Diagram, DrawnTransition, Fork } from "./diagram.js";
 
 export { WORKFLOW_RUNTIME } from "./runtime.js";
 export type { FoundWork, ProgressPolicy } from "./runtime.js";
@@ -35,9 +35,11 @@ export type { Deferred } from "./deferred.js";
 
 export { act, advance, defineWorkflow, diagramBeside, notWritten, notWrittenIn, optional, planning, port, settled, wait, withDiagram, withDiagramBeside, workflowActions } from "./define-workflow.js";
 export type { ActionDuties } from "./action-ports.js";
-export { CALLED, activeCall, call, callPath, callStanding, isCall } from "./calls.js";
+export { CALLED, LANED, LEASE_WAIT, activeCall, call, callPath, callStanding, isCall, laneStanding } from "./calls.js";
+export { FileLeases, LeaseHeld } from "./leases.js";
+export type { BranchLeases } from "./leases.js";
 export { expandDiagram } from "./expand.js";
-export type { Call, CallBinding, CallStep, CalleeReference, Signature } from "./calls.js";
+export type { Call, CallBinding, CallStep, CalleeReference, LaneStanding, Signature } from "./calls.js";
 export type { PortNeed, PortsOf, WorkflowAction, WorkflowActionScope, WorkflowDecision, WorkflowPieceContext, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";
 
 export type {

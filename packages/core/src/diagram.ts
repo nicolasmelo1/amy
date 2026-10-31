@@ -34,11 +34,23 @@ export interface Diagram {
   readonly returns: readonly string[];
   /** It calls another workflow, and its edges out are named for where that one ends. */
   readonly calls: readonly string[];
+  /**
+   * Every `<<fork>>`, with the lanes drawn out of it and the `<<join>>` they
+   * all lead to. A record waits in the fork while its lanes run, each lane a
+   * call of its own, and moves to the join when every one has ended.
+   */
+  readonly forks: Readonly<Record<string, Fork>>;
   /** A state's description, from `state "…" as NAME`: prose for a reader, never read as a binding. */
   readonly labels: Readonly<Record<string, string>>;
   readonly transitions: readonly DrawnTransition[];
   /** The file as it was read, so every view draws the same text. */
   readonly text: string;
+}
+
+/** One `<<fork>>`: the lanes it starts, in the order they are drawn, and the join they meet at. */
+export interface Fork {
+  readonly lanes: readonly string[];
+  readonly join: string;
 }
 
 /** The five classes amy reads. Any other class is left for whoever renders the file. */
@@ -51,6 +63,8 @@ const END = /^(?:[A-Za-z_]\w*|\[\*\])$/;
 const NAME = /^[A-Za-z_]\w*$/;
 /** `state "a description" as NAME`, which names a state and draws nothing. */
 const DESCRIBED = /^state\s+"([^"]*)"\s+as\s+([A-Za-z_]\w*)\s*$/;
+/** `state NAME <<fork>>` or `state NAME <<join>>`: where lanes split, and where they meet again. */
+const PSEUDO = /^state\s+([A-Za-z_]\w*)\s+<<(fork|join)>>\s*$/;
 /**
  * Names Mermaid's state grammar takes as keywords, compared without case: a
  * state called one of them would mount and never render.
@@ -65,8 +79,8 @@ const REFUSED: readonly [RegExp, string][] = [
   [/^state\s+.*\{\s*$/, "a composite state is not read: a record is in one flat state"],
   [/^\}\s*$/, "a composite state is not read: a record is in one flat state"],
   [/<<choice>>/, "`<<choice>>` is not read: the decision is code, and the diagram draws where it can lead"],
-  [/<<fork>>/, "`<<fork>>` is not read: a record is in one state at a time"],
-  [/<<join>>/, "`<<join>>` is not read: a record is in one state at a time"],
+  [/<<fork>>/, "`<<fork>>` is read only as `state NAME <<fork>>`, on a line of its own"],
+  [/<<join>>/, "`<<join>>` is read only as `state NAME <<join>>`, on a line of its own"],
   [/^--\s*$/, "a concurrent region is not read: a record is in one state at a time"],
   [/:::/, "the `:::` class shorthand is not read; write `class STATE name` on a line of its own"],
 ];
@@ -91,6 +105,8 @@ interface Reading {
   readonly named: Map<string, number>;
   readonly labels: Record<string, string>;
   readonly transitions: DrawnTransition[];
+  readonly forks: Set<string>;
+  readonly joins: Set<string>;
 }
 
 /**
@@ -108,6 +124,8 @@ export function readDiagram(text: string, source = DIAGRAM_FILE): Diagram {
     named: new Map(),
     labels: {},
     transitions: [],
+    forks: new Set(),
+    joins: new Set(),
   };
   const lines = text.split(/\r?\n/);
   let index = frontMatterEnd(lines);
@@ -178,6 +196,11 @@ function readLine(line: string, number: number, reading: Reading, source: string
     reading.labels[described[2]!] = described[1]!;
     return;
   }
+  const pseudo = PSEUDO.exec(line);
+  if (pseudo) {
+    (pseudo[2] === "fork" ? reading.forks : reading.joins).add(pseudo[1]!);
+    return;
+  }
   const drawn = withoutLabel(line);
   for (const [pattern, reason] of REFUSED) {
     if (pattern.test(drawn)) throw new DiagramError(number, reason, source);
@@ -212,6 +235,8 @@ function namedBy(line: string): string[] {
   if (styled) return styled[1]!.split(",").map((state) => state.trim());
   const described = DESCRIBED.exec(line);
   if (described) return [described[2]!];
+  const pseudo = PSEUDO.exec(line);
+  if (pseudo) return [pseudo[1]!];
   const noted = /^note\s+(?:left|right)\s+of\s+([^\s:]+)/.exec(line);
   return noted ? [noted[1]!] : [];
 }
@@ -291,10 +316,65 @@ function settle(reading: Reading, text: string, source: string): Diagram {
     anywhere: of("anywhere"),
     returns: of("returns"),
     calls: of("call"),
+    forks: forksOf(reading, source),
     labels: reading.labels,
     transitions: reading.transitions,
     text,
   };
+}
+
+/**
+ * Every fork with its lanes and the join they meet at, or the refusal that
+ * names what is drawn wrong.
+ *
+ * A record is in one state at a time, and that stays true: the record waits
+ * in the fork, and every lane is a call, so each one is a record of its own.
+ * A lane that is not a call, a lane whose edges lead anywhere but the join,
+ * and a join some lane never reaches would each be a drawing of something the
+ * machine does not do.
+ */
+function forksOf(reading: Reading, source: string): Record<string, Fork> {
+  const refuse = (why: string): never => {
+    throw new DiagramError(0, why, source);
+  };
+  const out = (state: string) => reading.transitions.filter((edge) => edge.from === state);
+  const into = (state: string) => reading.transitions.filter((edge) => edge.to === state);
+  const calls = reading.classes.get("call")!;
+  const forks: Record<string, Fork> = {};
+  for (const state of [...reading.forks, ...reading.joins]) {
+    if (reading.forks.has(state) && reading.joins.has(state)) refuse(`\`${state}\` is drawn as a fork and as a join; a state is one or the other`);
+    if (reading.initial.includes(state) || reading.terminal.has(state)) refuse(`\`${state}\` is a fork or a join, and work neither starts nor ends in one`);
+    if (calls.has(state)) refuse(`\`${state}\` is a fork or a join and a call; the lanes are the calls`);
+  }
+  const laned = new Set<string>();
+  for (const fork of reading.forks) {
+    const lanes = out(fork).map((edge) => edge.to);
+    if (lanes.length < 2) refuse(`the fork \`${fork}\` draws ${lanes.length} lane(s); a fork splits work into two or more, and one is a call`);
+    for (const lane of lanes) {
+      if (!calls.has(lane)) refuse(`\`${lane}\` is a lane of the fork \`${fork}\` and not a call: every lane is a record of its own — add \`class ${lane} call\``);
+      if (laned.has(lane)) refuse(`\`${lane}\` is drawn twice out of a fork; each lane is drawn once`);
+      laned.add(lane);
+      const from = into(lane).map((edge) => edge.from).filter((state) => state !== fork);
+      if (from.length > 0) refuse(`\`${lane}\` is a lane of \`${fork}\` and is also reached from \`${from[0]}\`; a lane starts only at its fork`);
+    }
+    const joins = [...new Set(lanes.flatMap((lane) => out(lane).map((edge) => edge.to)))];
+    const join = joins.find((state) => reading.joins.has(state));
+    if (!join) refuse(`the lanes of \`${fork}\` lead to no \`<<join>>\`; draw where they meet again`);
+    for (const lane of lanes) {
+      const elsewhere = out(lane).find((edge) => edge.to !== join);
+      if (elsewhere) refuse(`\`${lane} --> ${elsewhere.to}\` leaves a lane of \`${fork}\` for somewhere other than its join \`${join}\`; every end of a lane leads to the join`);
+      if (out(lane).length === 0) refuse(`\`${lane}\` is a lane of \`${fork}\` and never reaches the join \`${join}\``);
+    }
+    forks[fork] = { lanes, join: join! };
+  }
+  for (const join of reading.joins) {
+    const met = Object.entries(forks).filter(([, fork]) => fork.join === join);
+    if (met.length !== 1) refuse(`the join \`${join}\` is ${met.length === 0 ? "reached by no fork's lanes" : "where two forks meet"}; a join is where one fork's lanes meet again`);
+    const strays = into(join).filter((edge) => !met[0]![1].lanes.includes(edge.from));
+    if (strays.length > 0) refuse(`\`${strays[0]!.from} --> ${join}\` reaches the join from outside its fork; only the lanes lead into a join`);
+    if (out(join).length === 0) refuse(`the join \`${join}\` leads nowhere; draw where the work goes once its lanes have met`);
+  }
+  return forks;
 }
 
 /**
@@ -306,6 +386,9 @@ function settle(reading: Reading, text: string, source: string): Diagram {
  */
 export function connects(diagram: Diagram, from: string, to: string, cameFrom?: string): boolean {
   if (diagram.transitions.some((edge) => edge.from === from && edge.to === to)) return true;
+  // A record waits in the fork while its lanes run, and moves to the join
+  // once they have met: the lines between are the lanes'.
+  if (diagram.forks[from]?.join === to) return true;
   if (diagram.anywhere.includes(to) && !diagram.terminal.includes(from)) return true;
   return diagram.returns.includes(from) && cameFrom === to;
 }

@@ -44,6 +44,27 @@ export interface WorkRecord {
   calling?: string;
   /** What a callee was called with, for a record a caller started. */
   input?: Record<string, unknown>;
+  /**
+   * The lanes this record started at the fork it last entered, by lane state:
+   * which call each one is, and once it has ended, where and with what.
+   * Kept after the join, so what each lane found is still there to read.
+   */
+  lanes?: Record<string, Lane>;
+  /**
+   * The commit a caller lent this record to check, for a lane bound with
+   * `revision`. It is checked in a tree detached at that commit, read-only.
+   */
+  revision?: string;
+}
+
+/** One lane of a fork, as its caller holds it. */
+export interface Lane {
+  /** The id of the lane's own record, in the caller's `calls`. */
+  readonly call: string;
+  /** The terminal state the lane ended in, once it has. */
+  readonly end?: string;
+  /** What the lane's workflow returned at that end, if anything. */
+  readonly output?: unknown;
 }
 
 export type Plan<State extends string = string, Effect extends Action = Action> =

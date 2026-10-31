@@ -63,6 +63,7 @@ function drawnNotWalked(workflow: AnyWorkflow, walks: readonly Walk[]): DrawnTra
     for (const child of callsIn(workflow, walk)) {
       for (const move of child.record.history) walked.add(`${child.at}/${move.from}\u0000${child.at}/${move.to}`);
     }
+    for (const look of walk.looks) for (const edge of laneEdges(workflow, look.record)) walked.add(edge);
   }
   const seen = new Set<string>();
   return drawn(workflow, "").filter((edge) => {
@@ -70,6 +71,22 @@ function drawnNotWalked(workflow: AnyWorkflow, walks: readonly Walk[]): DrawnTra
     if (walked.has(key) || seen.has(key)) return false;
     seen.add(key);
     return true;
+  });
+}
+
+/**
+ * The arrows a record waiting in a fork has walked: from the fork into every
+ * lane it started, and from each lane that ended into the join.
+ */
+function laneEdges(workflow: AnyWorkflow, record: WorkRecord): string[] {
+  const fork = workflow.diagram?.forks[record.state];
+  if (!fork) return [];
+  return fork.lanes.flatMap((lane) => {
+    const call = record.lanes?.[lane]?.call;
+    const child = call === undefined ? undefined : record.calls?.[call];
+    if (!child) return [];
+    const ended = workflow.calls?.[lane]?.terminalStates.includes(child.state);
+    return [`${record.state}\u0000${lane}`, ...(ended ? [`${lane}\u0000${fork.join}`] : [])];
   });
 }
 
