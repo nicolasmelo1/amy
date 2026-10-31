@@ -1,5 +1,16 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
+
+/**
+ * The lane whose action is running, by its record's id. What a lane's `Git`
+ * holds every move to — whatever work id the action passes — so a lane moves
+ * only its own work, and takes and lets go of branches as itself.
+ */
+export const runningLane = new AsyncLocalStorage<string>();
+
+/** The lease every lane in a shared checkout takes before it moves anything there. */
+export const STANDING_CHECKOUT = "(the standing checkout)";
 
 /**
  * One holder at a time per repository and branch, for the lanes of a fork.

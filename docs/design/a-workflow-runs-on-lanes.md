@@ -231,8 +231,9 @@ before, asks the budget before each lane's call — a lane it refuses waits whil
 the rest go on, and a lane's action bound to the agent still says so through
 the dispatcher that runs it — runs the moves concurrently, and folds each into
 the one record it claimed. Each lane is asked, as any move is, whether another
-agent run would add evidence, and the progress every lane reported is folded
-in turn. A lane that throws fails the look as a serial look would, and the
+agent run would add evidence — counted per lane, under both engines, so a lane
+is never parked for its siblings' runs — and the progress every lane reported
+is folded in turn. A lane that throws fails the look as a serial look would, and the
 moves its siblings made are kept rather than paid for twice. A fork drawn
 inside a workflow the root calls is moved side by side as well. Each lane writes to its own record, so the order the moves
 finish in cannot change the result, which is what the unit test and the third
@@ -245,7 +246,12 @@ a branch another lane holds is a `LeaseHeld`. The lane's action is not failed
 for it: the look is written down as not a try (`LEASE_WAIT`), the rest of that
 lane's plan does not run — a move it carried is not made — and the record is
 looked at again a second later. A lane and the calls inside it are one holder,
-so neither waits on the other. A lane lets go of every branch it took when its
+so neither waits on the other. The host knows which lane is running —
+whatever work id its action passes — so a lane moves only its own work: never
+its caller's, and never the standing checkout's by naming none. Lanes that
+share a standing checkout, on an install with no worktree port, take the whole
+checkout in turn rather than a branch, so one lane's commit never lands on a
+branch a sibling switched to. A lane lets go of every branch it took when its
 record ends, and of every branch a call inside it took. A binding's `revision`
 is held on the lane's record, and the lane's checkouts lend it: whatever tree
 the lane asks for is a worktree of its own detached at that commit, marked

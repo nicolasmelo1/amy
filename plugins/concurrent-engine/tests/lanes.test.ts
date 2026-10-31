@@ -186,4 +186,17 @@ describe("the concurrent engine", () => {
     expect(moves).toEqual([["write", "review", "test"]]);
     expect(results.some((result) => result.kind === "parked" && /would add no evidence/.test(result.reason ?? ""))).toBe(true);
   });
+
+  it("counts each lane's evidence on its own, so a lane is never parked for its siblings' runs, and both engines end the same", async () => {
+    const shape: Shape = { agent: true, tasks: [["write", 3], ["review", 3], ["test", 3]] };
+    const side = await run(concurrent, shape, 8);
+    const turn = await run(serial, shape, 12);
+
+    // Every lane ran once and said nothing changed; none ran a second time.
+    const ran = (moves: Moves) => moves.flat().sort();
+    expect(ran(turn.moves)).toEqual(["review", "test", "write"]);
+    expect(ran(side.moves)).toEqual(ran(turn.moves));
+    const attempts = (record: WorkRecord) => Object.values(record.calls ?? {}).map((child) => child.attempts.WORKING ?? 0);
+    expect(attempts(turn.record)).toEqual(attempts(side.record));
+  });
 });

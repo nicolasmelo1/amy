@@ -7,7 +7,7 @@
  */
 
 import { PortLookup, implementationOf, isPortBinding, reaching, runAction } from "./dispatch.js";
-import { BranchLeases, LeaseHeld } from "./leases.js";
+import { BranchLeases, LeaseHeld, runningLane } from "./leases.js";
 import { ActionContext, ActionImplementation, WorkflowRuntime } from "./runtime.js";
 import { Workflow } from "./plugin.js";
 import { Worktree } from "./ports/Worktree.js";
@@ -334,7 +334,14 @@ function carried(child: WorkRecord, inner: Plan): Plan {
   const plan: Plan = inner.kind === "wait"
     ? { kind: "wait", retryAfterMs: inner.retryAfterMs, effects: inner.effects, why }
     : { kind: "act", effects: inner.effects, why, attempt: false };
-  return Object.assign(plan, { [INNER]: inner });
+  // A lane's move stays a lane's through every caller that carries it.
+  const lane = laneOf(inner);
+  return Object.assign(plan, { [INNER]: inner }, lane === undefined ? {} : { [LANE]: lane });
+}
+
+/** The lane a plan moves, when it is a lane's move: what an engine keeps a lane's own accounts by. */
+export function laneMoved(plan: Plan): string | undefined {
+  return laneOf(plan);
 }
 
 function childObservation(observation: unknown): unknown {
@@ -726,7 +733,8 @@ async function laneAction(fork: ForkSite, lane: string, name: string, action: Ac
   const child = laneRecord(context.record, lane)!;
   if (child.revision !== undefined) fork.lent?.set(child.id, child.revision);
   try {
-    await runAction(implementationOf(site.runtime!, name), action, { record: child, observation: laneObservation(context.observation, lane), outcomes: context.outcomes }, site.port);
+    await runningLane.run(child.id, () =>
+      runAction(implementationOf(site.runtime!, name), action, { record: child, observation: laneObservation(context.observation, lane), outcomes: context.outcomes }, site.port));
   } catch (error) {
     if (!(error instanceof LeaseHeld)) throw error;
     context.outcomes[LEASE_WAIT] = { notATry: true, retryAfterMs: LEASE_WAIT_MS, held: error.message };

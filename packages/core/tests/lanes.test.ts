@@ -132,6 +132,9 @@ describe("lanes hold what they use", () => {
         () => git.prepareBranch("acme/widgets", "amy/feature", record.id),
         () => git.commitAndPush("acme/widgets", "amy/feature", "a lane's own change", record.id),
         () => git.push("acme/widgets", "amy/feature", record.id),
+        // Its caller's work, and the standing checkout, are not its to move either.
+        () => git.commitAndPush("acme/widgets", "amy/feature", "a lane's own change", "PLAN-1"),
+        () => git.prepareBranch("acme/widgets", "amy/feature"),
       ]) {
         await attempt().then(() => moved.push("moved"), (error: Error) => moved.push(error.message));
       }
@@ -148,8 +151,10 @@ describe("lanes hold what they use", () => {
     for (const lane of checked) {
       expect(lane.head).toBe(caller);
       expect(lane.branch).toBe("");
-      expect(lane.moved).toHaveLength(3);
-      for (const said of lane.moved) expect(said).toMatch(/was lent [0-9a-f]{7} to check, and checks it read-only: it cannot move/);
+      expect(lane.moved).toHaveLength(5);
+      for (const said of lane.moved.slice(0, 3)) expect(said).toMatch(/was lent [0-9a-f]{7} to check, and checks it read-only: it cannot move/);
+      expect(lane.moved[3]).toMatch(/PLAN-1\/TASK_[AB]#1 is a lane, and moves only its own work: it cannot move a branch in acme\/widgets as PLAN-1$/);
+      expect(lane.moved[4]).toMatch(/is a lane, and moves only its own work: it cannot move amy\/feature in acme\/widgets as the standing checkout$/);
     }
     expect(run(bare, "rev-parse", "refs/heads/amy/feature")).toBe(caller);
     expect(run(checkout, "rev-parse", "amy/feature")).toBe(caller);
@@ -215,6 +220,56 @@ describe("a lane that waits on a branch, on its way out", () => {
     // The second lane's only move carries its work, and the first holds the
     // branch: it waited, and moved once the branch was free, work and all.
     expect(run(bare, "log", "--format=%s", "amy/shared").split("\n")).toEqual(["second 0", "first 1", "first 0", "the first commit"]);
+  });
+});
+
+describe("lanes that share one checkout", () => {
+  let root: string;
+  let checkout: string;
+  let bare: string;
+  let saved: NodeJS.ProcessEnv;
+  let host: HostServices;
+
+  beforeEach(() => {
+    saved = { ...process.env };
+    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-shared-"));
+    bare = path.join(root, "widgets.git");
+    checkout = path.join(root, "checkouts", "widgets");
+    run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
+    run(root, "clone", "-q", bare, checkout);
+    commit(checkout, "the first commit");
+    run(checkout, "push", "-q", "origin", "main");
+    host = {
+      runner: new NodeCommandRunner(),
+      now: () => new Date("2026-10-31T12:00:00.000Z"),
+      paths: { workspace: path.join(root, "checkouts"), checkouts: {}, state: path.join(root, "state") },
+    };
+  });
+
+  afterEach(() => {
+    process.env = saved;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("take the checkout in turn, so one lane's commit never lands on another lane's branch", async () => {
+    // One look gets onto the branch, the next commits there: a sibling that
+    // switched the shared checkout in between would take the commit.
+    const work: Work = async (scope, record) => {
+      const branch = `amy/${record.input.task}`;
+      if ((record.worked ?? 0) === 0) return void (await scope.checkouts.git.prepareBranch("acme/widgets", branch, record.id));
+      fs.writeFileSync(path.join(checkout, `${record.input.task}.md`), "work\n");
+      await scope.checkouts.git.commitAndPush("acme/widgets", branch, `${record.input.task}'s work`, record.id);
+    };
+    const { workflow, runtime } = await mounted([planner({ lanes: ["TASK_A", "TASK_B"], callee: task({ looks: 2, work }) })], host);
+    const start = { ...runtime.newRecord("PLAN-1", host.now()), tasks: ["a", "b"] } as PlannerRecord;
+
+    const walked = await walk(workflow, runtime, start, host.now());
+
+    expect(walked.record.state).toBe("INTEGRATED");
+    expect(walked.outcomes.some((outcomes) => outcomes[LEASE_WAIT] !== undefined)).toBe(true);
+    expect(run(bare, "log", "--format=%s", "amy/a").split("\n")).toEqual(["a's work", "the first commit"]);
+    expect(run(bare, "log", "--format=%s", "amy/b").split("\n")).toEqual(["b's work", "the first commit"]);
   });
 });
 

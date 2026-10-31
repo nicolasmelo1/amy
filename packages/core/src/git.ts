@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { BranchLeases, LeaseHeld } from "./leases.js";
+import { BranchLeases, LeaseHeld, STANDING_CHECKOUT, runningLane } from "./leases.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { Worktree } from "./ports/Worktree.js";
 
@@ -233,15 +233,35 @@ export class Git {
    * holds. Asked before a branch is checked out, committed on or pushed.
    */
   private mayMove(repo: string, branch: string | undefined, workId: string | undefined): void {
-    if (workId === undefined) return;
+    const lane = this.leases ? runningLane.getStore() : undefined;
+    if (lane !== undefined) return this.laneMayMove(lane, repo, branch, workId);
+    if (workId !== undefined) this.notLent(repo, branch, workId);
+  }
+
+  /** Refuses a move in a tree lent at a revision, naming the commit. */
+  private notLent(repo: string, branch: string | undefined, workId: string): void {
     const worktrees = this.worktrees;
     const lent = this.lentTo?.(workId) ?? (worktrees ? lentIn(worktrees.pathFor(workId, repo)) : undefined);
     if (lent) {
       throw new Error(`${workId} was lent ${lent.slice(0, 7)} to check, and checks it read-only: it cannot move ${branch ?? "a branch"} in ${repo}`);
     }
-    if (!this.leases || branch === undefined) return;
-    const lease = this.leases.take(repo, branch, workId);
-    if (!lease.taken) throw new LeaseHeld(repo, branch, lease.holder);
+  }
+
+  /**
+   * A move a lane makes: only of its own work — never its caller's, never the
+   * standing checkout's by passing no work id — never in a tree it was lent,
+   * and only once it holds what it moves: the branch, in a tree of its own,
+   * or the whole checkout, when the lanes share one.
+   */
+  private laneMayMove(lane: string, repo: string, branch: string | undefined, workId: string | undefined): void {
+    if (workId === undefined || (workId !== lane && !workId.startsWith(`${lane}/`))) {
+      throw new Error(`${lane} is a lane, and moves only its own work: it cannot move ${branch ?? "a branch"} in ${repo} as ${workId ?? "the standing checkout"}`);
+    }
+    this.notLent(repo, branch, workId);
+    const held = this.worktrees ? branch : STANDING_CHECKOUT;
+    if (held === undefined) return;
+    const lease = this.leases!.take(repo, held, workId);
+    if (!lease.taken) throw new LeaseHeld(repo, held, lease.holder);
   }
 
   /**

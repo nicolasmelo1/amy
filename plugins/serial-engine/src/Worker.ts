@@ -23,6 +23,7 @@ import {
   connects,
   dispatchesTo,
   implementationOf,
+  laneMoved,
   movedBy,
   notATryIn,
   portReachedBy,
@@ -208,7 +209,7 @@ export class Worker {
 
     const actions = actionsOf(decision);
 
-    const parked = this.parked(record, actions, now) ?? this.progressParked(item, record, actions);
+    const parked = this.parked(record, actions, now) ?? this.progressParked(item, record, actions, accountOf(record, decision));
     if (parked) {
       this.park(item, parked, now);
       return parked;
@@ -289,7 +290,7 @@ export class Worker {
   private async advanceLanes(item: QueueItem, record: WorkRecord, observation: unknown, plans: readonly Plan[], now: Date): Promise<TickResult> {
     // Each lane is asked what any move is asked before its call: the budget,
     // and whether another agent run would add any evidence.
-    const refusal = (plan: Plan): Parked | null => this.parked(record, actionsOf(plan), now) ?? this.progressParked(item, record, actionsOf(plan));
+    const refusal = (plan: Plan): Parked | null => this.parked(record, actionsOf(plan), now) ?? this.progressParked(item, record, actionsOf(plan), accountOf(record, plan));
     const allowed = plans.filter((plan) => !refusal(plan));
     if (allowed.length === 0) {
       const parked = refusal(plans[0]!)!;
@@ -436,13 +437,13 @@ export class Worker {
     if (signals.length === 0) return { next: item.progress };
 
     const next = { ...(item.progress ?? {}) };
-    const state = movedBy(record, decision)?.to ?? record.state;
+    const state = movedBy(record, decision)?.to ?? accountOf(record, decision);
     for (const signal of signals) {
       if (signal.kind === "advanced") {
         // The signal came from the state this look started in. Clearing only
         // the destination would resurrect an old ceiling if work later
         // returns here; clear the destination too in case it already held one.
-        delete next[progressKey(record.state, signal.key)];
+        delete next[progressKey(accountOf(record, decision), signal.key)];
         delete next[progressKey(state, signal.key)];
         continue;
       }
@@ -733,6 +734,16 @@ export class Worker {
   private maybePrune(now: Date): void {
     this.deps.queue.prune(this.deps.config.retentionDays, now);
   }
+}
+
+/**
+ * Where a move's evidence is counted: its state, or, for a lane's move, the
+ * lane within it — so one lane's runs that added nothing never park a sibling
+ * that has not run, and moving lanes in turn or side by side ends the same.
+ */
+function accountOf(record: WorkRecord, plan: Plan): string {
+  const lane = laneMoved(plan);
+  return lane === undefined ? record.state : `${record.state}/${lane}`;
 }
 
 function progressKey(state: string, key: string): string {
