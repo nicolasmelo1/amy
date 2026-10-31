@@ -1,0 +1,216 @@
+// A fork of lanes the core's suites mount and walk, one look at a time.
+import {
+  ConfigSchema,
+  HostServices,
+  Plugin,
+  WORKFLOW_RUNTIME,
+  WorkRecord,
+  Workflow,
+  WorkflowRuntime,
+  WorkflowPieceContext,
+  act,
+  actionsOf,
+  advance,
+  applyPlan,
+  call,
+  defineWorkflow,
+  implementationOf,
+  mount,
+  movedBy,
+  runAction,
+  settled,
+  withDiagram,
+} from "../src/index.js";
+
+const NO_SETTINGS = {} satisfies ConfigSchema;
+
+export type TaskRecord = WorkRecord & { state: "WORKING" | "DONE" | "DECLINED" | "STUCK"; input: { task: string }; worked?: number };
+
+/** What a task does on each look, given the scope it was mounted with: the test says. */
+export type Work = (scope: WorkflowPieceContext<typeof NO_SETTINGS, object, Record<never, never>>, record: TaskRecord) => Promise<string | void>;
+
+/**
+ * A callee with three ends: done after `looks` looks, declined when its task
+ * says so, and stuck — an end with no edge in a caller that forgets it —
+ * never, unless the test draws it.
+ */
+export function task(options: {
+  /** How many looks the work takes, for every task or by task. */
+  looks?: number | ((task: string) => number);
+  work?: Work;
+  ends?: "two" | "three";
+  waitsOn?: string;
+  /** A task whose decision nobody has written yet. */
+  unwritten?: string;
+  /** The last look works on its way to `DONE`: an advance carrying the work, rather than an act before it. */
+  finishWorking?: boolean;
+  /** How the work is wired: a handler (the default), or the agent's `ask`, as a port and a method. */
+  agent?: boolean;
+  /** What the task looks at in its world before it decides, given the scope it was mounted with. */
+  sees?: Work;
+} = {}) {
+  const looksFor = (record: TaskRecord): number => (typeof options.looks === "function" ? options.looks(record.input.task) : options.looks ?? 1);
+  const ends = options.ends === "three" ? "    WORKING --> STUCK\n    STUCK --> [*]\n" : "";
+  return withDiagram(defineWorkflow({
+    name: "task",
+    configSchema: NO_SETTINGS,
+    policy: {},
+    needs: {},
+    input: { task: { type: "string", required: true, description: "what this lane does" } },
+    output: {
+      DONE: (record: TaskRecord) => ({ did: record.input.task, looks: record.worked ?? 0 }),
+      DECLINED: (record: TaskRecord) => ({ refused: record.input.task }),
+    },
+    decide: {
+      WORKING: (record: TaskRecord) => {
+        if (record.input.task === options.waitsOn) return { kind: "wait", retryAfterMs: 60_000, effects: [], why: "waiting on its owner" };
+        if (record.input.task === options.unwritten) return settled(`the decision for \`${record.state}\` is not written yet`);
+        const looks = looksFor(record);
+        if (options.finishWorking && (record.worked ?? 0) === looks) return advance("DONE", "done, working on the way out", { type: "work" });
+        if (record.input.task.startsWith("refuse")) return advance("DECLINED", "refused");
+        return (record.worked ?? 0) < looks ? act(`working on ${record.input.task}`, { type: "work" }) : advance("DONE", "done");
+      },
+      DONE: () => settled("done"),
+      DECLINED: () => settled("declined"),
+      ...(options.ends === "three" ? { STUCK: () => settled("stuck") } : {}),
+    },
+    record: () => ({}),
+    observe: async (scope, record) => (options.sees ? { seen: await options.sees(scope as never, record as TaskRecord) } : {}),
+    actions: options.agent ? { work: { port: "agent", method: "ask" } } : {
+      work: async (scope, work) => {
+        const said = await options.work?.(scope as never, work.record as TaskRecord);
+        work.outcomes.worked = said ?? true;
+      },
+    },
+    remember: (_scope, record: TaskRecord, outcomes) => (outcomes.worked ? { ...record, worked: (record.worked ?? 0) + 1 } : record),
+  }), `stateDiagram-v2
+    [*] --> WORKING
+    WORKING --> DONE
+    WORKING --> DECLINED
+${ends}    DONE --> [*]
+    DECLINED --> [*]
+`);
+}
+
+export type PlannerRecord = WorkRecord & { state: string; tasks?: string[]; commit?: string; done?: string[]; joinedWith?: unknown; said?: string[]; heard?: string[] };
+
+export const PLANNER = (lanes: readonly string[], join = "merge") => `stateDiagram-v2
+    state split <<fork>>
+    state ${join} <<join>>
+    [*] --> PLANNED
+    PLANNED --> split
+${lanes.map((lane) => `    split --> ${lane}\n    ${lane} --> ${join}: DONE\n    ${lane} --> ${join}: DECLINED\n`).join("")}    ${join} --> INTEGRATED: every lane is done
+    ${join} --> ESCALATED: a lane declined
+    INTEGRATED --> [*]
+    ESCALATED --> [*]
+    class ${lanes.join(", ")} call
+`;
+
+/**
+ * The plan's own caller: it forks into a lane per task, each lane given its
+ * own task as input, and its join reads how each one ended.
+ */
+export function planner(options: {
+  /** Its name, for a test that calls one planner from another. */
+  name?: string;
+  lanes?: readonly string[];
+  diagram?: string;
+  callee?: ReturnType<typeof task>;
+  branch?: (lane: string) => string | undefined;
+  revision?: boolean;
+  /** Whether the plan was withdrawn, asked of the world on every look, which stops it wherever it is. */
+  withdrawn?: () => boolean;
+  /** Something somebody asked to be said, read off the world: the plan says it, wherever it is. */
+  asked?: () => string | undefined;
+  /** Every saying is handed to somebody else to say, by the workflow's `after`, wherever it was planned. */
+  handsOver?: boolean;
+  /** Whether the plan was escalated, asked of the world on every look: it leaves for `ESCALATED` wherever it is. */
+  escalated?: () => boolean;
+} = {}): Plugin {
+  const lanes = options.lanes ?? ["TASK_A", "TASK_B", "TASK_C"];
+  const callee = options.callee ?? task();
+  return withDiagram(defineWorkflow({
+    name: options.name ?? "planner",
+    configSchema: NO_SETTINGS,
+    policy: {},
+    needs: {},
+    calls: Object.fromEntries(lanes.map((lane, index) => [lane, call(callee, {
+      input: (work: PlannerRecord) => ({ task: work.tasks?.[index] ?? lane.toLowerCase() }),
+      output: { DONE: (work: PlannerRecord, out) => ({ ...work, done: [...(work.done ?? []), out.did] }) },
+      ...(options.branch?.(lane) === undefined ? {} : { branch: options.branch(lane)! }),
+      ...(options.revision ? { revision: (work: PlannerRecord) => work.commit } : {}),
+    })])),
+    decide: {
+      PLANNED: () => advance("split", "planned"),
+      merge: (record: PlannerRecord) => {
+        const ended = Object.values(record.lanes ?? {});
+        return ended.every((lane) => lane.end === "DONE")
+          ? advance("INTEGRATED", `every lane is done: ${(record.done ?? []).join(", ")}`)
+          : advance("ESCALATED", "a lane declined");
+      },
+      INTEGRATED: () => settled("integrated"),
+      ESCALATED: () => settled("escalated"),
+    },
+    record: () => ({}),
+    before: (record: PlannerRecord, observation: { withdrawn?: boolean; asked?: string; escalated?: boolean }) => {
+      if (observation.withdrawn) return settled("the plan was withdrawn; it stops where it is");
+      if (observation.escalated && record.state !== "ESCALATED") return advance("ESCALATED", "escalated before its lanes met");
+      if (observation.asked && !(record.said ?? []).includes(observation.asked)) return act("saying what was asked", { type: "say" });
+      return undefined;
+    },
+    observe: async () => ({ withdrawn: options.withdrawn?.() ?? false, asked: options.asked?.(), escalated: options.escalated?.() ?? false }),
+    after: (decision) => (options.handsOver && actionsOf(decision).some((effect) => effect.type === "say") ? act("handing it over", { type: "hand-over" }) : decision),
+    actions: {
+      say: async (_scope, work) => { work.outcomes.said = (work.observation as { asked?: string }).asked; },
+      "hand-over": async (_scope, work) => { work.outcomes.said = `handed over: ${(work.observation as { asked?: string }).asked}`; },
+    },
+    remember: (_scope, record: PlannerRecord, outcomes, observation, moved) => {
+      // What it said, and what the world it folded asked — the caller's own, wherever it is.
+      const said = typeof outcomes.said === "string"
+        ? { ...record, said: [...(record.said ?? []), outcomes.said], heard: [...(record.heard ?? []), String((observation as { asked?: string } | undefined)?.asked)] }
+        : record;
+      return moved?.to === "INTEGRATED" || moved?.to === "ESCALATED" ? { ...said, joinedWith: said.lanes } : said;
+    },
+  }), options.diagram ?? PLANNER(lanes));
+}
+
+export async function mounted(plugins: readonly Plugin[], host: HostServices): Promise<{ workflow: Workflow; runtime: WorkflowRuntime }> {
+  const outcome = await mount(plugins, {}, host);
+  if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+  const workflow = outcome.mounted.workflow as unknown as Workflow;
+  return { workflow, runtime: outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(workflow.name) as WorkflowRuntime };
+}
+
+/** One look, as the serial engine takes it, and the plan it made. */
+async function look(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord, now: Date): Promise<{ next: WorkRecord; plan: ReturnType<Workflow["plan"]>; outcomes: Record<string, unknown> } | undefined> {
+  const observation = await runtime.observe(record);
+  const plan = workflow.plan(record, observation, runtime.policy);
+  if (plan.kind === "settled") return undefined;
+  const outcomes: Record<string, unknown> = {};
+  for (const action of actionsOf(plan)) {
+    await runAction(implementationOf(runtime, action.type), action, { record, observation, outcomes }, () => undefined);
+  }
+  return { next: runtime.apply(applyPlan(record, plan, now, outcomes), plan, outcomes, observation, now, movedBy(record, plan)), plan, outcomes };
+}
+
+/** Looks until the record settles, or `until` says stop, keeping every plan. */
+export async function walk(
+  workflow: Workflow,
+  runtime: WorkflowRuntime,
+  record: WorkRecord,
+  now: Date,
+  until: (record: WorkRecord) => boolean = () => false,
+): Promise<{ record: WorkRecord; plans: ReturnType<Workflow["plan"]>[]; outcomes: Record<string, unknown>[] }> {
+  let current = record;
+  const plans: ReturnType<Workflow["plan"]>[] = [];
+  const outcomes: Record<string, unknown>[] = [];
+  for (let count = 0; count < 100; count += 1) {
+    if (until(current)) return { record: current, plans, outcomes };
+    const taken = await look(workflow, runtime, current, now);
+    if (!taken) return { record: current, plans, outcomes };
+    plans.push(taken.plan);
+    outcomes.push(taken.outcomes);
+    current = taken.next;
+  }
+  throw new Error(`did not settle; last in ${current.state}`);
+}

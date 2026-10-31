@@ -33,6 +33,33 @@ export function isPortBinding(implementation: unknown): implementation is Action
   return typeof port === "string" && typeof method === "string";
 }
 
+const REACHES = Symbol.for("@amykit/core/reaches");
+
+/**
+ * The port an action spends, whether it is declared as a port and a method or
+ * dispatched by a host that runs one on somebody's behalf — a lane's action,
+ * run against the lane's own record. What a budget asks before the call.
+ */
+export function portReachedBy(implementation: unknown): string | undefined {
+  return declaredBinding(implementation)?.port;
+}
+
+/**
+ * The port and method an action is declared to run, whether it is that
+ * binding itself or a dispatcher the host built around it — so what the
+ * mount checks of a binding (which port, whether it writes, whether the
+ * workflow claimed the write) it checks however the action is dispatched.
+ */
+export function declaredBinding(implementation: unknown): ActionSpec | undefined {
+  if (isPortBinding(implementation)) return implementation;
+  return (implementation as { [REACHES]?: ActionSpec } | undefined)?.[REACHES];
+}
+
+/** A dispatcher that runs a declared port and method, still saying which it runs. */
+export function reaching<T extends object>(dispatcher: T, binding: ActionSpec | undefined): T {
+  return binding === undefined ? dispatcher : Object.assign(dispatcher, { [REACHES]: binding });
+}
+
 /** The actions a runtime declares: the keys of its map, and nothing else. */
 export function declaredActions(runtime: Pick<WorkflowRuntime, "actions">): string[] {
   return Object.keys(runtime.actions);

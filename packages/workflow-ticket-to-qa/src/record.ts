@@ -51,15 +51,20 @@ export interface TicketRecord extends WorkRecord {
    */
   clarification?: string[];
   lastImplementation?: AttemptOutcome;
+  /**
+   * Where the last implementation left the work: its repository and the
+   * commit, which both checks are lent read-only rather than the base. A
+   * record an older version implemented holds only the repository, filled in
+   * on its way to the checks, and is checked in the work's own tree.
+   */
+  implemented?: { repo: string; revision?: string };
+  /** What the gate lane said about the last commit it checked. */
   lastGate?: AttemptOutcome;
   /**
-   * What the work's own review of itself last said, against the brief.
-   *
-   * Held for the operator and the record's reader, not for the machine: the
-   * plan reads the state, and this says what the last look at the change
-   * actually found — the same relationship `lastGate` has to `CHECKED`.
+   * What the work's own review of itself last said, against the brief, and
+   * whether it asked for changes: the self-review lane's half of the verdict.
    */
-  lastSelfReview?: AttemptOutcome;
+  lastSelfReview?: AttemptOutcome & { verdict?: "APPROVED" | "CHANGES_ASKED" };
   pullRequestNumber?: number;
   reviewer?: string;
   /** Threads already judged, so the same comment is never worked twice. */

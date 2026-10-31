@@ -59,7 +59,7 @@ wrote and what to change.
 | `@amykit/workflow-errand` | `errand` | 5 | Something said in passing becomes work: capture it, do it, say what happened. |
 | `@amykit/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
 | `@amykit/workflow-pull-request` | `pull-request` | 3 | A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted. |
-| `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 17 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
+| `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 19 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
 
 <!-- amy:end workflow-index -->
 

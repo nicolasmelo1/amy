@@ -2,6 +2,9 @@ stateDiagram-v2
     %% A ticket in the tracker's working status, walked to a QA handoff.
     %% Dashed states wait on a reviewer; bold ones on the person whose ticket
     %% it is. ESCALATED goes back to where the escalation stopped the work.
+    %% The gate and the self-review run as two lanes, and meet at the verdict.
+    state checks <<fork>>
+    state verdict <<join>>
     classDef waiting stroke-dasharray: 4 4
     classDef attention stroke-width:3px
 
@@ -10,10 +13,15 @@ stateDiagram-v2
     DISCOVERED --> READY: it can be done as written
     CLARIFYING --> READY: the question was answered
     READY --> IMPLEMENTING
-    IMPLEMENTING --> CHECKED: the agent finished
-    CHECKED --> IMPLEMENTING: the gate is red
-    CHECKED --> SELF_REVIEW: the gate is green
-    SELF_REVIEW --> PR_OPEN
+    IMPLEMENTING --> checks: the agent finished
+    checks --> GATE
+    checks --> SELF_REVIEW
+    GATE --> verdict: GREEN
+    GATE --> verdict: RED
+    SELF_REVIEW --> verdict: APPROVED
+    SELF_REVIEW --> verdict: CHANGES_ASKED
+    verdict --> IMPLEMENTING: either found something
+    verdict --> PR_OPEN: both are clean
     PR_OPEN --> COPILOT_WAIT: the pull request exists
     COPILOT_WAIT --> COPILOT_FIX: open automated threads
     COPILOT_FIX --> COPILOT_WAIT: every thread judged
@@ -31,7 +39,7 @@ stateDiagram-v2
     QA_HANDOFF --> DONE
 
     IMPLEMENTING --> ESCALATED: the agent failed every attempt
-    CHECKED --> ESCALATED: the gate stayed red
+    verdict --> ESCALATED: the checks stayed red
     COPILOT_FIX --> ESCALATED: too large for an agent
     REVIEWER_ASSIGNED --> ESCALATED: the forge says the branch is broken
 
@@ -46,4 +54,5 @@ stateDiagram-v2
     note right of ESCALATED: returns to the state it was escalated from
     class COPILOT_WAIT,HUMAN_REVIEW waiting
     class CLARIFYING,ESCALATED attention
+    class GATE,SELF_REVIEW call
     class ESCALATED returns

@@ -1,0 +1,38 @@
+{
+  "name": "@amykit/plugin-concurrent-engine",
+  "version": "0.6.0",
+  "description": "Advances one work item per tick, moving every lane of a fork at once.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/concurrent-engine"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.6.0",
+    "@amykit/plugin-serial-engine": "^0.6.0"
+  },
+  "devDependencies": {
+    "@amykit/plugin-file-queue": "^0.6.0",
+    "@amykit/test-fixtures": "^0.1.0"
+  }
+}

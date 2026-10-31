@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DiagramError, cameFrom, connects, markState, readDiagram } from "../src/index.js";
-import { ESCALATING, NOTE_TO_PLAN } from "./diagrams.js";
+import { parse } from "pele";
+import { DiagramError, HostServices, Plugin, acceptsAction, unmetNeeds, advance, call, cameFrom, connects, defineWorkflow, expandDiagram, implementationOf, markState, mount, notWrittenIn, portReachedBy, readDiagram, settled, withDiagram } from "../src/index.js";
+import { ESCALATING, LANES, NOTE_TO_PLAN } from "./diagrams.js";
+import { PLANNER, PlannerRecord, mounted, planner, task, walk } from "./forks.js";
 
 describe("the subset amy reads", () => {
   it("reads the initial, terminal and waiting states and every transition", () => {
@@ -56,8 +58,8 @@ describe("what amy refuses, by name and line", () => {
     ["a composite state", "state Busy {", /composite state/],
     ["the end of a composite state", "}", /composite state/],
     ["a choice", "state pick <<choice>>", /<<choice>>/],
-    ["a fork", "state split <<fork>>", /<<fork>>/],
-    ["a join", "state merge <<join>>", /<<join>>/],
+    ["a fork written anywhere but a line of its own", "A --> B <<fork>>", /<<fork>>/],
+    ["a join written anywhere but a line of its own", "A --> B <<join>>", /<<join>>/],
     ["a concurrent region", "--", /concurrent region/],
     ["the class shorthand", "A --> C:::waiting", /:::/],
     ["a line outside the subset", "A : a description", /is not a line amy reads/],
@@ -156,5 +158,238 @@ describe("what the diagram connects", () => {
     expect(marked.endsWith("    class CHECKED current\n")).toBe(true);
     expect(readDiagram(marked).states).toEqual(plan.states);
     expect(() => markState(plan, "LOST")).toThrow(/draws no `LOST`/);
+  });
+});
+
+describe("a fork of lanes", () => {
+  const HOST: HostServices = {
+    runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+    now: () => new Date("2026-10-31T12:00:00.000Z"),
+    paths: { workspace: "/work", checkouts: {}, state: "/state" },
+  };
+  const refusal = (text: string): string => {
+    try {
+      readDiagram(text);
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error("it was read");
+  };
+
+  it("reads each fork with the lanes drawn out of it and the join they meet at", () => {
+    const diagram = readDiagram(LANES);
+
+    expect(diagram.forks).toEqual({ split: { lanes: ["TASK_A", "TASK_B", "TASK_C"], join: "merge" } });
+    expect(diagram.calls).toEqual(["TASK_A", "TASK_B", "TASK_C"]);
+    expect(diagram.states).toContain("split");
+    expect(diagram.states).toContain("merge");
+    // The record waits in the fork and moves to the join: that move is drawn by the lanes.
+    expect(connects(diagram, "split", "merge")).toBe(true);
+    expect(connects(diagram, "PLANNED", "merge")).toBe(false);
+  });
+
+  it("mounts a diagram whose every lane is a call", async () => {
+    const outcome = await mount([planner()], {}, HOST);
+
+    expect(outcome.ok).toBe(true);
+  });
+
+  it("refuses a lane that is not a call, naming it", () => {
+    const text = LANES.replace("class TASK_A, TASK_B, TASK_C call", "class TASK_A, TASK_C call");
+
+    expect(refusal(text)).toMatch(/`TASK_B` is a lane of the fork `split` and not a call/);
+  });
+
+  it("refuses a join a lane never reaches", () => {
+    const silent = LANES.replace("    TASK_C --> merge: DONE\n    TASK_C --> merge: DECLINED\n", "");
+    const astray = LANES.replace("TASK_C --> merge: DECLINED", "TASK_C --> ESCALATED: DECLINED");
+
+    expect(refusal(silent)).toMatch(/`TASK_C` is a lane of `split` and never reaches the join `merge`/);
+    expect(refusal(astray)).toMatch(/`TASK_C --> ESCALATED` leaves a lane of `split` for somewhere other than its join `merge`/);
+  });
+
+  it("refuses a join no fork's lanes meet at, and a fork of one lane", () => {
+    expect(refusal(LANES.replace("state merge <<join>>", "state merge <<join>>\n    state lonely <<join>>").replace("ESCALATED --> [*]", "ESCALATED --> lonely\n    lonely --> INTEGRATED\n    INTEGRATED --> ESCALATED\n    ESCALATED --> [*]")))
+      .toMatch(/the join `lonely` is reached by no fork's lanes|reaches the join from outside its fork/);
+    expect(refusal("stateDiagram-v2\n    state split <<fork>>\n    state merge <<join>>\n    [*] --> A\n    A --> split\n    split --> L\n    L --> merge: DONE\n    merge --> B\n    B --> [*]\n    class L call\n"))
+      .toMatch(/the fork `split` draws 1 lane\(s\)/);
+  });
+
+  it("refuses at boot a lane whose callee can end where no edge into the join is named", async () => {
+    const outcome = await mount([planner({ callee: task({ ends: "three" }) })], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toMatch(/planner → TASK_A: task can end at `STUCK`, and no edge out of `TASK_A` is named `STUCK`/);
+  });
+
+  it("refuses a decision written for a fork, which its lanes move", async () => {
+    const declared = planner();
+    const outcome = await mount([withDiagram(defineWorkflow({
+      name: "planner",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      calls: { TASK_A: call(task(), { input: () => ({ task: "a" }) }), TASK_B: call(task(), { input: () => ({ task: "b" }) }), TASK_C: call(task(), { input: () => ({ task: "c" }) }) },
+      decide: {
+        PLANNED: () => advance("split", "planned"),
+        split: () => settled("never"),
+        merge: () => advance("INTEGRATED", "joined"),
+        INTEGRATED: () => settled("integrated"),
+        ESCALATED: () => settled("escalated"),
+      },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), PLANNER(["TASK_A", "TASK_B", "TASK_C"]))], {}, HOST);
+
+    expect(declared.name).toBe("workflow-planner");
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toMatch(/`split` is a fork, moved by its lanes; the join is where the decision is/);
+  });
+
+  it("hands the join's decision every lane's end and output, keyed by lane", async () => {
+    const { workflow, runtime } = await mounted([planner()], HOST);
+    const start = { ...runtime.newRecord("PLAN-1", HOST.now()), tasks: ["write", "refuse the docs", "test"] } as PlannerRecord;
+
+    const { record } = await walk(workflow, runtime, start, HOST.now());
+
+    expect(record.state).toBe("ESCALATED");
+    expect((record as PlannerRecord).joinedWith).toEqual({
+      TASK_A: { call: "PLAN-1/TASK_A#1", end: "DONE", output: { did: "write", looks: 1 } },
+      TASK_B: { call: "PLAN-1/TASK_B#1", end: "DECLINED", output: { refused: "refuse the docs" } },
+      TASK_C: { call: "PLAN-1/TASK_C#1", end: "DONE", output: { did: "test", looks: 1 } },
+    });
+    expect(record.history.map((step) => `${step.from}>${step.to}`)).toEqual(["PLANNED>split", "split>merge", "merge>ESCALATED"]);
+  });
+
+  it("expands into a composite that draws each lane, marked where its own record is, and Mermaid reads it", async () => {
+    const { workflow, runtime } = await mounted([planner()], HOST);
+    const { record } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split");
+
+    const expanded = expandDiagram(workflow, record);
+
+    expect(expanded).toContain("state split <<fork>>");
+    expect(expanded).toContain("state TASK_A {");
+    expect(expanded).toContain("class split,TASK_A__WORKING,TASK_B__WORKING,TASK_C__WORKING current");
+    expect((parse(expanded) as { type: string }).type).toBe("state");
+  });
+
+  it("lets the other lanes run to their ends when one has a decision nobody wrote, and settles only then", async () => {
+    const { workflow, runtime } = await mounted([planner({ callee: task({ unwritten: "task_b" }) })], HOST);
+
+    const { record, plans } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now());
+
+    expect(record.state).toBe("split");
+    expect(Object.values(record.calls ?? {}).map((child) => child.state)).toEqual(["DONE", "WORKING", "DONE"]);
+    expect(plans.at(-1)!.kind).not.toBe("settled");
+    expect(notWrittenIn(workflow.plan(record, await runtime.observe(record), runtime.policy))).toBe("WORKING");
+  });
+
+  it("still says which port a lane's action spends, so the budget is asked before a lane spends the agent", async () => {
+    const agent: Plugin = { name: "agent", register: (registry) => registry.port("agent", { ask: acceptsAction(async () => ({})) }) };
+    const { runtime } = await mounted([agent, planner({ callee: task({ agent: true }) })], HOST);
+
+    expect(portReachedBy(implementationOf(runtime, "work"))).toBe("agent");
+  });
+
+  it("still says so through a workflow that calls the one whose lanes spend it", async () => {
+    const agent: Plugin = { name: "agent", register: (registry) => registry.port("agent", { ask: acceptsAction(async () => ({})) }) };
+    const forked = planner({ callee: task({ agent: true }) });
+    const outer = withDiagram(defineWorkflow({
+      name: "outer",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      calls: { PLAN: call(forked as never) },
+      decide: { DONE: () => settled("done"), STOPPED: () => settled("stopped") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> PLAN\nPLAN --> DONE: INTEGRATED\nPLAN --> STOPPED: ESCALATED\nDONE --> [*]\nSTOPPED --> [*]\nclass PLAN call\n");
+    const { runtime } = await mounted([agent, outer], HOST);
+
+    expect(portReachedBy(implementationOf(runtime, "work"))).toBe("agent");
+  });
+
+  it("hears what the workflow says before any decision while its lanes run, and stops there", async () => {
+    let withdrawn = false;
+    const { workflow, runtime } = await mounted([planner({ withdrawn: () => withdrawn })], HOST);
+    const { record } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split" && Object.keys(current.calls ?? {}).length === 3);
+
+    withdrawn = true;
+    const decided = workflow.plan(record, await runtime.observe(record), runtime.policy);
+
+    expect(decided).toEqual({ kind: "settled", why: "the plan was withdrawn; it stops where it is" });
+    expect(workflow.everyLane?.(record, await runtime.observe(record), runtime.policy)).toBeUndefined();
+  });
+
+  it("runs what the workflow says before any decision against its own world while its lanes run, and folds it there", async () => {
+    const world: { asked?: string } = {};
+    const { workflow, runtime } = await mounted([planner({ asked: () => world.asked })], HOST);
+    const { record: forked } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split" && Object.keys(current.calls ?? {}).length === 3);
+
+    world.asked = "the release is on Friday";
+    const { record } = await walk(workflow, runtime, forked, HOST.now(), (current) => ((current as PlannerRecord).said ?? []).length > 0);
+
+    expect(record.state).toBe("split");
+    expect((record as PlannerRecord).said).toEqual(["the release is on Friday"]);
+    expect((record as PlannerRecord).heard).toEqual(["the release is on Friday"]);
+    expect(Object.values(record.calls ?? {}).map((child) => child.state)).toEqual(["WORKING", "WORKING", "WORKING"]);
+  });
+
+  it("passes what the workflow says before any decision through its `after` while its lanes run, as anywhere else", async () => {
+    const world: { asked?: string } = {};
+    const { workflow, runtime } = await mounted([planner({ asked: () => world.asked, handsOver: true })], HOST);
+    const { record: forked } = await walk(workflow, runtime, runtime.newRecord("PLAN-1", HOST.now()), HOST.now(), (current) => current.state === "split" && Object.keys(current.calls ?? {}).length === 3);
+
+    world.asked = "the release is on Friday";
+    const decided = workflow.plan(forked, await runtime.observe(forked), runtime.policy);
+
+    expect(decided).toMatchObject({ kind: "act", effects: [{ type: "hand-over" }] });
+  });
+
+  describe("what a forked workflow's actions are held to at boot", () => {
+    const ports: Plugin = {
+      name: "ports",
+      register: (registry) => {
+        registry.port("tracker", { comment: acceptsAction(async () => undefined) });
+        registry.port("notifier", { announce: async () => undefined });
+        registry.port("agent", { ask: acceptsAction(async () => ({})) });
+      },
+    };
+    const forked = (actions: Record<string, { port: string; method: string }>, trackerWrites: string[] = []) => withDiagram(defineWorkflow({
+      name: "planner",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      trackerWrites,
+      // The lanes' own action is a port and a method too, named by no catalogue.
+      calls: Object.fromEntries(["TASK_A", "TASK_B", "TASK_C"].map((lane) => [lane, call(task({ agent: true }), { input: () => ({ task: lane }) })])),
+      decide: { PLANNED: () => advance("split", "planned"), merge: () => advance("INTEGRATED", "joined"), INTEGRATED: () => settled("integrated"), ESCALATED: () => settled("escalated") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions,
+    }), PLANNER(["TASK_A", "TASK_B", "TASK_C"]));
+    const problems = async (plugin: Plugin): Promise<string[]> => {
+      const outcome = await mount([ports, plugin], {}, HOST);
+      if (!outcome.ok) return outcome.problems;
+      return unmetNeeds(outcome.mounted, outcome.mounted.workflow!);
+    };
+
+    it("refuses a tracker write it did not claim, as it would without the fork", async () => {
+      expect((await problems(forked({ announce: { port: "tracker", method: "comment" } }))).join("; "))
+        .toMatch(/action `announce` writes the tracker \(`comment`\), but the workflow does not claim that capability/);
+    });
+
+    it("mounts a port-bound action of its own the catalogue does not name, when it claims the write", async () => {
+      const said = await problems(forked({ note: { port: "tracker", method: "comment" } }, ["comment"]));
+
+      expect(said.filter((problem) => problem.includes("`note`"))).toEqual([]);
+    });
+
+    it("reads a lane's port-bound action as the binding it is, not as an action nothing defines", async () => {
+      const said = await problems(forked({}));
+
+      expect(said.filter((problem) => problem.includes("nothing defines it"))).toEqual([]);
+    });
   });
 });

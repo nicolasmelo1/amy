@@ -342,12 +342,41 @@ qa:
   available: true
 `;
 
-function config(root: string, endpoint: string): string {
+/** Which engine drives the run: the default one, or the one that moves lanes side by side. */
+export type EngineChoice = "serial" | "concurrent";
+
+/**
+ * The plugins a profile mounts when it names the concurrent engine: the same
+ * list the serial one is recommended with, the engine swapped.
+ */
+const CONCURRENT_PLUGINS = [
+  "@amykit/plugin-file-queue",
+  "@amykit/plugin-file-store",
+  "@amykit/plugin-file-brief-store",
+  "@amykit/plugin-file-notes",
+  "@amykit/plugin-github",
+  "@amykit/plugin-linear",
+  "@amykit/workflow-ticket-to-qa",
+  "@amykit/plugin-file-worktree",
+  "@amykit/plugin-claude",
+  "@amykit/plugin-codex",
+  "@amykit/plugin-hermes-agent",
+  "@amykit/plugin-agent-relay",
+  "@amykit/plugin-notify-fanout",
+  "@amykit/plugin-notify-inbox",
+  "@amykit/plugin-concurrent-engine",
+  "@amykit/plugin-command-gate",
+];
+
+function config(root: string, endpoint: string, engine: EngineChoice): string {
+  const plugins = engine === "concurrent"
+    ? `\n    plugins:\n${CONCURRENT_PLUGINS.map((name) => `      - "${name}"`).join("\n")}`
+    : "";
   return `# The workflow is named, not shipped: a machine drives nothing until the
 # config declares one, so this run names the one it is driving.
 workflows:
   tickets:
-    workflow: "@amykit/workflow-ticket-to-qa"
+    workflow: "@amykit/workflow-ticket-to-qa"${plugins}
 defaultWorkflow: tickets
 
 # Package updates have their own installed scenario. This one drives more
@@ -386,9 +415,11 @@ repoByTeam:
   OPS: ${OTHER_REPO}
 
 # A real gate: two shell commands, run in the checkout, and the second one
-# fails until the work is actually right.
+# fails until the work is actually right. The first writes down which tree
+# it ran in and at which commit, which is what the lanes are held to.
 gate:
   ${REPO}:
+    - echo "$(pwd) $(git rev-parse HEAD)" >> "$AMY_E2E_WORLD/gate-heads.log"
     - test -f invoice.md
     - grep -q "currency:" invoice.md
   ${OTHER_REPO}:
@@ -473,9 +504,9 @@ export function build(root: string, { source }: { source: string }): void {
 }
 
 /** The edit an operator makes to what `amy init` wrote, before confirming it. */
-export function configure(root: string, endpoint: string): void {
+export function configure(root: string, endpoint: string, engine: EngineChoice = "serial"): void {
   const amyDir = path.join(root, "home", ".amy");
-  fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint), "utf-8");
+  fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint, engine), "utf-8");
   fs.writeFileSync(path.join(amyDir, "roster.yaml"), ROSTER, "utf-8");
   // An operator's brief is durable state, not a prompt fixture. The child
   // ticket names this exact parent id through the tracker on each observation.

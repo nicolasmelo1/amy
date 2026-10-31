@@ -74,6 +74,9 @@
       "@amykit/plugin-plan-check": [
         "plugins/plan-check/src/index.ts"
       ],
+      "@amykit/plugin-concurrent-engine": [
+        "plugins/concurrent-engine/src/index.ts"
+      ],
       "@amykit/plugin-serial-engine": [
         "plugins/serial-engine/src/index.ts"
       ],

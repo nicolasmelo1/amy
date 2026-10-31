@@ -19,6 +19,18 @@ export interface StatusRecord {
   readonly attention?: boolean | null;
   /** Whether the deepest record is waiting on the world, which is what its root is doing too. */
   readonly waitingInACall?: boolean | null;
+  /** The lanes of the fork the record waits in, side by side, each where its own record is. */
+  readonly lanes?: readonly StatusLane[];
+}
+
+/** One lane of a fork, as `amy status --json` reports it. */
+interface StatusLane {
+  readonly lane: string;
+  readonly id: string;
+  readonly state: string;
+  readonly ended: boolean;
+  readonly attention: boolean;
+  readonly history: readonly Transition[];
 }
 
 /** One call a record is waiting on, as `amy status --json` reports it. */
@@ -77,12 +89,23 @@ function Records(props: { readonly snapshot: StatusSnapshot; readonly all: boole
 
   const rows = view.shown.map((record) => [
     record.id,
-    [record.state, ...(record.calls ?? []).map((call) => call.state)].join(" › "),
+    [record.state, ...(record.calls ?? []).map((call) => call.state), ...lanesOf(record)].join(" › "),
     record.attention ? "attention" : record.waitingInACall ? "waiting" : standing(record.state, waiting, terminal),
     record.repo ?? "",
     record.pullRequest ? `#${record.pullRequest}` : "",
   ]);
   return <Table columns={COLUMNS} rows={rows} />;
+}
+
+/**
+ * The lanes of a fork, drawn as lines side by side, each with where its own
+ * record is, and how many have arrived at the join.
+ */
+function lanesOf(record: StatusRecord): string[] {
+  const lanes = record.lanes ?? [];
+  if (lanes.length === 0) return [];
+  const arrived = lanes.filter((lane) => lane.ended).length;
+  return [`${lanes.map((lane) => `${lane.lane} ${lane.state}`).join(" ∥ ")} (${arrived}/${lanes.length} arrived)`];
 }
 
 /**
@@ -95,6 +118,11 @@ function Stopped(props: { readonly records: readonly StatusRecord[] }): Node {
   return (
     <Section>
       {stopped.map((record) => {
+        const lane = record.lanes?.find((candidate) => candidate.attention);
+        if (lane) {
+          const last = lane.history.at(-1);
+          return <Text tone="warning">{`${record.id} needs you: the lane ${lane.lane} (${lane.id}) stopped in ${lane.state}${last ? ` — ${last.why}` : ""}`}</Text>;
+        }
         const deepest = record.calls!.at(-1)!;
         const last = deepest.history.at(-1);
         return <Text tone="warning">{`${record.id} needs you: ${deepest.id} stopped in ${deepest.state}${last ? ` — ${last.why}` : ""}`}</Text>;
@@ -104,7 +132,7 @@ function Stopped(props: { readonly records: readonly StatusRecord[] }): Node {
 }
 
 function stoppedInACall(record: StatusRecord): boolean {
-  return Boolean(record.attention) && (record.calls?.length ?? 0) > 0;
+  return Boolean(record.attention) && ((record.calls?.length ?? 0) > 0 || (record.lanes ?? []).some((lane) => lane.attention));
 }
 
 function loopLine(snapshot: StatusSnapshot): string {

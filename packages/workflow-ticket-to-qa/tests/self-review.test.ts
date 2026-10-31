@@ -3,10 +3,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { FileBriefStore } from "@amykit/plugin-file-store";
-import { InMemoryStore, WORKDAY, ticket, ticketWorkerDeps } from "@amykit/test-fixtures";
-import { Worker } from "@amykit/plugin-serial-engine";
+import { WORKDAY, ticket } from "@amykit/test-fixtures";
 import type { AskContext, BriefStore, Tracker } from "@amykit/core";
+import { drive, mountedTicket } from "./mounted.js";
+import { reviewVerdict } from "../src/lanes.js";
 import type { Ticket } from "../src/ticket.js";
+import type { TicketRecord } from "../src/record.js";
 
 const clock = new Date(WORKDAY);
 
@@ -52,39 +54,16 @@ const trackerFor = (read: () => Ticket): Tracker =>
     createFollowUp: vi.fn(async () => "PROJ-9999"),
   }) as unknown as Tracker;
 
-async function driveToSelfReview(
-  overrides: { tracker: Tracker; agent: unknown; briefs?: BriefStore; gate?: unknown; now?: () => Date },
-  ticks = 8,
-) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-self-review-"));
-  const queue = new (await import("@amykit/plugin-file-queue")).FileQueue(path.join(root, "queue"));
-  const records = new InMemoryStore();
-  queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
-
-  // A clock that moves: the machine decides what is "current" by comparing
-  // timestamps, so a frozen one makes a green gate look older than the
-  // implementation it checked and the ticket never leaves CHECKED.
+/**
+ * Drives the mounted workflow until both checks have met at the verdict: the
+ * self-review is a lane of `checks` now, which only exists once composed.
+ */
+async function driveToSelfReview(overrides: { tracker: Tracker; agent: unknown; briefs?: BriefStore; gate?: unknown; now?: () => Date }) {
   let at = clock.getTime();
-  const worker = new Worker({
-    queue,
-    records,
-    // The drive needs the machine to reach the gate green, which the fake
-    // gate says on the first run, and the fixture's ticket worker deps hold
-    // the same defaults every other runtime test drives with.
-    ...ticketWorkerDeps({
-      tracker: overrides.tracker,
-      agent: overrides.agent as never,
-      briefs: overrides.briefs,
-      gate: overrides.gate as never,
-      // The fakes' clock when the test has one: the implementation is stamped
-      // by the machine's clock and the gate by the fake's, and a gate that
-      // looks older than what it checked never vouches for it.
-      now: overrides.now ?? (() => new Date((at += 1000))),
-    }),
-  });
-  for (let look = 0; look < ticks; look += 1) await worker.tick();
-
-  return { record: records.records.get("PROJ-1239"), root };
+  const now = overrides.now ?? (() => new Date((at += 1000)));
+  const mounted = await mountedTicket({ tracker: overrides.tracker, agent: overrides.agent as object, gate: overrides.gate as object, brief: overrides.briefs }, now);
+  const record = await drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.lastSelfReview !== undefined);
+  return { record };
 }
 
 describe("the self-review half-step", () => {
@@ -146,5 +125,101 @@ describe("the self-review half-step", () => {
     expect(ask?.prompt).not.toContain("The current brief");
     expect(ask?.context?.brief).toBeUndefined();
     expect(record?.lastSelfReview?.ok).toBe(true);
+  });
+});
+describe("the verdict a review ends on", () => {
+  it.each([
+    ["a line saying CHANGES_ASKED", "the total rounds twice\nCHANGES_ASKED: round once", "CHANGES_ASKED"],
+    ["a verdict line saying it", "Verdict: CHANGES_ASKED", "CHANGES_ASKED"],
+    ["APPROVED", "looks right\nAPPROVED", "APPROVED"],
+    ["no verdict at all, which every review was before it could say one", "look at the boundary first", "APPROVED"],
+    ["the words in the middle of a sentence", "nothing here is CHANGES_ASKED worthy", "APPROVED"],
+    ["it in bold", "the rounding is wrong\n**CHANGES_ASKED**: round once", "CHANGES_ASKED"],
+    ["a bold verdict label", "**Verdict:** CHANGES_ASKED", "CHANGES_ASKED"],
+    ["it as a bullet", "- CHANGES_ASKED: name the currency", "CHANGES_ASKED"],
+    ["it in code", "`CHANGES_ASKED`", "CHANGES_ASKED"],
+    ["it as a heading", "## Verdict: CHANGES_ASKED", "CHANGES_ASKED"],
+    ["an approval in bold", "**APPROVED**", "APPROVED"],
+  ] as const)("reads %s", (_name, text, verdict) => {
+    expect(reviewVerdict(text)).toBe(verdict);
+  });
+});
+
+describe("a self-review that did not finish", () => {
+  const agentThat = (outcome: "rate-limited" | "failed") => ({
+    ask: vi.fn(async (_prompt: string, _cwd: string, context?: AskContext) => {
+      const run = { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" } as const;
+      if (context?.step === "triage") return { text: '{"clear": true}', run };
+      if (context?.step === "self-review") return { text: "", run: { ...run, outcome } };
+      return { text: "done", run };
+    }),
+  });
+
+  it("never approves the change when it ran out of quota: it waits, and it was not a try", async () => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    const mounted = await mountedTicket({ tracker: trackerFor(() => ticket()), agent: agentThat("rate-limited") }, now);
+
+    const record = await drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.state === "verdict", 20);
+
+    expect(record.state).toBe("checks");
+    expect(record.lastSelfReview).toBeUndefined();
+    const review = record.calls![`PROJ-1239/SELF_REVIEW#1`]!;
+    expect(review.state).toBe("REVIEWING");
+    expect(review.attempts.REVIEWING ?? 0).toBe(0);
+  });
+
+  it("fails the look when it did not complete for any other reason", async () => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    const mounted = await mountedTicket({ tracker: trackerFor(() => ticket()), agent: agentThat("failed") }, now);
+
+    await expect(drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.state === "verdict", 20))
+      .rejects.toThrow(/self-review did not complete: failed on fake/);
+  });
+});
+
+describe("a ticket that leaves its repository while it is being checked", () => {
+  it("stops where it is, without running the checks still pending", async () => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    let left = false;
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    const { agent } = recordingAgent(seen, () => now().toISOString());
+    const mounted = await mountedTicket({ tracker: trackerFor(() => (left ? { ...ticket(), repos: ["acme/elsewhere"] } : ticket())), agent: agent as object }, now);
+    const forked = await drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.state === "checks" && Object.keys(current.calls ?? {}).length === 2);
+
+    left = true;
+    const decided = mounted.workflow.plan(forked, await mounted.runtime.observe(forked), mounted.runtime.policy);
+
+    expect(decided.kind).toBe("settled");
+    expect(decided.why).toContain("is no longer one of PROJ-1239's repositories");
+    expect(seen.some((entry) => entry.context?.step === "self-review")).toBe(false);
+  });
+});
+
+describe("a record an older version left where the checks used to run", () => {
+  it.each(["CHECKED", "SELF_REVIEW"])("runs both checks from %s in the ticket's repository, in the work's own tree, though it recorded no implementation", async (state) => {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    const { agent } = recordingAgent(seen, () => now().toISOString());
+    const gated: { repo: string; workId: string }[] = [];
+    const gate = { run: async (workplace: { repo: string; workId: string }) => { gated.push(workplace); return { ok: true, output: "", at: now().toISOString() }; } };
+    const mounted = await mountedTicket({ tracker: trackerFor(() => ticket()), agent: agent as object, gate }, now);
+    const fresh = mounted.runtime.newRecord("PROJ-1239", now()) as TicketRecord;
+    const legacy = {
+      ...fresh,
+      state,
+      triage: { clear: true, questions: [], askedQuestions: [], at: now().toISOString() },
+      lastImplementation: { ok: true, output: "", at: now().toISOString() },
+    } as unknown as TicketRecord;
+
+    const record = await drive(mounted, legacy, now, (current) => current.state === "verdict");
+
+    expect(record.state).toBe("verdict");
+    expect(record.implemented).toEqual({ repo: ticket().repo });
+    expect(gated).toEqual([{ repo: ticket().repo, workId: "PROJ-1239" }]);
+    expect(seen.filter((entry) => entry.context?.step === "implement")).toEqual([]);
   });
 });

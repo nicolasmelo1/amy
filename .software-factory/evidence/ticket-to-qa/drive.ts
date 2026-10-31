@@ -37,6 +37,7 @@ import {
   write,
   type Brief,
   type CodeHost,
+  type EngineChoice,
   type Issue,
   type Pull,
   type TrackerState,
@@ -51,7 +52,7 @@ const keep = process.argv.includes("--keep");
 /** The tracker and the stand-ins are TypeScript too, and run the way this does: through the repository's tsx. */
 const TSX = path.join(source, "..", "..", "..", "node_modules", ".bin", "tsx");
 
-const MAX_TICKS = 60;
+const MAX_TICKS = 80;
 const WAITING = ["CLARIFYING", "COPILOT_WAIT", "HUMAN_REVIEW", "ESCALATED"];
 
 /** Every move the ticket makes, in the order it has to make them. */
@@ -59,11 +60,12 @@ const EXPECTED = [
   "DISCOVERED>CLARIFYING",
   "CLARIFYING>READY",
   "READY>IMPLEMENTING",
-  "IMPLEMENTING>CHECKED",
-  "CHECKED>IMPLEMENTING",
-  "IMPLEMENTING>CHECKED",
-  "CHECKED>SELF_REVIEW",
-  "SELF_REVIEW>PR_OPEN",
+  "IMPLEMENTING>checks",
+  "checks>verdict",
+  "verdict>IMPLEMENTING",
+  "IMPLEMENTING>checks",
+  "checks>verdict",
+  "verdict>PR_OPEN",
   "PR_OPEN>COPILOT_WAIT",
   "COPILOT_WAIT>COPILOT_FIX",
   "COPILOT_FIX>COPILOT_WAIT",
@@ -95,6 +97,8 @@ interface TicketRecord {
   lastGate?: { ok: boolean; at: string };
   lastImplementation?: unknown;
   judged: { verdict: string }[];
+  lanes?: Record<string, { call: string; end?: string }>;
+  calls?: Record<string, { id: string; state: string; revision?: string; attempts: Record<string, number>; history: { from: string; to: string }[] }>;
 }
 
 /** One `amy tick`: the state either side of it, and what it printed. */
@@ -120,7 +124,15 @@ interface AgentCall {
   model: string;
   retry: boolean;
   cwd: string;
+  /** The commit the tree it was handed was at. */
+  head?: string;
   prompt: string;
+}
+
+/** One run of the gate: the tree it ran in and the commit that tree was at. */
+interface GateRun {
+  tree: string;
+  head: string;
 }
 
 interface GhCall {
@@ -137,7 +149,7 @@ interface TrackerCall {
 
 interface LogEvent {
   kind: string;
-  detail?: { workId?: string };
+  detail?: { workId?: string; why?: string };
 }
 
 /** What the outside world does in one waiting state, or null if it does nothing. */
@@ -460,6 +472,13 @@ interface Settled {
   inbox: string[];
   branches: string[];
   commits: string[];
+  /** Every commit on the ticket's branch, newest first, as the origin holds it. */
+  shas: string[];
+  /** The commit the base branch is at, which neither check may be about. */
+  base: string;
+  gateRuns: GateRun[];
+  /** The looks in which more than one lane moved at once. */
+  sideBySide: number;
   queueReady: string[];
 }
 
@@ -508,14 +527,14 @@ interface World extends Morning, Settled, Concurrent, Pruned, NamedRoot {
 }
 
 /** The morning's commands, in the order the README gives them. */
-function morning(root: string, endpoint: string): Morning {
+function morning(root: string, endpoint: string, engine: EngineChoice): Morning {
   const version = amy(root, ["--version"]);
   const init = amy(root, ["init"]);
   const initWrote = ["config.yaml", "roster.yaml"].every((file) =>
     fs.existsSync(path.join(root, "home", ".amy", file)),
   );
 
-  configure(root, endpoint);
+  configure(root, endpoint, engine);
   installPlugins(root);
   const doctorStale = amy(root, ["doctor"]);
   const confirm = amy(root, ["roster", "confirm"]);
@@ -577,6 +596,17 @@ function settled(root: string): Settled {
       : [],
     branches: gitLines(path.join(root, "origins", "widgets.git"), "branch", "--format=%(refname:short)"),
     commits: gitLines(path.join(root, "origins", "widgets.git"), "log", "--format=%s", BRANCH),
+    shas: gitLines(path.join(root, "origins", "widgets.git"), "log", "--format=%H", BRANCH),
+    base: gitLines(path.join(root, "origins", "widgets.git"), "rev-parse", "main")[0] ?? "",
+    gateRuns: fs.existsSync(path.join(root, "world", "gate-heads.log"))
+      ? fs.readFileSync(path.join(root, "world", "gate-heads.log"), "utf-8").split("\n").filter(Boolean).map((line) => {
+        const [tree = "", head = ""] = line.split(" ");
+        return { tree, head };
+      })
+      : [],
+    sideBySide: fs.readdirSync(path.join(root, "home", ".amy", "log"))
+      .flatMap((file) => lines<LogEvent>(path.join(root, "home", ".amy", "log", file)))
+      .filter((event) => event.kind === "work.advanced" && /^\d+ lanes moved$/.test(event.detail?.why ?? "")).length,
     queueReady: fs.readdirSync(path.join(root, "home", ".amy", "tickets", "queue", "ready")),
   };
 }
@@ -755,7 +785,7 @@ function namedRoot(root: string, react: Record<string, Reaction>, moves: Move[])
  * Returns what was observed rather than asserting anything, so two runs can
  * be compared against each other as well as against expectations.
  */
-function lifecycle(): World {
+function lifecycle(engine: EngineChoice = "serial"): World {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-e2e-"));
   const tracker = startTracker(root);
   const moves: Move[] = [];
@@ -765,7 +795,7 @@ function lifecycle(): World {
   try {
     build(root, { source });
 
-    const morningSaid = morning(root, tracker.endpoint);
+    const morningSaid = morning(root, tracker.endpoint, engine);
     const react = reactions();
     walk(root, react, trail, moves);
     const settledWorld = settled(root);
@@ -847,8 +877,9 @@ const isWorkday = (): boolean => {
 /** One assertion, before it is reported: its name, and whether it held. */
 type Check = [type: string, ok: boolean | undefined];
 
-function assertionsFor(first: World, second: World): { type: string; status: "passed" | "failed" }[] {
+function assertionsFor(first: World, second: World, concurrent: World): { type: string; status: "passed" | "failed" }[] {
   return [
+    ...laneChecks(first, concurrent),
     ...briefChecks(first),
     ...discoveryChecks(first),
     ...clarifyingChecks(first),
@@ -860,6 +891,64 @@ function assertionsFor(first: World, second: World): { type: string; status: "pa
     ...checkoutChecks(first),
     ...extraChecks(first),
   ].map(([type, ok]) => ({ type, status: ok ? "passed" : "failed" }));
+}
+
+/**
+ * The gate and the self-review as two lanes of one fork: what one round
+ * sends back, what each lane was looking at, and that the engine that moves
+ * the lanes side by side ends where the one that takes them in turn does.
+ */
+function laneChecks(first: World, concurrent: World): Check[] {
+  return [
+    ["lifecycle.gate_and_self_review_run_as_two_lanes", oneRoundCarriesBoth(first) && bothCheckedTheCommit(first)],
+    ["lifecycle.lanes_end_the_same_serial_or_concurrent", endsTheSame(first, concurrent)],
+  ];
+}
+
+/** One round back: the gate refused, the review would have approved, and the next implementation was told both. */
+function oneRoundCarriesBoth(first: World): boolean {
+  const next = agentCallsFor(first, "implement")[1]?.prompt ?? "";
+  const rounds = first.record.calls ?? {};
+  const moves = transitions(first);
+  return moves.filter((move) => move === "verdict>IMPLEMENTING").length === 1 &&
+    moves.includes("verdict>PR_OPEN") &&
+    rounds[`${TICKET}/GATE#1`]?.state === "RED" &&
+    rounds[`${TICKET}/SELF_REVIEW#1`]?.state === "APPROVED" &&
+    ['grep -q "currency:" invoice.md', "The review of the change said:", "check the rounding first"].every((said) => next.includes(said));
+}
+
+/**
+ * Both lanes checked the implementation's commit, in trees of their own, and
+ * never the base: round by round, the same commit each, and the one each
+ * lane's record says it was lent.
+ */
+function bothCheckedTheCommit(first: World): boolean {
+  const reviews = agentCallsFor(first, "self-review");
+  const gates = first.gateRuns;
+  const ownTree = first.worktreePaths.first;
+  const laneTree = (tree: string, lane: string) => tree !== ownTree && path.basename(path.dirname(tree)).startsWith(`${TICKET}-${lane}-`);
+  const rounds = first.record.calls ?? {};
+  const lent = (round: number) => [rounds[`${TICKET}/GATE#${round + 1}`]?.revision, rounds[`${TICKET}/SELF_REVIEW#${round + 1}`]?.revision];
+  return gates.length === 2 && reviews.length === 2 &&
+    gates[0]!.head !== gates[1]!.head &&
+    gates.every((run, round) =>
+      run.head === reviews[round]?.head &&
+      first.shas.includes(run.head) && run.head !== first.base &&
+      laneTree(run.tree, "GATE") && laneTree(reviews[round]!.cwd, "SELF_REVIEW") &&
+      lent(round).every((revision) => revision === run.head));
+}
+
+/** The concurrent engine really moved the lanes side by side, and reached the record the serial one reaches in turn. */
+function endsTheSame(first: World, concurrent: World): boolean {
+  const shape = (record: TicketRecord) => JSON.stringify({
+    state: record.state,
+    lanes: Object.fromEntries(Object.entries(record.lanes ?? {}).map(([lane, held]) => [lane, held.end])),
+    calls: Object.fromEntries(Object.entries(record.calls ?? {}).map(([id, child]) => [id, [child.state, child.history.map((step) => step.to).join(">"), child.attempts]])),
+  });
+  return concurrent.sideBySide > 0 && first.sideBySide === 0 &&
+    transitions(concurrent).join(",") === transitions(first).join(",") &&
+    shape(concurrent.record) === shape(first.record) &&
+    statusOf(concurrent, TICKET) === "In QA";
 }
 
 function briefChecks(first: World): Check[] {
@@ -890,7 +979,7 @@ function briefChecks(first: World): Check[] {
     ],
     [
       "brief.self_review_is_a_declared_agent_step",
-      Boolean(selfReview) && transitions(first).includes("SELF_REVIEW>PR_OPEN"),
+      Boolean(selfReview) && transitions(first).includes("verdict>PR_OPEN"),
     ],
     [
       "brief.show_reads_the_port_without_exposing_its_directory",
@@ -996,7 +1085,7 @@ function gateChecks(first: World): Check[] {
     // The gate, which is the only thing that lets work out of the door.
     [
       "lifecycle.a_red_gate_sends_the_work_back_to_the_agent",
-      transitions(first).includes("CHECKED>IMPLEMENTING") && implementCalls.length === 2,
+      transitions(first).includes("verdict>IMPLEMENTING") && implementCalls.length === 2,
     ],
     [
       "lifecycle.the_agent_is_told_what_the_gate_said",
@@ -1297,8 +1386,10 @@ const first = lifecycle();
 // A second world, from scratch, because "it worked once" and "it works" are
 // different claims and only one of them is worth a gate.
 const second = lifecycle();
+// A third, under the engine that moves the lanes of a fork side by side.
+const sideBySide = lifecycle("concurrent");
 
-const assertions = assertionsFor(first, second);
+const assertions = assertionsFor(first, second, sideBySide);
 const failed = assertions.filter((assertion) => assertion.status === "failed");
 
 for (const assertion of failed) process.stderr.write(`FAILED ${assertion.type}\n`);
@@ -1338,6 +1429,9 @@ fs.writeFileSync(
         brief_show: first.briefShow,
         budget: first.budget.out.split("\n").at(-1),
         second_run_transitions: transitions(second).length,
+        concurrent_run_transitions: transitions(sideBySide).length,
+        concurrent_looks_that_moved_lanes_side_by_side: sideBySide.sideBySide,
+        gate_runs: first.gateRuns,
       },
       assertions,
     },

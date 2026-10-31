@@ -42,7 +42,7 @@ function composite(prefix: string, callee: Workflow, indent: string, classes: st
   claim(prefix, diagram.states.map(id), taken);
   const inner = `${indent}    `;
   const lines = [`${indent}state ${prefix} {`];
-  for (const state of diagram.states) lines.push(`${inner}state "${diagram.labels[state] ?? state}" as ${id(state)}`);
+  for (const state of diagram.states) lines.push(`${inner}${declared(diagram, state, id(state))}`);
   lines.push(`${inner}[*] --> ${id(diagram.initial)}`);
   for (const edge of diagram.transitions) lines.push(`${inner}${id(edge.from)} --> ${id(edge.to)}${edge.label ? `: ${edge.label}` : ""}`);
   for (const state of diagram.terminal) lines.push(`${inner}${id(state)} --> [*]`);
@@ -59,6 +59,13 @@ function composite(prefix: string, callee: Workflow, indent: string, classes: st
   return lines;
 }
 
+/** How a state is named inside a composite: a fork and a join keep their shape, so its lanes still read as lanes. */
+function declared(diagram: Diagram, state: string, id: string): string {
+  if (diagram.forks[state]) return `state ${id} <<fork>>`;
+  if (Object.values(diagram.forks).some((fork) => fork.join === state)) return `state ${id} <<join>>`;
+  return `state "${diagram.labels[state] ?? state}" as ${id}`;
+}
+
 /** Mermaid has one namespace for every id, composite or not, so each drawn id is taken once. */
 function claim(prefix: string, ids: readonly string[], taken: Set<string>): void {
   for (const id of ids) {
@@ -67,17 +74,27 @@ function claim(prefix: string, ids: readonly string[], taken: Set<string>): void
   }
 }
 
-/** The id the record is drawn at, at every depth of its call path. */
-function markedPath(workflow: Workflow, record: WorkRecord): string[] {
+/**
+ * The id the record is drawn at, at every depth of its call path — and, for
+ * a record waiting in a fork, where each lane's own record is, so every lane
+ * carries its mark.
+ */
+function markedPath(workflow: Workflow, record: WorkRecord, prefix = ""): string[] {
   const ids: string[] = [];
-  let prefix = "";
   let at: Workflow | undefined = workflow;
+  let under = prefix;
   for (const step of callPath(record)) {
     if (!at) break;
-    const id = prefix ? `${prefix}__${step.state}` : step.state;
+    const id = under ? `${under}__${step.state}` : step.state;
     ids.push(id);
+    for (const lane of at.diagram?.forks[step.state]?.lanes ?? []) {
+      const call = step.lanes?.[lane]?.call;
+      const child = call === undefined ? undefined : step.calls?.[call];
+      const callee = at.calls?.[lane];
+      if (child && callee) ids.push(...markedPath(callee, child, under ? `${under}__${lane}` : lane));
+    }
     at = at.calls?.[step.state];
-    prefix = id;
+    under = id;
   }
   return ids;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "pele";
 import { Diagram, readDiagram } from "../src/index.js";
-import { ESCALATING, NOTE_TO_PLAN } from "./diagrams.js";
+import { ESCALATING, LANES, NOTE_TO_PLAN } from "./diagrams.js";
 
 /**
  * Mermaid publishes no grammar as a specification; its parser is the
@@ -58,6 +58,7 @@ const ACCEPTED: readonly [string, string][] = [
   ["a label carrying an arrow", "stateDiagram-v2\n[*] --> A\nA --> B: only when the moon is full --> C\nB --> [*]\n"],
   ["two arrows between the same states", "stateDiagram-v2\n[*] --> A\nA --> B: once\nA --> B: twice\nB --> A\nB --> [*]\n"],
   ["a state that is both started in and ended in", "stateDiagram-v2\n[*] --> ONLY\nONLY --> [*]\n"],
+  ["a fork of three lanes that meet at a join", LANES],
 ];
 
 describe("every diagram amy reads, Mermaid reads the same way", () => {
@@ -91,7 +92,6 @@ describe("every diagram amy reads, Mermaid reads the same way", () => {
     const drawable = [
       "stateDiagram-v2\n[*] --> A\nstate Busy {\n  A --> B\n}\nB --> [*]\n",
       "stateDiagram-v2\n[*] --> A\nstate pick <<choice>>\nA --> pick\npick --> B\nB --> [*]\n",
-      "stateDiagram-v2\n[*] --> A\nstate split <<fork>>\nA --> split\nsplit --> B\nB --> [*]\n",
     ];
     for (const text of drawable) {
       expect(asPele(text).type).toBe("state");

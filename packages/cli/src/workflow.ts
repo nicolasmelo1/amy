@@ -326,6 +326,7 @@ async function drive({ workflow, runtime, now }: RegisteredWorkflow): Promise<Wo
 
   for (let move = 0; move < 32 && problems.length === 0; move += 1) {
     reached.add(record.state);
+    lanesOf(workflow, record, reached, walked);
     const next = await moveOnce(workflow, runtime, record, now);
     if (typeof next === "string") { problems.push(next); break; }
     if (next.kind === "stub") { stopped = true; break; }
@@ -366,6 +367,23 @@ function insideCalls(workflow: Workflow, record: WorkRecord, prefix: string, wal
     problems.push(...insideCalls(callee, child, at, walked));
   }
   return problems;
+}
+
+/**
+ * A record waiting in a fork reaches every lane it started, and walks the
+ * arrow into each and, once a lane has ended, the one out of it to the join:
+ * a lane is never a record's own state, so the walk would never see either.
+ */
+function lanesOf(workflow: Workflow, record: WorkRecord, reached: Set<string>, walked: Set<string>): void {
+  const fork = workflow.diagram?.forks[record.state];
+  for (const lane of fork?.lanes ?? []) {
+    const call = record.lanes?.[lane]?.call;
+    const child = call === undefined ? undefined : record.calls?.[call];
+    if (!child) continue;
+    reached.add(lane);
+    walked.add(`${record.state}\u0000${lane}`);
+    if (workflow.calls?.[lane]?.terminalStates.includes(child.state)) walked.add(`${lane}\u0000${fork!.join}`);
+  }
 }
 
 /** The arrows a workflow draws, and those of every workflow it calls, named by the call state they sit in. */
@@ -434,7 +452,11 @@ async function moveOnce(workflow: Workflow, runtime: WorkflowRuntime, record: Wo
  */
 function movedInACall(workflow: Workflow, runtime: WorkflowRuntime, record: WorkRecord, plan: Plan, observation: unknown, now: () => Date): { kind: "advance"; record: WorkRecord } | string {
   const folded = runtime.apply(applyPlan(record, plan, now()), plan, {}, observation, now(), null);
-  const where = (current: WorkRecord) => callPath(current).map((step) => `${step.id}@${step.state}`).join(">");
+  // A lane's move changes its own record and no call path, so lanes count too.
+  const where = (current: WorkRecord) => callPath(current).flatMap((step) => [
+    `${step.id}@${step.state}`,
+    ...Object.values(step.lanes ?? {}).map((lane) => `${lane.call}@${step.calls?.[lane.call]?.state}`),
+  ]).join(">");
   return where(folded) === where(record)
     ? `${workflow.name}: did not settle; it kept acting in \`${record.state}\``
     : { kind: "advance", record: folded };

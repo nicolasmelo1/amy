@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import path from "node:path";
+import { BranchLeases, LeaseHeld, STANDING_CHECKOUT, runningLane } from "./leases.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { Worktree } from "./ports/Worktree.js";
 
@@ -74,7 +76,24 @@ export class Git {
     private readonly runner: CommandRunner,
     private readonly layout: RepoLayout,
     private readonly worktreesOf?: Worktree | (() => Worktree | undefined),
+    private readonly leases?: BranchLeases,
+    private readonly lentTo?: (workId: string) => string | undefined,
   ) {}
+
+  /**
+   * The same checkouts, for a lane: a branch is taken before it is checked
+   * out or pushed, and a branch another lane holds is a `LeaseHeld`, which
+   * the lane waits on rather than fails. `lent` names the commit a lane was
+   * lent, if any: that lane's tree is detached at it whatever it asks for,
+   * and no move is made in it.
+   */
+  leasedTo(leases: BranchLeases, lent?: (workId: string) => string | undefined): Git {
+    // Composed rather than replaced: a lane lent a commit that calls a
+    // workflow with lanes of its own lends that commit to them too.
+    const outer = this.lentTo;
+    const lentTo = lent && outer ? (workId: string) => lent(workId) ?? outer(workId) : lent ?? outer;
+    return new Git(this.runner, this.layout, this.worktreesOf, leases, lentTo);
+  }
 
   private get worktrees(): Worktree | undefined {
     return typeof this.worktreesOf === "function" ? this.worktreesOf() : this.worktreesOf;
@@ -103,6 +122,8 @@ export class Git {
    * The shared mode remains a no-op path lookup.
    */
   async acquire(repo: string, workId?: string): Promise<string> {
+    const lent = workId === undefined ? undefined : this.lentTo?.(workId);
+    if (lent !== undefined) return this.atRevision(repo, lent, workId!);
     const worktrees = this.worktrees;
     if (worktrees && workId !== undefined) return worktrees.acquire(workId, repo);
     return this.pathFor(repo);
@@ -127,6 +148,7 @@ export class Git {
    * without the second tree refusing or the first tree losing its place.
    */
   async prepareBranch(repo: string, branch: string, workId?: string): Promise<void> {
+    this.mayMove(repo, branch, workId);
     const worktrees = this.worktrees;
     if (worktrees && workId !== undefined) {
       const tree = await worktrees.acquire(workId, repo);
@@ -181,8 +203,69 @@ export class Git {
     return (await this.runner.run("git", args, { cwd })).ok;
   }
 
-  async headSha(repo: string): Promise<string> {
-    return (await this.git(repo, "rev-parse", "HEAD")).stdout;
+  /** The commit the tree is at: the item's own, when a work id is named. */
+  async headSha(repo: string, workId?: string): Promise<string> {
+    if (workId === undefined) return (await this.git(repo, "rev-parse", "HEAD")).stdout;
+    return (await this.gitIn(this.cwdFor(repo, workId), "rev-parse", "HEAD")).stdout.trim();
+  }
+
+  /**
+   * A tree of the item's own, detached at a commit somebody else made, to
+   * check and not to change.
+   *
+   * What a lane bound with `revision` is lent: every lane of a fork sees the
+   * caller's commit rather than the base, and none of them can move the
+   * caller's branch — the tree is detached, and every move this class makes
+   * refuses a tree lent this way. Needs a worktree port: a revision is never
+   * checked out in the standing checkout somebody may be working in.
+   */
+  async atRevision(repo: string, revision: string, workId: string): Promise<string> {
+    const worktrees = this.worktrees;
+    if (!worktrees) {
+      throw new Error(`${workId} was lent ${revision.slice(0, 7)} to check, and no worktree is mounted to check it in; a revision is never checked out in the standing checkout`);
+    }
+    const tree = await worktrees.acquire(workId, repo);
+    if (!(await this.succeeds(tree, "cat-file", "-e", `${revision}^{commit}`))) await this.gitIn(tree, "fetch", "origin", "--prune");
+    await this.gitIn(tree, "checkout", "--detach", revision);
+    const marker = lentMarker(tree);
+    if (marker) fs.writeFileSync(marker, `${revision}\n`, "utf-8");
+    return tree;
+  }
+
+  /**
+   * Refuses a move in a tree lent at a revision, and a branch another lane
+   * holds. Asked before a branch is checked out, committed on or pushed.
+   */
+  private mayMove(repo: string, branch: string | undefined, workId: string | undefined): void {
+    const lane = this.leases ? runningLane.getStore() : undefined;
+    if (lane !== undefined) return this.laneMayMove(lane, repo, branch, workId);
+    if (workId !== undefined) this.notLent(repo, branch, workId);
+  }
+
+  /** Refuses a move in a tree lent at a revision, naming the commit. */
+  private notLent(repo: string, branch: string | undefined, workId: string): void {
+    const worktrees = this.worktrees;
+    const lent = this.lentTo?.(workId) ?? (worktrees ? lentIn(worktrees.pathFor(workId, repo)) : undefined);
+    if (lent) {
+      throw new Error(`${workId} was lent ${lent.slice(0, 7)} to check, and checks it read-only: it cannot move ${branch ?? "a branch"} in ${repo}`);
+    }
+  }
+
+  /**
+   * A move a lane makes: only of its own work — never its caller's, never the
+   * standing checkout's by passing no work id — never in a tree it was lent,
+   * and only once it holds what it moves: the branch, in a tree of its own,
+   * or the whole checkout, when the lanes share one.
+   */
+  private laneMayMove(lane: string, repo: string, branch: string | undefined, workId: string | undefined): void {
+    if (workId === undefined || (workId !== lane && !workId.startsWith(`${lane}/`))) {
+      throw new Error(`${lane} is a lane, and moves only its own work: it cannot move ${branch ?? "a branch"} in ${repo} as ${workId ?? "the standing checkout"}`);
+    }
+    this.notLent(repo, branch, workId);
+    const held = this.worktrees ? branch : STANDING_CHECKOUT;
+    if (held === undefined) return;
+    const lease = this.leases!.take(repo, held, workId);
+    if (!lease.taken) throw new LeaseHeld(repo, held, lease.holder);
   }
 
   /**
@@ -230,6 +313,7 @@ export class Git {
    * was clean, which is a real outcome rather than a failure.
    */
   async commit(repo: string, message: string, workId?: string): Promise<boolean> {
+    this.mayMove(repo, undefined, workId);
     const cwd = this.cwdFor(repo, workId);
     if (!(await this.hasChangesIn(cwd))) return false;
     await this.gitIn(cwd, "add", "-A");
@@ -252,6 +336,7 @@ export class Git {
    * by a refusal.
    */
   async push(repo: string, branch: string, workId?: string): Promise<boolean> {
+    this.mayMove(repo, branch, workId);
     return this.pushIn(this.cwdFor(repo, workId), branch);
   }
 
@@ -323,4 +408,26 @@ function updated(porcelain: string, branch: string): boolean {
     const [flag, refs] = line.split("\t");
     return (flag === "*" || flag === " ") && (refs ?? "").endsWith(`:refs/heads/${branch}`);
   });
+}
+
+/**
+ * Where a tree records the revision it was lent: inside its own git
+ * directory, so the mark goes when the tree does and never shows as a change
+ * in it. Undefined for a tree that does not exist or is not a worktree.
+ */
+function lentMarker(tree: string): string | undefined {
+  try {
+    const pointer = fs.readFileSync(path.join(tree, ".git"), "utf-8").trim();
+    const gitDir = /^gitdir:\s*(.+)$/.exec(pointer)?.[1];
+    return gitDir ? path.join(path.resolve(tree, gitDir), "amy-lent-revision") : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The revision a tree was lent at, or undefined for a tree that is its own. */
+function lentIn(tree: string): string | undefined {
+  const marker = lentMarker(tree);
+  if (!marker || !fs.existsSync(marker)) return undefined;
+  return fs.readFileSync(marker, "utf-8").trim();
 }

@@ -17,6 +17,7 @@ import {
   Tracker,
   WorkflowPieceContext,
   Worktree,
+  call,
   defineWorkflow,
   optional,
   parseBudget,
@@ -28,6 +29,8 @@ import { TicketRecord } from "./record.js";
 import { Roster } from "./roster.js";
 import { ticketRuntime } from "./runtime.js";
 import { WRITE_EFFECTS } from "./effects.js";
+import { Finding, gateLane, selfReviewLane } from "./lanes.js";
+import { splitWorkId } from "./runtime.js";
 
 export const WORKFLOW_DATA = "workflow-data";
 
@@ -116,7 +119,7 @@ async function run(scope: Scope, work: ActionContext<TicketRecord, Observation>,
 }
 
 const actionNames = [
-  "triage", "ask-question", "implement", "run-gate", "self-review", "open-pull-request",
+  "triage", "ask-question", "implement", "open-pull-request",
   "resolve-review-thread", "address-threads", "discuss", "assign-reviewer", "request-rereview",
   "escalate", "hand-off-to-qa", "announce", "hand-over",
 ] as const;
@@ -138,6 +141,27 @@ export const plugin = defineWorkflow({
     writes: writesOf(policy),
     conversation: conversationOf(policy, ports.conversation),
   }),
+  // The gate and the self-review, as two lanes of the `checks` fork: each
+  // lent the implementation's commit, read-only, and each folded back into
+  // the record the implementation is retried from.
+  calls: {
+    GATE: call(gateLane, {
+      input: (work: TicketRecord) => checkInput(work),
+      revision: (work: TicketRecord) => work.implemented?.revision,
+      output: {
+        GREEN: (work: TicketRecord, found: Finding) => ({ ...work, lastGate: found }),
+        RED: (work: TicketRecord, found: Finding) => ({ ...work, lastGate: found }),
+      },
+    }),
+    SELF_REVIEW: call(selfReviewLane, {
+      input: (work: TicketRecord) => ({ ...checkInput(work), ticketId: splitWorkId(work.id).ticketId }),
+      revision: (work: TicketRecord) => work.implemented?.revision,
+      output: {
+        APPROVED: (work: TicketRecord, found: Finding) => ({ ...work, lastSelfReview: { ...found, verdict: "APPROVED" as const } }),
+        CHANGES_ASKED: (work: TicketRecord, found: Finding) => ({ ...work, lastSelfReview: { ...found, verdict: "CHANGES_ASKED" as const } }),
+      },
+    }),
+  },
   before,
   decide,
   after,
@@ -154,6 +178,13 @@ export const plugin = defineWorkflow({
     runtimeFor(scope).apply(record, decision, outcomes, observation, now, moved),
 });
 
+
+/** Where the work is and the commit to check, as both checks are called with it. */
+function checkInput(work: TicketRecord): { repo: string; workId: string; revision?: string } {
+  const repo = work.implemented?.repo;
+  if (!repo) throw new Error(`${work.id} reached the checks with no repository recorded for its implementation`);
+  return { repo, workId: work.id, ...(work.implemented?.revision ? { revision: work.implemented.revision } : {}) };
+}
 
 function writesOf(policy: Policy): Policy["writes"] {
   if (policy.writes !== "machine" && policy.writes !== "operator") {

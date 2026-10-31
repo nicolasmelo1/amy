@@ -5,6 +5,7 @@ import { EffectOutcomes, applyTicketPlan } from "../src/outcomes.js";
 import { PullRequestView, ReviewSubmission, ReviewThread, actionsOf } from "@amykit/core";
 import { Observation } from "../src/observation.js";
 import { TicketRecord } from "../src/record.js";
+import { throughTheChecks } from "./checks.js";
 import { newRecord } from "./drawn.js";
 import { TicketState } from "../src/state.js";
 import { WORKDAY, policy, roster, ticket } from "@amykit/test-fixtures";
@@ -150,12 +151,6 @@ class FakeWorld {
         case "implement":
           outcomes.implementation = { ok: true, output: "", at: this.now().toISOString() };
           break;
-        case "run-gate":
-          outcomes.gate = { ok: true, output: "", at: this.now().toISOString() };
-          break;
-        case "self-review":
-          outcomes.selfReview = { ok: true, output: "", at: this.now().toISOString() };
-          break;
         case "open-pull-request": {
           const head = this.nextHead();
           this.pullRequest = {
@@ -264,6 +259,11 @@ function drive(world: FakeWorld, limit = 80): { record: TicketRecord; states: Ti
 
   for (let step = 0; step < limit; step += 1) {
     world.advanceWorld(record);
+    if (record.state === "checks") {
+      record = throughTheChecks(record, world.stamp());
+      states.push(record.state);
+      continue;
+    }
     const decision = plan(record, world.observe(), policy);
 
     if (decision.kind === "settled") {
@@ -294,8 +294,8 @@ describe("driving a ticket end to end", () => {
       "DISCOVERED",
       "READY",
       "IMPLEMENTING",
-      "CHECKED",
-      "SELF_REVIEW",
+      "checks",
+      "verdict",
       "PR_OPEN",
       "COPILOT_WAIT",
       "REVIEWER_ASSIGNED",

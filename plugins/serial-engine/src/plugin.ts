@@ -25,14 +25,21 @@ export const plugin = definePlugin<typeof configSchema>({
     // that may be listed after this one. The host builds it once every plugin
     // has registered, so an engine with no workflow, or a workflow with no
     // queue, is refused at boot rather than on the first tick.
-    registry.engine(deferred((): Engine => {
-      const worker = build(ctx);
-      return { discover: () => worker.discover(), tick: () => worker.tick() };
-    }));
+    registry.engine(deferred((): Engine => engineFor(ctx, "serial")));
   },
 });
 
-function build(ctx: TypedContext): Worker {
+/**
+ * The engine over the mounted workflow, its lanes moved one per look or side
+ * by side. Exported for the concurrent engine, which is this one with its
+ * lanes moved at once, so the two cannot drift apart on anything else.
+ */
+export function engineFor(ctx: PluginContext<ConfigOf<typeof configSchema>>, lanes: "serial" | "concurrent"): Engine {
+  const worker = build(ctx, lanes);
+  return { discover: () => worker.discover(), tick: () => worker.tick() };
+}
+
+function build(ctx: TypedContext, lanes: "serial" | "concurrent"): Worker {
   const workflow = ctx.workflow() as Workflow | undefined;
   if (!workflow) {
     throw new Error("the serial engine needs a workflow, and no plugin registered one");
@@ -60,6 +67,7 @@ function build(ctx: TypedContext): Worker {
     // Optional: an install that set no ceiling mounts no budget, and this
     // engine then never asks one.
     budget: ctx.port("budget") as Budget | undefined,
+    lanes,
     config: {
       staleClaimMs: ctx.config.staleClaimMs,
       retentionDays: ctx.config.retentionDays,

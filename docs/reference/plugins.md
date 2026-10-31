@@ -23,6 +23,7 @@ maintains.
 | `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex` |
 | `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
+| `@amykit/plugin-concurrent-engine` | Advances one work item per tick, moving every lane of a fork at once. | the engine |  |
 | `@amykit/plugin-file-brief-store` | Briefs kept as one file per item. | `brief` |  |
 | `@amykit/plugin-file-notes` | Friction as a directory of notes: written by hand, by a hook, or by a tick that failed. | `notes` |  |
 | `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
@@ -187,6 +188,34 @@ plugins:
 | `commands` | `record` | **yes** |  | the check commands per repository, with a `default` fallback |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |
+
+### `@amykit/plugin-concurrent-engine`
+
+Advances one work item per tick, moving every lane of a fork at once.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/concurrent-engine` |
+| Mounts | the engine |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core`, `@amykit/plugin-serial-engine` |
+
+```yaml
+plugins:
+  "@amykit/plugin-concurrent-engine":
+    maxItemAttempts: 5
+    retentionDays: 7
+    retryDelayMs: 300000
+    staleClaimMs: 1800000
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `maxItemAttempts` | `number` | no | `5` | how many times one item may fail before the operator is told and it is dropped |
+| `retentionDays` | `number` | no | `7` | how long a finished queue item is kept before it is pruned |
+| `retryDelayMs` | `number` | no | `300000` | how long a failed item is held before it is looked at again |
+| `staleClaimMs` | `number` | no | `1800000` | how long a claimed item may sit before it counts as abandoned |
 
 ### `@amykit/plugin-file-brief-store`
 

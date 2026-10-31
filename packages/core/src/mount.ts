@@ -9,7 +9,7 @@ import {
   Registry,
   Workflow,
 } from "./plugin.js";
-import { declaredActions, isPortBinding, unrunnable } from "./dispatch.js";
+import { declaredActions, declaredBinding, unrunnable } from "./dispatch.js";
 import { Builds } from "./builds.js";
 import { checkoutsFromSettings } from "./checkouts.js";
 import { isDeferred } from "./deferred.js";
@@ -760,12 +760,13 @@ function writeFor(
   coreWritesFor: (action: string) => readonly string[],
   writeForMethod: Readonly<Record<string, string>>,
 ): readonly string[] {
-  if (isPortBinding(implementation)) {
+  const bound = declaredBinding(implementation);
+  if (bound) {
     // A port binding is executable as written, even when its action name is a
     // core name. The method table, not that name or a consumer-facing alias,
     // identifies the declaration it needs.
-    if (bindingPortKind(mounted, implementation) !== port) return [];
-    const capability = writeForMethod[implementation.method];
+    if (bindingPortKind(mounted, bound) !== port) return [];
+    const capability = writeForMethod[bound.method];
     return capability ? [capability] : [];
   }
   return CORE_ACTIONS[action]?.port === port ? coreWritesFor(action) : [];
@@ -787,8 +788,9 @@ function bindingPortKind(mounted: Mounted, binding: ActionSpec): MutablePortKind
 /** A known writer from one mutable contract may not be wired to the other. */
 function misboundWrites(mounted: Mounted, actions: Readonly<Record<string, unknown>>): string[] {
   const problems: string[] = [];
-  for (const [action, implementation] of Object.entries(actions)) {
-    if (!isPortBinding(implementation) || !mounted.actions.has(action)) continue;
+  for (const [action, declared] of Object.entries(actions)) {
+    const implementation = declaredBinding(declared);
+    if (!implementation || !mounted.actions.has(action)) continue;
     const kind = bindingPortKind(mounted, implementation);
     const opposite = kind === "tracker"
       ? CODE_HOST_WRITE_FOR_METHOD[implementation.method]
@@ -808,8 +810,9 @@ function misboundWrites(mounted: Mounted, actions: Readonly<Record<string, unkno
 /** Reject dispatched methods that cannot be represented by their core port view. */
 function unclassifiableActionBindings(mounted: Mounted, actions: Readonly<Record<string, unknown>>): string[] {
   const problems: string[] = [];
-  for (const [action, implementation] of Object.entries(actions)) {
-    if (!isPortBinding(implementation)) continue;
+  for (const [action, declared] of Object.entries(actions)) {
+    const implementation = declaredBinding(declared);
+    if (!implementation) continue;
     if (catalogued(mounted, action, implementation) !== null) continue;
     const kind = bindingPortKind(mounted, implementation);
     // A method belonging to the opposite contract receives the more precise
@@ -897,9 +900,10 @@ function declaredOn(
  */
 function catalogued(mounted: Mounted, action: string, implementation: unknown): string | null {
   const spec = mounted.actions.get(action);
-  if (isPortBinding(implementation)) {
-    if (!spec || spec.port === implementation.port) return null;
-    return `action \`${action}\` is wired to the \`${implementation.port}\` port, but the catalogue runs it on \`${spec.port}\``;
+  const bound = declaredBinding(implementation);
+  if (bound) {
+    if (!spec || spec.port === bound.port) return null;
+    return `action \`${action}\` is wired to the \`${bound.port}\` port, but the catalogue runs it on \`${spec.port}\``;
   }
   if (!spec) return `action \`${action}\`: nothing defines it`;
   if (!mounted.ports.has(spec.port)) {
