@@ -637,7 +637,6 @@ function unchangedDelivery(state: State): Check[] {
     [
       "errand.an_unchanged_branch_is_not_delivered",
       state.originBranches.includes(CHANGE_BRANCH) &&
-        !state.originBranches.includes(QUESTION_BRANCH) &&
         state.change?.changed === true &&
         state.question?.changed === false &&
         state.question?.pullRequestNumber === undefined &&
