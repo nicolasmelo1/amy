@@ -10,7 +10,7 @@
   "observed": {
     "assertions_run": 14,
     "assertions_failed": 0,
-    "version": "0.6.0 (a747133, built 2026-10-31T00:47:36Z)",
+    "version": "0.6.0 (c692ff1, built 2026-10-31T01:08:46Z)",
     "looks": 25,
     "transitions": [
       "QUEUED>WORKING",
@@ -48,7 +48,7 @@
       "committed-task:DONE",
       "foreign-task:DECLINED",
       "refusal-task:DECLINED",
-      "task-2026-10-31T004745718:DONE"
+      "task-2026-10-31T010856063:DONE"
     ]
   },
   "assertions": [
