@@ -11,7 +11,7 @@ stateDiagram-v2
     PR_OPEN --> DONE
     WORKING --> DONE: it was a question, and it has an answer
     QUEUED --> DECLINED: not a repository I work in
-    WORKING --> DECLINED: not done in the attempts allowed
+    WORKING --> DECLINED: refused, or not done in the attempts allowed
     DONE --> [*]
     DECLINED --> [*]
 

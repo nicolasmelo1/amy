@@ -16,7 +16,7 @@ import { EffectOutcomes } from "./outcomes.js";
 import { ErrandRecord } from "./record.js";
 import { Task, Tasks } from "./ports/Tasks.js";
 import { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./task-file.js";
-import { errandPrompt } from "./prompt.js";
+import { declinedIn, errandPrompt } from "./prompt.js";
 
 export interface ErrandRuntimeConfig {
   /** The repositories this install may do an errand in. */
@@ -81,19 +81,46 @@ export function errandRuntime(
         return;
       }
 
-      // Pushing is what decides whether this was a change or an answer, and
-      // both are successes. A clean tree here means the agent read something
-      // and told us; treating that as a failure would make the errand useless
-      // for half of what people say in passing.
-      const pushed = await deps.git.commitAndPush(
+      // A refusal is the agent's decision, and nothing it left in the tree is
+      // published. What it left is stashed under the task's id rather than
+      // committed, so no branch a later errand reuses carries it.
+      const declined = declinedIn(reply.text);
+      if (declined) {
+        outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
+        outcomesOf(ctx).declined = declined;
+        // The refusal stands even when the tree cannot be cleaned; the
+        // operator is told what is still in the checkout instead.
+        try {
+          await deps.git.setAside(task.repo, `amy: what the refused errand ${task.id} left behind`, task.id);
+        } catch (error) {
+          const said = error instanceof Error ? error.message : String(error);
+          outcomesOf(ctx).declined = `${declined}\n\nWhat it left in the checkout could not be set aside: ${said}`;
+        }
+        return;
+      }
+
+      // Whether the errand left something to review is a question about
+      // commits, not about refs. `prepareBranch` already created a branch,
+      // and publishing it for the first time is a new remote ref whether or
+      // not it carries a commit — so "the push moved something" answered
+      // yes for every errand that was a question, and opened a pull request
+      // with no diff in it.
+      const committed = await deps.git.commit(
         task.repo,
-        branchFor(slug),
         `chore: ${pullRequestTitle(task).toLowerCase()}`,
         task.id,
       );
+      const changed =
+        committed ||
+        (await deps.git.commitsAhead(task.repo, baseBranchFor(deps.layout, task.repo), task.id)) > 0;
+
+      // Nothing to publish is a finished errand, not a failed one: pushing a
+      // branch that carries no commit only creates a pull request nobody can
+      // act on.
+      if (changed) await deps.git.push(task.repo, branchFor(slug), task.id);
 
       outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
-      outcomesOf(ctx).changed = pushed;
+      outcomesOf(ctx).changed = changed;
     },
 
     "open-pull-request": async (_effect, ctx) => {
@@ -163,6 +190,7 @@ export function errandRuntime(
         slug: current.slug ?? slugFor(observation.task),
         ...(bag.attempt ? { lastAttempt: bag.attempt } : {}),
         ...(bag.changed === undefined ? {} : { changed: bag.changed }),
+        ...(bag.declined === undefined ? {} : { declined: bag.declined }),
         ...(bag.pullRequestNumber === undefined
           ? {}
           : { pullRequestNumber: bag.pullRequestNumber }),

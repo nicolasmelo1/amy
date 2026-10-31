@@ -29,5 +29,7 @@ export interface ErrandRecord extends WorkRecord {
    * is still firing" is an errand that ends in a sentence, not a diff.
    */
   changed?: boolean;
+  /** Why the agent said it would not do this, which no retry changes. */
+  declined?: string;
   pullRequestNumber?: number;
 }

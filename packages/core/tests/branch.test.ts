@@ -153,6 +153,32 @@ describe("a commit is not a push", () => {
     expect(await git().commit("acme/widgets", "nothing")).toBe(false);
   });
 
+  it("counts what a branch holds beyond its base, not whether its ref is new", async () => {
+    // A branch cut from main and published unchanged is a new remote ref, so
+    // only the count tells an answer from a change.
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(0);
+
+    fs.writeFileSync(path.join(checkout, "round-1.md"), "one\n");
+    await git().commit("acme/widgets", "round 1");
+
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(1);
+  });
+
+  it("sets work aside without a commit, a branch move or a hook", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    fs.writeFileSync(path.join(checkout, ".git", "hooks", "pre-commit"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    const before = run(checkout, "rev-parse", "HEAD");
+    fs.writeFileSync(path.join(checkout, "half.md"), "started\n");
+
+    expect(await git().setAside("acme/widgets", "amy: item-1")).toBe(true);
+
+    expect(run(checkout, "status", "--porcelain")).toBe("");
+    expect(run(checkout, "rev-parse", "HEAD")).toBe(before);
+    expect(run(checkout, "stash", "list")).toContain("amy: item-1");
+    expect(await git().setAside("acme/widgets", "amy: nothing")).toBe(false);
+  });
+
   it("pushes every round the remote has not seen, once", async () => {
     await git().prepareBranch("acme/widgets", "amy/item-1");
     fs.writeFileSync(path.join(checkout, "round-1.md"), "one\n");
@@ -203,6 +229,61 @@ describe("a commit is not a push", () => {
 
     expect(remoteTip("amy/item-1")).toBe(run(checkout, "rev-parse", "HEAD"));
     expect(run(checkout, "log", "-1", "--format=%s")).toBe("the work");
+  });
+});
+
+/**
+ * The question the errand asks before it pushes: not "did a ref appear" but
+ * "is there a commit on it". The base is a remote-tracking ref, so nothing
+ * here can count a branch that was merely created.
+ */
+describe("how many commits a branch holds beyond its base", () => {
+  let root: string;
+  let checkout: string;
+  let bare: string;
+  let saved: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    saved = { ...process.env };
+    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
+
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-ahead-"));
+    bare = path.join(root, "widgets.git");
+    checkout = path.join(root, "checkouts", "widgets");
+    run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
+    run(root, "clone", "-q", bare, checkout);
+    run(checkout, "config", "user.email", "amy@example.test");
+    run(checkout, "config", "user.name", "amy");
+    commit(checkout, "the first commit");
+    run(checkout, "push", "-q", "origin", "main");
+  });
+
+  afterEach(() => {
+    process.env = saved;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  const git = () => new Git(new NodeCommandRunner(), { workspaceRoot: path.join(root, "checkouts"), defaultBranch: "main" });
+
+  it("counts nothing at the base, and every commit after it", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(0);
+
+    commit(checkout, "the work nobody pushed");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(1);
+
+    commit(checkout, "a second round");
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(2);
+  });
+
+  it("counts nothing for a branch that was published at the base", async () => {
+    // The ref exists on the origin now, and it still carries no work. This
+    // is the case a push-based answer got wrong: it read the new ref as a
+    // change, and the errand opened a pull request with no diff in it.
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    await git().push("acme/widgets", "amy/item-1");
+
+    expect(await git().commitsAhead("acme/widgets", "main")).toBe(0);
   });
 });
 

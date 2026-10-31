@@ -6,6 +6,7 @@ import { AttemptOutcome, ErrandRecord } from "./record.js";
 export interface EffectOutcomes {
   attempt?: AttemptOutcome;
   changed?: boolean;
+  declined?: string;
   pullRequestNumber?: number;
 }
 
@@ -25,6 +26,7 @@ export function applyOutcomes(
     repo: record.repo ?? observation.task.repo,
     ...(outcomes.attempt ? { lastAttempt: outcomes.attempt } : {}),
     ...(outcomes.changed === undefined ? {} : { changed: outcomes.changed }),
+    ...(outcomes.declined === undefined ? {} : { declined: outcomes.declined }),
     ...(outcomes.pullRequestNumber === undefined
       ? {}
       : { pullRequestNumber: outcomes.pullRequestNumber }),

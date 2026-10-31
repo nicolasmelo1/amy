@@ -68,6 +68,15 @@ function planQueued(record: ErrandRecord, obs: Observation, policy: Policy): Pla
 }
 
 function planWorking(record: ErrandRecord, obs: Observation, policy: Policy): Plan {
+  // Said no, in its own words: another attempt would ask the same question
+  // and spend an agent to hear the same answer.
+  if (record.declined) {
+    return advance("DECLINED", "the agent said it cannot be done as asked", {
+      type: "announce",
+      text: `I did not do this:\n\n${obs.task.text}\n\n${record.declined}`,
+    });
+  }
+
   if (record.lastAttempt?.ok) {
     // An errand that answered a question rather than changing a file is
     // finished. Treating a clean tree as a failure is what would make this
