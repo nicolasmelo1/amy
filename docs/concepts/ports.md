@@ -129,7 +129,7 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | `findPullRequest(repo: string, branch: string): Promise<PullRequestView \| null>` |  |
 | `pullRequestAncestry(repo: string, number: number): Promise<PullRequestAncestry \| null>` | The forge facts a stacked child needs to choose its base. |
 | `findPullRequestMentioning(repo: string, id: string): Promise<PullRequestView \| null>` | The pull request whose title names this id as a whole word, open or merged, in one repository. |
-| `openPullRequest(request: OpenPullRequestRequest): Promise<number>` |  |
+| `openPullRequest(request: OpenPullRequestRequest): Promise<number>` | Throws a `CodeHostRefusal` when the host answers that it will not; any other throw is a failure. |
 | `requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>` |  |
 | `resolveReviewThread(threadId: string): Promise<void>` | Closes one review thread, by its own id, in one act. |
 | `unresolveReviewThread(threadId: string): Promise<void>` | Puts a closed thread back, for a fix that was reverted. |

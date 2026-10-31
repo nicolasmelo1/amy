@@ -148,6 +148,12 @@ what the gate requires:
   [a workflow is a Mermaid diagram](a-workflow-is-a-mermaid-diagram.md): every
   arrow the installed package's `workflow.mmd` draws is one some note in the
   run took, including a draft that never gets past the agent
+- `plan.the_pull_request_is_opened_by_a_call` and
+  `plan.a_refused_pull_request_hands_the_note_back`, added by
+  [a workflow calls another](a-workflow-calls-another.md): `PR_OPEN` calls the
+  shipped pull-request workflow, the note takes the edge named for the end it
+  reached holding the number the code host gave, and a pull request the host
+  answers it will not open hands the note back with the host's own words
 
 ## What going through the seam found
 

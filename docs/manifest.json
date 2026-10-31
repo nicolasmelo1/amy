@@ -293,6 +293,11 @@
           "description": ""
         },
         {
+          "title": "A workflow calls another",
+          "path": "/design/a-workflow-calls-another",
+          "description": ""
+        },
+        {
           "title": "A workflow is a Mermaid diagram",
           "path": "/design/a-workflow-is-a-mermaid-diagram",
           "description": ""
@@ -921,6 +926,11 @@
           "depth": 3,
           "title": "**A view is data.**",
           "slug": "a-view-is-data"
+        },
+        {
+          "depth": 3,
+          "title": "**A workflow can call another, the way code calls a function.** A diagram marks a state class X call, and calls binds it to the workflow it calls: call(review, { input, config, ports, output, effects }), every member optional. The callee runs as a child record kept inside its caller's (TBO-1/REVIEW#1), with its own history and attempts, and only the deepest record in a call is observed. When the child ends, the caller takes the edge named for that end, folding what it returned. Before this, composing workflows meant importing another's states and record fields in TypeScript, and nothing showed or checked where one ended and the other began.",
+          "slug": "a-workflow-can-call-another-the-way-code-calls-a-function-a-diagram-marks-a-state-class-x-call-and-calls-binds-it-to-the-workflow-it-calls-callreview-input-config-ports-output-effects-every-member-optional-the-callee-runs-as-a-child-record-kept-inside-its-callers-tbo-1review1-with-its-own-history-and-attempts-and-only-the-deepest-record-in-a-call-is-observed-when-the-child-ends-the-caller-takes-the-edge-named-for-that-end-folding-what-it-returned-before-this-composing-workflows-meant-importing-anothers-states-and-record-fields-in-typescript-and-nothing-showed-or-checked-where-one-ended-and-the-other-began"
         },
         {
           "depth": 3,
@@ -1599,6 +1609,11 @@
         },
         {
           "depth": 3,
+          "title": "@amykit/workflow-pull-request",
+          "slug": "amykitworkflow-pull-request"
+        },
+        {
+          "depth": 3,
           "title": "@amykit/workflow-ticket-to-qa",
           "slug": "amykitworkflow-ticket-to-qa"
         },
@@ -2151,6 +2166,43 @@
           "depth": 2,
           "title": "Acceptance criteria",
           "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-calls-another",
+      "file": "docs/design/a-workflow-calls-another.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-calls-another.md",
+      "title": "A workflow calls another",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changes",
+          "slug": "what-changes"
+        },
+        {
+          "depth": 2,
+          "title": "The first callee",
+          "slug": "the-first-callee"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        },
+        {
+          "depth": 2,
+          "title": "What the scenarios had to learn",
+          "slug": "what-the-scenarios-had-to-learn"
+        },
+        {
+          "depth": 2,
+          "title": "The files",
+          "slug": "the-files"
         }
       ]
     },
@@ -2870,6 +2922,11 @@
           "depth": 2,
           "title": "What else the run proves, without a criterion",
           "slug": "what-else-the-run-proves-without-a-criterion"
+        },
+        {
+          "depth": 2,
+          "title": "Since the errand calls another workflow",
+          "slug": "since-the-errand-calls-another-workflow"
         },
         {
           "depth": 2,
@@ -3940,6 +3997,11 @@
         },
         {
           "depth": 3,
+          "title": "amy workflow add",
+          "slug": "amy-workflow-add"
+        },
+        {
+          "depth": 3,
           "title": "amy workflow check",
           "slug": "amy-workflow-check"
         },
@@ -4347,6 +4409,11 @@
           "depth": 3,
           "title": "@amykit/workflow-note-to-plan",
           "slug": "amykitworkflow-note-to-plan"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/workflow-pull-request",
+          "slug": "amykitworkflow-pull-request"
         },
         {
           "depth": 3,
@@ -5249,7 +5316,7 @@
           {
             "name": "openPullRequest",
             "signature": "openPullRequest(request: OpenPullRequestRequest): Promise<number>",
-            "doc": ""
+            "doc": "Throws a `CodeHostRefusal` when the host answers that it will not; any other throw is a failure."
           },
           {
             "name": "requestReview",
@@ -6655,6 +6722,22 @@
         {
           "path": [
             "workflow",
+            "add"
+          ],
+          "description": "Copy a workflow into one of your own, to call it there as code you own",
+          "arguments": [
+            {
+              "name": "<spec>",
+              "required": true,
+              "description": "a package amy installed, or a path to a workflow's directory or entry"
+            }
+          ],
+          "options": [],
+          "isDefault": false
+        },
+        {
+          "path": [
+            "workflow",
             "check"
           ],
           "description": "Drive a workflow's lifecycle against its stub world",
@@ -6685,6 +6768,10 @@
             {
               "flags": "--work <id>",
               "description": "mark the state this piece of work is in"
+            },
+            {
+              "flags": "--expand",
+              "description": "draw each call as the workflow it calls, for reading; with --work, mark the work at every depth"
             }
           ],
           "isDefault": false
@@ -7028,6 +7115,10 @@
           {
             "name": "note-to-plan",
             "package": "@amykit/workflow-note-to-plan"
+          },
+          {
+            "name": "pull-request",
+            "package": "@amykit/workflow-pull-request"
           },
           {
             "name": "ticket-to-qa",
@@ -8096,6 +8187,40 @@
         "environment": []
       },
       {
+        "name": "@amykit/workflow-pull-request",
+        "version": "0.6.0",
+        "kind": "workflow",
+        "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
+        "directory": "packages/workflow-pull-request",
+        "npm": "https://www.npmjs.com/package/@amykit/workflow-pull-request",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-pull-request",
+        "readme": "packages/workflow-pull-request/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "workflow-runtime",
+            "name": "pull-request"
+          }
+        ],
+        "settings": [
+          {
+            "name": "draft",
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "description": "open the pull request as a draft, for work nobody is waiting on at the moment it lands"
+          },
+          {
+            "name": "policy",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "settleMs: how long to wait for a pull request the host opened to show. Left out, the default"
+          }
+        ],
+        "environment": []
+      },
+      {
         "name": "@amykit/workflow-testkit",
         "version": "0.6.0",
         "kind": "library",
@@ -8230,6 +8355,26 @@
         "draft-plan",
         "open-pull-request"
       ]
+    },
+    {
+      "package": "@amykit/workflow-pull-request",
+      "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
+      "name": "pull-request",
+      "states": [
+        "OPENING",
+        "OPENED",
+        "REFUSED"
+      ],
+      "waitingStates": [],
+      "terminalStates": [
+        "OPENED",
+        "REFUSED"
+      ],
+      "initialState": "OPENING",
+      "usesActions": [
+        "open-pull-request"
+      ],
+      "called": true
     },
     {
       "package": "@amykit/workflow-ticket-to-qa",
@@ -8387,6 +8532,32 @@
         "scenario": ".software-factory/evidence/a-question-is-not-an-answer-scenario.sh"
       },
       {
+        "name": "a-workflow-calls-another",
+        "activation": [
+          "packages/core/src/calls.ts",
+          "packages/core/src/expand.ts",
+          "packages/core/src/define-workflow.ts",
+          "packages/core/src/diagram.ts",
+          "packages/workflow-pull-request/src/**",
+          "packages/workflow-pull-request/workflow.mmd",
+          "packages/cli/src/workflow-add.ts",
+          "packages/cli/src/workflow.ts",
+          "packages/cli/src/status-page.tsx"
+        ],
+        "evidence": ".software-factory/evidence/a-workflow-calls-another.json",
+        "plan": "docs/design/a-workflow-calls-another.md",
+        "assertions": [
+          "mine.a_copied_callee_is_called",
+          "calls.a_callee_escalates_to_its_root",
+          "calls.only_the_deepest_record_is_looked_at",
+          "plan.the_pull_request_is_opened_by_a_call",
+          "errand.the_pull_request_is_opened_by_a_call",
+          "plan.a_refused_draft_goes_back_to_the_agent",
+          "errand.the_lifecycle_walks_in_order"
+        ],
+        "scenario": ".software-factory/evidence/a-workflow-calls-another-scenario.sh"
+      },
+      {
         "name": "a-workflow-of-your-own",
         "activation": [
           "packages/cli/src/workflow.ts",
@@ -8535,7 +8706,10 @@
           "plugins/github/src/**",
           "plugins/notify-fanout/src/**",
           "plugins/notify-inbox/src/**",
-          "plugins/serial-engine/src/**"
+          "plugins/serial-engine/src/**",
+          "packages/workflow-pull-request/src/**",
+          "packages/workflow-pull-request/workflow.mmd",
+          "packages/core/src/calls.ts"
         ],
         "evidence": ".software-factory/evidence/errand.json",
         "plan": "docs/design/the-errand-is-proven-end-to-end.md",
@@ -8547,7 +8721,9 @@
           "errand.an_unchanged_branch_is_not_delivered",
           "errand.a_refusal_is_terminal_and_says_why",
           "errand.the_lifecycle_walks_in_order",
-          "errand.the_profile_keeps_its_own_state"
+          "errand.the_profile_keeps_its_own_state",
+          "errand.the_pull_request_is_opened_by_a_call",
+          "errand.a_refused_pull_request_hands_the_errand_back"
         ],
         "scenario": ".software-factory/evidence/errand-scenario.sh"
       },
@@ -8642,7 +8818,10 @@
           "plugins/plan-check/src/**",
           "plugins/agent-relay/src/**",
           "plugins/serial-engine/src/**",
-          "plugins/github/src/**"
+          "plugins/github/src/**",
+          "packages/workflow-pull-request/src/**",
+          "packages/workflow-pull-request/workflow.mmd",
+          "packages/core/src/calls.ts"
         ],
         "evidence": ".software-factory/evidence/note-to-plan.json",
         "plan": "docs/design/friction-becomes-a-plan.md",
@@ -8666,7 +8845,9 @@
           "plan.the_lifecycle_walks_in_order",
           "plan.one_look_makes_at_most_one_move",
           "plan.the_machine_settles_instead_of_spinning",
-          "plan.every_drawn_edge_is_walked"
+          "plan.every_drawn_edge_is_walked",
+          "plan.the_pull_request_is_opened_by_a_call",
+          "plan.a_refused_pull_request_hands_the_note_back"
         ],
         "scenario": ".software-factory/evidence/note-to-plan-scenario.sh"
       },
@@ -9541,6 +9722,38 @@
           },
           {
             "package": "@amykit/ui",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-workflow-calls-another",
+        "title": "**A workflow can call another, the way code calls a function.** A diagram marks a state `class X call`, and `calls` binds it to the workflow it calls: `call(review, { input, config, ports, output, effects })`, every member optional. The callee runs as a child record kept inside its caller's (`TBO-1/REVIEW#1`), with its own history and attempts, and only the deepest record in a call is observed. When the child ends, the caller takes the edge named for that end, folding what it returned. Before this, composing workflows meant importing another's states and record fields in TypeScript, and nothing showed or checked where one ended and the other began.",
+        "body": "Everything that can be wrong with a call is refused at boot, naming the call\npath: a call state with no binding, an end with no edge, an `output` for an\nend that returns nothing, an `input` for a callee that takes none, a need no\nmounted port satisfies (`oncall → REVIEW → FIX: needs code-host`), a cycle at\nany depth, and a callee claiming a write its caller does not. `port()` takes\n`requires`, for a method a port only offers optionally.\n\n**The pull request is opened by one shipped workflow.** `note-to-plan` and the\nerrand both opened a pull request and waited for it, written twice. Both now\ncall `@amykit/workflow-pull-request`, which opens or finds one through the\n`CodeHost` port and returns `OPENED` with its number and link, or `REFUSED`\nwith the host's reason. A refused pull request hands the work back with that\nreason, where before it failed every look until the machine gave up. The\nport gains `CodeHostRefusal`, and the GitHub adapter throws it for a 422, so\nan answer is told apart from an outage, which is still retried.\n\n**A callee can be copied in and owned.** `amy workflow add <spec> --into\n<name>` copies a workflow, with every file its entry imports, into one of your\nown, installing what it depends on; a dependency that cannot be resolved\nrefuses the copy before anything is written. `amy workflow export --expand`\ndraws each call as the workflow it calls, and `amy status` shows where work\nstands through its calls, with a callee's escalation as the root's attention.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-pull-request",
             "level": "minor"
           }
         ],

@@ -130,6 +130,18 @@ the installed machine mounts the workflow and the task store
 nothing in the directory it was started from
 (`errand.the_run_leaves_nothing_behind`).
 
+## Since the errand calls another workflow
+
+[A workflow calls another](a-workflow-calls-another.md) moved the errand's
+`PR_OPEN` onto a call to `@amykit/workflow-pull-request`, as a draft. The run
+gained an errand whose change the code host refuses, so the new arrow is
+walked like the others, and two assertions the gate requires:
+`errand.the_pull_request_is_opened_by_a_call` — the change and the committed
+errand each opened by the call, holding the number the stand-in `gh` gave, and
+the announcement carrying the link — and
+`errand.a_refused_pull_request_hands_the_errand_back`, with the host's reason
+said on the way out of the call.
+
 ## The files
 
 | | |

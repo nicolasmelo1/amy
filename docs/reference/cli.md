@@ -69,6 +69,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy tick`](#amy-tick) | Advance one piece of work by one move |
 | [`amy update`](#amy-update) | Move this install forward: both roots, refusing to leave the machine half-updated |
 | [`amy workflow`](#amy-workflow) | What this install can drive, and what it keeps |
+| [`amy workflow add`](#amy-workflow-add) | Copy a workflow into one of your own, to call it there as code you own |
 | [`amy workflow check`](#amy-workflow-check) | Drive a workflow's lifecycle against its stub world |
 | [`amy workflow export`](#amy-workflow-export) | Print a workflow's diagram, which renders wherever Mermaid does |
 | [`amy workflow list`](#amy-workflow-list) | Every workflow this install can drive |
@@ -466,6 +467,18 @@ What this install can drive, and what it keeps
 amy workflow
 ```
 
+### `amy workflow add`
+
+Copy a workflow into one of your own, to call it there as code you own
+
+```sh
+amy workflow add <spec>
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<spec>` | yes | a package amy installed, or a path to a workflow's directory or entry |
+
 ### `amy workflow check`
 
 Drive a workflow's lifecycle against its stub world
@@ -493,6 +506,7 @@ amy workflow export [options] <name>
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--work <id>` |  | mark the state this piece of work is in |
+| `--expand` |  | draw each call as the workflow it calls, for reading; with --work, mark the work at every depth |
 
 ### `amy workflow list`
 
