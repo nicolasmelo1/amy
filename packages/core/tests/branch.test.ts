@@ -165,6 +165,20 @@ describe("a commit is not a push", () => {
     expect(await git().commitsAhead("acme/widgets", "main")).toBe(1);
   });
 
+  it("sets work aside without a commit, a branch move or a hook", async () => {
+    await git().prepareBranch("acme/widgets", "amy/item-1");
+    fs.writeFileSync(path.join(checkout, ".git", "hooks", "pre-commit"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    const before = run(checkout, "rev-parse", "HEAD");
+    fs.writeFileSync(path.join(checkout, "half.md"), "started\n");
+
+    expect(await git().setAside("acme/widgets", "amy: item-1")).toBe(true);
+
+    expect(run(checkout, "status", "--porcelain")).toBe("");
+    expect(run(checkout, "rev-parse", "HEAD")).toBe(before);
+    expect(run(checkout, "stash", "list")).toContain("amy: item-1");
+    expect(await git().setAside("acme/widgets", "amy: nothing")).toBe(false);
+  });
+
   it("pushes every round the remote has not seen, once", async () => {
     await git().prepareBranch("acme/widgets", "amy/item-1");
     fs.writeFileSync(path.join(checkout, "round-1.md"), "one\n");

@@ -21,6 +21,7 @@ done as asked, but nothing read it. A refusal that changed nothing landed in
 until the attempts ran out. A refusal now ends with one line,
 `{"declined": "why"}`. The errand reads that line and goes from `WORKING` to
 `DECLINED` without another attempt, telling the operator the reason.
-Nothing the agent left in the tree is published. It is kept on the errand's
-own branch, which stays local, so a shared checkout reaches the next errand
-clean.
+Nothing the agent left in the tree is published. It is stashed under the
+task's id, with no commit, no branch and no hook involved, so a shared checkout
+reaches the next errand clean. `Git` grows `setAside(repo, label, workId)` for
+this.

@@ -19,6 +19,7 @@ const TASK: Task = {
   addedAt: "2026-09-05T10:00:00.000Z",
 };
 const BRANCH = branchFor(slugFor(TASK));
+const REFUSED = ["I cannot do that as asked.", JSON.stringify({ declined: "it needs a decision nobody made" })].join("\n");
 
 /**
  * Real repositories, because the claim is about what reaches the origin: a
@@ -142,6 +143,30 @@ describe("run-errand", () => {
     expect(onOrigin(branchFor(slugFor(next)))).toBe(false);
     expect(fs.existsSync(path.join(checkout, "half.md"))).toBe(false);
     expect(onOrigin(BRANCH)).toBe(false);
+  });
+
+  it("publishes nothing a refusal left for a later task whose branch has the same name", async () => {
+    // The branch is named from the sentence, not the id, so a task worded the
+    // same way lands on the refused task's branch.
+    await runErrand((cwd) => fs.writeFileSync(path.join(cwd, "half.md"), "started\n"), REFUSED);
+    const same: Task = { ...TASK, id: "T-3" };
+
+    const outcomes = await runErrand(() => {}, "it is already done", same);
+
+    expect(branchFor(slugFor(same))).toBe(BRANCH);
+    expect(outcomes.changed).toBe(false);
+    expect(onOrigin(BRANCH)).toBe(false);
+    expect(git(checkout, "stash", "list")).toContain("T-1");
+  });
+
+  it("declines and cleans the tree even when a commit hook would refuse what was left", async () => {
+    const hook = path.join(checkout, ".git", "hooks", "pre-commit");
+    fs.writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+
+    const outcomes = await runErrand((cwd) => fs.writeFileSync(path.join(cwd, "half.md"), "started\n"), REFUSED);
+
+    expect(outcomes.declined).toBe("it needs a decision nobody made");
+    expect(git(checkout, "status", "--porcelain")).toBe("");
   });
 
   it("publishes a commit an earlier attempt made and never pushed, even when this one changed nothing", async () => {

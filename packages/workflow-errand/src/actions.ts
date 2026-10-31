@@ -82,13 +82,20 @@ export function errandRuntime(
       }
 
       // A refusal is the agent's decision, and nothing it left in the tree is
-      // published. Whatever it left is kept on this errand's own branch, which
-      // is never pushed, so a shared checkout reaches the next errand clean.
+      // published. What it left is stashed under the task's id rather than
+      // committed, so no branch a later errand reuses carries it.
       const declined = declinedIn(reply.text);
       if (declined) {
-        await deps.git.commit(task.repo, "chore: what a refused errand left behind", task.id);
         outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
         outcomesOf(ctx).declined = declined;
+        // The refusal stands even when the tree cannot be cleaned; the
+        // operator is told what is still in the checkout instead.
+        try {
+          await deps.git.setAside(task.repo, `amy: what the refused errand ${task.id} left behind`, task.id);
+        } catch (error) {
+          const said = error instanceof Error ? error.message : String(error);
+          outcomesOf(ctx).declined = `${declined}\n\nWhat it left in the checkout could not be set aside: ${said}`;
+        }
         return;
       }
 

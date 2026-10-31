@@ -202,6 +202,21 @@ export class Git {
     return Number.parseInt(result.stdout.trim(), 10) || 0;
   }
 
+  /**
+   * Moves whatever the tree holds into a labelled stash, and leaves it clean.
+   *
+   * For work that must not be published and must not be lost: no branch
+   * moves, so nothing a later branch reuses carries it, and no commit hook
+   * runs, so unfinished work cannot refuse to be set aside. False when the
+   * tree was already clean.
+   */
+  async setAside(repo: string, label: string, workId?: string): Promise<boolean> {
+    const cwd = this.cwdFor(repo, workId);
+    if (!(await this.hasChangesIn(cwd))) return false;
+    await this.gitIn(cwd, "stash", "push", "--include-untracked", "--message", label);
+    return true;
+  }
+
   async hasChanges(repo: string, workId?: string): Promise<boolean> {
     const status = await this.gitIn(this.cwdFor(repo, workId), "status", "--porcelain");
     return status.stdout.length > 0;
