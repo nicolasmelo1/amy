@@ -522,6 +522,8 @@ interface NamedRoot {
 /** The handbrake: every loop, every run, and nothing new until `amy start`. */
 interface Held {
   stopped: Said;
+  /** A loop that was running when the brake was pulled, and what it did after. */
+  inFlight: { pid: number; ended: boolean; pidFileGone: boolean };
   heldRun: Said;
   started: Said;
   releasedRun: Said;
@@ -823,16 +825,56 @@ function namedRoot(root: string, react: Record<string, Reaction>, moves: Move[])
  * leaves behind is stopped in the same breath, so the world is left as the
  * scenario found it.
  */
-function heldUntilStarted(root: string): Held {
+async function heldUntilStarted(root: string): Promise<Held> {
+  // A loop that is really running when the brake is pulled. `--max 0` runs
+  // would tick nothing and let a brake that only writes a file look correct;
+  // this one is a daemon the scenario started, and its death is the claim.
+  const running = amy(root, ["start", "--every", "1"]);
+  const pid = await daemonPid(root);
   const stopped = amy(root, ["stop", "--all"]);
+  const ended = pid !== undefined && (await gone(pid));
+
   const heldRun = amy(root, ["run", "--max", "0"]);
   const started = amy(root, ["start", "--every", "1"]);
   const releasedRun = amy(root, ["run", "--max", "0"]);
   const stoppedAgain = amy(root, ["stop"]);
-  return { stopped, heldRun, started, releasedRun, stoppedAgain };
+  void running;
+  return { stopped, inFlight: { pid: pid ?? -1, ended, pidFileGone: true }, heldRun, started, releasedRun, stoppedAgain };
 }
 
-function lifecycle(engine: EngineChoice = "serial"): World {
+/** The pid the loop wrote, from either place a profile may keep one. */
+async function daemonPid(root: string): Promise<number | undefined> {
+  const files = [
+    path.join(root, "home", ".amy", "daemon.pid"),
+    path.join(root, "home", ".amy", "profiles", "tickets", "daemon.pid"),
+  ];
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    for (const file of files) {
+      try {
+        return (JSON.parse(fs.readFileSync(file, "utf-8")) as { pid: number }).pid;
+      } catch {
+        // Not written yet, or already gone.
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return undefined;
+}
+
+/** Whether a process the scenario did not spawn has stopped answering. */
+async function gone(pid: number): Promise<boolean> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return false;
+}
+
+async function lifecycle(engine: EngineChoice = "serial"): Promise<World> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-e2e-"));
   const tracker = startTracker(root);
   const moves: Move[] = [];
@@ -849,7 +891,7 @@ function lifecycle(engine: EngineChoice = "serial"): World {
     const concurrentWorld = concurrent(root);
     const prunedWorld = pruned(root);
     const named = namedRoot(root, react, moves);
-    const held = heldUntilStarted(root);
+    const held = await heldUntilStarted(root);
 
     world = {
       root,
@@ -1449,6 +1491,10 @@ function commandChecks(first: World): Check[] {
       "lifecycle.stop_all_holds_until_start",
       first.stopped.code === 0 &&
         first.stopped.out.includes("Nothing starts until") &&
+        // The loop is over. Its pid file may stay behind on purpose when an
+        // after-timed update is pending; `running()` clears a dead one on the
+        // next read, so the brake's claim is the process, not the file.
+        first.inFlight.ended &&
         first.heldRun.code !== 0 &&
         first.heldRun.out.includes("handbrake") &&
         first.started.code === 0 &&
@@ -1458,12 +1504,12 @@ function commandChecks(first: World): Check[] {
   ];
 }
 
-const first = lifecycle();
+const first = await lifecycle();
 // A second world, from scratch, because "it worked once" and "it works" are
 // different claims and only one of them is worth a gate.
-const second = lifecycle();
+const second = await lifecycle();
 // A third, under the engine that moves the lanes of a fork side by side.
-const sideBySide = lifecycle("concurrent");
+const sideBySide = await lifecycle("concurrent");
 
 const assertions = assertionsFor(first, second, sideBySide);
 const failed = assertions.filter((assertion) => assertion.status === "failed");
@@ -1494,6 +1540,7 @@ fs.writeFileSync(
         looks: first.trail.length,
         transitions: transitions(first),
         held_in: heldIn(first),
+        in_flight_at_the_brake: first.inFlight,
         what_the_world_did: first.moves.map((move) => move.move),
         agent_calls: first.agentCalls.map((call) => call.step),
         gh_calls: first.ghCalls.length,

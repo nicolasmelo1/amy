@@ -5590,11 +5590,6 @@
             "doc": "Sets the urgency of every look at one piece of work still waiting, and says how many changed."
           },
           {
-            "name": "completed",
-            "signature": "completed(): QueueItem[]",
-            "doc": "Every item that is finished, for work discovery must not bring back."
-          },
-          {
             "name": "recover",
             "signature": "recover(olderThanMs: number, now: Date): QueueItem[]",
             "doc": "Returns items abandoned by a dead worker so they get picked up again."
@@ -7952,6 +7947,13 @@
             "description": "maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default"
           },
           {
+            "name": "queueDirectory",
+            "type": "string",
+            "required": false,
+            "default": "queue",
+            "description": "where this machine keeps the queue `amy btw` puts the task on, relative to the state root. The host sets it; a value here only stands in for one"
+          },
+          {
             "name": "repos",
             "type": "string[]",
             "required": true,
@@ -8049,6 +8051,13 @@
             "required": false,
             "default": {},
             "description": "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default"
+          },
+          {
+            "name": "queueDirectory",
+            "type": "string",
+            "required": false,
+            "default": "queue",
+            "description": "where this machine keeps the queue `amy note` puts the note on, relative to the state root. The host sets it; a value here only stands in for one"
           },
           {
             "name": "repos",
@@ -9589,7 +9598,7 @@
       {
         "id": "a-plugin-brings-its-own-commands",
         "title": "**A command belongs to the package that means it.** A plugin declares `commands`, `checks` and `files` beside `register`, read after the module is imported and before anything mounts: `amy --help` lists `amy roster` beside the workflow that brought it, `amy doctor` runs the checks it brought, and `amy init`/`amy add` write the files it brought into the profile's state, once. A command that declares `mount: true` receives the mounted ports or a refusal naming why the machine did not come up; every other command answers on the machine that will not boot, which is when it matters.",
-        "body": "The host keeps the entry point and the ownership rules. A name belongs to one\npackage, reusing a built-in or another package's command is refused at load\nnaming both owners, and a command run against a profile that does not mount\nits owner names the profiles that do.\n\n`amy btw` moved to the errand, `amy note` to note-to-plan, `amy roster` to\nticket-to-qa, `amy worktrees` to the worktree adapter and `amy models` to the\nrelay; the CLI imports none of them. `pause` and `resume` became\n`amy stop --all` and `amy start`, `discover` became the first act of `amy\ntick` and is hidden rather than listed, `poke` became `look`, `workflow rm` merged into\n`amy remove <profile>` with `--keep-state`, the two `plugin add`/`plugin\nremove` verbs are gone, and `daemon`/`after-daemon` are hidden and still\ncallable. A price table older than seven days is refreshed by `amy update`\nand `amy start` through the relay's own command, and a refresh that fails\nleaves the table as it was.\n\nBecause `tick` now looks before it moves, two loops it exposed are closed: a\nnote the machine wrote about its own failure is not itself planned, and\ndiscovery does not bring back work that reached its attempt ceiling. `Queue`\ngrows an optional `completed()`, which the file queue already answered.\n\n`HostPaths` gains `profile`, the directory a profile owns, so a workflow that\nkeeps a file beside its records — the roster — reads what its own command\nwrites. The roster moved there, which is why `amy init` no longer writes it on\na machine that mounts nothing that assigns reviewers.",
+        "body": "The host keeps the entry point and the ownership rules. A name belongs to one\npackage, reusing a built-in or another package's command is refused at load\nnaming both owners, and a command run against a profile that does not mount\nits owner names the profiles that do.\n\n`amy btw` moved to the errand, `amy note` to note-to-plan, `amy roster` to\nticket-to-qa, `amy worktrees` to the worktree adapter and `amy models` to the\nrelay; the CLI imports none of them. `pause` and `resume` became\n`amy stop --all` and `amy start`, `discover` became the first act of `amy\ntick` and is hidden rather than listed, `poke` became `look`, `workflow rm` merged into\n`amy remove <profile>` with `--keep-state`, the two `plugin add`/`plugin\nremove` verbs are gone, and `daemon`/`after-daemon` are hidden and still\ncallable. A price table older than seven days is refreshed by `amy update`\nand `amy start` through the relay's own command, and a refresh that fails\nleaves the table as it was.\n\nBecause `tick` now looks before it moves, two loops it exposed are closed: a\nnote the machine wrote about its own failure is not itself planned, and\ndiscovery does not bring back work that reached its attempt ceiling: the\nrecord says `gaveUp`, and `amy look <id>` is the only thing that clears it.\n\n`HostPaths` gains `profile`, the directory a profile owns, so a workflow that\nkeeps a file beside its records — the roster — reads what its own command\nwrites. The roster moved there, which is why `amy init` no longer writes it on\na machine that mounts nothing that assigns reviewers.",
         "bumps": [
           {
             "package": "@amykit/cli",

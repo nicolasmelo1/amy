@@ -28,8 +28,8 @@ export const BUILT_IN_COMMANDS: readonly string[] = [
   "init", "doctor", "add", "remove", "update", "start", "stop", "status",
   "tick", "run", "look", "queue", "budget", "brief", "skills", "workflow", "plugin",
   // Hidden from `amy --help`, and still the host's: a script's way to queue
-  // work without moving any.
-  "discover",
+  // work without moving any, and the two halves of the loop a supervisor runs.
+  "discover", "daemon", "after-daemon",
 ];
 
 /** Everything one package brings to the command line. */
@@ -167,8 +167,11 @@ function declare(
 /** The positional arguments, in the order the command types them. */
 function withArguments(command: Command, declaration: PluginCommand): void {
   for (const argument of declaration.args ?? []) {
-    const shape = argument.variadic ? `<${argument.name}...>` : argument.optional ? `[${argument.name}]` : `<${argument.name}>`;
-    command.argument(shape, argument.description ?? "");
+    // Commander reads the brackets, not the name: `<name...>` is a required
+    // list even when the declaration says `optional`, so the two spell
+    // independently.
+    const name = argument.variadic ? `${argument.name}...` : argument.name;
+    command.argument(argument.optional ? `[${name}]` : `<${name}>`, argument.description ?? "");
   }
 }
 
@@ -246,11 +249,15 @@ export async function runNamed(
   args: readonly string[],
   options: Readonly<Record<string, string | boolean | undefined>>,
   env: CommandEnvironment,
+  /** Named by a caller that is not a person, so nothing can be ambiguous. */
+  profileName?: string,
 ): Promise<boolean> {
   const found = lookup(contributions, typed);
   if (!found) return false;
 
-  const chosen = env.profileFor(found.contribution);
+  const chosen = profileName
+    ? namedProfile(found.contribution, profileName)
+    : env.profileFor(found.contribution);
   if (!chosen.ok) throw new Error(chosen.problem);
 
   const mount = mountAlong(contributions, typed);
@@ -300,7 +307,9 @@ function settingsFor(contribution: Contribution, profile: Profile, home: string,
   if (!schema) return given;
 
   const validated = validateConfig(contribution.owner, schema, given);
-  if (validated.ok) return given;
+  // The validated block, not the one on disk: a setting left out falls back to
+  // the schema's default, which is exactly what the mounted plugin receives.
+  if (validated.ok) return validated.config;
   throw new Error(`${contribution.owner} cannot run on ${profile.name}: ${validated.problems.join("; ")}`);
 }
 
@@ -358,7 +367,7 @@ export async function checks(
         const answer = await check.run({
           state: stateDirectory(home, profile),
           home,
-          settings: (pluginSlices(config, profile, home)[contribution.owner] ?? {}) as Record<string, unknown>,
+          settings: settingsFor(contribution, profile, home, config),
           out,
         });
         answered.push({ ...answer, label: `${contribution.owner}: ${answer.label}` });
@@ -373,4 +382,17 @@ export async function checks(
   }
 
   return answered;
+}
+
+/** The profile a caller named, refused when that profile does not mount it. */
+function namedProfile(
+  contribution: Contribution,
+  name: string,
+): { ok: true; profile: Profile } | { ok: false; problem: string } {
+  const profile = contribution.profiles.find((candidate) => candidate.name === name);
+  if (profile) return { ok: true, profile };
+  return {
+    ok: false,
+    problem: `\`${contribution.owner}\` is not mounted by ${name}; it runs on: ${contribution.profiles.map((candidate) => candidate.name).join(", ")}`,
+  };
 }

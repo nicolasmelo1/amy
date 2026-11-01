@@ -39,6 +39,11 @@ export const configSchema = {
     description: "where this machine keeps the tasks `amy btw` writes, relative to the state root. The host sets it; a value here only stands in for one",
     default: "tasks",
   },
+  queueDirectory: {
+    type: "string",
+    description: "where this machine keeps the queue `amy btw` puts the task on, relative to the state root. The host sets it; a value here only stands in for one",
+    default: "queue",
+  },
   policy: {
     type: "record",
     description: "maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default",
@@ -65,7 +70,7 @@ const btw: PluginCommand<Settings> = {
     { flags: "--repo <owner/name>", description: "the repository it is in" },
     { flags: "--source <who>", description: "who asked", default: "somebody at a keyboard" },
   ],
-  run({ home, state, settings, args, options, out }) {
+  run({ home, settings, args, options, out }) {
     const repo = (options.repo as string | undefined) ?? settings.repos[0];
     if (!repo) {
       out.error("no repository: pass --repo, or list one under `repos`.");
@@ -80,7 +85,7 @@ const btw: PluginCommand<Settings> = {
       { repo, text, source: String(options.source ?? "somebody at a keyboard") },
       now,
     );
-    new FileQueue(path.join(state, "queue")).enqueue({ workId: task.id, reason: "said in passing" }, now);
+    new FileQueue(path.join(home, settings.queueDirectory)).enqueue({ workId: task.id, reason: "said in passing" }, now);
 
     out.line(`noted ${task.id} in ${repo}`);
   },

@@ -43,6 +43,7 @@ plugins:
     baseBranch: {}
     defaultBranch: "main"
     policy: {}
+    queueDirectory: "queue"
     repos: <string[]>
     tasksDirectory: "tasks"
 ```
@@ -52,6 +53,7 @@ plugins:
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `policy` | `record` | no | `{}` | maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default |
+| `queueDirectory` | `string` | no | `queue` | where this machine keeps the queue `amy btw` puts the task on, relative to the state root. The host sets it; a value here only stands in for one |
 | `repos` | `string[]` | **yes** |  | the repositories an errand may be done in. A task about anything else is handed back to whoever asked |
 | `tasksDirectory` | `string` | no | `tasks` | where this machine keeps the tasks `amy btw` writes, relative to the state root. The host sets it; a value here only stands in for one |
 

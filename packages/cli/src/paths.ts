@@ -44,7 +44,9 @@ function statePaths(home: string, profile: string | Profile) {
     queue: path.join(home, dirs.queue),
     // Plugin-owned state follows the phase the way its queue does.
     tasks: path.join(home, project ?? "", "tasks"),
-    slack: path.join(home, path.dirname(dirs.records), "slack"),
+    // One Slack identity per machine, so one thread map: splitting this per
+    // profile would forget the threads a running install already answered in.
+    slack: path.join(home, project ?? "", "slack"),
     ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
     ...(project ? { log: path.join(home, project, "log"), pid: profileDaemonPid(home, profile) } : {}),
   };

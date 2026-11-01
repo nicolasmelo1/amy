@@ -27,7 +27,20 @@ export async function refreshPricesWhenStale(
 
   const before = process.exitCode;
   try {
-    await runNamed(contributions, ["models", "refresh"], [], { staleAfter: STALE_AFTER_DAYS }, env);
+    // The table is the machine's, not a profile's, and nobody is here to
+    // answer a question: take the first mount in config order rather than
+    // letting the interactive ambiguity refusal skip the refresh entirely.
+    const owner = contributions.find((contribution) =>
+      contribution.commands.some((command) => command.name === "models"),
+    );
+    await runNamed(
+      contributions,
+      ["models", "refresh"],
+      [],
+      { staleAfter: STALE_AFTER_DAYS },
+      env,
+      owner?.profiles[0]?.name,
+    );
   } catch (error) {
     // Said, and never fatal: the move or the loop that asked for it already
     // succeeded, and the table is repaired next time.

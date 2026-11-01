@@ -147,6 +147,17 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     merged[name] = isRecord(derived[name]) && isRecord(given) ? { ...derived[name], ...given } : given;
   }
 
+  // The command that writes a file and the adapter that reads it must agree,
+  // including when somebody overrode the adapter's directory by hand. The
+  // workflow's destination follows the effective adapter, not the default it
+  // was derived from before the merge; the queue follows the queue adapter
+  // the same way, because a note queued where the engine does not read is a
+  // note the machine never sees.
+  followAdapter(merged, "@amykit/workflow-errand", "tasksDirectory", "@amykit/plugin-file-tasks");
+  followAdapter(merged, "@amykit/workflow-note-to-plan", "notesDirectory", "@amykit/plugin-file-notes");
+  followAdapter(merged, "@amykit/workflow-errand", "queueDirectory", "@amykit/plugin-file-queue");
+  followAdapter(merged, "@amykit/workflow-note-to-plan", "queueDirectory", "@amykit/plugin-file-queue");
+
   // The worktree adapter reads records directly to classify trees. Its path
   // is an invariant of the mounted file store, not an independent preference:
   // an explicit store directory must move both readers together.
@@ -393,4 +404,17 @@ function engineSlice(config: AmyConfig): Record<string, unknown> {
     maxItemAttempts: config.maxItemAttempts,
     retryDelayMs: config.policy.pollBackoffMs,
   };
+}
+
+/** Points a workflow's destination at the directory its adapter ended up with. */
+function followAdapter(
+  merged: Record<string, unknown>,
+  workflow: string,
+  setting: string,
+  adapter: string,
+): void {
+  const slice = merged[workflow];
+  const from = merged[adapter];
+  if (!isRecord(slice) || !isRecord(from) || typeof from.directory !== "string") return;
+  merged[workflow] = { ...slice, [setting]: from.directory };
 }

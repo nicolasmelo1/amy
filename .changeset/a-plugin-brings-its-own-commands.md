@@ -37,8 +37,8 @@ leaves the table as it was.
 
 Because `tick` now looks before it moves, two loops it exposed are closed: a
 note the machine wrote about its own failure is not itself planned, and
-discovery does not bring back work that reached its attempt ceiling. `Queue`
-grows an optional `completed()`, which the file queue already answered.
+discovery does not bring back work that reached its attempt ceiling: the
+record says `gaveUp`, and `amy look <id>` is the only thing that clears it.
 
 `HostPaths` gains `profile`, the directory a profile owns, so a workflow that
 keeps a file beside its records — the roster — reads what its own command

@@ -32,10 +32,11 @@ a script that wants to queue without moving.
 Two rules came out of making discovery that cheap. A note the machine wrote
 about its own failure is filed and read by a person, and is not itself planned:
 a plan that failed would file another note, which would be planned, which could
-fail again. And discovery does not bring back work the engine has let go of —
-a non-terminal record whose last queue item is done and which is on the queue
-no more reached its attempt ceiling; re-adding it would fail again on every
-look. `amy look <id>` is the named way back.
+fail again. And discovery does not bring back work the engine has let go of: a record that
+reached its attempt ceiling carries `gaveUp`, and is looked at again only when
+somebody asks with `amy look <id>`. The marker lives on the record rather than
+being inferred from the queue, because queue history is pruned and a pruned
+entry would bring the work back at attempt zero, failing forever.
 
 `amy btw` (errand), `amy note` (note-to-plan), `amy roster`
 (ticket-to-qa), `amy worktrees` (file-worktree) and `amy models`

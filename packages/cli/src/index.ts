@@ -764,8 +764,18 @@ program
   .description("Look at one piece of work now, rather than when it was next due")
   .argument("<workId>", "the work to bring forward, such as a ticket key")
   .action((workId: string) => {
-    const queue = new FileQueue(profilePaths(home, selected()).queue);
+    const place = profilePaths(home, selected());
+    const queue = new FileQueue(place.queue);
     console.log(describePoke(workId, poke(queue, workId, new Date())));
+
+    // Asking for it by name is what releases work the engine let go of at its
+    // attempt ceiling: the marker is cleared here and nowhere else.
+    const records = new FileStore<AnyRecord>(place.records);
+    const record = records.load(workId);
+    if (record?.gaveUp) {
+      const { gaveUp: _released, ...rest } = record;
+      records.save(rest);
+    }
   });
 
 program

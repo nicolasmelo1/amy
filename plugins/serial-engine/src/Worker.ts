@@ -144,13 +144,10 @@ export class Worker {
       }
 
       // Work the engine has already let go of is not brought back by a look.
-      // A move that continues re-enqueues itself, a terminal one is skipped
-      // above, so a non-terminal record whose last item is done and which is
-      // on the queue no more is work that reached its attempt ceiling: it was
-      // said once, and re-adding it here would fail again on every look
-      // forever. `amy look <id>` is the named way back.
-      const gaveUp = this.deps.queue.completed?.().some((done) => done.workId === workId) === true;
-      if (gaveUp) continue;
+      // The record says so, and says it durably: the queue's history is
+      // pruned, and inferring from it would bring this work back at attempt
+      // zero as soon as retention ran. `amy look <id>` is the named way back.
+      if (existing?.gaveUp) continue;
 
       this.deps.queue.enqueue({ workId, reason: "found by the workflow", priority }, now);
       enqueued.push(workId);
@@ -531,7 +528,10 @@ export class Worker {
     const notice = this.failureNotice(item, record, attempt, message);
     if (notice) await this.announce(notice.text, item.workId, record.state, notice.kind);
 
-    if (attempt < this.deps.config.maxItemAttempts) {
+    if (attempt >= this.deps.config.maxItemAttempts) {
+      // The ceiling, said once. On the record, because the queue forgets.
+      this.deps.records.save({ ...record, gaveUp: { at: now.toISOString(), reason: message } });
+    } else {
       this.deps.queue.enqueue(
         {
           workId: item.workId,

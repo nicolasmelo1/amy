@@ -40,6 +40,11 @@ export const configSchema = {
     description: "where this machine keeps the notes `amy note` writes, relative to the state root. The host sets it; a value here only stands in for one",
     default: "notes",
   },
+  queueDirectory: {
+    type: "string",
+    description: "where this machine keeps the queue `amy note` puts the note on, relative to the state root. The host sets it; a value here only stands in for one",
+    default: "queue",
+  },
   policy: {
     type: "record",
     description: "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default",
@@ -66,7 +71,7 @@ const note: PluginCommand<Settings> = {
     { flags: "--repo <owner/name>", description: "the repository it is about" },
     { flags: "--source <who>", description: "who noticed", default: "somebody at a keyboard" },
   ],
-  run({ home, state, settings, args, options, out }) {
+  run({ home, settings, args, options, out }) {
     const repo = (options.repo as string | undefined) ?? settings.repos[0];
     if (!repo) {
       out.error("no repository: pass --repo, or list one under `repos`.");
@@ -80,7 +85,7 @@ const note: PluginCommand<Settings> = {
       { repo, text: args[0] ?? "", source: String(options.source ?? "somebody at a keyboard") },
       now,
     );
-    new FileQueue(path.join(state, "queue")).enqueue({ workId: written.id, reason: "written down by hand" }, now);
+    new FileQueue(path.join(home, settings.queueDirectory)).enqueue({ workId: written.id, reason: "written down by hand" }, now);
 
     out.line(`noted ${written.id} about ${repo}`);
   },
