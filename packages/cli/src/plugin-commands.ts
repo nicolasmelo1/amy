@@ -143,6 +143,7 @@ function declare(
   contribution: Contribution,
   env: CommandEnvironment,
   inheritedMount = false,
+  inherited: Record<string, string | boolean | undefined> = {},
 ): void {
   // A subcommand runs its own action, so `mount: true` on the parent has to
   // reach it: `amy worktrees list` is one command in two words.
@@ -155,12 +156,15 @@ function declare(
   withFlags(command, declaration);
 
   for (const sub of declaration.subcommands ?? []) {
-    declare(command, sub, contribution, env, mount);
+    // A parent's flags are the subcommand's context too: `amy worktrees list
+    // --repo acme/api` is one sentence, and nobody reading it expects the
+    // first word to be forgotten by the second.
+    declare(command, sub, contribution, env, mount, { ...inherited, ...(command.opts() as Record<string, string | boolean | undefined>) });
   }
 
   command.action(async (...passed: unknown[]) => {
     const invoked = passed[passed.length - 1] as Command;
-    await run(declaration, contribution, env, invoked, mount);
+    await run(declaration, contribution, env, invoked, mount, inherited);
   });
 }
 
@@ -190,6 +194,7 @@ async function run(
   env: CommandEnvironment,
   invoked: Command,
   mount: boolean,
+  inherited: Record<string, string | boolean | undefined> = {},
 ): Promise<void> {
   if (!declaration.run) {
     invoked.help();
@@ -211,7 +216,7 @@ async function run(
     home: env.home,
     settings: settingsFor(contribution, chosen.profile, env.home, env.config),
     args: invoked.args,
-    options: invoked.opts(),
+    options: { ...inherited, ...invoked.opts() },
     out: env.out,
     ...(ports ? { ports } : {}),
   };

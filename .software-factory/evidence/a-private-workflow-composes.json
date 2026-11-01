@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "a-private-workflow-composes",
-  "implementation_sha256": "aff66d4323c9dbddc5a696c7828cd54c29eb39e18ac921fc762fbbf3779cc895",
+  "implementation_sha256": "13c33a81e6e211bbacc5b536b5c7edd850c9cc9dfef4c378a03136ca8a530af1",
   "runs": [
     {
       "scenario": "a-private-workflow-composes",

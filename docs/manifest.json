@@ -1798,6 +1798,11 @@
           "depth": 2,
           "title": "What the gate says now",
           "slug": "what-the-gate-says-now"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance",
+          "slug": "acceptance"
         }
       ]
     },

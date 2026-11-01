@@ -3,6 +3,7 @@ import path from "node:path";
 import { AmyConfig, loadConfig, removeProfile } from "./config.js";
 import { Profile } from "./profiles.js";
 import { profileOwnedDirectories } from "./paths.js";
+import { pluginSlices } from "./slices.js";
 import { stillMounted } from "./remove.js";
 
 /** What removing a profile needs from the process that asked. */
@@ -43,7 +44,10 @@ export async function removeProfileAndState(
     throw new Error(`${profile.name} has a scheduled daemon update. Let it settle before removing it.`);
   }
 
-  const going = profileOwnedDirectories(home, profile).filter((directory) => fs.existsSync(directory));
+  // The directories the machine actually reads, not the ones it would have
+  // read by default: an override of the store or the queue moves the state,
+  // and a removal that deleted the default would leave the real one behind.
+  const going = ownedDirectories(home, profile, config).filter((directory) => fs.existsSync(directory));
   const deleting = options.keepState !== true && (options.yes === true || going.length === 0 || deps.confirm(going));
 
   for (const directory of going) {
@@ -64,3 +68,16 @@ export async function removeProfileAndState(
   return deleting ? "deleted" : "kept";
 }
 
+
+/** Every directory this profile's state lives in, defaults and overrides both. */
+function ownedDirectories(home: string, profile: Profile, config: AmyConfig): string[] {
+  const slices = pluginSlices(config, profile, home);
+  const effective = ["@amykit/plugin-file-store", "@amykit/plugin-file-queue"].flatMap((owner) => {
+    const slice = slices[owner];
+    if (typeof slice !== "object" || slice === null) return [];
+    const directory = (slice as { directory?: unknown }).directory;
+    return typeof directory === "string" ? [path.join(home, directory)] : [];
+  });
+
+  return [...new Set([...profileOwnedDirectories(home, profile), ...effective])];
+}

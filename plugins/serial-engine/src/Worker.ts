@@ -520,6 +520,15 @@ export class Worker {
       detail: { attempt, error: message },
     });
 
+    if (attempt >= this.deps.config.maxItemAttempts) {
+      // The ceiling, said once, on the record as it is now: the failed move
+      // may already have been saved, and the pre-tick snapshot would undo it.
+      // Written before the item is completed, so a discovery running while
+      // the notice is sent cannot queue the work again at attempt zero.
+      const latest = this.deps.records.load(item.workId) ?? record;
+      this.deps.records.save({ ...latest, gaveUp: { at: now.toISOString(), reason: message } });
+    }
+
     this.deps.queue.complete(item);
 
     // Routed through `announce`, not straight at the port. The item is
@@ -528,14 +537,7 @@ export class Worker {
     const notice = this.failureNotice(item, record, attempt, message);
     if (notice) await this.announce(notice.text, item.workId, record.state, notice.kind);
 
-    if (attempt >= this.deps.config.maxItemAttempts) {
-      // The ceiling, said once. On the record, because the queue forgets —
-      // and on the record as it is now, not as it was when the tick started:
-      // the move that failed may already have been saved, and writing back
-      // the pre-tick snapshot would undo its history and its evidence.
-      const latest = this.deps.records.load(item.workId) ?? record;
-      this.deps.records.save({ ...latest, gaveUp: { at: now.toISOString(), reason: message } });
-    } else {
+    if (attempt < this.deps.config.maxItemAttempts) {
       this.deps.queue.enqueue(
         {
           workId: item.workId,

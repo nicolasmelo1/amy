@@ -72,3 +72,20 @@ in the doctor, files written once), `packages/cli/tests/remove.test.ts` (a
 profile removed with and without its state) and
 `packages/cli/tests/models.test.ts` (a stale table refreshed, a fresh one kept,
 a failed refresh leaving it as it was).
+
+## Acceptance
+
+Each criterion is ticked only where the check beside it runs and passes.
+
+- [x] A plugin outside this repository declaring a command, installed with `amy add`, appears in `amy --help` marked with its package, runs, and disappears when removed. (proof: test:packages/cli/tests/plugin-commands.test.ts)
+- [x] A plugin command runs while the configured machine fails to mount, and a `mount: true` command on the same machine is refused with the mount's reason. (proof: test:packages/cli/tests/plugin-commands.test.ts)
+- [x] A plugin command named like a built-in, or like another package's command, is refused at load, naming both owners. (proof: test:packages/cli/tests/plugin-commands.test.ts)
+- [x] A plugin's check turns `amy doctor` red under the plugin's name, and a plugin's file is written by `amy init` once and never overwritten. (proof: test:packages/cli/tests/plugin-commands.test.ts)
+- [x] In the ticket-to-qa scenario, through the installed executable, `amy --help` lists `amy roster` as the workflow's command and it runs. (proof: assertion:lifecycle.a_workflow_command_is_its_own)
+- [x] In the errand's scenario, on a machine mounting nothing that contributes it, `amy roster` does not exist. (proof: assertion:errand.a_command_nothing_mounts_does_not_exist)
+- [x] On an errand-only machine `amy --help` lists no pause, resume, discover, daemon, after-daemon, poke, btw, note, worktrees, roster or models, and the hidden two still run. (proof: assertion:errand.help_lists_only_the_machines_commands)
+- [x] `amy btw`, `note`, `worktrees` and `models` appear on a machine mounting their owner, and the CLI imports none of plugin-file-notes, plugin-file-tasks or plugin-file-worktree. (proof: test:packages/cli/tests/plugin-commands.test.ts)
+- [x] `amy stop --all` ends every loop and an `amy run` in flight, nothing starts until `amy start`, and `amy start` releases it. (proof: assertion:lifecycle.stop_all_holds_until_start)
+- [x] `amy tick` on an empty queue discovers first and makes the move. (proof: assertion:errand.a_tick_discovers_before_it_moves)
+- [x] `amy remove <workflow>` uninstalls it and, when told to, deletes its records and queue, and keeps them with `--keep-state`. (proof: test:packages/cli/tests/remove.test.ts)
+- [x] A price table older than seven days is refreshed by `amy update`, and a refresh that fails leaves it as it was. (proof: test:packages/cli/tests/models.test.ts)
