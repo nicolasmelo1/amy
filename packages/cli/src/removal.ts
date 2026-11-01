@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { AmyConfig, loadConfig, removeProfile } from "./config.js";
-import { Profile } from "./profiles.js";
+import { Profile, profiles } from "./profiles.js";
 import { profileOwnedDirectories } from "./paths.js";
 import { pluginSlices } from "./slices.js";
 import { stillMounted } from "./remove.js";
@@ -69,8 +69,28 @@ export async function removeProfileAndState(
 }
 
 
-/** Every directory this profile's state lives in, defaults and overrides both. */
+/**
+ * Every directory this profile's state lives in, and nothing another profile
+ * also lives in.
+ *
+ * An override can be written once and applied to every profile — a shared
+ * records directory is a supported arrangement — so a directory is only this
+ * profile's to delete when no remaining profile names it too. Deleting one
+ * would take the other's work with it, silently, under `--yes`.
+ */
 function ownedDirectories(home: string, profile: Profile, config: AmyConfig): string[] {
+  const mine = new Set(directoriesOf(home, profile, config));
+
+  for (const other of Object.values(profiles(config, home))) {
+    if (other.name === profile.name) continue;
+    for (const directory of directoriesOf(home, other, config)) mine.delete(directory);
+  }
+
+  return [...mine];
+}
+
+/** The declared directories plus the ones this profile's slices actually use. */
+function directoriesOf(home: string, profile: Profile, config: AmyConfig): string[] {
   const slices = pluginSlices(config, profile, home);
   const effective = ["@amykit/plugin-file-store", "@amykit/plugin-file-queue"].flatMap((owner) => {
     const slice = slices[owner];

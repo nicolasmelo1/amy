@@ -221,6 +221,37 @@ describe("removing a workflow profile", () => {
     expect(fs.existsSync(path.join(home, "tickets", "queue"))).toBe(false);
   });
 
+  it("leaves a records directory another profile also uses", async () => {
+    const profile = aMachine();
+    // One override, applied to every profile: both of them read the same
+    // records, so removing one must not take the other's work with it.
+    fs.writeFileSync(
+      path.join(home, "config.yaml"),
+      [
+        "repos:",
+        "  - acme/widgets",
+        "plugins:",
+        "  \"@amykit/plugin-file-store\":",
+        "    directory: shared-records",
+        "workflows:",
+        "  tickets:",
+        '    workflow: "@amykit/workflow-ticket-to-qa"',
+        "  plans:",
+        '    workflow: "@amykit/workflow-note-to-plan"',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+    const shared = path.join(home, "shared-records");
+    fs.mkdirSync(shared, { recursive: true });
+    fs.writeFileSync(path.join(shared, "oncall.json"), "{}", "utf-8");
+
+    const wired = deps();
+    expect(await removeProfileAndState(home, loadConfig(home), profile, { yes: true }, wired.deps)).toBe("deleted");
+    expect(fs.existsSync(shared)).toBe(true);
+    expect(fs.readFileSync(path.join(shared, "oncall.json"), "utf-8")).toBe("{}");
+  });
+
   it("keeps the state when asked to, and says how to delete it", async () => {
     const profile = aMachine();
     const wired = deps();
