@@ -127,9 +127,9 @@ export interface CommandEnvironment {
 /**
  * Registers every plugin command under its own name, marked with its package.
  *
- * `amy roster` is the workflow's command once ticket-to-qa is mounted, and it
- * is nobody's before that: what a machine can do is what it mounted, which is
- * the difference between a framework and a program with plugins attached.
+ * A command the machine never mounted does not exist, and it is nobody's
+ * before that: what a machine can do is what it mounted, which is the
+ * difference between a framework and a program with plugins attached.
  */
 export function register(program: Command, contributions: readonly Contribution[], env: CommandEnvironment): void {
   for (const contribution of contributions) {
@@ -434,14 +434,17 @@ function namedProfile(
 }
 
 /**
- * Copies a plugin file an older install kept at the root into the profile that
- * owns it now.
+ * Copies a plugin file an older install kept at the machine root into every
+ * profile that reads it now, then retires the root name.
  *
- * The roster used to be one file for the machine; it is one per profile that
- * reviews, so an updater that only changed the reader would leave every
- * existing team with `no roster at ...` and an example nobody assigned. Copies
- * rather than moves: somebody may still be reading the old one, and a file
- * that is wrong twice is worse than a file that is stale once.
+ * A file at the root is one file for the machine, and a workflow reads its own
+ * profile's state directory; an updater that only changed the reader would
+ * leave every existing machine with a check that reads nothing where the file
+ * was. The copy lands exclusive, so what a profile already carries — written
+ * there by the command that added the plugin, or edited since — is never
+ * overwritten. The old name is renamed rather than deleted, which is what
+ * keeps the content findable and lets the doctor's red check name the move;
+ * the second run sees no old name and changes nothing.
  */
 export function migrateRootFiles(
   home: string,
@@ -473,6 +476,20 @@ export function migrateRootFiles(
         out.line(`kept  ${target}, from ${from}`);
         copied.push(target);
       }
+
+      // Retire the old name rather than deleting it: a machine keeps the
+      // content it had for whoever still looked for it there, and the check
+      // the mounted workflow runs can name where it went. The name is gone,
+      // so nothing reads the root file as current a second time.
+      const retired = `${from}.moved`;
+      try {
+        fs.renameSync(from, retired);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw error;
+      }
+      out.line(`moved ${from} to ${retired}; the profile's own copy is the one it reads`);
+      copied.push(retired);
     }
   }
 

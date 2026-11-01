@@ -4,7 +4,7 @@
     ".allowed-root-files": "4640e409533e1e8a141369dcbd5280c5536de76d7aa329a17bd63bbe45f4f71b",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
     ".github/workflows/software-factory.yml": "9480569bfbd3291a1e1ff4fb249b32282d349134354554160319db456b171e56",
-    ".software-factory/policy.yaml": "f699b3e2840b836e49f0b4fa1a53a6b0e3440d56dbd5196f4f17a84d886a7c53",
+    ".software-factory/policy.yaml": "441cc6be4f6fdb273765449274d5e9804a953ad51891104945dfa29c8813bc5c",
     ".software-factory/ratchet.yaml": "0651675579468787302ac0cc38d8ead6bdb3555a731819a80b0ef63a2fa86c0f",
     ".software-factory/rules/a-delivered-plan-keeps-no-promise.yaml": "79df6d01907a534d2d2c5a2e196ef1b6d4c2cc6f5d2150491e3e703d1600b0d4",
     ".software-factory/rules/a-push-never-forces.yaml": "5ea760d7ad8a4f2637d49c6c6d8b4292bd14956527280ed811fe9e6767ae47e6",
@@ -22,6 +22,7 @@
     ".software-factory/rules/ports-live-in-their-own-file.yaml": "c6fc07ea2228c09633d3b501b23cad81fe12289797eae767a889ad0238ed7c13",
     ".software-factory/rules/the-agent-port-only-asks.yaml": "f3d5fc64224fb3e0790743b12bf430f8bd9c52463a3b172a59095ea66798210e",
     ".software-factory/rules/the-core-names-no-vendor.yaml": "9b26d6936f09403fa5cfa965157bf792e546054db5a174b69a737a8cd39cb6c7",
-    ".software-factory/rules/the-core-words-nothing.yaml": "c54dcc9f8f1c572849ad02cd12c805132b98c517de05be0de6dbfbfc2810460f"
+    ".software-factory/rules/the-core-words-nothing.yaml": "c54dcc9f8f1c572849ad02cd12c805132b98c517de05be0de6dbfbfc2810460f",
+    ".software-factory/rules/the-host-names-no-roster.yaml": "e164d09695c9d2ec1cbac95c18b6c6b7253611452660f5f1f0c11690f2983bb9"
   }
 }

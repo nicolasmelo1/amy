@@ -35,6 +35,18 @@ export interface DoctorDeps {
    */
   notifyPort?: object;
   /**
+   * The gate port, if this install mounted one; absent means no workflow
+   * here hands work to a gate, and the machine is asked nothing about how
+   * work gets vouched for.
+   */
+  gatePort?: object;
+  /**
+   * What each mounted plugin reads from the process's environment, by package
+   * name. The doctor asks exactly these, one variable at a time; a machine
+   * that mounted none of them is asked none of them.
+   */
+  environments?: Readonly<Record<string, readonly string[]>>;
+  /**
    * The conversation port, if this install mounted one.
    *
    * Asked for its own checks for the same reason the notification port is
@@ -62,7 +74,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     ...pluginSettings(deps),
     workflowWrites(deps.workflow),
     ...leftBehind(deps),
-    apiKey(deps),
+    ...environment(deps),
     ...(await tools(deps)),
     ...(await hermes(deps)),
     ...(await conversation(deps)),
@@ -76,19 +88,28 @@ function configFile({ home }: DoctorDeps): Check {
   return { label: "config file", ok: fs.existsSync(file), detail: file };
 }
 
-function configContents({ config }: DoctorDeps): Check[] {
-  return [
+function configContents({ config, gatePort }: DoctorDeps): Check[] {
+  const checks: Check[] = [
     {
       label: "repos configured",
       ok: config.repos.length > 0,
       detail: config.repos.join(", "),
     },
-    { label: "gate configured", ok: Object.keys(config.gate).length > 0 },
     {
       label: "a notification channel is on",
       ok: config.notify.inbox || Boolean(config.notify.hermes),
     },
   ];
+
+  // A gate's commands are the machine's only while a workflow here hands
+  // work to one: a machine that mounted no gate cannot vouch for a change
+  // either way, and a checklist it can never satisfy is a red dot the
+  // operator learns to scroll past.
+  if (gatePort) {
+    checks.push({ label: "gate configured", ok: Object.keys(config.gate).length > 0 });
+  }
+
+  return checks;
 }
 
 function workflowWrites(workflow: Workflow | undefined): Check {
@@ -180,8 +201,15 @@ function leftBehind({ home, cwd, config }: DoctorDeps): Check[] {
   );
 }
 
-function apiKey({ env }: DoctorDeps): Check {
-  return { label: "LINEAR_API_KEY", ok: Boolean(env.LINEAR_API_KEY) };
+/**
+ * What the machine's mounted plugins read from the process's environment,
+ * one variable at a time: the plugin that needs it names it, and a machine
+ * that mounted none of them carries none of these checks at all.
+ */
+function environment({ environments, env }: DoctorDeps): Check[] {
+  return [...new Set(Object.values(environments ?? {}).flat())]
+    .sort()
+    .map((name) => ({ label: name, ok: Boolean(env[name]) }));
 }
 
 const REQUIRED_TOOLS: readonly [string, readonly string[]][] = [

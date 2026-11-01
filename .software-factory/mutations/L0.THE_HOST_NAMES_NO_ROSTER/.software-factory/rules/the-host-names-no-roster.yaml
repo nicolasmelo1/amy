@@ -1,0 +1,32 @@
+id: L0.THE_HOST_NAMES_NO_ROSTER
+layer: L0
+title: The host carries none of a workflow's own vocabulary
+severity: high
+statement: >-
+  No source under packages/cli/src spells the roster's name outside the
+  `rosterBackoffMs` ceiling: not the file's, not the type, the loader, the
+  confirmation, the example, the doctor check, or the command.
+why: >-
+  The roster is ticket-to-qa's: its type, its loader, its confirmation, its
+  command and check, its file, because the host once had nowhere to put a
+  command a workflow owns and the copy it kept made every install carry
+  reviewers for the one workflow that assigns them. A command, check or file
+  lives in the package that mounts it now, and the host's own source should
+  be able to say nothing about rosters without the package installed. The
+  surviving `rosterBackoffMs` is the host-carried ceiling the config plan
+  removes along with the whole of its Policy copy, so it is named here once,
+  not recreated twice.
+fix: >-
+  Move the code into the workflow that owns it and give the host the
+  mechanism instead, the way a plugin's own commands, checks and files work.
+  A comment describing where something used to live describes the mechanism,
+  not the name. See docs/design/the-roster-belongs-to-its-workflow.md.
+ratchet: none
+check:
+  kind: text_pattern
+defaults:
+  scope: ["packages/cli/src/**"]
+  forbidden:
+    - regex: '(?i)roster'
+      unless: 'rosterBackoffMs'
+      message: "The host carries none of a workflow's vocabulary: only what the machine mounted names the workflow's files, checks and commands. The `rosterBackoffMs` ceiling is the one copy this host still carries, and it is the config plan's to remove."

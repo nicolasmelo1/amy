@@ -220,13 +220,17 @@ describe("a plugin's commands, check and file", () => {
     migrateRootFiles(home, gathered.contributions, out);
 
     expect(fs.readFileSync(path.join(home, "work", "demo.txt"), "utf-8")).toBe("the team's own\n");
-    expect(fs.existsSync(path.join(home, "demo.txt"))).toBe(true);
+    expect(fs.existsSync(path.join(home, "demo.txt"))).toBe(false);
+    expect(fs.readFileSync(path.join(home, "demo.txt.moved"), "utf-8")).toBe("the team's own\n");
 
-    // What was already there wins, and a file that never lived at the root is
-    // not migrated from a root file that happens to share its name.
+    // What was already there wins, a file that never lived at the root is
+    // not migrated from a root file that happens to share its name, and the
+    // moved name is gone: the second run has nothing to read and nothing to
+    // move, leaving the profile's copy and the moved one exactly as they were.
     fs.writeFileSync(path.join(home, "work", "demo.txt"), "edited later\n", "utf-8");
     migrateRootFiles(home, gathered.contributions, out);
     expect(fs.readFileSync(path.join(home, "work", "demo.txt"), "utf-8")).toBe("edited later\n");
+    expect(fs.readFileSync(path.join(home, "demo.txt.moved"), "utf-8")).toBe("the team's own\n");
 
     fs.rmSync(home, { recursive: true, force: true });
   });

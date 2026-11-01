@@ -123,6 +123,8 @@ interface State {
   help: Said;
   /** A command another workflow would have brought. */
   roster: Said;
+  /** The doctor, on the machine that reviews nobody. */
+  doctor: Said;
   diagram: string[];
   records: ErrandRecord[];
   change: ErrandRecord | null;
@@ -426,6 +428,7 @@ function walkthrough(): State {
     const mounted = errand(root, ["plugin", "list"]);
     const help = amy(root, ["--help"]);
     const roster = amy(root, ["roster"]);
+    const doctor = amy(root, ["doctor"]);
 
     const state: State = {
       root,
@@ -443,6 +446,7 @@ function walkthrough(): State {
       mounted,
       help,
       roster,
+      doctor,
       diagram: installedDiagram(root),
       records: records(root),
       change: recordFor(root, taskId),
@@ -513,7 +517,34 @@ function assertionsFor(state: State): { type: string; status: "passed" | "failed
     ...refusalChecks(state),
     ...lifecycleChecks(state),
     ...profileChecks(state),
+    ...rosterChecks(state),
   ].map(([type, ok]) => ({ type, status: ok ? "passed" : "failed" }));
+}
+
+/**
+ * The machine that reviews nobody: init and the doctor carry no roster.
+ *
+ * The roster is a ticket machine's file, so a machine that mounted nothing
+ * that reviews has no such file anywhere in its state, and the doctor's own
+ * checks come out green on it without the mounted check that would ask.
+ * Whatever day this run happens on is proven: there is no roster check to fail
+ * on the morning after, because nothing mounted any.
+ */
+function rosterChecks(state: State): Check[] {
+  // What the install itself wrote, not what the packages it installed vend:
+  // every tarball on this PATH carries the workflow's own file, and the
+  // machine's claim is that its state — config, profiles, the queue — wrote
+  // and reads none of it.
+  const home = Object.keys(tree(amyHome(state.root))).filter((name) => !name.includes("node_modules"));
+  return [
+    [
+      "errand.doctor_is_green_without_a_roster",
+      state.doctor.code === 0 &&
+        !/roster/i.test(state.doctor.out) &&
+        !/roster/i.test(state.init.out) &&
+        home.every((name) => !name.includes("roster")),
+    ],
+  ];
 }
 
 function intakeChecks(state: State): Check[] {

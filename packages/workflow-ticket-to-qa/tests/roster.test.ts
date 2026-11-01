@@ -1,6 +1,35 @@
 import { describe, it, expect } from "vitest";
-import { isConfirmedFor, isWorkday, leastLoadedReviewer } from "../src/roster.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { isConfirmedFor, isWorkday, leastLoadedReviewer, loadRoster } from "../src/roster.js";
 import { WEEKEND, WORKDAY, roster } from "@amykit/test-fixtures";
+
+describe("loadRoster", () => {
+  it("says where to write one when this profile has none and the machine has none", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-"));
+    const profile = path.join(home, "tickets");
+    fs.mkdirSync(profile, { recursive: true });
+
+    expect(() => loadRoster(profile)).toThrow(/no roster at .*; write one with amy init/);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it("names the team the machine kept at its root when this profile has none", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-"));
+    const profile = path.join(home, "tickets");
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(path.join(home, "roster.yaml.moved"), "the old team\n", "utf-8");
+
+    try {
+      expect(() => loadRoster(profile)).toThrow(/the machine's old roster is .*roster\.yaml\.moved — copy it here/);
+      expect(() => loadRoster(profile)).not.toThrow(/write one with amy init/);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("isWorkday", () => {
   it.each([

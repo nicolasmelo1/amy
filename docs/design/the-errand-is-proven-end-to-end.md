@@ -108,6 +108,10 @@ the criterion holds because the refused errand is asked exactly once.
 - [x] Its records and queue live under `~/.amy/errand/`, and another profile's
       state is untouched by the run
       (proof: assertion:errand.the_profile_keeps_its_own_state)
+- [x] A fresh install reaches a green `amy doctor` with no roster file anywhere
+      in its state and no output naming one: the roster belongs to the
+      workflow that assigns, which this machine did not mount
+      (proof: assertion:errand.doctor_is_green_without_a_roster)
 
 **Exit condition:** editing `packages/workflow-errand/src` or
 `plugins/file-tasks/src` turns `sf check` red until the errand scenario is run

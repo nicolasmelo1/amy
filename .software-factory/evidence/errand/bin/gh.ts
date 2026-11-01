@@ -46,6 +46,15 @@ if (argv[0] === "--version") {
   process.exit(0);
 }
 
+// The doctor asks gh whether this machine is logged in before anything runs,
+// so the stand-in answers the one question in gh's own shape — the answer on
+// stderr, success on the exit — and answers it without reading the host state
+// a check that exists before any pull request could not depend on.
+if (argv[0] === "auth" && argv[1] === "status") {
+  process.stderr.write("github.com - Logged in to github.example.test account amy\n");
+  process.exit(0);
+}
+
 const read = (): CodeHost => JSON.parse(fs.readFileSync(stateFile, "utf-8")) as CodeHost;
 const write = (state: CodeHost): void => fs.writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf-8");
 

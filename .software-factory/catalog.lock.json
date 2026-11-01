@@ -157,6 +157,17 @@
       "must_live_in": 0,
       "must_not_live_in": 0
     },
+    "L0.THE_HOST_NAMES_NO_ROSTER": {
+      "severity": "high",
+      "scope": 1,
+      "exclude": 0,
+      "forbidden": 1,
+      "narrowed_patterns": 1,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
     "L1.COMMENT_STAYS_SUCCINCT": {
       "severity": "medium",
       "scope": 13,

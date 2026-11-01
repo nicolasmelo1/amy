@@ -1014,6 +1014,11 @@
         },
         {
           "depth": 3,
+          "title": "**The roster belongs to its workflow.** The team list that names who reviews and who owns QA is one ticket-to-qa profile's file, written by init and add beside the profile's records and confirmed by amy roster confirm — the workflow brought its command and its check with it, and none of the host's source names the file any more. Where a profile has no roster of its own, the workflow's red check names the file the machine kept where the roster used to live, so the error is a way back and not a dead end.",
+          "slug": "the-roster-belongs-to-its-workflow-the-team-list-that-names-who-reviews-and-who-owns-qa-is-one-ticket-to-qa-profiles-file-written-by-init-and-add-beside-the-profiles-records-and-confirmed-by-amy-roster-confirm-the-workflow-brought-its-command-and-its-check-with-it-and-none-of-the-hosts-source-names-the-file-any-more-where-a-profile-has-no-roster-of-its-own-the-workflows-red-check-names-the-file-the-machine-kept-where-the-roster-used-to-live-so-the-error-is-a-way-back-and-not-a-dead-end"
+        },
+        {
+          "depth": 3,
           "title": "**Waiting is not trying.**",
           "slug": "waiting-is-not-trying"
         },
@@ -4520,6 +4525,11 @@
           "depth": 3,
           "title": "L0.THE_CORE_WORDS_NOTHING",
           "slug": "l0thecorewordsnothing"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_HOST_NAMES_NO_ROSTER",
+          "slug": "l0thehostnamesnoroster"
         },
         {
           "depth": 2,
@@ -8551,7 +8561,9 @@
           "update.a_moved_global_cli_still_runs",
           "update.a_refused_release_rolls_back_whole",
           "update.a_check_names_the_release",
-          "update.auto_update_reaches_the_release"
+          "update.auto_update_reaches_the_release",
+          "update.the_roster_moves_into_its_profile",
+          "update.the_update_names_the_roster_move"
         ],
         "scenario": ".software-factory/evidence/amy-update-scenario.sh"
       },
@@ -8615,7 +8627,8 @@
           "errand.a_refused_pull_request_hands_the_errand_back",
           "errand.a_command_nothing_mounts_does_not_exist",
           "errand.help_lists_only_the_machines_commands",
-          "errand.a_tick_discovers_before_it_moves"
+          "errand.a_tick_discovers_before_it_moves",
+          "errand.doctor_is_green_without_a_roster"
         ],
         "scenario": ".software-factory/evidence/errand-scenario.sh"
       },
@@ -8969,7 +8982,8 @@
           "checkout.a_missing_checkout_names_which_root_was_asked",
           "lifecycle.finished_work_leaves_the_listing",
           "lifecycle.a_workflow_command_is_its_own",
-          "lifecycle.stop_all_holds_until_start"
+          "lifecycle.stop_all_holds_until_start",
+          "lifecycle.the_roster_is_the_profiles"
         ],
         "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
       },
@@ -9117,6 +9131,13 @@
         "enabled": true,
         "settings": {},
         "title": "The core writes no title for anybody (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_HOST_NAMES_NO_ROSTER",
+        "enabled": true,
+        "settings": {},
+        "title": "carried ceiling (`rosterBackoffMs`) is the config plan's to remove",
         "reason": ""
       },
       {
@@ -10103,6 +10124,30 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "the-roster-belongs-to-its-workflow",
+        "title": "**The roster belongs to its workflow.** The team list that names who reviews and who owns QA is one ticket-to-qa profile's file, written by `init` and `add` beside the profile's records and confirmed by `amy roster confirm` — the workflow brought its command and its check with it, and none of the host's source names the file any more. Where a profile has no roster of its own, the workflow's red check names the file the machine kept where the roster used to live, so the error is a way back and not a dead end.",
+        "body": "`amy update` now gives an existing install its move: every team an older\nrelease kept at `~/.amy/roster.yaml` is copied into each profile that mounts\nthe workflow, the old name is retired as `roster.yaml.moved` rather than\ndeleted, and a second update changes nothing.\n\nThe doctor asks the machine, and only the machine: a gate's commands are\nasked of the machines that mounted a gate, and each mounted plugin names the\nenvironment variables it reads — `plugin.environment` — so the errand's\nmachine is green without the ticket workflow's tracker key, and no install\ncarries a credential checklist nothing on it asked for. The quickstart walks\nthe shape the machine has now: init, add a workflow, doctor, start.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "waiting-is-not-trying",

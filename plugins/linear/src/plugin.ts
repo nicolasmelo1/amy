@@ -6,6 +6,7 @@ import { configSchema } from "./config.js";
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-linear",
   configSchema,
+  environment: ["LINEAR_API_KEY"],
   register(registry, ctx) {
     const key = process.env.LINEAR_API_KEY;
     if (!key) {
