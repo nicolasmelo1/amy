@@ -1,7 +1,7 @@
 ---
 sources:
   - { id: S1, kind: friction, said: "a workflow is one lifecycle for the whole life of the work; the private workflow has twenty-one states, mostly polling waits, and each review round loops back through the same states" }
-  - { id: S2, kind: decision, said: "a workflow may begin when something happens and end when it has dealt with it: ticket reaches working status → read → work → open PR → [*]; review submitted → judge → escalate on doubt → fix → push → [*]" }
+  - { id: S2, kind: decision, said: "a workflow may begin on an event and end once dealt with: ticket reaches working status → read → work → open PR → [*]; review submitted → judge → escalate on doubt → fix → push → [*]" }
   - { id: S3, kind: reference, ref: "plans/an-event-is-a-reason-to-look.md", said: "the edge out of [*] may name the starting event, read as on a waiting state's edge, e.g. [*] --> TRIAGE: code-host.review.submitted; polling stays the net under both" }
   - { id: S4, kind: decision, ref: "packages/core/src/diagram.ts", said: "each such event starts one record; a [*] edge naming no event is discovered as today; a workflow may be event-started and discovered as well" }
   - { id: S5, kind: decision, ref: "packages/core/src/define-workflow.ts", said: "defineWorkflow gains key, a function from the event to what the work is about, usually the ticket, which a code-host event finds through the pull request it names" }
