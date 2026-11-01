@@ -70,6 +70,8 @@ export interface CliCommand {
   arguments: CliArgument[];
   options: CliOption[];
   isDefault: boolean;
+  /** Declared to commander as hidden: callable, and out of `amy --help`. */
+  hidden: boolean;
 }
 
 export interface CliFacts {

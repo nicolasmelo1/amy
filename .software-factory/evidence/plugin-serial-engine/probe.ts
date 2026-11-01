@@ -67,10 +67,6 @@ const assertions: Assertion[] = [];
 const record = (type: string, ok: boolean) => assertions.push({ type, status: ok ? "passed" : "failed" });
 
 const state = path.join(work, ".amy");
-const logDir = path.join(state, "log");
-const ghDown = path.join(work, "gh-is-down");
-process.env.AMY_E2E_GH_DOWN = ghDown;
-
 // The probe owns the clock, because the retried item sits behind a five
 // minute backoff and nobody is waiting five minutes to find that out.
 let clock = new Date("2026-09-03T12:00:00.000Z");
@@ -81,6 +77,26 @@ const ROSTER = {
   reviewers: [{ tracker: "ada@example.test", host: "ada", available: true }],
   qa: { tracker: "grace@example.test", host: "grace", available: true },
 };
+
+// The roster is the workflow's own file, beside the profile's records. Written
+// here the way `amy init` would: the probe mounts the workflow directly.
+fs.mkdirSync(state, { recursive: true });
+fs.writeFileSync(
+  // No profile here: the probe mounts the workflow directly, so the host's
+  // state root is the directory the workflow reads beside.
+  path.join(state, "roster.yaml"),
+  [
+    `confirmedOn: "${ROSTER.confirmedOn}"`,
+    "reviewers:",
+    ...ROSTER.reviewers.map((reviewer) => `  - { tracker: ${reviewer.tracker}, host: ${reviewer.host}, available: ${reviewer.available} }`),
+    `qa: { tracker: ${ROSTER.qa.tracker}, host: ${ROSTER.qa.host}, available: ${ROSTER.qa.available} }`,
+    "",
+  ].join("\n"),
+  "utf-8",
+);
+const logDir = path.join(state, "log");
+const ghDown = path.join(work, "gh-is-down");
+process.env.AMY_E2E_GH_DOWN = ghDown;
 
 /** Which repository each ticket works in; the base-branch stage re-points one. */
 const ticketRepos: Record<string, string> = {};
@@ -131,7 +147,6 @@ function worldPlugin(): Plugin {
       registry.port("gate", {
         run: async () => ({ ok: true, output: "", at: clock.toISOString() }),
       });
-      registry.contribute("workflow-data", "roster", { read: () => ROSTER });
     },
   };
 }

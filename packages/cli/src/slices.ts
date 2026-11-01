@@ -57,6 +57,10 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     // plan into, and the ceilings its decision function reads.
     "@amykit/workflow-note-to-plan": {
       repos: config.plans.repos,
+      // Where `amy note` writes, handed over rather than guessed: the notes
+      // are the machine's, because one workflow writes a failure and another
+      // turns it into a plan.
+      notesDirectory: "notes",
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
       policy: config.plans.policy,
@@ -65,6 +69,8 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     // ceilings its decision function reads.
     "@amykit/workflow-errand": {
       repos: config.repos,
+      // Where `amy btw` writes: the directory the file-tasks adapter reads.
+      tasksDirectory: own.tasks,
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
       policy: config.errands.policy,
@@ -375,6 +381,7 @@ export function hostPaths(config: AmyConfig, stateDir: string, profile?: Profile
     workspace: path.resolve(config.workspaceRoot),
     checkouts: config.checkouts,
     state: stateDir,
+    ...(place ? { profile: path.dirname(place.records) } : {}),
     ...(place?.artifacts ? { artifacts: place.artifacts } : {}),
   };
 }

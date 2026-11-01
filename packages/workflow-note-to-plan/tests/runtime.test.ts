@@ -119,9 +119,16 @@ async function observed(runtime: ReturnType<typeof build>, current = record("NOT
 
 describe("finding work", () => {
   it("finds every note that has been written down", async () => {
-    const runtime = build({ notes: fakeNotes([NOTE, { ...NOTE, id: "note-2" }]) });
+    const handwritten = { ...NOTE, source: "somebody at a keyboard" };
+    const runtime = build({ notes: fakeNotes([handwritten, { ...handwritten, id: "note-2" }]) });
 
     expect(await runtime.found()).toEqual(["note-1", "note-2"]);
+  });
+
+  it("leaves the note it wrote about its own failure for a person to read", async () => {
+    const runtime = build({ notes: fakeNotes([NOTE]) });
+
+    expect(await runtime.found()).toEqual([]);
   });
 
   it("finds nothing when nobody has written anything down", async () => {

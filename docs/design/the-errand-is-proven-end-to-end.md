@@ -142,6 +142,23 @@ the announcement carrying the link — and
 `errand.a_refused_pull_request_hands_the_errand_back`, with the host's reason
 said on the way out of the call.
 
+## Since the machine brings its own commands
+
+[A plugin brings its own commands](a-plugin-brings-its-own-commands.md) moved
+`amy btw` into this workflow, and moved `discover` into `tick`. The run now
+types one command where it used to type two, and the gate says so:
+`errand.a_tick_discovers_before_it_moves` — the hand-written task files were
+never on the queue, and the tick that found them is the tick that moved one.
+(`discover` is hidden and still callable: the scenarios that drive a move at a
+time queue with it, and `tick` looks first for everybody else.)
+`errand.a_command_nothing_mounts_does_not_exist` — `amy roster`, which belongs
+to another workflow, is an unknown command on this machine — and
+`errand.help_lists_only_the_machines_commands` — `amy --help` carries the
+commands this machine mounted (`btw` from the errand, `worktrees` from the
+worktree adapter, `models` from the relay) and none of pause, resume,
+discover, poke, note or roster, which either went, are hidden, or belong to a
+workflow this machine does not drive.
+
 ## The files
 
 | | |

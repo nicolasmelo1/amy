@@ -56,7 +56,9 @@ check() {
 # 1. It runs at all, and writes its state where it is run rather than where it
 # was built.
 version=$("$amy" --version 2>/dev/null || echo "")
-check installed.runs_without_a_checkout "$amy" pause "proving the installed command runs"
+# The handbrake is the machine's now, not a workflow's: `stop --all` holds
+# everything until `start`, and writes the one file this run looks for.
+check installed.runs_without_a_checkout "$amy" stop --all
 
 if [ -f "$work/home/.amy/PAUSED" ]; then
   record installed.keeps_state_in_its_own_home 0

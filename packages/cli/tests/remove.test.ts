@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG } from "../src/config.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { Profile, profiles } from "../src/profiles.js";
+import { RemovalDeps, removeProfileAndState } from "../src/removal.js";
 import { carriedBy, configWithout, stillMounted } from "../src/remove.js";
 import { pluginList } from "../src/slices.js";
 
@@ -154,5 +158,106 @@ describe("remove configuration", () => {
 
     expect(carrier).toEqual({ place: "workflow", profile: "project" });
     expect(after.workflows.project).toBeUndefined();
+  });
+});
+
+describe("removing a workflow profile", () => {
+  let home: string;
+
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+  function aMachine(state: { records?: boolean; queue?: boolean } = {}): Profile {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-remove-"));
+    fs.writeFileSync(
+      path.join(home, "config.yaml"),
+      [
+        "repos:",
+        "  - acme/widgets",
+        "workflows:",
+        "  tickets:",
+        '    workflow: "@amykit/workflow-ticket-to-qa"',
+        "  plans:",
+        '    workflow: "@amykit/workflow-note-to-plan"',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+    for (const directory of [
+      ...(state.records === false ? [] : [path.join(home, "tickets", "records")]),
+      ...(state.queue === false ? [] : [path.join(home, "tickets", "queue")]),
+    ]) {
+      fs.mkdirSync(directory, { recursive: true });
+      fs.writeFileSync(path.join(directory, "one.json"), "{}", "utf-8");
+    }
+    return profiles(loadConfig(home), home).tickets!;
+  }
+
+  function deps(overrides: Partial<RemovalDeps> = {}): { deps: RemovalDeps; said: string[]; uninstalled: string[] } {
+    const said: string[] = [];
+    const uninstalled: string[] = [];
+    return {
+      said,
+      uninstalled,
+      deps: {
+        running: () => undefined,
+        pendingUpdate: () => false,
+        uninstall: async (spec) => void uninstalled.push(spec),
+        confirm: () => true,
+        say: (line) => said.push(line),
+        ...overrides,
+      },
+    };
+  }
+
+  it("drops the profile, uninstalls its package, and deletes the state it was told to", async () => {
+    const profile = aMachine();
+    const wired = deps();
+
+    expect(await removeProfileAndState(home, loadConfig(home), profile, { yes: true }, wired.deps)).toBe("deleted");
+    expect(Object.keys(loadConfig(home).workflows)).toEqual(["plans"]);
+    expect(wired.uninstalled).toEqual(["@amykit/workflow-ticket-to-qa"]);
+    // The directories go; the now-empty profile folder is nobody's to tidy.
+    expect(fs.existsSync(path.join(home, "tickets", "records"))).toBe(false);
+    expect(fs.existsSync(path.join(home, "tickets", "queue"))).toBe(false);
+  });
+
+  it("keeps the state when asked to, and says how to delete it", async () => {
+    const profile = aMachine();
+    const wired = deps();
+
+    expect(await removeProfileAndState(home, loadConfig(home), profile, { keepState: true }, wired.deps)).toBe("kept");
+    expect(Object.keys(loadConfig(home).workflows)).toEqual(["plans"]);
+    expect(fs.existsSync(path.join(home, "tickets", "records"))).toBe(true);
+    expect(wired.said.join("\n")).toContain("--yes");
+  });
+
+  it("asks before deleting, and lets the answer keep it", async () => {
+    const profile = aMachine();
+    const asked: string[][] = [];
+    const wired = deps({ confirm: (directories) => (asked.push([...directories]), false) });
+
+    expect(await removeProfileAndState(home, loadConfig(home), profile, {}, wired.deps)).toBe("kept");
+    expect(asked).toHaveLength(1);
+    expect(fs.existsSync(path.join(home, "tickets", "queue"))).toBe(true);
+  });
+
+  it("refuses a profile a loop is driving, and one a scheduled update still owns", async () => {
+    const profile = aMachine();
+    await expect(
+      removeProfileAndState(home, loadConfig(home), profile, { yes: true }, deps({ running: () => ({ workflow: "tickets", pid: 42 }) }).deps),
+    ).rejects.toThrow(/running as pid 42/);
+    await expect(
+      removeProfileAndState(home, loadConfig(home), profile, { yes: true }, deps({ pendingUpdate: () => true }).deps),
+    ).rejects.toThrow(/scheduled daemon update/);
+  });
+
+  it("leaves the log alone, because the budget is measured off it", async () => {
+    const profile = aMachine();
+    const wired = deps();
+
+    await removeProfileAndState(home, loadConfig(home), profile, { yes: true }, wired.deps);
+
+    expect(wired.said.join("\n")).toContain("The log keeps what tickets did");
+    expect(wired.said.join("\n")).not.toContain("deleting log");
   });
 });

@@ -13,6 +13,9 @@
     },
     {
       "path": "../workflow-pull-request"
+    },
+    {
+      "path": "../../plugins/file-queue"
     }
   ]
 }

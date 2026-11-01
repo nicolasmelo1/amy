@@ -7,7 +7,7 @@ import { mount, NodeCommandRunner } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
 import { DEFAULT_POLICY as ERRAND_POLICY } from "@amykit/workflow-errand";
 import { DEFAULT_POLICY as PLAN_POLICY } from "@amykit/workflow-note-to-plan";
-import { DEFAULT_POLICY as TICKET_POLICY, Roster } from "@amykit/workflow-ticket-to-qa";
+import { DEFAULT_POLICY as TICKET_POLICY } from "@amykit/workflow-ticket-to-qa";
 import { DEFAULT_CONFIG, EXAMPLE_CONFIG, loadConfigFrom } from "../src/config.js";
 import {
   checkConfigBoots,
@@ -16,7 +16,6 @@ import {
   namesTheExample,
   withExampleWorkflow,
 } from "../src/config-template.js";
-import { hostPlugin } from "../src/hostPlugin.js";
 import { load } from "../src/loader.js";
 import { profiles } from "../src/profiles.js";
 import { hostPaths, pluginList, pluginSlices } from "../src/slices.js";
@@ -84,16 +83,8 @@ async function assembleTemplate(text: string): Promise<{ ok: boolean; problems: 
     const loaded = await load(pluginList(config, profile));
     if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
-    // The roster `amy init` writes beside the config, handed over unread:
-    // this check mounts the machine, it does not judge the roster.
-    const roster: Roster = {
-      confirmedOn: "1970-01-01",
-      reviewers: [],
-      qa: { tracker: "", host: "", available: false },
-    };
-
     const outcome = await mount(
-      [...loaded.plugins, hostPlugin(() => roster)],
+      loaded.plugins,
       pluginSlices(config, profile),
       {
         runner: new NodeCommandRunner(),

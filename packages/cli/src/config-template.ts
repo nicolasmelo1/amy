@@ -3,10 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { mount, MountOutcome, NodeCommandRunner } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
-import type { Roster } from "@amykit/workflow-ticket-to-qa";
 import { type AmyConfig, EXAMPLE_CONFIG, loadConfigFrom } from "./config.js";
 import { loadEnv } from "./env.js";
-import { hostPlugin } from "./hostPlugin.js";
 import { load } from "./loader.js";
 import { profiles } from "./profiles.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
@@ -214,16 +212,8 @@ export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
     // whether it is this check's to enforce.
     if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
-    // The roster `amy init` writes beside the config, handed to the host
-    // plugin unread: the check mounts the machine, it does not judge the roster.
-    const roster: Roster = {
-      confirmedOn: "1970-01-01",
-      reviewers: [],
-      qa: { tracker: "", host: "", available: false },
-    };
-
     const outcome: MountOutcome = await mount(
-      [...loaded.plugins, hostPlugin(() => roster)],
+      loaded.plugins,
       pluginSlices(config, profile),
       {
         // A runner a boot never uses: registration wires the CLIs, the ladder

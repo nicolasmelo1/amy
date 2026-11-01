@@ -80,7 +80,7 @@ export function readmeCommands(cli: CliFacts): string {
   return table(
     ["Command", "What it does"],
     cli.commands
-      .filter((command) => command.path.length === 1)
+      .filter((command) => command.path.length === 1 && !command.hidden)
       .map((command) => [`\`amy ${command.path[0]}\``, command.description]),
   );
 }
@@ -135,9 +135,11 @@ function cliGlobal(cli: CliFacts): string {
 }
 
 function cliIndex(cli: CliFacts): string {
+  // A hidden command is callable and out of `amy --help`, which is exactly
+  // what the reference page is a rendering of.
   return table(
     ["Command", "What it does"],
-    cli.commands.map((command) => [
+    cli.commands.filter((command) => !command.hidden).map((command) => [
       `[\`amy ${command.path.join(" ")}\`](#amy-${command.path.join("-")})`,
       command.description,
     ]),
@@ -147,6 +149,7 @@ function cliIndex(cli: CliFacts): string {
 /** One section per command, so each one is linkable on its own. */
 function cliCommands(cli: CliFacts): string {
   return cli.commands
+    .filter((command) => !command.hidden)
     .map((command) => {
       const name = command.path.join(" ");
       const usage = [

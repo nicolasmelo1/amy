@@ -10,12 +10,6 @@ import { paths } from "../src/paths.js";
 
 const WORKDAY = new Date("2026-09-03T12:00:00.000Z");
 
-const ROSTER = {
-  confirmedOn: "2026-09-03",
-  reviewers: [{ tracker: "ada@example.test", host: "ada", available: true }],
-  qa: { tracker: "grace@example.test", host: "grace", available: true },
-};
-
 const HERMES_LISTING = JSON.stringify({ platforms: { slack: [{ id: "C1", name: "ops" }] } });
 
 /**
@@ -62,7 +56,6 @@ describe("diagnose", () => {
       ]),
       env: { LINEAR_API_KEY: "lin_api_test" },
       now: WORKDAY,
-      readRoster: () => ROSTER,
       // What the plugins this install loaded said their settings look like.
       // Taken from the plugin itself, so a schema nobody declares cannot be
       // asserted against here either.
@@ -126,28 +119,6 @@ describe("diagnose", () => {
     const checks = await diagnose(deps({ config }));
 
     expect(labelled(checks, "notification channel")?.ok).toBe(false);
-  });
-
-  it("fails a roster confirmed on another day", async () => {
-    const checks = await diagnose(
-      deps({ readRoster: () => ({ ...ROSTER, confirmedOn: "2026-09-01" }) }),
-    );
-
-    const roster = labelled(checks, "roster");
-    expect(roster?.ok).toBe(false);
-    expect(roster?.detail).toContain("amy roster confirm");
-  });
-
-  it("reports a missing roster as the reason, not as a crash", async () => {
-    const checks = await diagnose(
-      deps({
-        readRoster: () => {
-          throw new Error("no roster at .amy/roster.yaml");
-        },
-      }),
-    );
-
-    expect(labelled(checks, "roster")?.detail).toContain("no roster at");
   });
 
   it("fails without the API key", async () => {

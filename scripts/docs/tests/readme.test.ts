@@ -29,7 +29,7 @@ describe("the root README", () => {
     const cli = cliFacts();
     const commands = readmeCommands({
       ...cli,
-      commands: [...cli.commands, { path: ["later"], description: "A later command", arguments: [], options: [], isDefault: false }],
+      commands: [...cli.commands, { path: ["later"], description: "A later command", arguments: [], options: [], isDefault: false, hidden: false }],
     });
 
     expect(commands).toContain("`amy later`");

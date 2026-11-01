@@ -6,7 +6,7 @@ export type { AttemptOutcome, ErrandRecord } from "./record.js";
 export { DEFAULT_POLICY } from "./observation.js";
 export type { Observation, Policy } from "./observation.js";
 
-export { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./task-file.js";
+export { branchFor, pullRequestBody, pullRequestTitle, slugFor, writeTaskFile } from "./task-file.js";
 export { errandPrompt } from "./prompt.js";
 
 export { act, advance, settled, wait } from "@amykit/core";

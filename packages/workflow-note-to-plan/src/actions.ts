@@ -140,7 +140,7 @@ export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRec
 
   return {
     async found() {
-      return deps.notes.all().map((note) => note.id);
+      return deps.notes.all().filter(plannable).map((note) => note.id);
     },
 
     async observe(current) {
@@ -207,4 +207,20 @@ function inFlightFor(records: Store<PlanRecord>, repo: string, except: string): 
     if (other.id === except) return false;
     return other.repo === repo && IN_FLIGHT.includes(other.state);
   }).length;
+}
+
+/** A note the machine wrote about a failure of its own. */
+const FAILURE_REPORT = "a tick that failed in";
+
+/**
+ * Whether a note is work this workflow should take, or a report of its own.
+ *
+ * The machine files friction when a tick gives up. That note is written, is
+ * counted, and is read by a person — and it is not itself planned: a plan
+ * that fails would file another note, which would be planned, which could
+ * fail, and the machine would keep opening pull requests about its own
+ * reports. What a person can do, a person decides to.
+ */
+function plannable(note: Note): boolean {
+  return !note.source.startsWith(FAILURE_REPORT);
 }

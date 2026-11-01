@@ -43,6 +43,7 @@ plugins:
   "@amykit/workflow-note-to-plan":
     baseBranch: {}
     defaultBranch: "main"
+    notesDirectory: "notes"
     policy: {}
     repos: <string[]>
 ```
@@ -51,6 +52,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
+| `notesDirectory` | `string` | no | `notes` | where this machine keeps the notes `amy note` writes, relative to the state root. The host sets it; a value here only stands in for one |
 | `policy` | `record` | no | `{}` | maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default |
 | `repos` | `string[]` | **yes** |  | the repositories a plan may be written into. A note about anything else is handed back to the operator |
 

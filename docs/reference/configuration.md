@@ -350,31 +350,7 @@ plans:
 <!-- amy:generated roster-example -->
 
 ```yaml
-# Who is reviewing today, and who owns QA.
-#
-# confirmedOn is checked against today's date on every workday. The machine
-# refuses to assign anybody while it is stale, because people go on leave
-# without editing a config file and a review assigned to someone who is away
-# stalls for days without anything looking broken.
-#
-# Confirm it with: amy roster confirm
-confirmedOn: "1970-01-01"
 
-reviewers:
-  - tracker: ada@example.test
-    host: ada
-    available: true
-  - tracker: alan@example.test
-    host: alan
-    available: true
-  - tracker: edsger@example.test
-    host: edsger
-    available: true
-
-qa:
-  tracker: grace@example.test
-  host: grace
-  available: true
 ```
 
 <!-- amy:end roster-example -->

@@ -2,6 +2,17 @@ export { CORE_ACTIONS, dispatchesTo, isCoreAction } from "./actions.js";
 export { sayToOperator } from "./operator.js";
 export type { OperatorChannel, OperatorChannels } from "./operator.js";
 export type { ActionSpec, PortKind } from "./actions.js";
+export type {
+  Check,
+  CheckContext,
+  CommandArgument,
+  CommandContext,
+  CommandFlag,
+  CommandOutput,
+  PluginCheck,
+  PluginCommand,
+  PluginFile,
+} from "./commands.js";
 
 export { actionsOf, applyPlan, attemptsIn, looksIn, movedBy, notATryIn } from "./work.js";
 export type { Action, Lane, Moved, NotATry, Plan, Transition, WorkRecord } from "./work.js";

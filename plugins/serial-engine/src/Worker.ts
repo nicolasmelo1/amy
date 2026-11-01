@@ -143,6 +143,15 @@ export class Worker {
         continue;
       }
 
+      // Work the engine has already let go of is not brought back by a look.
+      // A move that continues re-enqueues itself, a terminal one is skipped
+      // above, so a non-terminal record whose last item is done and which is
+      // on the queue no more is work that reached its attempt ceiling: it was
+      // said once, and re-adding it here would fail again on every look
+      // forever. `amy look <id>` is the named way back.
+      const gaveUp = this.deps.queue.completed?.().some((done) => done.workId === workId) === true;
+      if (gaveUp) continue;
+
       this.deps.queue.enqueue({ workId, reason: "found by the workflow", priority }, now);
       enqueued.push(workId);
     }

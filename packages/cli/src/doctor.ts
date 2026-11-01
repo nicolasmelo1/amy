@@ -1,22 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConfig } from "@amykit/core";
-import { AmyConfig, Roster, configuredAutoUpdateProblems } from "./config.js";
+import { Check, checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConfig } from "@amykit/core";
+import { AmyConfig, configuredAutoUpdateProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
 
-/** Monday through Friday. Saturday is 6 and Sunday is 0. */
-function isWorkday(date: Date): boolean {
-  const day = date.getUTCDay();
-  return day >= 1 && day <= 5;
-}
-
-export interface Check {
-  label: string;
-  ok: boolean;
-  detail?: string;
-}
+export type { Check } from "@amykit/core";
 
 export interface DoctorDeps {
   /** Where amy keeps its state, machine-wide. */
@@ -25,7 +15,6 @@ export interface DoctorDeps {
   runner: CommandRunner;
   env: NodeJS.ProcessEnv;
   now: Date;
-  readRoster: (home: string) => Roster;
   /** Where the command was typed, which is not where amy keeps anything. */
   cwd: string;
   /**
@@ -72,7 +61,6 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     autoUpdateSettings(deps.config),
     ...pluginSettings(deps),
     workflowWrites(deps.workflow),
-    roster(deps),
     ...leftBehind(deps),
     apiKey(deps),
     ...(await tools(deps)),
@@ -190,31 +178,6 @@ function leftBehind({ home, cwd, config }: DoctorDeps): Check[] {
         detail: `run \`amy init\`, then: mv ${path.join(base, old)} ${path.join(base, now)}`,
       })),
   );
-}
-
-function roster({ home, now, readRoster }: DoctorDeps): Check {
-  try {
-    const current = readRoster(home);
-    // Confirmed today is the claim: Monday through Friday the date has to be
-    // today's, and a weekend holds — people do not confirm a roster they are
-    // not using, and stalling on one nobody asked for would be the machine
-    // inventing a ritual.
-    const confirmed =
-      !isWorkday(now) || current.confirmedOn === now.toISOString().slice(0, 10);
-    return {
-      label: "roster confirmed for today",
-      ok: confirmed,
-      detail: confirmed
-        ? ""
-        : `last confirmed ${current.confirmedOn}, run \`amy roster confirm\``,
-    };
-  } catch (error) {
-    return {
-      label: "roster",
-      ok: false,
-      detail: error instanceof Error ? error.message : String(error),
-    };
-  }
 }
 
 function apiKey({ env }: DoctorDeps): Check {

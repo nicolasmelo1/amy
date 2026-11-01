@@ -1,5 +1,6 @@
 import { ActionSpec, PortKind } from "./actions.js";
 import { Checkouts } from "./checkouts.js";
+import { PluginCheck, PluginCommand, PluginFile } from "./commands.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
@@ -100,6 +101,15 @@ export interface HostPaths {
   /** Where the host keeps its own state. */
   readonly state: string;
   /**
+   * The directory one profile owns, when this host has profiles.
+   *
+   * Records and the queue already live under it; a workflow that keeps
+   * something beside them — a roster, a settings file a command writes —
+   * needs the same directory a command is handed, or `amy roster confirm`
+   * would write beside `amy tick`'s reading of it.
+   */
+  readonly profile?: string;
+  /**
    * A host-selected root for artifacts several independently driven workflows
    * share.  The core does not interpret the artifacts or their producers.
    */
@@ -194,6 +204,18 @@ export interface Plugin {
    * any of the settings mean.
    */
   readonly configSchema?: ConfigSchema;
+  /**
+   * The commands this plugin brings to the command line.
+   *
+   * Read after the module is imported and before anything is mounted, so a
+   * command works on the machine that will not boot. The host owns the entry
+   * point and the parser; what each command means is this plugin's.
+   */
+  readonly commands?: readonly PluginCommand[];
+  /** The checks `amy doctor` runs after its own, under this plugin's name. */
+  readonly checks?: readonly PluginCheck[];
+  /** The files `amy init` and `amy add` write into the profile's state, once. */
+  readonly files?: readonly PluginFile[];
   register(r: Registry, ctx: PluginContext): void | Promise<void>;
   /**
    * Checked once every plugin has registered and every deferred
@@ -218,8 +240,11 @@ export interface Plugin {
 export function definePlugin<const S extends ConfigSchema>(plugin: {
   readonly name: string;
   readonly configSchema: S;
+  readonly commands?: readonly PluginCommand<ConfigOf<S>>[];
+  readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
+  readonly files?: readonly PluginFile<ConfigOf<S>>[];
   register(r: Registry, ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
   ready?(ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
 }): Plugin {
-  return plugin;
+  return plugin as unknown as Plugin;
 }

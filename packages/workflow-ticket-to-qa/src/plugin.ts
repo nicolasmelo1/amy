@@ -13,7 +13,8 @@ import {
   Gate,
   HarnessReply,
   Notifier,
-  PluginContext,
+  PluginCheck,
+  PluginCommand,
   Tracker,
   WorkflowPieceContext,
   Worktree,
@@ -26,26 +27,69 @@ import {
 import { after, before, decide } from "./machine.js";
 import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
 import { TicketRecord } from "./record.js";
-import { Roster } from "./roster.js";
+import { EXAMPLE_ROSTER, ROSTER_FILE, Roster, confirmRoster, isConfirmedFor, loadRoster } from "./roster.js";
 import { ticketRuntime } from "./runtime.js";
 import { WRITE_EFFECTS } from "./effects.js";
 import { Finding, gateLane, selfReviewLane } from "./lanes.js";
 import { splitWorkId } from "./runtime.js";
 
-export const WORKFLOW_DATA = "workflow-data";
+type Settings = ConfigOf<typeof configSchema>;
 
-export interface Provider<T> {
-  read(): T;
-}
+/**
+ * Who is reviewing, as this workflow's own command.
+ *
+ * It used to be the host's, on every install, for the one workflow that
+ * assigns anybody. Here it is a file beside the profile's records: two teams
+ * running two ticket-to-qa profiles do not share reviewers, and a machine
+ * that never assigns one has no roster to keep.
+ */
+const rosterCommand: PluginCommand<Settings> = {
+  name: "roster",
+  description: "Who is reviewing today",
+  subcommands: [
+    {
+      name: "confirm",
+      description: "Stamp the roster with today's date",
+      run({ state, out }) {
+        const roster = confirmRoster(state, new Date());
+        out.line(`confirmed for ${roster.confirmedOn}`);
+        for (const reviewer of roster.reviewers) {
+          out.line(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}`);
+        }
+        out.line(`  qa  ${roster.qa.available ? "in " : "out"} ${roster.qa.host}`);
+      },
+    },
+    {
+      name: "show",
+      description: "Print the roster and whether it is current",
+      default: true,
+      run({ state, out }) {
+        const roster = loadRoster(state);
+        const now = new Date();
+        const current = isConfirmedFor(roster, now);
+        out.line(`confirmed on ${roster.confirmedOn}${current ? " (current)" : " (stale)"}`);
+        for (const reviewer of roster.reviewers) {
+          out.line(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}  ${reviewer.tracker}`);
+        }
+        out.line(`  qa  ${roster.qa.available ? "in " : "out"} ${roster.qa.host}  ${roster.qa.tracker}`);
+      },
+    },
+  ],
+};
 
-function rosterProvider(readFromHost?: () => Roster): () => Roster {
-  if (readFromHost) return readFromHost;
-  return () => {
-    throw new Error(
-      "no roster was contributed, and the workflow does not know where this machine keeps one — run `amy init` first",
-    );
-  };
-}
+/** A roster nobody confirmed today is a review nobody would answer. */
+const rosterCheck: PluginCheck<Settings> = {
+  name: "roster confirmed for today",
+  run({ state }) {
+    const roster: Roster = loadRoster(state);
+    const current = isConfirmedFor(roster, new Date());
+    return {
+      label: "roster confirmed for today",
+      ok: current,
+      detail: current ? "" : `last confirmed ${roster.confirmedOn}, run \`amy roster confirm\``,
+    };
+  },
+};
 
 export const configSchema = {
   repos: { type: "string[]", required: true, description: "every repository review load is counted across" },
@@ -68,8 +112,6 @@ export const configSchema = {
     default: {},
   },
 } satisfies ConfigSchema;
-
-type Context = PluginContext<ConfigOf<typeof configSchema>>;
 
 const needs = {
   tracker: port<Tracker>(),
@@ -95,7 +137,7 @@ function runtimeFor(scope: Scope): ReturnType<typeof ticketRuntime> {
     agent: scope.ports.agent,
     gate: scope.ports.gate,
     notifier: scope.ports.notifier,
-    roster: () => provided<Roster>(scope.ctx, "roster") ?? rosterProvider()(),
+    roster: () => loadRoster(scope.ctx.paths.profile ?? scope.ctx.paths.state),
     ...scope.checkouts,
     briefs: scope.ports.brief,
     now: scope.ctx.now,
@@ -165,6 +207,9 @@ export const plugin = defineWorkflow({
   before,
   decide,
   after,
+  commands: [rosterCommand],
+  checks: [rosterCheck],
+  files: [{ path: ROSTER_FILE, content: EXAMPLE_ROSTER }],
   record: () => ({ judged: [] }),
   progress: (scope) => runtimeFor(scope).progress,
   discover: (scope) => runtimeFor(scope).found(),
@@ -198,11 +243,6 @@ function conversationOf(policy: Policy, conversation: Conversation | undefined):
     throw new Error(`ticket-to-qa policy.conversation must be "answer" or "discuss", not ${JSON.stringify(policy.conversation)}`);
   }
   return conversation ? policy.conversation : "answer";
-}
-
-function provided<T>(ctx: Context, name: string): T | undefined {
-  const entry = ctx.contributions(WORKFLOW_DATA).get(name);
-  return entry ? (entry as Provider<T>).read() : undefined;
 }
 
 function progressPolicy(budget: Record<string, unknown>) {

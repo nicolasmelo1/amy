@@ -1,4 +1,6 @@
-import { Task } from "./ports/Tasks.js";
+import fs from "node:fs";
+import path from "node:path";
+import { NewTask, Task } from "./ports/Tasks.js";
 
 /** How many words of the task become the branch name. */
 const WORDS = 6;
@@ -49,4 +51,31 @@ export function pullRequestBody(task: Task, said: string): string {
     ``,
     `This was an errand — captured with \`amy btw\`, never a ticket.`,
   ].join("\n");
+}
+
+/**
+ * A task, as the file an editor or a hook would leave.
+ *
+ * Written here rather than in the store adapter because `amy btw` writes it
+ * on a machine that will not mount: both callers share one format, and the
+ * workflow that reads the directory is the one that owns its vocabulary.
+ */
+export function writeTaskFile(directory: string, task: NewTask, now: Date): Task {
+  fs.mkdirSync(directory, { recursive: true });
+  const written: Task = { ...task, id: freeTaskId(directory, now), addedAt: now.toISOString() };
+  fs.writeFileSync(path.join(directory, `${written.id}.md`), taskMarkdown(written), "utf-8");
+  return written;
+}
+
+function taskMarkdown(task: Task): string {
+  return ["---", `repo: ${task.repo}`, `source: ${task.source}`, `added: ${task.addedAt}`, "---", "", task.text.trim(), ""].join("\n");
+}
+
+function freeTaskId(directory: string, now: Date): string {
+  const stamp = `task-${now.toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
+  const taken = (id: string) => fs.existsSync(path.join(directory, `${id}.md`));
+  if (!taken(stamp)) return stamp;
+  for (let n = 2; ; n += 1) {
+    if (!taken(`${stamp}-${n}`)) return `${stamp}-${n}`;
+  }
 }

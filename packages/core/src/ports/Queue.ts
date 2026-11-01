@@ -51,6 +51,15 @@ export interface Queue {
    */
   reprioritize?(workId: string, priority: number | undefined): number;
 
+  /**
+   * Every item that is finished, for work discovery must not bring back.
+   *
+   * Optional, because a queue that keeps no history can answer only what it
+   * still holds. The engine reads it to tell "this work gave up at its
+   * ceiling" from "this work is about to be looked at again".
+   */
+  completed?(): QueueItem[];
+
   /** Returns items abandoned by a dead worker so they get picked up again. */
   recover(olderThanMs: number, now: Date): QueueItem[];
 

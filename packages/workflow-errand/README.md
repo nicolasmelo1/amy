@@ -44,6 +44,7 @@ plugins:
     defaultBranch: "main"
     policy: {}
     repos: <string[]>
+    tasksDirectory: "tasks"
 ```
 
 | Setting | Type | Required | Default | What it is |
@@ -52,6 +53,7 @@ plugins:
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `policy` | `record` | no | `{}` | maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default |
 | `repos` | `string[]` | **yes** |  | the repositories an errand may be done in. A task about anything else is handed back to whoever asked |
+| `tasksDirectory` | `string` | no | `tasks` | where this machine keeps the tasks `amy btw` writes, relative to the state root. The host sets it; a value here only stands in for one |
 
 Every field is checked at boot against the schema this package declares. A key that is
 not one of the above is a refusal naming the plugin and the key, not a setting that
