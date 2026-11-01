@@ -1,179 +1,73 @@
+---
+sources:
+  - { id: S1, kind: decision, said: "the window an install ships is small on purpose: amy is a workflow builder, so it shows the work and lets a person talk to it; everything beyond is a plugin" }
+  - { id: S2, kind: decision, said: "layout: nav 1 sections on top; nav 2 search and list at left (profile, + groom); canvas with header, state strip and tabs (Timeline, Diff, plugin tabs); a right panel that opens and closes; ⌘K ask anything" }
+  - { id: S3, kind: reference, ref: "plans/the-window-takes-plugins.md", said: "nav 1 is Work, Workflows, Settings: reordered in config.yaml, never removed; plugins may add sections after them" }
+  - { id: S4, kind: decision, said: "nav 2 is a search box and the section's list: under Work every record of every profile, grouped by profile, with its state and the harness that last ran it; under Workflows the profiles" }
+  - { id: S5, kind: decision, said: "a ⋯ acts on its own row and nothing wider, through an existing command: a record's offers poke; a workflow's offers remove <name>, with amy remove's refusal when the machine would not survive it" }
+  - { id: S6, kind: decision, said: "the handbrake (pause, resume) stops every workflow at once, so it is on no row: it sits in the Workflows canvas, saying what it stops" }
+  - { id: S7, kind: reference, ref: "plans/work-that-is-over-goes-away.md", said: "retiring one record waits for this plan, which adds the command" }
+  - { id: S8, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "a record's canvas: the strip is its workflow.mmd with the current state marked, and a timeline joining its history to events mentioning it. A workflow's canvas: its diagram beside its text" }
+  - { id: S9, kind: decision, said: "a workflow under ~/.amy/workflows is edited as text: saving reads it with the host's subset, writes the file, and shows the check's drawn-not-walked list; a refused diagram is not saved, the refusal naming the line" }
+  - { id: S10, kind: decision, said: "a workflow installed as a package is shown, not edited; one with no diagram shows its declared states and says it has none" }
+  - { id: S11, kind: decision, said: "the right panel, opened and closed by the person, is the log filtered to the selected record, or the work thread when the record waits on its owner" }
+  - { id: S12, kind: decision, said: "Settings is config.yaml edited as text; saving runs boot's assemble, and a config that would not mount is not saved, every refusal shown by name as mount() reports them" }
+  - { id: S13, kind: decision, said: "a desktop app, not a page: a tab is one among forty, with no menu-bar place or global shortcut, and amy runs all day. macOS first; Windows and Linux are the same app built for them" }
+  - { id: S14, kind: decision, said: "Electron, because the engine the gate measures must be the one that ships: its pinned Chromium on every platform is what the-frame-is-closed's projection reads. Tauri's WebKit/WebView2/WebKitGTK make one green gate say nothing of the others" }
+  - { id: S15, kind: decision, said: "Electron is JavaScript end to end, as amy is; its larger download is paid once, named in the dependency lock, only by whoever installs this renderer (a renderer is chosen by name)" }
+  - { id: S16, kind: reference, ref: "https://pele.run", said: "the desktop renderer draws StateMachine, which carries the diagram text, with Pele, Obsidian's Mermaid renderer: MIT, no dependencies, synchronous, SVG string out; a dependency of @amykit/ui-desktop only" }
+  - { id: S17, kind: decision, said: "the app registers only pele/core and pele/diagrams/state, about 130 KB minified and 52 KB gzipped, against 712 KB for the full bundle" }
+  - { id: S18, kind: decision, said: "theme tokens become Pele's CSS variables (--pele-bg, --pele-fg, --pele-line, --pele-accent, …): a-renderer-names-no-colour holds, a theme switch recolours without re-rendering, classDef is not read (kept for GitHub, Obsidian). It draws what Obsidian would" }
+  - { id: S19, kind: reference, ref: "plans/the-window-is-served.md", said: "@amykit/ui-desktop contributes renderer desktop, opened by amy ui desktop, or amy ui when ui.default says so. A client only: it connects to the local server or ui.server and draws what it sends through the generated SDK" }
+  - { id: S20, kind: decision, said: "it reads no file under amy's home, so it shows this machine's work or one reached through a tunnel; amy ui build desktop packages it as a macOS app" }
+  - { id: S21, kind: reference, ref: "plans/amy-lives-in-the-menu-bar.md", said: "closing the window does not quit; the app stays resident. mod+k may be a global shortcut, configurable in config.yaml and off by default (a promise about every other app), never ⌘Space, which is Spotlight's" }
+  - { id: S22, kind: decision, said: "the window writes nothing the CLI cannot: every intent resolves to a function a command already calls, so it is never a second road to the tracker" }
+  - { id: S23, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "gate ui-frame gains the desktop renderer: plugins/ui-desktop/src/** joins its activation, and the conformance script runs against the packaged app's own Chromium" }
+  - { id: S24, kind: decision, said: "new gate ui-window: install amy, start the daemon on the conformance world with fake tracker, forge and conversation, launch the packaged app, drive the script; every window.* assertion is required" }
+  - { id: S25, kind: decision, said: "ui-window activation is packages/server/src/**, packages/cli/src/ui/**, packages/ui/**, plugins/ui-desktop/src/**: the server holds every behaviour exercised, so a change there expires the proof" }
+  - { id: S26, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers domains machine, workflows, settings (getHandbrake, setHandbrake, removeWorkflow, getConfig, saveConfig) and views workflows.list, workflows.handbrake, work.log, local-only settings.config, flipped to delivered in surface.yaml in the same PR" }
+touches:
+  - plugins/ui-desktop/**
+  - packages/server/surface.yaml
+  - packages/server/src/**
+  - packages/server/tests/surface.test.ts
+  - packages/cli/src/ui/**
+  - packages/cli/src/config.ts
+  - packages/cli/tests/ui-config.test.ts
+  - packages/cli/tests/ui-actions.test.ts
+  - packages/ui/**
+  - packages/ui-conformance/src/**
+  - .software-factory/policy.yaml
+criteria:
+  - { id: A1, statement: "what this row delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S26] }
+  - { id: A2, statement: "the desktop renderer holds the frame on every step of the script", proof: "deferred:assertion:frame.every_region_sits_where_declared", sources: [S2, S11, S14, S23] }
+  - { id: A3, statement: "the desktop and the text renderer agree on every region", proof: "deferred:assertion:frame.renderers_agree_on_every_region", sources: [S14, S23] }
+  - { id: A4, statement: "a record the daemon advances moves in the open window with no reload, within one second of its event", proof: "deferred:assertion:window.a_record_moves_without_a_reload", sources: [S19, S24, S25] }
+  - { id: A5, statement: "the work list carries exactly the records amy status --json does, for every profile", proof: "deferred:assertion:window.the_list_is_amy_status", sources: [S4, S24] }
+  - { id: A6, statement: "nav 1 reorders from config.yaml, and a section that does not exist is refused by name", proof: "deferred:test:packages/cli/tests/ui-config.test.ts", sources: [S1, S3] }
+  - { id: A7, statement: "saving a config that would not mount keeps the old file and shows every refusal", proof: "deferred:assertion:window.a_config_that_would_not_mount_is_not_saved", sources: [S12] }
+  - { id: A8, statement: "a workflow's diagram edited in its canvas is saved only when the subset reads it, and the save shows what is drawn and not walked; a package's diagram offers no edit", proof: "deferred:assertion:window.a_diagram_is_edited_as_text", sources: [S9, S10] }
+  - { id: A9, statement: "the strip in a record's canvas is its workflow's diagram, with every edge the file draws and the record's state marked", proof: "deferred:assertion:window.the_strip_is_the_diagram", sources: [S8, S18] }
+  - { id: A10, statement: "Pele is a dependency of @amykit/ui-desktop and of no other package, and the app bundles only its state diagram", proof: "deferred:test:plugins/ui-desktop/tests/bundle.test.ts", sources: [S15, S16, S17] }
+  - { id: A11, statement: "the app draws everything from the server and reads nothing under amy's home", proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server", sources: [S19, S20] }
+  - { id: A12, statement: "amy ui build desktop produces a macOS app that opens against a server", proof: "deferred:assertion:window.the_built_app_opens", sources: [S13, S20] }
+  - { id: A13, statement: "the global shortcut is off unless configured, and a configured one the system already owns is refused by name", proof: "deferred:assertion:window.a_global_shortcut_is_asked_for_not_taken", sources: [S21] }
+  - { id: A14, statement: "closing the window leaves the app running, and reopening it shows the record that was selected", proof: "deferred:assertion:window.closing_is_not_quitting", sources: [S21] }
+  - { id: A15, statement: "every ⋯ action leaves the same record, queue and log a run of its command leaves", proof: "deferred:assertion:window.an_action_is_its_command", sources: [S5, S22] }
+  - { id: A16, statement: "no row's ⋯ offers an action wider than its row: no record row pauses the machine or removes a plugin", proof: "deferred:test:packages/cli/tests/ui-actions.test.ts", sources: [S5, S6, S7] }
+  - { id: A17, statement: "the fake tracker's and forge's call logs hold no write the window made", proof: "deferred:assertion:window.the_window_writes_nothing_the_cli_cannot", sources: [S22] }
+crosses:
+  - { mechanism: config, answer: works, proof: "deferred:A6, A7, A13" }
+  - { mechanism: rendering, answer: works, proof: "deferred:A2, A3, A9" }
+cut:
+  - "a window served to a browser tab: refused, it cannot sit in the menu bar or own a global shortcut (S13)"
+  - "Tauri: refused, a gate green in one system webview says nothing about the other two (S14)"
+  - "a form over Settings: later"
+  - "retiring one record from the window: waits for work-that-is-over-goes-away (S7)"
+  - "⌘Space as the global shortcut: refused, it is Spotlight's"
+  - "work.list and work.detail: not delivered by this row, they arrived with the window is served (S19)"
+exit: "on a Mac, daemon running: plugin add @amykit/ui-desktop, amy ui desktop; a ticket goes DISCOVERED→IMPLEMENTING untouched; another poked from ⋯; an own diagram's added edge listed drawn, not walked; broken Settings config.yaml breaks nothing; sf check green on ui-frame, ui-window"
+---
 # amy has a window
 
-Everything amy knows is reachable today through `amy status`, `amy budget`,
-`amy brief`, the event log and a Slack thread. Nothing shows it in one place,
-moving, and nothing lets a person look at a piece of work and the machine's
-reasoning about it side by side.
-
-The window that comes with an install is small on purpose. amy is a workflow
-builder; the window that ships shows the work and lets a person talk to it, and
-everything beyond that is a plugin.
-
-## The shape
-
-```
-┌──────────────┬────────────────────────────────────────────┬─────────┐
-│ ⌕ search     │  Work   Workflows   Settings               │         │  nav 1
-│──────────────│────────────────────────────────────────────│  right  │
-│ ◉ TKT-11  ⋯  │  TKT-11 · ticket-to-qa · ESCALATED         │  panel  │
-│ ● TKT-22     │  DISCOVERED ─ … ─ ◉ESCALATED ─ QA_HANDOFF  │ (logs / │
-│ ○ TKT-18     │  [Timeline] [Diff] [plugin tabs…]          │  thread)│
-│ ── profile   │                                            │ opens & │
-│ + groom      │  canvas                                    │ closes  │
-└──────────────┴────────────────────────────────────────────┴─────────┘
-                                           ⌘K  ask anything
-```
-
-- **Nav 1**: `Work`, `Workflows`, `Settings`. A person reorders them in
-  `config.yaml`; they cannot be removed. Plugins may add sections after them
-  (*the window takes plugins*).
-- **Nav 2**: a search box and the list for the section. Under `Work`, every
-  record of every profile, grouped by profile, with its state and the harness
-  that last ran it. Under `Workflows`, the profiles. A `⋯` acts on its own row
-  and nothing wider, through a command that already exists: a record's offers
-  `poke`; a workflow's offers `remove <name>`, with the refusal `amy remove`
-  already gives when the machine would not survive it. The handbrake —
-  `pause` and `resume` — stops every workflow at once, so it is not on any
-  row: it sits in the `Workflows` canvas, saying what it stops. Retiring one
-  record waits for *work that is over goes away*, which adds the command.
-- **Canvas**: the selected item. For a record, the state machine strip — its
-  workflow's `workflow.mmd` (*a workflow is a Mermaid diagram*) with the
-  current state marked — and its timeline: the record's history joined to the
-  events that mention it. For a workflow, its diagram drawn beside its text.
-  A workflow under `~/.amy/workflows` is edited as that text, the way Settings
-  is `config.yaml`: saving reads it with the subset the host reads, writes
-  the file, and shows the check's *drawn, not walked* list
-  beneath it; a diagram the subset refuses is not saved, and the refusal names
-  the line. A workflow installed as a package is shown, not edited, and one
-  written without a diagram shows its declared states and says it has none.
-- **Right panel**, opened and closed by the person: the log, filtered to the
-  selected record, or the work thread when the record is waiting on its
-  owner.
-- **Settings is `config.yaml`**, edited as text, the way an editor's settings
-  are a JSON file. Saving runs the same `assemble` a boot runs, and a config
-  that would not mount is not saved: every refusal is shown by name, as
-  `mount()` already reports them. A form over it can come later.
-
-## What runs it
-
-**A desktop app, not a page.** A window served to a browser tab is a tab
-among forty, has no place in the menu bar and cannot own a global shortcut. amy
-is a machine that runs all day on a person's computer; its window should be an
-app that does too. macOS first; Windows and Linux are the same app built for
-them, not a second one.
-
-**Electron, for the gate's sake.** The deciding question is not size. It is
-whether the engine the gate measures is the engine that ships. Electron
-carries its own Chromium on every platform, so the projection *the frame is
-closed* reads in its pinned Chromium is the window a person gets on a Mac
-today and on Windows and Linux later. Tauri draws with each system's own
-webview — WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux — so a
-gate green in one engine says nothing about the other two. Electron is also
-JavaScript end to end, as amy is. The cost is a larger download, paid once,
-named in the dependency lock like any package — and paid only by somebody who
-installs this renderer, since *a renderer is chosen by name* keeps it out of
-the bare install.
-
-**The desktop renderer draws `StateMachine` with Pele.** The primitive
-carries the diagram's text. The app renders it with [Pele](https://pele.run),
-Obsidian's Mermaid renderer: MIT, no dependencies, synchronous, an SVG string
-out. It is a dependency of `@amykit/ui-desktop` only, and of no other package.
-The app registers only the state diagram (`pele/core` and
-`pele/diagrams/state`), which is about 130 KB minified and 52 KB gzipped,
-where the full bundle is 712 KB. Pele colours through CSS variables
-(`--pele-bg`, `--pele-fg`, `--pele-line`, `--pele-accent`, …), so the theme's
-tokens become those variables:
-
-- `a-renderer-names-no-colour` holds, because the renderer never names a
-  colour.
-- A theme switch recolours the diagram without rendering it again.
-- The `classDef` styles in the file are not read. They stay for GitHub and
-  Obsidian.
-
-A person sees the drawing Obsidian would show of the same file.
-
-The app is `@amykit/ui-desktop`, contributing the renderer named `desktop`
-(*a renderer is chosen by name*): `amy ui desktop` opens it, and so does
-`amy ui` once `ui.default` says so. It is **a client and nothing else**
-(*the window is served*): it connects to the local server, or to the one
-`ui.server` names, and draws what the server sends, through the generated SDK. It reads no file under
-amy's home, so the same app shows the work on this machine or on one reached
-through a tunnel. `amy ui build desktop` packages it as a macOS app.
-
-Closing the window does not quit the app: it stays resident for *amy lives in
-the menu bar*. `mod+k` can be a **global** shortcut that brings the ask up
-from anywhere, configurable in `config.yaml` and off by default, because a
-global shortcut is a promise about every other app on the machine — and never
-`⌘Space`, which is Spotlight's.
-
-The window writes nothing the CLI cannot. Every intent resolves to a function
-a command already calls, so the window is never a second road to the tracker.
-
-## The gates
-
-- **`ui-frame`** (from *the frame is closed*) gains the desktop renderer:
-  `plugins/ui-desktop/src/**` joins its activation, and the conformance script
-  runs against the packaged app's own Chromium.
-- **`ui-window`**, new: the host's behaviour, observed. Its scenario installs
-  amy, starts the daemon on the conformance world with fake tracker, forge and
-  conversation, launches the packaged app and drives the script.
-  Activation: `packages/server/src/**`, `packages/cli/src/ui/**`, `packages/ui/**`,
-  `plugins/ui-desktop/src/**` — the server is where every behaviour these
-  assertions exercise lives, so a change there expires the proof.
-  Every `window.*` assertion below is one of its required assertions.
-
-## What it delivers
-
-The `machine`, `workflows` and `settings` domains — `getHandbrake`, `setHandbrake`, `removeWorkflow`, `getConfig` and `saveConfig` — and the views `workflows.list`, `workflows.handbrake`, `work.log` and the local-only `settings.config` (`work.list` and `work.detail` arrived with *the window is served*), from *every endpoint is named before it is built*, flipped to
-`delivered` in `surface.yaml` in the same pull request.
-
-## Acceptance criteria
-
-- [ ] What this row delivers is `delivered` in `surface.yaml`, and the surface
-      gate is green (proof: deferred:test:packages/server/tests/surface.test.ts)
-
-- [ ] The desktop renderer holds the frame on every step of the script
-      (proof: deferred:assertion:frame.every_region_sits_where_declared)
-- [ ] The desktop and the text renderer agree on every region
-      (proof: deferred:assertion:frame.renderers_agree_on_every_region)
-- [ ] A record the daemon advances moves in the open window with no reload,
-      within one second of its event (proof: deferred:assertion:window.a_record_moves_without_a_reload)
-- [ ] The work list carries exactly the records `amy status --json` does, for
-      every profile (proof: deferred:assertion:window.the_list_is_amy_status)
-- [ ] Nav 1 reorders from `config.yaml`, and a section that does not exist is
-      refused by name (proof: deferred:test:packages/cli/tests/ui-config.test.ts)
-- [ ] Saving a config that would not mount keeps the old file and shows every
-      refusal (proof: deferred:assertion:window.a_config_that_would_not_mount_is_not_saved)
-- [ ] A workflow's diagram edited in its canvas is saved only when the subset
-      reads it, and the save shows what is drawn and not walked; a package's
-      diagram offers no edit
-      (proof: deferred:assertion:window.a_diagram_is_edited_as_text)
-- [ ] The strip in a record's canvas is its workflow's diagram, with every
-      edge the file draws and the record's state marked
-      (proof: deferred:assertion:window.the_strip_is_the_diagram)
-- [ ] Pele is a dependency of `@amykit/ui-desktop` and of no other package,
-      and the app bundles only its state diagram
-      (proof: deferred:test:plugins/ui-desktop/tests/bundle.test.ts)
-- [ ] The app draws everything from the server and reads nothing under amy's
-      home (proof: deferred:assertion:server.a_client_needs_nothing_but_the_server)
-- [ ] `amy ui build desktop` produces a macOS app that opens against a server
-      (proof: deferred:assertion:window.the_built_app_opens)
-- [ ] The global shortcut is off unless configured, and a configured one that
-      the system already owns is refused by name
-      (proof: deferred:assertion:window.a_global_shortcut_is_asked_for_not_taken)
-- [ ] Closing the window leaves the app running, and reopening it shows the
-      record that was selected (proof: deferred:assertion:window.closing_is_not_quitting)
-- [ ] Every `⋯` action leaves the same record, queue and log a run of its
-      command leaves (proof: deferred:assertion:window.an_action_is_its_command)
-- [ ] No row's `⋯` offers an action wider than its row: no record row pauses
-      the machine or removes a plugin (proof: deferred:test:packages/cli/tests/ui-actions.test.ts)
-- [ ] The fake tracker's and forge's call logs hold no write the window made
-      (proof: deferred:assertion:window.the_window_writes_nothing_the_cli_cannot)
-
-**Exit condition:** on a Mac, with the daemon running, a person runs
-`amy plugin add @amykit/ui-desktop`, opens `amy ui desktop`, watches a
-ticket go from `DISCOVERED` to `IMPLEMENTING` without touching anything, pokes
-another from its `⋯`, adds an edge to one of their own workflows' diagram in
-its canvas and sees it listed as drawn, not walked, and breaks `config.yaml` in
-Settings without breaking the install — and `sf check` is green on `ui-frame`
-and `ui-window`.
+Everything amy knows is reachable through `amy status`, `amy budget`, `amy brief`, the event log and a Slack thread, but nothing shows it in one place, moving, beside the machine's reasoning about a piece of work.

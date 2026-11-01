@@ -1,85 +1,37 @@
+---
+sources:
+  - { id: S1, kind: code, ref: "packages/core/src/ports/CodeHost.ts", said: "no CodeHost method writes a reply inside a review thread; the machine can judge and fix an objection but not answer it where it was raised" }
+  - { id: S2, kind: code, ref: "packages/workflow-ticket-to-qa/src/machine.ts", said: "every answer owed a reviewer is fix-and-push or escalate to the owner; a misunderstanding costs an executor run, a deferred objection cannot be recorded as answered" }
+  - { id: S3, kind: reference, ref: "plans/a-strong-model-reads-the-review-first.md", said: "that plan's answer verdict has nowhere to put its reply without this write" }
+  - { id: S4, kind: friction, ref: "issue #49", said: "found on a private workflow; every workflow that runs address-threads needs the same write and today escalates where a reply would do" }
+  - { id: S5, kind: decision, said: "CodeHost gains replyToReviewThread(threadId: string, body: string): Promise<void>, replying inside a review thread once per call" }
+  - { id: S6, kind: code, ref: "plugins/github/src/GitHubCodeHost.ts", said: "ReviewThread.id is already the GraphQL node id (id: thread.id), so the reply is one gh api graphql addPullRequestReviewThreadReply(input: {threadID, body}) mutation" }
+  - { id: S7, kind: decision, ref: "packages/core/src/actions.ts", said: "CORE_ACTIONS grows reply-review-thread: { port: \"code-host\", method: \"replyToReviewThread\" }, emitted like resolve-review-thread; a mount that cannot run it is refused at boot by name" }
+  - { id: S8, kind: reference, ref: "docs/design/the-threads-close-when-they-are-answered.md", said: "who may reply and what the reply says is workflow policy; the port makes the write possible and the catalogue names it" }
+  - { id: S9, kind: decision, said: "gate: ticket-to-qa, extended; assertions thread.a_reply_lands_inside_the_thread_it_answers, thread.a_reply_reaches_the_thread_conversation_on_the_next_look, thread.a_thread_with_no_open_objection_is_not_replied_to" }
+touches:
+  - packages/core/src/ports/CodeHost.ts
+  - packages/core/src/actions.ts
+  - packages/core/tests/mount.test.ts
+  - plugins/github/src/GitHubCodeHost.ts
+  - plugins/github/tests/GitHubCodeHost.test.ts
+  - packages/test-fixtures/src/fakes.ts
+  - packages/workflow-ticket-to-qa/tests/plugin.test.ts
+  - .software-factory/policy.yaml
+criteria:
+  - { id: A1, statement: "replyToReviewThread writes a reply inside a thread by its id in one call", proof: "test:plugins/github/tests/GitHubCodeHost.test.ts", sources: [S1, S5, S6] }
+  - { id: A2, statement: "the core dispatches reply-review-thread to the code-host port", proof: "test:packages/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S2, S4, S7, S8] }
+  - { id: A3, statement: "a reply appears in the thread's conversation on the next observation", proof: "assertion:thread.a_reply_reaches_the_thread_conversation_on_the_next_look", sources: [S3, S9] }
+  - { id: A4, statement: "a mount without the code-host port refuses a workflow using the action, by name, at boot", proof: "test:packages/core/tests/mount.test.ts", sources: [S7] }
+crosses:
+  - { mechanism: tracker-and-host-writes, answer: works, proof: "test:packages/core/tests/mount.test.ts" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "test:packages/core/tests/mount.test.ts" }
+failures:
+  - { step: replyToReviewThread, when: "the implementor cannot reply (a forge with no thread concept)", goes_to: "it throws; the action fails named, at boot, by the workflow that used it" }
+cut:
+  - "reply policy (who may reply, what it says) in the port or catalogue: out of scope, workflow policy (S8)"
+exit: "a workflow that owes a reviewer an answer can write it where the reviewer asked it, and the next look reads it back as part of the conversation"
+---
 # A review thread can be replied to
 
-`CodeHost` has five methods
-(`packages/core/src/ports/CodeHost.ts:127`): find, open, request review,
-count load, list requested. None of them writes a word on a pull
-request. The machine can open a thread's objection, judge it, fix the
-code — and it cannot say one sentence back inside the thread the
-objection came in.
-
-Every answer amy owes a reviewer is therefore an action at a distance:
-fix the code and push, or escalate to the owner
-(`packages/workflow-ticket-to-qa/src/machine.ts:303`), with no way to
-reply "this is intentional, see the ticket" where the reviewer asked
-it. A review that is a misunderstanding costs an executor run to not
-fix anything; a deferred objection cannot be recorded as answered; and
-the strong model that reads a review first
-([a-strong-model-reads-the-review-first.md](a-strong-model-reads-the-review-first.md))
-has an `answer` verdict with nowhere to put it.
-
-This was found on a private workflow (issue #49), but no workflow is
-exempt: any workflow that answers reviews — which is every workflow
-that runs `address-threads` — needs the same write, and today each
-would escalate where a reply would do.
-
-## What changes
-
-**The port grows the reply.** `CodeHost` gains:
-
-```ts
-/** Replies inside a review thread, once per call. */
-replyToReviewThread(threadId: string, body: string): Promise<void>;
-```
-
-`ReviewThread.id` is already the GraphQL node id — the adapter maps
-`id: thread.id` (`plugins/github/src/GitHubCodeHost.ts:326`) — so the
-caller has everything it needs and the mutation is one call:
-
-```sh
-gh api graphql -f query='mutation Reply($id: ID!) {
-  addPullRequestReviewThreadReply(input: {threadID: $id, body: "..."}) {
-    thread { id comments(first: 1) { nodes { databaseId } } }
-  }
-}'
-```
-
-An implementor that cannot reply — a forge with no thread concept —
-throws, and the action fails the way every unmet need fails: named,
-at boot, by the workflow that used it.
-
-**`CORE_ACTIONS` grows `reply-review-thread`.** One entry,
-`{ port: "code-host", method: "replyToReviewThread" }`
-(`packages/core/src/actions.ts:21`), so a workflow emits it the way it
-emits `resolve-review-thread`
-([the-threads-close-when-they-are-answered plan, now
-delivered](../docs/design/the-threads-close-when-they-are-answered.md))
-and a mount that cannot run it is refused at boot by name.
-
-**The reply is data, not prose policy.** Who may reply, and what the
-reply says, is workflow policy — the same line the thread-closing plan
-draws. The port only has to make the write possible, and the action
-catalogue only has to name it.
-
-## The gate
-
-`ticket-to-qa`, extended — the lifecycle is where a reply lands:
-
-- `thread.a_reply_lands_inside_the_thread_it_answers`
-- `thread.a_reply_reaches_the_thread_conversation_on_the_next_look`
-- `thread.a_thread_with_no_open_objection_is_not_replied_to`
-
-## Acceptance criteria
-
-- [ ] `replyToReviewThread` writes a reply inside a thread by its id in
-      one call (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
-- [ ] The core dispatches `reply-review-thread` to the code-host port
-      (proof: test:packages/workflow-ticket-to-qa/tests/plugin.test.ts)
-- [ ] A reply appears in the thread's conversation on the next
-      observation (proof: assertion:thread.a_reply_reaches_the_thread_conversation_on_the_next_look)
-- [ ] A mount without the code-host port refuses a workflow using the
-      action, by name, at boot
-      (proof: test:packages/core/tests/mount.test.ts)
-
-**Exit condition:** a workflow that owes a reviewer an answer can write
-it where the reviewer asked it, and the next look reads it back as
-part of the conversation.
+The machine can judge and fix a reviewer's objection but cannot say one sentence back inside the thread it came in, so every answer is an action at a distance: a push, or an escalation.

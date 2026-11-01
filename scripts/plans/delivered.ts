@@ -1,3 +1,5 @@
+import yaml from "yaml";
+
 /**
  * What a delivered plan still promises.
  *
@@ -64,12 +66,13 @@ function unprovenIn(at: string, proof: string, input: DeliveredInput): string[] 
 }
 
 /**
- * Each checkbox and the indented lines under it, read as one block, so a
+ * Every criterion a plan carries: those its declaration lists, then each
+ * checkbox and the indented lines under it, read as one block, so a
  * criterion with no proof never borrows the next one's.
  */
 function criteriaIn(text: string): Criterion[] {
   const lines = text.split("\n");
-  const criteria: Criterion[] = [];
+  const criteria: Criterion[] = declaredIn(lines);
   for (let index = 0; index < lines.length; index += 1) {
     const box = BOX.exec(lines[index]!);
     if (!box) continue;
@@ -84,4 +87,36 @@ function criteriaIn(text: string): Criterion[] {
     index = end - 1;
   }
   return criteria;
+}
+
+/** A declared criterion: `done: true` is a ticked box, `proof:` its marker. */
+function declaredIn(lines: readonly string[]): Criterion[] {
+  if (lines[0]?.trim() !== "---") return [];
+  const close = lines.indexOf("---", 1);
+  if (close < 0) return [];
+  let parsed: unknown;
+  try {
+    parsed = yaml.parse(lines.slice(1, close).join("\n"));
+  } catch {
+    return [];
+  }
+  const items = (parsed as { criteria?: unknown } | null)?.criteria;
+  if (!Array.isArray(items)) return [];
+  return items.map((item: { id?: unknown; done?: unknown; proof?: unknown }) => {
+    const id = String(item?.id ?? "");
+    const at = lines.findIndex((line, index) => index < close && declaresId(line, id));
+    return {
+      line: (at < 0 ? 1 : at) + 1,
+      ticked: item?.done === true,
+      proofs: typeof item?.proof === "string" ? [item.proof] : [],
+    };
+  });
+}
+
+/** Whether a declaration line is the one an entry's `id` sits on. */
+function declaresId(line: string, id: string): boolean {
+  const at = line.indexOf("id:");
+  if (at < 0 || id === "") return false;
+  const value = line.slice(at + 3).trim().split(/[,}\s]/)[0]!.replace(/^["']|["']$/g, "");
+  return value === id;
 }

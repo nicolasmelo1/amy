@@ -18,6 +18,21 @@ describe("a delivered plan", () => {
     ].join("\n"))).toEqual([]);
   });
 
+  it("reads a declared criterion as a checkbox: done is ticked, proof is its marker", () => {
+    expect(judge([
+      "---",
+      "criteria:",
+      "  - { id: A1, statement: it works, proof: \"assertion:gate.it_works\", done: true }",
+      "  - { id: A2, statement: it is tested, proof: \"test:tests/gone.test.ts\" }",
+      "exit: it works",
+      "---",
+      "# X",
+    ].join("\n"))).toEqual([
+      "docs/design/x.md:4 is delivered with a criterion still open — prove it and tick it, or move it to a plan in plans/",
+      "docs/design/x.md:4 cites tests/gone.test.ts, which does not exist",
+    ]);
+  });
+
   it("refuses a criterion left open, naming the line", () => {
     expect(judge("intro\n\n- [ ] It works (proof: assertion:gate.it_works)")).toEqual([
       "docs/design/x.md:3 is delivered with a criterion still open — prove it and tick it, or move it to a plan in plans/",

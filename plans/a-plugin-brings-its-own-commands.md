@@ -1,221 +1,89 @@
+---
+sources:
+  - { id: S1, kind: code, ref: "packages/cli/src/index.ts", said: "every command is written into index.ts; amy roster confirm and show (index.ts:2543) are ticket-to-qa commands every install carries, whichever workflow it drives" }
+  - { id: S2, kind: code, ref: "packages/cli/src/doctor.ts", said: "amy doctor checks a roster (doctor.ts:195) and amy init writes one (index.ts:266), even on a machine that will never assign a reviewer" }
+  - { id: S3, kind: reference, said: "Django registers a manage.py command per module in an installed app's management/commands; a Rails engine loads its Rake tasks and generators through its railtie; the framework owns the entry point, installs fill it" }
+  - { id: S4, kind: reference, ref: "docs/design/a-workflow-is-three-pieces.md", said: "amy is a framework for workflows the way Rails is for web applications, and its entry point should work the same way" }
+  - { id: S5, kind: friction, said: "amy --help lists 27; the daily operator uses only start, never ran btw or remove, cannot tell pause from stop or resume from start, nor what poke, daemon, after-daemon are for" }
+  - { id: S6, kind: decision, said: "a plugin can declare commands, checks and files: plain data read after load() without a mount, because commands run while the machine is broken; defineWorkflow accepts the same three members" }
+  - { id: S7, kind: decision, said: "commands become amy <name>, in amy --help beside built-ins marked with their package; run receives the profile's state directory, its schema-typed settings slice, the arguments and an output, not ports" }
+  - { id: S8, kind: decision, said: "a command declaring mount: true gets the mounted ports, or a refusal naming why the machine did not come up" }
+  - { id: S9, kind: decision, said: "checks run inside amy doctor after the host's own, under the plugin's name, returning the host's Check, so a red one fails doctor the same way" }
+  - { id: S10, kind: decision, said: "files are written by amy init and amy add into the profile's state directory directoriesFor gives (packages/cli/src/profiles.ts:184); an existing file is never overwritten" }
+  - { id: S11, kind: decision, said: "commands are those of every plugin the configured profiles mount; one run against a profile not contributing it is refused, naming profiles that do; --workflow picks when two profiles mount the package" }
+  - { id: S12, kind: decision, said: "a name is owned once: reusing a built-in or another package's name is refused at CLI load naming both owners; a plugin cannot replace doctor, tick or update" }
+  - { id: S13, kind: decision, said: "a built-in makes sense on every install, including errand-only; what fails it moves, merges, hides or goes" }
+  - { id: S14, kind: reference, ref: "plans/the-roster-belongs-to-its-workflow.md", said: "amy roster moves to @amykit/workflow-ticket-to-qa: only ticket-to-qa assigns reviewers" }
+  - { id: S15, kind: code, ref: "packages/cli/src/index.ts", said: "amy btw builds FileTasks and FileQueue by hand (index.ts:850); it moves to @amykit/workflow-errand, the amy-btw skill beside it" }
+  - { id: S16, kind: code, ref: "packages/cli/src/index.ts", said: "amy note builds FileNotes by hand (index.ts:785) and reads plans.repos, note-to-plan's setting; it moves to @amykit/workflow-note-to-plan" }
+  - { id: S17, kind: code, ref: "packages/cli/src/index.ts", said: "amy worktrees builds a WorktreeManager from @amykit/plugin-file-worktree by hand (index.ts:2584); it moves to @amykit/plugin-file-worktree" }
+  - { id: S18, kind: decision, said: "amy models moves to @amykit/plugin-agent-relay, reading @amykit/model-specs: model prices are the business of whatever calls an agent" }
+  - { id: S19, kind: decision, said: "an adapter built by hand bypasses its port, so a different adapter mounted instead is never seen; the CLI then imports no plugin-file-notes, -tasks or -worktree, and a rule keeps it so" }
+  - { id: S20, kind: code, ref: "packages/cli/src/index.ts", said: "start/stop run and end one workflow's loop (:493, :573); pause/resume are a machine handbrake: in-flight work ended, nothing new, loop up, a file surviving reboot (:451, :467)" }
+  - { id: S21, kind: decision, said: "pause and resume go; amy stop ends the selected workflow's loop and its in-flight run, as its SIGTERM already does" }
+  - { id: S22, kind: decision, said: "amy stop --all is the handbrake: ends every loop and run in flight, including an amy run in another terminal; nothing starts until amy start releases it; it covers pause's hold-while-deploying case" }
+  - { id: S23, kind: decision, said: "discover goes: the loop discovers every pass (index.ts:643); it existed so the quickstart could queue work before one tick, so tick discovers first and the quickstart loses the step" }
+  - { id: S24, kind: decision, said: "daemon (the foreground loop start runs) and after-daemon (spawned by start to update once a loop exits, index.ts:559) are hidden: still callable, out of amy --help" }
+  - { id: S25, kind: decision, said: "amy remove (uninstall, index.ts:1648) and workflow rm (records, queue, config entry, index.ts:2456) merge: amy remove <workflow> does both, asking before deleting state, accepting --keep-state; workflow rm goes" }
+  - { id: S26, kind: decision, said: "amy plugin add and remove, which only edit a profile's mount list, go; amy add and amy remove are the verbs, amy plugin only lists" }
+  - { id: S27, kind: reference, ref: "plans/an-event-is-a-reason-to-look.md", said: "poke becomes amy look <id>: brings one work forward instead of waiting out its backoff (index.ts:726); once that plan lands the webhook does it, the command for rare cases" }
+  - { id: S28, kind: decision, said: "today only amy models refresh calls refreshFrom; amy update and amy start refresh a table older than seven days, keeping what models.dev lacks; amy models shows the table" }
+  - { id: S29, kind: decision, said: "afterwards built-ins are init, doctor, add, remove, update, start, stop, status, tick, run, look, queue, budget, brief, skills, workflow, plugin, each meaning the same on every install" }
+  - { id: S30, kind: decision, said: "a command has a description and may have subcommands, one marked default: true; ticket-to-qa declares roster (confirm stamps today's date; show, the default, prints it and whether current), checks: [rosterIsConfirmed], files: roster.yaml" }
+touches:
+  - packages/core/src/plugin.ts
+  - packages/core/src/define-workflow.ts
+  - packages/cli/src/index.ts
+  - packages/cli/src/doctor.ts
+  - packages/cli/src/loader.ts
+  - packages/cli/src/add.ts
+  - packages/cli/src/remove.ts
+  - packages/cli/src/update.ts
+  - packages/cli/src/poke.ts
+  - packages/cli/src/workflow.ts
+  - packages/workflow-ticket-to-qa/src/plugin.ts
+  - packages/workflow-errand/src/plugin.ts
+  - packages/workflow-note-to-plan/src/plugin.ts
+  - plugins/file-worktree/src/plugin.ts
+  - plugins/agent-relay/src/plugin.ts
+  - packages/cli/tests/plugin-commands.test.ts
+  - packages/cli/tests/remove.test.ts
+  - packages/cli/tests/models.test.ts
+  - .software-factory/policy.yaml
+criteria:
+  - { id: A1, statement: "a plugin outside this repository declaring a command, installed with amy add, appears in amy --help marked with its package, runs, and disappears when removed", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S3, S4, S6, S7] }
+  - { id: A2, statement: "a plugin command runs while the configured machine fails to mount, and a mount: true command on the same machine is refused with the mount's reason", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S6, S8] }
+  - { id: A3, statement: "a plugin command named like a built-in, or like another package's command, is refused at load, naming both owners", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S12] }
+  - { id: A4, statement: "a plugin's check turns amy doctor red under the plugin's name, and a plugin's file is written by amy init once and never overwritten", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S2, S9, S10] }
+  - { id: A5, statement: "in the ticket-to-qa scenario, through the installed executable, amy --help lists amy roster as the workflow's command and it runs", proof: "deferred:assertion:lifecycle.a_workflow_command_is_its_own", sources: [S1, S14, S30] }
+  - { id: A6, statement: "in the errand's scenario, on a machine mounting nothing that contributes it, amy roster does not exist", proof: "deferred:assertion:errand.a_command_nothing_mounts_does_not_exist", sources: [S11] }
+  - { id: A7, statement: "on an errand-only machine amy --help lists no pause, resume, discover, daemon, after-daemon, poke, btw, note, worktrees, roster or models, and the hidden two still run", proof: "deferred:assertion:errand.help_lists_only_the_machines_commands", sources: [S5, S13, S21, S24, S27, S29] }
+  - { id: A8, statement: "amy btw, note, worktrees and models appear on a machine mounting their owner, and the CLI imports none of plugin-file-notes, plugin-file-tasks or plugin-file-worktree", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S15, S16, S17, S18, S19] }
+  - { id: A9, statement: "amy stop --all ends every loop and an amy run in flight, nothing starts until amy start, and amy start releases it", proof: "deferred:assertion:lifecycle.stop_all_holds_until_start", sources: [S20, S22] }
+  - { id: A10, statement: "amy tick on an empty queue discovers first and makes the move", proof: "deferred:assertion:errand.a_tick_discovers_before_it_moves", sources: [S23] }
+  - { id: A11, statement: "amy remove <workflow> uninstalls it and, when told to, deletes its records and queue, and keeps them with --keep-state", proof: "deferred:test:packages/cli/tests/remove.test.ts", sources: [S25, S26] }
+  - { id: A12, statement: "a price table older than seven days is refreshed by amy update, and a refresh that fails leaves it as it was", proof: "deferred:test:packages/cli/tests/models.test.ts", sources: [S28] }
+crosses:
+  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A2" }
+  - { mechanism: install-and-update, answer: works, proof: "deferred:A1, A11, A12" }
+  - { mechanism: calls, answer: n/a, why: "defineWorkflow only accepts three data members; how one workflow calls another is unchanged" }
+  - { mechanism: hooks, answer: n/a, why: "commands, checks and files are read beside register, not run around a plan" }
+  - { mechanism: queue-and-store, answer: n/a, why: "look is poke renamed; claiming, recovery and pruning are unchanged" }
+  - { mechanism: workflow-tooling, answer: n/a, why: "workflow rm folds into amy remove; amy workflow check and the testkit walk as before" }
+  - { mechanism: checkouts-and-leases, answer: n/a, why: "file-worktree only gains the worktrees command over its own manager; no tree move changes" }
+  - { mechanism: agent-replies, answer: n/a, why: "agent-relay only gains the models command; reading a reply is unchanged" }
+guarantee:
+  - { holds: "the built-in commands remain in index.ts: they are about the machine (queue, engine, install), not one process", not_against: "a plugin contributing a command of its own" }
+  - { holds: "plugins still mount through register; commands, checks and files are read beside it, never through it", not_against: "a command declaring mount: true" }
+  - { holds: "the core does not import commander: core types say what a command is, the CLI decides how it is parsed", not_against: "the CLI's own parser" }
+failures:
+  - { step: model price refresh, when: "the refresh fails", goes_to: "the table stays as it was, and it says so once" }
+  - { step: "mount: true command", when: "the machine does not come up", goes_to: "refused, naming why" }
+cut:
+  - "letting a later plugin silently replace an earlier one's command, as Django does: refused; a command that changes with config order cannot be trusted"
+  - "restricting commands to workflows: refused; any plugin, e.g. Linear shipping amy linear whoami instead of doctor growing it"
+exit: "ticket-to-qa scenario, installed executable: --help lists the workflow's command, doctor runs its check, init writes its file. Errand: none exist, help lists only the machine's, tick discovers first. One start/stop pair toggles the machine; both gates require every assertion"
+---
 # A plugin brings its own commands
 
-The command line is the host's, and only the host's. Every command is written
-into `packages/cli/src/index.ts`. So when a workflow needs a command of its
-own, the host grows one on the workflow's behalf. `amy roster confirm` and
-`amy roster show` (`packages/cli/src/index.ts:2543`) are ticket-to-qa
-commands that every install carries, whichever workflow it drives. The same
-goes for the checks and the files around them: `amy doctor` checks a roster
-(`packages/cli/src/doctor.ts:195`) and `amy init` writes one
-(`packages/cli/src/index.ts:266`), even on a machine that will never assign a
-reviewer.
-
-Frameworks already solved this. Django registers a `manage.py` command for
-every module in an installed app's `management/commands` directory. Rails
-lets an engine load its own Rake tasks and generators through its railtie.
-In both, the framework owns the entry point and what is installed fills it.
-amy is a framework for workflows the way Rails is one for web applications
-([a workflow is three pieces](../docs/design/a-workflow-is-three-pieces.md)), and its
-entry point should work the same way.
-
-The roster is not the only command in the wrong place, and once commands can
-move it is worth asking of each one whether the machine needs it. `amy --help`
-lists 27. The person who runs amy every day uses `start` and nothing else of
-the lifecycle, has never run `btw` or `remove`, and could not say what tells
-`pause` from `stop`, `resume` from `start`, or what `poke`, `daemon` and
-`after-daemon` are for. A command nobody can tell apart from its neighbour is a
-command that costs a reading of the docs every time it is needed.
-
-## What changes
-
-**A plugin can declare `commands`, `checks` and `files`.** All three are plain
-data on the plugin, read after `load()` and without a mount. The commands that
-matter most are the ones somebody runs while the machine is broken, so they
-must not depend on the machine coming up.
-
-```ts
-export const plugin: Plugin = {
-  name: "@amykit/workflow-ticket-to-qa",
-  commands: {
-    roster: {
-      description: "Who is reviewing today",
-      subcommands: {
-        confirm: { description: "Stamp the roster with today's date", run: confirm },
-        show: { description: "Print the roster and whether it is current", run: show, default: true },
-      },
-    },
-  },
-  checks: [rosterIsConfirmed],
-  files: { "roster.yaml": EXAMPLE_ROSTER },
-  register(registry) { /* unchanged */ },
-};
-```
-
-`defineWorkflow` accepts the same three members, so a workflow written as
-three pieces declares its commands in the same call.
-
-- **`commands`** become `amy <name>`, listed in `amy --help` beside the
-  built-in ones and marked with the package that brought them. A command's
-  `run` receives the profile's state directory, the plugin's settings slice as
-  its schema typed it, the arguments, and an output to write to. It does not
-  receive ports. A command that needs the whole machine says
-  `mount: true`, and gets the mounted ports, or a refusal naming why the
-  machine did not come up.
-- **`checks`** run inside `amy doctor`, after the host's own checks, under
-  the plugin's name. Each one returns the same `Check` the host's checks
-  return, so a red one fails `doctor` the same way.
-- **`files`** are written by `amy init` and `amy add` into the profile's state
-  directory, next to the records and the queue that
-  `directoriesFor` (`packages/cli/src/profiles.ts:184`) already gives it. A
-  file that already exists is never overwritten.
-
-**Which commands exist depends on the config.** The commands are those of
-every plugin the configured profiles mount. A machine that drives only the
-errand has no `amy roster`. A command run against a profile whose plugins do
-not contribute it is refused, naming the profiles that do. When two profiles
-mount the same package, `--workflow` picks one, as it does for every other
-command.
-
-**A name is owned once.** A plugin command that reuses a built-in name, or a
-name another package already contributes, is refused when the CLI loads, and
-the refusal names both owners. Django lets the later app silently replace the
-earlier one. That is the behaviour this rule exists to prevent: a command that
-changes depending on the order of the config is a command nobody can trust.
-The built-in commands stay built in, and a plugin cannot replace `doctor`,
-`tick` or `update`.
-
-**Any plugin, not only workflows.** A workflow is a plugin, so it gets the
-mechanism for free. Restricting it to workflows would only stop the Linear
-plugin from shipping `amy linear whoami`, and that is the kind of command
-`doctor` would otherwise grow on its behalf.
-
-## The command line keeps only what is the machine's
-
-The rule for a built-in command: it makes sense on every install, including one
-that drives only the errand. What fails it moves, merges, hides or goes.
-
-**Five commands leave with their owner.** Each one either names one workflow's
-vocabulary or builds one adapter by hand, bypassing the port it should go
-through, so a different adapter mounted in its place is never seen:
-
-| Command | Why it is not the machine's | It moves to |
-| :-- | :-- | :-- |
-| `amy roster` | Only ticket-to-qa assigns reviewers | `@amykit/workflow-ticket-to-qa` ([the roster belongs to its workflow](the-roster-belongs-to-its-workflow.md)) |
-| `amy btw` | Builds `FileTasks` and `FileQueue` by hand (`packages/cli/src/index.ts:850`) | `@amykit/workflow-errand`, with the `amy-btw` skill beside it |
-| `amy note` | Builds `FileNotes` by hand (`packages/cli/src/index.ts:785`) and reads `plans.repos`, note-to-plan's setting | `@amykit/workflow-note-to-plan` |
-| `amy worktrees` | Builds a `WorktreeManager` from `@amykit/plugin-file-worktree` by hand (`packages/cli/src/index.ts:2584`) | `@amykit/plugin-file-worktree` |
-| `amy models` | Model prices are the business of whatever calls an agent | `@amykit/plugin-agent-relay`, reading `@amykit/model-specs` |
-
-The CLI then imports no `plugin-file-notes`, `plugin-file-tasks` or
-`plugin-file-worktree`, and a rule keeps it that way.
-
-**One pair turns the machine on and off.** Today there are two:
-
-- `start` and `stop` run and end one workflow's loop
-  (`packages/cli/src/index.ts:493`, `:573`).
-- `pause` and `resume` pull and release a handbrake for the whole machine: work
-  in flight is ended, nothing new starts, the loop stays up, and the handbrake
-  is a file that survives a reboot (`packages/cli/src/index.ts:451`, `:467`).
-
-`pause` and `resume` go. `amy stop` ends the selected workflow's loop and the
-run it has in flight, as its `SIGTERM` already does. `amy stop --all` is the
-handbrake: it ends every loop and every run in flight, including an `amy run`
-in another terminal, and nothing starts until `amy start`, which releases it.
-The one case `pause` served, holding everything while somebody deploys, is
-`stop --all`.
-
-**`discover` goes, because `start` already does it.** The loop discovers on
-every pass (`packages/cli/src/index.ts:643`). The command only existed so the
-quickstart could put work on the queue before one `tick`, so `tick` discovers
-first and the quickstart loses the step.
-
-**`daemon` and `after-daemon` are hidden.** `daemon` is the loop in the
-foreground that `start` runs, and `after-daemon` is what `start` spawns to
-update once a loop has exited (`packages/cli/src/index.ts:559`). Neither is
-something a person types. Both stay callable and leave `amy --help`.
-
-**`remove` and `workflow rm` are one command.** `amy remove` uninstalls a
-package (`packages/cli/src/index.ts:1648`), and `amy workflow rm` deletes a
-workflow's records, its queue and its config entry
-(`packages/cli/src/index.ts:2456`). Nobody can guess which one undoes
-`amy add`. `amy remove <workflow>` does both, asking before it deletes state
-and accepting `--keep-state`, and `workflow rm` goes. The same holds for
-plugins: `amy plugin add` and `amy plugin remove`, which only edit the list a
-profile mounts and leave installing to somebody else, go. `amy add` and
-`amy remove` are the verbs, and `amy plugin` only lists.
-
-**`poke` is `look`.** It brings one piece of work forward instead of waiting
-out its backoff (`packages/cli/src/index.ts:726`), which is what somebody
-wants right after answering in a thread. `amy look <id>` says so. Once *an
-event is a reason to look* lands, the webhook does it and the command is for
-the rare case.
-
-**Model prices refresh themselves.** Today they change only when somebody
-runs `amy models refresh`: nothing else calls `refreshFrom`. `amy update` and
-`amy start` refresh a table older than seven days, keeping what models.dev
-does not carry, and a refresh that fails leaves the table as it was and says
-so once. `amy models` shows the table.
-
-Afterwards the built-in list is `init`, `doctor`, `add`, `remove`, `update`,
-`start`, `stop`, `status`, `tick`, `run`, `look`, `queue`, `budget`, `brief`,
-`skills`, `workflow` and `plugin`, and every one of them means the same on
-every install.
-
-## What does not change
-
-The built-in commands remain in `index.ts`. They are about the machine
-(queue, engine, install), not about any one process. Plugins still mount
-through `register`. `commands`, `checks` and `files` are read beside it, never
-through it. The core does not import `commander`: the core types say what a
-command is, and the CLI decides how a command is parsed.
-
-## Acceptance criteria
-
-- [ ] A plugin outside this repository that declares a command, installed with
-      `amy add`, appears in `amy --help` marked with its package and runs, and
-      disappears when it is removed
-      (proof: deferred:test:packages/cli/tests/plugin-commands.test.ts)
-- [ ] A plugin command runs while the configured machine fails to mount, and a
-      `mount: true` command on the same machine is refused with the mount's
-      reason
-      (proof: deferred:test:packages/cli/tests/plugin-commands.test.ts)
-- [ ] A plugin command named like a built-in, or like another package's
-      command, is refused at load, naming both owners
-      (proof: deferred:test:packages/cli/tests/plugin-commands.test.ts)
-- [ ] A plugin's check turns `amy doctor` red under the plugin's name, and a
-      plugin's file is written by `amy init` once and never overwritten
-      (proof: deferred:test:packages/cli/tests/plugin-commands.test.ts)
-- [ ] In the `ticket-to-qa` scenario, through the installed executable,
-      `amy --help` lists `amy roster` as the workflow's command and it runs
-      (proof: deferred:assertion:lifecycle.a_workflow_command_is_its_own)
-- [ ] In the errand's scenario, on a machine that mounts nothing contributing
-      it, `amy roster` does not exist
-      (proof: deferred:assertion:errand.a_command_nothing_mounts_does_not_exist)
-
-- [ ] `amy --help` lists no `pause`, `resume`, `discover`, `daemon`,
-      `after-daemon`, `poke`, `btw`, `note`, `worktrees`, `roster` or `models`
-      on a machine that mounts only the errand, and the hidden two still run
-      (proof: deferred:assertion:errand.help_lists_only_the_machines_commands)
-- [ ] `amy btw`, `amy note`, `amy worktrees` and `amy models` appear on a
-      machine that mounts their owner, and the CLI imports none of
-      `plugin-file-notes`, `plugin-file-tasks` or `plugin-file-worktree`
-      (proof: deferred:test:packages/cli/tests/plugin-commands.test.ts)
-- [ ] `amy stop --all` ends every loop and an `amy run` in flight, nothing
-      starts until `amy start`, and `amy start` releases it
-      (proof: deferred:assertion:lifecycle.stop_all_holds_until_start)
-- [ ] `amy tick` on an empty queue discovers first and makes the move
-      (proof: deferred:assertion:errand.a_tick_discovers_before_it_moves)
-- [ ] `amy remove <workflow>` uninstalls it and, when told to, deletes its
-      records and queue, and keeps them with `--keep-state`
-      (proof: deferred:test:packages/cli/tests/remove.test.ts)
-- [ ] A price table older than seven days is refreshed by `amy update`, and a
-      refresh that fails leaves it as it was
-      (proof: deferred:test:packages/cli/tests/models.test.ts)
-
-**Exit condition:** in the `ticket-to-qa` scenario, through the installed
-executable, `amy --help` lists a command the workflow brought, `amy doctor`
-runs the check it brought, and `amy init` writes the file it brought. In the
-errand's scenario none of the three exists, `amy --help` lists only the
-machine's commands, and `amy tick` discovers before it moves. One `start` and
-one `stop` turn the machine on and off, and the `ticket-to-qa` and errand
-gates require every assertion above.
+The command line is the host's alone, so it grows commands on every workflow's behalf: every install carries ticket-to-qa's roster. And of 27 commands, the daily operator uses one and cannot tell its neighbours apart.

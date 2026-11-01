@@ -1,120 +1,42 @@
+---
+sources:
+  - { id: S1, kind: code, ref: "packages/workflow-ticket-to-qa/src/record.ts", said: "a thread verdict is fixed or disagreed, judged once and kept in record.judged so a comment is never worked twice; it answers only 'was this thread ever looked at'" }
+  - { id: S2, kind: friction, said: "a real review leaves deferred (right, fix later, answered and open), answered (replied, no code change), won't-fix (argued once, not settled) and already-settled — answered rounds ago, re-litigated as new" }
+  - { id: S3, kind: code, ref: "packages/workflow-ticket-to-qa/src/machine.ts", said: "outstanding filters judged threads; memory keyed by threadId alone cannot tell a thread reopened by a reply from one whose every comment was judged" }
+  - { id: S4, kind: reference, ref: "docs/design/a-reply-inside-a-thread-reaches-the-agent.md", said: "the delivered sibling carries a reply inside a thread into the view; judgedUpTo is the record's half of that" }
+  - { id: S5, kind: ticket, ref: "issue #50", said: "found on a private workflow: what was deferred or answered must be remembered, with the bot reviewer's ticket and its answered Linear-thread questions as context; the seam is amy's, since the record and judged are" }
+  - { id: S6, kind: decision, said: "ThreadVerdict.verdict widens to \"fixed\" | \"disagreed\" | \"deferred\" | \"answered\" | \"wont-fix\", note unchanged; disagreed still goes to the owner" }
+  - { id: S7, kind: code, ref: "packages/workflow-ticket-to-qa/src/record.ts", said: "every consumer keeps working: disagreements() reads disagreed only, and the machine counts attempts, not verdicts" }
+  - { id: S8, kind: decision, said: "the judged entry becomes JudgedThread { threadId; verdict: ThreadVerdict[\"verdict\"]; note; judgedUpTo: string } — judgedUpTo the id of the comment the verdict covered, opening or latest reply" }
+  - { id: S9, kind: decision, said: "a thread whose latest comment is beyond judgedUpTo is outstanding again; at or before it, settled" }
+  - { id: S10, kind: reference, ref: "plans/a-strong-model-reads-the-review-first.md", said: "its triage gets the record's memory in its prompt — per thread, what was last said and why — so already-settled is reached with evidence, not guessed" }
+  - { id: S11, kind: decision, said: "deferred threads are listed alongside disagreements in whatever the workflow hands the owner, so a promise the machine made is visible to who collects it" }
+  - { id: S12, kind: decision, said: "gate ticket-to-qa extended; it also asserts review.an_answered_thread_is_never_worked_twice and review.a_wontfix_position_is_stated_once_not_re_argued" }
+touches:
+  - packages/workflow-ticket-to-qa/src/record.ts
+  - packages/workflow-ticket-to-qa/src/machine.ts
+  - packages/workflow-ticket-to-qa/src/review.ts
+  - packages/workflow-ticket-to-qa/src/agent-steps.ts
+  - packages/workflow-ticket-to-qa/tests/record.test.ts
+  - packages/workflow-ticket-to-qa/tests/machine.test.ts
+  - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts
+  - packages/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - .software-factory/evidence/ticket-to-qa-scenario.sh
+  - .software-factory/policy.yaml
+criteria:
+  - { id: A1, statement: "the record stores deferred/answered/wont-fix verdicts with their note, and disagreements() still returns only disagreed", proof: "test:packages/workflow-ticket-to-qa/tests/record.test.ts", sources: [S1, S2, S5, S6, S7] }
+  - { id: A2, statement: "a thread whose latest comment is new relative to judgedUpTo is outstanding again; one at or before it is settled", proof: "test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S3, S8, S9] }
+  - { id: A3, statement: "a deferred thread is listed for the owner with its note", proof: "assertion:review.a_deferred_thread_is_listed_for_the_owner", sources: [S11, S12] }
+  - { id: A4, statement: "a thread replied to after an answered verdict is judged again, not skipped", proof: "assertion:review.a_reply_reopens_a_thread_the_record_had_settled", sources: [S4, S9, S12] }
+  - { id: A5, statement: "the triage prompt carries the record's memory of each thread", proof: "test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S10] }
+  - { id: A6, statement: "no existing state changes behaviour with the widened vocabulary", proof: "test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S7, S12] }
+crosses:
+  - { mechanism: record-migration, answer: works, proof: "deferred:A6" }
+cut:
+  - "the follow-up on a deferred thread: workflow policy; whether deferred means next sprint or never is not amy's question"
+exit: "what a review settled, deferred or answered is remembered across rounds with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it"
+---
 # The review is remembered across rounds
 
-The record's verdict on a thread is binary: `fixed` or `disagreed`
-(`packages/workflow-ticket-to-qa/src/record.ts:27`), judged once and kept
-in `record.judged` so the same comment is never worked twice
-(`packages/workflow-ticket-to-qa/src/record.ts:56`). That memory answers
-"was this thread ever looked at" — and nothing else.
-
-What it cannot say is what a review actually leaves behind on a real
-board:
-
-- *deferred* — the objection is right, the fix is agreed to come later;
-  the thread is answered on the pull request and stays open;
-- *answered* — replied to in the thread, no code change, and the human
-  reviewer's next look sees the reply;
-- *won't-fix* — judged, argued once, position stated, not settled;
-- *already-settled* — this objection was answered two rounds ago; the
-  record has no way to say so, so the executor reads it as new and
-  re-litigates it.
-
-The last one is the expensive one. `outstanding` filters threads the
-record has judged (`packages/workflow-ticket-to-qa/src/machine.ts:224`),
-but a thread *reopened* by a reply — the conversation the sibling plan
-carries into the view
-([the-reply-inside-a-thread-reaches-the-agent plan, now
-delivered](../docs/design/a-reply-inside-a-thread-reaches-the-agent.md))
-— is a thread whose opening comment the record already judged, and the
-record's memory is keyed by `threadId` alone, so it cannot tell "judged
-the opening comment" from "judged everything that was said in it".
-
-This was found on a private workflow (issue #50): what was deferred or
-answered must be remembered, with the bot reviewer's ticket and all
-its answered questions in the Linear thread as context. That workflow
-needs the memory; the seam — a verdict vocabulary that can say more
-than fixed/disagreed, and a memory keyed by more than the thread id —
-is amy's, because the record and the `judged` list are amy's.
-
-## What changes
-
-**The verdict vocabulary grows.** `ThreadVerdict.verdict` widens:
-
-```ts
-verdict: "fixed" | "disagreed" | "deferred" | "answered" | "wont-fix";
-```
-
-with `note` unchanged. `disagreed` keeps its meaning — it goes to the
-owner — and the new values are what a review actually leaves behind:
-`deferred` (answered now, fix later), `answered` (replied, no code
-change), `wont-fix` (position stated, not settled). Every existing
-consumer keeps working: `disagreements()` reads `disagreed` only
-(`packages/workflow-ticket-to-qa/src/record.ts:80`), and the machine
-counts attempts, not verdicts.
-
-**A thread's memory is its last word, not its first.** The `judged`
-entry gains the shape of a conversation that has moved on:
-
-```ts
-interface JudgedThread {
-  threadId: string;
-  verdict: ThreadVerdict["verdict"];
-  note: string;
-  /** The comment the verdict was made against, so a reply is new. */
-  judgedUpTo: string;
-}
-```
-
-`judgedUpTo` is the id of the comment the verdict covered — the opening
-comment's id, or the id of the latest reply inside the thread. A thread
-whose latest comment is beyond `judgedUpTo` is outstanding again, and
-one whose latest comment is at or before it is settled. The reply
-carries the conversation the sibling plan already puts in the view;
-`judgedUpTo` is the record's half of the same honesty: a memory that
-cannot tell a new reply from an old objection is a memory that re-argues
-the dead.
-
-**The triage reads the memory.** The strong model that reads a review
-first ([a-strong-model-reads-the-review-first.md](a-strong-model-reads-the-review-first.md))
-gets the record's memory in its prompt: for each thread, what was
-last said and why, so `already-settled` is a verdict it can reach with
-the evidence in hand rather than a guess.
-
-**Deferred has a follow-up question.** A `deferred` thread is a promise
-with no date on it. The workflow folds it into the record and the
-record's escalation surface names it: `deferred` threads are listed
-alongside disagreements in whatever the workflow hands the owner, so a
-promise the machine made is visible to the person who has to collect
-it. The follow-up itself stays workflow policy — whether `deferred`
-means "next sprint" or "never" is not amy's question.
-
-## The gate
-
-`ticket-to-qa`, extended — the lifecycle is where a review comes back
-round:
-
-- `review.a_deferred_thread_is_listed_for_the_owner`
-- `review.an_answered_thread_is_never_worked_twice`
-- `review.a_reply_reopens_a_thread_the_record_had_settled`
-- `review.a_wontfix_position_is_stated_once_not_re_argued`
-
-## Acceptance criteria
-
-- [ ] The record stores deferred/answered/wont-fix verdicts with their
-      note, and `disagreements()` still returns only `disagreed`
-      (proof: test:packages/workflow-ticket-to-qa/tests/record.test.ts)
-- [ ] A thread whose latest comment is new relative to `judgedUpTo` is
-      outstanding again; one at or before it is settled
-      (proof: test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
-- [ ] A `deferred` thread is listed for the owner with its note
-      (proof: assertion:review.a_deferred_thread_is_listed_for_the_owner)
-- [ ] A thread replied to after an `answered` verdict is judged again,
-      not skipped
-      (proof: assertion:review.a_reply_reopens_a_thread_the_record_had_settled)
-- [ ] The triage prompt carries the record's memory of each thread
-      (proof: test:packages/agent-kit/tests/HarnessAgent.test.ts)
-- [ ] No existing state changes behaviour with the widened vocabulary
-      (proof: test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts)
-
-**Exit condition:** what a review settled, deferred or answered is
-remembered across rounds with the evidence it was settled on, and a
-thread only becomes work again when somebody says something new in it.
+The record remembers only that a thread was looked at, keyed by thread id, so an
+objection answered rounds ago reads as new and is re-argued.

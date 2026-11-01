@@ -1,132 +1,63 @@
+---
+sources:
+  - { id: S1, kind: code, ref: "plugins/linear/src/LinearTracker.ts", said: "the issue query asks for ISSUE_FIELDS and toTicket copies only those; a grandchild arrives like a root, its project, parent and root never reaching the agent" }
+  - { id: S2, kind: ticket, ref: "issue #54", said: "complete ancestry when wanted — project, parent, grandparent, until the root — and no automatic expansion when not; siblings and descendants are not ancestors" }
+  - { id: S3, kind: code, ref: "packages/workflow-ticket-to-qa/src/ticket.ts", said: "Ticket has no place for context; each agent step renders the ticket itself, and a generic self-review half-step would miss a fix to only the ticket prompts" }
+  - { id: S4, kind: decision, said: "Ticket gains optional context: readonly WorkContext[], each naming kind (project|ancestor), stable id, title, URL, optional body; body stays exactly the ticket's own description" }
+  - { id: S5, kind: decision, said: "ancestors are root-first and end at the immediate parent, so the prompt reads intent to leaf without a parent posing as the child's specification" }
+  - { id: S6, kind: decision, said: "WorkContext lives with the agent/harness contract, not Linear; AskContext.workContext carries it for generic calls; one agent-kit renderer serves every step; the relay facade passes it at both levels" }
+  - { id: S7, kind: decision, said: "@amykit/plugin-linear slice: contextProject boolean, default false; contextAncestors none|parent|root, default none; parent fetches exactly the immediate parent; root follows every parent, no depth limit" }
+  - { id: S8, kind: decision, said: "the project is the first found from child toward root, received once; defaults keep today's request count and prompt exactly: context is not automatic" }
+  - { id: S9, kind: decision, said: "ConfigSchema cannot prove an enum, so the plugin parses contextAncestors in ready and refuses any other value before asking for a ticket; parsed settings pass into LinearTracker" }
+  - { id: S10, kind: decision, said: "the first query returns parent id and project; root follows parent ids iteratively, recording visited ids, refusing a cycle by name; inProgress and get share one context builder" }
+  - { id: S11, kind: decision, said: "nothing is copied into the work record; after a config edit and restart the next observation rebuilds the ticket under the new setting" }
+  - { id: S12, kind: decision, said: "gate ticket-to-qa extended: a project, chain ROOT-1 -> PARENT-2 -> CHILD-3, a misleading sibling; the fake harness records every prompt incl. self-review; runs the installed machine under several Linear configs" }
+  - { id: S13, kind: decision, said: "changed-config assertion: write none, see a prompt without roots, stop, write root, see the next prompt with both ancestors — edit and remount, not hot reload" }
+  - { id: S14, kind: decision, said: "the gate also asserts context.an_unknown_ancestry_scope_is_refused_before_work" }
+touches:
+  - plugins/linear/src/LinearTracker.ts
+  - plugins/linear/src/plugin.ts
+  - plugins/linear/src/config.ts
+  - plugins/linear/tests/LinearTracker.test.ts
+  - packages/core/src/ports/Harness.ts
+  - packages/workflow-ticket-to-qa/src/ticket.ts
+  - packages/core/src/ports/Ticketing.ts
+  - packages/workflow-ticket-to-qa/src/agent-steps.ts
+  - packages/agent-kit/src/HarnessRelay.ts
+  - plugins/agent-relay/src/plugin.ts
+  - .software-factory/evidence/ticket-to-qa-scenario.sh
+  - .software-factory/policy.yaml
+criteria:
+  - { id: A1, statement: "with the default Linear config, neither project nor ancestry is queried or rendered", proof: "assertion:context.the_default_fetches_no_project_or_ancestor", sources: [S7, S8, S12] }
+  - { id: A2, statement: "contextAncestors: parent includes the immediate parent and stops there", proof: "assertion:context.parent_fetches_exactly_one_parent", sources: [S7, S12] }
+  - { id: A3, statement: "contextAncestors: root includes every ancestor, root first, without a depth cutoff", proof: "assertion:context.root_fetches_every_ancestor_root_first", sources: [S2, S5, S7, S10] }
+  - { id: A4, statement: "project context follows contextProject independently of ancestry", proof: "assertion:context.project_follows_its_own_setting", sources: [S7, S8] }
+  - { id: A5, statement: "siblings and descendants never arrive as ancestry under any scope", proof: "assertion:context.siblings_and_descendants_are_not_context", sources: [S2, S12] }
+  - { id: A6, statement: "triage, implementation, review triage (the planned reviewTriage), review repair (addressThreads) and self-review see the same attributed project and ancestor context", proof: "assertion:context.the_same_roots_reach_triage_implementation_review_and_self_review", sources: [S1, S3, S4, S6] }
+  - { id: A7, statement: "editing the config and remounting changes the next prompt without rewriting a work record", proof: "assertion:context.changing_the_config_rebuilds_the_next_prompt", sources: [S11, S13] }
+  - { id: A8, statement: "an unknown ancestry scope or a cyclic parent chain is refused by name instead of being truncated or looped", proof: "test:plugins/linear/tests/LinearTracker.test.ts", sources: [S9, S10, S14] }
+crosses:
+  - { mechanism: tracker-and-host-writes, answer: n/a, why: "context is only read from Linear; no tracker or host write is added" }
+  - { mechanism: attempts-and-waits, answer: n/a, why: "the relay only forwards workContext; when an attempt is charged or given back is unchanged" }
+  - { mechanism: agent-replies, answer: n/a, why: "only the prompt gains context sections; how a reply is read is unchanged" }
+guarantee:
+  - { holds: "the relay never drops context handed to a step call", not_against: "a workflow still choosing when, or whether, to call a step" }
+  - { holds: "only the Linear plugin reads its context settings; no workflow reads Linear configuration", not_against: "a mounted plugin's settings changing without a remount" }
+failures:
+  - { step: Linear plugin ready, when: "contextAncestors is not none, parent or root", goes_to: "refused by name before any ticket is asked for" }
+  - { step: root ancestry walk, when: "a parent id was already visited", goes_to: "refused, naming the cycle, rather than looping or truncating" }
+cut:
+  - "pulling a whole board into every prompt: context is an operator choice"
+  - "siblings and descendants as context"
+  - "an arbitrary depth limit on root"
+  - "folding context into body: a missing description stays distinguishable from a parent's explanation"
+  - "one prompt format per step: one shared renderer instead"
+  - "copying context into the workflow record"
+  - "hot reload of the Linear config: edit and remount only"
+exit: "with the Linear plugin configured, one leaf ticket carries its project and every parent to all agent steps, self-review included; the same install can turn it down or off, the gate proving prompts change with configuration, not hard-coded policy"
+---
 # A child carries its roots
 
-A Linear ticket reaches amy as its own title and description only. The query
-behind both discovery and lookup asks for the fields in `ISSUE_FIELDS`
-(`plugins/linear/src/LinearTracker.ts:16`), and `toTicket` copies those fields
-onto `Ticket` (`plugins/linear/src/LinearTracker.ts:257`). A child of a child
-therefore arrives indistinguishably from a root ticket: the project that says
-why the work exists, the parent that divided it, and the root that set the
-boundary are all still in Linear and none reaches the agent.
-
-This is not permission to pull a whole board into every prompt. It is context,
-and context is an operator choice. Issue #54 asks for the complete ancestry
-when wanted — project, parent, grandparent, continuing until the root — and for
-no automatic expansion when it is not wanted. Siblings and descendants are
-not ancestors and do not come along for the ride.
-
-The omission currently survives the whole lifecycle. `Ticket` has no place for
-context (`packages/workflow-ticket-to-qa/src/ticket.ts:4`), while
-`HarnessAgent` independently renders the ticket in triage, implementation and
-review (`packages/agent-kit/src/HarnessAgent.ts:51`, `:110`, `:171`). A private
-workflow's `self-review` is a generic harness half-step, so fixing only those
-three prompts would repeat the defect at the point meant to catch it.
-
-## What changes
-
-**Context is data, not a longer body.** `Ticket` gains an optional
-`context: readonly WorkContext[]`, where each item names its kind
-(`project` or `ancestor`), stable id, title, URL and optional body. The ticket's
-own `body` remains exactly the ticket's description; code can still distinguish
-"this ticket has no description" from "its parent explained it". Ancestors are
-root-first and end at the immediate parent, so the prompt reads from intent to
-leaf without pretending a parent is part of the child's specification.
-
-The neutral `WorkContext` shape lives with the agent/harness contract rather
-than with Linear. `AskContext` can carry it for workflow-owned half-steps, and
-agent-kit owns one renderer used by both `HarnessAgent` and `HarnessRelay`.
-That gives triage, implementation, review triage, review repair and a generic
-`self-review` the same attributed sections without five prompt builders
-inventing five formats. A workflow still chooses when to call a step; the
-relay only guarantees that context handed to that call is not dropped.
-
-**The Linear plugin chooses what to fetch.** Its own config slice gains two
-settings:
-
-```yaml
-plugins:
-  "@amykit/plugin-linear":
-    contextProject: true
-    contextAncestors: root
-```
-
-`contextProject` is boolean and defaults to `false`.
-`contextAncestors` is `none`, `parent` or `root` and defaults to `none`.
-`parent` fetches exactly the immediate parent; `root` follows every parent
-until there is none, with no arbitrary depth limit. The project is the first
-project found from the child toward the root, so a child whose project lives
-on its parent still receives it once. Defaults preserve today's request count
-and prompt exactly: context is not automatic.
-
-`ConfigSchema` can prove boolean and string but not an enum, so the Linear
-plugin parses `contextAncestors` in `ready` and refuses any other value before
-it asks for a ticket. The plugin passes the parsed settings into
-`LinearTracker`; no workflow reads Linear configuration.
-
-**The ancestry is rebuilt from the tracker.** The first issue query returns
-the parent id and project fields needed to decide whether another lookup is
-required. `root` follows parent ids iteratively, records visited ids, and
-refuses a cycle by naming it rather than looping. `inProgress` and `get` use
-one context builder, so discovery and later observations cannot disagree.
-Nothing is copied into the workflow record: after config is edited and amy is
-restarted, the next observation rebuilds the ticket under the new setting
-instead of replaying context chosen by the old mount.
-
-**Every agent-facing step gets the same value.** Ticket-shaped calls carry
-`ticket.context`; generic calls carry the same array through
-`AskContext.workContext`. The relay facade must pass it at both levels. The
-shared renderer is exercised for triage, implementation, `addressThreads`,
-the planned `reviewTriage`, and the workflow-declared `self-review` half-step.
-That last assertion is explicit: a self-review without the ticket's roots is a
-review of the patch without the reason the patch exists.
-
-## The gate
-
-`ticket-to-qa`, extended. Its stand-in Linear world contains a project and the
-chain `ROOT-1` -> `PARENT-2` -> `CHILD-3`, with a misleading sibling that must
-never appear. The fake harness records every prompt, including a self-review
-half-step, and the scenario runs the installed machine under more than one
-Linear plugin configuration:
-
-- `context.the_default_fetches_no_project_or_ancestor`
-- `context.project_follows_its_own_setting`
-- `context.parent_fetches_exactly_one_parent`
-- `context.root_fetches_every_ancestor_root_first`
-- `context.siblings_and_descendants_are_not_context`
-- `context.the_same_roots_reach_triage_implementation_review_and_self_review`
-- `context.changing_the_config_rebuilds_the_next_prompt`
-- `context.an_unknown_ancestry_scope_is_refused_before_work`
-
-The changed-config assertion writes `none`, observes a prompt without roots,
-stops the process, writes `root`, and observes the next prompt with both
-ancestors. It proves the supported configuration lifecycle — edit and remount
-— without claiming hot reload a mounted plugin does not provide.
-
-## Acceptance criteria
-
-- [ ] With the default Linear config, neither project nor ancestry is queried
-      or rendered
-      (proof: assertion:context.the_default_fetches_no_project_or_ancestor)
-- [ ] `contextAncestors: parent` includes the immediate parent and stops there
-      (proof: assertion:context.parent_fetches_exactly_one_parent)
-- [ ] `contextAncestors: root` includes every ancestor, root first, without a
-      depth cutoff
-      (proof: assertion:context.root_fetches_every_ancestor_root_first)
-- [ ] Project context follows `contextProject` independently of ancestry
-      (proof: assertion:context.project_follows_its_own_setting)
-- [ ] Siblings and descendants never arrive as ancestry under any scope
-      (proof: assertion:context.siblings_and_descendants_are_not_context)
-- [ ] Triage, implementation, review triage, review repair and self-review see
-      the same attributed project and ancestor context
-      (proof: assertion:context.the_same_roots_reach_triage_implementation_review_and_self_review)
-- [ ] Editing the config and remounting changes the next prompt without
-      rewriting a work record
-      (proof: assertion:context.changing_the_config_rebuilds_the_next_prompt)
-- [ ] An unknown ancestry scope or a cyclic parent chain is refused by name
-      instead of being truncated or looped
-      (proof: test:plugins/linear/tests/LinearTracker.test.ts)
-
-**Exit condition:** one leaf ticket can carry its project and every parent to
-all agent steps, including self-review, when the Linear plugin is configured
-to do so; the same install can turn that context down or off, and the gate
-proves the prompts change with the configuration rather than with hard-coded
-policy.
+A Linear ticket reaches amy as its own title and description only: the project,
+parent and root that explain why it exists stay in Linear, and no agent step —
+self-review included — sees them.

@@ -924,6 +924,11 @@
         },
         {
           "depth": 3,
+          "title": "A plan is a declaration. The plan a note becomes is asked for as a YAML declaration between --- fences, its title and a few lines of why, because every plan in the repository is one now and L4.PLAN_IS_A_LINKED_DECLARATION refuses prose. Before, the prompt only said to follow the plans already there, which taught the old shape to a draft written against the new rule.",
+          "slug": "a-plan-is-a-declaration-the-plan-a-note-becomes-is-asked-for-as-a-yaml-declaration-between-----fences-its-title-and-a-few-lines-of-why-because-every-plan-in-the-repository-is-one-now-and-l4planisalinkeddeclaration-refuses-prose-before-the-prompt-only-said-to-follow-the-plans-already-there-which-taught-the-old-shape-to-a-draft-written-against-the-new-rule"
+        },
+        {
+          "depth": 3,
           "title": "**A reply in a work's thread can be a question, not only an answer.**",
           "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
         },
@@ -4693,6 +4698,11 @@
           "depth": 3,
           "title": "L4.PLAN_DECLARES_EXIT_CONDITION",
           "slug": "l4plandeclaresexitcondition"
+        },
+        {
+          "depth": 3,
+          "title": "L4.PLAN_IS_A_LINKED_DECLARATION",
+          "slug": "l4planisalinkeddeclaration"
         },
         {
           "depth": 3,
@@ -9491,6 +9501,20 @@
         "reason": ""
       },
       {
+        "id": "L4.PLAN_IS_A_LINKED_DECLARATION",
+        "enabled": true,
+        "settings": {
+          "options": {
+            "mechanisms": "docs/mechanisms.yaml",
+            "max_words": 40,
+            "max_body_lines": 6,
+            "require_declaration": true
+          }
+        },
+        "title": "A plan is a declaration where every line is tied to another",
+        "reason": ""
+      },
+      {
         "id": "L4.ROOT_FILES_ARE_DECLARED",
         "enabled": true,
         "settings": {},
@@ -9781,6 +9805,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "a-plan-is-a-declaration",
+        "title": "A plan is a declaration. The plan a note becomes is asked for as a YAML declaration between `---` fences, its title and a few lines of why, because every plan in the repository is one now and `L4.PLAN_IS_A_LINKED_DECLARATION` refuses prose. Before, the prompt only said to follow the plans already there, which taught the old shape to a draft written against the new rule.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "a-question-is-not-an-answer",

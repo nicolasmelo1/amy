@@ -1,0 +1,66 @@
+# The mechanisms a change in amy can cross. A plan whose `touches` reach a
+# mechanism's paths answers it under `crosses`: works (and its proof), refused
+# (and what refuses it), or n/a (and why). Grown from review findings: when a
+# review finds a crossing no plan asked about, it becomes an entry here, not
+# a paragraph in the next plan.
+mechanisms:
+  - id: record-migration
+    says: a record an older version saved is read, planned and moved by this one
+    paths: ["packages/workflow-*/src/machine.ts", "packages/workflow-*/src/record.ts", "packages/core/src/work.ts"]
+  - id: calls
+    says: a workflow calls another, and the call nests to any depth
+    paths: ["packages/core/src/calls.ts", "packages/core/src/define-workflow.ts", "packages/core/src/expand.ts"]
+  - id: hooks
+    says: a workflow's before, after and interrupt run around every plan
+    paths: ["packages/core/src/define-workflow.ts"]
+  - id: diagram
+    says: workflow.mmd is the state machine, read and refused at mount
+    paths: ["packages/core/src/diagram.ts", "packages/*/workflow.mmd"]
+  - id: engines
+    says: the serial and the concurrent engine end in the same record
+    paths: ["plugins/serial-engine/src/**", "plugins/concurrent-engine/src/**"]
+  - id: budget-and-evidence
+    says: an agent run passes the budget check, and a run that adds no evidence counts toward the ceiling
+    paths: ["packages/core/src/budget.ts", "packages/core/src/budget-config.ts", "plugins/serial-engine/src/Worker.ts"]
+  - id: attempts-and-waits
+    says: an attempt is charged before a run, and a wait or a usage limit gives it back
+    paths: ["packages/core/src/agent-run.ts", "packages/core/src/runtime.ts", "packages/agent-kit/src/**"]
+  - id: agent-replies
+    says: an agent's reply can be empty, partial, rate-limited or formatted, and is read as data
+    paths: ["packages/agent-kit/src/**", "plugins/claude/src/**", "plugins/codex/src/**", "plugins/hermes-agent/src/**", "plugins/agent-relay/src/**"]
+  - id: checkouts-and-leases
+    says: git trees, worktrees, branch leases and lent revisions; a move never loses a commit
+    paths: ["packages/core/src/git.ts", "packages/core/src/leases.ts", "packages/core/src/checkouts.ts", "plugins/file-worktree/src/**"]
+  - id: mount-and-capabilities
+    says: boot reads every binding, and a workflow reaches only the writes it claims
+    paths: ["packages/core/src/mount.ts", "packages/core/src/action-ports.ts", "packages/core/src/actions.ts", "packages/core/src/dispatch.ts", "packages/core/src/plugin.ts", "packages/cli/src/assemble.ts"]
+  - id: tracker-and-host-writes
+    says: a write to the tracker or the code host is claimed, and handed to the operator when policy says so
+    paths: ["plugins/linear/src/**", "plugins/github/src/**", "packages/core/src/operator.ts", "packages/core/src/ports/**"]
+  - id: queue-and-store
+    says: an item is claimed once, recovered when stale, and pruned only when its record is terminal
+    paths: ["plugins/file-queue/src/**", "plugins/file-store/src/**", "plugins/file-tasks/src/**", "packages/core/src/queue-item.ts", "packages/cli/src/poke.ts"]
+  - id: profiles-and-state
+    says: each profile and phase has its own state, PID and log, and nothing writes another's
+    paths: ["packages/cli/src/profiles.ts", "packages/cli/src/paths.ts", "packages/cli/src/daemon.ts", "packages/cli/src/home.ts"]
+  - id: install-and-update
+    says: plugins are installed, updated and removed without a running daemon losing its code
+    paths: ["packages/cli/src/install.ts", "packages/cli/src/update.ts", "packages/cli/src/auto-update.ts", "packages/cli/src/add.ts", "packages/cli/src/remove.ts", "packages/cli/src/loader.ts", "packages/cli/src/workflow-add.ts"]
+  - id: config
+    says: config.yaml and each plugin's slice are typed from a schema and refused when wrong
+    paths: ["packages/core/src/config-schema.ts", "packages/cli/src/config.ts", "packages/cli/src/config-template.ts", "packages/cli/src/env.ts"]
+  - id: workflow-tooling
+    says: amy workflow check and the testkit walk every state and edge a diagram draws
+    paths: ["packages/cli/src/workflow.ts", "packages/cli/src/drawn.ts", "packages/workflow-testkit/src/**"]
+  - id: status
+    says: amy status and the status page say where every piece of work stands
+    paths: ["packages/cli/src/status-page.tsx", "packages/cli/src/status-view.ts", "packages/cli/src/plan-board.ts"]
+  - id: events-and-notifications
+    says: what happens is logged as an event and told to a person once
+    paths: ["plugins/file-log/src/**", "packages/core/src/event-contract.ts", "plugins/slack/src/**", "plugins/notify-*/src/**"]
+  - id: briefs
+    says: a brief is one store every phase reads, written only when its text moved
+    paths: ["plugins/file-brief-store/src/**"]
+  - id: rendering
+    says: a view is data, and a renderer only translates it
+    paths: ["packages/ui/**", "packages/ui-conformance/**", "plugins/ui-stub/**"]
