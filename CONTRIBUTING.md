@@ -18,7 +18,7 @@ optional.** It is the tool that turns this repository's rules into checks that
 fail, and `npm run gate` runs it. The setup script installs it; by hand it is:
 
 ```sh
-cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.2 --locked
+cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.3 --locked
 ```
 
 That version is not a suggestion. The catalog ships inside the binary, so a

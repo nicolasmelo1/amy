@@ -30,7 +30,7 @@ jobs:
       # `sf lock`: L2.CATALOG_ONLY_TIGHTENS reports every enabled rule the
       # upgrade made weaker.
       - name: Install sf
-        run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.2 --locked
+        run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.3 --locked
       # L1.EVERY_RENDERER_HOLDS_THE_FRAME runs the conformance harness against
       # every renderer, so the frame package and the renderers are compiled
       # here. Only those: the rest of the build, and every check that needs
@@ -196,7 +196,7 @@ jobs:
       # Prebuilt and digest-checked, for the reasons the release job gives.
       - name: Install sf
         env:
-          SF_VERSION: v0.4.2
+          SF_VERSION: v0.4.3
         run: |
           base="https://github.com/nicolasmelo1/software-factory/releases/download/$SF_VERSION"
           work=$(mktemp -d)
