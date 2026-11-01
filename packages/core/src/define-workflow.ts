@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
 import { ActionSpec } from "./actions.js";
 import { ActionDuties, actionPorts } from "./action-ports.js";
+import { PluginCheck, PluginCommand, PluginFile } from "./commands.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema, validateConfig } from "./config-schema.js";
 import { Call, CallSite, ForkSite, Signature, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
@@ -219,6 +220,14 @@ interface DeclarationBase<
   readonly output?: Out;
   /** Each state the diagram marks \`call\`, bound to the workflow it calls. */
   readonly calls?: Readonly<Record<string, Call>>;
+  /**
+   * The commands, checks and files this workflow brings, read beside
+   * `register` rather than through it: they have to answer when the machine
+   * does not mount, which is when a workflow's own `amy roster` matters most.
+   */
+  readonly commands?: readonly PluginCommand<ConfigOf<S>>[];
+  readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
+  readonly files?: readonly PluginFile<ConfigOf<S>>[];
   runtimePolicy?(args: { readonly ports: PortsOf<N>; readonly config: ConfigOf<S>; readonly policy: P }): P;
   record(workId: string): Omit<R, keyof WorkRecord>;
   /** Registers the supporting half of a workflow: ports, queues, actions or harnesses. */
@@ -315,6 +324,9 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
   const plugin = {
     name: declaration.pluginName ?? `workflow-${declaration.name}`,
     configSchema: declaration.configSchema,
+    ...(declaration.commands ? { commands: declaration.commands as unknown as readonly PluginCommand[] } : {}),
+    ...(declaration.checks ? { checks: declaration.checks as unknown as readonly PluginCheck[] } : {}),
+    ...(declaration.files ? { files: declaration.files as unknown as readonly PluginFile[] } : {}),
     newRecord: (workId: string, now: Date): R => assembled().newRecord(workId, now) as R,
     [DRAW]: (diagram: Diagram | Error) => drawnWith(declaration, diagram),
     register(registry: Registry, untyped: PluginContext) {

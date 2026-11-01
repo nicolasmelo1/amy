@@ -315,6 +315,10 @@ gates:
       - "checkout.the_root_still_answers_for_the_rest"
       - "checkout.a_missing_checkout_names_which_root_was_asked"
       - "lifecycle.finished_work_leaves_the_listing"
+      # A command is what the mounted workflow brought, and the brake is one
+      # switch for the machine rather than one per profile.
+      - "lifecycle.a_workflow_command_is_its_own"
+      - "lifecycle.stop_all_holds_until_start"
 
   # The second workflow, and the claim the whole plugin model rests on: an
   # engine that learnt nothing drives it. What no unit test can say is that
@@ -411,6 +415,12 @@ gates:
       - "errand.the_profile_keeps_its_own_state"
       - "errand.the_pull_request_is_opened_by_a_call"
       - "errand.a_refused_pull_request_hands_the_errand_back"
+      # The command line is the machine's: what another workflow would have
+      # brought does not exist, a tick looks before it moves, and the help
+      # lists only what this install mounted.
+      - "errand.a_command_nothing_mounts_does_not_exist"
+      - "errand.help_lists_only_the_machines_commands"
+      - "errand.a_tick_discovers_before_it_moves"
 
   # A workflow calls another the way code calls a function. What only an
   # installed machine can say: that a workflow of somebody's own calls one

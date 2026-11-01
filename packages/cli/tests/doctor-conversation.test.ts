@@ -32,7 +32,6 @@ describe("diagnose, with a conversation mounted", () => {
       runner: new ScriptedRunner([]),
       env: {},
       now: new Date("2026-09-05T12:00:00.000Z"),
-      readRoster: () => ({ confirmedOn: "2026-09-05", reviewers: [], qa: { tracker: "", host: "", available: true } }),
       schemas: {},
       conversationPort,
     };

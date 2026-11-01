@@ -249,7 +249,7 @@ Friction as a directory of notes: written by hand, by a hook, or by a tick that 
 | Mounts | `notes` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amykit/core`, `@amykit/plugin-notify-fanout` |
+| Depends on | `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/workflow-note-to-plan` |
 
 ```yaml
 plugins:
@@ -327,7 +327,7 @@ Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.
 | Mounts | `tasks` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
-| Depends on | `@amykit/core` |
+| Depends on | `@amykit/core`, `@amykit/workflow-errand` |
 
 ```yaml
 plugins:

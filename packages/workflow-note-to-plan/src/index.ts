@@ -6,6 +6,7 @@ export type { AttemptOutcome, PlanRecord } from "./record.js";
 export { DEFAULT_POLICY } from "./observation.js";
 export type { Observation, Policy } from "./observation.js";
 
+export { writeNoteFile } from "./note-file.js";
 export {
   branchFor,
   planPathFor,

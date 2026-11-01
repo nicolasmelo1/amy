@@ -32,7 +32,7 @@ export {
   unresolvedThreads,
 } from "./review.js";
 
-export { isConfirmedFor, isWorkday, leastLoadedReviewer } from "./roster.js";
+export { EXAMPLE_ROSTER, ROSTER_FILE, confirmRoster, isConfirmedFor, isWorkday, leastLoadedReviewer, loadRoster, rosterPath } from "./roster.js";
 export type { Roster, RosterMember } from "./roster.js";
 
 export { act, advance, settled, wait } from "./effects.js";
@@ -46,8 +46,7 @@ export { plan } from "./machine.js";
 export { ticketRuntime, workIdFor } from "./runtime.js";
 export type { TicketGit, TicketRuntimeConfig, TicketRuntimeDeps } from "./runtime.js";
 
-export { WORKFLOW_DATA, configSchema, plugin } from "./plugin.js";
-export type { Provider } from "./plugin.js";
+export { configSchema, plugin } from "./plugin.js";
 
 export type {
   FollowUpRequest,

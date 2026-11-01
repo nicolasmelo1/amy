@@ -57,6 +57,10 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     // plan into, and the ceilings its decision function reads.
     "@amykit/workflow-note-to-plan": {
       repos: config.plans.repos,
+      // Where `amy note` writes, handed over rather than guessed: the notes
+      // are the machine's, because one workflow writes a failure and another
+      // turns it into a plan.
+      notesDirectory: "notes",
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
       policy: config.plans.policy,
@@ -65,6 +69,8 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     // ceilings its decision function reads.
     "@amykit/workflow-errand": {
       repos: config.repos,
+      // Where `amy btw` writes: the directory the file-tasks adapter reads.
+      tasksDirectory: own.tasks,
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
       policy: config.errands.policy,
@@ -140,6 +146,17 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
   for (const [name, given] of Object.entries(config.plugins)) {
     merged[name] = isRecord(derived[name]) && isRecord(given) ? { ...derived[name], ...given } : given;
   }
+
+  // The command that writes a file and the adapter that reads it must agree,
+  // including when somebody overrode the adapter's directory by hand. The
+  // workflow's destination follows the effective adapter, not the default it
+  // was derived from before the merge; the queue follows the queue adapter
+  // the same way, because a note queued where the engine does not read is a
+  // note the machine never sees.
+  followAdapter(merged, "@amykit/workflow-errand", "tasksDirectory", "@amykit/plugin-file-tasks");
+  followAdapter(merged, "@amykit/workflow-note-to-plan", "notesDirectory", "@amykit/plugin-file-notes");
+  followAdapter(merged, "@amykit/workflow-errand", "queueDirectory", "@amykit/plugin-file-queue");
+  followAdapter(merged, "@amykit/workflow-note-to-plan", "queueDirectory", "@amykit/plugin-file-queue");
 
   // The worktree adapter reads records directly to classify trees. Its path
   // is an invariant of the mounted file store, not an independent preference:
@@ -375,6 +392,7 @@ export function hostPaths(config: AmyConfig, stateDir: string, profile?: Profile
     workspace: path.resolve(config.workspaceRoot),
     checkouts: config.checkouts,
     state: stateDir,
+    ...(place ? { profile: path.dirname(place.records) } : {}),
     ...(place?.artifacts ? { artifacts: place.artifacts } : {}),
   };
 }
@@ -386,4 +404,17 @@ function engineSlice(config: AmyConfig): Record<string, unknown> {
     maxItemAttempts: config.maxItemAttempts,
     retryDelayMs: config.policy.pollBackoffMs,
   };
+}
+
+/** Points a workflow's destination at the directory its adapter ended up with. */
+function followAdapter(
+  merged: Record<string, unknown>,
+  workflow: string,
+  setting: string,
+  adapter: string,
+): void {
+  const slice = merged[workflow];
+  const from = merged[adapter];
+  if (!isRecord(slice) || !isRecord(from) || typeof from.directory !== "string") return;
+  merged[workflow] = { ...slice, [setting]: from.directory };
 }

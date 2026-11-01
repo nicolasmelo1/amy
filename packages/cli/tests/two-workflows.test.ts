@@ -587,12 +587,15 @@ describe("a tick that gives up", () => {
     expect(new FileNotes(path.join(root, ".amy", "notes"), { defaultRepo: "" }).all()).toEqual([]);
   });
 
-  it("is picked up by the other workflow as work, with no tracker in between", async () => {
+  it("is written down for a person, and not planned against by the machine that failed", async () => {
     await breakIt();
 
     const plans = await mounts(PLANS);
 
-    expect(await plans.engine!.discover()).toHaveLength(1);
+    // A report about the machine's own failure is friction a person reads.
+    // Planning it automatically would let one failure file a note, which
+    // becomes a plan, which files another note, without anybody deciding to.
+    expect(await plans.engine!.discover()).toHaveLength(0);
   });
 });
 

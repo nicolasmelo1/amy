@@ -503,11 +503,24 @@ export function build(root: string, { source }: { source: string }): void {
   fs.writeFileSync(path.join(root, "home", ".env"), "LINEAR_API_KEY=lin_api_standin\n", "utf-8");
 }
 
-/** The edit an operator makes to what `amy init` wrote, before confirming it. */
+/**
+ * The edit an operator makes to the roster `amy init` wrote, before confirming
+ * it: two reviewers instead of the template's three, and nobody confirmed yet.
+ *
+ * The roster is the profile's — two teams on one machine do not share
+ * reviewers — so it sits beside the profile's records.
+ */
+export function editRoster(root: string): void {
+  const profile = path.join(root, "home", ".amy", "tickets");
+  fs.mkdirSync(profile, { recursive: true });
+  fs.writeFileSync(path.join(profile, "roster.yaml"), ROSTER, "utf-8");
+}
+
+/** Writes the config an operator would have edited, over the one `amy init` wrote. */
 export function configure(root: string, endpoint: string, engine: EngineChoice = "serial"): void {
   const amyDir = path.join(root, "home", ".amy");
   fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint, engine), "utf-8");
-  fs.writeFileSync(path.join(amyDir, "roster.yaml"), ROSTER, "utf-8");
+
   // An operator's brief is durable state, not a prompt fixture. The child
   // ticket names this exact parent id through the tracker on each observation.
   fs.mkdirSync(path.join(amyDir, "briefs"), { recursive: true });

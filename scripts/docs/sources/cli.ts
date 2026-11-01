@@ -112,6 +112,7 @@ function apply(
         arguments: [],
         options: [],
         isDefault: hasFlag(args[1], source, "isDefault"),
+        hidden: hasFlag(args[1], source, "hidden"),
       };
       commands.push(current);
       continue;

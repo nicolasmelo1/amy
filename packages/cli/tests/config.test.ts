@@ -4,11 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import {
   DEFAULT_CONFIG,
-  EXAMPLE_ROSTER,
-  confirmRoster,
   configuredAutoUpdateProblems,
   loadConfig,
-  loadRoster,
   writeProfilePlugins,
 } from "../src/config.js";
 import { paths } from "../src/paths.js";
@@ -82,38 +79,6 @@ describe("config", () => {
     );
   });
 
-  it("refuses to run without a roster", () => {
-    expect(() => loadRoster(root)).toThrow(/no roster at/);
-  });
-
-  it("refuses a roster that is missing a required part", () => {
-    fs.writeFileSync(paths(root).roster, "confirmedOn: 2026-09-03\n");
-
-    expect(() => loadRoster(root)).toThrow(/needs confirmedOn, reviewers and qa/);
-  });
-
-  it("reads a full roster", () => {
-    fs.writeFileSync(paths(root).roster, EXAMPLE_ROSTER);
-
-    const roster = loadRoster(root);
-
-    expect(roster.reviewers.map((r) => r.host)).toEqual([
-      "ada",
-      "alan",
-      "edsger",
-    ]);
-    expect(roster.qa.tracker).toBe("grace@example.test");
-  });
-
-  it("stamps today's date without touching anything else", () => {
-    fs.writeFileSync(paths(root).roster, EXAMPLE_ROSTER);
-
-    const confirmed = confirmRoster(root, new Date("2026-09-03T09:00:00.000Z"));
-
-    expect(confirmed.confirmedOn).toBe("2026-09-03");
-    expect(loadRoster(root).confirmedOn).toBe("2026-09-03");
-    expect(loadRoster(root).reviewers).toHaveLength(3);
-  });
 });
 
 describe("writing a profile's plugin list", () => {

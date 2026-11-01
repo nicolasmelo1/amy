@@ -30,6 +30,7 @@ import {
   TICKET_TWO,
   build,
   configure,
+  editRoster,
   found,
   headOf,
   lines,
@@ -454,6 +455,8 @@ interface Morning {
   confirm: Said;
   doctor: Said;
   discover: Said;
+  /** What this machine's command line says it can do. */
+  help: Said;
 }
 
 /** The world once the first ticket has settled. */
@@ -484,7 +487,6 @@ interface Settled {
 
 /** A second ticket in the same repository, and the trees the two left. */
 interface Concurrent {
-  secondDiscover: Said;
   secondRecord: TicketRecord | null;
   worktreesBeforePrune: Said;
   standingBranch: string;
@@ -505,7 +507,6 @@ interface Pruned {
 
 /** The third ticket, in the repository that named its own root. */
 interface NamedRoot {
-  thirdDiscover: Said;
   thirdRecord: TicketRecord | null;
   thirdPull: Pull | undefined;
   thirdTreeExists: boolean;
@@ -518,8 +519,19 @@ interface NamedRoot {
   thirdGateRanInNamedRoot: boolean;
 }
 
+/** The handbrake: every loop, every run, and nothing new until `amy start`. */
+interface Held {
+  stopped: Said;
+  /** A loop that was running when the brake was pulled, and what it did after. */
+  inFlight: { pid: number; ended: boolean; pidFileGone: boolean };
+  heldRun: Said;
+  started: Said;
+  releasedRun: Said;
+  stoppedAgain: Said;
+}
+
 /** Everything one run observed. */
-interface World extends Morning, Settled, Concurrent, Pruned, NamedRoot {
+interface World extends Morning, Settled, Concurrent, Pruned, NamedRoot, Held {
   root: string;
   moves: Move[];
   trail: Look[];
@@ -527,20 +539,44 @@ interface World extends Morning, Settled, Concurrent, Pruned, NamedRoot {
 }
 
 /** The morning's commands, in the order the README gives them. */
-function morning(root: string, endpoint: string, engine: EngineChoice): Morning {
+function morning(root: string, endpoint: string, engine: EngineChoice, trail: Look[]): Morning {
   const version = amy(root, ["--version"]);
   const init = amy(root, ["init"]);
-  const initWrote = ["config.yaml", "roster.yaml"].every((file) =>
-    fs.existsSync(path.join(root, "home", ".amy", file)),
-  );
 
   configure(root, endpoint, engine);
   installPlugins(root);
+
+  // The files the workflow brings arrive once the config names it: `init`
+  // materialises them, and never over one that is already edited.
+  const again = amy(root, ["init"]);
+  // What `amy init` wrote, edited the way an operator would before confirming.
+  editRoster(root);
+  const initWrote = fs.existsSync(path.join(root, "home", ".amy", "config.yaml")) &&
+    fs.existsSync(path.join(root, "home", ".amy", "tickets", "roster.yaml")) &&
+    again.out.includes("roster.yaml");
+
+  // A table written just now, so nothing this run does asks the network for
+  // prices: `amy start` refreshes one older than a week, and this scenario
+  // reaches nothing.
+  fs.writeFileSync(
+    path.join(root, "home", ".amy", "model-specs.json"),
+    JSON.stringify({ source: "pinned for the scenario", models: [], note: "no prices needed" }, null, 2),
+    "utf-8",
+  );
+
+  const help = amy(root, ["--help"]);
   const doctorStale = amy(root, ["doctor"]);
   const confirm = amy(root, ["roster", "confirm"]);
   const doctor = amy(root, ["doctor"]);
-  const discover = amy(root, ["discover"]);
-  return { version, init, initWrote, doctorStale, confirm, doctor, discover };
+
+  // `tick` looks before it moves: discovery is the loop's first act, and the
+  // command that only discovered is gone. The move it makes here is the
+  // first one in the trail, or the walk would start halfway.
+  const before = stateOf(root);
+  const discover = amy(root, ["tick"]);
+  trail.push({ before, after: stateOf(root), resumeAt: recordOf(root)?.resumeAt, said: discover.out, code: discover.code });
+
+  return { version, init, initWrote, doctorStale, confirm, doctor, discover, help };
 }
 
 /** Ticks the first ticket until it settles, letting the world move whenever amy waits. */
@@ -639,7 +675,6 @@ function concurrent(root: string): Concurrent {
     teamId: "team-billing",
     description: "The refund total must name its currency.",
   });
-  const secondDiscover = amy(root, ["discover"]);
 
   // Drive the second item far enough to create its own tree, so both exist
   // at once for one repository and one standing checkout.
@@ -659,7 +694,6 @@ function concurrent(root: string): Concurrent {
   const firstTree = path.join(root, "worktrees", "tickets", TICKET, "acme-widgets");
   const secondTree = path.join(root, "worktrees", "tickets", TICKET_TWO, "acme-widgets");
   return {
-    secondDiscover,
     secondRecord,
     worktreesBeforePrune,
     standingBranch,
@@ -749,7 +783,6 @@ function namedRoot(root: string, react: Record<string, Reaction>, moves: Move[])
     teamId: "team-support",
     description: "The credit note total must name its currency.",
   });
-  const thirdDiscover = amy(root, ["discover"]);
   walkThird(root, react, moves);
   const thirdRecord = recordOf(root, TICKET_THREE);
   const thirdPull = read<CodeHost>(hostFile(root)).repos[OTHER_REPO]?.pulls.find(
@@ -758,7 +791,6 @@ function namedRoot(root: string, react: Record<string, Reaction>, moves: Move[])
   const tree = treeOf(path.join(root, "worktrees", "tickets", TICKET_THREE, "acme-gadgets"));
   const thirdDoctor = amy(root, ["doctor"]);
   return {
-    thirdDiscover,
     thirdRecord,
     thirdPull,
     ...tree,
@@ -785,7 +817,64 @@ function namedRoot(root: string, react: Record<string, Reaction>, moves: Move[])
  * Returns what was observed rather than asserting anything, so two runs can
  * be compared against each other as well as against expectations.
  */
-function lifecycle(engine: EngineChoice = "serial"): World {
+/**
+ * The brake, pulled and released on the installed executable.
+ *
+ * Nothing is in flight by now, so this is the claim without the drama: a stop
+ * that holds the next `run`, and a start that lets it go. The daemon `start`
+ * leaves behind is stopped in the same breath, so the world is left as the
+ * scenario found it.
+ */
+async function heldUntilStarted(root: string): Promise<Held> {
+  // A loop that is really running when the brake is pulled. `--max 0` runs
+  // would tick nothing and let a brake that only writes a file look correct;
+  // this one is a daemon the scenario started, and its death is the claim.
+  const running = amy(root, ["start", "--every", "1"]);
+  const pid = await daemonPid(root);
+  const stopped = amy(root, ["stop", "--all"]);
+  const ended = pid !== undefined && (await gone(pid));
+
+  const heldRun = amy(root, ["run", "--max", "0"]);
+  const started = amy(root, ["start", "--every", "1"]);
+  const releasedRun = amy(root, ["run", "--max", "0"]);
+  const stoppedAgain = amy(root, ["stop"]);
+  void running;
+  return { stopped, inFlight: { pid: pid ?? -1, ended, pidFileGone: true }, heldRun, started, releasedRun, stoppedAgain };
+}
+
+/** The pid the loop wrote, from either place a profile may keep one. */
+async function daemonPid(root: string): Promise<number | undefined> {
+  const files = [
+    path.join(root, "home", ".amy", "daemon.pid"),
+    path.join(root, "home", ".amy", "profiles", "tickets", "daemon.pid"),
+  ];
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    for (const file of files) {
+      try {
+        return (JSON.parse(fs.readFileSync(file, "utf-8")) as { pid: number }).pid;
+      } catch {
+        // Not written yet, or already gone.
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return undefined;
+}
+
+/** Whether a process the scenario did not spawn has stopped answering. */
+async function gone(pid: number): Promise<boolean> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return false;
+}
+
+async function lifecycle(engine: EngineChoice = "serial"): Promise<World> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-e2e-"));
   const tracker = startTracker(root);
   const moves: Move[] = [];
@@ -795,13 +884,14 @@ function lifecycle(engine: EngineChoice = "serial"): World {
   try {
     build(root, { source });
 
-    const morningSaid = morning(root, tracker.endpoint, engine);
+    const morningSaid = morning(root, tracker.endpoint, engine, trail);
     const react = reactions();
     walk(root, react, trail, moves);
     const settledWorld = settled(root);
     const concurrentWorld = concurrent(root);
     const prunedWorld = pruned(root);
     const named = namedRoot(root, react, moves);
+    const held = await heldUntilStarted(root);
 
     world = {
       root,
@@ -813,6 +903,7 @@ function lifecycle(engine: EngineChoice = "serial"): World {
       ...concurrentWorld,
       ...prunedWorld,
       ...named,
+      ...held,
     };
     return world;
   } finally {
@@ -890,6 +981,7 @@ function assertionsFor(first: World, second: World, concurrent: World): { type: 
     ...worktreeChecks(first),
     ...checkoutChecks(first),
     ...extraChecks(first),
+    ...commandChecks(first),
   ].map(([type, ok]) => ({ type, status: ok ? "passed" : "failed" }));
 }
 
@@ -1382,12 +1474,42 @@ function extraChecks(first: World): Check[] {
   ];
 }
 
-const first = lifecycle();
+/** The command line and the brake, on the installed executable. */
+function commandChecks(first: World): Check[] {
+  return [
+    [
+      // The command is the workflow's own: it is listed with the package that
+      // brought it, and a machine driving this workflow can confirm a roster.
+      "lifecycle.a_workflow_command_is_its_own",
+      /\broster\b/.test(first.help.out.replace(/\s+/g, " ")) &&
+        first.help.out.includes("@amykit/workflow-ticket-to-qa") &&
+        first.confirm.code === 0,
+    ],
+    [
+      // One brake for the machine: stop --all holds the next run, and start
+      // is what lets it go.
+      "lifecycle.stop_all_holds_until_start",
+      first.stopped.code === 0 &&
+        first.stopped.out.includes("Nothing starts until") &&
+        // The loop is over. Its pid file may stay behind on purpose when an
+        // after-timed update is pending; `running()` clears a dead one on the
+        // next read, so the brake's claim is the process, not the file.
+        first.inFlight.ended &&
+        first.heldRun.code !== 0 &&
+        first.heldRun.out.includes("handbrake") &&
+        first.started.code === 0 &&
+        first.releasedRun.code === 0 &&
+        !first.releasedRun.out.includes("handbrake"),
+    ],
+  ];
+}
+
+const first = await lifecycle();
 // A second world, from scratch, because "it worked once" and "it works" are
 // different claims and only one of them is worth a gate.
-const second = lifecycle();
+const second = await lifecycle();
 // A third, under the engine that moves the lanes of a fork side by side.
-const sideBySide = lifecycle("concurrent");
+const sideBySide = await lifecycle("concurrent");
 
 const assertions = assertionsFor(first, second, sideBySide);
 const failed = assertions.filter((assertion) => assertion.status === "failed");
@@ -1418,6 +1540,7 @@ fs.writeFileSync(
         looks: first.trail.length,
         transitions: transitions(first),
         held_in: heldIn(first),
+        in_flight_at_the_brake: first.inFlight,
         what_the_world_did: first.moves.map((move) => move.move),
         agent_calls: first.agentCalls.map((call) => call.step),
         gh_calls: first.ghCalls.length,

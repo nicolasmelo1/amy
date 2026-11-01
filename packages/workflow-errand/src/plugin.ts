@@ -1,11 +1,15 @@
+import path from "node:path";
+import { FileQueue } from "@amykit/plugin-file-queue";
 import {
   BRANCH_SETTINGS,
   Action,
   ActionContext,
   ActionHandler,
+  ConfigOf,
   ConfigSchema,
   Harness,
   Notifier,
+  PluginCommand,
   Store,
   WorkflowPieceContext,
   Worktree,
@@ -20,7 +24,7 @@ import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
 import { ErrandRecord } from "./record.js";
 import { Tasks } from "./ports/Tasks.js";
 import { errandRuntime } from "./actions.js";
-import { branchFor } from "./task-file.js";
+import { branchFor, writeTaskFile } from "./task-file.js";
 
 export const configSchema = {
   repos: {
@@ -30,12 +34,62 @@ export const configSchema = {
       "the repositories an errand may be done in. A task about anything else is handed back to whoever asked",
   },
   ...BRANCH_SETTINGS,
+  tasksDirectory: {
+    type: "string",
+    description: "where this machine keeps the tasks `amy btw` writes, relative to the state root. The host sets it; a value here only stands in for one",
+    default: "tasks",
+  },
+  queueDirectory: {
+    type: "string",
+    description: "where this machine keeps the queue `amy btw` puts the task on, relative to the state root. The host sets it; a value here only stands in for one",
+    default: "queue",
+  },
   policy: {
     type: "record",
     description: "maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default",
     default: {},
   },
 } satisfies ConfigSchema;
+
+type Settings = ConfigOf<typeof configSchema>;
+
+/**
+ * Something to do, said in passing.
+ *
+ * The shortest road into this machine, and the one command that has to work
+ * on a machine that will not mount: it writes a file and puts it on the
+ * queue, and nothing else is asked of it. Owning it here rather than in the
+ * host is what stops every install carrying a verb only this workflow can
+ * honour.
+ */
+const btw: PluginCommand<Settings> = {
+  name: "btw",
+  description: "Something to do, said in passing. Goes on the queue, never becomes a ticket",
+  args: [{ name: "text", description: "what to do, in your own words" }],
+  flags: [
+    { flags: "--repo <owner/name>", description: "the repository it is in" },
+    { flags: "--source <who>", description: "who asked", default: "somebody at a keyboard" },
+  ],
+  run({ home, settings, args, options, out }) {
+    const repo = (options.repo as string | undefined) ?? settings.repos[0];
+    if (!repo) {
+      out.error("no repository: pass --repo, or list one under `repos`.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const now = new Date();
+    const text = args[0] ?? "";
+    const task = writeTaskFile(
+      path.join(home, settings.tasksDirectory),
+      { repo, text, source: String(options.source ?? "somebody at a keyboard") },
+      now,
+    );
+    new FileQueue(path.join(home, settings.queueDirectory)).enqueue({ workId: task.id, reason: "said in passing" }, now);
+
+    out.line(`noted ${task.id} in ${repo}`);
+  },
+};
 
 const needs = {
   tasks: port<Tasks>(),
@@ -114,6 +168,7 @@ export const plugin = defineWorkflow({
     }),
   },
   decide,
+  commands: [btw],
   record: () => ({}),
   discover: (scope) => runtimeFor(scope).found(),
   observe: (scope, record) => runtimeFor(scope).observe(record),

@@ -119,6 +119,10 @@ interface State {
   status: Said;
   workflowList: Said;
   mounted: Said;
+  /** What this machine's command line says it can do. */
+  help: Said;
+  /** A command another workflow would have brought. */
+  roster: Said;
   diagram: string[];
   records: ErrandRecord[];
   change: ErrandRecord | null;
@@ -360,7 +364,9 @@ function walkthrough(): State {
 
     // One: the command. The remark is written down and queued in one step,
     // and nothing is resolved against anything.
-    const btw = amy(root, ["btw", CHANGE_TASK, "--repo", REPO, "--source", "ada"]);
+    // Two profiles mount the errand, so the command names the one it means —
+    // the ledger profile exists only to hold state this run must not touch.
+    const btw = errand(root, ["btw", CHANGE_TASK, "--repo", REPO, "--source", "ada"]);
     const taskId = fs
       .readdirSync(tasksDir(root))
       .filter((name) => name.endsWith(".md"))
@@ -408,13 +414,18 @@ function walkthrough(): State {
       "utf-8",
     );
 
-    const discovered = errand(root, ["discover"]);
-    const rediscovered = errand(root, ["discover"]);
+    // The first tick looks before it moves: the hand-written files have never
+    // been on the queue, and a command that only moved what was already there
+    // would leave them for the daemon.
+    const discovered = errand(root, ["tick"]);
+    const rediscovered = errand(root, ["tick"]);
     const trail = run(root);
 
     const status = errand(root, ["status", "--json"]);
     const workflowList = amy(root, ["workflow", "list"]);
     const mounted = errand(root, ["plugin", "list"]);
+    const help = amy(root, ["--help"]);
+    const roster = amy(root, ["roster"]);
 
     const state: State = {
       root,
@@ -430,6 +441,8 @@ function walkthrough(): State {
       status,
       workflowList,
       mounted,
+      help,
+      roster,
       diagram: installedDiagram(root),
       records: records(root),
       change: recordFor(root, taskId),
@@ -494,6 +507,7 @@ type Check = [type: string, ok: boolean | undefined];
 function assertionsFor(state: State): { type: string; status: "passed" | "failed" }[] {
   return [
     ...intakeChecks(state),
+    ...commandLineChecks(state),
     ...workplaceChecks(state),
     ...deliveryChecks(state),
     ...refusalChecks(state),
@@ -523,9 +537,55 @@ function intakeChecks(state: State): Check[] {
       "errand.a_task_in_the_directory_is_discovered",
       state.discovered.out.includes(BY_HAND_ID) &&
         state.question?.state === "DONE" &&
-        state.rediscovered.out.includes("nothing new to queue"),
+        // A second look finds nothing new: discovery is idempotent, so the
+        // files it already queued are not queued again.
+        !state.rediscovered.out.includes("queued"),
     ],
   ];
+}
+
+/**
+ * The command line this machine mounted, and nothing else.
+ */
+function commandLineChecks(state: State): Check[] {
+  return [
+    [
+      // One command, two acts: nothing had queued the hand-written files, and
+      // the tick that found them is the tick that moved one.
+      "errand.a_tick_discovers_before_it_moves",
+      state.discovered.out.includes(BY_HAND_ID) &&
+        !state.queuedAfterBtw.some((name) => name.includes(BY_HAND_ID)) &&
+        state.question !== null,
+    ],
+    [
+      // The host brings what the machine mounted, and nothing else: a command
+      // another workflow would have brought does not exist here.
+      "errand.a_command_nothing_mounts_does_not_exist",
+      state.roster.code !== 0 && /unknown command/i.test(state.roster.out),
+    ],
+    [
+      "errand.help_lists_only_the_machines_commands",
+      helpSpeaksForThisMachine(state.help.out),
+    ],
+  ];
+}
+
+/**
+ * The command line as this machine's, and not as the host's.
+ *
+ * The names below are the ones the host used to carry for every install or
+ * that another workflow brings. `btw` is the errand's own and has to be
+ * there; `daemon` and `after-daemon` are hidden from the list and still run.
+ */
+function helpSpeaksForThisMachine(help: string): boolean {
+  // Gone, hidden, or another workflow's: none of these belongs on a machine
+  // that mounted the errand and nothing else's workflow.
+  const absent = ["pause", "resume", "discover", "daemon", "after-daemon", "poke", "note", "roster"];
+  const listed = (name: string): boolean => help.split("\n").some((line) => line.startsWith(`  ${name} `) || line.startsWith(`  ${name}[`));
+  // And what this machine did mount is listed with the package that brought
+  // it: the errand's own verb, and the two adapters every profile mounts.
+  const here = ["btw", "worktrees", "models", "tick", "init", "doctor"];
+  return absent.every((name) => !listed(name)) && here.every(listed);
 }
 
 function workplaceChecks(state: State): Check[] {

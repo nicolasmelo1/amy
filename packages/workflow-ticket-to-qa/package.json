@@ -30,7 +30,8 @@
   ],
   "dependencies": {
     "@amykit/agent-kit": "^0.6.0",
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.6.0",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@amykit/plugin-file-queue": "^0.6.0",

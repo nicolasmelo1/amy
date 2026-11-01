@@ -33,6 +33,13 @@ export interface WorkRecord {
    * looks until the next saved move writes an explicit count.
    */
   looks?: Record<string, number>;
+  /**
+   * Set when the engine let this work go at its attempt ceiling. Kept on the
+   * record rather than inferred from the queue, because queue history is
+   * pruned and history is not: without it, a pruned item would be discovered
+   * again at attempt zero and fail forever. `amy look <id>` clears it.
+   */
+  gaveUp?: { at: string; reason: string };
   history: Transition[];
   /**
    * Every call this record has made, by id (`TBO-1/REVIEW#1`), each a whole

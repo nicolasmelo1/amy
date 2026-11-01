@@ -210,6 +210,13 @@ drives, not a field existing somewhere in the middle.
 - [x] The run leaves nothing behind: no world on disk, no child process still
       listening, and no build artefact dropped in the checkout
       (proof: assertion:lifecycle.the_run_leaves_nothing_behind)
+- [x] `amy roster` is the workflow's own command — listed in `amy --help`
+      beside the package that brought it, and runnable on a machine that
+      mounted ticket-to-qa — rather than a verb every install carries
+      (proof: assertion:lifecycle.a_workflow_command_is_its_own)
+- [x] `amy stop --all` holds every loop and the next `run`, and `amy start` is
+      what lets it go; nothing advances while the brake is on
+      (proof: assertion:lifecycle.stop_all_holds_until_start)
 - [x] A ticket that reached a terminal state stops being listed, and is counted
       instead: `discover` already refuses to queue it, so a line that never
       goes away is a list that grows until nobody reads it. `--all` still shows

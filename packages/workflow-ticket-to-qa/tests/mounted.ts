@@ -1,6 +1,8 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { CommandRunner, HostServices, Plugin, WORKFLOW_RUNTIME, WorkRecord, Workflow, WorkflowRuntime, actionsOf, applyPlan, implementationOf, mount, movedBy, runAction } from "@amykit/core";
-import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster } from "@amykit/test-fixtures";
-import { WORKFLOW_DATA } from "../src/plugin.js";
+import { fakeAgent, fakeGate, fakeHost, fakeTracker } from "@amykit/test-fixtures";
 import { TicketRecord } from "../src/record.js";
 import { plugin } from "./drawn.js";
 
@@ -23,13 +25,12 @@ export async function mountedTicket(
       registry.port("gate", ports.gate ?? fakeGate());
       registry.port("notifier", { announce: async () => {} });
       if (ports.brief) registry.port("brief", ports.brief);
-      registry.contribute(WORKFLOW_DATA, "roster", { read: () => roster() });
     },
   };
   const host: HostServices = {
     runner,
     now,
-    paths: { workspace: "/w", checkouts: {}, state: "/w/.amy" },
+    paths: { workspace: "/w", checkouts: {}, state: "/w/.amy", profile: rosterDirectory() },
   };
   const outcome = await mount([plugin, world], { "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" } }, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
@@ -68,4 +69,23 @@ export async function drive(
     current = runtime.apply(applyPlan(current, plan, at, outcomes), plan, outcomes, observation, at, movedBy(current, plan));
   }
   return current as TicketRecord;
+}
+
+/** A profile directory holding the roster this workflow reads, for one test. */
+function rosterDirectory(): string {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-"));
+  fs.writeFileSync(
+    path.join(directory, "roster.yaml"),
+    [
+      'confirmedOn: "2026-09-03"',
+      "reviewers:",
+      "  - { tracker: ada@example.test, host: ada, available: true }",
+      "  - { tracker: alan@example.test, host: alan, available: true }",
+      "  - { tracker: edsger@example.test, host: edsger, available: true }",
+      "qa: { tracker: grace@example.test, host: grace, available: true }",
+      "",
+    ].join("\n"),
+    "utf-8",
+  );
+  return directory;
 }

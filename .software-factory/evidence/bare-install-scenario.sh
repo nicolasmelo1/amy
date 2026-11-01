@@ -68,8 +68,11 @@ ticked=$("$amy" tick 2>&1 || echo "")
 says bare.it_says_what_to_do_instead_of_failing "$ticked" "amy workflow new"
 says bare.it_names_the_other_way_to_add_one "$ticked" "amy add"
 
+# `note` belongs to the workflow that provides it, so on a machine that mounts
+# nothing the answer is not "unknown to amy" but "absent here, and this is how
+# you mount the thing that carries it".
 noted=$("$amy" note "the disk filled up" --repo acme/widgets 2>&1 || echo "")
-says bare.a_note_without_a_workflow_is_refused_with_the_fix "$noted" "notes: true"
+says bare.a_note_without_a_workflow_is_refused_with_the_fix "$noted" "nothing on this machine provides it"
 
 # 3. `amy init` writes its files and installs nothing. The lib directory is
 # checked before and after: whatever npm put there for the command alone is
@@ -78,10 +81,12 @@ before=$(ls "$work/lib/node_modules/@amykit" 2>/dev/null | wc -l | tr -d ' ')
 
 init=$("$amy" init 2>&1 || echo "")
 says bare.init_installs_nothing "$init" "kept the plugins it did not need"
-if [ ! -f "$work/home/.amy/config.yaml" ] || [ ! -f "$work/home/.amy/roster.yaml" ]; then
-  record bare.init_writes_its_files 1
-else
+# The config is the host's; the roster is the workflow's file, and nothing is
+# mounted here, so `init` must write the one and not the other.
+if [ -f "$work/home/.amy/config.yaml" ] && [ ! -f "$work/home/.amy/roster.yaml" ]; then
   record bare.init_writes_its_files 0
+else
+  record bare.init_writes_its_files 1
 fi
 
 after=$(ls "$work/lib/node_modules/@amykit" 2>/dev/null | wc -l | tr -d ' ')

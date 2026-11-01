@@ -35,38 +35,23 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | Command | What it does |
 | :-- | :-- |
 | [`amy add`](#amy-add) | Add a workflow or a plugin: install it, mount it, and check the machine boots |
-| [`amy after-daemon`](#amy-after-daemon) | Internal: update after a started daemon has exited |
 | [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
-| [`amy btw`](#amy-btw) | Something to do, said in passing. Goes on the queue, never becomes a ticket |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
-| [`amy daemon`](#amy-daemon) | The loop itself, in the foreground. `amy start` runs this for you |
-| [`amy discover`](#amy-discover) | Put every piece of work the workflow can find onto the queue |
 | [`amy doctor`](#amy-doctor) | Check everything the machine depends on before it touches a ticket |
-| [`amy init`](#amy-init) | Write the config and roster templates, and install what they need |
-| [`amy models`](#amy-models) | What each model is believed to cost |
-| [`amy models refresh`](#amy-models-refresh) | Take the base rates from models.dev, keeping what it does not carry |
-| [`amy models show`](#amy-models-show) | The price table in force |
-| [`amy note`](#amy-note) | Write a piece of friction down, and put it on the queue |
-| [`amy pause`](#amy-pause) | Pull the handbrake: end work in flight and start nothing new |
+| [`amy init`](#amy-init) | Write the config and the files the mounted plugins bring, and install what they need |
+| [`amy look`](#amy-look) | Look at one piece of work now, rather than when it was next due |
 | [`amy plugin`](#amy-plugin) | What is mounted, and what is not |
-| [`amy plugin add`](#amy-plugin-add) | Mount a plugin, by package name or path |
 | [`amy plugin list`](#amy-plugin-list) | The plugins this install mounts, and what they assembled into |
-| [`amy plugin remove`](#amy-plugin-remove) | Stop mounting a plugin |
-| [`amy poke`](#amy-poke) | Look at one piece of work now, rather than when it was next due |
 | [`amy queue`](#amy-queue) | Inspect and tidy the queue |
 | [`amy queue prune`](#amy-queue-prune) | Delete finished queue items past their retention |
 | [`amy queue recover`](#amy-queue-recover) | Return items abandoned by a dead worker |
-| [`amy remove`](#amy-remove) | Remove a workflow or a plugin, refusing what the machine would not survive |
-| [`amy resume`](#amy-resume) | Release the handbrake |
-| [`amy roster`](#amy-roster) | Who is reviewing today |
-| [`amy roster confirm`](#amy-roster-confirm) | Stamp the roster with today's date |
-| [`amy roster show`](#amy-roster-show) | Print the roster and whether it is current |
+| [`amy remove`](#amy-remove) | Remove a workflow profile or a plugin, refusing what the machine would not survive |
 | [`amy run`](#amy-run) | Keep advancing until nothing is due |
 | [`amy skills`](#amy-skills) | Install amy's skills into the harnesses on this machine |
 | [`amy start`](#amy-start) | Start the loop in the background, and keep it running |
 | [`amy status`](#amy-status) | Show where every piece of work stands and what the queue holds |
-| [`amy stop`](#amy-stop) | Stop the background loop |
-| [`amy tick`](#amy-tick) | Advance one piece of work by one move |
+| [`amy stop`](#amy-stop) | Stop the background loop; --all pulls the machine's handbrake |
+| [`amy tick`](#amy-tick) | Advance one piece of work by one move, discovering first |
 | [`amy update`](#amy-update) | Move this install forward: both roots, refusing to leave the machine half-updated |
 | [`amy workflow`](#amy-workflow) | What this install can drive, and what it keeps |
 | [`amy workflow add`](#amy-workflow-add) | Copy a workflow into one of your own, to call it there as code you own |
@@ -74,11 +59,6 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy workflow export`](#amy-workflow-export) | Print a workflow's diagram, which renders wherever Mermaid does |
 | [`amy workflow list`](#amy-workflow-list) | Every workflow this install can drive |
 | [`amy workflow new`](#amy-workflow-new) | Write an editable workflow under ~/.amy/workflows |
-| [`amy workflow rm`](#amy-workflow-rm) | Delete a workflow's records, its queue and its entry in the config |
-| [`amy worktrees`](#amy-worktrees) | Inspect and tidy the isolated checkouts work runs in |
-| [`amy worktrees list`](#amy-worktrees-list) | Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention |
-| [`amy worktrees prune`](#amy-worktrees-prune) | Remove every terminal, clean tree past its retention, and nothing else |
-| [`amy worktrees remove`](#amy-worktrees-remove) | Remove one worktree, refusing an in-flight or dirty one unless --force |
 
 <!-- amy:end cli-index -->
 
@@ -98,19 +78,6 @@ amy add <spec>
 | :-- | :-- | :-- |
 | `<spec>` | yes | a package name, a URL, a git URL, or a path |
 
-### `amy after-daemon`
-
-Internal: update after a started daemon has exited
-
-```sh
-amy after-daemon <pid> <workflow>
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `<pid>` | yes |  |
-| `<workflow>` | yes |  |
-
 ### `amy brief`
 
 The current statement of a feature, as the workflow keeps it
@@ -127,50 +94,12 @@ amy brief [options] <id>
 | :-- | :-- | :-- |
 | `--json` |  | the same snapshot as data, for something else to render |
 
-### `amy btw`
-
-Something to do, said in passing. Goes on the queue, never becomes a ticket
-
-```sh
-amy btw [options] <text>
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `<text>` | yes | what to do, in your own words |
-
-| Option | Default | What it does |
-| :-- | :-- | :-- |
-| `--repo <owner/name>` |  | the repository it is in |
-| `--source <who>` | `somebody at a keyboard` | who asked |
-
 ### `amy budget`
 
 What the agents have spent, and how close that is to the ceiling
 
 ```sh
 amy budget
-```
-
-### `amy daemon`
-
-The loop itself, in the foreground. `amy start` runs this for you
-
-```sh
-amy daemon [options]
-```
-
-| Option | Default | What it does |
-| :-- | :-- | :-- |
-| `--every <seconds>` | `60` | how long to wait after finding nothing to do |
-| `--scheduled` |  | internal: the parent start command already scheduled this lifecycle |
-
-### `amy discover`
-
-Put every piece of work the workflow can find onto the queue
-
-```sh
-amy discover
 ```
 
 ### `amy doctor`
@@ -183,7 +112,7 @@ amy doctor
 
 ### `amy init`
 
-Write the config and roster templates, and install what they need
+Write the config and the files the mounted plugins bring, and install what they need
 
 ```sh
 amy init [options]
@@ -194,62 +123,17 @@ amy init [options]
 | `--install` |  | install the missing packages without asking |
 | `--no-install` |  | only print what is missing |
 
-### `amy models`
+### `amy look`
 
-What each model is believed to cost
-
-```sh
-amy models
-```
-
-### `amy models refresh`
-
-Take the base rates from models.dev, keeping what it does not carry
+Look at one piece of work now, rather than when it was next due
 
 ```sh
-amy models refresh [options]
-```
-
-| Option | Default | What it does |
-| :-- | :-- | :-- |
-| `--dry-run` |  | say what would change and write nothing |
-
-### `amy models show`
-
-The price table in force
-
-```sh
-amy models show
-```
-
-### `amy note`
-
-Write a piece of friction down, and put it on the queue
-
-```sh
-amy note [options] <text>
+amy look <workId>
 ```
 
 | Argument | Required | What it is |
 | :-- | :-- | :-- |
-| `<text>` | yes | what went wrong, in your own words |
-
-| Option | Default | What it does |
-| :-- | :-- | :-- |
-| `--repo <owner/name>` |  | the repository it is about |
-| `--source <who>` | `somebody at a keyboard` | who noticed |
-
-### `amy pause`
-
-Pull the handbrake: end work in flight and start nothing new
-
-```sh
-amy pause [reason]
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `[reason]` | no | why, so the log says something useful later |
+| `<workId>` | yes | the work to bring forward, such as a ticket key |
 
 ### `amy plugin`
 
@@ -259,18 +143,6 @@ What is mounted, and what is not
 amy plugin
 ```
 
-### `amy plugin add`
-
-Mount a plugin, by package name or path
-
-```sh
-amy plugin add <spec>
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `<spec>` | yes | anything Node can import: a package name, or a path |
-
 ### `amy plugin list`
 
 The plugins this install mounts, and what they assembled into
@@ -278,30 +150,6 @@ The plugins this install mounts, and what they assembled into
 ```sh
 amy plugin list
 ```
-
-### `amy plugin remove`
-
-Stop mounting a plugin
-
-```sh
-amy plugin remove <spec>
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `<spec>` | yes | the package name or path to drop |
-
-### `amy poke`
-
-Look at one piece of work now, rather than when it was next due
-
-```sh
-amy poke <workId>
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `<workId>` | yes | the work to bring forward, such as a ticket key |
 
 ### `amy queue`
 
@@ -333,47 +181,20 @@ amy queue recover
 
 ### `amy remove`
 
-Remove a workflow or a plugin, refusing what the machine would not survive
+Remove a workflow profile or a plugin, refusing what the machine would not survive
 
 ```sh
-amy remove <spec>
+amy remove [options] <spec>
 ```
 
 | Argument | Required | What it is |
 | :-- | :-- | :-- |
-| `<spec>` | yes | the name the config carries |
+| `<spec>` | yes | the profile, or the package name the config carries |
 
-### `amy resume`
-
-Release the handbrake
-
-```sh
-amy resume
-```
-
-### `amy roster`
-
-Who is reviewing today
-
-```sh
-amy roster
-```
-
-### `amy roster confirm`
-
-Stamp the roster with today's date
-
-```sh
-amy roster confirm
-```
-
-### `amy roster show`
-
-Print the roster and whether it is current
-
-```sh
-amy roster show
-```
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--keep-state` |  | keep the profile's records and queue |
+| `--yes` |  | delete the profile's state without asking |
 
 ### `amy run`
 
@@ -429,15 +250,19 @@ amy status [options]
 
 ### `amy stop`
 
-Stop the background loop
+Stop the background loop; --all pulls the machine's handbrake
 
 ```sh
-amy stop
+amy stop [options]
 ```
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--all` |  | end every loop and run in flight, and start nothing until `amy start` |
 
 ### `amy tick`
 
-Advance one piece of work by one move
+Advance one piece of work by one move, discovering first
 
 ```sh
 amy tick
@@ -533,63 +358,5 @@ amy workflow new [options] <name>
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--from <file>` |  | a Mermaid stateDiagram-v2 to copy in as the workflow's shape, every decision a stub |
-
-### `amy workflow rm`
-
-Delete a workflow's records, its queue and its entry in the config
-
-```sh
-amy workflow rm [options] <name>
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `<name>` | yes | the profile to forget |
-
-| Option | Default | What it does |
-| :-- | :-- | :-- |
-| `--yes` |  | actually delete, rather than saying what would go |
-
-### `amy worktrees`
-
-Inspect and tidy the isolated checkouts work runs in
-
-```sh
-amy worktrees
-```
-
-### `amy worktrees list`
-
-Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention
-
-```sh
-amy worktrees list
-```
-
-Runs when `amy worktrees` is given no subcommand.
-
-### `amy worktrees prune`
-
-Remove every terminal, clean tree past its retention, and nothing else
-
-```sh
-amy worktrees prune
-```
-
-### `amy worktrees remove`
-
-Remove one worktree, refusing an in-flight or dirty one unless --force
-
-```sh
-amy worktrees remove [options] <workId>
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `<workId>` | yes | the work whose tree is to go |
-
-| Option | Default | What it does |
-| :-- | :-- | :-- |
-| `--force` |  | remove it even though the refusal above applies |
 
 <!-- amy:end cli-commands -->

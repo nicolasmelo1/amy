@@ -85,32 +85,22 @@ arguments, options and defaults.
 | Command | What it does |
 | :-- | :-- |
 | `amy add` | Add a workflow or a plugin: install it, mount it, and check the machine boots |
-| `amy after-daemon` | Internal: update after a started daemon has exited |
 | `amy brief` | The current statement of a feature, as the workflow keeps it |
-| `amy btw` | Something to do, said in passing. Goes on the queue, never becomes a ticket |
 | `amy budget` | What the agents have spent, and how close that is to the ceiling |
-| `amy daemon` | The loop itself, in the foreground. `amy start` runs this for you |
-| `amy discover` | Put every piece of work the workflow can find onto the queue |
 | `amy doctor` | Check everything the machine depends on before it touches a ticket |
-| `amy init` | Write the config and roster templates, and install what they need |
-| `amy models` | What each model is believed to cost |
-| `amy note` | Write a piece of friction down, and put it on the queue |
-| `amy pause` | Pull the handbrake: end work in flight and start nothing new |
+| `amy init` | Write the config and the files the mounted plugins bring, and install what they need |
+| `amy look` | Look at one piece of work now, rather than when it was next due |
 | `amy plugin` | What is mounted, and what is not |
-| `amy poke` | Look at one piece of work now, rather than when it was next due |
 | `amy queue` | Inspect and tidy the queue |
-| `amy remove` | Remove a workflow or a plugin, refusing what the machine would not survive |
-| `amy resume` | Release the handbrake |
-| `amy roster` | Who is reviewing today |
+| `amy remove` | Remove a workflow profile or a plugin, refusing what the machine would not survive |
 | `amy run` | Keep advancing until nothing is due |
 | `amy skills` | Install amy's skills into the harnesses on this machine |
 | `amy start` | Start the loop in the background, and keep it running |
 | `amy status` | Show where every piece of work stands and what the queue holds |
-| `amy stop` | Stop the background loop |
-| `amy tick` | Advance one piece of work by one move |
+| `amy stop` | Stop the background loop; --all pulls the machine's handbrake |
+| `amy tick` | Advance one piece of work by one move, discovering first |
 | `amy update` | Move this install forward: both roots, refusing to leave the machine half-updated |
 | `amy workflow` | What this install can drive, and what it keeps |
-| `amy worktrees` | Inspect and tidy the isolated checkouts work runs in |
 
 <!-- amy:end readme-commands -->
 

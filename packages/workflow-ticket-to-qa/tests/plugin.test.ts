@@ -1,13 +1,15 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { ActionHandler, Event, HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, deferred, dispatchesTo, mount, mountedActions } from "@amykit/core";
-import { fakeAgent, fakeGate, fakeHost, fakeTracker, roster, ticket } from "@amykit/test-fixtures";
-import { WORKFLOW_DATA } from "../src/plugin.js";
+import { fakeAgent, fakeGate, fakeHost, fakeTracker, ticket } from "@amykit/test-fixtures";
 import { plugin } from "./drawn.js";
 
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-09-03T12:00:00.000Z"),
-  paths: { workspace: "/w", checkouts: {}, state: "/w/.amy" },
+  paths: { workspace: "/w", checkouts: {}, state: "/w/.amy", profile: rosterDirectory() },
 };
 
 const SETTINGS = {
@@ -23,7 +25,7 @@ const world: Plugin = {
     registry.port("agent", fakeAgent());
     registry.port("gate", fakeGate());
     registry.port("notifier", { announce: async () => {} });
-    registry.contribute(WORKFLOW_DATA, "roster", { read: () => roster() });
+
   },
 };
 
@@ -100,19 +102,12 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     expect(outcome.problems.join("; ")).toMatch(/needs the `tracker` port/);
   });
 
-  it("refuses at boot when nothing contributed today's roster", async () => {
-    const withoutRoster: Plugin = {
-      ...world,
-      register: (registry) => {
-        registry.port("tracker", fakeTracker());
-        registry.port("code-host", fakeHost());
-        registry.port("agent", fakeAgent());
-        registry.port("gate", fakeGate());
-        registry.port("notifier", { announce: async () => {} });
-      },
+  it("refuses to look when the profile has no roster, and names the command that writes one", async () => {
+    const HOST_WITHOUT_ROSTER: HostServices = {
+      ...HOST,
+      paths: { workspace: "/w", checkouts: {}, state: "/w/.amy", profile: emptyDirectory() },
     };
-
-    const outcome = await mountWith([plugin, withoutRoster]);
+    const outcome = await mount([plugin, world], SETTINGS, HOST_WITHOUT_ROSTER);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     const runtime = outcome.mounted.contributions
@@ -131,16 +126,7 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
         attempts: {},
         history: [],
       }),
-    ).rejects.toThrow(/no roster was contributed/);
-    await expect(
-      runtime.observe({
-        id: "PROJ-1239",
-        state: "DISCOVERED",
-        updatedAt: HOST.now().toISOString(),
-        attempts: {},
-        history: [],
-      }),
-    ).rejects.toThrow(/amy init/);
+    ).rejects.toThrow(/no roster at/);
   });
 
   it("hands the decision the policy it was configured with", async () => {
@@ -217,3 +203,27 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
     expect(await policyOf([plugin, world])).toBe("answer");
   });
 });
+
+/** A profile directory with nothing in it, for the roster's refusal. */
+function emptyDirectory(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "amy-empty-"));
+}
+
+/** A profile directory holding the roster this workflow reads, for one test. */
+function rosterDirectory(): string {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-"));
+  fs.writeFileSync(
+    path.join(directory, "roster.yaml"),
+    [
+      'confirmedOn: "2026-09-03"',
+      "reviewers:",
+      "  - { tracker: ada@example.test, host: ada, available: true }",
+      "  - { tracker: alan@example.test, host: alan, available: true }",
+      "  - { tracker: edsger@example.test, host: edsger, available: true }",
+      "qa: { tracker: grace@example.test, host: grace, available: true }",
+      "",
+    ].join("\n"),
+    "utf-8",
+  );
+  return directory;
+}

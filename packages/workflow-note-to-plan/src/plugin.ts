@@ -1,11 +1,15 @@
+import path from "node:path";
+import { FileQueue } from "@amykit/plugin-file-queue";
 import {
   BRANCH_SETTINGS,
   Action,
   ActionContext,
   ActionHandler,
+  ConfigOf,
   ConfigSchema,
   Harness,
   Notifier,
+  PluginCommand,
   Store,
   WorkflowPieceContext,
   Worktree,
@@ -21,6 +25,7 @@ import { PlanRecord } from "./record.js";
 import { Notes } from "./ports/Notes.js";
 import { PlanCheck } from "./ports/PlanCheck.js";
 import { planRuntime } from "./actions.js";
+import { writeNoteFile } from "./note-file.js";
 import { branchFor, pullRequestTitle } from "./plan-file.js";
 
 export const configSchema = {
@@ -30,12 +35,61 @@ export const configSchema = {
     description: "the repositories a plan may be written into. A note about anything else is handed back to the operator",
   },
   ...BRANCH_SETTINGS,
+  notesDirectory: {
+    type: "string",
+    description: "where this machine keeps the notes `amy note` writes, relative to the state root. The host sets it; a value here only stands in for one",
+    default: "notes",
+  },
+  queueDirectory: {
+    type: "string",
+    description: "where this machine keeps the queue `amy note` puts the note on, relative to the state root. The host sets it; a value here only stands in for one",
+    default: "queue",
+  },
   policy: {
     type: "record",
     description: "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default",
     default: {},
   },
 } satisfies ConfigSchema;
+
+type Settings = ConfigOf<typeof configSchema>;
+
+/**
+ * Friction, written down.
+ *
+ * A file and a queue entry, and nothing else: the command that captures a
+ * complaint has to work on the machine that is complaining, which is exactly
+ * the machine whose mount refused. The host carried it for every install
+ * because it had nowhere else to put it; here it belongs to the workflow that
+ * reads what it writes.
+ */
+const note: PluginCommand<Settings> = {
+  name: "note",
+  description: "Write a piece of friction down, and put it on the queue",
+  args: [{ name: "text", description: "what went wrong, in your own words" }],
+  flags: [
+    { flags: "--repo <owner/name>", description: "the repository it is about" },
+    { flags: "--source <who>", description: "who noticed", default: "somebody at a keyboard" },
+  ],
+  run({ home, settings, args, options, out }) {
+    const repo = (options.repo as string | undefined) ?? settings.repos[0];
+    if (!repo) {
+      out.error("no repository: pass --repo, or list one under `repos`.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const now = new Date();
+    const written = writeNoteFile(
+      path.join(home, settings.notesDirectory),
+      { repo, text: args[0] ?? "", source: String(options.source ?? "somebody at a keyboard") },
+      now,
+    );
+    new FileQueue(path.join(home, settings.queueDirectory)).enqueue({ workId: written.id, reason: "written down by hand" }, now);
+
+    out.line(`noted ${written.id} about ${repo}`);
+  },
+};
 
 const needs = {
   notes: port<Notes>(),
@@ -109,6 +163,7 @@ export const plugin = defineWorkflow({
     }),
   },
   decide,
+  commands: [note],
   record: () => ({}),
   discover: (scope) => runtimeFor(scope).found(),
   observe: (scope, record) => runtimeFor(scope).observe(record),

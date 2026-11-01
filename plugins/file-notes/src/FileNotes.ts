@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { NewNote, Note, Notes } from "@amykit/workflow-note-to-plan";
+import { writeNoteFile, type NewNote, type Note, type Notes } from "@amykit/workflow-note-to-plan";
 
 /** The keys the header understands. Anything else is left in the body. */
 const REPO = "repo";
@@ -40,24 +40,7 @@ export class FileNotes implements Notes {
   }
 
   write(note: NewNote, now: Date): Note {
-    const written = { ...note, id: this.freeId(now), writtenAt: now.toISOString() };
-
-    fs.writeFileSync(
-      this.file(written.id),
-      [
-        `---`,
-        `${REPO}: ${written.repo}`,
-        `${SOURCE}: ${written.source}`,
-        `${WRITTEN}: ${written.writtenAt}`,
-        `---`,
-        ``,
-        written.text.trim(),
-        ``,
-      ].join("\n"),
-      "utf-8",
-    );
-
-    return written;
+    return writeNoteFile(this.root, note, now);
   }
 
   all(): Note[] {
@@ -91,16 +74,6 @@ export class FileNotes implements Notes {
   }
 
   /** A sortable id, and a suffix only when two notes land in one millisecond. */
-  private freeId(now: Date): string {
-    const stamp = `note-${now.toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
-
-    if (!fs.existsSync(this.file(stamp))) return stamp;
-    for (let n = 2; ; n += 1) {
-      const candidate = `${stamp}-${n}`;
-      if (!fs.existsSync(this.file(candidate))) return candidate;
-    }
-  }
-
   private file(id: string): string {
     return path.join(this.root, `${id}.md`);
   }

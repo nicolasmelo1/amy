@@ -143,6 +143,12 @@ export class Worker {
         continue;
       }
 
+      // Work the engine has already let go of is not brought back by a look.
+      // The record says so, and says it durably: the queue's history is
+      // pruned, and inferring from it would bring this work back at attempt
+      // zero as soon as retention ran. `amy look <id>` is the named way back.
+      if (existing?.gaveUp) continue;
+
       this.deps.queue.enqueue({ workId, reason: "found by the workflow", priority }, now);
       enqueued.push(workId);
     }
@@ -513,6 +519,15 @@ export class Worker {
       state: record.state,
       detail: { attempt, error: message },
     });
+
+    if (attempt >= this.deps.config.maxItemAttempts) {
+      // The ceiling, said once, on the record as it is now: the failed move
+      // may already have been saved, and the pre-tick snapshot would undo it.
+      // Written before the item is completed, so a discovery running while
+      // the notice is sent cannot queue the work again at attempt zero.
+      const latest = this.deps.records.load(item.workId) ?? record;
+      this.deps.records.save({ ...latest, gaveUp: { at: now.toISOString(), reason: message } });
+    }
 
     this.deps.queue.complete(item);
 

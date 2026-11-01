@@ -125,15 +125,15 @@ this repository.
 | Package | Kind | Depends on, in this workspace |
 | :-- | :-- | :-- |
 | `@amykit/agent-kit` | library | `@amykit/core` |
-| `@amykit/cli` | cli | `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-file-worktree`, `@amykit/ui` |
+| `@amykit/cli` | cli | `@amykit/core`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/ui` |
 | `@amykit/core` | library | _nothing_ |
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/ui` | library | _nothing_ |
 | `@amykit/ui-conformance` | library | `@amykit/ui` |
-| `@amykit/workflow-errand` | workflow | `@amykit/core`, `@amykit/workflow-pull-request` |
+| `@amykit/workflow-errand` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
 | `@amykit/workflow-feature-grooming` | plugin | `@amykit/core` |
-| `@amykit/workflow-note-to-plan` | workflow | `@amykit/core`, `@amykit/workflow-pull-request` |
+| `@amykit/workflow-note-to-plan` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
 | `@amykit/workflow-pull-request` | workflow | `@amykit/core` |
 | `@amykit/workflow-testkit` | library | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/agent-kit`, `@amykit/core` |
@@ -145,10 +145,10 @@ this repository.
 | `@amykit/plugin-concurrent-engine` | plugin | `@amykit/core`, `@amykit/plugin-serial-engine` |
 | `@amykit/plugin-file-brief-store` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-log` | library | `@amykit/core` |
-| `@amykit/plugin-file-notes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
+| `@amykit/plugin-file-notes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/workflow-note-to-plan` |
 | `@amykit/plugin-file-queue` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-store` | plugin | `@amykit/core`, `@amykit/plugin-file-brief-store` |
-| `@amykit/plugin-file-tasks` | plugin | `@amykit/core` |
+| `@amykit/plugin-file-tasks` | plugin | `@amykit/core`, `@amykit/workflow-errand` |
 | `@amykit/plugin-file-worktree` | plugin | `@amykit/core` |
 | `@amykit/plugin-github` | plugin | `@amykit/core` |
 | `@amykit/plugin-hermes-agent` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |

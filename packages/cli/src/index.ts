@@ -5,18 +5,16 @@ import { spawn, spawnSync } from "node:child_process";
 import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
 import type { TickResult } from "@amykit/plugin-serial-engine";
-import { FileNotes } from "@amykit/plugin-file-notes";
-import { FileTasks } from "@amykit/plugin-file-tasks";
 import {
   BUDGET_WINDOWS,
   BriefStore,
+  Check,
   CommandRunner,
   Engine,
   FileStopSwitch,
   NodeCommandRunner,
   WorkRecord,
   Workflow,
-  Worktree,
   callPath,
   callStanding,
   laneStanding,
@@ -27,15 +25,7 @@ import {
   stampId,
   unmetNeeds,
 } from "@amykit/core";
-import {
-  MODELS_DEV_URL,
-  ModelsDevCatalog,
-  OVERRIDE_FILE,
-  refreshFrom,
-  specTable,
-} from "@amykit/model-specs";
 import { FileEventLog } from "@amykit/plugin-file-log";
-import { WorktreeManager } from "@amykit/plugin-file-worktree";
 // Inspection builds these directly: `amy status` has to work even when a
 // plugin will not mount, which is exactly when you want to look.
 import { FileQueue } from "@amykit/plugin-file-queue";
@@ -45,11 +35,8 @@ import { statusView, type StatusRecord, type StatusSnapshot } from "./status-pag
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
-  EXAMPLE_ROSTER,
   configuredAutoUpdateProblems,
-  confirmRoster,
   loadConfig,
-  loadRoster,
   removeExtraPlugin,
   removeProfile,
   writeExtraPlugins,
@@ -62,10 +49,9 @@ import { diagnose } from "./doctor.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
-import { hostPlugin } from "./hostPlugin.js";
 import { Assembled, assembleProfile } from "./assemble.js";
 import { installedStamp } from "./stamp.js";
-import { hostPaths, pluginList, pluginSlices, worktreeNamespace } from "./slices.js";
+import { hostPaths, pluginList, pluginSlices } from "./slices.js";
 import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
 import {
   BootCheck,
@@ -86,9 +72,20 @@ import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runnin
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
-import { paths, profileDaemonPids, profileOwnedDirectories, profilePaths } from "./paths.js";
+import { paths, profileDaemonPids, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
+import { removeProfileAndState as forgetProfile } from "./removal.js";
+import {
+  CommandEnvironment,
+  Contribution,
+  checks as pluginChecks,
+  gather,
+  migrateRootFiles,
+  register,
+  writeFiles,
+} from "./plugin-commands.js";
+import { refreshPricesWhenStale } from "./prices.js";
 import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { addWorkflowInto } from "./workflow-add.js";
 import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
@@ -132,7 +129,7 @@ function assemble(profile: Profile): Promise<Assembled> {
     runner,
     load: loadMountable,
     log: (file) => new FileEventLog(file, undefined, build),
-    host: [hostPlugin(() => loadRoster(home))],
+    host: [],
   });
 }
 
@@ -251,7 +248,7 @@ program
 
 program
   .command("init")
-  .description("Write the config and roster templates, and install what they need")
+  .description("Write the config and the files the mounted plugins bring, and install what they need")
   .option("--install", "install the missing packages without asking")
   .option("--no-install", "only print what is missing")
   .action(async (options: { install?: boolean }) => {
@@ -266,10 +263,7 @@ program
       fs.mkdirSync(own.queue, { recursive: true });
     }
 
-    for (const [file, content] of [
-      [place.config, EXAMPLE_CONFIG],
-      [place.roster, EXAMPLE_ROSTER],
-    ] as const) {
+    for (const [file, content] of [[place.config, EXAMPLE_CONFIG]] as const) {
       if (fs.existsSync(file)) {
         console.log(`kept   ${file}`);
         continue;
@@ -278,7 +272,7 @@ program
       console.log(`wrote  ${file}`);
     }
 
-    console.log("\nEdit both, then run `amy roster confirm` and `amy doctor`.");
+    console.log("\nEdit it, then run `amy doctor`.");
     console.log(`Friction goes in ${place.notes}, or through \`amy note\`.`);
 
     // Nothing but the command itself is installed with it, so what a
@@ -292,7 +286,14 @@ program
     // which — a bare machine is the machine being set up, not one being
     // rebuilt.
     const config = loadConfig(home);
-    const wanted = Object.values(profiles(config, home)).flatMap((profile) =>
+    const known = Object.values(profiles(config, home));
+    // The files a plugin brings arrive with the machine that mounts it, and
+    // never over one somebody has edited: a template is a starting point, not
+    // a default to restore.
+    const gathered = await gather(config, known, loadMountable);
+    for (const profile of known) writeFiles(home, config, profile, gathered.contributions, commandOut);
+
+    const wanted = known.flatMap((profile) =>
       pluginList(config, profile),
     );
     const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !isFilesystemWorkflow(name) && !installedPlugins(place.plugins).includes(name));
@@ -413,7 +414,6 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     runner,
     env: process.env,
     now: new Date(),
-    readRoster: loadRoster,
     cwd: process.cwd(),
     schemas: Object.fromEntries(
       loaded.plugins.flatMap((plugin) => (plugin.configSchema ? [[plugin.name, plugin.configSchema]] : [])),
@@ -425,15 +425,26 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     notifyPort: mounted?.ports.get("notify"),
     conversationPort: mounted?.ports.get("conversation"),
   });
+  // After the host's own, and only for what this profile mounted: a check a
+  // workflow brought is the workflow's knowledge, and a red one fails the
+  // doctor by the same count as any other.
+  if (!problem) checks.push(...await pluginChecks(home, config, profile, contributions, commandOut));
 
+  reportDoctor(checks, assembled, problem);
+}
+
+/** Says what the checks found, and whether the machine is ready. */
+function reportDoctor(
+  checks: readonly Check[],
+  assembled: Awaited<ReturnType<typeof assemble>>,
+  problem: string | undefined,
+): void {
   for (const check of checks) {
     const detail = check.detail ? `  ${check.detail}` : "";
     console.log(`${check.ok ? "ok  " : "FAIL"} ${check.label}${detail}`);
   }
 
-  if (problem) {
-    console.log(`FAIL ${problem}`);
-  }
+  if (problem) console.log(`FAIL ${problem}`);
 
   // Asked last, because a mount problem is usually a consequence of one of
   // the checks above rather than a separate fault.
@@ -452,34 +463,6 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
   console.log("\nready");
 }
 
-program
-  .command("pause")
-  .description("Pull the handbrake: end work in flight and start nothing new")
-  .argument("[reason]", "why, so the log says something useful later")
-  .action((reason: string | undefined) => {
-    const why = reason ?? "paused by hand";
-    stopSwitch.request(why);
-    new FileEventLog(paths(home).log, undefined, build).append({
-      at: new Date().toISOString(),
-      kind: "stop.requested",
-      detail: { reason: why },
-    });
-    console.log(`paused: ${why}`);
-    console.log("A run in flight kills its children. `amy resume` releases it.");
-  });
-
-program
-  .command("resume")
-  .description("Release the handbrake")
-  .action(() => {
-    if (!stopSwitch.isRequested()) {
-      console.log("not paused");
-      return;
-    }
-    stopSwitch.clear();
-    console.log("released, the queue picks up where it left off");
-  });
-
 /** Waits until the daemon is gone, so an after update never sees a live loop. */
 async function waitForDaemonExit(pid: number): Promise<void> {
   for (let attempt = 0; attempt < 200; attempt += 1) {
@@ -494,6 +477,46 @@ async function waitForDaemonExit(pid: number): Promise<void> {
   throw new Error(`daemon ${pid} did not exit after SIGTERM`);
 }
 
+/**
+ * The handbrake: every loop, every run, and nothing new until `amy start`.
+ *
+ * One switch for the machine rather than one per profile, because the reason
+ * for stopping is usually the machine — a deploy, a laptop closing, a
+ * credential about to be rotated — and a brake that only held the workflow you
+ * happened to name would let the other one keep opening pull requests.
+ */
+async function stopEverything(): Promise<void> {
+  const config = loadConfig(home);
+  stopSwitch.request("stopped by hand");
+  new FileEventLog(paths(home).log, undefined, build).append({
+    at: new Date().toISOString(),
+    kind: "stop.requested",
+    detail: { reason: "amy stop --all" },
+  });
+
+  const ended: string[] = [];
+  for (const profile of Object.values(profiles(config, home))) {
+    const live = runningProfileDaemon(profile);
+    if (!live) continue;
+    process.kill(live.record.pid, "SIGTERM");
+    await waitForDaemonExit(live.record.pid);
+    if (!hasDaemonUpdate(home, live.record.workflow)) clearDaemon(live.file);
+    ended.push(`${live.record.workflow} (pid ${live.record.pid})`);
+  }
+
+  // A version before profiles published one shared PID; it is still a loop.
+  const shared = runningSharedDaemon();
+  if (shared) {
+    process.kill(shared.pid, "SIGTERM");
+    await waitForDaemonExit(shared.pid);
+    clearDaemon(paths(home).pid);
+    ended.push(`the shared loop (pid ${shared.pid})`);
+  }
+
+  console.log(ended.length > 0 ? `stopped ${ended.join(", ")}` : "nothing was running");
+  console.log("Nothing starts until `amy start`.");
+}
+
 program
   .command("start")
   .description("Start the loop in the background, and keep it running")
@@ -502,6 +525,14 @@ program
     const config = loadConfig(home);
     const profile = selected(config);
     const place = profilePaths(home, profile);
+    // The handbrake is one switch for the machine, and starting is how it is
+    // released: a person who stopped everything and comes back to start one
+    // workflow means the machine is running again, not one loop in a still
+    // held one.
+    if (stopSwitch.isRequested()) {
+      stopSwitch.clear();
+      console.log("released the handbrake");
+    }
     const already = runningProfileDaemon(profile);
     if (already) {
       console.log(`already running: pid ${already.record.pid}, driving ${already.record.workflow}`);
@@ -516,6 +547,11 @@ program
     await settlePendingDaemonUpdate(profile, "start", config);
     const schedule = beginAutoUpdateInvocation(home, profile.name, config);
     await runDueBeforeDaemonUpdate(schedule, profile, config);
+
+    // A loop is about to spend an agent's money; a table older than a week is
+    // refreshed first, and the loop starts either way.
+    migrateRootFiles(home, contributions, commandOut);
+    await refreshPricesWhenStale(contributions, commandEnvironment());
 
     // The claim spans only the moment the loop becomes visible: an update
     // refused to move packages while a child was between its spawn and its
@@ -576,8 +612,14 @@ program
 
 program
   .command("stop")
-  .description("Stop the background loop")
-  .action(async () => {
+  .description("Stop the background loop; --all pulls the machine's handbrake")
+  .option("--all", "end every loop and run in flight, and start nothing until `amy start`")
+  .action(async (options: { all?: boolean }) => {
+    if (options.all) {
+      await stopEverything();
+      return;
+    }
+
     const selectedProfile = selected();
     const live = runningProfileDaemon(selectedProfile);
     if (!live) {
@@ -587,9 +629,8 @@ program
     const { file, record } = live;
 
     // Only the selected daemon is signalled. Its SIGTERM handler ends its own
-    // agent children; the handbrake is machine-wide, so pulling it here would
-    // also interrupt another phase's `run`, and clearing it afterwards would
-    // discard a pause the operator set. `pause` and `resume` own the switch.
+    // agent children; the machine-wide handbrake is `--all`, which also ends
+    // a `run` in another terminal and holds the next one.
     process.kill(record.pid, "SIGTERM");
     await waitForDaemonExit(record.pid);
     // The detached reaper owns an after-timed update, including a crash or
@@ -599,7 +640,7 @@ program
   });
 
 program
-  .command("after-daemon")
+  .command("after-daemon", { hidden: true })
   .description("Internal: update after a started daemon has exited")
   .argument("<pid>")
   .argument("<workflow>")
@@ -619,7 +660,7 @@ program
   });
 
 program
-  .command("daemon")
+  .command("daemon", { hidden: true })
   .description("The loop itself, in the foreground. `amy start` runs this for you")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
   .option("--scheduled", "internal: the parent start command already scheduled this lifecycle")
@@ -728,17 +769,27 @@ async function finishAfterDaemonUpdate(schedule: { due: boolean; timing: "before
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 program
-  .command("poke")
+  .command("look")
   .description("Look at one piece of work now, rather than when it was next due")
   .argument("<workId>", "the work to bring forward, such as a ticket key")
   .action((workId: string) => {
-    const queue = new FileQueue(profilePaths(home, selected()).queue);
+    const place = profilePaths(home, selected());
+    const queue = new FileQueue(place.queue);
     console.log(describePoke(workId, poke(queue, workId, new Date())));
+
+    // Asking for it by name is what releases work the engine let go of at its
+    // attempt ceiling: the marker is cleared here and nowhere else.
+    const records = new FileStore<AnyRecord>(place.records);
+    const record = records.load(workId);
+    if (record?.gaveUp) {
+      const { gaveUp: _released, ...rest } = record;
+      records.save(rest);
+    }
   });
 
 program
-  .command("discover")
-  .description("Put every piece of work the workflow can find onto the queue")
+  .command("discover", { hidden: true })
+  .description("Put every piece of work the workflow can find onto the queue. `tick` does this first")
   .action(async () => {
     const queued = await (await engineOrExit()).discover();
     console.log(queued.length ? `queued ${queued.join(", ")}` : "nothing new to queue");
@@ -746,11 +797,20 @@ program
 
 program
   .command("tick")
-  .description("Advance one piece of work by one move")
+  .description("Advance one piece of work by one move, discovering first")
   .action(async () => {
     const profile = selected();
     await aroundWorkflow(profile, async () => {
-      report((await (await engineOrExit()).tick()) as TickResult);
+      const engine = await engineOrExit();
+      // Discovery is every pass of the loop, so a single move looks first too:
+      // work appears in the world rather than being handed over, and a tick
+      // that only moved what was already queued would do nothing on an empty
+      // queue while a ticket sat in the working status. Work already on the
+      // queue is left alone — that includes work waiting out a backoff, which
+      // is what keeps a cheap tick from trampling it.
+      const found = await engine.discover();
+      if (found.length > 0) console.log(`queued ${found.join(", ")}`);
+      report((await engine.tick()) as TickResult);
     });
   });
 
@@ -760,6 +820,11 @@ program
   .option("--max <n>", "stop after this many moves", "100")
   .action(async (options: { max: string }) => {
     const profile = selected();
+    if (stopSwitch.isRequested()) {
+      console.error(`the handbrake is on: ${stopSwitch.reason()}. Run \`amy start\` to release it.`);
+      process.exitCode = 1;
+      return;
+    }
     await aroundWorkflow(profile, async () => {
       const engine = await engineOrExit();
       const max = Number(options.max);
@@ -767,13 +832,15 @@ program
       // Refusing the next tick is not stopping while an agent call is still
       // running, so the watcher ends the children the moment the brake is
       // pulled rather than at the next boundary.
+      let stopping = false;
       const unwatch = stopSwitch.watch((reason) => {
+        stopping = true;
         const killed = runner.killAll();
         console.error(`stopping: ${reason}${killed ? ` (ended ${killed} child process(es))` : ""}`);
       });
 
       try {
-        for (let move = 0; move < max; move += 1) {
+        for (let move = 0; move < max && !stopping; move += 1) {
           const result = (await engine.tick()) as TickResult;
           report(result);
           if (result.kind === "idle" || result.kind === "stopped") return;
@@ -784,111 +851,6 @@ program
         unwatch();
       }
     });
-  });
-
-program
-  .command("note")
-  .description("Write a piece of friction down, and put it on the queue")
-  .argument("<text>", "what went wrong, in your own words")
-  .option("--repo <owner/name>", "the repository it is about")
-  .option("--source <who>", "who noticed", "somebody at a keyboard")
-  .action((text: string, options: { repo?: string; source: string }) => {
-    const config = loadConfig(home);
-    const repo = options.repo ?? config.plans.repos[0];
-
-    if (!repo) {
-      console.error("no repository: pass --repo, or list one under `plans.repos`.");
-      process.exitCode = 1;
-      return;
-    }
-
-    const profile = profileThat("takesNotes", config, "notes");
-    if (!profile) {
-      process.exitCode = 1;
-      return;
-    }
-
-    const place = profilePaths(home, profile);
-    const now = new Date();
-
-    // Written and queued in one step, with nothing resolved against anything.
-    // That is the point of the command: a piece of work reaches the queue
-    // without existing in a tracker, and the machine advances it from there.
-    const note = new FileNotes(place.notes, { defaultRepo: repo }).write(
-      { repo, text, source: options.source },
-      now,
-    );
-
-    new FileQueue(place.queue).enqueue({ workId: note.id, reason: "written down by hand" }, now);
-
-    console.log(`noted ${note.id} about ${repo}`);
-    console.log(`\`amy --workflow ${profile.name} tick\` moves it along.`);
-  });
-
-/**
- * Which profile a thing written down goes to.
- *
- * The config says so — `notes: true`, `tasks: true` — rather than these
- * commands knowing a workflow's name. Two profiles claiming it is not a
- * failure to guess at: `--workflow` settles it, and the message says so.
- */
-function profileThat(
-  takes: "takesNotes" | "takesTasks",
-  config: AmyConfig,
-  what: string,
-): Profile | undefined {
-  const asked = program.opts<{ workflow?: string }>().workflow;
-  if (asked) return selected(config);
-
-  const takers = Object.values(profiles(config, home)).filter((profile) => profile[takes]);
-  if (takers.length === 1) return takers[0];
-
-  console.error(
-    takers.length === 0
-      ? `no workflow takes ${what}: mark one with \`${what}: true\` under \`workflows:\`.`
-      : `more than one workflow takes ${what}, so name one: ${takers.map((t) => t.name).join(", ")}`,
-  );
-  return undefined;
-}
-
-program
-  .command("btw")
-  .description("Something to do, said in passing. Goes on the queue, never becomes a ticket")
-  .argument("<text>", "what to do, in your own words")
-  .option("--repo <owner/name>", "the repository it is in")
-  .option("--source <who>", "who asked", "somebody at a keyboard")
-  .action((text: string, options: { repo?: string; source: string }) => {
-    const config = loadConfig(home);
-    const repo = options.repo ?? config.repos[0];
-
-    if (!repo) {
-      console.error("no repository: pass --repo, or list one under `repos`.");
-      process.exitCode = 1;
-      return;
-    }
-
-    const profile = profileThat("takesTasks", config, "tasks");
-    if (!profile) {
-      process.exitCode = 1;
-      return;
-    }
-
-    const place = profilePaths(home, profile);
-    const now = new Date();
-
-    // Written and queued in one step, and nothing is resolved against
-    // anything. That is the whole point of the command: the cost of capturing
-    // a thing you said in passing has to be close to zero, or it does not get
-    // captured.
-    const task = new FileTasks(place.tasks, { defaultRepo: repo }).add(
-      { repo, text, source: options.source },
-      now,
-    );
-
-    new FileQueue(place.queue).enqueue({ workId: task.id, reason: "said in passing" }, now);
-
-    console.log(`noted ${task.id} in ${repo}`);
-    console.log(`\`amy --workflow ${profile.name} tick\` picks it up.`);
   });
 
 program
@@ -1184,7 +1146,19 @@ async function addCommand(home: string, spec: string): Promise<void> {
     return;
   }
 
+  await writeAddedFiles(home, picked.imported, added.profile);
   console.log("the machine boots: run `amy doctor`, then `amy tick`.");
+}
+
+/** The files the package just added brings, for every profile that mounts it. */
+async function writeAddedFiles(home: string, spec: string, profileName?: string): Promise<void> {
+  const config = loadConfig(home);
+  const known = Object.values(profiles(config, home));
+  const mounting = known.filter((profile) =>
+    profile.name === profileName || profile.workflow === spec || pluginList(config, profile).includes(spec),
+  );
+  const gathered = await gather(config, mounting, loadMountable);
+  for (const profile of mounting) writeFiles(home, config, profile, gathered.contributions, commandOut);
 }
 
 /**
@@ -1359,7 +1333,7 @@ async function mountingWithout(
     if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
     const outcome = await mount(
-      [...loaded.plugins, hostPlugin(() => loadRoster(home))],
+      loaded.plugins,
       trialSlices,
       {
         runner,
@@ -1498,9 +1472,25 @@ async function uninstallRemoved(
   console.log(`uninstalled ${spec}`);
 }
 
-async function removeCommand(home: string, spec: string): Promise<void> {
+async function removeCommand(home: string, spec: string, options: { keepState?: boolean; yes?: boolean } = {}): Promise<void> {
   const config = loadConfig(home);
   const runner = new NodeCommandRunner();
+
+  // A profile and the package it names are one thing to the operator: `amy
+  // remove ticket-to-qa` is the reverse of the `amy add` that wrote the block,
+  // and asking two commands to undo one is how state gets left behind.
+  const named = profiles(config, home)[spec];
+  if (named) {
+    await forgetProfile(home, config, named, options, {
+      running: (profile) => runningProfileDaemon(profile)?.record,
+      pendingUpdate: (profile) => hasDaemonUpdate(home, profile.name),
+      uninstall: (workflow) => uninstallRemoved(runner, paths(home).plugins, workflow),
+      confirm: confirmDeletion,
+      say: (line) => console.log(line),
+    });
+    return;
+  }
+
   // Machine-wide plugins may exist before the first workflow. They were
   // probed alone at add time, and removal must not require a profile merely
   // to reverse that durable config entry.
@@ -1545,6 +1535,17 @@ async function removeCommand(home: string, spec: string): Promise<void> {
   console.log("records, queue and log are kept: nothing here touches them.");
 }
 
+
+/** Asks before deleting what somebody may still want, and answers no without a terminal. */
+function confirmDeletion(directories: readonly string[]): boolean {
+  if (!process.stdin.isTTY) {
+    console.log("no terminal to ask on, so the state is kept; add --yes to delete it.");
+    return false;
+  }
+  const answer = readAnswer(`Delete ${directories.length} director(ies) of state? [y/N] `).toLowerCase();
+  return answer === "y" || answer === "yes";
+}
+
 /** Whether the package root holds this name, by its manifest. */
 function pickedIsInstalled(root: string, name: string): boolean {
   const manifest = path.join(root, "node_modules", ...name.split("/"), "package.json");
@@ -1571,81 +1572,6 @@ function configuredBudget(): unknown {
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
 }
 
-const modelsCommand = program
-  .command("models")
-  .description("What each model is believed to cost");
-
-modelsCommand
-  .command("show")
-  .description("The price table in force")
-  .action(() => {
-    const table = specTable(home);
-
-    console.log(`source: ${table.source}\n`);
-    for (const spec of table.models) {
-      const tier = spec.thresholdTokens
-        ? `  (above ${spec.thresholdTokens.toLocaleString()} input tokens every rate changes)`
-        : "";
-      console.log(
-        `  ${spec.model.padEnd(22)} in ${perMillion(spec.inputPerToken)}  ` +
-          `out ${perMillion(spec.outputPerToken)}  ` +
-          `cache r/w ${perMillion(spec.cacheReadPerToken)}/${perMillion(spec.cacheWritePerToken)}${tier}`,
-      );
-    }
-    console.log(`\n${table.note}`);
-  });
-
-modelsCommand
-  .command("refresh")
-  .description("Take the base rates from models.dev, keeping what it does not carry")
-  .option("--dry-run", "say what would change and write nothing")
-  .action(async (options: { dryRun?: boolean }) => {
-    const response = await fetch(MODELS_DEV_URL);
-    if (!response.ok) {
-      console.error(`${MODELS_DEV_URL} answered ${response.status}`);
-      process.exitCode = 1;
-      return;
-    }
-
-    const report = refreshFrom((await response.json()) as ModelsDevCatalog, specTable(home));
-
-    if (report.changed.length === 0) {
-      console.log("nothing changed");
-    }
-    for (const change of report.changed) {
-      console.log(
-        `  ${change.model} ${change.field}: ${perMillion(change.was)} -> ${perMillion(change.now)}`,
-      );
-    }
-    for (const model of report.unmatched) {
-      console.log(`  ${model}: models.dev does not know it, left as it was`);
-    }
-
-    if (options.dryRun) {
-      console.log("\nnothing written");
-      return;
-    }
-
-    const file = path.join(home, OVERRIDE_FILE);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, `${JSON.stringify(report.table, null, 2)}\n`, "utf-8");
-    console.log(`\nwrote ${file}`);
-    console.log("Long-context tiering was kept: models.dev does not publish it.");
-  });
-
-/**
- * Dollars per million tokens, which is how a price list is written.
- *
- * Four decimals, because two rounds $0.025 and $0.03 to the same string and
- * a diff nobody can see is a diff nobody can check.
- */
-function perMillion(perToken: number | undefined): string {
-  if (perToken === undefined) return "—";
-  const dollars = perToken * 1_000_000;
-  const decimals = Number.isInteger(dollars * 100) ? 2 : 4;
-  return `$${dollars.toFixed(decimals)}`;
-}
-
 const pluginCommand = program.command("plugin").description("What is mounted, and what is not");
 
 program
@@ -1663,10 +1589,17 @@ program
 
 program
   .command("remove")
-  .description("Remove a workflow or a plugin, refusing what the machine would not survive")
-  .argument("<spec>", "the name the config carries")
-  .action(async (spec: string) => {
-    await removeCommand(home, spec);
+  .description("Remove a workflow profile or a plugin, refusing what the machine would not survive")
+  .argument("<spec>", "the profile, or the package name the config carries")
+  .option("--keep-state", "keep the profile's records and queue")
+  .option("--yes", "delete the profile's state without asking")
+  .action(async (spec: string, options: { keepState?: boolean; yes?: boolean }) => {
+    try {
+      await removeCommand(home, spec, options);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
   });
 
 /**
@@ -1688,10 +1621,15 @@ program
   .argument("[package]", "one package to update, by the name the root's manifest carries")
   .action(async (pkg: string | undefined, options: { check?: boolean }) => {
     try {
-      process.exitCode = await updateCommand(home, runner, pkg, options.check === true, {
+      const code = await updateCommand(home, runner, pkg, options.check === true, {
         mountProfiles: assembleProfiles,
         skillsInto: rewriteSkillsInto,
       });
+      if (code === 0 && options.check !== true) {
+        migrateRootFiles(home, contributions, commandOut);
+        await refreshPricesWhenStale(contributions, commandEnvironment());
+      }
+      process.exitCode = code;
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
@@ -2241,44 +2179,6 @@ pluginCommand
     console.log(`workflow: ${mounted.workflow?.name ?? "none"}`);
   });
 
-pluginCommand
-  .command("add")
-  .description("Mount a plugin, by package name or path")
-  .argument("<spec>", "anything Node can import: a package name, or a path")
-  .action((spec: string) => {
-    const config = loadConfig(home);
-    const profile = selected(config);
-    const specs = pluginList(config, profile);
-
-    if (specs.includes(spec)) {
-      console.log(`${spec} is already mounted by ${profile.name}`);
-      return;
-    }
-
-    writeProfilePlugins(home, profile.name, [...specs, spec], config);
-    console.log(`added ${spec} to ${profile.name}`);
-    console.log("Install it if it is not resolvable yet, then run `amy plugin list`.");
-  });
-
-pluginCommand
-  .command("remove")
-  .description("Stop mounting a plugin")
-  .argument("<spec>", "the package name or path to drop")
-  .action((spec: string) => {
-    const config = loadConfig(home);
-    const profile = selected(config);
-    const specs = pluginList(config, profile);
-
-    if (!specs.includes(spec)) {
-      console.log(`${spec} is not mounted by ${profile.name}`);
-      return;
-    }
-
-    writeProfilePlugins(home, profile.name, specs.filter((name) => name !== spec), config);
-    console.log(`removed ${spec} from ${profile.name}`);
-    console.log("Run `amy doctor`: the workflow may now name an action nothing can run.");
-  });
-
 program
   .command("skills")
   .description("Install amy's skills into the harnesses on this machine")
@@ -2488,55 +2388,6 @@ workflowCommand
     }
   });
 
-workflowCommand
-  .command("rm")
-  .description("Delete a workflow's records, its queue and its entry in the config")
-  .argument("<name>", "the profile to forget")
-  .option("--yes", "actually delete, rather than saying what would go")
-  .action((name: string, options: { yes?: boolean }) => {
-    const config = loadConfig(home);
-    const resolution = resolveProfile(config, name, home);
-    if (!resolution.ok) {
-      console.error(resolution.problem);
-      process.exitCode = 1;
-      return;
-    }
-
-    const live = runningProfileDaemon(resolution.profile)?.record;
-    if (live) {
-      console.error(`${live.workflow} is running as pid ${live.pid}. Run \`amy stop\` first.`);
-      process.exitCode = 1;
-      return;
-    }
-    if (hasDaemonUpdate(home, resolution.profile.name)) {
-      console.error(`${resolution.profile.name} has a scheduled daemon update. Let it settle before removing it.`);
-      process.exitCode = 1;
-      return;
-    }
-
-    const going = profileOwnedDirectories(home, resolution.profile).filter((directory) => fs.existsSync(directory));
-
-    for (const directory of going) {
-      const held = fs.readdirSync(directory).length;
-      console.log(`${options.yes ? "deleting" : "would delete"} ${directory} (${held} file(s))`);
-    }
-    console.log(`${options.yes ? "dropping" : "would drop"} \`${name}\` from the config`);
-
-    // The log is not on that list and will not be. It is append-only because
-    // the budget is measured off it, so deleting what a workflow spent would
-    // move a ceiling rather than tidy a directory.
-    console.log(`The log keeps what ${name} did: nothing here touches it.`);
-
-    if (!options.yes) {
-      console.log("\nNothing was deleted. Add --yes to do it.");
-      return;
-    }
-
-    for (const directory of going) fs.rmSync(directory, { recursive: true, force: true });
-    removeProfile(home, name, config);
-    console.log(`\nforgot ${name}`);
-  });
-
 const queueCommand = program.command("queue").description("Inspect and tidy the queue");
 
 queueCommand
@@ -2576,151 +2427,6 @@ queueCommand
     console.log(`returned ${recovered.length} abandoned item(s)`);
   });
 
-const rosterCommand = program.command("roster").description("Who is reviewing today");
-
-/**
- * The worktree manager, built the way a mount would build it.
- *
- * The list and the remove are inspection and recovery, not work: they read
- * the trees on disk and the records beside them, and never need the whole
- * machine to come up — which is exactly when somebody wants to look. The
- * workflow's terminal states are asked of a mount when one can be assembled
- * and answered with none when it cannot, so a broken machine can still be
- * tidied by hand.
- */
-async function worktreeManager(config: AmyConfig): Promise<Worktree> {
-  const profile = selected();
-  const place = profilePaths(home, profile);
-  const slices = pluginSlices(config, profile, home) as Record<string, Record<string, unknown>>;
-  const recordsDirectory = slices["@amykit/plugin-file-worktree"]?.recordsDirectory;
-  const assembled = await assemble(profile);
-
-  return new WorktreeManager(runner, {
-    root: config.worktrees.root || path.join(home, "worktrees"),
-    workflow: worktreeNamespace(profile),
-    defaultBranch: config.defaultBranch,
-    baseBranch: config.baseBranch,
-    retentionDays: config.worktrees.retentionDays,
-    record: (workId) => {
-      const directory = typeof recordsDirectory === "string" ? recordsDirectory : place.records;
-      const file = path.join(directory, `${workId}.json`);
-      try {
-        return JSON.parse(fs.readFileSync(file, "utf-8")) as { state: string };
-      } catch {
-        return null;
-      }
-    },
-    terminalStates: assembled.ok
-      ? (assembled.mounted.workflow?.terminalStates ?? [])
-      : [],
-    log: new FileEventLog(place.log, undefined, build),
-  });
-}
-
-const worktreesCommand = program
-  .command("worktrees")
-  .description("Inspect and tidy the isolated checkouts work runs in");
-
-worktreesCommand
-  .command("list", { isDefault: true })
-  .description("Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention")
-  .action(async () => {
-    const config = loadConfig(home);
-    const manager = await worktreeManager(config);
-    const states = await manager.states();
-
-    if (states.length === 0) {
-      console.log("no worktrees");
-      return;
-    }
-
-    const orphaned = states.filter((state) => state.state === "orphaned").length;
-    for (const state of states) {
-      const clean = state.clean ? "clean" : "dirty";
-      const retention = state.retentionEligible ? "past retention" : "held";
-      console.log(
-        `${state.workId}  ${state.workflow}  ${state.repo}  ${state.branch || "(detached)"}  ` +
-          `${state.state}  ${clean}  ${retention}`,
-      );
-      console.log(`  ${state.path}`);
-    }
-
-    if (orphaned > 0) {
-      console.log(`\n${orphaned} tree(s) name work the store no longer holds.`);
-      console.log("Recover with `amy worktrees remove <workId> --force`, or prune them by hand.");
-    }
-  });
-
-worktreesCommand
-  .command("remove")
-  .description("Remove one worktree, refusing an in-flight or dirty one unless --force")
-  .argument("<workId>", "the work whose tree is to go")
-  .option("--force", "remove it even though the refusal above applies")
-  .action(async (workId: string, options: { force?: boolean }) => {
-    const config = loadConfig(home);
-    const manager = await worktreeManager(config);
-    const states = await manager.states();
-    const found = states.filter((state) => state.workId === workId);
-
-    if (found.length === 0) {
-      console.log(`no worktree for ${workId}`);
-      process.exitCode = 1;
-      return;
-    }
-
-    let removed = 0;
-    for (const state of found) {
-      try {
-        if (await manager.release(workId, state.repo, { force: options.force })) removed += 1;
-      } catch (error) {
-        console.error(error instanceof Error ? error.message : String(error));
-        process.exitCode = 1;
-      }
-    }
-
-    if (removed > 0) console.log(`removed ${removed} tree(s) for ${workId}`);
-  });
-
-worktreesCommand
-  .command("prune")
-  .description("Remove every terminal, clean tree past its retention, and nothing else")
-  .action(async () => {
-    const config = loadConfig(home);
-    const manager = await worktreeManager(config);
-    const removed = await manager.prune(new Date());
-    console.log(removed.length ? `removed ${removed.join(", ")}` : "nothing to prune");
-  });
-
-rosterCommand
-  .command("confirm")
-  .description("Stamp the roster with today's date")
-  .action(() => {
-    const roster = confirmRoster(home, new Date());
-    console.log(`confirmed for ${roster.confirmedOn}`);
-    for (const reviewer of roster.reviewers) {
-      console.log(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}`);
-    }
-    console.log(`  qa  ${roster.qa.available ? "in " : "out"} ${roster.qa.host}`);
-  });
-
-rosterCommand
-  .command("show")
-  .description("Print the roster and whether it is current")
-  .action(() => {
-    const roster = loadRoster(home);
-    const now = new Date();
-    // Confirmed today is the claim, Monday through Friday: a weekend holds,
-    // because people do not confirm a roster they are not using.
-    const workday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5;
-    const current =
-      !workday || roster.confirmedOn === now.toISOString().slice(0, 10);
-    console.log(`confirmed on ${roster.confirmedOn}${current ? " (current)" : " (stale)"}`);
-    for (const reviewer of roster.reviewers) {
-      console.log(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}  ${reviewer.tracker}`);
-    }
-    console.log(`  qa  ${roster.qa.available ? "in " : "out"} ${roster.qa.host}  ${roster.qa.tracker}`);
-  });
-
 function report(result: TickResult): void {
   switch (result.kind) {
     case "idle":
@@ -2748,7 +2454,113 @@ function report(result: TickResult): void {
   }
 }
 
+/**
+ * The command line the configured machine brings, read before anything is
+ * mounted.
+ *
+ * Declared here rather than compiled in, because the command a machine has is
+ * the command it mounted: `amy roster` belongs to the workflow that assigns
+ * reviewers, `amy note` to the one that writes plans, and a machine driving
+ * neither has neither. Read at startup so `amy --help` is the truth about
+ * this install rather than a list of everything this repository publishes.
+ */
+async function pluginContributions(): Promise<readonly Contribution[]> {
+  let gathered;
+  try {
+    const config = loadConfig(home);
+    gathered = await gather(config, Object.values(profiles(config, home)), loadMountable);
+  } catch {
+    // A config this process cannot read is `doctor`'s to report, not a reason
+    // `amy --help` stops working: the command line that would say what is
+    // wrong has to come up on the machine that is wrong.
+    return [];
+  }
+
+  if (gathered.problems.length > 0) {
+    for (const problem of gathered.problems) console.error(problem);
+    process.exit(1);
+  }
+
+  return gathered.contributions;
+}
+
+/** A plugin command runs under one profile, or says which ones may run it. */
+function profileForContribution(contribution: Contribution): { ok: true; profile: Profile } | { ok: false; problem: string } {
+  const config = loadConfig(home);
+  const asked = program.opts<{ workflow?: string }>().workflow;
+
+  if (asked) {
+    const resolution = resolveProfile(config, asked, home);
+    if (!resolution.ok) return { ok: false, problem: resolution.problem };
+    if (!contribution.profiles.some((profile) => profile.name === resolution.profile.name)) {
+      return {
+        ok: false,
+        problem: `\`${contribution.owner}\` is not mounted by ${resolution.profile.name}; it runs on: ${contribution.profiles.map((profile) => profile.name).join(", ")}`,
+      };
+    }
+    return { ok: true, profile: resolution.profile };
+  }
+
+  if (contribution.profiles.length === 1) return { ok: true, profile: contribution.profiles[0]! };
+
+  return {
+    ok: false,
+    problem: `\`${contribution.owner}\` is mounted by ${contribution.profiles.map((profile) => profile.name).join(", ")}; name one with --workflow`,
+  };
+}
+
+const commandOut = {
+  line: (text = "") => console.log(text),
+  error: (text: string) => console.error(text),
+};
+
+const contributions = await pluginContributions();
+
+/** What a plugin command needs from this process, built once. */
+function commandEnvironment(): CommandEnvironment {
+  return {
+    home,
+    config: loadConfig(home),
+    profileFor: profileForContribution,
+    mount: async (profile) => {
+      const assembled = await assemble(profile);
+      return assembled.ok ? { ok: true, ports: assembled.mounted.ports } : { ok: false, problems: assembled.problems };
+    },
+    out: commandOut,
+  };
+}
+
+register(program, contributions, commandEnvironment());
+
+// So a name this machine does not provide can be answered here rather than by
+// commander's bare "unknown command", which reads as if amy had never heard of
+// it. Help and version still leave through the same door, with status 0.
+program.exitOverride();
+program.configureOutput({
+  writeErr: (text) => {
+    if (/^error: unknown command /.test(text)) return;
+    process.stderr.write(text);
+  },
+});
+
 program.parseAsync(process.argv).catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  const message = error instanceof Error ? error.message : String(error);
+  // A command belongs to the workflow that provides it, so on a machine that
+  // mounts none of them the command is not unknown to amy — it is absent, and
+  // the fix is to mount the thing that carries it. Saying which one is the
+  // config's job; saying where to look is this one's.
+  const code = (error as { code?: string }).code;
+  if (code === "commander.helpDisplayed" || code === "commander.version") {
+    process.exitCode = 0;
+    return;
+  }
+  const unknown = /^error: unknown command '([^']+)'/.exec(message);
+  if (unknown) {
+    console.error(`unknown command '${unknown[1]}': nothing on this machine provides it.`);
+    console.error("`amy init` writes a config that names the workflows and what each provides — uncomment one, or run `amy add`.");
+    process.exitCode = 1;
+    return;
+  }
+  console.error(message);
   process.exitCode = 1;
 });

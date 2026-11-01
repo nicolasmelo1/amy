@@ -8,10 +8,10 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 16,
+    "assertions_run": 19,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
-    "looks": 39,
+    "looks": 37,
     "transitions": [
       "QUEUED>WORKING",
       "WORKING>PR_OPEN",
@@ -50,7 +50,7 @@
       "committed-task:DONE",
       "foreign-task:DECLINED",
       "refusal-task:DECLINED",
-      "task-2026-10-31T170625128:DONE"
+      "task-2026-11-01T190310642:DONE"
     ]
   },
   "assertions": [
@@ -60,6 +60,18 @@
     },
     {
       "type": "errand.a_task_in_the_directory_is_discovered",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_tick_discovers_before_it_moves",
+      "status": "passed"
+    },
+    {
+      "type": "errand.a_command_nothing_mounts_does_not_exist",
+      "status": "passed"
+    },
+    {
+      "type": "errand.help_lists_only_the_machines_commands",
       "status": "passed"
     },
     {

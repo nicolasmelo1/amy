@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { NewTask, Task, Tasks } from "@amykit/workflow-errand";
+import { writeTaskFile, type NewTask, type Task, type Tasks } from "@amykit/workflow-errand";
 
 /** The keys the header understands. Anything else is left in the body. */
 const REPO = "repo";
@@ -39,24 +39,7 @@ export class FileTasks implements Tasks {
   }
 
   add(task: NewTask, now: Date): Task {
-    const written = { ...task, id: this.freeId(now), addedAt: now.toISOString() };
-
-    fs.writeFileSync(
-      this.file(written.id),
-      [
-        `---`,
-        `${REPO}: ${written.repo}`,
-        `${SOURCE}: ${written.source}`,
-        `${ADDED}: ${written.addedAt}`,
-        `---`,
-        ``,
-        written.text.trim(),
-        ``,
-      ].join("\n"),
-      "utf-8",
-    );
-
-    return written;
+    return writeTaskFile(this.root, task, now);
   }
 
   all(): Task[] {
@@ -90,16 +73,6 @@ export class FileTasks implements Tasks {
   }
 
   /** A sortable id, and a suffix only when two land in one millisecond. */
-  private freeId(now: Date): string {
-    const stamp = `task-${now.toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
-
-    if (!fs.existsSync(this.file(stamp))) return stamp;
-    for (let n = 2; ; n += 1) {
-      const candidate = `${stamp}-${n}`;
-      if (!fs.existsSync(this.file(candidate))) return candidate;
-    }
-  }
-
   private file(id: string): string {
     return path.join(this.root, `${id}.md`);
   }

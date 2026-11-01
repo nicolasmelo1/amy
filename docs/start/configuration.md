@@ -397,8 +397,8 @@ amy roster show        # print it, and whether it is current
 #
 # confirmedOn is checked against today's date on every workday. The machine
 # refuses to assign anybody while it is stale, because people go on leave
-# without editing a config file and a review assigned to someone who is away
-# stalls for days without anything looking broken.
+# without editing a file and a review assigned to someone who is away stalls
+# for days without anything looking broken.
 #
 # Confirm it with: amy roster confirm
 confirmedOn: "1970-01-01"

@@ -1,8 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
 import {
   Agent,
   AskContext,
   HarnessReply,
+  CommandOutput,
   LogBudget,
+  PluginCommand,
   definePlugin,
   PluginContext,
   Registry,
@@ -11,6 +15,7 @@ import {
   parseBudget,
   ConfigOf,
 } from "@amykit/core";
+import { MODELS_DEV_URL, ModelsDevCatalog, OVERRIDE_FILE, SpecTable, forgetSpecTable, refreshFrom, specTable } from "@amykit/model-specs";
 import { HARNESS_COLLECTION, HarnessRelay, NamedHarness, Ladders, Rung, SkillLadders } from "@amykit/agent-kit";
 import { configSchema } from "./config.js";
 
@@ -18,9 +23,128 @@ type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 import { inertCeilingProblems } from "./pricing.js";
 import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
 
+type Settings = ConfigOf<typeof configSchema>;
+
+/**
+ * What each model is believed to cost.
+ *
+ * Here rather than in the host because the price table is the business of the
+ * one thing that spends an agent: a machine with no relay has nothing to
+ * price, and a price list that came with the CLI was a fact about a package
+ * rather than about this install.
+ */
+const models: PluginCommand<Settings> = {
+  name: "models",
+  description: "What each model is believed to cost",
+  subcommands: [
+    {
+      name: "show",
+      description: "The price table in force",
+      default: true,
+      run({ home, out }) {
+        const table = specTable(home);
+        out.line(`source: ${table.source}`);
+        out.line();
+        for (const spec of table.models) {
+          const tier = spec.thresholdTokens
+            ? `  (above ${spec.thresholdTokens.toLocaleString()} input tokens every rate changes)`
+            : "";
+          out.line(
+            `  ${spec.model.padEnd(22)} in ${perMillion(spec.inputPerToken)}  ` +
+              `out ${perMillion(spec.outputPerToken)}  ` +
+              `cache r/w ${perMillion(spec.cacheReadPerToken)}/${perMillion(spec.cacheWritePerToken)}${tier}`,
+          );
+        }
+        out.line();
+        out.line(table.note);
+      },
+    },
+    {
+      name: "refresh",
+      description: "Take the base rates from models.dev, keeping what it does not carry",
+      flags: [
+        { flags: "--dry-run", description: "say what would change and write nothing" },
+        { flags: "--stale-after <days>", description: "refresh only a table written more than this many days ago" },
+      ],
+      async run({ home, options, out }) {
+        const staleAfter = options.staleAfter === undefined ? undefined : Number(options.staleAfter);
+        if (staleAfter !== undefined && !isStale(home, staleAfter)) {
+          out.line(`the price table is younger than ${staleAfter} day(s); nothing to refresh`);
+          return;
+        }
+
+        const table = await refreshed(home, out);
+        if (!table || options.dryRun === true) return;
+
+        const file = path.join(home, OVERRIDE_FILE);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, `${JSON.stringify(table, null, 2)}\n`, "utf-8");
+        forgetSpecTable();
+        out.line(`\nwrote ${file}`);
+        out.line("Long-context tiering was kept: models.dev does not publish it.");
+      },
+    },
+  ],
+};
+
+/** Whether the table on this machine is older than a number of days. */
+function isStale(home: string, days: number): boolean {
+  try {
+    return Date.now() - fs.statSync(path.join(home, OVERRIDE_FILE)).mtimeMs > days * 86_400_000;
+  } catch {
+    // No table written yet: the vendored one arrived with the release, and
+    // there is no honest way to say when that was.
+    return true;
+  }
+}
+
+/**
+ * Fetches and compares, and writes nothing.
+ *
+ * A refresh that cannot reach models.dev leaves the table exactly as it was:
+ * the next agent call paying for yesterday's price is a smaller problem than
+ * a table emptied because a network call failed.
+ */
+async function refreshed(home: string, out: Pick<CommandOutput, "line" | "error">): Promise<SpecTable | undefined> {
+  try {
+    // Bounded, because this runs on a start and an update: a price list is
+    // not worth holding a loop up for, and a machine with no route out must
+    // come back to the table it already had rather than wait.
+    const response = await fetch(MODELS_DEV_URL, { signal: AbortSignal.timeout(5_000) });
+    if (!response.ok) {
+      out.error(`${MODELS_DEV_URL} answered ${response.status}`);
+      process.exitCode = 1;
+      return undefined;
+    }
+
+    const report = refreshFrom((await response.json()) as ModelsDevCatalog, specTable(home));
+    if (report.changed.length === 0) out.line("nothing changed");
+    for (const change of report.changed) {
+      out.line(`  ${change.model} ${change.field}: ${perMillion(change.was)} -> ${perMillion(change.now)}`);
+    }
+    for (const model of report.unmatched) {
+      out.line(`  ${model}: models.dev does not know it, left as it was`);
+    }
+    return report.table;
+  } catch (error) {
+    out.error(`the price table was left as it was: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+    return undefined;
+  }
+}
+
+/** Dollars per million tokens, which is how a price list is written. */
+function perMillion(perToken: number | undefined): string {
+  if (perToken === undefined) return "—";
+  const dollars = perToken * 1_000_000;
+  const decimals = Number.isInteger(dollars * 100) ? 2 : 4;
+  return `$${dollars.toFixed(decimals)}`;
+}
+
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-agent-relay",
   configSchema,
+  commands: [models],
   register(registry, ctx) {
     // Deferred: the harnesses it relays to are contributed by plugins that
     // may be listed after this one. The host builds it once every plugin has

@@ -4,15 +4,14 @@ import { Profile, artifactDirectory, directoriesFor, projectStateKey } from "./p
 /**
  * What every profile shares, under one state directory.
  *
- * The config, the roster, the log, the handbrake, the notes and the inbox are
- * shared on purpose. One log means one budget, and one handbrake means
+ * The config, the log, the handbrake, the notes and the inbox are shared on
+ * purpose. One log means one budget, and one handbrake means
  * `amy pause` stops the machine rather than the workflow you happened to name.
  */
 export function paths(home: string) {
   return {
     base: home,
     config: path.join(home, "config.yaml"),
-    roster: path.join(home, "roster.yaml"),
     notes: path.join(home, "notes"),
     needsInput: path.join(home, "needs-input"),
     log: path.join(home, "log"),
@@ -45,6 +44,8 @@ function statePaths(home: string, profile: string | Profile) {
     queue: path.join(home, dirs.queue),
     // Plugin-owned state follows the phase the way its queue does.
     tasks: path.join(home, project ?? "", "tasks"),
+    // One Slack identity per machine, so one thread map: splitting this per
+    // profile would forget the threads a running install already answered in.
     slack: path.join(home, project ?? "", "slack"),
     ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
     ...(project ? { log: path.join(home, project, "log"), pid: profileDaemonPid(home, profile) } : {}),

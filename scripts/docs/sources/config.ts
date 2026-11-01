@@ -3,6 +3,7 @@ import { read } from "../lib/repo.js";
 import type { ConfigFacts, ConfigField } from "../lib/facts.js";
 
 const FILE = "packages/cli/src/config.ts";
+const ROSTER = "packages/workflow-ticket-to-qa/src/roster.ts";
 
 /**
  * The host's own configuration, from the interface that defines it.
@@ -21,7 +22,12 @@ export function configFacts(): ConfigFacts {
     profile: fieldsOf(source, "WorkflowProfile"),
     defaults: defaultsOf(source),
     example: stringConstant(source, "EXAMPLE_CONFIG"),
-    exampleRoster: stringConstant(source, "EXAMPLE_ROSTER"),
+    // The roster belongs to the workflow that reads it, so the example is read
+    // from its owner rather than from the host that no longer declares one.
+    exampleRoster: stringConstant(
+      ts.createSourceFile(ROSTER, read(ROSTER), ts.ScriptTarget.ES2022, true),
+      "EXAMPLE_ROSTER",
+    ),
   };
 }
 

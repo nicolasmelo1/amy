@@ -133,26 +133,6 @@ const DEFAULT_POLICY: Policy = {
   maxPullRequestLines: 2000,
 };
 
-/**
- * Who reviews today, read off the file `amy init` writes and handed to
- * whichever workflow asks for it.
- */
-interface RosterMember {
-  /** How the tracker identifies them, normally an email. */
-  tracker: string;
-  /** How the code host identifies them, a login. */
-  host: string;
-  /** Cleared when someone is on leave. */
-  available: boolean;
-}
-
-export interface Roster {
-  /** The date the roster was last confirmed, as `YYYY-MM-DD`. */
-  confirmedOn: string;
-  reviewers: RosterMember[];
-  qa: RosterMember;
-}
-
 export interface AmyConfig {
   /**
    * The workflows this install can drive, by the name typed after
@@ -431,62 +411,6 @@ function mountingFrom(
 function plansFrom(given: Partial<PlansConfig> | undefined): PlansConfig {
   return { ...DEFAULT_CONFIG.plans, ...(given ?? {}), policy: given?.policy ?? {} };
 }
-
-export function loadRoster(root: string): Roster {
-  const file = paths(root).roster;
-  if (!fs.existsSync(file)) {
-    throw new Error(`no roster at ${file}, run \`amy init\` first`);
-  }
-
-  const parsed = yaml.parse(fs.readFileSync(file, "utf-8")) as Partial<Roster>;
-
-  if (!parsed?.confirmedOn || !parsed.reviewers?.length || !parsed.qa) {
-    throw new Error(`${file} needs confirmedOn, reviewers and qa`);
-  }
-
-  return parsed as Roster;
-}
-
-/**
- * Stamps the roster with today's date.
- *
- * Deliberately a separate action from editing the roster, so confirming that
- * nothing changed is one command rather than a file edit somebody skips.
- */
-export function confirmRoster(root: string, today: Date): Roster {
-  const file = paths(root).roster;
-  const roster = loadRoster(root);
-  const confirmed: Roster = { ...roster, confirmedOn: today.toISOString().slice(0, 10) };
-  fs.writeFileSync(file, yaml.stringify(confirmed), "utf-8");
-  return confirmed;
-}
-
-export const EXAMPLE_ROSTER = `# Who is reviewing today, and who owns QA.
-#
-# confirmedOn is checked against today's date on every workday. The machine
-# refuses to assign anybody while it is stale, because people go on leave
-# without editing a config file and a review assigned to someone who is away
-# stalls for days without anything looking broken.
-#
-# Confirm it with: amy roster confirm
-confirmedOn: "1970-01-01"
-
-reviewers:
-  - tracker: ada@example.test
-    host: ada
-    available: true
-  - tracker: alan@example.test
-    host: alan
-    available: true
-  - tracker: edsger@example.test
-    host: edsger
-    available: true
-
-qa:
-  tracker: grace@example.test
-  host: grace
-  available: true
-`;
 
 export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name is what goes after
 # --workflow, and it is also the directory the profile's records and queue
