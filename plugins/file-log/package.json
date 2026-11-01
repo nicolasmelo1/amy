@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-log",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The event log kept as one JSON Lines file per day.",
   "type": "module",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"
