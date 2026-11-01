@@ -32,6 +32,7 @@ criteria:
   - { id: A6, statement: "no existing state changes behaviour with the widened vocabulary", proof: "test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S7, S12] }
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A6" }
+  - { mechanism: agent-replies, answer: works, proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts; readVerdicts reads the five verdicts of S6, and disagreed still reaches the owner" }
 cut:
   - "the follow-up on a deferred thread: workflow policy; whether deferred means next sprint or never is not amy's question"
 exit: "what a review settled, deferred or answered is remembered across rounds with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it"

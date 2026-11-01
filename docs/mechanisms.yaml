@@ -24,10 +24,10 @@ mechanisms:
     paths: ["packages/core/src/budget.ts", "packages/core/src/budget-config.ts", "plugins/serial-engine/src/Worker.ts"]
   - id: attempts-and-waits
     says: an attempt is charged before a run, and a wait or a usage limit gives it back
-    paths: ["packages/core/src/agent-run.ts", "packages/core/src/runtime.ts", "packages/agent-kit/src/**"]
+    paths: ["packages/core/src/agent-run.ts", "packages/core/src/runtime.ts", "packages/core/src/work.ts", "packages/agent-kit/src/**"]
   - id: agent-replies
     says: an agent's reply can be empty, partial, rate-limited or formatted, and is read as data
-    paths: ["packages/agent-kit/src/**", "plugins/claude/src/**", "plugins/codex/src/**", "plugins/hermes-agent/src/**", "plugins/agent-relay/src/**"]
+    paths: ["packages/agent-kit/src/**", "packages/workflow-ticket-to-qa/src/agent-steps.ts", "plugins/claude/src/**", "plugins/codex/src/**", "plugins/hermes-agent/src/**", "plugins/agent-relay/src/**"]
   - id: checkouts-and-leases
     says: git trees, worktrees, branch leases and lent revisions; a move never loses a commit
     paths: ["packages/core/src/git.ts", "packages/core/src/leases.ts", "packages/core/src/checkouts.ts", "plugins/file-worktree/src/**"]

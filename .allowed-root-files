@@ -3,6 +3,9 @@
 # The pending version bumps, one file per change, consumed by
 # `changeset version`. Empty between releases, and that is not a mistake.
 .changeset
+# Skills for whoever changes this repository with an agent: amy-develop says
+# how a plan is made ready before work on it starts. Worktrees in it are local.
+.claude
 # The mark, and whatever the README needs to show itself with.
 assets
 .env.example

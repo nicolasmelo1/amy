@@ -32,6 +32,7 @@ criteria:
   - { id: A6, statement: "an attachment the harness cannot open fails the run honestly", proof: "assertion:picture.an_attachment_url_the_harness_cannot_open_is_reported_not_swallowed", sources: [S10, S12] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "the adapters and ports only read more fields; no write to the tracker or code host is added" }
+  - { mechanism: agent-replies, answer: works, proof: "deferred:assertion:picture.an_attachment_url_the_harness_cannot_open_is_reported_not_swallowed (S10, S12)" }
 cut:
   - "an image-parsing dependency inside amy: refused; the harness reads the picture (S10)"
   - "passing image bytes through amy: refused; a URL the harness can open is the whole contract (S9)"
