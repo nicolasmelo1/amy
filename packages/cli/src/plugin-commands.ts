@@ -452,14 +452,24 @@ export function migrateRootFiles(
 
   for (const contribution of contributions) {
     for (const file of contribution.files) {
+      // Only a file that used to live at the root can have moved from it: one
+      // segment, and never the host's own config, which the root also holds
+      // and which nobody's plugin may claim.
+      if (path.dirname(file.path) !== "." || path.basename(file.path) === "config.yaml") continue;
+
       const from = path.join(home, path.basename(file.path));
       if (!fs.existsSync(from)) continue;
 
       for (const profile of contribution.profiles) {
-        const target = path.join(stateDirectory(home, profile), file.path);
-        if (fs.existsSync(target)) continue;
-        fs.mkdirSync(path.dirname(target), { recursive: true });
-        fs.copyFileSync(from, target);
+        const target = insideProfile(stateDirectory(home, profile), contribution.owner, file.path);
+        try {
+          // Exclusive: an edit made between the check and the copy wins, and
+          // the same path rule as any other write applies to the copy too.
+          fs.copyFileSync(from, target, fs.constants.COPYFILE_EXCL);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
+          throw error;
+        }
         out.line(`kept  ${target}, from ${from}`);
         copied.push(target);
       }
