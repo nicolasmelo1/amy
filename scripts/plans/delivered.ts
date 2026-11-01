@@ -1,3 +1,5 @@
+import yaml from "yaml";
+
 /**
  * What a delivered plan still promises.
  *
@@ -27,11 +29,18 @@ interface Criterion {
 const BOX = /^- \[( |x)\] /;
 const PROOF_MARKER = /\(proof: ([^)]*)\)/g;
 const PROOF = /\b(assertion|test|command|deferred|unspecified):(\S+)/g;
+/** The same marker, unanchored and without `g`, for a yes-or-no test. */
+const IS_PROOF = /\b(assertion|test|command|deferred|unspecified):\S+/;
 
 export function deliveredPromises(input: DeliveredInput): string[] {
   const problems: string[] = [];
 
   for (const [note, text] of Object.entries(input.notes)) {
+    const unreadable = unreadableDeclaration(text);
+    if (unreadable) {
+      problems.push(`${note}:1 has a declaration that does not parse (${unreadable}), so none of its promises can be checked — fix the YAML`);
+      continue;
+    }
     for (const criterion of criteriaIn(text)) {
       const at = `${note}:${criterion.line}`;
       if (!criterion.ticked) {
@@ -64,12 +73,13 @@ function unprovenIn(at: string, proof: string, input: DeliveredInput): string[] 
 }
 
 /**
- * Each checkbox and the indented lines under it, read as one block, so a
+ * Every criterion a plan carries: those its declaration lists, then each
+ * checkbox and the indented lines under it, read as one block, so a
  * criterion with no proof never borrows the next one's.
  */
 function criteriaIn(text: string): Criterion[] {
-  const lines = text.split("\n");
-  const criteria: Criterion[] = [];
+  const lines = text.split(/\r?\n/);
+  const criteria: Criterion[] = declaredIn(lines);
   for (let index = 0; index < lines.length; index += 1) {
     const box = BOX.exec(lines[index]!);
     if (!box) continue;
@@ -84,4 +94,54 @@ function criteriaIn(text: string): Criterion[] {
     index = end - 1;
   }
   return criteria;
+}
+
+/** The YAML between a plan's opening `---` and its closing one, if it opens with one. */
+function declarationOf(lines: readonly string[]): { yaml: string; close: number } | undefined {
+  if (lines[0]?.trim() !== "---") return undefined;
+  const close = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
+  return close < 0 ? undefined : { yaml: lines.slice(1, close).join("\n"), close };
+}
+
+/** Why a plan's declaration does not parse, when it does not. */
+function unreadableDeclaration(text: string): string | undefined {
+  const declaration = declarationOf(text.split(/\r?\n/));
+  if (!declaration) return undefined;
+  try {
+    yaml.parse(declaration.yaml);
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message.split("\n")[0] : String(error);
+  }
+}
+
+/**
+ * A declared criterion: `done: true` is a ticked box, and `proof:` counts only
+ * when it carries a recognised marker — an empty or free-text proof proves
+ * nothing, and must read as no proof rather than as one with nothing to check.
+ */
+function declaredIn(lines: readonly string[]): Criterion[] {
+  const declaration = declarationOf(lines);
+  if (!declaration) return [];
+  const { close } = declaration;
+  const parsed: unknown = yaml.parse(declaration.yaml);
+  const items = (parsed as { criteria?: unknown } | null)?.criteria;
+  if (!Array.isArray(items)) return [];
+  return items.map((item: { id?: unknown; done?: unknown; proof?: unknown }) => {
+    const id = String(item?.id ?? "");
+    const at = lines.findIndex((line, index) => index < close && declaresId(line, id));
+    return {
+      line: (at < 0 ? 1 : at) + 1,
+      ticked: item?.done === true,
+      proofs: typeof item?.proof === "string" && IS_PROOF.test(item.proof) ? [item.proof] : [],
+    };
+  });
+}
+
+/** Whether a declaration line is the one an entry's `id` sits on. */
+function declaresId(line: string, id: string): boolean {
+  const at = line.indexOf("id:");
+  if (at < 0 || id === "") return false;
+  const value = line.slice(at + 3).trim().split(/[,}\s]/)[0]!.replace(/^["']|["']$/g, "");
+  return value === id;
 }

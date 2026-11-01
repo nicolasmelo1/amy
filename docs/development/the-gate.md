@@ -66,6 +66,7 @@ held to a gate that is proven to work.
 | `L4.EVERY_RULE_HAS_A_WHY` | Every enabled rule is cited in prose, and every citation resolves |
 | `L4.PLAN_CRITERION_NAMES_ITS_CHECK` | Every acceptance criterion names the check that proves it |
 | `L4.PLAN_DECLARES_EXIT_CONDITION` | Every plan declares its exit condition and sits in the execution order |
+| `L4.PLAN_IS_A_LINKED_DECLARATION` | A plan is a declaration where every line is tied to another |
 | `L4.ROOT_FILES_ARE_DECLARED` | New top-level files are declared before they appear |
 | `L4.RULE_PROSE_NAMES_A_REAL_COMMAND` | Every command a rule's prose quotes is one this `sf` accepts |
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |

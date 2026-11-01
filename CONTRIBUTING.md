@@ -18,7 +18,7 @@ optional.** It is the tool that turns this repository's rules into checks that
 fail, and `npm run gate` runs it. The setup script installs it; by hand it is:
 
 ```sh
-cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.1 --locked
+cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.3 --locked
 ```
 
 That version is not a suggestion. The catalog ships inside the binary, so a
@@ -175,9 +175,31 @@ house style.
 
 A change big enough to have a shape — a new lifecycle state, a new port, a
 phase of work — gets a plan in `plans/`, listed in
-[`plans/next-steps.md`](plans/next-steps.md), with acceptance criteria that
-each name the check that proves them. There is a rule that fails a plan whose
-criterion names no check, and one that fails a plan with no exit condition.
+[`plans/next-steps.md`](plans/next-steps.md). A plan is a declaration: YAML
+frontmatter, its title, and at most a few lines of why. Every plan there is an
+example; the shape is:
+
+```yaml
+---
+sources:   [{ id: S1, kind: decision, said: "..." }]   # where each requirement comes from
+touches:   ["packages/core/src/calls.ts"]               # what the work changes
+untouched: ["plugins/file-worktree/**"]                 # only when one looks like it must change
+criteria:  [{ id: A1, statement: "...", proof: "test:PATH", sources: [S1] }]
+crosses:   [{ mechanism: engines, answer: works, proof: "test:PATH" }]  # or refused + by, n/a + why
+guarantee: [{ holds: "...", not_against: "..." }]
+failures:  [{ step: "...", when: "...", goes_to: "..." }]
+cut:       ["... : refused at mount"]
+exit:      "the externally visible effect that ends it"
+---
+```
+
+`L4.PLAN_IS_A_LINKED_DECLARATION` holds it: every criterion names a source and
+every source is named, and every mechanism in
+[`docs/mechanisms.yaml`](docs/mechanisms.yaml) whose paths `touches` reaches
+is answered under `crosses`. Prefer refusing a composition the work does not
+need to supporting it: that is one `cut` line and one check at mount, not a
+fix found in review. When a review finds a crossing no plan asked about, add
+the mechanism to the catalog rather than a paragraph to the next plan.
 
 ## Where to ask
 

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "files": {
-    "docs/development/the-factory.md": "4e8292158ea7633246d98fbd3ded92477c187e3b49f2cf513d833fba85f7eab5",
-    "docs/rules.md": "e9318f15a9c72903da9626308e162db088d460145201fee8236f780b65b24688",
+    "docs/development/the-factory.md": "aaf6a4d507d168e36cdd8712cc2ae4c1244ac228d38217e614e66ef006c9a176",
+    "docs/rules.md": "9da76b763a8197b92db33de21595e850f246b1e5fdd09b0812940701a77f5c4c",
     "packages/core/events.json": "97de823c732016a144f2015d89e8e439b2c9129621d517734ec6891be959bab3",
     "packages/model-specs/specs.json": "510a95116df96792c6ee7b71876f27a201c6163e425664334adac1328cce65c8",
     "packages/ui/conformance/config.yaml": "5f23918134d5533df1876e7cac6e4f9016fbbbc29b963a503765a8e260ac43ed",

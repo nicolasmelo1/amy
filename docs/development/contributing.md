@@ -31,7 +31,7 @@ The one thing worth knowing first: **`sf` is not optional.** It is the tool that
 turns this repository's rules into checks that fail, and `npm run gate` runs it.
 
 ```sh
-cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.1 --locked
+cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.3 --locked
 ```
 
 That version is not a suggestion: the catalog ships inside the binary, so a
