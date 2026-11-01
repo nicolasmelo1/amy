@@ -333,17 +333,48 @@ export function writeFiles(
 
   for (const contribution of mountedBy(profile, contributions)) {
     for (const file of contribution.files) {
-      const target = path.join(state, file.path);
-      if (fs.existsSync(target)) continue;
-      const settings = settingsFor(contribution, profile, home, config);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, typeof file.content === "function" ? file.content(settings) : file.content, "utf-8");
+      // A plugin names a file inside the profile that mounted it, and nowhere
+      // else: `..` or an absolute path would let one profile write another's
+      // state, which is the one thing per-profile state exists to prevent.
+      const target = insideProfile(state, contribution.owner, file.path);
+
+      try {
+        // Exclusive, so the promise holds even when two `init`s race or an
+        // operator saves the file while its content is being composed.
+        fs.writeFileSync(target, contentOf(file, contribution, profile, home, config), { encoding: "utf-8", flag: "wx" });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
+        throw error;
+      }
       out.line(`wrote  ${target}`);
       written.push(target);
     }
   }
 
   return written;
+}
+
+/** Where a plugin's file goes, refused when it would leave this profile. */
+function insideProfile(state: string, owner: string, relative: string): string {
+  const target = path.resolve(state, relative);
+  const inside = path.relative(state, target);
+  if (inside.startsWith("..") || path.isAbsolute(inside)) {
+    throw new Error(`${owner} names a file outside the profile: ${relative}`);
+  }
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  return target;
+}
+
+/** The file's content, composed from the settings the mounted plugin sees. */
+function contentOf(
+  file: PluginFile,
+  contribution: Contribution,
+  profile: Profile,
+  home: string,
+  config: AmyConfig,
+): string {
+  if (typeof file.content !== "function") return file.content;
+  return file.content(settingsFor(contribution, profile, home, config));
 }
 
 /** The contributions one profile actually mounts, and nobody else's. */
@@ -395,4 +426,40 @@ function namedProfile(
     ok: false,
     problem: `\`${contribution.owner}\` is not mounted by ${name}; it runs on: ${contribution.profiles.map((candidate) => candidate.name).join(", ")}`,
   };
+}
+
+/**
+ * Copies a plugin file an older install kept at the root into the profile that
+ * owns it now.
+ *
+ * The roster used to be one file for the machine; it is one per profile that
+ * reviews, so an updater that only changed the reader would leave every
+ * existing team with `no roster at ...` and an example nobody assigned. Copies
+ * rather than moves: somebody may still be reading the old one, and a file
+ * that is wrong twice is worse than a file that is stale once.
+ */
+export function migrateRootFiles(
+  home: string,
+  contributions: readonly Contribution[],
+  out: CommandOutput,
+): string[] {
+  const copied: string[] = [];
+
+  for (const contribution of contributions) {
+    for (const file of contribution.files) {
+      const from = path.join(home, path.basename(file.path));
+      if (!fs.existsSync(from)) continue;
+
+      for (const profile of contribution.profiles) {
+        const target = path.join(stateDirectory(home, profile), file.path);
+        if (fs.existsSync(target)) continue;
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.copyFileSync(from, target);
+        out.line(`kept  ${target}, from ${from}`);
+        copied.push(target);
+      }
+    }
+  }
+
+  return copied;
 }

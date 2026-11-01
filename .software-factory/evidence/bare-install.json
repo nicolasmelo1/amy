@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), installing the command alone onto a scratch machine on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/bare-install-run.json",
-      "report_sha256": "00dbddedb51ea7fb05449e4ed142ee013bdd022d3ca3958bb6fb891b26c5cebe",
+      "report_sha256": "3a9189517296929dc88993db2c25429247915b69b2b2dae628369d65a02fd5f6",
       "required_assertions": []
     }
   ]

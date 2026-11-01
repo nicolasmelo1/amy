@@ -76,7 +76,15 @@ import { paths, profileDaemonPids, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
 import { removeProfileAndState as forgetProfile } from "./removal.js";
-import { CommandEnvironment, Contribution, checks as pluginChecks, gather, register, writeFiles } from "./plugin-commands.js";
+import {
+  CommandEnvironment,
+  Contribution,
+  checks as pluginChecks,
+  gather,
+  migrateRootFiles,
+  register,
+  writeFiles,
+} from "./plugin-commands.js";
 import { refreshPricesWhenStale } from "./prices.js";
 import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { addWorkflowInto } from "./workflow-add.js";
@@ -542,6 +550,7 @@ program
 
     // A loop is about to spend an agent's money; a table older than a week is
     // refreshed first, and the loop starts either way.
+    migrateRootFiles(home, contributions, commandOut);
     await refreshPricesWhenStale(contributions, commandEnvironment());
 
     // The claim spans only the moment the loop becomes visible: an update
@@ -1616,7 +1625,10 @@ program
         mountProfiles: assembleProfiles,
         skillsInto: rewriteSkillsInto,
       });
-      if (code === 0 && options.check !== true) await refreshPricesWhenStale(contributions, commandEnvironment());
+      if (code === 0 && options.check !== true) {
+        migrateRootFiles(home, contributions, commandOut);
+        await refreshPricesWhenStale(contributions, commandEnvironment());
+      }
       process.exitCode = code;
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));

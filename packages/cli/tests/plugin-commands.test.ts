@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { Check, ConfigSchema, Plugin } from "@amykit/core";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import type { LoadResult } from "../src/loader.js";
-import { BUILT_IN_COMMANDS, checks, gather, register, writeFiles } from "../src/plugin-commands.js";
+import { BUILT_IN_COMMANDS, checks, gather, migrateRootFiles, register, writeFiles } from "../src/plugin-commands.js";
 import type { Profile } from "../src/profiles.js";
 
 /**
@@ -196,6 +196,31 @@ describe("a plugin's commands, check and file", () => {
     writeFiles(home, CONFIG, WORK, gathered.contributions, out);
     expect(fs.readFileSync(first[0]!, "utf-8")).toBe("edited by hand\n");
     expect(said.filter((line) => line.startsWith("wrote")).length).toBe(1);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it("refuses a file that would land outside the profile that mounted it", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-escape-"));
+    const gathered = await gather(CONFIG, [WORK], loading(demo({ files: [{ path: "../elsewhere.txt", content: "no\n" }] })));
+    const { out } = spoken();
+
+    expect(() => writeFiles(home, CONFIG, WORK, gathered.contributions, out)).toThrow(/outside the profile/);
+    expect(fs.existsSync(path.join(home, "elsewhere.txt"))).toBe(false);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it("keeps a root file an older install left behind, in the profile that owns it now", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
+    fs.writeFileSync(path.join(home, "demo.txt"), "the team's own\n", "utf-8");
+    const gathered = await gather(CONFIG, [WORK], loading(demo()));
+    const { out } = spoken();
+
+    migrateRootFiles(home, gathered.contributions, out);
+
+    expect(fs.readFileSync(path.join(home, "work", "demo.txt"), "utf-8")).toBe("the team's own\n");
+    expect(fs.existsSync(path.join(home, "demo.txt"))).toBe(true);
 
     fs.rmSync(home, { recursive: true, force: true });
   });

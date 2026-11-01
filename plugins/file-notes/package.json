@@ -29,9 +29,7 @@
   ],
   "dependencies": {
     "@amykit/core": "^0.6.0",
-    "@amykit/plugin-notify-fanout": "^0.6.0"
-  },
-  "devDependencies": {
+    "@amykit/plugin-notify-fanout": "^0.6.0",
     "@amykit/workflow-note-to-plan": "^0.6.0"
   }
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "installed-plugins",
-  "implementation_sha256": "01e0f4cb5ec46224fd2e2f5ea60ec5a8737579c7b05d212ce22a44d0db589755",
+  "implementation_sha256": "2b12993532448db724b44f5f24d8aa65240e5f553fd56581609964515290ee9d",
   "runs": [
     {
       "scenario": "installed-plugins",

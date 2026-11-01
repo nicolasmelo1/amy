@@ -145,10 +145,10 @@ this repository.
 | `@amykit/plugin-concurrent-engine` | plugin | `@amykit/core`, `@amykit/plugin-serial-engine` |
 | `@amykit/plugin-file-brief-store` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-log` | library | `@amykit/core` |
-| `@amykit/plugin-file-notes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
+| `@amykit/plugin-file-notes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout`, `@amykit/workflow-note-to-plan` |
 | `@amykit/plugin-file-queue` | plugin | `@amykit/core` |
 | `@amykit/plugin-file-store` | plugin | `@amykit/core`, `@amykit/plugin-file-brief-store` |
-| `@amykit/plugin-file-tasks` | plugin | `@amykit/core` |
+| `@amykit/plugin-file-tasks` | plugin | `@amykit/core`, `@amykit/workflow-errand` |
 | `@amykit/plugin-file-worktree` | plugin | `@amykit/core` |
 | `@amykit/plugin-github` | plugin | `@amykit/core` |
 | `@amykit/plugin-hermes-agent` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |

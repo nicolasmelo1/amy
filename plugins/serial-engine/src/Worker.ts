@@ -529,8 +529,12 @@ export class Worker {
     if (notice) await this.announce(notice.text, item.workId, record.state, notice.kind);
 
     if (attempt >= this.deps.config.maxItemAttempts) {
-      // The ceiling, said once. On the record, because the queue forgets.
-      this.deps.records.save({ ...record, gaveUp: { at: now.toISOString(), reason: message } });
+      // The ceiling, said once. On the record, because the queue forgets —
+      // and on the record as it is now, not as it was when the tick started:
+      // the move that failed may already have been saved, and writing back
+      // the pre-tick snapshot would undo its history and its evidence.
+      const latest = this.deps.records.load(item.workId) ?? record;
+      this.deps.records.save({ ...latest, gaveUp: { at: now.toISOString(), reason: message } });
     } else {
       this.deps.queue.enqueue(
         {
