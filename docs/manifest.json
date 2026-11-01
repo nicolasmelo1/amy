@@ -458,6 +458,11 @@
           "description": ""
         },
         {
+          "title": "The roster belongs to its workflow",
+          "path": "/design/the-roster-belongs-to-its-workflow",
+          "description": ""
+        },
+        {
           "title": "The threads close when they are answered",
           "path": "/design/the-threads-close-when-they-are-answered",
           "description": ""
@@ -3329,6 +3334,33 @@
           "depth": 2,
           "title": "The config the template writes is the same machine",
           "slug": "the-config-the-template-writes-is-the-same-machine"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/the-roster-belongs-to-its-workflow",
+      "file": "docs/design/the-roster-belongs-to-its-workflow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-roster-belongs-to-its-workflow.md",
+      "title": "The roster belongs to its workflow",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What shipped",
+          "slug": "what-shipped"
+        },
+        {
+          "depth": 2,
+          "title": "What the run found",
+          "slug": "what-the-run-found"
         },
         {
           "depth": 2,

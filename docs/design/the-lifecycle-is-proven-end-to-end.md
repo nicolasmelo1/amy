@@ -225,7 +225,7 @@ drives, not a field existing somewhere in the middle.
 - [x] The roster the morning confirmed is the profile's own file — stamped in
       the profile's state directory, read there by the tick that assigns, and
       never a file the machine root carries — from
-      [the roster belongs to its workflow](../../plans/the-roster-belongs-to-its-workflow.md)
+      [the roster belongs to its workflow](the-roster-belongs-to-its-workflow.md)
       (proof: assertion:lifecycle.the_roster_is_the_profiles)
 
 **Exit condition:** `npm run e2e` drives the installed executable through the
