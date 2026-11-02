@@ -268,6 +268,11 @@
           "description": ""
         },
         {
+          "title": "A row of next steps is a ticket",
+          "path": "/design/a-row-of-next-steps-is-a-ticket",
+          "description": ""
+        },
+        {
           "title": "A Slack thread per piece of work",
           "path": "/design/a-slack-thread-per-piece-of-work",
           "description": ""
@@ -941,6 +946,11 @@
           "depth": 3,
           "title": "**A reply in a work's thread can be a question, not only an answer.**",
           "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
+        },
+        {
+          "depth": 3,
+          "title": "A row of next steps is a ticket. @amykit/plugin-next-steps mounts the tracker port over an execution-order table — plans/next-steps.md by default — read from the base branch, never from the standing checkout: a row is a work item, its linked plan the body, its place in the table the priority. A relative link is a plan in the table's repository and an owner/name:plans/<slug>.md link one in another, so one table can order the work of several. Only the top rows (one by default) are work at once, a row gone from the table with its plan in docs/design/ reads as delivered, and the branch is branchPrefix (plan/ by default) and the plan's slug.",
+          "slug": "a-row-of-next-steps-is-a-ticket-amykitplugin-next-steps-mounts-the-tracker-port-over-an-execution-order-table-plansnext-stepsmd-by-default-read-from-the-base-branch-never-from-the-standing-checkout-a-row-is-a-work-item-its-linked-plan-the-body-its-place-in-the-table-the-priority-a-relative-link-is-a-plan-in-the-tables-repository-and-an-ownernameplansslugmd-link-one-in-another-so-one-table-can-order-the-work-of-several-only-the-top-rows-one-by-default-are-work-at-once-a-row-gone-from-the-table-with-its-plan-in-docsdesign-reads-as-delivered-and-the-branch-is-branchprefix-plan-by-default-and-the-plans-slug"
         },
         {
           "depth": 3,
@@ -2038,6 +2048,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-row-of-next-steps-is-a-ticket",
+      "file": "docs/design/a-row-of-next-steps-is-a-ticket.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-row-of-next-steps-is-a-ticket.md",
+      "title": "A row of next steps is a ticket",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-slack-thread-per-piece-of-work",
@@ -4346,6 +4367,11 @@
           "depth": 3,
           "title": "@amykit/plugin-linear",
           "slug": "amykitplugin-linear"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/plugin-next-steps",
+          "slug": "amykitplugin-next-steps"
         },
         {
           "depth": 3,
@@ -6877,7 +6903,8 @@
           "hand-off-to-qa"
         ],
         "mountedBy": [
-          "@amykit/plugin-linear"
+          "@amykit/plugin-linear",
+          "@amykit/plugin-next-steps"
         ]
       },
       {
@@ -7644,6 +7671,64 @@
         "environment": [
           "LINEAR_API_KEY"
         ]
+      },
+      {
+        "name": "@amykit/plugin-next-steps",
+        "version": "0.6.0",
+        "kind": "plugin",
+        "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
+        "directory": "plugins/next-steps",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-next-steps",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/next-steps",
+        "readme": "plugins/next-steps/README.md",
+        "mounts": [
+          "tracker"
+        ],
+        "contributes": [],
+        "settings": [
+          {
+            "name": "baseBranch",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
+          },
+          {
+            "name": "branchPrefix",
+            "type": "string",
+            "required": false,
+            "default": "plan/",
+            "description": "what a row's branch starts with, before its plan's slug"
+          },
+          {
+            "name": "defaultBranch",
+            "type": "string",
+            "required": false,
+            "default": "main",
+            "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "required": true,
+            "description": "the repository the table lives in, as owner/name"
+          },
+          {
+            "name": "rows",
+            "type": "number",
+            "required": false,
+            "default": 1,
+            "description": "how many rows from the top are work at once; the rest wait their turn"
+          },
+          {
+            "name": "table",
+            "type": "string",
+            "required": false,
+            "default": "plans/next-steps.md",
+            "description": "the table's path in that repository"
+          }
+        ],
+        "environment": []
       },
       {
         "name": "@amykit/plugin-notify-fanout",
@@ -8819,6 +8904,25 @@
         "scenario": ".software-factory/evidence/plugin-github-scenario.sh"
       },
       {
+        "name": "plugin-next-steps",
+        "activation": [
+          "plugins/next-steps/src/**",
+          "packages/core/src/ports/Ticketing.ts",
+          "packages/core/src/ports/BaseSource.ts",
+          "packages/workflow-ticket-to-qa/src/**",
+          "packages/workflow-ticket-to-qa/workflow.mmd"
+        ],
+        "evidence": ".software-factory/evidence/plugin-next-steps.json",
+        "plan": "docs/design/a-row-of-next-steps-is-a-ticket.md",
+        "assertions": [
+          "next_steps.the_declaration_claims_no_tracker_writes",
+          "next_steps.the_first_committed_row_is_the_work",
+          "next_steps.the_row_walks_to_a_pull_request_in_its_plans_repository",
+          "next_steps.nothing_is_written_where_a_tracker_would_have_been"
+        ],
+        "scenario": ".software-factory/evidence/plugin-next-steps-scenario.sh"
+      },
+      {
         "name": "plugin-serial-engine",
         "activation": [
           "plugins/serial-engine/src/**",
@@ -9675,6 +9779,18 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-row-of-next-steps-is-a-ticket",
+        "title": "A row of next steps is a ticket. `@amykit/plugin-next-steps` mounts the `tracker` port over an execution-order table — `plans/next-steps.md` by default — read from the base branch, never from the standing checkout: a row is a work item, its linked plan the body, its place in the table the priority. A relative link is a plan in the table's repository and an `owner/name:plans/<slug>.md` link one in another, so one table can order the work of several. Only the top `rows` (one by default) are work at once, a row gone from the table with its plan in `docs/design/` reads as `delivered`, and the branch is `branchPrefix` (`plan/` by default) and the plan's slug.",
+        "body": "It writes nothing: mount `ticket-to-qa` on it with `policy.writes: operator`\nand `qaStatusName: delivered`, and a row reaches delivered when you merge the\npull request that moves its plan.",
+        "bumps": [
+          {
+            "package": "@amykit/plugin-next-steps",
             "level": "minor"
           }
         ],

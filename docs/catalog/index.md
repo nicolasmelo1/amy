@@ -36,6 +36,7 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/plugin-github` | plugin | GitHub as the code host, through the gh CLI. | [npm](https://www.npmjs.com/package/@amykit/plugin-github) |
 | `@amykit/plugin-hermes-agent` | plugin | Hermes as the agent, over its one-shot mode and usage report. | [npm](https://www.npmjs.com/package/@amykit/plugin-hermes-agent) |
 | `@amykit/plugin-linear` | plugin | Linear as the tracker, over its GraphQL API. | [npm](https://www.npmjs.com/package/@amykit/plugin-linear) |
+| `@amykit/plugin-next-steps` | plugin | A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch. | [npm](https://www.npmjs.com/package/@amykit/plugin-next-steps) |
 | `@amykit/plugin-notify-fanout` | plugin | Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted. | [npm](https://www.npmjs.com/package/@amykit/plugin-notify-fanout) |
 | `@amykit/plugin-notify-hermes` | plugin | Announcements over Hermes, which already owns the messaging credentials. | [npm](https://www.npmjs.com/package/@amykit/plugin-notify-hermes) |
 | `@amykit/plugin-notify-inbox` | plugin | Announcements as a file on disk plus a desktop notification. | [npm](https://www.npmjs.com/package/@amykit/plugin-notify-inbox) |

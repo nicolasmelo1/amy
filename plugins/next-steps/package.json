@@ -1,0 +1,36 @@
+{
+  "name": "@amykit/plugin-next-steps",
+  "version": "0.6.0",
+  "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/next-steps"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.6.0"
+  },
+  "devDependencies": {
+    "@amykit/test-fixtures": "^0.1.0"
+  }
+}

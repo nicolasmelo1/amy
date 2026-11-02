@@ -734,6 +734,29 @@ gates:
       # From the seventh review.
       - "compose.a_second_review_round_on_one_head_is_said_again"
 
+  # A next-steps table is a tracker: ticket-to-qa, mounted on one, walks the
+  # first committed row to a pull request in its plan's repository and writes
+  # nothing where a tracker would have been. What no unit test can say is that
+  # the installed executable, the packaged plugin and the workflow agree on it.
+  #
+  # The activation is the adapter, the tracker contract and the workflow that
+  # reads it, because a change to any of them means the last run proved a
+  # table that no longer drives anything.
+  plugin-next-steps:
+    activation:
+      - "plugins/next-steps/src/**"
+      - "packages/core/src/ports/Ticketing.ts"
+      - "packages/core/src/ports/BaseSource.ts"
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "packages/workflow-ticket-to-qa/workflow.mmd"
+    evidence: ".software-factory/evidence/plugin-next-steps.json"
+    plan: "docs/design/a-row-of-next-steps-is-a-ticket.md"
+    required_assertions:
+      - "next_steps.the_declaration_claims_no_tracker_writes"
+      - "next_steps.the_first_committed_row_is_the_work"
+      - "next_steps.the_row_walks_to_a_pull_request_in_its_plans_repository"
+      - "next_steps.nothing_is_written_where_a_tracker_would_have_been"
+
   # A reply in the work's thread is a turn in a discussion or the decision
   # that ends one, and only the decision moves the work. What no unit test can
   # say is that the built Slack adapter, workflow and engine agree on it end

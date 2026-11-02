@@ -37,7 +37,7 @@ explains why for each.
 | `queue` | `@amykit/plugin-file-queue` | _reached directly_ |
 | `store` | `@amykit/plugin-file-store` | _reached directly_ |
 | `tasks` | `@amykit/plugin-file-tasks` | _reached directly_ |
-| `tracker` | `@amykit/plugin-linear` | `ask-question`, `escalate`, `hand-off-to-qa` |
+| `tracker` | `@amykit/plugin-linear`<br>`@amykit/plugin-next-steps` | `ask-question`, `escalate`, `hand-off-to-qa` |
 | `worktree` | `@amykit/plugin-file-worktree` | `acquire-worktree` |
 
 <!-- amy:end port-kinds -->

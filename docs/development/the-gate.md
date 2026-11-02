@@ -161,6 +161,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | `plugin-agent-relay` | `plugins/agent-relay/src/**`<br>`packages/agent-kit/src/**` | 27 |
 | `plugin-file-queue` | `plugins/file-queue/src/**` | 9 |
 | `plugin-github` | `plugins/github/src/**`<br>`packages/workflow-*/src/**` | 4 |
+| `plugin-next-steps` | `plugins/next-steps/src/**`<br>`packages/core/src/ports/Ticketing.ts`<br>`packages/core/src/ports/BaseSource.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd` | 4 |
 | `plugin-serial-engine` | `plugins/serial-engine/src/**`<br>`plugins/notify-fanout/src/**` | 13 |
 | `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 14 |
 | `the-event-log-can-be-watched` | `packages/core/src/ports/EventLog.ts`<br>`plugins/file-log/src/**` | 6 |

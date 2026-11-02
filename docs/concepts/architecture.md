@@ -104,6 +104,7 @@ plugins/
 ├── github               GitHub as the code host, through the gh CLI.
 ├── hermes-agent         Hermes as the agent, over its one-shot mode and usage report.
 ├── linear               Linear as the tracker, over its GraphQL API.
+├── next-steps           A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.
 ├── notify-fanout        Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.
 ├── notify-hermes        Announcements over Hermes, which already owns the messaging credentials.
 ├── notify-inbox         Announcements as a file on disk plus a desktop notification.
@@ -153,6 +154,7 @@ this repository.
 | `@amykit/plugin-github` | plugin | `@amykit/core` |
 | `@amykit/plugin-hermes-agent` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-linear` | plugin | `@amykit/core` |
+| `@amykit/plugin-next-steps` | plugin | `@amykit/core` |
 | `@amykit/plugin-notify-fanout` | plugin | `@amykit/core` |
 | `@amykit/plugin-notify-hermes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-notify-inbox` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
