@@ -205,6 +205,16 @@ export interface Plugin {
    */
   readonly configSchema?: ConfigSchema;
   /**
+   * The environment variables this plugin reads, in its own words.
+   *
+   * The doctor asks each mounted plugin's need one variable at a time, and a
+   * machine that mounted none of them is asked none of them: a checklist
+   * every install carries used to be one workflow's credential list, and the
+   * install without that workflow failed `amy doctor` on it for no machine's
+   * sake.
+   */
+  readonly environment?: readonly string[];
+  /**
    * The commands this plugin brings to the command line.
    *
    * Read after the module is imported and before anything is mounted, so a
@@ -240,6 +250,7 @@ export interface Plugin {
 export function definePlugin<const S extends ConfigSchema>(plugin: {
   readonly name: string;
   readonly configSchema: S;
+  readonly environment?: readonly string[];
   readonly commands?: readonly PluginCommand<ConfigOf<S>>[];
   readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
   readonly files?: readonly PluginFile<ConfigOf<S>>[];

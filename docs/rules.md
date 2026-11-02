@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**60 rules shipped**, 49 enabled here, 11 switched off, 49 carrying a mutation fixture, 1 violations frozen.
+**61 rules shipped**, 50 enabled here, 11 switched off, 50 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -19,7 +19,7 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:generated layer-index -->
 | | Layer | What it checks | Shipped | Enabled here |
 | :-- | :-- | :-- | --: | --: |
-| **L0** | Shape | where things live | 16 | 14 |
+| **L0** | Shape | where things live | 17 | 15 |
 | **L1** | Grain | how the code reads | 7 | 6 |
 | **L2** | Contract | no drift from the source of truth | 8 | 7 |
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
@@ -170,6 +170,16 @@ packages/core/src defines no `pullRequestTitle`.
 **Why.** How a pull request, a commit or a comment is worded is something a person reads, and every team words it differently. ticket-to-qa titles a pull request `ID: title`, the errand titles it with the first line of the task. A convention in the core is one every workflow inherits and half of them then work around.
 
 **Fix.** Put the wording in the workflow that publishes it. ticket-to-qa exports its own `pullRequestTitle`. See docs/design/an-agent-only-answers.md.
+
+### L0.THE_HOST_NAMES_NO_ROSTER
+
+**The host carries none of a workflow's own vocabulary**
+
+No source under packages/cli/src spells the roster's name outside the `rosterBackoffMs` ceiling: not the file's, not the type, the loader, the confirmation, the example, the doctor check, or the command.
+
+**Why.** The roster is ticket-to-qa's: its type, its loader, its confirmation, its command and check, its file, because the host once had nowhere to put a command a workflow owns and the copy it kept made every install carry reviewers for the one workflow that assigns them. A command, check or file lives in the package that mounts it now, and the host's own source should be able to say nothing about rosters without the package installed. The surviving `rosterBackoffMs` is the host-carried ceiling the config plan removes along with the whole of its Policy copy, so it is named here once, not recreated twice.
+
+**Fix.** Move the code into the workflow that owns it and give the host the mechanism instead, the way a plugin's own commands, checks and files work. A comment describing where something used to live describes the mechanism, not the name. See docs/design/the-roster-belongs-to-its-workflow.md.
 
 ## L1 — Grain: how the code reads
 

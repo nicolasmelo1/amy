@@ -69,6 +69,59 @@ function addAfterhours(): void {
   fs.writeFileSync(config, kept.join("\n"));
 }
 
+/** The profile that reads the roster, named where the machine's config names its workflows. */
+function addTickets(): void {
+  const lines = fs.readFileSync(config, "utf8").split("\n");
+  const kept: string[] = [];
+  let spliced = false;
+  for (const line of lines) {
+    kept.push(line);
+    if (!spliced && line.trim() === "workflows:") {
+      kept.push("  tickets:");
+      kept.push('    workflow: "@amykit/workflow-ticket-to-qa"');
+      spliced = true;
+    }
+  }
+  if (!spliced) {
+    console.error("the config names no workflows block");
+    process.exit(1);
+  }
+  let text = kept.join("\n");
+  // The settings the current shape reads off the top level, the way this
+  // machine's own workflow read them at its version: the ticket's slice and
+  // the tracker's both come from here until the config plan re-homes them.
+  const wanted: [RegExp, string][] = [
+    [/^qaStatusName:/m, "qaStatusName: In QA"],
+    [/^workingStatusName:/m, "workingStatusName: In Progress"],
+    [/^repos:/m, "repos:\n  - example.test/gadgets"],
+  ];
+  for (const [marker, block] of wanted) {
+    if (!marker.test(text)) text += `\n${block}`;
+  }
+  fs.writeFileSync(config, text);
+}
+
+/** The team an older install kept for the machine, before profiles carried one. */
+function rootRoster(): void {
+  const today = new Date().toISOString().slice(0, 10);
+  const body = [
+    "confirmedOn: " + today,
+    "reviewers:",
+    "  - tracker: sam@example.test",
+    "    host: sam",
+    "    available: true",
+    "  - tracker: kim@example.test",
+    "    host: kim",
+    "    available: false",
+    "qa:",
+    "  tracker: lee@example.test",
+    "  host: lee",
+    "  available: true",
+  ].join("\n");
+  fs.mkdirSync(path.join(home, ".amy"), { recursive: true });
+  fs.writeFileSync(path.join(home, ".amy", "roster.yaml"), `${body}\n`, "utf-8");
+}
+
 /** The broken profile gone again. */
 function dropAfterhours(): void {
   const lines = fs.readFileSync(config, "utf8").split("\n");
@@ -150,6 +203,8 @@ const steps: Record<string, () => void> = {
   "replace-in-config": () => replaceInConfig(args),
   "add-afterhours": addAfterhours,
   "drop-afterhours": dropAfterhours,
+  "add-tickets": addTickets,
+  "root-roster": rootRoster,
   version: () => version(args[0] ?? ""),
   "release-on-disk": () => releaseOnDisk(args),
   "set-intent": () => setIntent(args[0]),

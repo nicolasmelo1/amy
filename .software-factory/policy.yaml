@@ -319,6 +319,9 @@ gates:
       # switch for the machine rather than one per profile.
       - "lifecycle.a_workflow_command_is_its_own"
       - "lifecycle.stop_all_holds_until_start"
+      # The roster is the profile's: confirmed into it, read from it by the
+      # next look, and nowhere at the machine root any more.
+      - "lifecycle.the_roster_is_the_profiles"
 
   # The second workflow, and the claim the whole plugin model rests on: an
   # engine that learnt nothing drives it. What no unit test can say is that
@@ -421,6 +424,9 @@ gates:
       - "errand.a_command_nothing_mounts_does_not_exist"
       - "errand.help_lists_only_the_machines_commands"
       - "errand.a_tick_discovers_before_it_moves"
+      # The roster is the mounted workflow's file: init writes none of it, and
+      # the doctor is green on the machine that reviews nothing.
+      - "errand.doctor_is_green_without_a_roster"
 
   # A workflow calls another the way code calls a function. What only an
   # installed machine can say: that a workflow of somebody's own calls one
@@ -532,6 +538,10 @@ gates:
   # them means the last run proved a machine that no longer exists.
   amy-update:
     activation:
+      # The migration the update carries for an older machine: the roster's
+      # move out of the machine root is what some of this gate's assertions
+      # prove, so a change to that file is a change to what was proved.
+      - "packages/cli/src/plugin-commands.ts"
       - "packages/cli/src/update.ts"
       - "packages/cli/src/index.ts"
       - "packages/cli/src/skills-record.ts"
@@ -589,6 +599,10 @@ gates:
       - "update.a_refused_release_rolls_back_whole"
       - "update.a_check_names_the_release"
       - "update.auto_update_reaches_the_release"
+      # An install an older release made carries the roster at the machine
+      # root, and the update is the move that gives it to the profile.
+      - "update.the_roster_moves_into_its_profile"
+      - "update.the_update_names_the_roster_move"
 
   feature-grooming:
     activation:
@@ -810,6 +824,10 @@ gates:
       - "frame.a_projection_is_deterministic"
 
 rules:
+  # L0 — The host's source names no vocabulary a workflow owns; its one
+  # carried ceiling (`rosterBackoffMs`) is the config plan's to remove
+  L0.THE_HOST_NAMES_NO_ROSTER:
+    enabled: true
   # L3 — A gate requires every check its plan's criteria name
   L3.GATE_COVERS_THE_PLAN:
     enabled: true

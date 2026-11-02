@@ -6,6 +6,8 @@ import { withDiagramBeside, type Plugin } from "@amykit/core";
 import { workspaceDirectories } from "../lib/repo.js";
 import type {
   AddedAction,
+  Brought,
+  BroughtCommand,
   Contribution,
   PackageFact,
   Setting,
@@ -82,6 +84,50 @@ interface Machine {
   initialState: string;
 }
 
+/**
+ * The command, check and file declarations a mounted package carries, read
+ * off the module rather than restated in prose: the README's table is the
+ * package's own answer, so a declaration that changes names a README that
+ * fails the docs check.
+ */
+function bringsOf(plugin: unknown): Brought | undefined {
+  const read = plugin as Record<string, unknown> | undefined;
+  const list = (key: string): readonly unknown[] =>
+    Array.isArray(read?.[key]) ? (read?.[key] as readonly unknown[]) : [];
+  if (list("commands").length + list("checks").length + list("files").length === 0) {
+    return undefined;
+  }
+
+  const commandOf = (raw: unknown): BroughtCommand | undefined => {
+    const command = raw as Record<string, unknown> | undefined;
+    if (typeof command?.name !== "string" || typeof command?.description !== "string") return undefined;
+    const subcommands = (Array.isArray(command.subcommands) ? command.subcommands : [])
+      .map((step) => {
+        const sub = step as Record<string, unknown>;
+        return typeof sub?.name === "string" && typeof sub?.description === "string"
+          ? { name: sub.name, description: sub.description }
+          : undefined;
+      })
+      .filter((sub): sub is { name: string; description: string } => sub !== undefined);
+    return {
+      name: command.name,
+      description: command.description,
+      ...(subcommands.length > 0 ? { subcommands } : {}),
+    };
+  };
+
+  const text = (key: string, field: string): string[] =>
+    list(key)
+      .map((one): string | undefined => {
+        const value = (one as Record<string, unknown> | undefined)?.[field];
+        return typeof value === "string" ? value : undefined;
+      })
+      .filter((value): value is string => value !== undefined);
+
+  const commands = list("commands").map(commandOf).filter((one): one is BroughtCommand => one !== undefined);
+  return { commands, checks: text("checks", "name"), files: text("files", "path") };
+}
+
 interface Registered {
   mounts: string[];
   contributes: Contribution[];
@@ -89,6 +135,7 @@ interface Registered {
   observes: string[];
   mountsEngine: boolean;
   mountsWorkflow: string | null;
+  brings?: Brought;
 }
 
 /** What loading a package could tell, by how far loading it got. */
@@ -228,6 +275,7 @@ async function introspect(
   const machines: unknown[] = [];
   const registered = await registers(plugin, environment, runtimes, machines);
   const shape = workflowShape(module, runtimes, machines, calledIn(plugin));
+  const brings = bringsOf(module.plugin);
 
   return {
     kind: shape.workflow ? "workflow" : "plugin",
@@ -235,6 +283,7 @@ async function introspect(
     settings: settingsOf(plugin),
     ...registered,
     ...shape,
+    ...(brings ? { brings } : {}),
   };
 }
 

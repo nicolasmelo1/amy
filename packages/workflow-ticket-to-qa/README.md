@@ -77,6 +77,24 @@ Every field is checked at boot against the schema this package declares. A key t
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
 
+## What it brings
+
+| Command | What it does |
+| :-- | :-- |
+| `amy roster` | Who is reviewing today |
+| `amy roster confirm` | Stamp the roster with today's date |
+| `amy roster show` | Print the roster and whether it is current |
+
+Typed on a machine that mounted this package, and unknown on one that did not.
+
+`amy doctor` runs, after its own checks, every check this package names:
+
+- `roster confirmed for today`
+
+`amy init` and `amy add` write, once, into the profile's own directory:
+
+- `roster.yaml`
+
 ## Where the reasoning is
 
 - [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)

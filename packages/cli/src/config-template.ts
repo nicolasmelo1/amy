@@ -33,7 +33,7 @@ export interface SettingsSurface {
  * The loud one: the template carried `agent:` twice. YAML refuses a duplicate
  * key rather than merging it, so `amy init` wrote a file `loadConfig` threw
  * on, and the next command anybody ran died. No test had ever parsed the
- * template — only the roster beside it.
+ * template — only the file the host wrote beside it.
  *
  * The quiet one: `pollBackoffMs` was configurable for its whole life and
  * appeared nowhere, so the only way to find it was to read the source. A
