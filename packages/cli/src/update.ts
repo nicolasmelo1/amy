@@ -635,26 +635,32 @@ const READ_BY_WORKFLOW: ReadonlyMap<string, readonly string[]> = new Map([
 
 /** What `settings` under one profile gets for one moved top-level key. */
 function settingsFor(key: string, value: unknown): Record<string, unknown> | undefined {
-  if (key === "plans") {
-    if (!isPlain(value)) return undefined;
-    const block = value as { repos?: unknown; check?: unknown; policy?: unknown };
-    const settings: Record<string, unknown> = {};
-    if (Array.isArray(block.repos)) settings.repos = block.repos;
-    if (isPlain(block.check)) settings.check = block.check;
-    // The ceilings the planner reads rode under this block too, and they are
-    // the workflow's policy, which today lives under `settings.policy`.
-    if (isPlain(block.policy)) settings.policy = block.policy;
-    return Object.keys(settings).length > 0 ? settings : undefined;
-  }
+  if (key === "plans") return plansSettings(value);
   if (key === "qaStatusName") {
     return typeof value === "string" ? { qaStatusName: value } : undefined;
   }
-  if (key === "policy" || key === "errands") {
-    const policy = key === "errands" ? (isPlain(value) ? (value as { policy?: unknown }).policy : undefined) : value;
-    if (!isPlain(policy)) return undefined;
-    return Object.keys(policy).length > 0 ? { policy } : undefined;
-  }
+  if (key === "policy" || key === "errands") return ceilingSettings(key, value);
   return undefined;
+}
+
+/** The plans block's repos, gate keepers and ceilings, as the planner's settings. */
+function plansSettings(value: unknown): Record<string, unknown> | undefined {
+  if (!isPlain(value)) return undefined;
+  const block = value as { repos?: unknown; check?: unknown; policy?: unknown };
+  const settings: Record<string, unknown> = {};
+  if (Array.isArray(block.repos)) settings.repos = block.repos;
+  if (isPlain(block.check)) settings.check = block.check;
+  // The ceilings the planner reads rode under this block too, and they are
+  // the workflow's policy, which today lives under `settings.policy`.
+  if (isPlain(block.policy)) settings.policy = block.policy;
+  return Object.keys(settings).length > 0 ? settings : undefined;
+}
+
+/** The ceilings block, or the ceilings nested under the errands block, as-is. */
+function ceilingSettings(key: string, value: unknown): Record<string, unknown> | undefined {
+  const policy = key === "errands" ? (isPlain(value) ? (value as { policy?: unknown }).policy : undefined) : value;
+  if (!isPlain(policy)) return undefined;
+  return Object.keys(policy).length > 0 ? { policy } : undefined;
 }
 
 function isPlain(value: unknown): value is Record<string, unknown> {
@@ -680,52 +686,9 @@ export function migrateSettingsFile(home: string): SettingsMoved {
     const entry = entryOf(top, key);
     if (entry === undefined) continue;
     const value = unwrap(entry.value);
-    let placed = false;
 
-    if (workflows !== undefined && yaml.isMap(workflows.value)) {
-      for (const item of workflows.value.items) {
-        const profile = item.value;
-        if (!yaml.isMap(profile)) continue;
-        const workflow = profile.get("workflow");
-        if (typeof workflow !== "string" || !readers.includes(workflow)) continue;
-        const settings = settingsFor(key, value);
-        if (settings === undefined) continue;
-        const settingsMap = profile.get("settings");
-        if (yaml.isMap(settingsMap)) {
-          for (const [name, to] of Object.entries(settings)) if (!settingsMap.has(name)) settingsMap.add(new yaml.Pair(name, to));
-        } else {
-          profile.add(new yaml.Pair("settings", toMap(settings)));
-        }
-        placed = true;
-      }
-    }
-
-    if (key === "workingStatusName" || key === "repoByTeam") {
-      // Read fresh each time: the first of these two may have created the
-      // plugins block the second needs.
-      const mounted = entryOf(top, "plugins");
-      // An install of the old shape kept the tracker's vocabulary at the top
-      // level, and a machine that named no plugins block has none to put it
-      // under. The move writes one, the way `amy add` would — the tracker's
-      // slice beside whatever else lands there later.
-      if (mounted !== undefined && yaml.isMap(mounted.value)) {
-        const linear = mounted.value.get("@amykit/plugin-linear");
-        if (yaml.isMap(linear)) {
-          if (linear.get(key) === undefined) linear.add(new yaml.Pair(key, entry.value));
-        } else {
-          mounted.value.add(new yaml.Pair("@amykit/plugin-linear", toMap({ [key]: entry.value })));
-        }
-      } else {
-        // Built through the document, so the nodes the parser would have made
-        // are the nodes the file gets written back with. The write goes
-        // through the document's own type, which the parser narrows further
-        // than a node made now can satisfy.
-        const block = document.createNode({ "@amykit/plugin-linear": { [key]: unwrap(entry.value) } });
-        const added = new yaml.Pair(document.createNode("plugins"), block);
-        top.set?.(added.key as never, added.value as never);
-      }
-      placed = true;
-    }
+    const placed =
+      moveIntoWorkflows(workflows, key, value, readers) || moveToTrackerSlice(document, top, key, entry);
 
     if (!placed) continue;
     top.delete(key);
@@ -742,6 +705,79 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   fs.writeFileSync(movedTo, text, "utf-8");
   fs.writeFileSync(place, String(document), "utf-8");
   return { ok: true, said, movedTo };
+}
+
+/**
+ * Places one moved key's settings under every profile that declares a
+ * workflow known to read it, and says whether any profile took it.
+ */
+function moveIntoWorkflows(
+  workflows: yaml.Pair | undefined,
+  key: string,
+  value: unknown,
+  readers: readonly string[],
+): boolean {
+  if (workflows === undefined || !yaml.isMap(workflows.value)) return false;
+
+  let placed = false;
+  for (const item of workflows.value.items) {
+    const profile = item.value;
+    if (!yaml.isMap(profile)) continue;
+    const workflow = profile.get("workflow");
+    if (typeof workflow !== "string" || !readers.includes(workflow)) continue;
+    const settings = settingsFor(key, value);
+    if (settings === undefined) continue;
+    if (!placeProfileSettings(profile, settings)) continue;
+    placed = true;
+  }
+  return placed;
+}
+
+/** Adds the moved settings to a profile's own map, as `amy add` would write them. */
+function placeProfileSettings(profile: yaml.YAMLMap, settings: Record<string, unknown>): boolean {
+  const settingsMap = profile.get("settings");
+  if (yaml.isMap(settingsMap)) {
+    for (const [name, to] of Object.entries(settings)) if (!settingsMap.has(name)) settingsMap.add(new yaml.Pair(name, to));
+    return true;
+  }
+  profile.add(new yaml.Pair("settings", toMap(settings)));
+  return true;
+}
+
+/**
+ * Puts the tracker's two moved keys in the mounted tracker's slice, and when
+ * the machine never named a plugins block, writes one the way `amy add`
+ * would — the tracker's slice beside whatever else lands there later.
+ *
+ * Read fresh each time the function runs: the first of the tracker's keys
+ * may have created the plugins block that the second needs.
+ */
+function moveToTrackerSlice(
+  document: yaml.Document,
+  top: yaml.YAMLMap,
+  key: string,
+  entry: yaml.Pair,
+): boolean {
+  if (key !== "workingStatusName" && key !== "repoByTeam") return false;
+
+  const mounted = entryOf(top, "plugins");
+  if (mounted !== undefined && yaml.isMap(mounted.value)) {
+    const linear = mounted.value.get("@amykit/plugin-linear");
+    if (yaml.isMap(linear)) {
+      if (linear.get(key) === undefined) linear.add(new yaml.Pair(key, entry.value));
+    } else {
+      mounted.value.add(new yaml.Pair("@amykit/plugin-linear", toMap({ [key]: entry.value })));
+    }
+  } else {
+    // Built through the document, so the nodes the parser would have made
+    // are the nodes the file gets written back with. The write goes
+    // through the document's own type, which the parser narrows further
+    // than a node made now can satisfy.
+    const block = document.createNode({ "@amykit/plugin-linear": { [key]: unwrap(entry.value) } });
+    const added = new yaml.Pair(document.createNode("plugins"), block);
+    top.set?.(added.key as never, added.value as never);
+  }
+  return true;
 }
 
 /** The top-level entry one key names, whether or not it has a value. */

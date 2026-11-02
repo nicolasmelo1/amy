@@ -77,48 +77,9 @@ export function validateConfig(
   }
 
   const given = value ?? {};
-  const problems: string[] = [];
-  const config: Record<string, unknown> = {};
+  const { own, groups, problems, config } = splitSchema(plugin, schema);
 
-  const own: { key: string; spec: ConfigField }[] = [];
-  const groups = new Map<string, Map<string, ConfigField>>();
-  for (const [key, spec] of Object.entries(schema)) {
-    const [head, ...path] = key.split(".");
-    if (path.length === 0) {
-      own.push({ key, spec });
-      continue;
-    }
-    if (head === undefined || head === "") {
-      problems.push(`${plugin}: a schema key cannot begin with a dot`);
-      continue;
-    }
-    let group = groups.get(head);
-    if (!group) groups.set(head, (group = new Map()));
-    group.set(path.join("."), spec);
-  }
-
-  for (const { key, spec } of own) {
-    const present = Object.hasOwn(given, key);
-
-    if (!present) {
-      if (spec.required) {
-        problems.push(`${plugin}: \`${key}\` is required — ${spec.description}`);
-      } else if (spec.default !== undefined) {
-        config[key] = spec.default;
-      }
-      continue;
-    }
-
-    const supplied = given[key];
-    if (!matches(spec.type, supplied)) {
-      problems.push(
-        `${plugin}: \`${key}\` must be ${spec.type}, got ${describe(supplied)} — ${spec.description}`,
-      );
-      continue;
-    }
-
-    config[key] = supplied;
-  }
+  acceptOwn(plugin, own, given, config, problems);
 
   for (const [head, leaves] of groups) {
     if (!Object.hasOwn(given, head)) {
@@ -142,17 +103,95 @@ export function validateConfig(
     problems.push(...problemsInGroup);
   }
 
-  // An unknown key is almost always a typo in a field that matters, and
-  // ignoring it means the setting silently never applied. A dotted schema
-  // names its group's leaves, so a leaf somebody wrote and no leaf declared
-  // is named the same way, with the path it was written at.
+  rejectUnknown(plugin, given, own, groups, problems);
+
+  return problems.length > 0 ? { ok: false, problems } : { ok: true, config };
+}
+
+/** Splits a dotted schema into its own keys and per-group leaves. */
+function splitSchema(
+  plugin: string,
+  schema: ConfigSchema,
+): {
+  own: { key: string; spec: ConfigField }[];
+  groups: Map<string, Map<string, ConfigField>>;
+  problems: string[];
+  config: Record<string, unknown>;
+} {
+  const own: { key: string; spec: ConfigField }[] = [];
+  const groups = new Map<string, Map<string, ConfigField>>();
+  const problems: string[] = [];
+  const config: Record<string, unknown> = {};
+  for (const [key, spec] of Object.entries(schema)) {
+    const [head, ...path] = key.split(".");
+    if (path.length === 0) {
+      own.push({ key, spec });
+      continue;
+    }
+    if (head === undefined || head === "") {
+      problems.push(`${plugin}: a schema key cannot begin with a dot`);
+      continue;
+    }
+    let group = groups.get(head);
+    if (!group) groups.set(head, (group = new Map()));
+    group.set(path.join("."), spec);
+  }
+  return { own, groups, problems, config };
+}
+
+/**
+ * Accepts and checks the schema's own (undotted) keys against what the
+ * machine wrote: required named when absent, defaults filled in, and any
+ * value of the wrong shape named with the type it asked for.
+ */
+function acceptOwn(
+  plugin: string,
+  own: { key: string; spec: ConfigField }[],
+  given: Record<string, unknown>,
+  config: Record<string, unknown>,
+  problems: string[],
+): void {
+  for (const { key, spec } of own) {
+    const present = Object.hasOwn(given, key);
+    if (!present) {
+      if (spec.required) {
+        problems.push(`${plugin}: \`${key}\` is required — ${spec.description}`);
+      } else if (spec.default !== undefined) {
+        config[key] = spec.default;
+      }
+      continue;
+    }
+
+    const supplied = given[key];
+    if (!matches(spec.type, supplied)) {
+      problems.push(
+        `${plugin}: \`${key}\` must be ${spec.type}, got ${describe(supplied)} — ${spec.description}`,
+      );
+      continue;
+    }
+
+    config[key] = supplied;
+  }
+}
+
+/**
+ * An unknown key is almost always a typo in a field that matters, and
+ * ignoring it means the setting silently never applied. A dotted schema
+ * names its group's leaves, so a leaf somebody wrote and no leaf declared
+ * is named the same way, with the path it was written at.
+ */
+function rejectUnknown(
+  plugin: string,
+  given: Record<string, unknown>,
+  own: { key: string; spec: ConfigField }[],
+  groups: Map<string, Map<string, ConfigField>>,
+  problems: string[],
+): void {
   for (const key of Object.keys(given)) {
     if (!own.some(({ key: ownKey }) => ownKey === key) && !groups.has(key)) {
       problems.push(`${plugin}: \`${key}\` is not a setting this plugin has`);
     }
   }
-
-  return problems.length > 0 ? { ok: false, problems } : { ok: true, config };
 }
 
 /**

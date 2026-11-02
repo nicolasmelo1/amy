@@ -6,10 +6,6 @@ version: 1
 rules:
   L1.COMPLEXITY_CEILING:
     review_by: 2027-03-03
-    note: 'Exhaustive dispatch and mapping: the fake world''s execute() over every action, pluginSlices over every mounted plugin''s derived slice, the config migration over every key it moves, settingsFor over those keys, and validateConfig over every schema type. The branch count is the number of cases, and splitting it would hide the one place that proves something was not forgotten; revisit if any of them grows logic inside a case rather than delegating out of it. Two used to be here and are not any more: the doctor became a list of small checks, and plan() became a record of planners keyed by state, which the compiler holds exhaustive.'
+    note: 'An exhaustive dispatch switch: the fake world''s execute() over every action. The branch count is the number of cases, and splitting it would hide the one place that proves nothing was forgotten. Three others used to be here and are not any more: Worker.execute() became a typed handler map, the doctor became a list of small checks, and plan() became a record of planners keyed by state, which the compiler holds exhaustive. Revisit if this grows logic inside a case rather than delegating out of it.'
     allow:
     - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts:execute
-    - packages/cli/src/slices.ts:pluginSlices
-    - packages/cli/src/update.ts:migrateSettingsFile
-    - packages/cli/src/update.ts:settingsFor
-    - packages/core/src/config-schema.ts:validateConfig

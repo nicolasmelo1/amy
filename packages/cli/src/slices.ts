@@ -20,7 +20,49 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
   const own = pluginStateDirectories(stateDir, profile);
   const agent = effectiveAgent(config, profile);
 
-  const derived: Record<string, unknown> = {
+  const derived = derivedSlices(config, profile, dirs, own, agent, stateDir);
+  Object.assign(derived, slackSlice(own.slack));
+  addNotifySlices(config, derived);
+  mergeInGivenSlices(derived, config.plugins);
+  applyOwnProfileSettings(profile, derived);
+
+  // The command that writes a file and the adapter that read it must agree,
+  // including when somebody overrode the adapter's directory by hand. The
+  // workflow's destination follows the effective adapter, not the default it
+  // was derived from before the merge; the queue follows the queue adapter
+  // the same way, because a note queued where the engine does not read is a
+  // note the machine never sees.
+  followAdapter(derived, "@amykit/workflow-errand", "tasksDirectory", "@amykit/plugin-file-tasks");
+  followAdapter(derived, "@amykit/workflow-note-to-plan", "notesDirectory", "@amykit/plugin-file-notes");
+  followAdapter(derived, "@amykit/workflow-errand", "queueDirectory", "@amykit/plugin-file-queue");
+  followAdapter(derived, "@amykit/workflow-note-to-plan", "queueDirectory", "@amykit/plugin-file-queue");
+
+  // The worktree adapter reads records directly to classify trees. Its path
+  // is an invariant of the mounted file store, not an independent preference:
+  // an explicit store directory must move both readers together.
+  const recordsDirectory = effectiveRecordsDirectory(derived["@amykit/plugin-file-store"], stateDir, dirs.records);
+  derived["@amykit/plugin-file-worktree"] = withWorktreeRecordsDirectory(
+    derived["@amykit/plugin-file-worktree"],
+    recordsDirectory,
+  );
+
+  return derived;
+}
+
+/** Whether a state directory was given in, or the machine's own. */
+/**
+ * The slices every install derives from the machine's shape, before a hand
+ * writes a slice of its own.
+ */
+function derivedSlices(
+  config: AmyConfig,
+  profile: Profile,
+  dirs: ReturnType<typeof stateDirectories>,
+  own: ReturnType<typeof pluginStateDirectories>,
+  agent: { ladder?: unknown; ladderByStep?: unknown; budget?: unknown },
+  stateDir?: string,
+): Record<string, unknown> {
+  return {
     "@amykit/plugin-linear": {
       defaultRepo: config.repos[0] ?? "",
     },
@@ -116,56 +158,33 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     "@amykit/plugin-serial-engine": engineSlice(config),
     "@amykit/plugin-concurrent-engine": engineSlice(config),
   };
+}
 
-  Object.assign(derived, slackSlice(own.slack));
+/** A machine that asks for answers gets the adapters that deliver them. */
+function addNotifySlices(config: AmyConfig, derived: Record<string, unknown>): void {
+  if (config.notify.hermes) derived["@amykit/plugin-notify-hermes"] = { target: config.notify.hermes };
+  if (config.notify.inbox) derived["@amykit/plugin-notify-inbox"] = { directory: "needs-input" };
+}
 
-  if (config.notify.hermes) {
-    derived["@amykit/plugin-notify-hermes"] = { target: config.notify.hermes };
+// Merged per plugin, not replaced. A slice written by hand names the one
+// or two settings somebody meant to change; replacing the whole slice would
+// drop the derived ones beside them — which is how two profiles ended up
+// sharing a queue, because the operator had set `retentionDays` and lost
+// `directory` without being told.
+function mergeInGivenSlices(derived: Record<string, unknown>, given: Record<string, unknown>): void {
+  for (const [name, slice] of Object.entries(given)) {
+    derived[name] = isRecord(derived[name]) && isRecord(slice) ? { ...derived[name], ...slice } : slice;
   }
-  if (config.notify.inbox) {
-    derived["@amykit/plugin-notify-inbox"] = { directory: "needs-input" };
-  }
+}
 
-  // Merged per plugin, not replaced. A slice written by hand names the one
-  // or two settings somebody meant to change; replacing the whole slice would
-  // drop the derived ones beside them — which is how two profiles ended up
-  // sharing a queue, because the operator had set `retentionDays` and lost
-  // `directory` without being told.
-  const merged: Record<string, unknown> = { ...derived };
-  for (const [name, given] of Object.entries(config.plugins)) {
-    merged[name] = isRecord(merged[name]) && isRecord(given) ? { ...merged[name], ...given } : given;
-  }
-
-  // The profile's own settings are the workflow's vocabulary, checked against
-  // the workflow's own schema at mount: they beat what was derived, and an
-  // unknown key there is a boot refusal naming it, not a setting ignored.
+// The profile's own settings are the workflow's vocabulary, checked against
+// the workflow's own schema at mount: they beat what was derived, and an
+// unknown key there is a boot refusal naming it, not a setting ignored.
+function applyOwnProfileSettings(profile: Profile, merged: Record<string, unknown>): void {
   const ownSettings = profile.settings ?? {};
+  if (Object.keys(ownSettings).length === 0) return;
   const current = merged[profile.workflow];
-  if (Object.keys(ownSettings).length > 0) {
-    merged[profile.workflow] = isRecord(current) ? { ...current, ...ownSettings } : { ...ownSettings };
-  }
-
-  // The command that writes a file and the adapter that read it must agree,
-  // including when somebody overrode the adapter's directory by hand. The
-  // workflow's destination follows the effective adapter, not the default it
-  // was derived from before the merge; the queue follows the queue adapter
-  // the same way, because a note queued where the engine does not read is a
-  // note the machine never sees.
-  followAdapter(merged, "@amykit/workflow-errand", "tasksDirectory", "@amykit/plugin-file-tasks");
-  followAdapter(merged, "@amykit/workflow-note-to-plan", "notesDirectory", "@amykit/plugin-file-notes");
-  followAdapter(merged, "@amykit/workflow-errand", "queueDirectory", "@amykit/plugin-file-queue");
-  followAdapter(merged, "@amykit/workflow-note-to-plan", "queueDirectory", "@amykit/plugin-file-queue");
-
-  // The worktree adapter reads records directly to classify trees. Its path
-  // is an invariant of the mounted file store, not an independent preference:
-  // an explicit store directory must move both readers together.
-  const recordsDirectory = effectiveRecordsDirectory(merged["@amykit/plugin-file-store"], stateDir, dirs.records);
-  merged["@amykit/plugin-file-worktree"] = withWorktreeRecordsDirectory(
-    merged["@amykit/plugin-file-worktree"],
-    recordsDirectory,
-  );
-
-  return merged;
+  merged[profile.workflow] = isRecord(current) ? { ...current, ...ownSettings } : { ...ownSettings };
 }
 
 /**
