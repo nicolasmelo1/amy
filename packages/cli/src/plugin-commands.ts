@@ -457,14 +457,21 @@ export function migrateRootFiles(
 ): string[] {
   const copied: string[] = [];
 
+  // The two names the host itself serves at the root, in addition to holding
+  // them: config.yaml (the mount's grammar) and .env (the environment the
+  // host reads on every invocation). A plugin may still declare such a name
+  // and its example is written into profiles, but the machine's own copy is
+  // nobody's legacy to move: retiring it would starve the host's own reader
+  // of credentials on the next invocation.
+  const hostOwnedRootNames = new Set(["config.yaml", ".env"]);
+
   const roots = contributions.flatMap((contribution) =>
     contribution.files
       .filter(
         (file) =>
           // Only a file that used to live at the root can have moved from it:
-          // one segment, and never the host's own config, which the root also
-          // holds and which nobody's plugin may claim.
-          path.dirname(file.path) === "." && path.basename(file.path) !== "config.yaml",
+          // one segment, and never one of the names the host serves itself.
+          path.dirname(file.path) === "." && !hostOwnedRootNames.has(path.basename(file.path)),
       )
       .map((file) => ({ file, contribution })),
   );

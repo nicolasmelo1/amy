@@ -292,6 +292,35 @@ describe("a plugin's commands, check and file", () => {
     fs.rmSync(home, { recursive: true, force: true });
   });
 
+  it("leaves the machine's own environment file to the machine, whatever a plugin declares", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
+    // The machine's credentials live where the host's loader reads them for
+    // every invocation; retiring that name would starve the host of them.
+    fs.writeFileSync(path.join(home, ".env"), "LINEAR_API_KEY=the-machine's\n", "utf-8");
+    const { out } = spoken();
+
+    const copied = migrateRootFiles(
+      home,
+      [
+        {
+          owner: "@acme/plugin-credentials",
+          plugin: demo({ name: "@acme/plugin-credentials" }),
+          profiles: [WORK],
+          commands: [],
+          checks: [],
+          files: [{ path: ".env", content: () => "an example's placeholders\n" }],
+        },
+      ],
+      out,
+    );
+
+    expect(copied).toEqual([]);
+    expect(fs.readFileSync(path.join(home, ".env"), "utf-8")).toBe("LINEAR_API_KEY=the-machine's\n");
+    expect(fs.existsSync(path.join(home, ".env.moved"))).toBe(false);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
   it("leaves the host's commands to the host", () => {
     expect(BUILT_IN_COMMANDS).toContain("doctor");
     expect(BUILT_IN_COMMANDS).not.toContain("roster");
