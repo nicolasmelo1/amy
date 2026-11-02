@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "a-question-is-not-an-answer",
-  "implementation_sha256": "4e3c68ddc3bac2ec08e0eb0b32811fb4578ac80c095155d7fae8a9224d2e059c",
+  "implementation_sha256": "419c178015a32a8c1245c06605dc309a9f540998b803480ad5073001be4f2ec4",
   "runs": [
     {
       "scenario": "a-question-is-not-an-answer",
       "status": "passed",
       "actor": "Claude (agent), driving the built engine, ticket-to-qa and Slack adapter against an in-process Slack Web API, on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/a-question-is-not-an-answer-run.json",
-      "report_sha256": "c9bfad9f34e401e377637be246eb46734a6b2c8a5be2dfe695a75548ffed0fae",
+      "report_sha256": "4b962df3e2b557822f7b313bfd06ce7fbdde6eb35da819f3ff8706fb848e224f",
       "required_assertions": []
     }
   ]

@@ -50,8 +50,8 @@ const rosterCommand: PluginCommand<Settings> = {
     {
       name: "confirm",
       description: "Stamp the roster with today's date",
-      run({ state, out }) {
-        const roster = confirmRoster(state, new Date());
+      run({ state, home, out }) {
+        const roster = confirmRoster(state, new Date(), home);
         out.line(`confirmed for ${roster.confirmedOn}`);
         for (const reviewer of roster.reviewers) {
           out.line(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}`);
@@ -63,8 +63,8 @@ const rosterCommand: PluginCommand<Settings> = {
       name: "show",
       description: "Print the roster and whether it is current",
       default: true,
-      run({ state, out }) {
-        const roster = loadRoster(state);
+      run({ state, home, out }) {
+        const roster = loadRoster(state, home);
         const now = new Date();
         const current = isConfirmedFor(roster, now);
         out.line(`confirmed on ${roster.confirmedOn}${current ? " (current)" : " (stale)"}`);
@@ -80,8 +80,8 @@ const rosterCommand: PluginCommand<Settings> = {
 /** A roster nobody confirmed today is a review nobody would answer. */
 const rosterCheck: PluginCheck<Settings> = {
   name: "roster confirmed for today",
-  run({ state }) {
-    const roster: Roster = loadRoster(state);
+  run({ state, home }) {
+    const roster: Roster = loadRoster(state, home);
     const current = isConfirmedFor(roster, new Date());
     return {
       label: "roster confirmed for today",
@@ -137,7 +137,10 @@ function runtimeFor(scope: Scope): ReturnType<typeof ticketRuntime> {
     agent: scope.ports.agent,
     gate: scope.ports.gate,
     notifier: scope.ports.notifier,
-    roster: () => loadRoster(scope.ctx.paths.profile ?? scope.ctx.paths.state),
+    // With the recovery root named: the runtime's paths.state is the
+    // machine's own state directory, and a phase's profile-own directory is
+    // not its parent, so the fallback must not guess from dirname.
+    roster: () => loadRoster(scope.ctx.paths.profile ?? scope.ctx.paths.state, scope.ctx.paths.state),
     ...scope.checkouts,
     briefs: scope.ports.brief,
     now: scope.ctx.now,

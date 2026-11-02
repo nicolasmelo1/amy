@@ -434,9 +434,6 @@ function namedProfile(
 }
 
 /**
- * Copies a plugin file an older install kept at the machine root into every
- * profile that reads it now, then retires the root name.
- *
  * A file at the root is one file for the machine, and a workflow reads its own
  * profile's state directory; an updater that only changed the reader would
  * leave every existing machine with a check that reads nothing where the file
@@ -445,6 +442,13 @@ function namedProfile(
  * overwritten. The old name is renamed rather than deleted, which is what
  * keeps the content findable and lets the doctor's red check name the move;
  * the second run sees no old name and changes nothing.
+ *
+ * Every copy happens before any retirement: two contributions that named the
+ * same root file for two profiles each get theirs, where moving after the
+ * first would leave the second's source gone and its profile empty. And the
+ * rename refuses a name that is already retired — an old command or a synced
+ * folder can put the same root file back, and the machine is the last place
+ * one copy of a team's list is overwritten by another.
  */
 export function migrateRootFiles(
   home: string,
@@ -453,44 +457,77 @@ export function migrateRootFiles(
 ): string[] {
   const copied: string[] = [];
 
-  for (const contribution of contributions) {
-    for (const file of contribution.files) {
-      // Only a file that used to live at the root can have moved from it: one
-      // segment, and never the host's own config, which the root also holds
-      // and which nobody's plugin may claim.
-      if (path.dirname(file.path) !== "." || path.basename(file.path) === "config.yaml") continue;
+  const roots = contributions.flatMap((contribution) =>
+    contribution.files
+      .filter(
+        (file) =>
+          // Only a file that used to live at the root can have moved from it:
+          // one segment, and never the host's own config, which the root also
+          // holds and which nobody's plugin may claim.
+          path.dirname(file.path) === "." && path.basename(file.path) !== "config.yaml",
+      )
+      .map((file) => ({ file, contribution })),
+  );
 
-      const from = path.join(home, path.basename(file.path));
-      if (!fs.existsSync(from)) continue;
+  /** The machine-side path of one such file, and the name it retires into. */
+  const fromOf = (root: (typeof roots)[number]): string =>
+    path.join(home, path.basename(root.file.path));
 
-      for (const profile of contribution.profiles) {
-        const target = insideProfile(stateDirectory(home, profile), contribution.owner, file.path);
-        try {
-          // Exclusive: an edit made between the check and the copy wins, and
-          // the same path rule as any other write applies to the copy too.
-          fs.copyFileSync(from, target, fs.constants.COPYFILE_EXCL);
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
-          throw error;
-        }
-        out.line(`kept  ${target}, from ${from}`);
-        copied.push(target);
-      }
+  // Every copy first: two contributions may give the same root file to two
+  // profiles, and the first retirement must not leave the second's source
+  // gone with its profile empty.
+  for (const root of roots) {
+    const from = fromOf(root);
+    if (!fs.existsSync(from)) continue;
 
-      // Retire the old name rather than deleting it: a machine keeps the
-      // content it had for whoever still looked for it there, and the check
-      // the mounted workflow runs can name where it went. The name is gone,
-      // so nothing reads the root file as current a second time.
-      const retired = `${from}.moved`;
+    for (const profile of root.contribution.profiles) {
+      const target = insideProfile(
+        stateDirectory(home, profile),
+        root.contribution.owner,
+        root.file.path,
+      );
       try {
-        fs.renameSync(from, retired);
+        // Exclusive: an edit made between the check and the copy wins, and
+        // the same path rule as any other write applies to the copy too.
+        fs.copyFileSync(from, target, fs.constants.COPYFILE_EXCL);
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
         throw error;
       }
-      out.line(`moved ${from} to ${retired}; the profile's own copy is the one it reads`);
-      copied.push(retired);
+      out.line(`kept  ${target}, from ${from}`);
+      copied.push(target);
     }
+  }
+
+  // Then every retirement, once per root name: a machine keeps the content it
+  // had for whoever still looked for it there, and the check the mounted
+  // workflow runs can name where it went. The name is gone, so nothing reads
+  // the root file as current a second time. When the name is already
+  // retired, the machine's own copy stays where it is: the archive may be
+  // the older list, and a person chooses between the two.
+  const retiredBy = new Set<string>();
+
+  for (const root of roots) {
+    const from = fromOf(root);
+    const retired = `${from}.moved`;
+    if (!fs.existsSync(from) || retiredBy.has(from)) continue;
+    retiredBy.add(from);
+
+    if (fs.existsSync(retired)) {
+      out.line(
+        `kept  ${from}; ${retired} is already an archived copy of it — review both, then decide which is the machine's`,
+      );
+      continue;
+    }
+
+    try {
+      fs.renameSync(from, retired);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    out.line(`moved ${from} to ${retired}; the profile's own copy is the one it reads`);
+    copied.push(retired);
   }
 
   return copied;

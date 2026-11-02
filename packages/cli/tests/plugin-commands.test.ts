@@ -235,6 +235,63 @@ describe("a plugin's commands, check and file", () => {
     fs.rmSync(home, { recursive: true, force: true });
   });
 
+  it("gives the same root file to every profile that claims it, before retiring it once", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
+    fs.writeFileSync(path.join(home, "team.yaml"), "the team's own\n", "utf-8");
+    const { out } = spoken();
+    const second: Profile = { name: "other", workflow: "@acme/workflow-unheard-of", plugins: [], takesNotes: false, takesTasks: false };
+
+    const copied = migrateRootFiles(
+      home,
+      [
+        {
+          owner: "@acme/plugin-demo",
+          plugin: demo(),
+          profiles: [WORK],
+          commands: [],
+          checks: [],
+          files: [{ path: "team.yaml", content: () => "the team's own\n" }],
+        },
+        {
+          owner: "@acme/plugin-second",
+          plugin: demo({ name: "@acme/plugin-second" }),
+          profiles: [second],
+          commands: [],
+          checks: [],
+          files: [{ path: "./team.yaml", content: () => "the team's own\n" }],
+        },
+      ],
+      out,
+    );
+
+    expect(fs.readFileSync(path.join(home, "work", "team.yaml"), "utf-8")).toBe("the team's own\n");
+    expect(fs.readFileSync(path.join(home, "other", "team.yaml"), "utf-8")).toBe("the team's own\n");
+    // The root name retires once, whatever claimed it, and both profiles read
+    // their own copy from then on.
+    expect(copied).toContain(path.join(home, "team.yaml.moved"));
+    expect(fs.existsSync(path.join(home, "team.yaml"))).toBe(false);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it("refuses to overwrite a name that is already retired, and keeps the reappeared copy for a person", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
+    fs.writeFileSync(path.join(home, "demo.txt.moved"), "the archived team\n", "utf-8");
+    fs.writeFileSync(path.join(home, "demo.txt"), "the copy that came back\n", "utf-8");
+    const gathered = await gather(CONFIG, [WORK], loading(demo()));
+    const { out, said } = spoken();
+
+    migrateRootFiles(home, gathered.contributions, out);
+
+    // The archive is the older list and the machine's copy came back: both
+    // stay, since deciding between them is a person's call, not an update's.
+    expect(fs.readFileSync(path.join(home, "demo.txt"), "utf-8")).toBe("the copy that came back\n");
+    expect(fs.readFileSync(path.join(home, "demo.txt.moved"), "utf-8")).toBe("the archived team\n");
+    expect(said.some((line) => line.includes("already an archived copy"))).toBe(true);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
   it("leaves the host's commands to the host", () => {
     expect(BUILT_IN_COMMANDS).toContain("doctor");
     expect(BUILT_IN_COMMANDS).not.toContain("roster");

@@ -44,17 +44,23 @@ export function rosterPath(state: string): string {
  * A file rather than a setting: it changes daily and confirming it is one
  * command, and two ticket-to-qa profiles belong to two teams who do not share
  * reviewers.
+ *
+ * `root` is the machine's own state directory, handed over by every caller
+ * that holds it: an older install kept this file there, and a phase's state
+ * directory sits deep enough that its parent is not the machine — left to
+ * guess, the recovery below would look beside the phase and never see the
+ * file the machine retired the roster into.
  */
-export function loadRoster(state: string): Roster {
+export function loadRoster(state: string, root?: string): Roster {
   const file = rosterPath(state);
   if (!fs.existsSync(file)) {
     // An older install kept the team at the machine root until the move into
     // profiles renamed it, so one of those two names is the instruction when
     // this profile has none of its own: point at what is there rather than
     // leaving the person with a path and no way back.
-    const root = path.dirname(state);
-    const retired = path.join(root, "roster.yaml.moved");
-    const kept = path.join(root, "roster.yaml");
+    const machineRoot = root ?? path.dirname(state);
+    const retired = path.join(machineRoot, "roster.yaml.moved");
+    const kept = path.join(machineRoot, "roster.yaml");
     const where = fs.existsSync(retired) ? retired : fs.existsSync(kept) ? kept : undefined;
     if (where) {
       throw new Error(`no roster at ${file}; the machine's old roster is ${where} — copy it here and run \`amy roster confirm\``);
@@ -77,8 +83,8 @@ export function loadRoster(state: string): Roster {
  * Deliberately a separate action from editing it, so confirming that nothing
  * changed is one command rather than a file edit somebody skips.
  */
-export function confirmRoster(state: string, today: Date): Roster {
-  const roster = loadRoster(state);
+export function confirmRoster(state: string, today: Date, root?: string): Roster {
+  const roster = loadRoster(state, root);
   const confirmed: Roster = { ...roster, confirmedOn: today.toISOString().slice(0, 10) };
   fs.writeFileSync(rosterPath(state), YAML.stringify(confirmed), "utf-8");
   return confirmed;

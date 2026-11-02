@@ -29,6 +29,29 @@ describe("loadRoster", () => {
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
+
+  it("names the machine's copy for a phase profile, whose parent is not the machine", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-"));
+    try {
+      // A project phase's state sits several levels deep, and its parent directories are
+      // the project's, not the machine's: the recovery that guessed from dirname
+      // would look beside the phase and never see the file the machine kept.
+      const state = path.join(home, "projects", "abc", "tickets", "morning");
+      fs.mkdirSync(state, { recursive: true });
+      fs.writeFileSync(path.join(home, "roster.yaml.moved"), "the old team\n", "utf-8");
+
+      expect(() => loadRoster(state, home)).toThrow(/roster\.yaml\.moved — copy it here/);
+      try {
+        loadRoster(state, home);
+        expect.unreachable("the absence of a roster is a throw, and the throw names the machine's copy");
+      } catch (error) {
+        expect(error instanceof Error && error.message.includes(path.join(home, "roster.yaml.moved"))).toBe(true);
+      }
+      expect(() => loadRoster(state)).toThrow(/write one with amy init/);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("isWorkday", () => {
