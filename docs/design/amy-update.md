@@ -188,6 +188,13 @@ credential.
 - [x] Auto-update, running before a workflow, moves the same release the
       command does
       (proof: assertion:update.auto_update_reaches_the_release)
+- [x] The team list an older install kept at the machine root is copied into
+      the profile that reads it, the old name retired beside it rather than
+      deleted, the move named in what the update prints, and a second update
+      changes nothing — from
+      [the roster belongs to its workflow](the-roster-belongs-to-its-workflow.md)
+      (proof: assertion:update.the_roster_moves_into_its_profile)
+      (proof: assertion:update.the_update_names_the_roster_move)
 
 **Exit condition:** a machine two versions behind runs one command, ends
 up on the current one with its work untouched, and the skills in its

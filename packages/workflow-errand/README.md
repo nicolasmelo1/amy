@@ -61,6 +61,14 @@ Every field is checked at boot against the schema this package declares. A key t
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
 
+## What it brings
+
+| Command | What it does |
+| :-- | :-- |
+| `amy btw` | Something to do, said in passing. Goes on the queue, never becomes a ticket |
+
+Typed on a machine that mounted this package, and unknown on one that did not.
+
 ## Where the reasoning is
 
 - [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)

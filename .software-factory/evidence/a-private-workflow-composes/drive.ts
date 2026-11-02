@@ -19,6 +19,7 @@ import { pathToFileURL } from "node:url";
 import {
   build,
   configure,
+  editRoster,
   found as existing,
   headOf,
   lines,
@@ -600,6 +601,11 @@ function installed(): Lifecycle {
     configure(root, tracker.endpoint);
     operatorConfig(root, tracker.endpoint);
     installPlugins(root);
+    // The roster is the workflow's own file now: an operator who renamed the
+    // workflow's profile into their config rather than adding the package
+    // edits it by hand, exactly what editRoster types, and `roster confirm`
+    // is what stamps it once it is there.
+    editRoster(root);
     amy("roster", "confirm");
 
     // Only the widgets half is known at first, and nobody else's reviews

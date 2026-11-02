@@ -220,13 +220,103 @@ describe("a plugin's commands, check and file", () => {
     migrateRootFiles(home, gathered.contributions, out);
 
     expect(fs.readFileSync(path.join(home, "work", "demo.txt"), "utf-8")).toBe("the team's own\n");
-    expect(fs.existsSync(path.join(home, "demo.txt"))).toBe(true);
+    expect(fs.existsSync(path.join(home, "demo.txt"))).toBe(false);
+    expect(fs.readFileSync(path.join(home, "demo.txt.moved"), "utf-8")).toBe("the team's own\n");
 
-    // What was already there wins, and a file that never lived at the root is
-    // not migrated from a root file that happens to share its name.
+    // What was already there wins, a file that never lived at the root is
+    // not migrated from a root file that happens to share its name, and the
+    // moved name is gone: the second run has nothing to read and nothing to
+    // move, leaving the profile's copy and the moved one exactly as they were.
     fs.writeFileSync(path.join(home, "work", "demo.txt"), "edited later\n", "utf-8");
     migrateRootFiles(home, gathered.contributions, out);
     expect(fs.readFileSync(path.join(home, "work", "demo.txt"), "utf-8")).toBe("edited later\n");
+    expect(fs.readFileSync(path.join(home, "demo.txt.moved"), "utf-8")).toBe("the team's own\n");
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it("gives the same root file to every profile that claims it, before retiring it once", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
+    fs.writeFileSync(path.join(home, "team.yaml"), "the team's own\n", "utf-8");
+    const { out } = spoken();
+    const second: Profile = { name: "other", workflow: "@acme/workflow-unheard-of", plugins: [], takesNotes: false, takesTasks: false };
+
+    const copied = migrateRootFiles(
+      home,
+      [
+        {
+          owner: "@acme/plugin-demo",
+          plugin: demo(),
+          profiles: [WORK],
+          commands: [],
+          checks: [],
+          files: [{ path: "team.yaml", content: () => "the team's own\n" }],
+        },
+        {
+          owner: "@acme/plugin-second",
+          plugin: demo({ name: "@acme/plugin-second" }),
+          profiles: [second],
+          commands: [],
+          checks: [],
+          files: [{ path: "./team.yaml", content: () => "the team's own\n" }],
+        },
+      ],
+      out,
+    );
+
+    expect(fs.readFileSync(path.join(home, "work", "team.yaml"), "utf-8")).toBe("the team's own\n");
+    expect(fs.readFileSync(path.join(home, "other", "team.yaml"), "utf-8")).toBe("the team's own\n");
+    // The root name retires once, whatever claimed it, and both profiles read
+    // their own copy from then on.
+    expect(copied).toContain(path.join(home, "team.yaml.moved"));
+    expect(fs.existsSync(path.join(home, "team.yaml"))).toBe(false);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it("refuses to overwrite a name that is already retired, and keeps the reappeared copy for a person", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
+    fs.writeFileSync(path.join(home, "demo.txt.moved"), "the archived team\n", "utf-8");
+    fs.writeFileSync(path.join(home, "demo.txt"), "the copy that came back\n", "utf-8");
+    const gathered = await gather(CONFIG, [WORK], loading(demo()));
+    const { out, said } = spoken();
+
+    migrateRootFiles(home, gathered.contributions, out);
+
+    // The archive is the older list and the machine's copy came back: both
+    // stay, since deciding between them is a person's call, not an update's.
+    expect(fs.readFileSync(path.join(home, "demo.txt"), "utf-8")).toBe("the copy that came back\n");
+    expect(fs.readFileSync(path.join(home, "demo.txt.moved"), "utf-8")).toBe("the archived team\n");
+    expect(said.some((line) => line.includes("already an archived copy"))).toBe(true);
+
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it("leaves the machine's own environment file to the machine, whatever a plugin declares", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
+    // The machine's credentials live where the host's loader reads them for
+    // every invocation; retiring that name would starve the host of them.
+    fs.writeFileSync(path.join(home, ".env"), "LINEAR_API_KEY=the-machine's\n", "utf-8");
+    const { out } = spoken();
+
+    const copied = migrateRootFiles(
+      home,
+      [
+        {
+          owner: "@acme/plugin-credentials",
+          plugin: demo({ name: "@acme/plugin-credentials" }),
+          profiles: [WORK],
+          commands: [],
+          checks: [],
+          files: [{ path: ".env", content: () => "an example's placeholders\n" }],
+        },
+      ],
+      out,
+    );
+
+    expect(copied).toEqual([]);
+    expect(fs.readFileSync(path.join(home, ".env"), "utf-8")).toBe("LINEAR_API_KEY=the-machine's\n");
+    expect(fs.existsSync(path.join(home, ".env.moved"))).toBe(false);
 
     fs.rmSync(home, { recursive: true, force: true });
   });

@@ -50,6 +50,17 @@ Every field is checked at boot against the schema this package declares. A key t
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
 
+## What it brings
+
+| Command | What it does |
+| :-- | :-- |
+| `amy worktrees` | Inspect and tidy the isolated checkouts work runs in |
+| `amy worktrees list` | Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention |
+| `amy worktrees remove` | Remove one worktree, refusing an in-flight or dirty one unless --force |
+| `amy worktrees prune` | Remove every terminal, clean tree past its retention, and nothing else |
+
+Typed on a machine that mounted this package, and unknown on one that did not.
+
 ## Where the reasoning is
 
 - [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)

@@ -1,6 +1,6 @@
 import { banner, literal, table } from "../lib/markdown.js";
 import { isMounted } from "../lib/facts.js";
-import type { Facts, GeneratedFile, MountedFact, WorkflowShape } from "../lib/facts.js";
+import type { Brought, Facts, GeneratedFile, MountedFact, WorkflowShape } from "../lib/facts.js";
 
 const DOCS = "https://github.com/nicolasmelo1/amy/tree/main/docs";
 
@@ -44,6 +44,8 @@ function readmeFor(entry: MountedFact): string {
   }
 
   parts.push("", "## Configuration", "", configuration(entry));
+
+  if (entry.brings) parts.push("", "## What it brings", "", bringsOf(entry.brings));
 
   if (entry.environment.length > 0) {
     parts.push(
@@ -206,6 +208,48 @@ function docLinks(entry: MountedFact): string {
   ];
 
   return links.join("\n");
+}
+
+/**
+ * What the package itself declares: the command line gains the command on the
+ * machine that mounts it, `amy doctor` runs its check, and `init` and `add`
+ * write its file. Rendered from the declarations, so a changed one is a docs
+ * check that fails rather than a README that quietly lies.
+ */
+function bringsOf(brings: Brought): string {
+  const brought: string[] = [];
+
+  if (brings.commands.length > 0) {
+    const rows = brings.commands.flatMap((command) => [
+      [`\`amy ${command.name}\``, command.description],
+      ...(command.subcommands ?? []).map((sub) => [`\`amy ${command.name} ${sub.name}\``, sub.description]),
+    ]);
+    brought.push(
+      table(["Command", "What it does"], rows),
+      "",
+      "Typed on a machine that mounted this package, and unknown on one that did not.",
+    );
+  }
+
+  if (brings.checks.length > 0) {
+    brought.push(
+      "",
+      "`amy doctor` runs, after its own checks, every check this package names:",
+      "",
+      brings.checks.map((name) => `- \`${name}\``).join("\n"),
+    );
+  }
+
+  if (brings.files.length > 0) {
+    brought.push(
+      "",
+      "`amy init` and `amy add` write, once, into the profile's own directory:",
+      "",
+      brings.files.map((file) => `- \`${file}\``).join("\n"),
+    );
+  }
+
+  return brought.join("\n\n");
 }
 
 function sentence(items: string[]): string {

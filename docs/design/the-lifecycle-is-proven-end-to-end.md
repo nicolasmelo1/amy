@@ -222,6 +222,11 @@ drives, not a field existing somewhere in the middle.
       goes away is a list that grows until nobody reads it. `--all` still shows
       it, and the log still keeps what it did
       (proof: assertion:lifecycle.finished_work_leaves_the_listing)
+- [x] The roster the morning confirmed is the profile's own file — stamped in
+      the profile's state directory, read there by the tick that assigns, and
+      never a file the machine root carries — from
+      [the roster belongs to its workflow](the-roster-belongs-to-its-workflow.md)
+      (proof: assertion:lifecycle.the_roster_is_the_profiles)
 
 **Exit condition:** `npm run e2e` drives the installed executable through the
 whole lifecycle against a world of stand-ins, twice, with no credential and no
