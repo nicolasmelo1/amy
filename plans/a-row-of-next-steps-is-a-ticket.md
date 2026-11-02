@@ -15,6 +15,15 @@ sources:
   - { id: S13, kind: decision, said: "a plan's precondition is not this adapter's: the workflow walking it reads it in the repository the plan is about; the tracker reports the row, whether it can start is a decision" }
 touches:
   - plugins/next-steps/**
+  - .software-factory/evidence/plugin-next-steps*
+  - .software-factory/policy.yaml
+  - docs/mechanisms.yaml
+  - tsconfig.json
+  - tsconfig.tests.json
+untouched:
+  - packages/workflow-ticket-to-qa/src/**
+  - packages/core/src/**
+  - plugins/linear/src/**
 criteria:
   - { id: A1, statement: "the rows of an execution-order table come back from inProgress() in the table's order", proof: "deferred:test:plugins/next-steps/tests/NextStepsTracker.test.ts", sources: [S1, S4, S5] }
   - { id: A2, statement: "a row is read from the base branch through BaseSource, and an uncommitted edit to the standing checkout changes nothing", proof: "deferred:test against a bare origin and a dirty clone", sources: [S5] }
@@ -22,6 +31,8 @@ criteria:
   - { id: A4, statement: "a row that left the table with its plan in docs/design/ reads as delivered, and one that left it with no design note reads as gone", proof: "deferred:test:plugins/next-steps/tests/NextStepsTracker.test.ts", sources: [S2, S7] }
   - { id: A5, statement: "the plugin declares no tracker writes and the mount hands it none", proof: "deferred:assertion in the plugin's end-to-end scenario", sources: [S11, S12] }
   - { id: A6, statement: "ticket-to-qa walks a row of a real table to an open pull request in a testkit world, with no tracker write in its log", proof: "deferred:scenario through the installed executable", sources: [S3, S11, S12, S13] }
+crosses:
+  - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:assertion in the plugin's end-to-end scenario: under policy.writes operator no tracker write is claimed or made (A5)" }
 guarantee:
   - { holds: "the next-steps tracker writes nothing; a row reaches Delivered only when a person merges the pull request that moves it" }
 cut:
