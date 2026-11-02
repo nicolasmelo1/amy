@@ -1,4 +1,5 @@
 ---
+base: fbed1232a8743a897c7daf14c8882862e2c8008e
 sources:
   - { id: S1, kind: friction, ref: "plans/next-steps.md", said: "a repository ordering its plans in plans/next-steps.md already has a tracker: a row is a piece of work, its linked plan the body, the order the priority" }
   - { id: S2, kind: friction, said: "a row that leaves the table, its plan moved to docs/design/ and named under Delivered, is done; this repository and those note-to-plan writes into work so, as sf check refuses a plan without exit or order place" }
