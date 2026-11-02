@@ -423,6 +423,13 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     // the channel's own knowledge, and a mount that did not happen is its
     // own answer to report.
     notifyPort: mounted?.ports.get("notify"),
+    gatePort: mounted?.ports.get("gate"),
+    // What the machine's own plugins read from the environment, named by
+    // them: a machine that mounted no credential-reading plugin is asked
+    // for no credential.
+    environments: Object.fromEntries(
+      loaded.plugins.flatMap((plugin) => (plugin.environment ? [[plugin.name, plugin.environment]] : [])),
+    ),
     conversationPort: mounted?.ports.get("conversation"),
   });
   // After the host's own, and only for what this profile mounted: a check a
@@ -2459,9 +2466,9 @@ function report(result: TickResult): void {
  * mounted.
  *
  * Declared here rather than compiled in, because the command a machine has is
- * the command it mounted: `amy roster` belongs to the workflow that assigns
- * reviewers, `amy note` to the one that writes plans, and a machine driving
- * neither has neither. Read at startup so `amy --help` is the truth about
+ * the command it mounted: `amy btw` belongs to the errand it captures, `amy
+ * note` to the one that writes plans, and a machine driving neither has
+ * neither. Read at startup so `amy --help` is the truth about
  * this install rather than a list of everything this repository publishes.
  */
 async function pluginContributions(): Promise<readonly Contribution[]> {

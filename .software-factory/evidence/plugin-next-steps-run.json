@@ -7,11 +7,11 @@
       "type": "next_steps.the_declaration_claims_no_tracker_writes",
       "status": "passed",
       "detail": [
-        "ok   config file  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-w7e0Pg/home/.amy/config.yaml",
+        "ok   config file  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-HLWILw/home/.amy/config.yaml",
         "ok   settings for @amykit/plugin-next-steps",
         "ok   workflow write surface  read-only: it cannot write the tracker or code host",
-        "ok   checkout acme/widgets  asked the workspace root (/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-w7e0Pg/checkouts)",
-        "ok   worktrees root  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-w7e0Pg/worktrees (checkouts stay in /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-w7e0Pg/checkouts)"
+        "ok   checkout acme/widgets  asked the workspace root (/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-HLWILw/checkouts)",
+        "ok   worktrees root  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-HLWILw/worktrees (checkouts stay in /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-HLWILw/checkouts)"
       ]
     },
     {

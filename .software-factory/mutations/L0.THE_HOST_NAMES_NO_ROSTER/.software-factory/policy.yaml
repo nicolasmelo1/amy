@@ -1,0 +1,11 @@
+# Mutation fixture for L0.THE_HOST_NAMES_NO_ROSTER. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.THE_HOST_NAMES_NO_ROSTER
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.THE_HOST_NAMES_NO_ROSTER:
+    enabled: true

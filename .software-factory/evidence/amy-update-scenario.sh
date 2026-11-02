@@ -467,6 +467,40 @@ printf '{"runs": 0}\n' > .amy/workflows/oncall/auto-update.json
 "$amy" --workflow oncall tick >/dev/null 2>&1 || true
 if only "$later"; then record update.auto_update_reaches_the_release 0; else record update.auto_update_reaches_the_release 1; fi
 
+# 11. An install an older release made keeps its team's list at the machine
+# root, read by nothing. The first update copies it into the profile that
+# reads it now, names the retirement in what it prints, and leaves nothing
+# for a second update to do: the old name is gone, the profile's copy keeps
+# what the operator wrote, and the machine boots with the moved profile.
+npm install --prefix "$HOME/.amy/plugins" --no-audit --no-fund --loglevel=error \
+  "@amykit/plugin-linear@$later" "@amykit/plugin-github@$later" \
+  "@amykit/plugin-file-queue@$later" "@amykit/plugin-file-store@$later" \
+  "@amykit/plugin-file-brief-store@$later" "@amykit/plugin-file-notes@$later" \
+  "@amykit/plugin-file-worktree@$later" "@amykit/plugin-claude@$later" \
+  "@amykit/plugin-codex@$later" "@amykit/plugin-hermes-agent@$later" \
+  "@amykit/plugin-agent-relay@$later" "@amykit/plugin-notify-fanout@$later" \
+  "@amykit/plugin-notify-hermes@$later" "@amykit/plugin-notify-inbox@$later" \
+  "@amykit/plugin-serial-engine@$later" "@amykit/plugin-command-gate@$later" \
+  "@amykit/workflow-ticket-to-qa@$later" >/dev/null
+"$tsx" "$machine" add-tickets
+"$tsx" "$machine" root-roster
+if [ ! -e .amy/tickets/roster.yaml ] && [ -f .amy/roster.yaml ]; then
+  export LINEAR_API_KEY="scenario-fixture-key-not-a-real-key"
+  moved=$("$amy" update 2>&1 || echo "")
+  printf '%s\n' "$moved" > "$work/roster-move.log"
+  says update.the_update_names_the_roster_move "$moved" "moved $HOME/.amy/roster.yaml"
+  "$amy" update >/dev/null 2>&1 || true
+  if cmp -s .amy/roster.yaml.moved .amy/tickets/roster.yaml &&
+     [ -f .amy/roster.yaml.moved ] && [ ! -e .amy/roster.yaml ] &&
+     [ "$(grep -c 'host:' .amy/tickets/roster.yaml)" = "3" ]; then
+    record update.the_roster_moves_into_its_profile 0
+  else
+    record update.the_roster_moves_into_its_profile 1
+  fi
+else
+  record update.the_roster_moves_into_its_profile 1
+fi
+
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
 total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)
 status=passed

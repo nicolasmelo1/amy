@@ -14,7 +14,7 @@ real ticket until step 3, and step 3 is one move at a time on purpose.
 
 ```sh
 npm install -g @amykit/cli
-amy --version             # 0.2.0 (83ef192, built 2026-09-05T18:44:12Z)
+amy --version             # one line: version, the commit it was built from, and when
 ```
 
 Nothing to clone, no install script, and the same command on macOS, Linux and
@@ -29,35 +29,34 @@ else does. See [Installation](installation.md).
 ## 2. Set it up — 2 min
 
 ```sh
-amy init                  # templates, and the packages your config needs
-# edit ~/.amy/config.yaml and ~/.amy/roster.yaml
-amy roster confirm        # stamp today's date
-amy doctor                # every dependency, checked before it touches a ticket
+amy init --install         # the config template, then the packages it names
+# edit ~/.amy/config.yaml   # the workspace's root and the repositories you work in
+amy add @amykit/workflow-errand
+amy doctor                 # every dependency, checked before it touches a ticket
 ```
 
-`init` writes the two templates, then works out which packages the workflows in
-your config need and offers to install the ones this machine has not got:
+`init` writes the config template and offers to install the packages the
+template names; it asks rather than assuming — installing into a global prefix
+is a change to the machine, not to amy. `--install` says yes without asking,
+which is what a pipeline uses; with nothing to ask on it prints the command
+instead of running it.
 
-```text
-These are not installed yet:
-  @amykit/plugin-linear
-  @amykit/plugin-github
-  @amykit/plugin-claude
-
-Install them now? [Y/n]
-```
-
-It asks rather than assuming — installing into a global prefix is a change to
-the machine, not to amy. `--install` says yes without asking, which is what a
-pipeline uses; with nothing to ask on it prints the command instead of running
-it.
+A fresh install drives nothing until `add` names a workflow. `amy add` is
+what a machine gains a process with: it installs the package and what the
+workflow asks for beside it, appends the profile to your config, checks the
+machine still boots, and writes the workflow's own files and commands into
+the profile — the example of the file who-is-reviewing-today lives in, for
+the workflow whose reviewers confirm it each morning, among them. Every one
+of those is the package's, not the install's: a version of amy that mounted
+no roster carries no roster. See [Plugins](../reference/plugins.md).
 
 The Linear personal API key comes from Settings → Security and access, and goes
 in `~/.amy/.env`. Anything already exported in the shell wins over the file.
 
 `amy doctor` checks the config, each plugin's settings against the schema that
-plugin declared, the roster's freshness, the API key, `gh`, `claude` and `git`,
-the notification target, and that every configured repository is actually
+plugin declared, the checks the mounted packages declared, the API key,
+`gh`, `claude` and `git`, the notification target, and that every configured
+repository is actually
 checked out. It exits non-zero, so it is safe to gate on.
 
 If you would rather be walked through it, `/amy-init` does the same interview
@@ -66,14 +65,16 @@ and reads the result back in numbers.
 ## 3. Watch it make one move — 1 min
 
 ```sh
-amy discover              # put in-progress tickets on the queue
-amy tick                  # exactly one move, then exit
+amy tick                  # one look, exactly one move, then exit
 amy status                # where everything stands, and what waits on you
 ```
 
-`tick` is the whole product in one command. It claims one item, asks the
-workflow what to do, does exactly that, writes the record and queues the next
-look. Run it until you trust it.
+`tick` is the whole product in one command. It looks first — the work a person
+or a hook left behind is found the same way queued work is driven — then
+claims one item, asks the workflow what to do, does exactly that, writes the
+record and queues the next look. Run it until you trust it. When you want to
+watch rather than drive, `tick` is the command for it; the loop runs the
+sequence itself.
 
 This is the step to spend time on. Everything after it is the same thing on a
 timer.
@@ -86,10 +87,10 @@ amy status                # says whether the loop is up, and since when
 amy stop                  # ends it
 ```
 
-`pause` and `stop` are different things. `amy pause "deploying"` is the
-handbrake: it ends work in flight, starts nothing new, and the loop stays up
-until `amy resume`. `amy stop` ends the loop itself. Pausing survives a reboot,
-because it is a file; the loop does not, because it is a process.
+`stop --all` and `stop` are different things. `amy stop --all` is the
+handbrake: it ends work in flight and the loop with it, and nothing starts
+until `amy start`. `amy stop` ends the loop itself. The handbrake survives a
+reboot, because it is a file; the loop does not, because it is a process.
 
 ## 5. Put the skills in your harnesses — 30 sec
 

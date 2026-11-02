@@ -105,9 +105,15 @@ describe("diagnose", () => {
   });
 
   it("fails when nothing would vouch for a change", async () => {
-    const checks = await diagnose(deps({ config: { ...DEFAULT_CONFIG, gate: {} } }));
+    const checks = await diagnose(deps({ config: { ...DEFAULT_CONFIG, gate: {} }, gatePort: {} }));
 
     expect(labelled(checks, "gate configured")?.ok).toBe(false);
+  });
+
+  it("asks nothing about vouching when the machine mounted no gate", async () => {
+    const checks = await diagnose(deps({ config: { ...DEFAULT_CONFIG, gate: {} } }));
+
+    expect(labelled(checks, "gate configured")).toBeUndefined();
   });
 
   it("fails when nothing could reach the operator", async () => {
@@ -121,10 +127,19 @@ describe("diagnose", () => {
     expect(labelled(checks, "notification channel")?.ok).toBe(false);
   });
 
-  it("fails without the API key", async () => {
-    const checks = await diagnose(deps({ env: {} }));
+  it("fails when a mounted plugin's key is missing", async () => {
+    const checks = await diagnose(deps({
+      env: {},
+      environments: { "@amykit/plugin-linear": ["LINEAR_API_KEY"] },
+    }));
 
     expect(labelled(checks, "LINEAR_API_KEY")?.ok).toBe(false);
+  });
+
+  it("asks no credential of a machine that mounted none of the plugins reading one", async () => {
+    const checks = await diagnose(deps({ env: {} }));
+
+    expect(labelled(checks, "LINEAR_API_KEY")).toBeUndefined();
   });
 
   it("checks the tools it shells out to", async () => {

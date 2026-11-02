@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 19,
+    "assertions_run": 20,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 37,
@@ -34,7 +34,7 @@
       "QUEUED>DECLINED"
     ],
     "agent_calls": 5,
-    "gh_calls": 8,
+    "gh_calls": 9,
     "pull_requests": {
       "acme/amy": 2
     },
@@ -50,7 +50,7 @@
       "committed-task:DONE",
       "foreign-task:DECLINED",
       "refusal-task:DECLINED",
-      "task-2026-11-01T190310642:DONE"
+      "task-2026-11-02T001440422:DONE"
     ]
   },
   "assertions": [
@@ -128,6 +128,10 @@
     },
     {
       "type": "errand.the_installed_machine_mounts_the_workflow",
+      "status": "passed"
+    },
+    {
+      "type": "errand.doctor_is_green_without_a_roster",
       "status": "passed"
     }
   ]

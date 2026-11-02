@@ -455,6 +455,10 @@ interface Morning {
   confirm: Said;
   doctor: Said;
   discover: Said;
+  /** The profile's roster file, as the operator's edits and the confirm left it. */
+  rosterFile: string | null;
+  /** The machine root carries none: the file moved into the profile. */
+  rosterAtRoot: boolean;
   /** What this machine's command line says it can do. */
   help: Said;
 }
@@ -576,7 +580,14 @@ function morning(root: string, endpoint: string, engine: EngineChoice, trail: Lo
   const discover = amy(root, ["tick"]);
   trail.push({ before, after: stateOf(root), resumeAt: recordOf(root)?.resumeAt, said: discover.out, code: discover.code });
 
-  return { version, init, initWrote, doctorStale, confirm, doctor, discover, help };
+  // The morning's file, read after the confirm stamped it. The assignment's
+  // reviewer is compared against this text in the checks, so the roster the
+  // walk read is this profile's own file and not a reworded guess.
+  const rosterPath = path.join(root, "home", ".amy", "tickets", "roster.yaml");
+  const rosterFile = fs.existsSync(rosterPath) ? fs.readFileSync(rosterPath, "utf-8") : null;
+  const rosterAtRoot = fs.existsSync(path.join(root, "home", ".amy", "roster.yaml"));
+
+  return { version, init, initWrote, doctorStale, confirm, doctor, discover, help, rosterFile, rosterAtRoot };
 }
 
 /** Ticks the first ticket until it settles, letting the world move whenever amy waits. */
@@ -982,6 +993,7 @@ function assertionsFor(first: World, second: World, concurrent: World): { type: 
     ...checkoutChecks(first),
     ...extraChecks(first),
     ...commandChecks(first),
+    ...rosterChecks(first),
   ].map(([type, ok]) => ({ type, status: ok ? "passed" : "failed" }));
 }
 
@@ -1470,6 +1482,29 @@ function extraChecks(first: World): Check[] {
     [
       "lifecycle.finished_work_leaves_the_listing",
       !first.status.out.includes("DONE") && first.status.out.includes("1 finished, not shown"),
+    ],
+  ];
+}
+
+/**
+ * The roster the confirm stamped, and the assignment the walk made, as one
+ * profile's own file.
+ */
+function rosterChecks(first: World): Check[] {
+  const stamped = first.confirm.out.match(/confirmed for (\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
+  const hosts = (first.rosterFile ?? "")
+    .split("\n")
+    .filter((line) => line.trim().startsWith("host: "))
+    .map((line) => line.trim().slice("host: ".length).trim());
+  return [
+    [
+      "lifecycle.the_roster_is_the_profiles",
+      stamped.length === 10 &&
+        typeof first.rosterFile === "string" &&
+        first.rosterFile.includes(`confirmedOn: ${stamped}`) &&
+        !first.rosterAtRoot &&
+        first.record.reviewer !== undefined &&
+        hosts.includes(first.record.reviewer),
     ],
   ];
 }

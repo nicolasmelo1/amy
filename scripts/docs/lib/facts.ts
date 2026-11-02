@@ -118,6 +118,20 @@ export interface WorkflowShape {
 
 type PackageKind = "unbuilt" | "cli" | "unloadable" | "library" | "plugin" | "workflow";
 
+/** One command a package declares beside its register, as the README renders it. */
+export interface BroughtCommand {
+  name: string;
+  description: string;
+  subcommands?: { name: string; description: string }[];
+}
+
+/** What a mounted package names in its own module, for the README to state. */
+export interface Brought {
+  commands: BroughtCommand[];
+  checks: string[];
+  files: string[];
+}
+
 /** One workspace package, and whatever loading it could tell. */
 export interface PackageFact {
   name: string;
@@ -154,6 +168,7 @@ export interface MountedFact extends PackageFact {
   observes: string[];
   mountsEngine: boolean;
   mountsWorkflow: string | null;
+  brings?: Brought;
 }
 
 export interface WorkflowFact extends MountedFact {

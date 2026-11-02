@@ -46,6 +46,16 @@ Every field is checked at boot against the schema this package declares. A key t
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
 
+## What it brings
+
+| Command | What it does |
+| :-- | :-- |
+| `amy models` | What each model is believed to cost |
+| `amy models show` | The price table in force |
+| `amy models refresh` | Take the base rates from models.dev, keeping what it does not carry |
+
+Typed on a machine that mounted this package, and unknown on one that did not.
+
 ## Where the reasoning is
 
 - [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
