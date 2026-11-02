@@ -1004,6 +1004,11 @@
         },
         {
           "depth": 3,
+          "title": "**The config is written by what is mounted.** Every workflow's own vocabulary — the attempt ceilings its decisions read, the status a ticket moves to, where plans go and what judges them — moved out of the config's top level and into the profile that drives the workflow, checked at mount against the workflow's own configSchema. amy init writes a config that carries only the machine, and a commented example that teaches the shape; amy add <workflow> writes the profile block from what the workflow's schema asks for, with the settings that need an answer written as placeholders and the rest taken from defaults. amy config explain lists every setting the machine and each mounted thing carries, with its type, its default and the reason it is there; amy config explain <plugin> narrows to one.",
+          "slug": "the-config-is-written-by-what-is-mounted-every-workflows-own-vocabulary-the-attempt-ceilings-its-decisions-read-the-status-a-ticket-moves-to-where-plans-go-and-what-judges-them-moved-out-of-the-configs-top-level-and-into-the-profile-that-drives-the-workflow-checked-at-mount-against-the-workflows-own-configschema-amy-init-writes-a-config-that-carries-only-the-machine-and-a-commented-example-that-teaches-the-shape-amy-add-workflow-writes-the-profile-block-from-what-the-workflows-schema-asks-for-with-the-settings-that-need-an-answer-written-as-placeholders-and-the-rest-taken-from-defaults-amy-config-explain-lists-every-setting-the-machine-and-each-mounted-thing-carries-with-its-type-its-default-and-the-reason-it-is-there-amy-config-explain-plugin-narrows-to-one"
+        },
+        {
+          "depth": 3,
           "title": "**An errand that answered a question is not delivered as an empty pull request.**",
           "slug": "an-errand-that-answered-a-question-is-not-delivered-as-an-empty-pull-request"
         },
@@ -3999,6 +4004,16 @@
         },
         {
           "depth": 3,
+          "title": "amy config",
+          "slug": "amy-config"
+        },
+        {
+          "depth": 3,
+          "title": "amy config explain [plugin]",
+          "slug": "amy-config-explain-plugin"
+        },
+        {
+          "depth": 3,
           "title": "amy doctor",
           "slug": "amy-doctor"
         },
@@ -6379,6 +6394,27 @@
         },
         {
           "path": [
+            "config"
+          ],
+          "description": "What this machine would read, if it mounted",
+          "arguments": [],
+          "options": [],
+          "isDefault": false,
+          "hidden": false
+        },
+        {
+          "path": [
+            "config",
+            "explain [plugin]"
+          ],
+          "description": "Every setting the machine and its mounted plugins carry, with its type, default and why",
+          "arguments": [],
+          "options": [],
+          "isDefault": false,
+          "hidden": false
+        },
+        {
+          "path": [
             "daemon"
           ],
           "description": "The loop itself, in the foreground. `amy start` runs this for you",
@@ -7706,8 +7742,9 @@
           {
             "name": "workingStatusName",
             "type": "string",
-            "required": true,
-            "description": "the exact status name a ticket must be in to be picked up"
+            "required": false,
+            "default": "In Progress",
+            "description": "the exact status name a ticket must be in to be picked up, matched never against its category"
           }
         ],
         "environment": [
@@ -8072,11 +8109,25 @@
             "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
-            "name": "policy",
-            "type": "record",
+            "name": "policy.ceilingBackoffMs",
+            "type": "number",
             "required": false,
-            "default": {},
-            "description": "maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default"
+            "default": 1800000,
+            "description": "how long a task is held while the in-flight ceiling is reached"
+          },
+          {
+            "name": "policy.maxAttempts",
+            "type": "number",
+            "required": false,
+            "default": 2,
+            "description": "how many times an agent may try one errand before it is handed back"
+          },
+          {
+            "name": "policy.maxInFlight",
+            "type": "number",
+            "required": false,
+            "default": 3,
+            "description": "how many errands this machine may carry in flight at once. Capturing costs nothing, which is the whole point and also the failure, and past this many it holds rather than opening another pull request nobody asked to review"
           },
           {
             "name": "queueDirectory",
@@ -8088,8 +8139,9 @@
           {
             "name": "repos",
             "type": "string[]",
-            "required": true,
-            "description": "the repositories an errand may be done in. A task about anything else is handed back to whoever asked"
+            "required": false,
+            "default": [],
+            "description": "where an errand may be done. The machine's own list of repositories names this by default, and a profile narrows or widens it. An errand about a place not on the list is handed back to whoever asked"
           },
           {
             "name": "tasksDirectory",
@@ -8164,6 +8216,17 @@
             "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
+            "name": "check",
+            "type": "record",
+            "required": false,
+            "default": {
+              "default": [
+                "sf check"
+              ]
+            },
+            "description": "the check commands per repository, with a `default` fallback, that judge a plan before it goes anywhere. `sf check` is the whole quality bar in a repository that has one; the plan-check plugin mounts them"
+          },
+          {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
@@ -8178,11 +8241,25 @@
             "description": "where this machine keeps the notes `amy note` writes, relative to the state root. The host sets it; a value here only stands in for one"
           },
           {
-            "name": "policy",
-            "type": "record",
+            "name": "policy.ceilingBackoffMs",
+            "type": "number",
             "required": false,
-            "default": {},
-            "description": "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default"
+            "default": 3600000,
+            "description": "how long a note is held while the plan ceiling is reached"
+          },
+          {
+            "name": "policy.maxDraftAttempts",
+            "type": "number",
+            "required": false,
+            "default": 3,
+            "description": "how many times an agent may try to write a plan the check accepts before it is handed back"
+          },
+          {
+            "name": "policy.maxOpenPlansPerRepo",
+            "type": "number",
+            "required": false,
+            "default": 2,
+            "description": "how many plans this machine may carry in flight for one repository. A machine that files twelve plans a day into three repositories is producing a backlog with a robot's name on it, and past this many it holds"
           },
           {
             "name": "queueDirectory",
@@ -8225,11 +8302,11 @@
             "description": "open the pull request as a draft, for work nobody is waiting on at the moment it lands"
           },
           {
-            "name": "policy",
-            "type": "record",
+            "name": "policy.settleMs",
+            "type": "number",
             "required": false,
-            "default": {},
-            "description": "settleMs: how long to wait for a pull request the host opened to show. Left out, the default"
+            "default": 30000,
+            "description": "how long to wait for a pull request the host opened to show, before looking again"
           }
         ],
         "environment": []
@@ -8287,11 +8364,67 @@
             "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
           },
           {
-            "name": "policy",
-            "type": "record",
+            "name": "policy.conversation",
+            "type": "string",
             "required": false,
-            "default": {},
-            "description": "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all — and conversation — `answer` reads a reply nobody marked as the decision, `discuss` reads it as a turn in a discussion, answered in the thread while the work waits for a reply marked as the decision. Anything left out keeps its default"
+            "default": "answer",
+            "description": "answer: a reply in the work's thread is your decision, and the work moves on it. discuss: a reply is a turn in a discussion, answered in the thread while the work waits; mark the reply that decides and only that one moves it. A reply you marked reads as marked under either, and without a thread a comment on the ticket is always the decision"
+          },
+          {
+            "name": "policy.maxGateAttempts",
+            "type": "number",
+            "required": false,
+            "default": 3,
+            "description": "how many times the gate may see one change before the work is escalated"
+          },
+          {
+            "name": "policy.maxImplementAttempts",
+            "type": "number",
+            "required": false,
+            "default": 3,
+            "description": "how many times an agent may try to implement one ticket before it is escalated"
+          },
+          {
+            "name": "policy.maxOpenReviewsPerReviewer",
+            "type": "number",
+            "required": false,
+            "default": 2,
+            "description": "how many open reviews one person may be carrying before this machine stops adding to their pile. Review time is somebody else's, and it is the one currency here that cannot be topped up"
+          },
+          {
+            "name": "policy.maxPullRequestFiles",
+            "type": "number",
+            "required": false,
+            "default": 60,
+            "description": "how large a pull request may get, in files, before this machine stops handing it to an agent. The forge has already told us the size, so a pull request nobody should automate is handed back before an agent is called. Zero switches it off"
+          },
+          {
+            "name": "policy.maxPullRequestLines",
+            "type": "number",
+            "required": false,
+            "default": 2000,
+            "description": "how large a pull request may get, in changed lines, under the same rule as maxPullRequestFiles. Zero switches it off"
+          },
+          {
+            "name": "policy.pollBackoffMs",
+            "type": "number",
+            "required": false,
+            "default": 300000,
+            "description": "how long a waiting state holds before it looks again: waiting on an answer, or on a review"
+          },
+          {
+            "name": "policy.rosterBackoffMs",
+            "type": "number",
+            "required": false,
+            "default": 1800000,
+            "description": "how long to hold while the roster is waiting to be confirmed"
+          },
+          {
+            "name": "policy.writes",
+            "type": "string",
+            "required": false,
+            "default": "machine",
+            "description": "machine: amy comments, opens pull requests, requests reviews and moves the ticket to QA. operator: each of those is said to you once instead, and amy waits until it sees you made it. Nothing is written on the tracker or the code host"
           },
           {
             "name": "qaStatusName",
@@ -8681,7 +8814,11 @@
           "update.a_check_names_the_release",
           "update.auto_update_reaches_the_release",
           "update.the_roster_moves_into_its_profile",
-          "update.the_update_names_the_roster_move"
+          "update.the_update_names_the_roster_move",
+          "update.the_settings_move_under_their_workflow",
+          "update.a_second_update_moves_nothing",
+          "update.a_moved_key_named_at_its_new_place",
+          "update.a_moved_key_names_its_destination"
         ],
         "scenario": ".software-factory/evidence/amy-update-scenario.sh"
       },
@@ -8746,7 +8883,8 @@
           "errand.a_command_nothing_mounts_does_not_exist",
           "errand.help_lists_only_the_machines_commands",
           "errand.a_tick_discovers_before_it_moves",
-          "errand.doctor_is_green_without_a_roster"
+          "errand.doctor_is_green_without_a_roster",
+          "errand.init_and_add_write_a_config_that_boots"
         ],
         "scenario": ".software-factory/evidence/errand-scenario.sh"
       },
@@ -9120,7 +9258,8 @@
           "lifecycle.finished_work_leaves_the_listing",
           "lifecycle.a_workflow_command_is_its_own",
           "lifecycle.stop_all_holds_until_start",
-          "lifecycle.the_roster_is_the_profiles"
+          "lifecycle.the_roster_is_the_profiles",
+          "lifecycle.the_engine_retries_on_its_own_delay"
         ],
         "scenario": ".software-factory/evidence/ticket-to-qa-scenario.sh"
       },
@@ -10157,6 +10296,46 @@
           },
           {
             "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "the-config-is-written-by-what-is-mounted",
+        "title": "**The config is written by what is mounted.** Every workflow's own vocabulary — the attempt ceilings its decisions read, the status a ticket moves to, where plans go and what judges them — moved out of the config's top level and into the profile that drives the workflow, checked at mount against the workflow's own `configSchema`. `amy init` writes a config that carries only the machine, and a commented example that teaches the shape; `amy add <workflow>` writes the profile block from what the workflow's schema asks for, with the settings that need an answer written as placeholders and the rest taken from defaults. `amy config explain` lists every setting the machine and each mounted thing carries, with its type, its default and the reason it is there; `amy config explain <plugin>` narrows to one.",
+        "body": "A key of the old shape left at the top level is refused at boot by name, with\nthe place it moved to in the message, so nothing is silently read from where\nit lived. `amy update` moves a v1 config for you: each old key is rewritten\nunder the profile or the plugin that reads it, the original file is kept\nbeside the config as `config.yaml.moved`, and a second update changes\nnothing. The engine learns to tune itself at the same time — the serial\nengine's retry between failed items is its own setting now, no longer\nborrowed from whichever workflow's poll happened to be at the top of the\nconfig.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-pull-request",
             "level": "minor"
           },
           {

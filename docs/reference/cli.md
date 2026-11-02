@@ -37,6 +37,8 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy add`](#amy-add) | Add a workflow or a plugin: install it, mount it, and check the machine boots |
 | [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
+| [`amy config`](#amy-config) | What this machine would read, if it mounted |
+| [`amy config explain [plugin]`](#amy-config-explain [plugin]) | Every setting the machine and its mounted plugins carry, with its type, default and why |
 | [`amy doctor`](#amy-doctor) | Check everything the machine depends on before it touches a ticket |
 | [`amy init`](#amy-init) | Write the config and the files the mounted plugins bring, and install what they need |
 | [`amy look`](#amy-look) | Look at one piece of work now, rather than when it was next due |
@@ -100,6 +102,22 @@ What the agents have spent, and how close that is to the ceiling
 
 ```sh
 amy budget
+```
+
+### `amy config`
+
+What this machine would read, if it mounted
+
+```sh
+amy config
+```
+
+### `amy config explain [plugin]`
+
+Every setting the machine and its mounted plugins carry, with its type, default and why
+
+```sh
+amy config explain [plugin]
 ```
 
 ### `amy doctor`

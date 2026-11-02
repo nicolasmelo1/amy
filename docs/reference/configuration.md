@@ -24,24 +24,18 @@ For what the two halves mean and why, see
 | `extraPlugins` | `string[]` | `[]` | Plugins mounted under every profile, named here or added with `amy add`. A workflow's own plugins stay in its profile; this is the list for what somebody mounted on top, and it is kept apart so a profile left on the recommended set stays on it. |
 | `autoUpdate` | `AutoUpdateConfig` | `DEFAULT_AUTO_UPDATE` | One machine-wide cadence, persisted separately for every profile. |
 | `autoUpdateSource` | `unknown` |  | A scalar/null source value retained so malformed YAML cannot become valid. |
-| `repos` | `string[]` | `[]` |  |
-| `qaStatusName` | `string` | `"In QA"` |  |
-| `workingStatusName` | `string` | `"In Progress"` | The tracker status a ticket must be in to be picked up. |
+| `repos` | `string[]` | `[]` | Repositories this machine's work happens in, handoffs and reviews alike. |
 | `retentionDays` | `number` | `7` |  |
 | `staleClaimMs` | `number` | `30 * 60 * 1000` |  |
 | `maxItemAttempts` | `number` | `5` |  |
-| `policy` | `Policy` | `DEFAULT_POLICY` |  |
 | `workspaceRoot` | `string` | `"."` | Directory holding one checkout per repository. `~` is expanded. |
 | `checkouts` | `Record<string, string>` | `{}` | Where one repository's checkout is, instead of under the root. |
 | `defaultBranch` | `string` | `"main"` | Branch new work is cut from. |
 | `baseBranch` | `Record<string, string>` | `{}` | Where one repository's base branch is, instead of the fallback. |
-| `repoByTeam` | `Record<string, string>` | `{}` | Which repository a team's tickets land in, by team key. |
 | `gate` | `Record<string, string[]>` | `{}` | Gate commands per repository, with a `default` fallback. |
 | `agent` | `{ model?: string; /** Model tiers offered to the relay, cheapest first. */ models?: string[]; /** * Which contributed agents to try, in order, such as * `[claude:sonnet, claude:opus, codex:gpt-5]`. Empty means every agent * that was contributed, in mounting order. * * Naming a harness here is also what mounts it, so a ladder is the one * place an operator says which harnesses they have. */ ladder?: string[]; /** * A ladder for one step, keyed by the workflow's action name, overriding * the one above. * * Reading a ticket to decide whether it is clear enough to start is not * the same job as writing the change, and one list for both means paying * the expensive model to do the cheap step. A name here mounts its * harness exactly as a name in `ladder` does. */ ladderByStep?: Record<string, string[]>; reviewerHints?: Record<string, string>; timeoutMs?: number; /** * What the agents may spend, per window. Read by the relay, which is the * only thing here that spends one. Shape checked at boot, not here. */ budget?: Record<string, unknown>; }` | `{}` |  |
 | `skills` | `Record<string, string[]>` | `{}` | Which skills answer for a step, in the order they are tried, keyed by the workflow's action name. A skill named here has to be installed. |
 | `notify` | `NotifyConfig` | `{ hermes: null, inbox: true }` |  |
-| `plans` | `PlansConfig` | `{ repos: [], check: { default: ["sf check"] }, policy: {} }` |  |
-| `errands` | `ErrandsConfig` | `{ policy: {} }` |  |
 | `worktrees` | `WorktreesConfig` | `{ root: "", retentionDays: 7 }` | Where isolated worktrees live, and how long finished ones stay. |
 | `plugins` | `Record<string, unknown>` | `{}` | One slice per plugin, keyed by package name. |
 
@@ -59,6 +53,7 @@ For what the two halves mean and why, see
 | `notes` | `boolean` | no | Whether `amy note` files friction onto this profile's queue. |
 | `tasks` | `boolean` | no | Whether `amy btw` puts a task onto this profile's queue. |
 | `agent` | `Partial<AmyConfig["agent"]>` | no | A profile may spend differently from the machine-wide default. |
+| `settings` | `ProfileSettings` | no | The workflow's own settings, over what its schema and the machine fill in. |
 
 <!-- amy:end config-profile -->
 
@@ -86,29 +81,35 @@ and beats the machine-wide one.
 # live in, so switching between two of them never loses the state of either.
 #
 # Declared here, not shipped: this machine drives nothing until a workflow is
-# named. `amy workflow new <name>` writes the block for a workflow of your
-# own, under ~/.amy/workflows; a published one is a line you add here plus its
-# package installed. The two below are the ones this repository publishes,
-# kept as examples rather than defaults — uncomment one to drive it.
+# named. `amy add <package>` installs one and writes the profile block for
+# you, from what the workflow's own schema asks for — the settings below are
+# the example that teaches, and `amy config explain` names every setting the
+# machine could take, with its type, its default and why it is there.
 #
 #   workflows:
 #     ticket-to-qa:
 #       workflow: "@amykit/workflow-ticket-to-qa"
-#       # plugins: []   # empty means the recommended set for this workflow
-#       # briefStore: "@acme/plugin-git-brief-store"  # replaces the local brief provider
-#     note-to-plan:
-#       workflow: "@amykit/workflow-note-to-plan"
-#       notes: true     # `amy note` files friction onto this profile's queue
+#       settings:
+#         # The status a ticket moves to when it is handed to QA.
+#         qaStatusName: In QA
+#         # The ceilings the ticket workflow's decisions read live here too —
+#         # every one has a default, so naming a block is starting a tune.
+#         # policy:
+#         #   maxImplementAttempts: 3
+#         #   pollBackoffMs: 300000
+#
+# A workflow of your own is the same shape, under ~/.amy/workflows;
+# `amy workflow new <name>` writes one.
 #
 # Which one runs when --workflow is not given. The first, if this is empty.
 # defaultWorkflow: ticket-to-qa
-
+#
 # Plugins mounted under every workflow, named here or added with `amy add`.
 # Kept apart from a profile's own `plugins:` so a profile left on the
 # recommended set stays on it and gains one, rather than having the whole
 # recommendation copied into the config behind your back.
 # extraPlugins: []
-
+#
 # Keep the packages this machine mounts current around workflow invocations.
 # The count is kept per workflow profile under ~/.amy, so restarting does not
 # reset it. Set enabled false to leave updates entirely to the operator.
@@ -119,17 +120,11 @@ autoUpdate:
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be
-# quiet in that one.
+# quiet in that one. They are also where an errand may be done, and the first
+# is where this machine's own failures are filed.
 repos:
   - Northwind/northwind-backend
   - Northwind/northwind-frontend
-
-# Tracker status names, matched exactly. Not categories: the tracker files
-# In Review, In QA and Ready To Release under the same category as
-# In Progress, so a category match picks up work that is already past
-# implementation.
-workingStatusName: In Progress
-qaStatusName: In QA
 
 # Finished queue items are only useful for reading the log afterwards.
 retentionDays: 7
@@ -141,18 +136,6 @@ retentionDays: 7
 staleClaimMs: 1800000
 maxItemAttempts: 5
 
-# The third workflow: something you said in passing becomes a pull request.
-# `amy btw "bump the deps in the api"` puts one on the queue. It works in the
-# repositories named above, so it needs no list of its own — only its ceilings.
-errands:
-  policy:
-    maxAttempts: 2
-    # Capturing an errand costs nothing, which is the whole point and also the
-    # failure: past this many in flight it holds rather than opening a
-    # thirtieth pull request nobody asked to review.
-    maxInFlight: 3
-    ceilingBackoffMs: 1800000
-
 # Where isolated worktrees live, and how long finished ones stay. Every tree
 # is one work item's own checkout under this root, so two tickets on one
 # repository run at the same time without contending for a shared tree. A
@@ -163,48 +146,6 @@ errands:
 worktrees:
   root: ~/workspaces/northwind-worktrees
   retentionDays: 7
-
-# The worktree plugin itself, mounted when a workflow names it. The path
-# segment it puts every tree under is the profile's name, so two workflows
-# under one install never share a tree.
-#
-#   "@amykit/plugin-file-worktree":
-#     workflow: ticket-to-qa
-
-# How the machine behaves when something is in its way. Anything left out
-# keeps its default. maxOpenReviewsPerReviewer is the one that spends a
-# currency nobody can top up: past it, the pull request stays open with
-# nobody assigned rather than landing on somebody already buried.
-#
-# The two ceilings on size are the cheap ones: the forge already told us how
-# big the change is, so a pull request nobody should automate is handed back
-# before an agent is called rather than after three attempts at it. Zero on
-# either switches it off.
-#
-# The two backoffs are how long a waiting state holds before it looks again.
-# Neither one runs while work is happening: a step that takes half an hour is
-# one look that takes half an hour, and the look after it is queued the moment
-# it finishes. They only govern how quickly the machine notices somebody else
-# moved, and `amy poke <workId>` collapses either on demand.
-policy:
-  maxImplementAttempts: 3
-  maxGateAttempts: 3
-  pollBackoffMs: 300000       # 5 minutes: waiting on an answer, or on a review
-  rosterBackoffMs: 1800000    # 30 minutes: waiting for the roster to be confirmed
-  maxOpenReviewsPerReviewer: 2
-  maxPullRequestFiles: 60
-  maxPullRequestLines: 2000
-  # machine: amy comments, opens pull requests, requests reviews and moves the
-  # ticket to QA. operator: each of those is said to you once instead, and amy
-  # waits until it sees you made it. Nothing is written on the tracker or the
-  # code host.
-  writes: machine
-  # answer: a reply in the work's thread is your decision, and the work moves
-  # on it. discuss: a reply is a turn in a discussion, answered in the thread
-  # while the work waits; mark the reply that decides (✅ in Slack) and only
-  # that one moves it. A reply you marked reads as marked under either, and
-  # without a thread a comment on the ticket is always the decision.
-  conversation: answer
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it, so leaving codex and hermes out means they are never required to be
@@ -258,12 +199,6 @@ defaultBranch: main
 # baseBranch:
 #   Northwind/northwind-frontend: trunk
 
-# Which repository a team's tickets land in, by team key. A team that is not
-# listed falls back to the first entry in "repos".
-repoByTeam:
-  PROJ: Northwind/northwind-backend
-  WEB: Northwind/northwind-backend
-
 # The deterministic gate. Nothing reaches a pull request until this is green.
 # A repository with no entry here, and no "default", is refused rather than
 # waved through.
@@ -295,28 +230,6 @@ notify:
   hermes: slack:my-channel   # a Hermes delivery target, or null
   inbox: true        # a file in .amy/needs-input plus a desktop notification
 
-# The second workflow: friction this machine hits becomes a plan in the
-# repository it is about. Leave "repos" out and nothing here is mounted at all
-# — a note would have nowhere to go.
-#
-# The check is the whole quality bar, and it is the repository's own rather
-# than a rubric invented here: a plan with no exit condition, or one missing
-# from the ordered list, is red and goes back to the agent with the finding.
-plans:
-  repos:
-    - Northwind/amy
-    - Northwind/software-factory
-  check:
-    default:
-      - sf check
-  policy:
-    maxDraftAttempts: 2
-    # Past this many plans in flight for one repository, it holds rather than
-    # opening another pull request nobody has read. The reviewer ceiling's
-    # argument with a different number.
-    maxOpenPlansPerRepo: 2
-    ceilingBackoffMs: 1800000
-
 # Any command line tool, reached by a name. One adapter for all of them: the
 # machine learns that a name maps to a line somebody wrote down, and nothing
 # about what pup or ntn mean.
@@ -329,18 +242,22 @@ plans:
 #     allow:
 #       datadog: pup monitors list --json
 #       notion: ntn page get
-
-# One slice per plugin, keyed by package name. Nothing here is read by the
-# host: each plugin declares what its own slice looks like, and "amy doctor"
-# refuses a field that is not one the plugin has. A plugin with no slice runs
-# on its defaults. Nothing is mounted until a workflow names it, so these are
-# examples too — uncomment with the workflow that carries them.
+#
+# The tracker's settings and every workflow's own live with what mounts them —
+# an install carries only the vocabulary of what it drives. The status names a
+# ticket moves between belong to the tracker plugin; a team map belongs beside
+# it; the ceilings each workflow's decisions read belong to that workflow's
+# profile. `amy add` writes the block; `amy config explain` lists them.
 #
 # plugins:
 #   "@amykit/plugin-notify-hermes":
 #     target: slack:my-channel
 #   "@amykit/plugin-file-queue":
 #     retentionDays: 7
+#   "@amykit/plugin-linear":
+#     workingStatusName: In Progress
+#     repoByTeam:
+#       PROJ: Northwind/northwind-backend
 ```
 
 <!-- amy:end config-example -->

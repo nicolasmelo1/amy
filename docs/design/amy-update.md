@@ -195,6 +195,26 @@ credential.
       [the roster belongs to its workflow](the-roster-belongs-to-its-workflow.md)
       (proof: assertion:update.the_roster_moves_into_its_profile)
       (proof: assertion:update.the_update_names_the_roster_move)
+- [x] The rest of the vocabulary an older release kept at the config's top
+      level moves under the work that reads it, in that same update — the
+      ticket's ceilings and the status its tracker hands work to under the
+      ticket profile's settings, the planner's repositories and check under
+      its own, the errand's under its own, and the tracker's status name and
+      team map under the tracker's slice, whether or not the machine had ever
+      named a `plugins:` block — with the original file kept beside the
+      config as `config.yaml.moved` — from
+      [a config is typed by its schema](a-config-is-typed-by-its-schema.md)
+      (proof: assertion:update.the_settings_move_under_their_workflow)
+- [x] A second update answers the machine it just moved with nothing: the
+      keys it moved are gone from the old place, and a run that rewrote the
+      file again would be a migration nobody can trust twice
+      (proof: assertion:update.a_second_update_moves_nothing)
+- [x] A key put back where it lived is refused at boot, naming the key and —
+      in the refusal's own words — the place it moved to
+      (proof: assertion:update.a_moved_key_named_at_its_new_place)
+- [x] The refusal names the destination the way the operator would write it,
+      as `settings.qaStatusName` under the profile that drives
+      (proof: assertion:update.a_moved_key_names_its_destination)
 
 **Exit condition:** a machine two versions behind runs one command, ends
 up on the current one with its work untouched, and the skills in its

@@ -227,6 +227,13 @@ drives, not a field existing somewhere in the middle.
       never a file the machine root carries — from
       [the roster belongs to its workflow](the-roster-belongs-to-its-workflow.md)
       (proof: assertion:lifecycle.the_roster_is_the_profiles)
+- [x] The engine's retry delay is the engine's own setting: turning one
+      ticket profile's poll to a number nothing defaults to boots, and
+      leaves the engine's answer about its retry — named in
+      `amy config explain` with the default the engine's own schema
+      declares — unchanged through the retune, reading nothing the
+      workflow's poll says
+      (proof: assertion:lifecycle.the_engine_retries_on_its_own_delay)
 
 **Exit condition:** `npm run e2e` drives the installed executable through the
 whole lifecycle against a world of stand-ins, twice, with no credential and no

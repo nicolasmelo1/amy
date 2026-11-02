@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**61 rules shipped**, 50 enabled here, 11 switched off, 50 carrying a mutation fixture, 1 violations frozen.
+**61 rules shipped**, 50 enabled here, 11 switched off, 50 carrying a mutation fixture, 5 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->

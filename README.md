@@ -87,6 +87,7 @@ arguments, options and defaults.
 | `amy add` | Add a workflow or a plugin: install it, mount it, and check the machine boots |
 | `amy brief` | The current statement of a feature, as the workflow keeps it |
 | `amy budget` | What the agents have spent, and how close that is to the ceiling |
+| `amy config` | What this machine would read, if it mounted |
 | `amy doctor` | Check everything the machine depends on before it touches a ticket |
 | `amy init` | Write the config and the files the mounted plugins bring, and install what they need |
 | `amy look` | Look at one piece of work now, rather than when it was next due |
