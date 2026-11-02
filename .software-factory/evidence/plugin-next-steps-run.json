@@ -1,0 +1,63 @@
+{
+  "scenario": "plugin-next-steps",
+  "goal": "Prove ticket-to-qa, mounted on a next-steps table through the installed executable, takes the top committed rows from the base branch, one of them a plan in another repository, walks each to a pull request in its plan's repository, and writes nothing where a tracker would have been.",
+  "status": "passed",
+  "assertions": [
+    {
+      "type": "next_steps.the_declaration_claims_no_tracker_writes",
+      "status": "passed",
+      "detail": [
+        "ok   config file  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-yYiPdQ/home/.amy/config.yaml",
+        "ok   settings for @amykit/plugin-next-steps",
+        "ok   workflow write surface  read-only: it cannot write the tracker or code host",
+        "ok   checkout acme/widgets  asked the workspace root (/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-yYiPdQ/checkouts)",
+        "ok   checkout acme/gadgets  asked the workspace root (/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-yYiPdQ/checkouts)",
+        "ok   worktrees root  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-yYiPdQ/worktrees (checkouts stay in /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-next-steps-yYiPdQ/checkouts)"
+      ]
+    },
+    {
+      "type": "next_steps.the_first_committed_rows_are_the_work",
+      "status": "passed",
+      "detail": {
+        "ids": [
+          "acme+gadgets+show-the-currency-on-the-credit-note",
+          "show-the-currency-on-the-invoice-total"
+        ],
+        "untouched": true
+      }
+    },
+    {
+      "type": "next_steps.each_row_walks_to_a_pull_request_in_its_plans_repository",
+      "status": "passed",
+      "detail": [
+        {
+          "id": "show-the-currency-on-the-invoice-total",
+          "repoName": "acme/widgets",
+          "pushed": true,
+          "carried": true,
+          "pulls": 1,
+          "state": "COPILOT_WAIT"
+        },
+        {
+          "id": "acme+gadgets+show-the-currency-on-the-credit-note",
+          "repoName": "acme/gadgets",
+          "pushed": true,
+          "carried": true,
+          "pulls": 1,
+          "state": "COPILOT_WAIT"
+        }
+      ]
+    },
+    {
+      "type": "next_steps.nothing_is_written_where_a_tracker_would_have_been",
+      "status": "passed",
+      "detail": {
+        "trackerTurns": [],
+        "said": [
+          "Open a pull request for show-the-currency-on-the-invoice-total in acme/widgets, from plan/show-the-currency-on-the-invoice-total into main, titled \"show-the-currency-on-the-invoice-total: Show the currency on the invoice total\". I carry on once I see it.",
+          "Open a pull request for acme+gadgets+show-the-currency-on-the-credit-note in acme/gadgets, from plan/show-the-currency-on-the-credit-note into main, titled \"acme+gadgets+show-the-currency-on-the-credit-note: Show the currency on the credit note\". I carry on once I see it."
+        ]
+      }
+    }
+  ]
+}

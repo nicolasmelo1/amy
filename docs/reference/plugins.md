@@ -33,6 +33,7 @@ maintains.
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
 | `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes` |
 | `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `feature`<br>`tracker` |  |
+| `@amykit/plugin-next-steps` | A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch. | `tracker` |  |
 | `@amykit/plugin-notify-fanout` | Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted. | `notifier` |  |
 | `@amykit/plugin-notify-hermes` | Announcements over Hermes, which already owns the messaging credentials. | `notify` | `notify-channel:hermes` |
 | `@amykit/plugin-notify-inbox` | Announcements as a file on disk plus a desktop notification. |  | `notify-channel:inbox` |
@@ -452,6 +453,38 @@ plugins:
 | `repoByLabel` | `record` | no | `{}` | which repository a label puts a ticket's work in. A ticket labelled into two is two pieces of work, one per repository; a ticket with none of these labels stays in its team's repository |
 | `repoByTeam` | `record` | no | `{}` | which repository a team's tickets land in, by team key |
 | `workingStatusName` | `string` | **yes** |  | the exact status name a ticket must be in to be picked up |
+
+### `@amykit/plugin-next-steps`
+
+A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/next-steps` |
+| Mounts | `tracker` |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core` |
+
+```yaml
+plugins:
+  "@amykit/plugin-next-steps":
+    baseBranch: {}
+    branchPrefix: plan/
+    defaultBranch: main
+    repo: …
+    rows: 1
+    table: plans/next-steps.md
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
+| `branchPrefix` | `string` | no | `plan/` | what a row's branch starts with, before its plan's slug |
+| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
+| `repo` | `string` | **yes** |  | the repository the table lives in, as owner/name |
+| `rows` | `number` | no | `1` | how many rows from the top are work at once; the rest wait their turn |
+| `table` | `string` | no | `plans/next-steps.md` | the table's path in that repository |
 
 ### `@amykit/plugin-notify-fanout`
 

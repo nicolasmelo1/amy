@@ -17,6 +17,9 @@
       "path": "./plugins/file-worktree"
     },
     {
+      "path": "./plugins/next-steps"
+    },
+    {
       "path": "packages/agent-kit"
     },
     {

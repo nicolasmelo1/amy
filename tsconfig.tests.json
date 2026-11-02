@@ -56,6 +56,9 @@
       "@amykit/plugin-github": [
         "plugins/github/src/index.ts"
       ],
+      "@amykit/plugin-next-steps": [
+        "plugins/next-steps/src/index.ts"
+      ],
       "@amykit/plugin-hermes-agent": [
         "plugins/hermes-agent/src/index.ts"
       ],

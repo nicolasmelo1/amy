@@ -106,7 +106,8 @@ seams stand in the way, and each is useful to anybody else. *A usage limit is
 not an attempt* comes first because it is a defect today: a workflow allowing
 two attempts loses them to the clock. *Decisions are asked in a batch* is a
 policy on the review loop that already exists. *A row of next steps is a
-ticket* is what lets `ticket-to-qa` walk a plan at all. *Grooming reads the
+ticket*, delivered at `docs/design/a-row-of-next-steps-is-a-ticket.md`, is what
+lets `ticket-to-qa` walk a plan at all. *Grooming reads the
 sections its workflow declares* is what fills the brief that walk needs, and
 *Telegram is a conversation* is the last because GitHub already carries every
 question while it is missing.
@@ -296,12 +297,13 @@ machine.
 | 34 | [One real ticket walks the lifecycle](one-real-ticket-walks-the-lifecycle.md) | A person walks one real ticket from the working status to QA, records the run as the proof, and the `ticket-to-qa` gate reads that record as locked to the code it ran against |
 | 35 | [A usage limit is not an attempt](a-usage-limit-is-not-an-attempt.md) | A workflow allowing two attempts, on a single Codex rung, survives any number of usage limits and escalates only after two runs that actually failed |
 | 36 | [Decisions are asked in a batch](decisions-are-asked-in-a-batch.md) | Under `policy.decisions: batch`, three review rounds that find one, one and zero decisions reach the owner as one message carrying the two that still apply, after the third round and not before |
-| 37 | [A row of next steps is a ticket](a-row-of-next-steps-is-a-ticket.md) | `ticket-to-qa`, mounted on a `next-steps.md` table, takes its first row from the base branch, walks it to a pull request in the repository the row's plan lives in, and writes nothing anywhere a tracker would have been |
-| 38 | [Telegram is a conversation](telegram-is-a-conversation.md) | A work item's question reaches its own Telegram topic, the process restarts, the operator answers in that topic, and the same work item — and no other — reads the answer and moves on |
-| 39 | [A decision is asked of a port](a-decision-is-asked-of-a-port.md) | A workflow hands one named question to a ladder of deciders from `config.yaml`; with nothing installed it behaves as today, and every answer a model gave is on the record with the model's name and how sure it was |
-| 40 | [A decision model runs on this machine](a-decision-model-runs-on-this-machine.md) | With the network off, "why do you think that?" in the work thread is read as a discussion and "go with option B" as a decision, by a model on the machine, and the record says which model and how sure |
-| 41 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) | A decider whose threshold was never measured only records what it would have said; after `amy decide measure` it decides, and new weights put it back in shadow |
-| 42 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) | The same question is answered by a local model, Clef on Workers AI and OpenAI's Decisions API by changing only `config.yaml`, all pass one conformance suite, and a question declared `local` is refused a hosted rung at boot by name |
+| 37 | [Telegram is a conversation](telegram-is-a-conversation.md) | A work item's question reaches its own Telegram topic, the process restarts, the operator answers in that topic, and the same work item — and no other — reads the answer and moves on |
+| 38 | [A decision is asked of a port](a-decision-is-asked-of-a-port.md) | A workflow hands one named question to a ladder of deciders from `config.yaml`; with nothing installed it behaves as today, and every answer a model gave is on the record with the model's name and how sure it was |
+| 39 | [A decision model runs on this machine](a-decision-model-runs-on-this-machine.md) | With the network off, "why do you think that?" in the work thread is read as a discussion and "go with option B" as a decision, by a model on the machine, and the record says which model and how sure |
+| 40 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) | A decider whose threshold was never measured only records what it would have said; after `amy decide measure` it decides, and new weights put it back in shadow |
+| 41 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) | The same question is answered by a local model, Clef on Workers AI and OpenAI's Decisions API by changing only `config.yaml`, all pass one conformance suite, and a question declared `local` is refused a hosted rung at boot by name |
+
+**Delivered:** *A row of next steps is a ticket* now lives at `docs/design/a-row-of-next-steps-is-a-ticket.md`, where `@amykit/plugin-next-steps` reads a table from the base branch as the tracker `ticket-to-qa` walks.
 
 **Delivered:** *The host lends the checkout* now lives in `docs/design/the-host-lends-the-checkout.md`, where `PluginContext.checkouts()` answers every plugin that works in a checkout and nothing outside the core constructs a `Git`.
 
