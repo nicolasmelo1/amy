@@ -63,7 +63,7 @@ describe("a row of next steps is a ticket", () => {
   it("returns the rows from inProgress() in the table's order, and only the table's", async () => {
     const tickets = await tracker().inProgress();
 
-    expect(tickets.map((ticket) => ticket.id)).toEqual(["show-the-currency", "acme/gadgets:the-refund-total", "round-nothing"]);
+    expect(tickets.map((ticket) => ticket.id)).toEqual(["show-the-currency", "acme+gadgets+the-refund-total", "round-nothing"]);
     expect(tickets.map((ticket) => ticket.priority)).toEqual([1, 2, 3]);
     expect(tickets.every((ticket) => ticket.status === READY)).toBe(true);
   });
@@ -88,10 +88,10 @@ describe("a row of next steps is a ticket", () => {
   });
 
   it("gives an owner/name: row the repository its link points into, and an id that names it", async () => {
-    const ticket = await tracker().get("acme/gadgets:the-refund-total");
+    const ticket = await tracker().get("acme+gadgets+the-refund-total");
 
     expect(ticket).toMatchObject({
-      id: "acme/gadgets:the-refund-total",
+      id: "acme+gadgets+the-refund-total",
       branchName: "plan/the-refund-total",
       repo: "acme/gadgets",
       title: "The refund total",
@@ -114,7 +114,7 @@ describe("a row of next steps is a ticket", () => {
   it("finds a delivered row of another repository by its id, though the table links that repository no more", async () => {
     const world = { "acme/widgets": { "plans/next-steps.md": "| [Show](show-the-currency.md) |\n", "plans/show-the-currency.md": plan("Show") }, "acme/gadgets": WORLD["acme/gadgets"] };
 
-    expect(await tracker(1, world).get("acme/gadgets:a-gadgets-row")).toMatchObject({ id: "acme/gadgets:a-gadgets-row", status: DELIVERED, repo: "acme/gadgets" });
+    expect(await tracker(1, world).get("acme+gadgets+a-gadgets-row")).toMatchObject({ id: "acme+gadgets+a-gadgets-row", status: DELIVERED, repo: "acme/gadgets" });
     expect(await tracker(1, world).get("a-gadgets-row")).toBeNull();
   });
 
@@ -159,7 +159,13 @@ describe("reading a table", () => {
   it("keeps two repositories' plans of one name apart, each by its own id", () => {
     const rows = rowsOf("| [A](acme/a:plans/setup.md) |\n| [B](acme/b:plans/setup.md) |\n| [Ours](setup.md) |\n", { repo: "acme/widgets", path: "plans/next-steps.md" });
 
-    expect(rows.map((row) => row.id)).toEqual(["acme/a:setup", "acme/b:setup", "setup"]);
+    expect(rows.map((row) => row.id)).toEqual(["acme+a+setup", "acme+b+setup", "setup"]);
+  });
+
+  it("makes an id that is a file name on every system", () => {
+    const [row] = rowsOf("| [A](acme/gadgets:plans/setup.md) |\n", { repo: "acme/widgets", path: "plans/next-steps.md" });
+
+    expect(row?.id).toMatch(/^[\w.+-]+$/);
   });
 
   it("refuses two different plans that would be one work item, naming both", () => {

@@ -27,11 +27,11 @@ untouched:
   - plugins/linear/src/**
 criteria:
   - { id: A1, statement: "the rows of an execution-order table come back from inProgress() in the table's order", proof: "test:plugins/next-steps/tests/NextStepsTracker.test.ts", sources: [S1, S4, S5], done: true }
-  - { id: A2, statement: "a row is read from the base branch through BaseSource, and an uncommitted edit to the standing checkout changes nothing", proof: "assertion:next_steps.the_first_committed_row_is_the_work", sources: [S5], done: true }
+  - { id: A2, statement: "a row is read from the base branch through BaseSource, and an uncommitted edit to the standing checkout changes nothing", proof: "assertion:next_steps.the_first_committed_rows_are_the_work", sources: [S5], done: true }
   - { id: A3, statement: "get() returns the plan as the body and the repository the link points into as repo, for a relative link and for an owner/name: link", proof: "test:plugins/next-steps/tests/NextStepsTracker.test.ts", sources: [S6, S8, S9, S10], done: true }
   - { id: A4, statement: "a row that left the table with its plan in docs/design/ reads as delivered, and one that left it with no design note reads as gone", proof: "test:plugins/next-steps/tests/NextStepsTracker.test.ts", sources: [S2, S7], done: true }
   - { id: A5, statement: "the plugin declares no tracker writes and the mount hands it none", proof: "assertion:next_steps.nothing_is_written_where_a_tracker_would_have_been", sources: [S11, S12], done: true }
-  - { id: A6, statement: "ticket-to-qa walks a row of a real table to an open pull request in a testkit world, with no tracker write in its log", proof: "assertion:next_steps.the_row_walks_to_a_pull_request_in_its_plans_repository", sources: [S3, S11, S12, S13], done: true }
+  - { id: A6, statement: "ticket-to-qa walks a row of a real table to an open pull request in a testkit world, with no tracker write in its log", proof: "assertion:next_steps.each_row_walks_to_a_pull_request_in_its_plans_repository", sources: [S3, S11, S12, S13], done: true }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "assertion:next_steps.the_declaration_claims_no_tracker_writes (A5)" }
 guarantee:
@@ -43,7 +43,7 @@ cut:
 deviations:
   - "a branch per row: ticket-to-qa refuses a ticket with no branchName, and the plan named none; the tracker derives branchPrefix + slug, plan/ by default — the agent's choice, for the person to confirm"
   - "rows, default 1: only the top rows are work at once, so a table of forty plans starts one; S5 read every row. The exit's first row is the default — the agent's choice, for the person to confirm"
-  - "a row in another repository has the id owner/name:slug, not the bare slug of S6: two repositories' plans of one name stay two work items, and a delivered one is found in its repository after its last row leaves the table and after a restart (first review); two different plans with one id are refused"
+  - "a row in another repository has the id owner+name+slug, a file name on every system (second review), not the bare slug of S6: two repositories' plans of one name stay two work items, and a delivered one is found in its repository after its last row leaves the table and after a restart (first review); two different plans with one id are refused"
   - "a row is its table position as priority, 1 first, so a queue that orders by priority keeps the table's order"
   - "the end-to-end scenario stops at the pull request the exit names; the walk past it to delivered is the shipped workflow's, with qaStatusName: delivered"
   - "also touched: package.json's e2e list, the generated docs and locks, a changeset"

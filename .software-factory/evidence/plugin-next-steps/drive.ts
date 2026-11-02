@@ -24,10 +24,16 @@ const keep = process.argv.includes("--keep");
 const world = path.join(repo, ".software-factory/evidence/ticket-to-qa");
 
 const WIDGETS = "acme/widgets";
+const GADGETS = "acme/gadgets";
 const FIRST = "show-the-currency-on-the-invoice-total";
 const SECOND = "round-nothing-on-the-invoice";
+// A plan in another repository, linked from widgets' table: its work item's
+// id names the repository, and is still a file name the queue and store keep.
+const ELSEWHERE = "show-the-currency-on-the-credit-note";
+const ELSEWHERE_ID = `acme+gadgets+${ELSEWHERE}`;
 const HALF_WRITTEN = "a-row-somebody-is-still-writing";
 const BRANCH = `plan/${FIRST}`;
+const ELSEWHERE_BRANCH = `plan/${ELSEWHERE}`;
 const TABLE = "plans/next-steps.md";
 
 interface Assertion { type: string; status: "passed" | "failed"; detail?: unknown }
@@ -37,6 +43,7 @@ const record = (type: string, ok: boolean, detail?: unknown) => assertions.push(
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-next-steps-"));
 const git = (cwd: string, ...args: string[]): string => execFileSync("git", args, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 const origin = path.join(root, "origins", "widgets.git");
+const gadgetsOrigin = path.join(root, "origins", "gadgets.git");
 const standing = path.join(root, "checkouts", "widgets");
 const home = path.join(root, "home");
 const recordsDir = path.join(home, ".amy", "tickets", "records");
@@ -57,11 +64,12 @@ try {
   fs.rmSync(path.join(home, ".env"), { force: true });
   // The agent finds the plan clear: a plan has no thread to ask a question on.
   write(path.join(root, "world", "agent.json"), { file: "invoice.md", currency: "BRL", triage: { clear: true, questions: [] }, verdicts: {} });
+  write(path.join(root, "world", "agent-gadgets.json"), { file: "credit-note.md", currency: "BRL", triage: { clear: true, questions: [] } });
 
   // The order, merged on the base branch: two rows, each a plan beside it.
   const plan = (title: string) => `---\nexit: "${title.toLowerCase()}"\n---\n# ${title}\n\nShow the currency beside the invoice total.\n`;
   for (const [file, text] of Object.entries({
-    [TABLE]: `# Next steps\n\n| # | Work | Exit condition |\n| --- | --- | --- |\n| 1 | [Show the currency](${FIRST}.md) | the total says BRL |\n| 2 | [Round nothing](${SECOND}.md) | nothing is rounded |\n`,
+    [TABLE]: `# Next steps\n\n| # | Work | Exit condition |\n| --- | --- | --- |\n| 1 | [Show the currency](${FIRST}.md) | the total says BRL |\n| 2 | [The credit note](${GADGETS}:plans/${ELSEWHERE}.md) | the credit note says BRL |\n| 3 | [Round nothing](${SECOND}.md) | nothing is rounded |\n`,
     [`plans/${FIRST}.md`]: plan("Show the currency on the invoice total"),
     [`plans/${SECOND}.md`]: plan("Round nothing on the invoice"),
   })) {
@@ -71,6 +79,12 @@ try {
   git(standing, "add", "-A");
   git(standing, "commit", "-q", "-m", "the order");
   git(standing, "push", "-q", "origin", "main");
+  const gadgets = path.join(root, "checkouts", "gadgets");
+  fs.mkdirSync(path.join(gadgets, "plans"), { recursive: true });
+  fs.writeFileSync(path.join(gadgets, `plans/${ELSEWHERE}.md`), plan("Show the currency on the credit note"));
+  git(gadgets, "add", "-A");
+  git(gadgets, "commit", "-q", "-m", "a plan widgets' table orders");
+  git(gadgets, "push", "-q", "origin", "main");
   const tableAtStart = git(standing, "--git-dir", origin, "rev-parse", `main:${TABLE}`);
 
   // Somebody is editing the order in the standing checkout and has not
@@ -91,7 +105,7 @@ try {
 
   const said: string[] = [];
   const heard = new Set<string>();
-  let opened = false;
+  const opened = new Set<string>();
   amy("discover");
   for (let tick = 0; tick < 80; tick += 1) {
     const result = amy("tick");
@@ -101,26 +115,36 @@ try {
       heard.add(file);
       const text = fs.readFileSync(path.join(inbox, file), "utf-8").split("\n").slice(5, -3).join("\n").trim();
       said.push(text);
-      if (text.startsWith("Open a pull request") && !opened) opened = openPullRequest(text);
+      if (text.startsWith("Open a pull request")) {
+        for (const [repoName, branch] of [[WIDGETS, BRANCH], [GADGETS, ELSEWHERE_BRANCH]] as const) {
+          if (!opened.has(branch) && openPullRequest(text, repoName, branch)) opened.add(branch);
+        }
+      }
     }
-    if (opened && stateOf(FIRST) === "COPILOT_WAIT") break;
+    if (opened.size === 2 && stateOf(FIRST) === "COPILOT_WAIT" && stateOf(ELSEWHERE_ID) === "COPILOT_WAIT") break;
   }
 
   const ids = fs.existsSync(recordsDir) ? fs.readdirSync(recordsDir).map((file) => decodeURIComponent(file.replace(/\.json$/, ""))) : [];
   // The first row the base branch holds, not the one being written on top of
   // it in the standing checkout, which is left exactly as its owner left it.
   const untouched = git(standing, "rev-parse", "HEAD") === standingHead && fs.readFileSync(path.join(standing, TABLE), "utf-8") === dirtyTable;
-  record("next_steps.the_first_committed_row_is_the_work",
-    ids.length === 1 && ids[0] === FIRST && !said.some((text) => text.includes(HALF_WRITTEN)) && untouched,
+  record("next_steps.the_first_committed_rows_are_the_work",
+    ids.length === 2 && ids.includes(FIRST) && ids.includes(ELSEWHERE_ID) && !said.some((text) => text.includes(HALF_WRITTEN)) && untouched,
     { ids, untouched });
 
-  // Pushed to the plan's repository, opened there, observed, and carrying the agent's work.
-  const pushed = git(root, "--git-dir", origin, "branch", "--list", BRANCH);
-  const pulls = read<CodeHost>(hostFile).repos[WIDGETS]?.pulls.filter((pull) => pull.head === BRANCH) ?? [];
-  const carried = pushed !== "" && git(root, "--git-dir", origin, "show", `${BRANCH}:invoice.md`).includes("BRL");
-  record("next_steps.the_row_walks_to_a_pull_request_in_its_plans_repository",
-    carried && pulls.length === 1 && stateOf(FIRST) === "COPILOT_WAIT",
-    { pushed, carried, pulls: pulls.map((pull) => pull.title), state: stateOf(FIRST) });
+  // Each pushed to its plan's repository, opened there, observed, and carrying the agent's work.
+  const walked = [
+    { id: FIRST, repoName: WIDGETS, bare: origin, branch: BRANCH, file: "invoice.md" },
+    { id: ELSEWHERE_ID, repoName: GADGETS, bare: gadgetsOrigin, branch: ELSEWHERE_BRANCH, file: "credit-note.md" },
+  ].map(({ id, repoName, bare, branch, file }) => {
+    const pushed = git(root, "--git-dir", bare, "branch", "--list", branch) !== "";
+    const pulls = read<CodeHost>(hostFile).repos[repoName]?.pulls.filter((pull) => pull.head === branch) ?? [];
+    const carried = pushed && git(root, "--git-dir", bare, "show", `${branch}:${file}`).includes("BRL");
+    return { id, repoName, pushed, carried, pulls: pulls.length, state: stateOf(id) };
+  });
+  record("next_steps.each_row_walks_to_a_pull_request_in_its_plans_repository",
+    walked.every((one) => one.carried && one.pulls === 1 && one.state === "COPILOT_WAIT"),
+    walked);
 
   const trackerTurns = said.filter((text) => /^(Move |Assign |Comment |Create a follow-up)/.test(text));
   record("next_steps.nothing_is_written_where_a_tracker_would_have_been",
@@ -133,20 +157,21 @@ try {
   else console.log(`kept the world in ${root}`);
 }
 
+/** The record the store saved under the id itself, which is why the id has to be a file name. */
 function stateOf(id: string): string | undefined {
-  const file = path.join(recordsDir, `${encodeURIComponent(id)}.json`);
+  const file = path.join(recordsDir, `${id}.json`);
   return fs.existsSync(file) ? read<{ state: string }>(file).state : undefined;
 }
 
 /** The operator, doing what they were told: the pull request, from the branch the machine pushed. */
-function openPullRequest(text: string): boolean {
+function openPullRequest(text: string, repoName: string, branch: string): boolean {
   const title = /titled "([^"]+)"/.exec(text)?.[1];
-  if (!title || !text.includes(`from ${BRANCH} into main`) || !text.includes(`in ${WIDGETS}`)) return false;
+  if (!title || !text.includes(`from ${branch} into main`) || !text.includes(`in ${repoName},`)) return false;
   const hosted = read<CodeHost>(hostFile);
-  const entry = hosted.repos[WIDGETS];
+  const entry = hosted.repos[repoName];
   if (!entry) return false;
-  entry.pulls = entry.pulls.filter((pull) => pull.head !== BRANCH);
-  entry.pulls.push({ number: hosted.nextNumber++, title, body: "", head: BRANCH, base: "main", state: "open", isDraft: false, reviewDecision: "REVIEW_REQUIRED", changedFiles: 1, additions: 3, deletions: 0, mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", checks: "SUCCESS", requestedReviewers: [], reviews: [], threads: [] });
+  entry.pulls = entry.pulls.filter((pull) => pull.head !== branch);
+  entry.pulls.push({ number: hosted.nextNumber++, title, body: "", head: branch, base: "main", state: "open", isDraft: false, reviewDecision: "REVIEW_REQUIRED", changedFiles: 1, additions: 3, deletions: 0, mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", checks: "SUCCESS", requestedReviewers: [], reviews: [], threads: [] });
   write(hostFile, hosted);
   return true;
 }
@@ -172,6 +197,7 @@ autoUpdate:
 
 repos:
   - ${WIDGETS}
+  - ${GADGETS}
 
 workingStatusName: ${"ready"}
 # A row's plan moved to docs/design/ by a merged pull request is delivered.
@@ -193,6 +219,9 @@ gate:
   ${WIDGETS}:
     - test -f invoice.md
     - grep -q "currency:" invoice.md
+  ${GADGETS}:
+    - test -f credit-note.md
+    - grep -q "currency:" credit-note.md
 
 agent:
   model: sonnet
@@ -208,6 +237,7 @@ notify:
 plugins:
   "@amykit/plugin-next-steps":
     repo: ${WIDGETS}
+    rows: 2
 `, "utf-8");
 }
 
@@ -229,7 +259,7 @@ function installPlugins(): void {
 const failed = assertions.filter((assertion) => assertion.status !== "passed");
 const report = {
   scenario: "plugin-next-steps",
-  goal: "Prove ticket-to-qa, mounted on a next-steps table through the installed executable, takes the first committed row from the base branch, walks it to a pull request in the plan's repository, and writes nothing where a tracker would have been.",
+  goal: "Prove ticket-to-qa, mounted on a next-steps table through the installed executable, takes the top committed rows from the base branch, one of them a plan in another repository, walks each to a pull request in its plan's repository, and writes nothing where a tracker would have been.",
   status: failed.length === 0 ? "passed" : "failed",
   assertions,
 };

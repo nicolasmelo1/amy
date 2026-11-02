@@ -2,8 +2,10 @@
 export interface Row {
   /**
    * The work item's id: the plan's slug for a plan in the table's repository,
-   * `owner/name:slug` for one in another. Unique across the table, and it
-   * names the repository even after the row has left it.
+   * `owner+name+slug` for one in another. Unique across the table, it names
+   * the repository even after the row has left it, and it is a file name on
+   * every system: the queue and the store keep work under its id, and `+` is
+   * in no GitHub owner, repository or slug.
    */
   id: string;
   /** The plan's file name without `.md`. */
@@ -65,15 +67,18 @@ function rowOf(line: string, table: { repo: string; path: string }): Row | null 
   return { id: idOf(repo, slug, table.repo), slug, repo, path, label };
 }
 
-/** The slug where the plan is the table's own, `owner/name:slug` where it is another repository's. */
+/** The slug where the plan is the table's own, `owner+name+slug` where it is another repository's. */
 export function idOf(repo: string, slug: string, tableRepo: string): string {
-  return repo === tableRepo ? slug : `${repo}:${slug}`;
+  return repo === tableRepo ? slug : `${repo.replace("/", "+")}+${slug}`;
 }
+
+/** `owner+name+slug`, the id of a plan in another repository. */
+const QUALIFIED = /^([\w.-]+)\+([\w.-]+)\+(.+)$/;
 
 /** A work item's repository and slug, read back from its id. */
 export function placeOf(id: string, tableRepo: string): { repo: string; slug: string } {
-  const elsewhere = ELSEWHERE.exec(id);
-  return elsewhere ? { repo: elsewhere[1]!, slug: elsewhere[2]! } : { repo: tableRepo, slug: id };
+  const qualified = QUALIFIED.exec(id);
+  return qualified ? { repo: `${qualified[1]}/${qualified[2]}`, slug: qualified[3]! } : { repo: tableRepo, slug: id };
 }
 
 function directoryOf(path: string): string {

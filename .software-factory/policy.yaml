@@ -767,8 +767,8 @@ gates:
     plan: "docs/design/a-row-of-next-steps-is-a-ticket.md"
     required_assertions:
       - "next_steps.the_declaration_claims_no_tracker_writes"
-      - "next_steps.the_first_committed_row_is_the_work"
-      - "next_steps.the_row_walks_to_a_pull_request_in_its_plans_repository"
+      - "next_steps.the_first_committed_rows_are_the_work"
+      - "next_steps.each_row_walks_to_a_pull_request_in_its_plans_repository"
       - "next_steps.nothing_is_written_where_a_tracker_would_have_been"
 
   # A reply in the work's thread is a turn in a discussion or the decision

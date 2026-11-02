@@ -8,7 +8,7 @@ default — read from the base branch, never from the standing checkout: a row
 is a work item, its linked plan the body, its place in the table the
 priority. A relative link is a plan in the table's repository, its id the
 slug; an `owner/name:plans/<slug>.md` link is one in another, its id
-`owner/name:<slug>`, so one table can order the work of several. Only the top `rows` (one by default) are work at once, a row
+`owner+name+<slug>`, so one table can order the work of several. Only the top `rows` (one by default) are work at once, a row
 gone from the table with its plan in `docs/design/` reads as `delivered`, and
 the branch is `branchPrefix` (`plan/` by default) and the plan's slug.
 
