@@ -190,6 +190,14 @@ function configure(): void {
     workflow: "@amykit/workflow-ticket-to-qa"
     plugins:
 ${plugins.map((name) => `      - "${name}"`).join("\n")}
+    settings:
+      qaStatusName: delivered
+      # A row's plan moved to docs/design/ by a merged pull request is delivered.
+      policy:
+        maxOpenReviewsPerReviewer: 2
+        pollBackoffMs: 0
+        rosterBackoffMs: 0
+        writes: operator
 defaultWorkflow: tickets
 
 autoUpdate:
@@ -198,16 +206,6 @@ autoUpdate:
 repos:
   - ${WIDGETS}
   - ${GADGETS}
-
-workingStatusName: ${"ready"}
-# A row's plan moved to docs/design/ by a merged pull request is delivered.
-qaStatusName: delivered
-
-policy:
-  maxOpenReviewsPerReviewer: 2
-  pollBackoffMs: 0
-  rosterBackoffMs: 0
-  writes: operator
 
 workspaceRoot: ${path.join(root, "checkouts")}
 defaultBranch: main
