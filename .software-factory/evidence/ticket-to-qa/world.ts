@@ -373,10 +373,23 @@ function config(root: string, endpoint: string, engine: EngineChoice): string {
     ? `\n    plugins:\n${CONCURRENT_PLUGINS.map((name) => `      - "${name}"`).join("\n")}`
     : "";
   return `# The workflow is named, not shipped: a machine drives nothing until the
-# config declares one, so this run names the one it is driving.
+# config declares one, so this run names the one it is driving. The settings
+# under it are the workflow's vocabulary — the status a ticket lands in for
+# QA, and the ceilings its decisions read — because they belong to the profile
+# that drives, not to the machine.
 workflows:
   tickets:
     workflow: "@amykit/workflow-ticket-to-qa"${plugins}
+    settings:
+      qaStatusName: In QA
+
+      # Zero, because the queue is the schedule and this run is driven a move
+      # at a time. In production these are the minutes a waiting state backs
+      # off for.
+      policy:
+        maxOpenReviewsPerReviewer: 2
+        pollBackoffMs: 0
+        rosterBackoffMs: 0
 defaultWorkflow: tickets
 
 # Package updates have their own installed scenario. This one drives more
@@ -389,16 +402,6 @@ repos:
   - ${REPO}
   - ${OTHER_REPO}
 
-workingStatusName: In Progress
-qaStatusName: In QA
-
-# Zero, because the queue is the schedule and this run is driven a move at a
-# time. In production these are the minutes a waiting state backs off for.
-policy:
-  maxOpenReviewsPerReviewer: 2
-  pollBackoffMs: 0
-  rosterBackoffMs: 0
-
 workspaceRoot: ${path.join(root, "checkouts")}
 # One repository names its own root: the checkout is under a parent nothing
 # else in this config shares, which is the claim — no symlink, and nothing
@@ -409,10 +412,6 @@ defaultBranch: main
 worktrees:
   root: ${path.join(root, "worktrees")}
   retentionDays: 0
-
-repoByTeam:
-  BILL: ${REPO}
-  OPS: ${OTHER_REPO}
 
 # A real gate: two shell commands, run in the checkout, and the second one
 # fails until the work is actually right. The first writes down which tree
@@ -440,8 +439,9 @@ notify:
   hermes: null
   inbox: true
 
-# The tracker's own slice, which is the only way the endpoint moves. Naming a
-# slice replaces the derived one, so every setting the plugin declared is here.
+# The tracker's own slice. A hand-written slice is merged over the derived
+# one, so only the settings somebody meant to change need to be named — and
+# the tracker's vocabulary lives nowhere but here, which is the point.
 plugins:
   "@amykit/plugin-linear":
     workingStatusName: In Progress

@@ -157,6 +157,16 @@ workflows:
   errand:
     workflow: "@amykit/workflow-errand"
     tasks: true
+    # The ceilings the errand's own decisions read, said where they are read:
+    # under the profile that drives, because a second profile running the
+    # same workflow carries its own numbers.
+    settings:
+      policy:
+        maxAttempts: 2
+        maxInFlight: 3
+        # Zero, because the queue is the schedule and this run is driven a
+        # move at a time. In production this is half an hour.
+        ceilingBackoffMs: 0
   ledger:
     workflow: "@amykit/workflow-errand"
 defaultWorkflow: errand
@@ -183,16 +193,6 @@ maxItemAttempts: 1
 # every twentieth command would ask the real registry.
 autoUpdate:
   enabled: false
-
-# Two attempts, as in production, so a refusal that ends on the first is the
-# agent's decision and not a ceiling the work ran into.
-errands:
-  policy:
-    maxAttempts: 2
-    maxInFlight: 3
-    # Zero, because the queue is the schedule and this run is driven a move at
-    # a time. In production this is half an hour.
-    ceilingBackoffMs: 0
 
 # One rung: the stand-in \`claude\` is the only harness on this PATH, and a
 # ladder that named a second one would spend the run discovering that.

@@ -69,7 +69,7 @@ function addAfterhours(): void {
   fs.writeFileSync(config, kept.join("\n"));
 }
 
-/** The profile that reads the roster, named where the machine's config names its workflows. */
+/** The profiles reading the roster and every retired top-level key, named where the machine's config names its workflows. */
 function addTickets(): void {
   const lines = fs.readFileSync(config, "utf8").split("\n");
   const kept: string[] = [];
@@ -79,6 +79,10 @@ function addTickets(): void {
     if (!spliced && line.trim() === "workflows:") {
       kept.push("  tickets:");
       kept.push('    workflow: "@amykit/workflow-ticket-to-qa"');
+      kept.push("  plans:");
+      kept.push('    workflow: "@amykit/workflow-note-to-plan"');
+      kept.push("  errands:");
+      kept.push('    workflow: "@amykit/workflow-errand"');
       spliced = true;
     }
   }
@@ -87,13 +91,41 @@ function addTickets(): void {
     process.exit(1);
   }
   let text = kept.join("\n");
-  // The settings the current shape reads off the top level, the way this
-  // machine's own workflow read them at its version: the ticket's slice and
-  // the tracker's both come from here until the config plan re-homes them.
+  // The vocabulary an older release kept at the top level, written the way
+  // this machine's own workflows read them at their version: the ticket's
+  // ceilings, the planner's repositories and its check, the errand's, and the
+  // tracker's status name and team map. The update is what re-homes all of
+  // it, so this is the pre-move state the assertions prove moved.
   const wanted: [RegExp, string][] = [
     [/^qaStatusName:/m, "qaStatusName: In QA"],
     [/^workingStatusName:/m, "workingStatusName: In Progress"],
+    [/^repoByTeam:/m, "repoByTeam:\n  BILL: example.test/gadgets"],
     [/^repos:/m, "repos:\n  - example.test/gadgets"],
+    [/^policy:/m, [
+      "# The ceilings the ticket workflow's decisions read, kept at the top",
+      "# level the way an older release carried them.",
+      "policy:",
+      "  maxImplementAttempts: 3",
+      "  pollBackoffMs: 0",
+      "  rosterBackoffMs: 0",
+    ].join("\n")],
+    [/^plans:/m, [
+      "# The planner's repositories, and the check that judges a plan.",
+      "plans:",
+      "  repos:",
+      "    - example.test/gadgets",
+      "  check:",
+      "    default:",
+      '      - echo "the plan check"',
+    ].join("\n")],
+    [/^errands:/m, [
+      "# The ceilings the errand's own decisions read.",
+      "errands:",
+      "  policy:",
+      "    maxAttempts: 2",
+      "    maxInFlight: 3",
+      "    ceilingBackoffMs: 0",
+    ].join("\n")],
   ];
   for (const [marker, block] of wanted) {
     if (!marker.test(text)) text += `\n${block}`;

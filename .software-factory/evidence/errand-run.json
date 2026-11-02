@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 20,
+    "assertions_run": 21,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 37,
@@ -50,7 +50,7 @@
       "committed-task:DONE",
       "foreign-task:DECLINED",
       "refusal-task:DECLINED",
-      "task-2026-11-02T001440422:DONE"
+      "task-2026-11-02T174759038:DONE"
     ]
   },
   "assertions": [
@@ -60,6 +60,10 @@
     },
     {
       "type": "errand.a_task_in_the_directory_is_discovered",
+      "status": "passed"
+    },
+    {
+      "type": "errand.init_and_add_write_a_config_that_boots",
       "status": "passed"
     },
     {

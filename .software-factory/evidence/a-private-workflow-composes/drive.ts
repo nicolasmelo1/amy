@@ -854,7 +854,7 @@ function startTracker(root: string): { child: ChildProcess; endpoint: string } {
 function operatorConfig(root: string, endpoint: string) {
   const file = path.join(root, "home", ".amy", "config.yaml");
   let text = fs.readFileSync(file, "utf-8");
-  text = text.replace("  rosterBackoffMs: 0\n", "  rosterBackoffMs: 0\n  writes: operator\n");
+  text = text.replace("        rosterBackoffMs: 0\n", "        rosterBackoffMs: 0\n        writes: operator\n");
   text = text.replace(`    defaultRepo: ${REPO}\n`, `    defaultRepo: ${REPO}\n    repoByLabel:\n      widgets: ${REPO}\n      gadgets: ${OTHER_REPO}\n`);
   if (!text.includes("writes: operator") || !text.includes("repoByLabel")) throw new Error("the world's config moved; the operator edit no longer applies");
   void endpoint;

@@ -38,10 +38,32 @@ done
 bin=$(mktemp -d)
 install_lib=$(mktemp -d)
 tarballs=$(mktemp -d)
-cleanup() { rm -rf "$bin" "$install_lib" "$tarballs"; }
+regst=$(mktemp -d)
+regpid=""
+cleanup() {
+  if [ -n "$regpid" ]; then kill "$regpid" 2>/dev/null || true; fi
+  rm -rf "$bin" "$install_lib" "$tarballs" "$regst";
+}
 trap cleanup EXIT INT TERM
 
 AMY_INSTALL_LIB="$install_lib" AMY_TARBALLS="$tarballs" "$repo/scripts/install.sh" "$bin" >/dev/null
 test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
+
+# `amy add @amykit/workflow-errand` runs real npm, and real npm resolves the
+# tarball's dependencies by version against a registry. A static one on the
+# loopback publishes exactly the tarballs the installer packed, so the
+# version ranges resolve to this build — and the run never reaches any real
+# registry, which is the claim rather than a convenience.
+mkdir -p "$regst/tarballs"
+for ball in "$tarballs"/*.tgz; do ln -s "$ball" "$regst/tarballs/"; done
+"$repo/node_modules/.bin/tsx" "$here/amy-update/registry.ts" "$regst" "$repo/node_modules" >/dev/null &
+regpid=$!
+for _ in $(seq 1 50); do
+  if [ -f "$regst/url" ]; then break; fi
+  sleep 0.1
+done
+test -f "$regst/url" || { echo "the stand-in registry did not come up" >&2; exit 1; }
+AMY_E2E_REGISTRY=$(cat "$regst/url")
+export AMY_E2E_REGISTRY
 
 AMY_E2E_TARBALLS="$tarballs" "$repo/node_modules/.bin/tsx" "$here/errand/drive.ts" "$here/errand" "$bin/amy" "$report" $keep
