@@ -538,6 +538,10 @@ gates:
   # them means the last run proved a machine that no longer exists.
   amy-update:
     activation:
+      # The migration the update carries for an older machine: the roster's
+      # move out of the machine root is what some of this gate's assertions
+      # prove, so a change to that file is a change to what was proved.
+      - "packages/cli/src/plugin-commands.ts"
       - "packages/cli/src/update.ts"
       - "packages/cli/src/index.ts"
       - "packages/cli/src/skills-record.ts"
