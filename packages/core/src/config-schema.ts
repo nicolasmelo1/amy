@@ -51,10 +51,31 @@ export type ValueFor<Field extends ConfigField> = ConfigValueFor<Field["type"]> 
       : Value | undefined
   : never;
 
-/** The post-validation shape a schema promises to its plugin. */
+/** One intersection piece a dotted schema key contributes to the plugin's config. */
+type PieceOf<S extends ConfigSchema, K extends keyof S> = K extends `${infer Head}.${infer Rest}`
+  ? Rest extends `${infer Inner}.${infer Tail}`
+    ? { [H in Head]: RestPieceOf<Tail, Inner, S[K]> }
+    : { [H in Head]: { [L in Rest]: ValueFor<S[K]> } }
+  : never;
+
+/** The inner segments of a path of three or more, folded into nested groups. */
+type RestPieceOf<Rest extends string, Head extends string, Value> = Rest extends `${infer Inner}.${infer Tail}`
+  ? { [H in Head]: RestPieceOf<Tail, Inner, Value> }
+  : { [H in Head]: { [L in Rest]: Value } };
+
+type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
+
+/**
+ * The post-validation shape a schema promises to its plugin.
+ *
+ * Undotted keys carry their own values; dotted keys meet as nested groups.
+ * A key with no dots contributes `never` to the intersection, which is the
+ * union's own identity, so a schema without dotted keys produces exactly
+ * what it always produced.
+ */
 export type ConfigOf<S extends ConfigSchema> = {
   [K in keyof S as K extends `${string}.${string}` ? never : K]: ValueFor<S[K]>
-};
+} & UnionToIntersection<{ [K in keyof S]: K extends `${string}.${string}` ? PieceOf<S, K> : never }[keyof S]>;
 
 export type ConfigResult =
   | { ok: true; config: Record<string, unknown> }
@@ -83,6 +104,17 @@ export function validateConfig(
 
   for (const [head, leaves] of groups) {
     if (!Object.hasOwn(given, head)) {
+      // An absent group is no different from an empty one: a leaf the schema
+      // requires is still owed, named with the path it would have been
+      // written at, and a group that requires nothing fills its defaults
+      // where the plugin expects to read them.
+      const owed = [...leaves.entries()].filter(([, spec]) => spec.required);
+      if (owed.length > 0) {
+        problems.push(
+          ...owed.map(([leaf, spec]) => `${plugin}: \`${head}.${leaf}\` is required — ${spec.description}`),
+        );
+        continue;
+      }
       const filled = fill(leaves);
       if (filled === undefined) continue;
       config[head] = filled;
@@ -177,8 +209,10 @@ function acceptOwn(
 /**
  * An unknown key is almost always a typo in a field that matters, and
  * ignoring it means the setting silently never applied. A dotted schema
- * names its group's leaves, so a leaf somebody wrote and no leaf declared
- * is named the same way, with the path it was written at.
+ * names its group's leaves, so anything the machine wrote that no dotted
+ * path declares is refused with the path it was written at — including
+ * levels inside a group, where a typo three segments deep must not fall
+ * through to a silent default.
  */
 function rejectUnknown(
   plugin: string,
@@ -188,8 +222,40 @@ function rejectUnknown(
   problems: string[],
 ): void {
   for (const key of Object.keys(given)) {
-    if (!own.some(({ key: ownKey }) => ownKey === key) && !groups.has(key)) {
+    if (own.some(({ key: ownKey }) => ownKey === key)) continue;
+    const leaves = groups.get(key);
+    if (leaves === undefined) {
       problems.push(`${plugin}: \`${key}\` is not a setting this plugin has`);
+      continue;
+    }
+    // A declared group still owes its given shape. Scalars and wrong shapes
+    // are named by the group's own validator below; what is left to refuse
+    // here is everything the settings carry that no declared path reaches.
+    rejectOutsidePaths(plugin, key, given[key], leaves.keys(), [], problems);
+  }
+}
+
+/** Refuses the names a group was given that its schema's paths do not reach. */
+function rejectOutsidePaths(
+  plugin: string,
+  head: string,
+  value: unknown,
+  declaredLeaves: IterableIterator<string>,
+  walked: string[],
+  problems: string[],
+): void {
+  if (!isRecord(value)) return;
+  const leaves = [...declaredLeaves];
+  for (const name of Object.keys(value)) {
+    const at = [...walked, name];
+    const path = [head, ...at].join(".");
+    const reaching = leaves.filter((leaf) => leaf === at.join(".") || leaf.startsWith(at.join(".") + "."));
+    if (reaching.length === 0) {
+      problems.push(`${plugin}: \`${path}\` is not a setting this plugin has`);
+      continue;
+    }
+    if (reaching.every((leaf) => leaf !== at.join("."))) {
+      rejectOutsidePaths(plugin, head, value[name], reaching.map((leaf) => leaf.slice(at.join(".").length + 1)).values(), at, problems);
     }
   }
 }

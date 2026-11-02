@@ -687,10 +687,20 @@ export function migrateSettingsFile(home: string): SettingsMoved {
     if (entry === undefined) continue;
     const value = unwrap(entry.value);
 
-    const placed =
+    const moved =
       moveIntoWorkflows(workflows, key, value, readers) || moveToTrackerSlice(document, top, key, entry);
 
-    if (!placed) continue;
+    if (!moved) {
+      // An init-era block nobody mounted still names itself at the top
+      // level, and a later boot refuses it by name: the move takes it out
+      // of the file it would break, keeps the original beside the move, and
+      // says what became of it rather than leaving a machine that cannot
+      // mount after the one command built to fix the file.
+      top.delete(key);
+      dropped.push(key);
+      said.push(`${key}: nothing mounted reads it; kept only in the backup`);
+      continue;
+    }
     top.delete(key);
     dropped.push(key);
     const where = key === "workingStatusName" || key === "repoByTeam"
@@ -701,10 +711,36 @@ export function migrateSettingsFile(home: string): SettingsMoved {
 
   if (dropped.length === 0) return { ok: true, said: [] };
 
+  materializeTicketStatus(document, top, said);
+
   const movedTo = `${place}.moved`;
   fs.writeFileSync(movedTo, text, "utf-8");
   fs.writeFileSync(place, String(document), "utf-8");
   return { ok: true, said, movedTo };
+}
+
+/**
+ * A machine the old EXAMPLE wrote always named its QA status, but one edited
+ * by hand may not have: the ticket schema requires the status, no slice
+ * supplies it any more, and a machine this update touches cannot be left
+ * without a value the mount will refuse. The ticket's profile gains what
+ * init would have written, said the way a move is said.
+ */
+function materializeTicketStatus(document: yaml.Document, top: yaml.YAMLMap, said: string[]): void {
+  const workflowsMap = entryOf(top, "workflows");
+  if (workflowsMap === undefined || !yaml.isMap(workflowsMap.value)) return;
+  for (const item of workflowsMap.value.items) {
+    const profile = item.value;
+    if (!yaml.isMap(profile) || unwrap(profile.get("workflow")) !== "@amykit/workflow-ticket-to-qa") continue;
+    if (entryOf(top, "qaStatusName") !== undefined) continue;
+    const settingsMap = profile.get("settings");
+    if (yaml.isMap(settingsMap)) {
+      if (!settingsMap.has("qaStatusName")) settingsMap.add(new yaml.Pair("qaStatusName", "In QA"));
+    } else {
+      profile.add(new yaml.Pair("settings", toMap({ qaStatusName: "In QA" })));
+    }
+    said.push("qaStatusName: set to In QA, the value init wrote, which the ticket workflow requires");
+  }
 }
 
 /**

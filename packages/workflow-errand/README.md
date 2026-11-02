@@ -42,9 +42,10 @@ plugins:
   "@amykit/workflow-errand":
     baseBranch: {}
     defaultBranch: "main"
-    policy.ceilingBackoffMs: 1800000
-    policy.maxAttempts: 2
-    policy.maxInFlight: 3
+    policy:
+      ceilingBackoffMs: 1800000
+      maxAttempts: 2
+      maxInFlight: 3
     queueDirectory: "queue"
     repos: []
     tasksDirectory: "tasks"

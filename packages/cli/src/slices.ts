@@ -14,7 +14,12 @@ import { profilePaths } from "./paths.js";
  * schema. An explicit `plugins:` slice always wins, which is the direction
  * this is moving in.
  */
-export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: string): Record<string, unknown> {
+export function pluginSlices(
+  config: AmyConfig,
+  profile: Profile,
+  stateDir?: string,
+  pluginNames?: ReadonlyMap<string, string>,
+): Record<string, unknown> {
   assertPhaseStateDirectoriesAreNotShared(config, profile);
   const dirs = stateDirectories(stateDir, profile);
   const own = pluginStateDirectories(stateDir, profile);
@@ -23,8 +28,11 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
   const derived = derivedSlices(config, profile, dirs, own, agent, stateDir);
   Object.assign(derived, slackSlice(own.slack));
   addNotifySlices(config, derived);
+  // The profile's own settings come first, and a slice written by hand wins
+  // over them: that is the order the config always read in. The settings are
+  // the workflow's vocabulary, checked against its configSchema at mount.
+  applyOwnProfileSettings(profile, pluginNames ?? new Map(), derived);
   mergeInGivenSlices(derived, config.plugins);
-  applyOwnProfileSettings(profile, derived);
 
   // The command that writes a file and the adapter that read it must agree,
   // including when somebody overrode the adapter's directory by hand. The
@@ -179,12 +187,20 @@ function mergeInGivenSlices(derived: Record<string, unknown>, given: Record<stri
 
 // The profile's own settings are the workflow's vocabulary, checked against
 // the workflow's own schema at mount: they beat what was derived, and an
-// unknown key there is a boot refusal naming it, not a setting ignored.
-function applyOwnProfileSettings(profile: Profile, merged: Record<string, unknown>): void {
+// unknown key there is a boot refusal naming it. A workflow brought by spec
+// can be named by its plugin differently — a local declaration without a
+// plugin name answers to `workflow-oncall` — so the settings land on the
+// name the mount reads the plugin by.
+function applyOwnProfileSettings(
+  profile: Profile,
+  pluginNames: ReadonlyMap<string, string>,
+  merged: Record<string, unknown>,
+): void {
   const ownSettings = profile.settings ?? {};
   if (Object.keys(ownSettings).length === 0) return;
-  const current = merged[profile.workflow];
-  merged[profile.workflow] = isRecord(current) ? { ...current, ...ownSettings } : { ...ownSettings };
+  const mountName = pluginNames.get(profile.workflow) ?? profile.workflow;
+  const current = merged[mountName];
+  merged[mountName] = isRecord(current) ? { ...current, ...ownSettings } : { ...ownSettings };
 }
 
 /**

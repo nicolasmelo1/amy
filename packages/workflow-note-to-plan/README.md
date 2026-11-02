@@ -45,9 +45,10 @@ plugins:
     check: {"default":["sf check"]}
     defaultBranch: "main"
     notesDirectory: "notes"
-    policy.ceilingBackoffMs: 3600000
-    policy.maxDraftAttempts: 3
-    policy.maxOpenPlansPerRepo: 2
+    policy:
+      ceilingBackoffMs: 3600000
+      maxDraftAttempts: 3
+      maxOpenPlansPerRepo: 2
     queueDirectory: "queue"
     repos: <string[]>
 ```

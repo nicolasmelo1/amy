@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   ConfigSchema,
+  ConfigOf,
   HostServices,
   Plugin,
   Plan,
@@ -15,6 +16,7 @@ import {
   optional,
   planning,
   port,
+  validateConfig,
   WORKFLOW_RUNTIME,
   withDiagram,
   workflowActions,
@@ -126,6 +128,59 @@ describe("defineWorkflow", () => {
 
     expect(outcome.ok).toBe(false);
     expect(outcome.ok === false && outcome.problems.join("; ")).toContain("`policy.attemptz` is not a setting this plugin has");
+  });
+
+  it("refuses a typo three segments deep by the path it was written at", async () => {
+    const plugin = {
+      name: "deep-kept",
+      configSchema: {
+        "policy.limits.maxAttempts": { type: "number", default: 2, description: "how many tries an attempt gets" },
+      } satisfies ConfigSchema,
+      register() {},
+    };
+    const outcome = await mount(
+      [plugin, source],
+      { [plugin.name]: { policy: { limits: { maxAttemps: 9 } } } },
+      HOST,
+    );
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "`policy.limits.maxAttemps` is not a setting this plugin has",
+    );
+  });
+
+  it("refuses an absent group whose schema requires a leaf", async () => {
+    const plugin = {
+      name: "owed-kept",
+      configSchema: {
+        "auth.token": { type: "string", required: true, description: "the credential the workflow signs with" },
+      } satisfies ConfigSchema,
+      register() {},
+    };
+    const outcome = await mount([plugin, source], { [plugin.name]: {} }, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "`auth.token` is required — the credential the workflow signs with",
+    );
+  });
+
+  // A dotted schema names a nested group, and the plugin reads it nested:
+  // the validator fills the group where the schema put it, and the type the
+  // checker promises the plugin compiles without a cast, or it lies about
+  // what the validator just filled.
+  it("fills a dotted schema's group nested, typed without a cast", () => {
+    const schema = {
+      "policy.attempts": { type: "number", default: 2, description: "tries per item" },
+    } as const;
+    const outcome = validateConfig("nested-reader", schema, {});
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok === false ? undefined : outcome.config).toEqual({ policy: { attempts: 2 } });
+    const config = (outcome.ok ? outcome.config : {}) as ConfigOf<typeof schema>;
+    const attempts: number | undefined = config.policy?.attempts;
+    expect(attempts).toBe(2);
   });
 
   it("refuses a decision default its schema does not declare, naming the key", async () => {

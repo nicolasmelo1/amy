@@ -2,7 +2,7 @@ import { ConfigSchema } from "@amykit/core";
 import { load } from "./loader.js";
 import { machineSchema, type AmyConfig } from "./config.js";
 import type { Profile } from "./profiles.js";
-import { pluginList } from "./slices.js";
+import { pluginList, pluginSlices } from "./slices.js";
 
 /**
  * `amy config explain`, as data rather than as stdout.
@@ -24,12 +24,14 @@ export type ExplainReport = {
  * Every setting one schema carries, on one line each.
  *
  * The line is what an operator reads to decide a value: what it is called,
- * what kind of thing it takes, what happens when it is left out, and why the
- * setting exists at all — the schema's description, not the docs page.
+ * what kind of thing it takes, whether the machine carries a value for it
+ * right now, and what happens when it is left out — the schema's shape, the
+ * machine's effective choice beside it.
  */
-export function describeEntries(schema: ConfigSchema): string[] {
+export function describeEntries(schema: ConfigSchema, given?: Readonly<Record<string, unknown>>): string[] {
   return Object.entries(schema).map(([key, spec]) => {
-    const when = spec.required ? "required" : spec.default === undefined ? "not set" : `default ${stringOf(spec.default)}`;
+    const supplied = given !== undefined && Object.hasOwn(given, key) ? `set ${stringOf(given[key])}` : undefined;
+    const when = supplied ?? (spec.required ? "required" : spec.default === undefined ? "not set" : `default ${stringOf(spec.default)}`);
     return `  ${key.padEnd(40)}${spec.type.padEnd(10)}${when.padEnd(24)}${spec.description}`;
   });
 }
@@ -53,10 +55,18 @@ export async function explainReport(config: AmyConfig, profile: Profile, plugin:
   // any workflow's vocabulary: the machine's own settings are one short list,
   // and everything a workflow answers belongs to the thing that answers.
   const lines: string[] = ["machine:"];
+  // The machine's own settings are the short list the top level always was:
+  // named, typed, defaulted — a profile's settings are dumped in full under
+  // the plugin they belong to, and a machine record here would bury the one
+  // value the operator is looking for under every other profile's noise.
   for (const line of describeEntries(machineSchema)) lines.push(line);
 
   const specs = pluginList(config, profile);
   const loaded = await load(specs, resolve, pluginsRoot);
+  // What the machine would actually mount, not what its schema asks for: an
+  // operator tuning one setting wants the value the mount would hand the
+  // plugin, with the schema's default named for what the machine left out.
+  const slots = pluginSlices(config, profile);
 
   if (plugin !== undefined && !specs.includes(plugin)) {
     return {
@@ -68,12 +78,19 @@ export async function explainReport(config: AmyConfig, profile: Profile, plugin:
 
   const chosen = plugin === undefined ? specs : specs.filter((spec) => spec === plugin);
   for (const spec of chosen) {
-    const schema = loaded.bySpec.get(spec)?.configSchema;
+    const module = loaded.bySpec.get(spec);
+    const schema = module?.configSchema;
+    const effective = slots[module?.name ?? spec];
     lines.push(``, `${spec}${schema === undefined ? " (no settings of its own)" : ":"}`);
     if (schema !== undefined && Object.keys(schema).length > 0) {
-      for (const line of describeEntries(schema)) lines.push(line);
+      for (const line of describeEntries(schema, isMapping(effective) ? effective : undefined)) lines.push(line);
     }
   }
 
   return { lines, problems: loaded.problems };
+}
+
+/** Whether a value is the mapping a slice's settings arrive as. */
+function isMapping(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

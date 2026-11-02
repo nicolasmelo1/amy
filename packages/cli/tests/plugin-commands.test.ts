@@ -247,6 +247,7 @@ describe("a plugin's commands, check and file", () => {
       [
         {
           owner: "@acme/plugin-demo",
+          spec: "@acme/plugin-demo",
           plugin: demo(),
           profiles: [WORK],
           commands: [],
@@ -255,6 +256,7 @@ describe("a plugin's commands, check and file", () => {
         },
         {
           owner: "@acme/plugin-second",
+          spec: "@acme/plugin-second",
           plugin: demo({ name: "@acme/plugin-second" }),
           profiles: [second],
           commands: [],
@@ -305,6 +307,7 @@ describe("a plugin's commands, check and file", () => {
       [
         {
           owner: "@acme/plugin-credentials",
+          spec: "@acme/plugin-credentials",
           plugin: demo({ name: "@acme/plugin-credentials" }),
           profiles: [WORK],
           commands: [],

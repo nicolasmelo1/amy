@@ -2234,7 +2234,9 @@ configCommand
     // read what this prints without a subprocess. What the command adds is
     // only where the answer lands — stdout, or nothing worth an exit of 0.
     const config = loadConfig(home);
-    const report = await explainReport(config, selected(config), plugin);
+    // Where the installed packages are: the report reads the plugins this
+    // machine mounted, not whichever copy a repo checkout sees first.
+    const report = await explainReport(config, selected(config), plugin, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
     for (const line of report.lines) console.log(line);
     if (report.refused !== undefined) {
       console.error(report.refused);

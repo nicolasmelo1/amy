@@ -41,7 +41,7 @@ export async function assembleProfile(
 
   const outcome = await mount(
     [...loaded.plugins, ...services.host],
-    pluginSlices(config, profile, home),
+    pluginSlices(config, profile, home, new Map([[profile.workflow, loaded.bySpec.get(profile.workflow)?.name ?? profile.workflow]])),
     {
       runner: services.runner,
       now: () => new Date(),

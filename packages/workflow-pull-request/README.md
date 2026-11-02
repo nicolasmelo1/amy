@@ -35,7 +35,7 @@ It emits `open-pull-request`.
 ## Configuration
 
 ```ts
-call(pullRequest, { config: { draft: false, policy.settleMs: 30000 } })
+call(pullRequest, { config: { draft: false, policy: { settleMs: 30000 } } })
 ```
 
 | Setting | Type | Required | Default | What it is |

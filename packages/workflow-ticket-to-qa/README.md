@@ -57,15 +57,16 @@ plugins:
     baseBranch: {}
     budget: {}
     defaultBranch: "main"
-    policy.conversation: "answer"
-    policy.maxGateAttempts: 3
-    policy.maxImplementAttempts: 3
-    policy.maxOpenReviewsPerReviewer: 2
-    policy.maxPullRequestFiles: 60
-    policy.maxPullRequestLines: 2000
-    policy.pollBackoffMs: 300000
-    policy.rosterBackoffMs: 1800000
-    policy.writes: "machine"
+    policy:
+      conversation: "answer"
+      maxGateAttempts: 3
+      maxImplementAttempts: 3
+      maxOpenReviewsPerReviewer: 2
+      maxPullRequestFiles: 60
+      maxPullRequestLines: 2000
+      pollBackoffMs: 300000
+      rosterBackoffMs: 1800000
+      writes: "machine"
     qaStatusName: <string>
     repos: <string[]>
     reviewerHints: {}

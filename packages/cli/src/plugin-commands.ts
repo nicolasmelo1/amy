@@ -36,6 +36,8 @@ export const BUILT_IN_COMMANDS: readonly string[] = [
 export interface Contribution {
   /** The package's own name: what `amy --help` marks the commands with. */
   readonly owner: string;
+  /** The spec the config named it by, which a local workflow spells differently. */
+  readonly spec: string;
   readonly plugin: Plugin;
   /** Every configured profile that mounts it, which is who may run it. */
   readonly profiles: readonly Profile[];
@@ -77,6 +79,7 @@ export async function gather(
     const existing = contributions.get(plugin.name);
     contributions.set(plugin.name, {
       owner: plugin.name,
+      spec,
       plugin,
       profiles: [...(existing?.profiles ?? []), ...mounted],
       commands: plugin.commands ?? existing?.commands ?? [],
@@ -133,7 +136,9 @@ export interface CommandEnvironment {
  */
 export function register(program: Command, contributions: readonly Contribution[], env: CommandEnvironment): void {
   for (const contribution of contributions) {
-    for (const command of contribution.commands) declare(program, command, contribution, env);
+    const names = new Map(contributions.map((one) => [one.spec, one.owner]));
+    for (const command of contribution.commands) declare(program, command, contribution, env, names);
+
   }
 }
 
@@ -142,6 +147,7 @@ function declare(
   declaration: PluginCommand,
   contribution: Contribution,
   env: CommandEnvironment,
+  names: ReadonlyMap<string, string>,
   inheritedMount = false,
   inherited: Record<string, string | boolean | undefined> = {},
 ): void {
@@ -159,12 +165,12 @@ function declare(
     // A parent's flags are the subcommand's context too: `amy worktrees list
     // --repo acme/api` is one sentence, and nobody reading it expects the
     // first word to be forgotten by the second.
-    declare(command, sub, contribution, env, mount, { ...inherited, ...(command.opts() as Record<string, string | boolean | undefined>) });
+    declare(command, sub, contribution, env, names, mount, { ...inherited, ...(command.opts() as Record<string, string | boolean | undefined>) });
   }
 
   command.action(async (...passed: unknown[]) => {
     const invoked = passed[passed.length - 1] as Command;
-    await run(declaration, contribution, env, invoked, mount, inherited);
+    await run(declaration, contribution, env, invoked, names, mount, inherited);
   });
 }
 
@@ -193,6 +199,7 @@ async function run(
   contribution: Contribution,
   env: CommandEnvironment,
   invoked: Command,
+  names: ReadonlyMap<string, string>,
   mount: boolean,
   inherited: Record<string, string | boolean | undefined> = {},
 ): Promise<void> {
@@ -214,7 +221,7 @@ async function run(
   const context: CommandContext = {
     state: stateDirectory(env.home, chosen.profile),
     home: env.home,
-    settings: settingsFor(contribution, chosen.profile, env.home, env.config),
+    settings: settingsFor(contribution, chosen.profile, env.home, env.config, names),
     args: invoked.args,
     options: { ...inherited, ...invoked.opts() },
     out: env.out,
@@ -269,10 +276,13 @@ export async function runNamed(
   const ports = mount ? await mounted(found.command, chosen.profile, env) : undefined;
   if (mount && !ports) return false;
 
+  // The settings this profile carries land on the name the mount reads the
+  // plugin by — what the config named, and what the module answered.
+  const names = new Map(contributions.map((one) => [one.spec, one.owner]));
   await found.command.run?.({
     state: stateDirectory(env.home, chosen.profile),
     home: env.home,
-    settings: settingsFor(found.contribution, chosen.profile, env.home, env.config),
+    settings: settingsFor(found.contribution, chosen.profile, env.home, env.config, names),
     args,
     options,
     out: env.out,
@@ -306,8 +316,12 @@ function lookup(
 }
 
 /** The settings this plugin's slice carries, refused by name when they are wrong. */
-function settingsFor(contribution: Contribution, profile: Profile, home: string, config: AmyConfig): Record<string, unknown> {
-  const given = (pluginSlices(config, profile, home)[contribution.owner] ?? {}) as Record<string, unknown>;
+function settingsFor(contribution: Contribution, profile: Profile, home: string, config: AmyConfig, pluginNames?: ReadonlyMap<string, string>): Record<string, unknown> {
+  // The settings a profile carries land on the name the mount reads the
+  // plugin by — the same name-or-spec question a local workflow poses, and
+  // the same map that answers it: what the config named, and what the
+  // module answered when it was imported.
+  const given = (pluginSlices(config, profile, home, pluginNames)[contribution.owner] ?? {}) as Record<string, unknown>;
   const schema = contribution.plugin.configSchema;
   if (!schema) return given;
 
@@ -346,7 +360,7 @@ export function writeFiles(
       try {
         // Exclusive, so the promise holds even when two `init`s race or an
         // operator saves the file while its content is being composed.
-        fs.writeFileSync(target, contentOf(file, contribution, profile, home, config), { encoding: "utf-8", flag: "wx" });
+        fs.writeFileSync(target, contentOf(file, contribution, profile, home, config, contributions), { encoding: "utf-8", flag: "wx" });
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
         throw error;
@@ -377,9 +391,10 @@ function contentOf(
   profile: Profile,
   home: string,
   config: AmyConfig,
+  contributions: readonly Contribution[],
 ): string {
   if (typeof file.content !== "function") return file.content;
-  return file.content(settingsFor(contribution, profile, home, config));
+  return file.content(settingsFor(contribution, profile, home, config, new Map(contributions.map((one) => [one.spec, one.owner]))));
 }
 
 /** The contributions one profile actually mounts, and nobody else's. */
@@ -403,7 +418,7 @@ export async function checks(
         const answer = await check.run({
           state: stateDirectory(home, profile),
           home,
-          settings: settingsFor(contribution, profile, home, config),
+          settings: settingsFor(contribution, profile, home, config, new Map(contributions.map((one) => [one.spec, one.owner]))),
           out,
         });
         answered.push({ ...answer, label: `${contribution.owner}: ${answer.label}` });

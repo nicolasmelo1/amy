@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, Mounted, Plugin, mountedActions } from "@amykit/core";
+import { CommandRunner, type ConfigSchema, Mounted, Plugin, mountedActions } from "@amykit/core";
 import { classify } from "./spec.js";
 import { packageManager, shellCommand } from "./install.js";
 import { drawn } from "./drawn.js";
@@ -204,7 +204,12 @@ export async function whatMountingSays(
     // satisfied shape-wise, and the implementations are never called.
     const portStub = new Proxy({}, { get: (_, method) => (typeof method === "string" ? async () => undefined : undefined) });
     const ctx = {
-      config: {},
+      // The configuration a shipped install would hand the register: the
+      // defaults its schema fills in, and a stand-in of the right shape for
+      // what it requires. The register reads configuration to build runners
+      // — a notifier that counts `ctx.config.models.length` during
+      // registration dies on an empty map, not on a real missing setting.
+      config: standInConfig(plugin.configSchema),
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date(),
       log: undefined,
@@ -222,6 +227,44 @@ export async function whatMountingSays(
   } finally {
     fs.rmSync(throwaway, { recursive: true, force: true });
   }
+}
+
+/**
+ * The configuration the register meets: what the schema defaults, plus a
+ * shapeless stand-in for each required leaf. A stand-in answers "a value of
+ * the type asked for" and nothing more — the probe judges whether the
+ * register works, not whether a setting's value does.
+ */
+function standInConfig(schema: ConfigSchema | undefined): Record<string, unknown> {
+  if (schema === undefined) return {};
+  const config: Record<string, unknown> = {};
+  for (const [dotted, spec] of Object.entries(schema)) {
+    const value = spec.default !== undefined ? spec.default : spec.required ? standin[spec.type] : undefined;
+    if (value === undefined) continue;
+    const path = dotted.split(".");
+    const leaf = path.pop()!;
+    let node = config;
+    for (const segment of path) {
+      const existing = node[segment];
+      if (!isRecord(existing)) node[segment] = {};
+      node = node[segment] as Record<string, unknown>;
+    }
+    node[leaf] = value;
+  }
+  return config;
+}
+
+const standin = {
+  string: "",
+  number: 0,
+  boolean: false,
+  "string[]": [],
+  record: {},
+} as const;
+
+/** Whether a value is a mapping a dotted path can be written into. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export interface BootCheck {
