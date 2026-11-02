@@ -63,7 +63,7 @@ describe("a row of next steps is a ticket", () => {
   it("returns the rows from inProgress() in the table's order, and only the table's", async () => {
     const tickets = await tracker().inProgress();
 
-    expect(tickets.map((ticket) => ticket.id)).toEqual(["show-the-currency", "the-refund-total", "round-nothing"]);
+    expect(tickets.map((ticket) => ticket.id)).toEqual(["show-the-currency", "acme/gadgets:the-refund-total", "round-nothing"]);
     expect(tickets.map((ticket) => ticket.priority)).toEqual([1, 2, 3]);
     expect(tickets.every((ticket) => ticket.status === READY)).toBe(true);
   });
@@ -87,10 +87,12 @@ describe("a row of next steps is a ticket", () => {
     expect(ticket?.body).toBe(plan("Show the currency"));
   });
 
-  it("gives an owner/name: row the repository its link points into, whatever repository the table is in", async () => {
-    const ticket = await tracker().get("the-refund-total");
+  it("gives an owner/name: row the repository its link points into, and an id that names it", async () => {
+    const ticket = await tracker().get("acme/gadgets:the-refund-total");
 
     expect(ticket).toMatchObject({
+      id: "acme/gadgets:the-refund-total",
+      branchName: "plan/the-refund-total",
       repo: "acme/gadgets",
       title: "The refund total",
       url: "https://github.com/acme/gadgets/blob/acme-gadgets-head/plans/the-refund-total.md",
@@ -109,8 +111,11 @@ describe("a row of next steps is a ticket", () => {
     expect(ticket?.url).toContain("/docs/design/an-old-row.md");
   });
 
-  it("finds the design note in a repository the table still links", async () => {
-    expect(await tracker().get("a-gadgets-row")).toMatchObject({ status: DELIVERED, repo: "acme/gadgets" });
+  it("finds a delivered row of another repository by its id, though the table links that repository no more", async () => {
+    const world = { "acme/widgets": { "plans/next-steps.md": "| [Show](show-the-currency.md) |\n", "plans/show-the-currency.md": plan("Show") }, "acme/gadgets": WORLD["acme/gadgets"] };
+
+    expect(await tracker(1, world).get("acme/gadgets:a-gadgets-row")).toMatchObject({ id: "acme/gadgets:a-gadgets-row", status: DELIVERED, repo: "acme/gadgets" });
+    expect(await tracker(1, world).get("a-gadgets-row")).toBeNull();
   });
 
   it("reads a row that left the table with no design note as gone", async () => {
@@ -146,9 +151,20 @@ describe("reading a table", () => {
     const rows = rowsOf("| [A](a.md) |\n| [Up](../docs/up.md) |\n| [A again](a.md) |\n", { repo: "acme/widgets", path: "plans/next-steps.md" });
 
     expect(rows).toEqual([
-      { slug: "a", repo: "acme/widgets", path: "plans/a.md", label: "A" },
-      { slug: "up", repo: "acme/widgets", path: "docs/up.md", label: "Up" },
+      { id: "a", slug: "a", repo: "acme/widgets", path: "plans/a.md", label: "A" },
+      { id: "up", slug: "up", repo: "acme/widgets", path: "docs/up.md", label: "Up" },
     ]);
+  });
+
+  it("keeps two repositories' plans of one name apart, each by its own id", () => {
+    const rows = rowsOf("| [A](acme/a:plans/setup.md) |\n| [B](acme/b:plans/setup.md) |\n| [Ours](setup.md) |\n", { repo: "acme/widgets", path: "plans/next-steps.md" });
+
+    expect(rows.map((row) => row.id)).toEqual(["acme/a:setup", "acme/b:setup", "setup"]);
+  });
+
+  it("refuses two different plans that would be one work item, naming both", () => {
+    expect(() => rowsOf("| [A](setup.md) |\n| [B](../docs/setup.md) |\n", { repo: "acme/widgets", path: "plans/next-steps.md" }))
+      .toThrow(/plans\/setup\.md and docs\/setup\.md in acme\/widgets.*setup/);
   });
 
   it("does not read a link to the web as a plan", () => {

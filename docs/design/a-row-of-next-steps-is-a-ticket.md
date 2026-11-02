@@ -43,6 +43,7 @@ cut:
 deviations:
   - "a branch per row: ticket-to-qa refuses a ticket with no branchName, and the plan named none; the tracker derives branchPrefix + slug, plan/ by default — the agent's choice, for the person to confirm"
   - "rows, default 1: only the top rows are work at once, so a table of forty plans starts one; S5 read every row. The exit's first row is the default — the agent's choice, for the person to confirm"
+  - "a row in another repository has the id owner/name:slug, not the bare slug of S6: two repositories' plans of one name stay two work items, and a delivered one is found in its repository after its last row leaves the table and after a restart (first review); two different plans with one id are refused"
   - "a row is its table position as priority, 1 first, so a queue that orders by priority keeps the table's order"
   - "the end-to-end scenario stops at the pull request the exit names; the walk past it to delivered is the shipped workflow's, with qaStatusName: delivered"
   - "also touched: package.json's e2e list, the generated docs and locks, a changeset"

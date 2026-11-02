@@ -1,6 +1,12 @@
 /** One row of an execution-order table: the plan it links, and where that plan lives. */
 export interface Row {
-  /** The plan's file name without `.md`, which is the work item's id. */
+  /**
+   * The work item's id: the plan's slug for a plan in the table's repository,
+   * `owner/name:slug` for one in another. Unique across the table, and it
+   * names the repository even after the row has left it.
+   */
+  id: string;
+  /** The plan's file name without `.md`. */
   slug: string;
   /** The repository the plan lives in, as `owner/name`. */
   repo: string;
@@ -24,6 +30,9 @@ const ELSEWHERE = /^([\w.-]+\/[\w.-]+):(.+)$/;
  * the work of several. Lines that are not table rows — the prose around the
  * table, a second table further down — are read the same way, so the table is
  * the first run of table lines that link plans, and everything after it ends.
+ *
+ * A plan linked twice is one row, the first. Two different plans that would
+ * be one work item are refused, naming both: discovery cannot tell them apart.
  */
 export function rowsOf(text: string, table: { repo: string; path: string }): Row[] {
   const rows: Row[] = [];
@@ -32,7 +41,11 @@ export function rowsOf(text: string, table: { repo: string; path: string }): Row
     const row = line.trimStart().startsWith("|") ? rowOf(line, table) : null;
     if (row) {
       started = true;
-      if (!rows.some((seen) => seen.repo === row.repo && seen.slug === row.slug)) rows.push(row);
+      const seen = rows.find((each) => each.id === row.id);
+      if (!seen) rows.push(row);
+      else if (seen.path !== row.path) {
+        throw new Error(`the next-steps table links ${seen.path} and ${row.path} in ${row.repo}, and both would be the work item ${row.id}; rename one`);
+      }
     } else if (started && !line.trimStart().startsWith("|")) {
       break;
     }
@@ -49,7 +62,18 @@ function rowOf(line: string, table: { repo: string; path: string }): Row | null 
   const repo = elsewhere ? elsewhere[1]! : table.repo;
   const path = elsewhere ? clean(elsewhere[2]!) : clean(join(directoryOf(table.path), target));
   const slug = path.slice(path.lastIndexOf("/") + 1, -".md".length);
-  return { slug, repo, path, label };
+  return { id: idOf(repo, slug, table.repo), slug, repo, path, label };
+}
+
+/** The slug where the plan is the table's own, `owner/name:slug` where it is another repository's. */
+export function idOf(repo: string, slug: string, tableRepo: string): string {
+  return repo === tableRepo ? slug : `${repo}:${slug}`;
+}
+
+/** A work item's repository and slug, read back from its id. */
+export function placeOf(id: string, tableRepo: string): { repo: string; slug: string } {
+  const elsewhere = ELSEWHERE.exec(id);
+  return elsewhere ? { repo: elsewhere[1]!, slug: elsewhere[2]! } : { repo: tableRepo, slug: id };
 }
 
 function directoryOf(path: string): string {

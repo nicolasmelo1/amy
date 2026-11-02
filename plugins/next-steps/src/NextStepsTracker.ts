@@ -1,5 +1,5 @@
 import type { BaseSource, BaseSourceSnapshot, Comment, Ticket, TrackerReads } from "@amykit/core";
-import { Row, rowsOf } from "./table.js";
+import { Row, placeOf, rowsOf } from "./table.js";
 
 /** The status of a row still in the table. */
 export const READY = "ready";
@@ -47,22 +47,18 @@ export class NextStepsTracker implements TrackerReads {
 
   async get(ticketId: string): Promise<Ticket | null> {
     const { rows, snapshots } = await this.read();
-    const index = rows.findIndex((row) => row.slug === ticketId);
+    const index = rows.findIndex((row) => row.id === ticketId);
     const row = rows[index];
     if (row) return this.ticketOf(row, await snapshots(row.repo), READY, index + 1);
 
     // Gone from the table: delivered where its design note is, and gone
-    // where there is none. The repositories asked are the table's and every
-    // one it still links, because a row that left took its link with it.
-    const repos = [this.config.repo, ...rows.map((each) => each.repo)];
-    for (const repo of [...new Set(repos)]) {
-      const snapshot = await snapshots(repo);
-      const path = `docs/design/${ticketId}.md`;
-      if ((await snapshot.read(path)) !== null) {
-        return this.ticketOf({ slug: ticketId, repo, path, label: ticketId }, snapshot, DELIVERED);
-      }
-    }
-    return null;
+    // where there is none. The id names the repository, so the answer does
+    // not depend on the table still linking it, nor on anything remembered.
+    const { repo, slug } = placeOf(ticketId, this.config.repo);
+    const snapshot = await snapshots(repo);
+    const path = `docs/design/${slug}.md`;
+    if ((await snapshot.read(path)) === null) return null;
+    return this.ticketOf({ id: ticketId, slug, repo, path, label: slug }, snapshot, DELIVERED);
   }
 
   /** A plan has no comment thread; the conversation about it is the Conversation port's. */
@@ -92,10 +88,10 @@ export class NextStepsTracker implements TrackerReads {
   private async ticketOf(row: Row, snapshot: BaseSourceSnapshot, status: string, priority?: number): Promise<Ticket> {
     const body = await snapshot.read(row.path);
     if (body === null) {
-      throw new Error(`the next-steps table links ${row.path} in ${row.repo} for ${row.slug}, and its base branch has no such file`);
+      throw new Error(`the next-steps table links ${row.path} in ${row.repo} for ${row.id}, and its base branch has no such file`);
     }
     return {
-      id: row.slug,
+      id: row.id,
       title: titleOf(body) ?? row.label,
       url: `https://github.com/${row.repo}/blob/${snapshot.revision}/${row.path}`,
       branchName: `${this.config.branchPrefix}${row.slug}`,
