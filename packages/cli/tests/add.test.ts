@@ -284,7 +284,7 @@ export const plugin = {
     expect(probe).toEqual({ ok: true, workflow: false });
   });
 
-  it("refuses a package that cannot mount, naming the problem", async () => {
+  it("refuses a package whose register throws, naming the problem", async () => {
     fs.mkdirSync(root, { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");
     packageAt(
@@ -292,9 +292,8 @@ export const plugin = {
       "@acme/plugin-refusing",
       `export const plugin = {
   name: "@acme/plugin-refusing",
-  register(registry) {
-    registry.workflow({ name: "w" });
-    registry.workflow({ name: "w2" });
+  register() {
+    throw new Error("the plugin refused to be asked");
   },
 };
 `,
@@ -306,6 +305,34 @@ export const plugin = {
     const probe = await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
 
     expect(probe.ok).toBe(false);
+    if (!probe.ok) expect(probe.problems[0]).toContain("the plugin refused to be asked");
+  });
+
+  // A machine with its one workflow is the boot check judgement, not the
+  // probe's: this package registers two, which is a refusal a mounted machine
+  // makes, and the probe stays out of the way.
+  it("answers workflow twice registered, and leaves the refusal to the boot", async () => {
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");
+    packageAt(
+      root,
+      "@acme/plugin-double",
+      `export const plugin = {
+  name: "@acme/plugin-double",
+  register(registry) {
+    registry.workflow({ name: "w" });
+    registry.workflow({ name: "w2" });
+  },
+};
+`,
+    );
+
+    const loaded = await importPluginBySpec("@acme/plugin-double", pluginsRootResolver(home, root));
+    expect(loaded.ok).toBe(true);
+
+    const probe = await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
+
+    expect(probe).toEqual({ ok: true, workflow: true });
   });
 
   it("leaves nothing behind the probe created", async () => {
@@ -471,6 +498,7 @@ describe("the config the two commands write", () => {
       plugins: [],
       takesNotes: false,
       takesTasks: false,
+  settings: {},
     } satisfies Profile;
 
     // The recommendation is derived at every read, not frozen at add time:
@@ -490,6 +518,7 @@ describe("the config the two commands write", () => {
       plugins: [],
       takesNotes: false,
       takesTasks: false,
+  settings: {},
     };
 
     expect(pluginList(config, oncall)).toContain("@acme/plugin-extra");
@@ -504,6 +533,7 @@ describe("the config the two commands write", () => {
       plugins: ["@amykit/plugin-file-queue"],
       takesNotes: false,
       takesTasks: false,
+  settings: {},
     };
 
     expect(pluginList(config, oncall).filter((name) => name === "@amykit/plugin-file-queue")).toHaveLength(1);

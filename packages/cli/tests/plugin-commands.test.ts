@@ -51,6 +51,7 @@ const WORK: Profile = {
   plugins: ["@acme/plugin-demo"],
   takesNotes: false,
   takesTasks: false,
+  settings: {},
 };
 
 const CONFIG = {
@@ -239,7 +240,7 @@ describe("a plugin's commands, check and file", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
     fs.writeFileSync(path.join(home, "team.yaml"), "the team's own\n", "utf-8");
     const { out } = spoken();
-    const second: Profile = { name: "other", workflow: "@acme/workflow-unheard-of", plugins: [], takesNotes: false, takesTasks: false };
+    const second: Profile = { name: "other", workflow: "@acme/workflow-unheard-of", plugins: [], takesNotes: false, takesTasks: false, settings: {} };
 
     const copied = migrateRootFiles(
       home,

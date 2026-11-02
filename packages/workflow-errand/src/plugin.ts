@@ -29,9 +29,9 @@ import { branchFor, writeTaskFile } from "./task-file.js";
 export const configSchema = {
   repos: {
     type: "string[]",
-    required: true,
     description:
-      "the repositories an errand may be done in. A task about anything else is handed back to whoever asked",
+      "where an errand may be done. The machine's own list of repositories names this by default, and a profile narrows or widens it. An errand about a place not on the list is handed back to whoever asked",
+    default: [],
   },
   ...BRANCH_SETTINGS,
   tasksDirectory: {
@@ -44,10 +44,21 @@ export const configSchema = {
     description: "where this machine keeps the queue `amy btw` puts the task on, relative to the state root. The host sets it; a value here only stands in for one",
     default: "queue",
   },
-  policy: {
-    type: "record",
-    description: "maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default",
-    default: {},
+  "policy.maxAttempts": {
+    type: "number",
+    default: 2,
+    description: "how many times an agent may try one errand before it is handed back",
+  },
+  "policy.maxInFlight": {
+    type: "number",
+    default: 3,
+    description:
+      "how many errands this machine may carry in flight at once. Capturing costs nothing, which is the whole point and also the failure, and past this many it holds rather than opening another pull request nobody asked to review",
+  },
+  "policy.ceilingBackoffMs": {
+    type: "number",
+    default: 30 * 60 * 1000,
+    description: "how long a task is held while the in-flight ceiling is reached",
   },
 } satisfies ConfigSchema;
 

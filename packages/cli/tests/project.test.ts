@@ -133,7 +133,7 @@ describe("a project is three phases", () => {
     expect(owned).not.toContain(place.log);
     expect(owned).not.toContain(place.artifacts);
     // An ordinary profile shares its tasks and threads, so it forgets neither.
-    expect(profileOwnedDirectories("/amy", { name: "tickets", workflow: "@amykit/workflow-ticket-to-qa", plugins: [], takesNotes: false, takesTasks: false }))
+    expect(profileOwnedDirectories("/amy", { name: "tickets", workflow: "@amykit/workflow-ticket-to-qa", plugins: [], takesNotes: false, takesTasks: false, settings: {} }))
       .toEqual(["/amy/tickets/records", "/amy/tickets/queue"]);
   });
 

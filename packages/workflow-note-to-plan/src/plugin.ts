@@ -32,7 +32,14 @@ export const configSchema = {
   repos: {
     type: "string[]",
     required: true,
+    example: ["Northwind/amy"],
     description: "the repositories a plan may be written into. A note about anything else is handed back to the operator",
+  },
+  check: {
+    type: "record",
+    description:
+      "the check commands per repository, with a `default` fallback, that judge a plan before it goes anywhere. `sf check` is the whole quality bar in a repository that has one; the plan-check plugin mounts them",
+    default: { default: ["sf check"] },
   },
   ...BRANCH_SETTINGS,
   notesDirectory: {
@@ -45,10 +52,21 @@ export const configSchema = {
     description: "where this machine keeps the queue `amy note` puts the note on, relative to the state root. The host sets it; a value here only stands in for one",
     default: "queue",
   },
-  policy: {
-    type: "record",
-    description: "maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default",
-    default: {},
+  "policy.maxDraftAttempts": {
+    type: "number",
+    default: 3,
+    description: "how many times an agent may try to write a plan the check accepts before it is handed back",
+  },
+  "policy.maxOpenPlansPerRepo": {
+    type: "number",
+    default: 2,
+    description:
+      "how many plans this machine may carry in flight for one repository. A machine that files twelve plans a day into three repositories is producing a backlog with a robot's name on it, and past this many it holds",
+  },
+  "policy.ceilingBackoffMs": {
+    type: "number",
+    default: 60 * 60 * 1000,
+    description: "how long a note is held while the plan ceiling is reached",
   },
 } satisfies ConfigSchema;
 

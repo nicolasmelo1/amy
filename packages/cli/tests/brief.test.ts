@@ -20,6 +20,7 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
+  settings: { qaStatusName: "In QA" },
 };
 
 const CONFIG = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], notify: { hermes: null, inbox: false } };

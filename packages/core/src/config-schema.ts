@@ -33,18 +33,27 @@ export type ConfigField = {
  * no business knowing that a tracker has a status name or that a notifier has
  * a channel. Kept to five types on purpose: a plugin that needs more shape
  * than this wants its own validation, not a bigger schema language here.
+ *
+ * A key may be dotted, and a dotted key is how a group of settings one plugin
+ * owns is described one setting at a time: `policy.maxAttempts` says the
+ * policy block carries a `maxAttempts` number, without the block collapsing
+ * into one untyped `record` nobody can explain. The config file keeps writing
+ * the group nested; the schema names every leaf it accepts.
  */
 export type ConfigSchema = Record<string, ConfigField>;
 
+/** The value one schema field promises after validation, by its required/default shape. */
+export type ValueFor<Field extends ConfigField> = ConfigValueFor<Field["type"]> extends infer Value
+  ? Field extends { readonly required: true }
+    ? Value
+    : Field extends { readonly default: infer Default }
+      ? undefined extends Default ? Value | undefined : Value
+      : Value | undefined
+  : never;
+
 /** The post-validation shape a schema promises to its plugin. */
 export type ConfigOf<S extends ConfigSchema> = {
-  [K in keyof S]: ConfigValueFor<S[K]["type"]> extends infer Value
-    ? S[K] extends { readonly required: true }
-      ? Value
-      : S[K] extends { readonly default: infer Default }
-        ? undefined extends Default ? Value | undefined : Value
-        : Value | undefined
-    : never;
+  [K in keyof S as K extends `${string}.${string}` ? never : K]: ValueFor<S[K]>
 };
 
 export type ConfigResult =
@@ -71,38 +80,155 @@ export function validateConfig(
   const problems: string[] = [];
   const config: Record<string, unknown> = {};
 
-  for (const [field, spec] of Object.entries(schema)) {
-    const present = Object.hasOwn(given, field);
+  const own: { key: string; spec: ConfigField }[] = [];
+  const groups = new Map<string, Map<string, ConfigField>>();
+  for (const [key, spec] of Object.entries(schema)) {
+    const [head, ...path] = key.split(".");
+    if (path.length === 0) {
+      own.push({ key, spec });
+      continue;
+    }
+    if (head === undefined || head === "") {
+      problems.push(`${plugin}: a schema key cannot begin with a dot`);
+      continue;
+    }
+    let group = groups.get(head);
+    if (!group) groups.set(head, (group = new Map()));
+    group.set(path.join("."), spec);
+  }
+
+  for (const { key, spec } of own) {
+    const present = Object.hasOwn(given, key);
 
     if (!present) {
       if (spec.required) {
-        problems.push(`${plugin}: \`${field}\` is required — ${spec.description}`);
+        problems.push(`${plugin}: \`${key}\` is required — ${spec.description}`);
       } else if (spec.default !== undefined) {
-        config[field] = spec.default;
+        config[key] = spec.default;
       }
       continue;
     }
 
-    const supplied = given[field];
+    const supplied = given[key];
     if (!matches(spec.type, supplied)) {
       problems.push(
-        `${plugin}: \`${field}\` must be ${spec.type}, got ${describe(supplied)} — ${spec.description}`,
+        `${plugin}: \`${key}\` must be ${spec.type}, got ${describe(supplied)} — ${spec.description}`,
       );
       continue;
     }
 
-    config[field] = supplied;
+    config[key] = supplied;
+  }
+
+  for (const [head, leaves] of groups) {
+    if (!Object.hasOwn(given, head)) {
+      const filled = fill(leaves);
+      if (filled === undefined) continue;
+      config[head] = filled;
+      continue;
+    }
+
+    const givenHead = given[head];
+    if (!isRecord(givenHead)) {
+      problems.push(
+        `${plugin}: \`${head}\` must be a mapping whose settings are ${[...leaves.keys()].map((leaf) => `\`${head}.${leaf}\``).join(", ")}, got ${describe(givenHead)}`,
+      );
+      continue;
+    }
+
+    const problemsInGroup = validateInto(plugin, head, leaves, givenHead, (filled) => {
+      config[head] = filled;
+    });
+    problems.push(...problemsInGroup);
   }
 
   // An unknown key is almost always a typo in a field that matters, and
-  // ignoring it means the setting silently never applied.
-  for (const field of Object.keys(given)) {
-    if (!Object.hasOwn(schema, field)) {
-      problems.push(`${plugin}: \`${field}\` is not a setting this plugin has`);
+  // ignoring it means the setting silently never applied. A dotted schema
+  // names its group's leaves, so a leaf somebody wrote and no leaf declared
+  // is named the same way, with the path it was written at.
+  for (const key of Object.keys(given)) {
+    if (!own.some(({ key: ownKey }) => ownKey === key) && !groups.has(key)) {
+      problems.push(`${plugin}: \`${key}\` is not a setting this plugin has`);
     }
   }
 
   return problems.length > 0 ? { ok: false, problems } : { ok: true, config };
+}
+
+/**
+ * Validates one given group of nested settings into its filled shape.
+ *
+ * `emit` receives the whole filled group even when a leaf misbehaved — a
+ * group whose one leaf is wrong still carries the leaves that were right,
+ * so one round of edits fixes one round of settings.
+ */
+function validateInto(
+  plugin: string,
+  head: string,
+  leaves: ReadonlyMap<string, ConfigField>,
+  given: Record<string, unknown>,
+  emit: (filled: Record<string, unknown>) => void,
+): string[] {
+  const problems: string[] = [];
+  const filled = fill(leaves) ?? {};
+
+  for (const [path, spec] of leaves) {
+    const at = path.split(".");
+    let source: unknown = given;
+    let where = head;
+    let present = true;
+    for (const segment of at) {
+      if (!isRecord(source) || !Object.hasOwn(source, segment)) {
+        present = false;
+        break;
+      }
+      source = (source as Record<string, unknown>)[segment];
+      where = `${where}.${segment}`;
+    }
+
+    if (present) {
+      if (!matches(spec.type, source)) {
+        problems.push(`${plugin}: \`${where}\` must be ${spec.type}, got ${describe(source)} — ${spec.description}`);
+        continue;
+      }
+      leafSet(filled, at, source);
+      continue;
+    }
+    if (spec.required) {
+      problems.push(`${plugin}: \`${head}.${path}\` is required — ${spec.description}`);
+    }
+  }
+
+  for (const key of Object.keys(given)) {
+    const covered = [...leaves.keys()].some((leaf) => leaf === key || leaf.startsWith(`${key}.`));
+    if (!covered) {
+      problems.push(`${plugin}: \`${head}.${key}\` is not a setting this plugin has`);
+    }
+  }
+
+  emit(filled);
+  return problems;
+}
+
+/** The defaults a group's leaves fill in with, or nothing when none has one. */
+function fill(leaves: ReadonlyMap<string, ConfigField>): Record<string, unknown> | undefined {
+  const filled: Record<string, unknown> = {};
+  for (const [path, spec] of leaves) {
+    if (spec.default === undefined || spec.required) continue;
+    leafSet(filled, path.split("."), spec.default);
+  }
+  return Object.keys(filled).length > 0 ? filled : undefined;
+}
+
+function leafSet(into: Record<string, unknown>, path: readonly string[], value: unknown): void {
+  const [head, ...rest] = path;
+  if (head === undefined) return;
+  if (rest.length === 0) {
+    into[head] = value;
+    return;
+  }
+  const child = isRecord(into[head]) ? (into[head] as Record<string, unknown>) : (into[head] = {});
+  leafSet(child, rest, value);
 }
 
 function matches(type: ConfigFieldType, value: unknown): boolean {

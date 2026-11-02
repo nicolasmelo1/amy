@@ -11,8 +11,8 @@ import { LINEAR_ENDPOINT } from "./LinearTracker.js";
 export const configSchema = {
   workingStatusName: {
     type: "string",
-    required: true,
-    description: "the exact status name a ticket must be in to be picked up",
+    description: "the exact status name a ticket must be in to be picked up, matched never against its category",
+    default: "In Progress",
   },
   repoByTeam: {
     type: "record",

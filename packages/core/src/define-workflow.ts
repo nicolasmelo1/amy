@@ -6,7 +6,7 @@ import { ActionSpec } from "./actions.js";
 import { ActionDuties, actionPorts } from "./action-ports.js";
 import { PluginCheck, PluginCommand, PluginFile } from "./commands.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
-import { ConfigOf, ConfigSchema, validateConfig } from "./config-schema.js";
+import { ConfigOf, ConfigSchema, ValueFor, validateConfig } from "./config-schema.js";
 import { Call, CallSite, ForkSite, Signature, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
 import { BranchLeases, FileLeases } from "./leases.js";
 import { PortLookup } from "./dispatch.js";
@@ -281,8 +281,8 @@ type WorkflowDeclaration<S extends ConfigSchema, States extends readonly [string
  * declares no input.
  */
 type InputFor<In extends ConfigSchema> = keyof In extends never ? undefined : Flat<
-  { [K in keyof In as In[K] extends { readonly required: true } ? K : never]: ConfigOf<In>[K] } &
-  { [K in keyof In as In[K] extends { readonly required: true } ? never : K]?: ConfigOf<In>[K] }
+  { [K in keyof In as In[K] extends { readonly required: true } ? K : never]: ValueFor<In[K]> } &
+  { [K in keyof In as In[K] extends { readonly required: true } ? never : K]?: ValueFor<In[K]> }
 >;
 type Flat<T> = { [K in keyof T]: T[K] };
 type OutputsFor<Out> = { [End in keyof Out]: Out[End] extends (...args: never[]) => infer Value ? Value : never };
@@ -383,6 +383,10 @@ function assemble(
   trail: readonly string[],
 ): Assembled {
   const config = ctx?.config;
+  // Refused before a word of it is merged: a policy default the schema does
+  // not describe is a setting whose real answer nobody could find from the
+  // config the machine explains.
+  if (ctx) policyFits(declaration.name, declaration.configSchema, declaration.policy);
   const policy = policyFor(declaration.name, declaration.policy, config?.policy);
   // Only a workflow with lanes holds branches, and only its lanes take them.
   const forked = Object.keys(shape.diagram?.forks ?? {}).length > 0;
@@ -892,13 +896,53 @@ function portsFor(workflow: string, needs: Needs, ctx: PluginContext, path: read
   }));
 }
 
+/**
+ * The decision's defaults, over what the machine said.
+ *
+ * Which keys may exist is the schema's word — the mount validated the config
+ * against it, with every leaf of a policy group checked by name — and the
+ * schema's defaults are the declaration's own, held equal by the mount's
+ * consistency check. What is left here is the one merge both of those made
+ * possible: what somebody wrote wins, what they left out keeps its default.
+ */
 function policyFor<P extends object>(workflow: string, defaults: P, configured: unknown): P {
   const overrides = configured ?? {};
   if (typeof overrides !== "object" || overrides === null || Array.isArray(overrides)) {
     throw new Error(`${workflow} policy must be a mapping`);
   }
-  for (const key of Object.keys(overrides)) {
-    if (!Object.hasOwn(defaults, key)) throw new Error(`${workflow} policy.${key} is not declared`);
-  }
   return { ...defaults, ...overrides };
+}
+
+/**
+ * Every default a workflow's decision reads, its schema must say too.
+ *
+ * The policy is not a `record` field hiding its members any more: each one is
+ * a schema entry, `policy.<key>`, with the type, the default and the reason —
+ * which is what `amy config explain` prints and what the boot check holds the
+ * template to. A decision reading a key the schema does not declare, or a
+ * schema stating a default different from the one the decision reads, is
+ * refused at mount, naming the key: two answers to the same question is one
+ * lie waiting for the person who tunes the wrong one.
+ */
+function policyFits(workflow: string, schema: ConfigSchema, defaults: object): void {
+  const problems: string[] = [];
+  for (const [key, value] of Object.entries(defaults)) {
+    const entry = schema[`policy.${key}`];
+    if (entry === undefined) {
+      problems.push(
+        `the ${workflow} workflow reads \`policy.${key}\`, and its schema declares no such setting — declare \`policy.${key}\` with a type, a default and a description`,
+      );
+      continue;
+    }
+    if (entry.default !== value) {
+      problems.push(
+        `the ${workflow} workflow's schema says \`policy.${key}\` defaults to ${describeDefault(entry.default)}, and its decision reads ${describeDefault(value)} — both name the same machine`,
+      );
+    }
+  }
+  if (problems.length > 0) throw new Error(problems.join("; "));
+}
+
+function describeDefault(value: unknown): string {
+  return typeof value === "string" ? `"${value}"` : String(value);
 }

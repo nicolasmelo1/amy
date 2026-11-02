@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { mount, MountOutcome, NodeCommandRunner } from "@amykit/core";
+import { ConfigSchema, mount, MountOutcome, NodeCommandRunner } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
 import { type AmyConfig, EXAMPLE_CONFIG, loadConfigFrom } from "./config.js";
 import { loadEnv } from "./env.js";
@@ -10,42 +10,39 @@ import { profiles } from "./profiles.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
 
 /**
- * One settings surface: what a block of the config accepts, and where it is.
+ * One settings surface: a schema for a block of the config, and where it sits.
  *
- * `accepts` is the defaults object rather than a list of names, so the source
- * of truth is the thing the loader actually merges over. A setting added
- * there and nowhere else is exactly the case this catches.
+ * The top level is the machine schema, and the workflow the template's
+ * example mounts carries its own. The check reads only what the schema
+ * declares, so a setting that exists is a setting some schema declares.
  */
 export interface SettingsSurface {
   /** Where the block sits, dotted. Empty for the top level. */
   readonly at: string;
-  readonly accepts: object;
+  readonly schema: ConfigSchema;
   /** The block as the template set it, or undefined if it set none. */
   readonly given: object | undefined;
 }
 
 /**
  * Whether the config `amy init` writes is one this build can read, and one
- * that names every setting there is.
+ * whose settings are all explained by the schemas that declare them.
  *
- * Two failures, and both of them shipped before this existed.
+ * The loud failure is unchanged: the template carried `agent:` twice, YAML
+ * refused a duplicate key rather than merging it, so `amy init` wrote a file
+ * `loadConfig` threw on and every command died on a fresh install. No test
+ * had ever parsed the template.
  *
- * The loud one: the template carried `agent:` twice. YAML refuses a duplicate
- * key rather than merging it, so `amy init` wrote a file `loadConfig` threw
- * on, and the next command anybody ran died. No test had ever parsed the
- * template — only the file the host wrote beside it.
- *
- * The quiet one: `pollBackoffMs` was configurable for its whole life and
- * appeared nowhere, so the only way to find it was to read the source. A
- * setting nobody can discover is a setting that does not exist, and the cost
- * lands on whoever concludes the machine cannot do what it does.
- *
- * Naming is enough for the second one. A setting commented out with the
- * reason is documented, and several of them are only worth turning on
- * deliberately.
+ * The quiet one changes shape. It used to be "a setting the template never
+ * names" — the template is where a setting was supposed to be found. Finding
+ * a setting has since moved to `amy config explain`, which reads it off the
+ * schemas the machine actually mounts, and a workflow's vocabulary lives in
+ * the profile that drives it rather than in front of everybody. What the
+ * build owes now is that every setting a schema declares is described by the
+ * schema that declares it: a field with no description is a setting nobody
+ * can discover from the machine that has it.
  */
 export function checkConfigTemplate(
-  template: string,
   surfaces: readonly SettingsSurface[],
   parseErrors: readonly string[],
 ): string[] {
@@ -58,25 +55,24 @@ export function checkConfigTemplate(
   // parse is reported once rather than as a cascade of missing blocks.
   if (problems.length > 0) return problems;
 
-  // Every word in the template, once. A name is looked up here rather than
-  // matched with a pattern built from it, which is both stricter than a
-  // substring — `ladder` would otherwise be satisfied by `ladderByStep` — and
-  // one pass instead of one per setting.
-  const namesInTemplate = new Set(template.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []);
-
   for (const surface of surfaces) {
     for (const key of Object.keys(surface.given ?? {})) {
-      if (!Object.hasOwn(surface.accepts, key)) {
+      // A nested block is written at its head — `agent:` for `agent.ladder` —
+      // so a key is a setting either when the schema declares it whole or when
+      // the schema names its leaves.
+      const declares = Object.hasOwn(surface.schema, key) ||
+        Object.keys(surface.schema).some((name) => name.startsWith(`${key}.`));
+      if (!declares) {
         problems.push(
           `\`${named(surface.at, key)}\` is in the template and is not a setting — nothing would read it`,
         );
       }
     }
 
-    for (const key of Object.keys(surface.accepts)) {
-      if (!namesInTemplate.has(key)) {
+    for (const [key, spec] of Object.entries(surface.schema)) {
+      if (typeof spec.description !== "string" || spec.description.trim().length === 0) {
         problems.push(
-          `\`${named(surface.at, key)}\` is a setting and the template never names it — nobody can find it`,
+          `\`${named(surface.at, key)}\` is a setting and its schema says nothing about it — give it a description, the words \`amy config explain\` prints`,
         );
       }
     }
@@ -116,6 +112,17 @@ export interface BootCheck {
 const EXAMPLE_WORKFLOW = {
   name: "ticket-to-qa",
   workflow: "@amykit/workflow-ticket-to-qa",
+  /**
+   * The settings the example block teaches, and what the boot half mounts.
+   *
+   * The workflow's schema asks for a QA status name, and the machine can no
+   * longer hand it one from the top level: a workflow's vocabulary lives in
+   * the profile that drives it, and this one is the profile the operator has
+   * one uncomment later.
+   */
+  settings: {
+    qaStatusName: "In QA",
+  },
 } as const;
 
 /**
@@ -144,7 +151,12 @@ export function namesTheExample(template: string): string[] {
 export function withExampleWorkflow(config: AmyConfig): AmyConfig {
   return {
     ...config,
-    workflows: { [EXAMPLE_WORKFLOW.name]: { workflow: EXAMPLE_WORKFLOW.workflow } },
+    workflows: {
+      [EXAMPLE_WORKFLOW.name]: {
+        workflow: EXAMPLE_WORKFLOW.workflow,
+        settings: { ...EXAMPLE_WORKFLOW.settings },
+      },
+    },
     defaultWorkflow: EXAMPLE_WORKFLOW.name,
   };
 }

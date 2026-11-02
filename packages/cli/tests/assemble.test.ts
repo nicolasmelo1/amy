@@ -15,6 +15,7 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
+  settings: { qaStatusName: "In QA" },
 };
 
 const ROSTER = {
@@ -26,8 +27,6 @@ const ROSTER = {
 const CONFIG = {
   ...DEFAULT_CONFIG,
   repos: ["acme/widgets"],
-  workingStatusName: "In Progress",
-  qaStatusName: "In QA",
   defaultBranch: "dev",
   gate: { "acme/widgets": ["npm test"] },
   notify: { hermes: "slack:ops", inbox: true },

@@ -44,7 +44,8 @@ interface RequiredPort { read(): string }
 interface OptionalPort { notify(): void }
 
 const schema = {
-  policy: { type: "record", description: "workflow policy", default: {} },
+  "policy.attempts": { type: "number", default: 3, description: "how many times one piece of work may be tried" },
+  "policy.backoffMs": { type: "number", default: 1000, description: "how long a held look waits before it is taken again" },
 } satisfies ConfigSchema;
 
 function workflow(seen: { optional?: OptionalPort; policy?: Policy } = {}) {
@@ -124,7 +125,53 @@ describe("defineWorkflow", () => {
     );
 
     expect(outcome.ok).toBe(false);
-    expect(outcome.ok === false && outcome.problems.join("; ")).toContain("example policy.attemptz is not declared");
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain("`policy.attemptz` is not a setting this plugin has");
+  });
+
+  it("refuses a decision default its schema does not declare, naming the key", async () => {
+    const plugin = defineWorkflow({
+      name: "unproven",
+      configSchema: {
+        repos: { type: "string[]", required: true, description: "the repositories this workflow works in" },
+      } satisfies ConfigSchema,
+      states: ["NEW"],
+      waiting: [],
+      terminal: ["NEW"],
+      policy: { ceiling: 5 },
+      needs: { source: port<RequiredPort>() },
+      plan: () => ({ kind: "settled", why: "done" }),
+      record: () => ({}),
+      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
+    });
+    const outcome = await mount([plugin, source], { [plugin.name]: { repos: ["acme/widgets"] } }, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "the unproven workflow reads `policy.ceiling`, and its schema declares no such setting",
+    );
+  });
+
+  it("refuses a schema default that differs from the one the decision reads", async () => {
+    const plugin = defineWorkflow({
+      name: "twoanswers",
+      configSchema: {
+        "policy.attempts": { type: "number", default: 5, description: "how many times one piece of work may be tried" },
+      } satisfies ConfigSchema,
+      states: ["NEW"],
+      waiting: [],
+      terminal: ["NEW"],
+      policy: { attempts: 3 },
+      needs: { source: port<RequiredPort>() },
+      plan: () => ({ kind: "settled", why: "done" }),
+      record: () => ({}),
+      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
+    });
+    const outcome = await mount([plugin, source], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "`policy.attempts` defaults to 5, and its decision reads 3",
+    );
   });
 
   it("constructs records with the six core fields and only the declared domain fields", async () => {
@@ -152,7 +199,7 @@ describe("defineWorkflow", () => {
       name: "claimed",
       configSchema: {
         repos: { type: "string[]", required: true, description: "the repositories this workflow works in" },
-        policy: { type: "record", description: "workflow policy", default: {} },
+        "policy.attempts": { type: "number", default: 3, description: "how many times one piece of work may be tried" },
       } satisfies ConfigSchema,
       states: ["NEW"],
       waiting: [],

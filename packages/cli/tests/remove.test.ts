@@ -14,6 +14,7 @@ const ONCALL: Profile = {
   plugins: ["@acme/plugin-local"],
   takesNotes: false,
   takesTasks: false,
+  settings: {},
 };
 const WEEKLY: Profile = {
   name: "weekly",
@@ -21,6 +22,7 @@ const WEEKLY: Profile = {
   plugins: ["@acme/plugin-local"],
   takesNotes: false,
   takesTasks: false,
+  settings: {},
 };
 
 function config() {

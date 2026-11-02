@@ -35,13 +35,13 @@ It emits `open-pull-request`.
 ## Configuration
 
 ```ts
-call(pullRequest, { config: { draft: false, policy: {} } })
+call(pullRequest, { config: { draft: false, policy.settleMs: 30000 } })
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `draft` | `boolean` | no | `false` | open the pull request as a draft, for work nobody is waiting on at the moment it lands |
-| `policy` | `record` | no | `{}` | settleMs: how long to wait for a pull request the host opened to show. Left out, the default |
+| `policy.settleMs` | `number` | no | `30000` | how long to wait for a pull request the host opened to show, before looking again |
 
 Every field is checked at boot against the schema this package declares. A key that is
 not one of the above is a refusal naming the plugin and the key, not a setting that

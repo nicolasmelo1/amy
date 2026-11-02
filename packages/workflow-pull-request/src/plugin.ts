@@ -8,10 +8,10 @@ export const configSchema = {
     default: false,
     description: "open the pull request as a draft, for work nobody is waiting on at the moment it lands",
   },
-  policy: {
-    type: "record",
-    description: "settleMs: how long to wait for a pull request the host opened to show. Left out, the default",
-    default: {},
+  "policy.settleMs": {
+    type: "number",
+    default: 30_000,
+    description: "how long to wait for a pull request the host opened to show, before looking again",
   },
 } satisfies ConfigSchema;
 
