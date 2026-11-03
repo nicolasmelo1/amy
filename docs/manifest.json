@@ -413,8 +413,8 @@
           "description": ""
         },
         {
-          "title": "Telegram is a conversation",
-          "path": "/design/telegram-is-a-conversation",
+          "title": "The config is written by what is mounted",
+          "path": "/design/the-config-is-written-by-what-is-mounted",
           "description": ""
         },
         {
@@ -1006,11 +1006,6 @@
           "depth": 3,
           "title": "Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.",
           "slug": "plugin-versions-and-unused-workflow-observer-declarations-were-removed-package-manifests-supply-displayed-versions"
-        },
-        {
-          "depth": 3,
-          "title": "**A Telegram topic is a work item's thread.** @amykit/plugin-telegram is the conversation port over the Bot API: each piece of work gets its own topic in the operator's private chat with a bot (topics in private chats, Bot API 9.4), opened once and found again after a restart. Only the operator's replies in that topic are answers; anybody else's, and anything outside every topic, are ignored. Replies are filed on disk before Telegram's update offset moves, so no restart and no second process loses one. A file in a reply arrives as a local path, and one past the Bot API's 20 MB is named instead. The token is TELEGRAM_BOT_TOKEN in amy's environment and is written nowhere. amy doctor refuses, by name, a bot with topic mode off, an operator who never started a chat with it, and a token whose updates something else reads (409 Conflict).",
-          "slug": "a-telegram-topic-is-a-work-items-thread-amykitplugin-telegram-is-the-conversation-port-over-the-bot-api-each-piece-of-work-gets-its-own-topic-in-the-operators-private-chat-with-a-bot-topics-in-private-chats-bot-api-94-opened-once-and-found-again-after-a-restart-only-the-operators-replies-in-that-topic-are-answers-anybody-elses-and-anything-outside-every-topic-are-ignored-replies-are-filed-on-disk-before-telegrams-update-offset-moves-so-no-restart-and-no-second-process-loses-one-a-file-in-a-reply-arrives-as-a-local-path-and-one-past-the-bot-apis-20-mb-is-named-instead-the-token-is-telegrambottoken-in-amys-environment-and-is-written-nowhere-amy-doctor-refuses-by-name-a-bot-with-topic-mode-off-an-operator-who-never-started-a-chat-with-it-and-a-token-whose-updates-something-else-reads-409-conflict"
         },
         {
           "depth": 3,
@@ -2927,10 +2922,10 @@
       ]
     },
     {
-      "path": "/design/telegram-is-a-conversation",
-      "file": "docs/design/telegram-is-a-conversation.md",
-      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/telegram-is-a-conversation.md",
-      "title": "Telegram is a conversation",
+      "path": "/design/the-config-is-written-by-what-is-mounted",
+      "file": "docs/design/the-config-is-written-by-what-is-mounted.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-config-is-written-by-what-is-mounted.md",
+      "title": "The config is written by what is mounted",
       "description": "",
       "group": "",
       "order": 999,
@@ -4475,11 +4470,6 @@
           "depth": 3,
           "title": "@amykit/plugin-slack",
           "slug": "amykitplugin-slack"
-        },
-        {
-          "depth": 3,
-          "title": "@amykit/plugin-telegram",
-          "slug": "amykitplugin-telegram"
         },
         {
           "depth": 3,
@@ -6912,8 +6902,7 @@
         "kind": "conversation",
         "actions": [],
         "mountedBy": [
-          "@amykit/plugin-slack",
-          "@amykit/plugin-telegram"
+          "@amykit/plugin-slack"
         ]
       },
       {
@@ -7079,10 +7068,6 @@
       {
         "variable": "LINEAR_API_KEY",
         "package": "@amykit/plugin-linear"
-      },
-      {
-        "variable": "TELEGRAM_BOT_TOKEN",
-        "package": "@amykit/plugin-telegram"
       }
     ]
   },
@@ -8079,45 +8064,6 @@
           }
         ],
         "environment": []
-      },
-      {
-        "name": "@amykit/plugin-telegram",
-        "version": "0.6.0",
-        "kind": "plugin",
-        "description": "A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.",
-        "directory": "plugins/telegram",
-        "npm": "https://www.npmjs.com/package/@amykit/plugin-telegram",
-        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/telegram",
-        "readme": "plugins/telegram/README.md",
-        "mounts": [
-          "conversation"
-        ],
-        "contributes": [],
-        "settings": [
-          {
-            "name": "directory",
-            "type": "string",
-            "required": false,
-            "default": "telegram",
-            "description": "where this profile's topics are remembered, by work id, relative to the state directory; the replies read for every profile are kept once per bot"
-          },
-          {
-            "name": "operator",
-            "type": "string",
-            "required": true,
-            "description": "your Telegram user id, a number such as 123456789: the private chat each work item's topic opens in, and the only person whose replies are answers"
-          },
-          {
-            "name": "server",
-            "type": "string",
-            "required": false,
-            "default": "https://api.telegram.org",
-            "description": "the Bot API server, for a local one instead of Telegram's"
-          }
-        ],
-        "environment": [
-          "TELEGRAM_BOT_TOKEN"
-        ]
       },
       {
         "name": "@amykit/ui",
@@ -9200,26 +9146,6 @@
           "base.the_fallback_still_answers_for_the_rest"
         ],
         "scenario": ".software-factory/evidence/plugin-serial-engine-scenario.sh"
-      },
-      {
-        "name": "plugin-telegram",
-        "activation": [
-          "plugins/telegram/src/**",
-          "plugins/telegram/tests/stand-in.ts",
-          "packages/core/src/ports/Conversation.ts",
-          "packages/test-fixtures/contracts/telegram-bot-api.json",
-          "packages/test-fixtures/src/contracts/telegram.ts",
-          "packages/workflow-ticket-to-qa/src/**",
-          "packages/workflow-ticket-to-qa/workflow.mmd"
-        ],
-        "evidence": ".software-factory/evidence/plugin-telegram.json",
-        "plan": "docs/design/telegram-is-a-conversation.md",
-        "assertions": [
-          "telegram.a_question_reaches_its_own_topic",
-          "telegram.the_answer_moves_its_own_ticket_and_no_other",
-          "telegram.the_token_is_in_no_file_amy_wrote"
-        ],
-        "scenario": ".software-factory/evidence/plugin-telegram-scenario.sh"
       },
       {
         "name": "project-phases",
@@ -10390,18 +10316,6 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "telegram-is-a-conversation",
-        "title": "**A Telegram topic is a work item's thread.** `@amykit/plugin-telegram` is the `conversation` port over the Bot API: each piece of work gets its own topic in the operator's private chat with a bot (topics in private chats, Bot API 9.4), opened once and found again after a restart. Only the operator's replies in that topic are answers; anybody else's, and anything outside every topic, are ignored. Replies are filed on disk before Telegram's update offset moves, so no restart and no second process loses one. A file in a reply arrives as a local path, and one past the Bot API's 20 MB is named instead. The token is `TELEGRAM_BOT_TOKEN` in amy's environment and is written nowhere. `amy doctor` refuses, by name, a bot with topic mode off, an operator who never started a chat with it, and a token whose updates something else reads (409 Conflict).",
-        "body": "```yaml\nextraPlugins:\n  - \"@amykit/plugin-telegram\"\nplugins:\n  \"@amykit/plugin-telegram\":\n    operator: \"123456789\"   # your Telegram user id\n```\n\n**Telegram's and Slack's contracts are vendored and kept fresh.** Telegram publishes its Bot API only as a reference page, so `npm run contracts:update` derives that page into its types and methods, and `check:contracts` fails when today's page derives to something else. Slack's served OpenAPI description joins GitHub's and Linear's. The test fixtures export `assertValidBotApiCall`, `assertValidBotApiResult`, `assertValidSlackCall` and `assertValidSlackAnswer`, and both plugins' stand-ins are held to them.",
-        "bumps": [
-          {
-            "package": "@amykit/plugin-telegram",
             "level": "minor"
           }
         ],

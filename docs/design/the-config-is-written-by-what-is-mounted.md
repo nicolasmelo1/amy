@@ -41,21 +41,24 @@ touches:
   - packages/workflow-note-to-plan/src/plugin.ts
   - .software-factory/policy.yaml
 criteria:
-  - { id: A1, statement: "amy init on an empty machine writes a config with no workflow's settings, and amy add @amykit/workflow-errand appends a profile block that boots without being edited", proof: "deferred:assertion:errand.init_and_add_write_a_config_that_boots", sources: [S1, S7, S8, S9, S12, S13] }
-  - { id: A2, statement: "amy config explain lists every mounted plugin's setting with default and description, the errand's policy.maxAttempts default 2 among them; a schema setting without a description fails the build naming it", proof: "deferred:test:packages/cli/tests/config-explain.test.ts", sources: [S2, S14, S15, S17] }
-  - { id: A3, statement: "a workflow whose policy defaults carry a key its schema does not declare, or a default the schema states differently, is refused at mount, naming the key", proof: "deferred:test:packages/core/tests/define-workflow.test.ts", sources: [S15, S16] }
-  - { id: A4, statement: "the serial engine's retry delay does not change when the ticket workflow's pollBackoffMs does", proof: "deferred:assertion:lifecycle.the_engine_retries_on_its_own_delay", sources: [S5, S10] }
-  - { id: A5, statement: "amy update moves top-level policy:, plans: and errands: under the profiles reading each, keeps the original, is a no-op the second time; a moved key put back top-level is refused at boot naming its new place", proof: "deferred:assertion:update.the_settings_move_under_their_workflow", sources: [S18, S19] }
-  - { id: A6, statement: "the CLI imports no workflow package, for a type or anything else", proof: "deferred:test:packages/cli/tests/architecture.test.ts", sources: [S3, S4, S6, S11] }
+  - { id: A1, statement: "amy init on an empty machine writes a config with no workflow's settings, and amy add @amykit/workflow-errand appends a profile block that boots without being edited", proof: "assertion:errand.init_and_add_write_a_config_that_boots", sources: [S1, S7, S8, S9, S12, S13], done: true }
+  - { id: A2, statement: "amy config explain lists every mounted plugin's setting with default and description, the errand's policy.maxAttempts default 2 among them; a schema setting without a description fails the build naming it", proof: "test:packages/cli/tests/config-explain.test.ts", sources: [S2, S14, S15, S17], done: true }
+  - { id: A3, statement: "a workflow whose policy defaults carry a key its schema does not declare, or a default the schema states differently, is refused at mount, naming the key", proof: "test:packages/core/tests/define-workflow.test.ts", sources: [S15, S16], done: true }
+  - { id: A4, statement: "the serial engine's retry delay does not change when the ticket workflow's pollBackoffMs does", proof: "assertion:lifecycle.the_engine_retries_on_its_own_delay", sources: [S5, S10], done: true }
+  - { id: A5, statement: "amy update moves top-level policy:, plans: and errands: under the profiles reading each, keeps the original, is a no-op the second time; a moved key put back top-level is refused at boot naming its new place", proof: "assertion:update.the_settings_move_under_their_workflow", sources: [S18, S19], done: true }
+  - { id: A6, statement: "the CLI imports no workflow package, for a type or anything else", proof: "test:packages/cli/tests/architecture.test.ts", sources: [S3, S4, S6, S11], done: true }
 crosses:
   - { mechanism: calls, answer: n/a, why: "the mount only checks a workflow's policy defaults against its schema; how one workflow calls another is untouched" }
   - { mechanism: hooks, answer: n/a, why: "before, after and interrupt are untouched; only policy defaults are checked at mount" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "repoByTeam moves into the Linear plugin's slice; no tracker write changes" }
   - { mechanism: engines, answer: n/a, why: "only where the serial engine reads retryDelayMs from changes; its default and the record it ends in do not" }
-  - { mechanism: install-and-update, answer: works, proof: "deferred:A1, A5" }
-  - { mechanism: config, answer: works, proof: "deferred:A2, A5" }
+  - { mechanism: install-and-update, answer: works, proof: "assertion:update.the_settings_move_under_their_workflow (A5), assertion:errand.init_and_add_write_a_config_that_boots (A1)" }
+  - { mechanism: config, answer: works, proof: "assertion:update.a_moved_key_named_at_its_new_place (A5), test:packages/cli/tests/config-explain.test.ts (A2)" }
 guarantee:
   - { holds: "a moved key is never read from its old place without a word" }
+deviations:
+  - "built in #145 and delivered after it: the pull request merged the work and left this file in plans/ with every criterion still deferred; this moves it, citing the proofs #145 named"
+  - "A5's put-back refusal is three more assertions in the amy-update gate beside the one cited: update.a_second_update_moves_nothing, update.a_moved_key_named_at_its_new_place, update.a_moved_key_names_its_destination"
 exit: "errand's scenario, installed executable: init and add write a one-screen config booting unedited; config explain lists every setting. update's scenario moves an all-three-workflows install to the new shape. ticket-to-qa, errand and update gates require their assertions"
 ---
 # The config is written by what is mounted
