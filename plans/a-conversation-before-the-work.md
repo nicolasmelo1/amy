@@ -5,7 +5,7 @@ sources:
   - { id: S3, kind: decision, said: "two conversations, never confused: asking moves and writes nothing, about anything, any time; discussing with the work is a waiting record's thread, ending in a decision that moves the work" }
   - { id: S4, kind: decision, said: "mod+k opens an ask from anywhere in the window, about the selection: the record, its checkout, its brief, each move's evidence and the kept agent runs — the context amy ask starts from" }
   - { id: S5, kind: reference, ref: "plans/an-escalation-brings-its-evidence.md", said: "stores the evidence of each move and the kept agent runs an ask reads" }
-  - { id: S6, kind: decision, said: "an ask runs in the record's worktree, or with nothing selected the configured base snapshot; the person picks a harness from the harness collection the relay climbs" }
+  - { id: S6, kind: decision, said: "an ask runs on the window's own server, with a harness its relay climbs, whichever server the record lives on; with nothing selected, in the configured base snapshot. The person picks the harness" }
   - { id: S7, kind: decision, said: "an ask runs with nothing that writes: no commit, no push, no mutating port" }
   - { id: S8, kind: decision, said: "each turn sends the transcript so far with the new message; a harness able to resume its session may get only the new message, but the transcript stays the truth, so switching harness works" }
   - { id: S9, kind: decision, said: "asks are kept one file per conversation under the state directory, the files and format amy ask already writes; mod+k lists recent ones, whichever started them" }
@@ -25,6 +25,9 @@ sources:
   - { id: S23, kind: decision, said: "ui-window gains the two conversations; its world's conversation port is a fake Slack whose call log the scenario reads, and its harnesses fake CLIs recording the prompt given" }
   - { id: S24, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "this row delivers domains asks and threads — listHarnesses, startAsk, listAsks, getAsk, addAskTurn, getThread, addThreadTurn — and views work.thread, asks.recent" }
   - { id: S25, kind: decision, said: "those are flipped to delivered in surface.yaml in the same pull request" }
+  - { id: S26, kind: decision, said: "an ask about this server's record runs in its worktree; about another server's, in this machine's checkout of that repository at the branch that server pushed. Decided 2026-11-03" }
+  - { id: S27, kind: decision, said: "with no checkout of its repository here, the ask reads that record's history, evidence, kept runs and diff through its server's API, as text, and says it has no code to read" }
+  - { id: S28, kind: reference, ref: "plans/the-window-is-served.md", said: "a server never runs an agent for a paired device: the machine asking is the one whose harness answers, so connecting two amys never lends one's agents, or shell, to the other" }
 touches:
   - packages/core/src/ports/Conversation.ts
   - plugins/slack/src/SlackConversation.ts
@@ -44,7 +47,9 @@ criteria:
   - { id: A6, statement: "a discussion turn from the panel is answered in the thread and moves nothing, under answer as under discuss", proof: "deferred:assertion:window.a_discussion_from_the_window_moves_nothing", sources: [S2, S3, S11, S23] }
   - { id: A7, statement: "an ask runs with no mutating port reachable, and a harness that tries to commit is refused", proof: "deferred:assertion:window.an_ask_writes_nothing", sources: [S1, S3, S7, S9, S23] }
   - { id: A8, statement: "the third turn of an ask carries the first two, and after switching harness at the third the new harness is given them", proof: "deferred:assertion:window.an_ask_carries_its_turns_across_harnesses", sources: [S8, S23] }
-  - { id: A9, statement: "an ask about a record runs in that record's worktree", proof: "deferred:assertion:window.an_ask_runs_where_its_record_is", sources: [S4, S5, S6] }
+  - { id: A9, statement: "an ask about a record of this server runs in that record's worktree", proof: "deferred:assertion:window.an_ask_runs_where_its_record_is", sources: [S4, S5, S6, S26] }
+  - { id: A14, statement: "an ask about another server's record runs on this machine's harness, in its checkout at the branch that server pushed, and that server records no agent run", proof: "deferred:assertion:window.an_ask_about_another_server_runs_here", sources: [S6, S26, S28] }
+  - { id: A15, statement: "with no checkout of the record's repository here, the ask is given that record's history, evidence and diff from its server's API, and says it has no code", proof: "deferred:assertion:window.an_ask_without_the_code_reads_the_record", sources: [S27] }
   - { id: A10, statement: "a turn sent from the panel is in the Slack thread, and one the operator writes in Slack is in the panel, both through the installed Slack adapter", proof: "deferred:assertion:window.the_thread_is_one_thread", sources: [S13, S14, S15] }
   - { id: A11, statement: "with only plugin-file-conversation mounted, a decision pressed in the panel resumes the record in the running daemon, and a discussion turn does not", proof: "deferred:assertion:window.a_decision_without_slack_resumes_the_record", sources: [S18, S19, S20] }
   - { id: A12, statement: "a loop started before its conversation plugin was mounted makes the panel say it must restart, and offer no decision", proof: "deferred:assertion:window.a_stale_loop_is_named_not_answered", sources: [S21] }

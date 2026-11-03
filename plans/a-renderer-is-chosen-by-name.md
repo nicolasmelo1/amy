@@ -2,7 +2,7 @@
 sources:
   - { id: S1, kind: friction, said: "a window only one renderer opens grows a flag per renderer (--terminal, --desktop, --phone), and a renderer somebody else writes has none; every other part of amy is a plugin found by its registered name" }
   - { id: S2, kind: decision, said: "a renderer is a plugin contributing to ui-renderer under a name (text, desktop, terminal, a third party's); it says which frame.yaml surfaces it draws, how to start, and how to build when it has a build" }
-  - { id: S3, kind: reference, ref: "plans/the-window-is-served.md", said: "a renderer starts as a client of a server: the local one, or ui.server when config.yaml sets it" }
+  - { id: S3, kind: reference, ref: "plans/the-window-is-served.md", said: "a renderer starts as a client of servers: the local one, and each one ui.servers names in config.yaml" }
   - { id: S4, kind: decision, said: "amy ui opens ui.default from config.yaml; amy ui <name> and amy ui --mode <name> open that renderer; amy ui list shows what is installed and which is the default" }
   - { id: S5, kind: decision, said: "a name nothing installed is refused with the installed list and how to add one (amy plugin add @amykit/ui-desktop), the way a missing workflow already is" }
   - { id: S6, kind: reference, ref: "docs/design/nothing-is-installed-by-default.md", said: "text arrives with the command, inside @amykit/ui which the CLI depends on, so amy ui works bare and on a displayless server; every other renderer is installed by name, as many as wanted" }
