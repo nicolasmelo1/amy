@@ -33,6 +33,8 @@ export interface StandInOptions {
   noFilePath?: boolean;
   /** A local Bot API server: getFile answers an absolute path under this directory. */
   localFiles?: string;
+  /** The local server's file is not where it says, as on a disk amy does not share. */
+  localFilesElsewhere?: boolean;
 }
 
 /**
@@ -93,7 +95,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
       if (options.noFilePath) return { file_id: file.id, file_unique_id: file.unique, file_size: file.size };
       if (options.localFiles) {
         const local = `${options.localFiles}/${file.unique}`;
-        writeFileSync(local, file.bytes);
+        if (!options.localFilesElsewhere) writeFileSync(local, file.bytes);
         return { file_id: file.id, file_unique_id: file.unique, file_size: file.size, file_path: local };
       }
       return { file_id: file.id, file_unique_id: file.unique, file_size: file.size, file_path: `documents/${file.unique}` };

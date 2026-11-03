@@ -11,12 +11,14 @@ export const plugin = definePlugin<typeof configSchema>({
   configSchema,
   environment: [TOKEN_VARIABLE],
   register(registry, ctx) {
-    const operator = String(ctx.config.operator ?? "");
+    const given = String(ctx.config.operator ?? "");
     // Refused at mount, naming the setting: a username where an id belongs is
     // a topic opened nowhere, found only by waiting for an answer.
-    if (!/^\d+$/.test(operator)) {
-      throw new Error(`@amykit/plugin-telegram: \`operator\` must be your numeric Telegram user id, such as 123456789, got ${operator}`);
+    if (!/^\d+$/.test(given)) {
+      throw new Error(`@amykit/plugin-telegram: \`operator\` must be your numeric Telegram user id, such as 123456789, got ${given}`);
     }
+    // As Telegram spells it, so 004021 and 4021 are one operator and one state.
+    const operator = String(Number(given));
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) {
       throw new Error(

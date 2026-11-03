@@ -316,14 +316,16 @@ describe("what is not an answer", () => {
 });
 
 describe("what is kept on disk", () => {
-  it("skips a line left half written, and files its reply again", async () => {
+  it("files again a reply whose file does not parse", async () => {
     const telegram = botApiStandIn();
     const { amy, directory } = amyWith(telegram);
     const thread = await amy.open("BILL-7", "Total");
     const since = askedAt(telegram);
-    fs.mkdirSync(path.join(directory, "inbox"), { recursive: true });
-    fs.writeFileSync(path.join(directory, "inbox", `${thread.id}.jsonl`), '{"messageId":1,"at":"20');
-    telegram.say("BRL", { topic: Number(thread.id) });
+    const said = telegram.say("BRL", { topic: Number(thread.id) });
+    const identity = fs.readFileSync(path.join(directory, "identity"), "utf-8");
+    const inbox = path.join(directory, `inbox-${identity}`, thread.id);
+    fs.mkdirSync(inbox, { recursive: true });
+    fs.writeFileSync(path.join(inbox, `${said.message_id}.json`), '{"messageId":1,"at":"20');
 
     expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
   });
@@ -498,22 +500,6 @@ describe("the second review", () => {
     expect(Buffer.from(name!, "utf8").toString("utf8")).toBe(name);
   });
 
-  it("writes nothing over a successor once another process took the bot over", async () => {
-    const telegram = botApiStandIn();
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-fence-"));
-    const api = new BotApi(TOKEN, {
-      transport: async (request) => {
-        // Another process takes the bot over while this one waits on Telegram.
-        if (request.url.endsWith("/createForumTopic")) fs.mkdirSync(path.join(directory, "lock-99"));
-        return telegram.transport(request);
-      },
-    });
-    const amy = new TelegramConversation(api, { operator: String(OPERATOR), directory });
-
-    await expect(amy.open("BILL-7", "Total")).rejects.toThrow(/another process took over/);
-    expect(fs.existsSync(path.join(directory, "topics.json"))).toBe(false);
-  });
-
   it("forgets a removed profile's replies and files, and confirms its topic's messages without keeping them", async () => {
     const telegram = botApiStandIn();
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-remove-"));
@@ -535,7 +521,7 @@ describe("the second review", () => {
     expect((await build.replies(buildThread, since)).map((reply) => reply.text)).toEqual(["for the build"]);
     expect(telegram.pending()).toBe(0);
     expect(fs.existsSync(path.join(root, "brief"))).toBe(false);
-    expect(fs.readdirSync(shared).filter((name) => !/^(owners|offset)\.json$|^released-\d+$/.test(name))).toEqual([]);
+    expect(fs.readdirSync(shared).filter((name) => !/^owners$|^offset\.json$/.test(name))).toEqual([]);
   });
 });
 
@@ -595,33 +581,79 @@ describe("the third review", () => {
     expect(await again.replies(old, since)).toEqual([]);
     expect(telegram.pending()).toBe(0);
   });
+});
 
-  it("never takes over a hold whose process is alive, however old, and takes over one whose process is gone", async () => {
+describe("the fourth review", () => {
+  it("loses no reply when a reader passed over by another files the same updates late", async () => {
     const telegram = botApiStandIn();
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-alive-"));
-    const api = new BotApi(TOKEN, { transport: telegram.transport });
-    const amy = new TelegramConversation(api, { operator: String(OPERATOR), directory, leaseMs: 50, lockWaitMs: 300 });
-    const lock = path.join(directory, "lock-7");
-    fs.mkdirSync(lock);
-    fs.writeFileSync(path.join(lock, "pid"), String(process.pid));
-    const old = new Date(Date.now() - 60_000);
-    fs.utimesSync(lock, old, old);
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-late-"));
+    let slow = true;
+    const late = new BotApi(TOKEN, {
+      transport: async (request) => {
+        const answer = await telegram.transport(request);
+        if (slow && request.url.endsWith("/getUpdates")) {
+          slow = false;
+          // Paused past its hold, holding the updates it already read.
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+        return answer;
+      },
+    });
+    const prompt = new BotApi(TOKEN, { transport: telegram.transport });
+    const one = new TelegramConversation(late, { operator: String(OPERATOR), directory, leaseMs: 50 });
+    const other = new TelegramConversation(prompt, { operator: String(OPERATOR), directory, leaseMs: 50 });
+    const thread = await other.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("BRL", { topic: Number(thread.id) });
+    telegram.say("and no rounding", { topic: Number(thread.id) });
 
-    await expect(amy.open("BILL-7", "Total")).rejects.toThrow(/held by another process/);
+    const reading = one.replies(thread, since);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await other.replies(thread, since);
+    await reading;
 
-    fs.writeFileSync(path.join(lock, "pid"), "2147483646");
-    fs.utimesSync(lock, old, old);
-    await expect(amy.open("BILL-7", "Total")).resolves.toEqual({ id: expect.any(String) });
-    expect(fs.readdirSync(directory).filter((name) => /^(lock|released)-/.test(name))).toEqual(["released-8"]);
+    expect((await other.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL", "and no rounding"]);
+    expect(telegram.pending()).toBe(0);
   });
 
-  it("never hands out a number twice, so a released hold is never somebody's again", async () => {
+  it("confirms nothing when a profile's identity cannot be read", async () => {
     const telegram = botApiStandIn();
     const { amy, directory } = amyWith(telegram);
     const thread = await amy.open("BILL-7", "Total");
-    await amy.replies(thread, askedAt(telegram));
-    await amy.replies(thread, askedAt(telegram));
+    const since = askedAt(telegram);
+    telegram.say("BRL", { topic: Number(thread.id) });
+    fs.chmodSync(path.join(directory, "identity"), 0o000);
+    try {
+      await expect(amy.replies(thread, since)).rejects.toThrow();
+      expect(telegram.pending()).toBe(1);
+    } finally {
+      fs.chmodSync(path.join(directory, "identity"), 0o600);
+    }
+    expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
+  });
 
-    expect(fs.readdirSync(directory).filter((name) => /^(lock|released)-/.test(name))).toEqual(["released-3"]);
+  it("never says a local Bot API server's path, which may carry the token", async () => {
+    const local = fs.mkdtempSync(path.join(os.tmpdir(), `amy-${TOKEN.replace(":", "-")}-`));
+    const telegram = botApiStandIn({ localFiles: local, localFilesElsewhere: true });
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("see", { topic: Number(thread.id), file: { name: "total.png", bytes: new Uint8Array([1]) } });
+
+    const error = (await amy.replies(thread, since).then(() => undefined, (caught: Error) => caught))!;
+    expect(String(error)).toMatch(/must share that disk/);
+    expect(String(error)).not.toContain(local);
+    expect(String(error.cause ?? "")).not.toContain(local);
+  });
+
+  it("reads the operator however the config spelled the id", async () => {
+    const telegram = botApiStandIn();
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-zeros-"));
+    const amy = new TelegramConversation(new BotApi(TOKEN, { transport: telegram.transport }), { operator: `00${OPERATOR}`, directory });
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("BRL", { topic: Number(thread.id) });
+
+    expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
   });
 });

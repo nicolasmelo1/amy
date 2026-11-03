@@ -19,7 +19,7 @@ export interface TelegramConversationOptions {
   shared?: string;
   /** The largest file downloaded; a larger one is named in the reply instead. */
   maxFileBytes?: number;
-  /** How long to wait for another process holding the bot. */
+  /** How long to wait for another process reading the bot. */
   lockWaitMs?: number;
   /** How long a hold on the bot lasts without being renewed. */
   leaseMs?: number;
@@ -47,8 +47,6 @@ const MAX_TOPIC_NAME_CHARS = 128;
  * updates numbered below it.
  */
 const OFFSET_LIFETIME_MS = 6 * 24 * 60 * 60 * 1000;
-
-const LOCK = /^(lock|released)-(\d+)$/;
 
 /** Who owns a topic: its profile's directory, relative to the bot's, and that directory's identity. */
 interface Owner {
@@ -102,23 +100,26 @@ interface Filed {
   files: { id: string; unique: string; name: string; size?: number }[];
 }
 
-/** A hold that was taken over: whatever its holder was about to write is not written. */
-class Superseded extends Error {}
-
 /**
  * One topic per piece of work, in the operator's private chat with the bot.
  *
- * Telegram hands a bot its updates once, to whoever asks first, so the one
+ * Telegram hands a bot its updates once, to whoever asks first, so the
  * process reading them files each message, durably, under the profile that
- * owns its topic before the offset that confirms it moves. A restart, or the
- * profile's own process, reads that file rather than an update stream that
- * has already moved past it.
+ * owns its topic before the offset that confirms it moves.
+ *
+ * Nothing here depends on that reader being alone. Every reply is a file of
+ * its own, created and never rewritten; every topic and owner is a file
+ * created once; the offset only moves forward. A second reader, or one that
+ * was paused past its hold, can only add what is already there, never lose
+ * it. The hold on the bot saves work (a 409 from Telegram, a topic opened
+ * twice) and nothing else.
  */
 export class TelegramConversation implements Conversation {
   private readonly opening = new Map<string, Promise<ThreadRef>>();
-
   /** Who this profile's directory is: a directory removed and made again is somebody else. */
   private readonly identity: string;
+  /** The operator's id as Telegram writes it, whatever spelling the config used. */
+  private readonly operator: string;
 
   constructor(
     private readonly api: BotApi,
@@ -126,30 +127,32 @@ export class TelegramConversation implements Conversation {
   ) {
     privateDirectory(options.directory);
     privateDirectory(this.shared());
+    this.operator = normalisedId(options.operator);
     this.identity = identityOf(options.directory);
+    sweepOtherInboxes(options.directory, this.identity);
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
-    const known = topicFor(this.topics(), workId);
+    const known = this.topicOfWork(workId);
     if (known !== undefined) return Promise.resolve({ id: String(known) });
     // Two looks at the same work in one process must not open two topics.
     const pending = this.opening.get(workId);
     if (pending) return pending;
-    const opened = this.held(async (fence) => {
+    const opened = this.held(async () => {
       // Another process may have opened it while this one waited.
-      const already = topicFor(this.topics(), workId);
+      const already = this.topicOfWork(workId);
       if (already !== undefined) return { id: String(already) };
       const topic = await this.api.call<{ message_thread_id: number }>("createForumTopic", {
         chat_id: this.chat(),
         name: topicName(title, workId),
       });
-      fence();
-      // Owner first: a reply that arrives before the map is written is still filed here. The
-      // directory is kept relative to the bot's, so a state root moved or mounted elsewhere still finds it.
+      // Owner first: a reply that arrives before the work knows its topic is still filed here.
+      // The directory is kept relative to the bot's, so a state root moved or mounted elsewhere still finds it.
       const owner: Owner = { directory: path.relative(this.shared(), this.options.directory), identity: this.identity };
-      writeJson(path.join(this.shared(), "owners.json"), { ...this.owners(), [topic.message_thread_id]: owner });
-      writeJson(path.join(this.options.directory, "topics.json"), { ...this.topics(), [workId]: topic.message_thread_id });
-      return { id: String(topic.message_thread_id) };
+      createOnce(path.join(this.shared(), "owners", `${topic.message_thread_id}.json`), owner);
+      // Created once: if another process recorded a topic for this work first, that one is the work's.
+      createOnce(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`), { topic: topic.message_thread_id });
+      return { id: String(this.topicOfWork(workId)) };
     }).finally(() => this.opening.delete(workId));
     this.opening.set(workId, opened);
     return opened;
@@ -176,10 +179,10 @@ export class TelegramConversation implements Conversation {
     const after = Date.parse(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
     const topic = topicOf(thread);
-    await this.held((fence) => this.fileUpdates(fence));
+    await this.held(() => this.fileUpdates());
 
     const replies: Reply[] = [];
-    for (const filed of filedUnder(this.options.directory, topic)) {
+    for (const filed of filedUnder(this.inbox(this.options.directory, this.identity, topic))) {
       if (Date.parse(filed.at) <= after) continue;
       const { paths, skipped } = await this.downloadAll(topic, filed.files);
       replies.push({ at: filed.at, author: filed.author, text: [filed.text, ...skipped].filter(Boolean).join("\n"), files: paths });
@@ -208,10 +211,10 @@ export class TelegramConversation implements Conversation {
     try {
       const chat = await this.api.call<{ type?: string }>("getChat", { chat_id: this.chat() });
       checks.push(chat.type === "private"
-        ? { label: "telegram chat", ok: true, detail: `private chat with ${this.options.operator}` }
-        : { label: "telegram chat", ok: false, detail: `${this.options.operator} is a ${chat.type ?? "chat"}, not a person; set operator to your own user id` });
+        ? { label: "telegram chat", ok: true, detail: `private chat with ${this.operator}` }
+        : { label: "telegram chat", ok: false, detail: `${this.operator} is a ${chat.type ?? "chat"}, not a person; set operator to your own user id` });
     } catch (error) {
-      checks.push({ label: "telegram chat", ok: false, detail: `${this.options.operator} has no chat with ${name}; open ${name} in Telegram and send /start (${messageOf(error)})` });
+      checks.push({ label: "telegram chat", ok: false, detail: `${this.operator} has no chat with ${name}; open ${name} in Telegram and send /start (${messageOf(error)})` });
     }
     try {
       // Not confirming anything: no offset, so nothing filed is skipped.
@@ -231,20 +234,24 @@ export class TelegramConversation implements Conversation {
   }
 
   private chat(): number {
-    return Number(this.options.operator);
+    return Number(this.operator);
   }
 
   private shared(): string {
     return this.options.shared ?? this.options.directory;
   }
 
+  private inbox(directory: string, identity: string, topic: number): string {
+    return path.join(directory, `inbox-${identity}`, String(topic));
+  }
+
   /**
    * Reads every update Telegram holds and files each of the operator's
    * messages under the profile owning its topic. A topic no profile owns any
-   * more, its profile removed, is skipped. The offset moves only once what it
-   * confirms is durably on disk, and a message filed twice is filed once.
+   * more, its profile removed or made again, is skipped. The offset moves
+   * only once what it confirms is durably on disk.
    */
-  private async fileUpdates(fence: () => void): Promise<void> {
+  private async fileUpdates(): Promise<void> {
     for (;;) {
       const offset = this.offset();
       const updates = await this.api.call<TelegramUpdate[]>("getUpdates", {
@@ -254,21 +261,41 @@ export class TelegramConversation implements Conversation {
         allowed_updates: ["message"],
       });
       if (updates.length === 0) return;
-      const owners = this.owners();
       for (const update of updates) {
         const message = update.message;
-        if (!message || !this.isOperatorAnswer(message)) continue;
-        const owner = this.ownerOf(owners[message.message_thread_id!]);
-        if (owner === undefined) continue;
-        fence();
-        file(owner, message.message_thread_id!, message);
+        if (message && this.isOperatorAnswer(message)) this.file(message);
       }
-      fence();
-      writeJson(path.join(this.shared(), "offset.json"), {
-        offset: Math.max(...updates.map((update) => update.update_id)) + 1,
-        receivedAt: Date.now(),
-      });
+      this.confirm(Math.max(...updates.map((update) => update.update_id)) + 1);
     }
+  }
+
+  /**
+   * Files one message in its owner's inbox for that owner's identity, as a
+   * file of its own. The inbox is named for the identity, so a write racing a
+   * profile's removal lands where no later profile at that path reads.
+   */
+  private file(message: TelegramMessage): void {
+    const topic = message.message_thread_id!;
+    const owner = readJson<Owner>(path.join(this.shared(), "owners", `${topic}.json`));
+    if (!owner) return;
+    const directory = path.resolve(this.shared(), owner.directory);
+    if (readIdentity(directory) !== owner.identity) return;
+    const inbox = this.inbox(directory, owner.identity, topic);
+    if (!ensureInbox(directory, inbox)) return;
+    const target = path.join(inbox, `${message.message_id}.json`);
+    if (readJson<Filed>(target, true)) return;
+    const filed = filedUnder(inbox);
+    const last = filed.length ? Date.parse(filed[filed.length - 1]!.at) : Number.NEGATIVE_INFINITY;
+    // Telegram says when to the second; a reply is placed at the end of its second, and after the last
+    // one filed, so replies keep their order and none falls before a question asked earlier in that second.
+    const at = new Date(Math.max(message.date * 1000 + 999, last + 1)).toISOString();
+    // The largest picture by its size on screen, which every size states; a byte count is optional.
+    const largest = message.photo?.length ? [...message.photo].sort((a, b) => b.width * b.height - a.width * a.height)[0] : undefined;
+    const files = [
+      ...(message.document ? [{ id: message.document.file_id, unique: message.document.file_unique_id, name: message.document.file_name ?? message.document.file_unique_id, size: message.document.file_size }] : []),
+      ...(largest ? [{ id: largest.file_id, unique: largest.file_unique_id, name: `${largest.file_unique_id}.jpg`, size: largest.file_size }] : []),
+    ];
+    writeJson(target, { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files } satisfies Filed);
   }
 
   /**
@@ -283,6 +310,15 @@ export class TelegramConversation implements Conversation {
     return stored.offset;
   }
 
+  /** Moves the offset forward, never back, so a late reader cannot unconfirm what another confirmed. */
+  private confirm(next: number): void {
+    const file = path.join(this.shared(), "offset.json");
+    const stored = readJson<{ offset?: number; receivedAt?: number }>(file);
+    const expired = stored?.receivedAt === undefined || Date.now() - stored.receivedAt > OFFSET_LIFETIME_MS;
+    if (!expired && (stored?.offset ?? 0) > next) return;
+    writeJson(file, { offset: next, receivedAt: Date.now() });
+  }
+
   /**
    * By who wrote it and where, never by a marker in the text, and only when
    * it says something: a topic renamed, a sticker or a voice note carries no
@@ -290,8 +326,8 @@ export class TelegramConversation implements Conversation {
    */
   private isOperatorAnswer(message: TelegramMessage): boolean {
     if (message.from?.is_bot) return false;
-    if (String(message.from?.id) !== this.options.operator) return false;
-    if (String(message.chat.id) !== this.options.operator) return false;
+    if (String(message.from?.id) !== this.operator) return false;
+    if (String(message.chat.id) !== this.operator) return false;
     if (message.is_topic_message !== true || message.message_thread_id === undefined) return false;
     return Boolean(message.text?.trim() || message.caption?.trim() || message.document || message.photo?.length);
   }
@@ -341,188 +377,197 @@ export class TelegramConversation implements Conversation {
     return true;
   }
 
-  private topics(): Record<string, number> {
-    return readJson<Record<string, number>>(path.join(this.options.directory, "topics.json")) ?? {};
-  }
-
-  private owners(): Record<string, Owner> {
-    return readJson<Record<string, Owner>>(path.join(this.shared(), "owners.json")) ?? {};
+  private topicOfWork(workId: string): number | undefined {
+    return readJson<{ topic: number }>(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`))?.topic;
   }
 
   /**
-   * The directory a topic's replies are filed in, if the profile that opened
-   * it still has it: a removed profile's topics, and the same path made again
-   * by a later profile, own nothing.
+   * Runs `work` holding the bot, so one process reads its updates or opens a
+   * topic at a time: a hold not renewed within its lease is taken over. Being
+   * passed over costs a 409 or a second topic, never a reply, since nothing
+   * filed is ever rewritten.
    */
-  private ownerOf(owner: Owner | undefined): string | undefined {
-    if (!owner) return undefined;
-    const directory = path.resolve(this.shared(), owner.directory);
-    return readIdentity(directory) === owner.identity ? directory : undefined;
-  }
-
-  /**
-   * Runs `work` holding the bot: one process reads its updates or opens a
-   * topic at a time. A hold is a numbered generation, taken by creating the
-   * next number, which exactly one contender can, and numbers are never
-   * reused: a released hold leaves its number behind. A hold is passed only
-   * when its lease ran out and its process is gone, so a holder that is slow,
-   * or paused, is never written over; `fence` still refuses any write once a
-   * later generation exists. amy's state is one machine's, which is what
-   * makes a process id an answer.
-   */
-  private async held<T>(work: (fence: () => void) => Promise<T>): Promise<T> {
+  private async held<T>(work: () => Promise<T>): Promise<T> {
+    const lock = path.join(this.shared(), "lock");
     const lease = this.options.leaseMs ?? 60_000;
     const deadline = Date.now() + (this.options.lockWaitMs ?? 120_000);
-    const mine = await this.take(lease, deadline);
-    const lock = path.join(this.shared(), `lock-${mine}`);
-    const fence = () => {
-      if (!fs.existsSync(lock) || generations(this.shared()).some((n) => n > mine)) {
-        throw new Superseded(`another process took over ${this.shared()}; this one writes nothing more`);
-      }
-    };
-    const renew = setInterval(() => ignoringGone(() => fs.utimesSync(lock, new Date(), new Date())), Math.max(10, lease / 3));
-    try {
-      return await work(fence);
-    } finally {
-      clearInterval(renew);
-      // The number stays taken, so no later hold is ever this one again.
-      ignoringGone(() => fs.renameSync(lock, path.join(this.shared(), `released-${mine}`)));
-    }
-  }
-
-  private async take(lease: number, deadline: number): Promise<number> {
-    for (;;) {
-      const taken = generations(this.shared());
-      const top = taken.length ? Math.max(...taken) : 0;
-      const holder = path.join(this.shared(), `lock-${top}`);
-      const held = top > 0 && fs.existsSync(holder);
-      if (!held || abandoned(holder, lease)) {
-        const next = path.join(this.shared(), `lock-${top + 1}`);
-        try {
-          fs.mkdirSync(next);
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-          continue;
-        }
-        fs.writeFileSync(path.join(next, "pid"), String(process.pid), { mode: 0o600 });
-        // Only the newest number is kept, as a lock or a marker; older ones say nothing.
-        for (const older of taken) removeGeneration(this.shared(), older);
-        return top + 1;
+    const me = randomUUID();
+    while (!claim(lock, me)) {
+      const since = mtimeOf(lock);
+      if (since !== undefined && Date.now() - since > lease) {
+        ignoringGone(() => fs.renameSync(lock, path.join(this.shared(), `.${randomUUID()}.stale`)));
+        removeStale(this.shared());
+        continue;
       }
       if (Date.now() > deadline) throw new Error(`${this.shared()} is held by another process; waited for it and gave up`);
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
+    const renew = setInterval(() => ignoringGone(() => ownedBy(lock, me) && fs.utimesSync(lock, new Date(), new Date())), Math.max(10, lease / 3));
+    try {
+      return await work();
+    } finally {
+      clearInterval(renew);
+      if (ownedBy(lock, me)) fs.rmSync(lock, { recursive: true, force: true });
+    }
   }
+}
+
+/** Takes the hold if nobody has it, writing who holds it inside. */
+function claim(lock: string, me: string): boolean {
+  try {
+    fs.mkdirSync(lock);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+    throw error;
+  }
+  fs.writeFileSync(path.join(lock, "owner"), me, { mode: 0o600 });
+  return true;
+}
+
+function ownedBy(lock: string, me: string): boolean {
+  try {
+    return fs.readFileSync(path.join(lock, "owner"), "utf-8") === me;
+  } catch {
+    return false;
+  }
+}
+
+/** Removes the holds taken over and moved aside. */
+function removeStale(directory: string): void {
+  for (const name of fs.readdirSync(directory)) {
+    if (name.endsWith(".stale")) fs.rmSync(path.join(directory, name), { recursive: true, force: true });
+  }
+}
+
+/** Every reply filed under a topic, in order. A file that does not parse is skipped, and filed again. */
+function filedUnder(inbox: string): Filed[] {
+  let names: string[];
+  try {
+    names = fs.readdirSync(inbox).filter((name) => name.endsWith(".json"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+  return names
+    .flatMap((name) => {
+      const filed = readJson<Filed>(path.join(inbox, name), true);
+      return filed ? [filed] : [];
+    })
+    .sort((a, b) => a.at.localeCompare(b.at) || a.messageId - b.messageId);
 }
 
 /**
- * Files one message under its topic in the owning profile, once. Telegram
- * says when to the second; a reply is placed at the end of its second, and
- * after the last one filed, so replies keep their order and none falls before
- * a question asked earlier in the same second.
+ * The topic's inbox, made if needed without making anything above it: a
+ * profile removed between the reader's look and this is not made again. Each
+ * new directory is flushed into its parent before anything is filed in it.
  */
-function file(owner: string, topic: number, message: TelegramMessage): void {
-  const filed = filedUnder(owner, topic);
-  if (filed.some((one) => one.messageId === message.message_id)) return;
-  const last = filed.length ? Date.parse(filed[filed.length - 1]!.at) : Number.NEGATIVE_INFINITY;
-  const at = new Date(Math.max(message.date * 1000 + 999, last + 1)).toISOString();
-  // The largest picture by its size on screen, which every size states; a byte count is optional.
-  const largest = message.photo?.length ? [...message.photo].sort((a, b) => b.width * b.height - a.width * a.height)[0] : undefined;
-  const files = [
-    ...(message.document ? [{ id: message.document.file_id, unique: message.document.file_unique_id, name: message.document.file_name ?? message.document.file_unique_id, size: message.document.file_size }] : []),
-    ...(largest ? [{ id: largest.file_id, unique: largest.file_unique_id, name: `${largest.file_unique_id}.jpg`, size: largest.file_size }] : []),
-  ];
-  const entry: Filed = { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files };
-  const inbox = path.join(owner, "inbox");
-  if (!fs.existsSync(inbox)) {
-    // Not recursive: a profile removed between the reader's look and this is not made again.
-    fs.mkdirSync(inbox, { mode: 0o700 });
-    syncDirectory(owner);
-  }
-  writeText(path.join(inbox, `${topic}.jsonl`), [...filed, entry].map((one) => `${JSON.stringify(one)}\n`).join(""));
-}
-
-/** What is filed under a topic. A line that does not parse is skipped: its update was never confirmed, so it is filed again. */
-function filedUnder(owner: string, topic: number): Filed[] {
-  const inbox = path.join(owner, "inbox", `${topic}.jsonl`);
-  if (!fs.existsSync(inbox)) return [];
-  return fs.readFileSync(inbox, "utf-8").split("\n").filter(Boolean).flatMap((line) => {
+function ensureInbox(directory: string, inbox: string): boolean {
+  for (const step of [path.dirname(inbox), inbox]) {
     try {
-      return [JSON.parse(line) as Filed];
-    } catch {
-      return [];
+      fs.mkdirSync(step, { mode: 0o700 });
+      syncDirectory(path.dirname(step));
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EEXIST") continue;
+      if (code === "ENOENT") return false;
+      throw error;
     }
-  });
+  }
+  return fs.existsSync(directory);
 }
 
-/** The identity a profile directory carries, made the first time it is used. */
+/** A profile's leftovers from an identity it no longer has, such as a reply filed while it was removed. */
+function sweepOtherInboxes(directory: string, identity: string): void {
+  for (const name of fs.readdirSync(directory)) {
+    if (name.startsWith("inbox-") && name !== `inbox-${identity}`) fs.rmSync(path.join(directory, name), { recursive: true, force: true });
+  }
+}
+
+/** The identity a profile directory carries, published whole and durable the first time it is used. */
 function identityOf(directory: string): string {
   const known = readIdentity(directory);
   if (known) return known;
   const made = randomUUID();
+  const staged = path.join(directory, `.${randomUUID()}.partial`);
+  const handle = fs.openSync(staged, "wx", 0o600);
   try {
-    fs.writeFileSync(path.join(directory, "identity"), made, { flag: "wx", mode: 0o600 });
-    return made;
+    fs.writeFileSync(handle, made);
+    fs.fsyncSync(handle);
+  } finally {
+    fs.closeSync(handle);
+  }
+  try {
+    // A link is created whole or not at all, so nobody reads half an identity.
+    fs.linkSync(staged, path.join(directory, "identity"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    return readIdentity(directory)!;
+  } finally {
+    fs.rmSync(staged, { force: true });
   }
+  syncDirectory(directory);
+  return readIdentity(directory)!;
 }
 
+/** The directory's identity, or undefined when it has none because it is gone; any other failure is raised. */
 function readIdentity(directory: string): string | undefined {
   try {
     return fs.readFileSync(path.join(directory, "identity"), "utf-8");
-  } catch {
-    return undefined;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
+    throw error;
   }
 }
 
-/** A file a local Bot API server keeps on a disk amy shares, read within the limit. */
+/** A JSON file written once: whoever writes it first is the answer. */
+function createOnce(file: string, value: unknown): void {
+  privateDirectory(path.dirname(file));
+  const staged = path.join(path.dirname(file), `.${randomUUID()}.partial`);
+  const handle = fs.openSync(staged, "wx", 0o600);
+  try {
+    fs.writeFileSync(handle, `${JSON.stringify(value)}\n`);
+    fs.fsyncSync(handle);
+  } finally {
+    fs.closeSync(handle);
+  }
+  try {
+    fs.linkSync(staged, file);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  } finally {
+    fs.rmSync(staged, { force: true });
+  }
+  syncDirectory(path.dirname(file));
+}
+
+/**
+ * A file a local Bot API server keeps on a disk amy shares, read within the
+ * limit. Its path is never said: a local server may put the token in it.
+ */
 function localFile(file: string, limit: number): Uint8Array {
   let size: number;
   try {
     size = fs.statSync(file).size;
-  } catch (error) {
-    throw new Error(`the local Bot API server keeps this file at ${file}, which amy cannot read; the server and amy must share that disk`, { cause: error });
+  } catch {
+    throw new Error("the local Bot API server keeps this file where amy cannot read it; the server and amy must share that disk");
   }
   if (size > limit) throw new TooLarge(limit);
-  return fs.readFileSync(file);
-}
-
-/** Every generation of the bot's lock still on disk, held or released. */
-function generations(directory: string): number[] {
-  return fs.readdirSync(directory).flatMap((name) => {
-    const match = LOCK.exec(name);
-    return match ? [Number(match[2])] : [];
-  });
-}
-
-function removeGeneration(directory: string, n: number): void {
-  fs.rmSync(path.join(directory, `lock-${n}`), { recursive: true, force: true });
-  fs.rmSync(path.join(directory, `released-${n}`), { recursive: true, force: true });
-}
-
-/** A hold whose lease ran out and whose process is gone; one being created, with no pid yet, is not. */
-function abandoned(lock: string, lease: number): boolean {
-  const since = mtimeOf(lock);
-  if (since === undefined || Date.now() - since <= lease) return false;
-  let pid: number;
   try {
-    pid = Number(fs.readFileSync(path.join(lock, "pid"), "utf-8"));
+    return fs.readFileSync(file);
   } catch {
-    return true;
-  }
-  try {
-    process.kill(pid, 0);
-    return false;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "ESRCH";
+    throw new Error("the local Bot API server's file could not be read; the server and amy must share that disk");
   }
 }
 
-/** A work's topic, read as the map's own entry: a work id such as `constructor` is not the map's prototype. */
-function topicFor(topics: Record<string, number>, workId: string): number | undefined {
-  return Object.hasOwn(topics, workId) ? topics[workId] : undefined;
+/** A Telegram id spelled as Telegram spells it: 004021 is 4021. */
+function normalisedId(id: string): string {
+  if (!/^\d+$/.test(id)) throw new Error(`${id} is not a Telegram user id`);
+  return String(Number(id));
+}
+
+/** A work id as one file name on every system. */
+function fileNameOf(workId: string): string {
+  return encodeURIComponent(workId).replace(/\*/g, "%2A").replace(/^\./, "%2E");
 }
 
 function topicOf(thread: ThreadRef): number {
@@ -576,8 +621,21 @@ function ignoringGone(act: () => unknown): void {
   }
 }
 
-function readJson<T>(file: string): T | undefined {
-  return fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, "utf-8")) as T) : undefined;
+/** A JSON file's value; with `lenient`, a file that does not parse reads as absent. */
+function readJson<T>(file: string, lenient = false): T | undefined {
+  let text: string;
+  try {
+    text = fs.readFileSync(file, "utf-8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    if (lenient) return undefined;
+    throw error;
+  }
 }
 
 function writeJson(file: string, value: unknown): void {
