@@ -54,11 +54,15 @@ export type ValueFor<Field extends ConfigField> = ConfigValueFor<Field["type"]> 
 /** One intersection piece a dotted schema key contributes to the plugin's config. */
 type PieceOf<S extends ConfigSchema, K extends keyof S> = K extends `${infer Head}.${infer Rest}`
   ? Rest extends `${infer Inner}.${infer Tail}`
-    ? { [H in Head]: RestPieceOf<Tail, Inner, S[K]> }
+    ? { [H in Head]: RestPieceOf<Tail, Inner, ValueFor<S[K]>> }
     : { [H in Head]: { [L in Rest]: ValueFor<S[K]> } }
   : never;
 
-/** The inner segments of a path of three or more, folded into nested groups. */
+/** The inner segments of a path of three or more, folded into nested groups.
+ *
+ * `Value` arrives as the field's validated value, not the schema's own
+ * descriptor: the plugin reads a number where the schema declared one, not
+ * the declaration itself. */
 type RestPieceOf<Rest extends string, Head extends string, Value> = Rest extends `${infer Inner}.${infer Tail}`
   ? { [H in Head]: RestPieceOf<Tail, Inner, Value> }
   : { [H in Head]: { [L in Rest]: Value } };
@@ -116,8 +120,10 @@ export function validateConfig(
         continue;
       }
       const filled = fill(leaves);
-      if (filled === undefined) continue;
-      config[head] = filled;
+      // A group whose every leaf is optional has nothing to fill in, and the
+      // type the schema promised (the group is read without a guard) is
+      // still owed: the plugin meets an empty mapping, not a missing one.
+      config[head] = filled ?? emptyMapping();
       continue;
     }
 
@@ -169,6 +175,11 @@ function splitSchema(
     group.set(path.join("."), spec);
   }
   return { own, groups, problems, config };
+}
+
+/** An empty mapping the validator hands the plugin where the schema promised a group. */
+function emptyMapping(): Record<string, unknown> {
+  return {};
 }
 
 /**
@@ -231,31 +242,43 @@ function rejectUnknown(
     // A declared group still owes its given shape. Scalars and wrong shapes
     // are named by the group's own validator below; what is left to refuse
     // here is everything the settings carry that no declared path reaches.
-    rejectOutsidePaths(plugin, key, given[key], leaves.keys(), [], problems);
+    rejectOutsidePaths(plugin, key, given[key], [...leaves.keys()], [], problems);
   }
 }
 
-/** Refuses the names a group was given that its schema's paths do not reach. */
+/** Refuses the names a group was given that its schema's paths do not reach.
+ *
+ * Every recursion level walks the leaves as they are spelled at that level —
+ * `[...walked]` restarts, so a declared path's second segment is compared
+ * with its own spelling, not with the path it sits under — while `full`
+ * carries what the operator wrote, so a refusal names every segment it sat
+ * at. */
 function rejectOutsidePaths(
   plugin: string,
   head: string,
   value: unknown,
-  declaredLeaves: IterableIterator<string>,
-  walked: string[],
+  declaredLeaves: readonly string[],
+  full: string[],
   problems: string[],
 ): void {
   if (!isRecord(value)) return;
   const leaves = [...declaredLeaves];
   for (const name of Object.keys(value)) {
-    const at = [...walked, name];
-    const path = [head, ...at].join(".");
-    const reaching = leaves.filter((leaf) => leaf === at.join(".") || leaf.startsWith(at.join(".") + "."));
+    const path = [head, ...full, name];
+    const reaching = leaves.filter((leaf) => leaf === name || leaf.startsWith(name + "."));
     if (reaching.length === 0) {
-      problems.push(`${plugin}: \`${path}\` is not a setting this plugin has`);
+      problems.push(`${plugin}: \`${path.join(".")}\` is not a setting this plugin has`);
       continue;
     }
-    if (reaching.every((leaf) => leaf !== at.join("."))) {
-      rejectOutsidePaths(plugin, head, value[name], reaching.map((leaf) => leaf.slice(at.join(".").length + 1)).values(), at, problems);
+    if (reaching.every((leaf) => leaf !== name)) {
+      rejectOutsidePaths(
+        plugin,
+        head,
+        value[name],
+        reaching.map((leaf) => leaf.slice(name.length + 1)),
+        [...full, name],
+        problems,
+      );
     }
   }
 }

@@ -680,8 +680,41 @@ export function migrateSettingsFile(home: string): SettingsMoved {
 
   const said: string[] = [];
   const workflows = entryOf(top, "workflows");
-  const dropped: string[] = [];
+  const dropped = moveRetiredKeys(document, top, workflows, said);
 
+  // An old EXAMPLE always named the QA status, but a hand-written ticket
+  // profile can name none of the retired keys and still lean on the
+  // implicit default the old loader supplied: materializing it changes the
+  // file even when nothing moved from place to place, so it is answered
+  // before deciding that no migration is needed at all.
+  const materialized = materializeTicketStatus(document, top, said);
+
+  if (dropped.length === 0 && !materialized) return { ok: true, said: [] };
+
+  const movedTo = `${place}.moved`;
+  // The kept file is the machine's config before its first move, a byte the
+  // operator can always go back to; rewriting it now would archive a state
+  // that already moved the way the file beside it now says it did.
+  if (!fs.existsSync(movedTo)) fs.writeFileSync(movedTo, text, "utf-8");
+  fs.writeFileSync(place, String(document), "utf-8");
+  return { ok: true, said, movedTo };
+}
+
+/** One retired key's journey from the top level to the workflow that reads it.
+ *
+ * Every retired key is taken off the top: where something mounted reads it,
+ * the move places it and says so; where nothing does, the file it would make
+ * unmountable loses it and the backup keeps the operator's bytes. The walk
+ * returns what it moved off, so the caller knows whether the file changed at
+ * all — materializing a default the file never had is a change the move did
+ * not make, and only the two kinds together decide that no update is due. */
+function moveRetiredKeys(
+  document: yaml.Document,
+  top: yaml.YAMLMap,
+  workflows: ReturnType<typeof entryOf>,
+  said: string[],
+): string[] {
+  const dropped: string[] = [];
   for (const [key, readers] of READ_BY_WORKFLOW) {
     const entry = entryOf(top, key);
     if (entry === undefined) continue;
@@ -708,15 +741,7 @@ export function migrateSettingsFile(home: string): SettingsMoved {
       : `the ${readers.map((one) => one.replace("@amykit/", "")).join(", ")} workflow's profile settings`;
     said.push(`${key}: moved to ${where}`);
   }
-
-  if (dropped.length === 0) return { ok: true, said: [] };
-
-  materializeTicketStatus(document, top, said);
-
-  const movedTo = `${place}.moved`;
-  fs.writeFileSync(movedTo, text, "utf-8");
-  fs.writeFileSync(place, String(document), "utf-8");
-  return { ok: true, said, movedTo };
+  return dropped;
 }
 
 /**
@@ -726,21 +751,28 @@ export function migrateSettingsFile(home: string): SettingsMoved {
  * without a value the mount will refuse. The ticket's profile gains what
  * init would have written, said the way a move is said.
  */
-function materializeTicketStatus(document: yaml.Document, top: yaml.YAMLMap, said: string[]): void {
+function materializeTicketStatus(document: yaml.Document, top: yaml.YAMLMap, said: string[]): boolean {
   const workflowsMap = entryOf(top, "workflows");
-  if (workflowsMap === undefined || !yaml.isMap(workflowsMap.value)) return;
+  if (workflowsMap === undefined || !yaml.isMap(workflowsMap.value)) return false;
+  let wrote = false;
   for (const item of workflowsMap.value.items) {
     const profile = item.value;
     if (!yaml.isMap(profile) || unwrap(profile.get("workflow")) !== "@amykit/workflow-ticket-to-qa") continue;
     if (entryOf(top, "qaStatusName") !== undefined) continue;
     const settingsMap = profile.get("settings");
+    // A profile that already names the status was placed by the move above,
+    // not left behind by init: saying so again would rewrite a file that did
+    // not drift, and an update nobody sees say something twice.
+    if (yaml.isMap(settingsMap) && settingsMap.has("qaStatusName")) continue;
     if (yaml.isMap(settingsMap)) {
-      if (!settingsMap.has("qaStatusName")) settingsMap.add(new yaml.Pair("qaStatusName", "In QA"));
+      settingsMap.add(new yaml.Pair("qaStatusName", "In QA"));
     } else {
       profile.add(new yaml.Pair("settings", toMap({ qaStatusName: "In QA" })));
     }
     said.push("qaStatusName: set to In QA, the value init wrote, which the ticket workflow requires");
+    wrote = true;
   }
+  return wrote;
 }
 
 /**

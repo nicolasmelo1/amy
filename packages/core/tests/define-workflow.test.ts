@@ -183,6 +183,36 @@ describe("defineWorkflow", () => {
     expect(attempts).toBe(2);
   });
 
+  // A path three segments deep is spelled the way the operator wrote it: it
+  // is read, not refused for sitting next to itself, and the type reaches it.
+  it("accepts a declared path three segments deep and types it", () => {
+    const schema = {
+      "policy.limits.maxAttempts": { type: "number", default: 2, description: "tries per item" },
+    } as const;
+    const outcome = validateConfig("deep-user", schema, { policy: { limits: { maxAttempts: 9 } } });
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok === false ? undefined : outcome.config).toEqual({ policy: { limits: { maxAttempts: 9 } } });
+    const config = (outcome.ok ? outcome.config : {}) as ConfigOf<typeof schema>;
+    const attempts: number | undefined = config.policy?.limits?.maxAttempts;
+    expect(attempts).toBe(9);
+  });
+
+  // A group nothing fills is still handed over, because the type the checker
+  // promised is read unguarded: `{}` there, not a missing group.
+  it("hands an absent optional-only group as an empty mapping", () => {
+    const schema = {
+      "auth.token": { type: "string", description: "the credential the workflow signs with" },
+    } as const;
+    const outcome = validateConfig("present-group", schema, {});
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok === false ? undefined : outcome.config).toEqual({ auth: {} });
+    const config = (outcome.ok ? outcome.config : {}) as ConfigOf<typeof schema>;
+    const token: string | undefined = config.auth?.token;
+    expect(token).toBe(undefined);
+  });
+
   it("refuses a decision default its schema does not declare, naming the key", async () => {
     const plugin = defineWorkflow({
       name: "unproven",

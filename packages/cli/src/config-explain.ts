@@ -30,10 +30,24 @@ export type ExplainReport = {
  */
 export function describeEntries(schema: ConfigSchema, given?: Readonly<Record<string, unknown>>): string[] {
   return Object.entries(schema).map(([key, spec]) => {
-    const supplied = given !== undefined && Object.hasOwn(given, key) ? `set ${stringOf(given[key])}` : undefined;
+    const at = pathOf(given, key);
+    const supplied = at === nothing ? undefined : `set ${stringOf(at)}`;
     const when = supplied ?? (spec.required ? "required" : spec.default === undefined ? "not set" : `default ${stringOf(spec.default)}`);
     return `  ${key.padEnd(40)}${spec.type.padEnd(10)}${when.padEnd(24)}${spec.description}`;
   });
+}
+
+/** What a nested settings mapping carries at a dotted path, or `nothing` when it carries none of it. */
+const nothing = Symbol("not supplied");
+
+function pathOf(given: Readonly<Record<string, unknown>> | undefined, dotted: string): unknown {
+  if (given === undefined) return nothing;
+  let node: unknown = given;
+  for (const segment of dotted.split(".")) {
+    if (typeof node !== "object" || node === null || Array.isArray(node)) return nothing;
+    node = (node as Record<string, unknown>)[segment];
+  }
+  return node === undefined ? nothing : node;
 }
 
 function stringOf(value: unknown): string {
@@ -66,7 +80,10 @@ export async function explainReport(config: AmyConfig, profile: Profile, plugin:
   // What the machine would actually mount, not what its schema asks for: an
   // operator tuning one setting wants the value the mount would hand the
   // plugin, with the schema's default named for what the machine left out.
-  const slots = pluginSlices(config, profile);
+  // The mount reads each plugin by its own name, so the profile's workflow
+  // — a local one can be spelled by path — answers to the name the loader
+  // produced, the same map the boot passes.
+  const slots = pluginSlices(config, profile, undefined, new Map([[profile.workflow, loaded.bySpec.get(profile.workflow)?.name ?? profile.workflow]]));
 
   if (plugin !== undefined && !specs.includes(plugin)) {
     return {
@@ -77,17 +94,25 @@ export async function explainReport(config: AmyConfig, profile: Profile, plugin:
   }
 
   const chosen = plugin === undefined ? specs : specs.filter((spec) => spec === plugin);
-  for (const spec of chosen) {
-    const module = loaded.bySpec.get(spec);
-    const schema = module?.configSchema;
-    const effective = slots[module?.name ?? spec];
-    lines.push(``, `${spec}${schema === undefined ? " (no settings of its own)" : ":"}`);
-    if (schema !== undefined && Object.keys(schema).length > 0) {
-      for (const line of describeEntries(schema, isMapping(effective) ? effective : undefined)) lines.push(line);
-    }
-  }
+  for (const spec of chosen) lines.push(...describeMounted(loaded, slots, spec));
 
   return { lines, problems: loaded.problems };
+}
+
+/** One plugin's section of the report: what it carries, and what the mount would hand it. */
+function describeMounted(
+  loaded: Awaited<ReturnType<typeof load>>,
+  slots: Record<string, unknown>,
+  spec: string,
+): string[] {
+  const module = loaded.bySpec.get(spec);
+  const schema = module?.configSchema;
+  const effective = slots[module?.name ?? spec];
+  const lines = ["", `${spec}${schema === undefined ? " (no settings of its own)" : ":"}`];
+  if (schema !== undefined && Object.keys(schema).length > 0) {
+    for (const line of describeEntries(schema, isMapping(effective) ? effective : undefined)) lines.push(line);
+  }
+  return lines;
 }
 
 /** Whether a value is the mapping a slice's settings arrive as. */
