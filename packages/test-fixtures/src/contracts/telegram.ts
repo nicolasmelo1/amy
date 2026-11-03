@@ -11,6 +11,7 @@ interface Field {
 interface Contract {
   version: string;
   types: Record<string, Record<string, Field>>;
+  unions: Record<string, string[]>;
   methods: Record<string, { parameters: Record<string, Field>; returns: string }>;
 }
 
@@ -98,6 +99,11 @@ function arrayOf(item: string, type: string, value: unknown, at: string): string
 }
 
 function object(type: string, value: unknown, at: string): string | null {
+  const members = botApi().unions[type];
+  if (members) {
+    const failures = members.map((member) => object(member, value, at));
+    return failures.some((failure) => failure === null) ? null : `${at} is a ${type}, and is none of ${members.join(", ")}`;
+  }
   const fields = botApi().types[type];
   if (!fields) return `${at} is a ${type}, which the Bot API does not define`;
   if (typeof value !== "object" || value === null || Array.isArray(value)) return `${at} is a ${type}, and holds ${JSON.stringify(value)}`;

@@ -779,6 +779,10 @@ gates:
       - "plugins/telegram/tests/stand-in.ts"
       - "packages/core/src/ports/Conversation.ts"
       - "packages/test-fixtures/contracts/telegram-bot-api.json"
+      - "packages/test-fixtures/src/contracts/telegram.ts"
+      # The workflow the scenario drives through the plugin, and its shape.
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "packages/workflow-ticket-to-qa/workflow.mmd"
     evidence: ".software-factory/evidence/plugin-telegram.json"
     plan: "docs/design/telegram-is-a-conversation.md"
     required_assertions:

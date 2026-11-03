@@ -23,11 +23,18 @@ export const plugin = definePlugin<typeof configSchema>({
         `${TOKEN_VARIABLE} is not set. Create a bot with @BotFather, turn on its topics, and put its token in .env`,
       );
     }
+    // What is kept belongs to one bot and one chat: switching either starts
+    // afresh rather than reusing topics from another chat or an offset that
+    // would confirm another bot's updates unread.
+    const identity = `${token.split(":")[0]}-${operator}`;
     registry.port(
       "conversation",
       new TelegramConversation(new BotApi(token, { server: ctx.config.server ?? TELEGRAM_API }), {
         operator,
-        directory: path.join(ctx.paths.state, ctx.config.directory ?? "telegram"),
+        // This profile's topics; a project's phase is handed its own directory.
+        directory: path.join(ctx.paths.state, ctx.config.directory ?? "telegram", identity),
+        // One reader of the bot's updates, whichever profile asks.
+        shared: path.join(ctx.paths.state, "telegram-bot", identity),
       }),
     );
   },

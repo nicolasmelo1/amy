@@ -8099,7 +8099,7 @@
             "type": "string",
             "required": false,
             "default": "telegram",
-            "description": "where each work item's topic and the replies read for it are kept, relative to the state directory"
+            "description": "where this profile's topics are remembered, by work id, relative to the state directory; the replies read for every profile are kept once per bot"
           },
           {
             "name": "operator",
@@ -9207,7 +9207,10 @@
           "plugins/telegram/src/**",
           "plugins/telegram/tests/stand-in.ts",
           "packages/core/src/ports/Conversation.ts",
-          "packages/test-fixtures/contracts/telegram-bot-api.json"
+          "packages/test-fixtures/contracts/telegram-bot-api.json",
+          "packages/test-fixtures/src/contracts/telegram.ts",
+          "packages/workflow-ticket-to-qa/src/**",
+          "packages/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/plugin-telegram.json",
         "plan": "docs/design/telegram-is-a-conversation.md",

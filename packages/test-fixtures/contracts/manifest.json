@@ -5,7 +5,7 @@
       "file": "github.graphql",
       "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
       "publisher": "GitHub — the public GraphQL schema for github.com",
-      "sha256": "dd5007bd570de75e1b67ddb32326b177224cf77b8fff8ef2ff398d796bddc3ab"
+      "sha256": "0a1806908a1e92f05ec5557f934270716ae4fa5caa2a8d15581f58a89280d74a"
     },
     {
       "name": "github-rest",
@@ -48,7 +48,7 @@
       "url": "https://core.telegram.org/bots/api",
       "publisher": "Telegram — the Bot API reference page, derived into its types and methods",
       "version": "10.3",
-      "sha256": "7cc10445a34908c2ceda5960487eca693cf9950213cc05eea690a9155d47e6f9"
+      "sha256": "3cddec6d80e8b34bda28d7b6be4126ea8010ae641c1f5cf2eaa2777659d2846f"
     }
   ]
 }

@@ -292,3 +292,132 @@ function filesUnder(directory: string): string[] {
     return entry.isDirectory() ? filesUnder(full) : [full];
   });
 }
+
+describe("what is not an answer", () => {
+  it("files no reply for a topic renamed, which says nothing", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("Total, renamed", { topic: Number(thread.id), renamesTopic: true });
+
+    expect(await amy.replies(thread, since)).toEqual([]);
+    expect(telegram.pending()).toBe(0);
+  });
+
+  it("opens a topic for a work id the map's prototype also has", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+
+    const thread = await amy.open("constructor", "A plan named constructor");
+
+    expect(telegram.topics.get(Number(thread.id))).toBe("A plan named constructor");
+  });
+});
+
+describe("what is kept on disk", () => {
+  it("skips a line left half written, and files its reply again", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    fs.mkdirSync(path.join(directory, "inbox"), { recursive: true });
+    fs.writeFileSync(path.join(directory, "inbox", `${thread.id}.jsonl`), '{"messageId":1,"at":"20');
+    telegram.say("BRL", { topic: Number(thread.id) });
+
+    expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
+  });
+
+  it("does not send an offset Telegram's restarted update ids have passed", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    telegram.say("first", { topic: Number(thread.id) });
+    const [first] = await amy.replies(thread, new Date(0).toISOString());
+    // A week with no updates: the kept offset is old, and Telegram numbers anew below it.
+    const kept = JSON.parse(fs.readFileSync(path.join(directory, "offset.json"), "utf-8")) as { offset: number };
+    fs.writeFileSync(path.join(directory, "offset.json"), JSON.stringify({ offset: kept.offset, receivedAt: Date.now() - 7 * 24 * 60 * 60 * 1000 }));
+    telegram.restartUpdateIds(100);
+    telegram.say("BRL, after a quiet week", { topic: Number(thread.id) });
+
+    expect((await amy.replies(thread, first!.at)).map((reply) => reply.text)).toEqual(["BRL, after a quiet week"]);
+  });
+
+
+  it("keeps one profile's topics apart from another's, and reads the bot's updates once for both", async () => {
+    const telegram = botApiStandIn();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-phases-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport });
+    const shared = path.join(root, "bot");
+    const brief = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "brief"), shared });
+    const build = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared });
+    const briefThread = await brief.open("TBO-1", "Brief TBO-1");
+    const buildThread = await build.open("TBO-1", "Build TBO-1");
+    const since = askedAt(telegram);
+    telegram.say("for the brief", { topic: Number(briefThread.id) });
+    telegram.say("for the build", { topic: Number(buildThread.id) });
+
+    // The build reads first, and with it confirms the brief's answer too.
+    expect((await build.replies(buildThread, since)).map((reply) => reply.text)).toEqual(["for the build"]);
+    expect((await brief.replies(briefThread, since)).map((reply) => reply.text)).toEqual(["for the brief"]);
+    expect(briefThread).not.toEqual(buildThread);
+  });
+});
+
+describe("one holder at a time", () => {
+  it("renews its hold through a slow call, so nobody takes it over", async () => {
+    const telegram = botApiStandIn();
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-lease-"));
+    const events: string[] = [];
+    let slow = true;
+    const api = new BotApi(TOKEN, {
+      transport: async (request) => {
+        if (slow && request.url.endsWith("/getUpdates")) {
+          slow = false;
+          events.push("slow read started");
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          events.push("slow read finished");
+        }
+        if (request.url.endsWith("/createForumTopic")) events.push("topic created");
+        return telegram.transport(request);
+      },
+    });
+    const one = new TelegramConversation(api, { operator: String(OPERATOR), directory, leaseMs: 120 });
+    const other = new TelegramConversation(api, { operator: String(OPERATOR), directory, leaseMs: 120 });
+    const thread = await one.open("BILL-7", "Total");
+    events.length = 0;
+
+    const reading = one.replies(thread, askedAt(telegram));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await other.open("BILL-8", "Credit note");
+    await reading;
+
+    expect(events).toEqual(["slow read started", "slow read finished", "topic created"]);
+  });
+});
+
+describe("files Telegram will not hand over", () => {
+  it("names one Telegram refuses as too big when the message did not say its size", async () => {
+    const telegram = botApiStandIn({ largestFile: 2 });
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("the recording", { topic: Number(thread.id), file: { name: "call.mp4", bytes: new Uint8Array([1, 2, 3]), unsized: true } });
+
+    const [reply] = await amy.replies(thread, since);
+
+    expect(reply!.files).toEqual([]);
+    expect(reply!.text).toContain("[call.mp4 was not downloaded");
+  });
+
+  it("keeps the token out of a refusal whose description echoes it", async () => {
+    const api = new BotApi(TOKEN, {
+      transport: async (request) => ({ status: 400, body: new TextEncoder().encode(JSON.stringify({ ok: false, error_code: 400, description: `Bad Request: ${request.url}` })) }),
+    });
+
+    const error = await api.call("getMe").catch((caught: Error) => caught);
+
+    expect(String(error)).toContain("<token>");
+    expect(String(error)).not.toContain(TOKEN);
+  });
+});

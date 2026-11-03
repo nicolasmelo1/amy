@@ -16,7 +16,7 @@ export const configSchema = {
   },
   directory: {
     type: "string",
-    description: "where each work item's topic and the replies read for it are kept, relative to the state directory",
+    description: "where this profile's topics are remembered, by work id, relative to the state directory; the replies read for every profile are kept once per bot",
     default: "telegram",
   },
 } satisfies ConfigSchema;

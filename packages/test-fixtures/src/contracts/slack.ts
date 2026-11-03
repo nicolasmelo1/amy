@@ -111,7 +111,8 @@ function mismatch(method: string, schema: Schema, body: Record<string, unknown>)
       return `${method}.${name} is ${types.join(" or ")}, and holds ${JSON.stringify(value)}`;
     }
   }
-  return null;
+  const missing = (schema.required ?? []).find((name) => body[name] === undefined);
+  return missing ? `${method} always answers ${missing}, and this answer has none` : null;
 }
 
 function resolve(schema: Schema): Schema {

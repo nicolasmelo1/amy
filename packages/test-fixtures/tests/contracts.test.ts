@@ -206,7 +206,8 @@ describe("the Slack Web API description", () => {
   });
 
   it("refuses an answer carrying what the method never answers", () => {
-    expect(() => assertValidSlackAnswer("auth.test", { ok: true, user_id: "U0AMY", user: "amy" })).not.toThrow();
+    expect(() => assertValidSlackAnswer("auth.test", { ok: true, url: "https://w.slack.com/", team: "W", user: "amy", team_id: "T0", user_id: "U0AMY" })).not.toThrow();
+    expect(() => assertValidSlackAnswer("auth.test", { ok: true })).toThrow(/auth.test always answers url/);
     expect(() => assertValidSlackAnswer("auth.test", { ok: true, scopes: "chat:write" })).toThrow(/auth.test answers no property scopes/);
     expect(() => assertValidSlackAnswer("auth.test", { ok: false })).toThrow(/without naming an error/);
   });
@@ -229,5 +230,11 @@ describe("the Telegram Bot API, derived from its page", () => {
     expect(() => assertValidBotApiResult("createForumTopic", { message_thread_id: 3, name: "x", icon_color: 1 })).not.toThrow();
     expect(() => assertValidBotApiResult("createForumTopic", { message_thread_id: 3, name: "x" })).toThrow(/has no icon_color/);
     expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { message_id: 1, date: 1, chat: { id: 1, type: "private" }, topic: 3 } }])).toThrow(/topic is not a field of Message/);
+  });
+
+  it("reads a type the page defines only as one of others", () => {
+    const forwarded = { message_id: 1, date: 1, chat: { id: 1, type: "private" }, forward_origin: { type: "hidden_user", date: 1, sender_user_name: "Ada" } };
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: forwarded }])).not.toThrow();
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { ...forwarded, forward_origin: { type: "pigeon" } } }])).toThrow(/is a MessageOrigin, and is none of/);
   });
 });

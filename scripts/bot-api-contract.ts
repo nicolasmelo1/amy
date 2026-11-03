@@ -18,6 +18,8 @@ export interface BotApiContract {
   /** The newest `Bot API x.y` the page's changelog names. */
   version: string;
   types: Record<string, Record<string, BotApiField>>;
+  /** A type the page defines only as one of others, such as MessageOrigin. */
+  unions: Record<string, string[]>;
   methods: Record<string, { parameters: Record<string, BotApiField>; returns: string }>;
 }
 
@@ -26,42 +28,50 @@ const SECTION = /<h4><a class="anchor" name="[^"]*" href="#[^"]*"><i class="anch
 export function deriveBotApi(html: string): BotApiContract {
   const version = /Bot API (\d+\.\d+)/.exec(html)?.[1];
   if (!version) throw new Error("the Bot API page names no version");
-
-  // Everything before "Getting updates" is the changelog and the guide.
-  const start = html.indexOf('name="getting-updates"');
-  if (start === -1) throw new Error("the Bot API page has no Getting updates section");
-  const body = html.slice(start);
-
-  const sections: { name: string; html: string }[] = [];
-  const heads = [...body.matchAll(SECTION)];
-  for (const [index, head] of heads.entries()) {
-    const end = heads[index + 1]?.index ?? body.length;
-    sections.push({ name: decode(head[1]!).trim(), html: body.slice(head.index! + head[0].length, end) });
-  }
+  const sections = sectionsOf(html).filter((section) => /^\w+$/.test(section.name));
 
   const types: BotApiContract["types"] = {};
+  const unions: BotApiContract["unions"] = {};
   const methods: BotApiContract["methods"] = {};
   for (const section of sections) {
-    if (!/^\w+$/.test(section.name)) continue;
     const table = rowsOf(section.html);
-    if (/^[A-Z]/.test(section.name)) {
-      if (table.header[0] !== "Field") continue;
-      types[section.name] = Object.fromEntries(table.rows.map(([name, type, description]) => [
-        name!,
-        { type: type!, required: !/^Optional\b/.test(description ?? "") },
-      ]));
-    } else {
-      const parameters = table.header[0] === "Parameter"
-        ? Object.fromEntries(table.rows.map(([name, type, required]) => [name!, { type: type!, required: required === "Yes" }]))
-        : {};
-      methods[section.name] = { parameters, returns: "" };
-    }
+    if (!/^[A-Z]/.test(section.name)) methods[section.name] = { parameters: parametersOf(table), returns: "" };
+    else if (table.header[0] === "Field") types[section.name] = fieldsOf(table);
+    else if (table.header.length === 0 && membersOf(section.html).length > 0) unions[section.name] = membersOf(section.html);
   }
   for (const section of sections) {
     const method = methods[section.name];
     if (method) method.returns = returnsOf(section.html, types);
   }
-  return { version, types: sorted(types), methods: sorted(methods) };
+  return { version, types: sorted(types), unions: sorted(unions), methods: sorted(methods) };
+}
+
+/** Every `<h4>` section after the changelog and the guide, which end where "Getting updates" starts. */
+function sectionsOf(html: string): { name: string; html: string }[] {
+  const start = html.indexOf('name="getting-updates"');
+  if (start === -1) throw new Error("the Bot API page has no Getting updates section");
+  const body = html.slice(start);
+  const heads = [...body.matchAll(SECTION)];
+  return heads.map((head, index) => ({
+    name: decode(head[1]!).trim(),
+    html: body.slice(head.index! + head[0].length, heads[index + 1]?.index ?? body.length),
+  }));
+}
+
+function fieldsOf(table: { rows: string[][] }): Record<string, BotApiField> {
+  return Object.fromEntries(table.rows.map(([name, type, description]) => [name!, { type: type!, required: !/^Optional\b/.test(description ?? "") }]));
+}
+
+function parametersOf(table: { header: string[]; rows: string[][] }): Record<string, BotApiField> {
+  if (table.header[0] !== "Parameter") return {};
+  return Object.fromEntries(table.rows.map(([name, type, required]) => [name!, { type: type!, required: required === "Yes" }]));
+}
+
+/** The types a section says it "can be one of", from the list right after it says so. */
+function membersOf(html: string): string[] {
+  const list = /can be one of[\s\S]*?<ul>([\s\S]*?)<\/ul>/.exec(html.split("<table")[0] ?? "")?.[1];
+  if (!list) return [];
+  return [...list.matchAll(/<li><a href="#[a-z0-9]+">([A-Z]\w*)<\/a><\/li>/g)].map((member) => member[1]!);
 }
 
 /** The first table in a section, as text: its header and its rows. */

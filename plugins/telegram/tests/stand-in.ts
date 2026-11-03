@@ -26,6 +26,8 @@ export interface StandInOptions {
   started?: boolean;
   /** Something else reads this bot's updates: getUpdates answers 409. */
   polledElsewhere?: boolean;
+  /** getFile refuses a file larger than this, as Telegram refuses one past 20 MB. */
+  largestFile?: number;
 }
 
 /**
@@ -82,6 +84,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
     getFile: (args) => {
       const file = files.get(String(args.file_id));
       if (!file) return refuse(400, "Bad Request: invalid file_id");
+      if (options.largestFile !== undefined && file.size > options.largestFile) return refuse(400, "Bad Request: file is too big");
       return { file_id: file.id, file_unique_id: file.unique, file_size: file.size, file_path: `documents/${file.unique}` };
     },
   };
@@ -120,7 +123,10 @@ export function botApiStandIn(options: StandInOptions = {}) {
   };
 
   /** Somebody writes in the operator's chat with the bot: in a topic, or outside every one. */
-  function say(text: string, where: { topic?: number; from?: number; file?: { name: string; bytes: Uint8Array; size?: number }; photo?: boolean } = {}): Message {
+  function say(
+    text: string,
+    where: { topic?: number; from?: number; file?: { name: string; bytes: Uint8Array; size?: number; unsized?: boolean }; photo?: boolean; renamesTopic?: boolean } = {},
+  ): Message {
     clock = Math.max(clock + 1, Math.floor(Date.now() / 1000));
     const from = where.from ?? OPERATOR;
     const message: Message = {
@@ -129,7 +135,9 @@ export function botApiStandIn(options: StandInOptions = {}) {
       chat: chat(from),
       date: clock,
       ...(where.topic === undefined ? {} : { message_thread_id: where.topic, is_topic_message: true }),
-      ...(where.file ? {} : { text }),
+      ...(where.file || where.renamesTopic ? {} : { text }),
+      // A service message: the topic renamed, which says nothing.
+      ...(where.renamesTopic ? { forum_topic_edited: { name: text } } : {}),
     };
     if (where.file) {
       const unique = `u${nextMessage}`;
@@ -137,14 +145,21 @@ export function botApiStandIn(options: StandInOptions = {}) {
       files.set(file.id, file);
       message.caption = text;
       if (where.photo) message.photo = [{ file_id: file.id, file_unique_id: unique, width: 640, height: 480, file_size: file.size }];
-      else message.document = { file_id: file.id, file_unique_id: unique, file_name: where.file.name, file_size: file.size };
+      else message.document = { file_id: file.id, file_unique_id: unique, file_name: where.file.name, ...(where.file.unsized ? {} : { file_size: file.size }) };
     }
     updates.push({ update_id: nextUpdate++, message });
     return message;
   }
 
+  /** Telegram restarts its update ids, as it does after a week with none. */
+  function restartUpdateIds(from: number): void {
+    nextUpdate = from;
+    confirmed = 0;
+  }
+
   return {
     transport,
+    restartUpdateIds,
     say,
     topics,
     sent,

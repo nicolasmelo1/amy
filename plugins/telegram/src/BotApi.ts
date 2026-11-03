@@ -4,6 +4,8 @@ export interface HttpRequest {
   method: "GET" | "POST";
   headers: Record<string, string>;
   body?: string;
+  /** Refuse the answer once its body passes this many bytes, while it arrives. */
+  maxBytes?: number;
 }
 
 export interface HttpResponse {
@@ -13,10 +15,49 @@ export interface HttpResponse {
 
 export type HttpTransport = (request: HttpRequest) => Promise<HttpResponse>;
 
+/** An answer larger than the request allowed, refused before it was held whole. */
+export class TooLarge extends Error {
+  constructor(readonly limit: number) {
+    super(`the answer is larger than ${limit} bytes`);
+  }
+}
+
 export const fetchTransport: HttpTransport = async (request) => {
   const response = await fetch(request.url, { method: request.method, headers: request.headers, body: request.body });
-  return { status: response.status, body: new Uint8Array(await response.arrayBuffer()) };
+  return { status: response.status, body: await readBody(response, request.maxBytes) };
 };
+
+/**
+ * The body, counted as it arrives: a declared length over the limit is
+ * refused unread, and a missing or understated one is caught by the count.
+ */
+async function readBody(response: Response, maxBytes: number | undefined): Promise<Uint8Array> {
+  if (maxBytes === undefined || !response.body) return new Uint8Array(await response.arrayBuffer());
+  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) {
+    await response.body.cancel();
+    throw new TooLarge(maxBytes);
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new TooLarge(maxBytes);
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
 
 /** Telegram's own server; a local Bot API server, or a stand-in, is another. */
 export const TELEGRAM_API = "https://api.telegram.org";
@@ -92,18 +133,22 @@ export class BotApi {
         await this.sleep(Math.max(0, retryAfter ?? 1) * 1000);
         continue;
       }
-      throw new BotApiRefusal(method, code, answer.description ?? "no description");
+      // A local server or a proxy may echo the request, and with it the URL.
+      throw new BotApiRefusal(method, code, withoutToken(answer.description ?? "no description", this.token));
     }
   }
 
-  /** A file's bytes, by the `file_path` getFile answered. */
-  async download(filePath: string): Promise<Uint8Array> {
+  /** A file's bytes, by the `file_path` getFile answered, refused past `maxBytes` while they arrive. */
+  async download(filePath: string, maxBytes?: number): Promise<Uint8Array> {
     const response = await this.send("file download", {
       url: `${this.server}/file/bot${this.token}/${filePath}`,
       method: "GET",
       headers: {},
+      ...(maxBytes === undefined ? {} : { maxBytes }),
     });
     if (response.status !== 200) throw new Error(`telegram file download answered HTTP ${response.status}`);
+    // Checked again here for a transport that does not honour the limit.
+    if (maxBytes !== undefined && response.body.byteLength > maxBytes) throw new TooLarge(maxBytes);
     return response.body;
   }
 
@@ -113,6 +158,7 @@ export class BotApi {
    */
   private send(what: string, request: HttpRequest): Promise<HttpResponse> {
     return this.transport(request).catch((error: unknown) => {
+      if (error instanceof TooLarge) throw error;
       throw new Error(`telegram ${what} could not be reached: ${withoutToken(error, this.token)}`);
     });
   }

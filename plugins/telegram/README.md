@@ -34,7 +34,7 @@ plugins:
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `directory` | `string` | no | `telegram` | where each work item's topic and the replies read for it are kept, relative to the state directory |
+| `directory` | `string` | no | `telegram` | where this profile's topics are remembered, by work id, relative to the state directory; the replies read for every profile are kept once per bot |
 | `operator` | `string` | **yes** |  | your Telegram user id, a number such as 123456789: the private chat each work item's topic opens in, and the only person whose replies are answers |
 | `server` | `string` | no | `https://api.telegram.org` | the Bot API server, for a local one instead of Telegram's |
 

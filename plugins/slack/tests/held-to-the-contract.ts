@@ -18,3 +18,16 @@ export function heldToTheContract(transport: HttpTransport): HttpTransport {
     return response;
   };
 }
+
+/** What `auth.test` answers, whole: Slack's description requires every field here. */
+export function whoAmI(userId: string): Record<string, unknown> {
+  return { url: "https://workshop.slack.com/", team: "Workshop", user: "amy", team_id: "T0WORK", user_id: userId };
+}
+
+/** What `chat.postMessage` answers, whole: the channel and the message along with its ts. */
+export function postedAnswer(ts: string): Record<string, unknown> {
+  return { channel: "C0WORK", ts, message: { type: "message", text: "", ts } };
+}
+
+/** What `conversations.history` always answers beside its messages, by Slack's description. */
+export const HISTORY_FIELDS = { pin_count: 0, channel_actions_ts: null, channel_actions_count: 0 } as const;

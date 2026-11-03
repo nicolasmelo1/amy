@@ -129,7 +129,7 @@ describe("a project is three phases", () => {
     const owned = profileOwnedDirectories("/amy", known.execution!);
     const place = profilePaths("/amy", known.execution!);
 
-    expect(owned).toEqual([place.records, place.queue, place.tasks, place.slack]);
+    expect(owned).toEqual([place.records, place.queue, place.tasks, place.slack, place.telegram]);
     expect(owned).not.toContain(place.log);
     expect(owned).not.toContain(place.artifacts);
     // An ordinary profile shares its tasks and threads, so it forgets neither.
@@ -310,7 +310,7 @@ describe("a project is three phases", () => {
       .toThrow("@amykit/plugin-file-worktree.workflow is shared across profiles");
   });
 
-  it.each(["@amykit/plugin-file-brief-store", "@amykit/plugin-file-tasks", "@amykit/plugin-slack"])("rejects a global %s directory for phases", (plugin) => {
+  it.each(["@amykit/plugin-file-brief-store", "@amykit/plugin-file-tasks", "@amykit/plugin-slack", "@amykit/plugin-telegram"])("rejects a global %s directory for phases", (plugin) => {
     const known = profiles(config, "/amy");
     const overridden = { ...config, plugins: { [plugin]: { directory: "shared-on-volume" } } };
 
@@ -462,6 +462,9 @@ describe("a brief crosses the phase boundary", () => {
       .not.toBe(slices("execution")["@amykit/plugin-file-tasks"]?.directory);
     expect(slices("grooming")["@amykit/plugin-slack"]?.directory)
       .not.toBe(slices("execution")["@amykit/plugin-slack"]?.directory);
+    expect(slices("grooming")["@amykit/plugin-telegram"]?.directory)
+      .not.toBe(slices("execution")["@amykit/plugin-telegram"]?.directory);
+    expect(profilePaths(home, known.grooming!).telegram).toBe(path.join(home, slices("grooming")["@amykit/plugin-telegram"]!.directory!));
     expect(profilePaths(home, known.grooming!).tasks).toBe(path.join(home, slices("grooming")["@amykit/plugin-file-tasks"]!.directory!));
   });
 });

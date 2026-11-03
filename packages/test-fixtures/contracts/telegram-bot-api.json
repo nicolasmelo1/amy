@@ -8284,6 +8284,83 @@
       }
     }
   },
+  "unions": {
+    "BackgroundFill": [
+      "BackgroundFillSolid",
+      "BackgroundFillGradient",
+      "BackgroundFillFreeformGradient"
+    ],
+    "BackgroundType": [
+      "BackgroundTypeFill",
+      "BackgroundTypeWallpaper",
+      "BackgroundTypePattern",
+      "BackgroundTypeChatTheme"
+    ],
+    "ChatBoostSource": [
+      "ChatBoostSourcePremium",
+      "ChatBoostSourceGiftCode",
+      "ChatBoostSourceGiveaway"
+    ],
+    "InputPaidMedia": [
+      "InputPaidMediaLivePhoto",
+      "InputPaidMediaPhoto",
+      "InputPaidMediaVideo"
+    ],
+    "InputProfilePhoto": [
+      "InputProfilePhotoStatic",
+      "InputProfilePhotoAnimated"
+    ],
+    "InputStoryContent": [
+      "InputStoryContentPhoto",
+      "InputStoryContentVideo"
+    ],
+    "MaybeInaccessibleMessage": [
+      "Message",
+      "InaccessibleMessage"
+    ],
+    "MessageOrigin": [
+      "MessageOriginUser",
+      "MessageOriginHiddenUser",
+      "MessageOriginChat",
+      "MessageOriginChannel"
+    ],
+    "OwnedGift": [
+      "OwnedGiftRegular",
+      "OwnedGiftUnique"
+    ],
+    "PaidMedia": [
+      "PaidMediaLivePhoto",
+      "PaidMediaPhoto",
+      "PaidMediaPreview",
+      "PaidMediaVideo"
+    ],
+    "ReactionType": [
+      "ReactionTypeEmoji",
+      "ReactionTypeCustomEmoji",
+      "ReactionTypePaid"
+    ],
+    "RevenueWithdrawalState": [
+      "RevenueWithdrawalStatePending",
+      "RevenueWithdrawalStateSucceeded",
+      "RevenueWithdrawalStateFailed"
+    ],
+    "StoryAreaType": [
+      "StoryAreaTypeLocation",
+      "StoryAreaTypeSuggestedReaction",
+      "StoryAreaTypeLink",
+      "StoryAreaTypeWeather",
+      "StoryAreaTypeUniqueGift"
+    ],
+    "TransactionPartner": [
+      "TransactionPartnerUser",
+      "TransactionPartnerChat",
+      "TransactionPartnerAffiliateProgram",
+      "TransactionPartnerFragment",
+      "TransactionPartnerTelegramAds",
+      "TransactionPartnerTelegramApi",
+      "TransactionPartnerOther"
+    ]
+  },
   "methods": {
     "addStickerToSet": {
       "parameters": {
