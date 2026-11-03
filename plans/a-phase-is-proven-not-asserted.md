@@ -10,11 +10,11 @@ sources:
   - { id: S8, kind: decision, said: "and the run leaves a redacted artifact attached as evidence; unit, integration or scripted tests passing is not completion" }
   - { id: S9, kind: decision, said: "a link to the common document is not a substitute for the phase's own scenario: each phase names its own, cited rather than gestured at" }
   - { id: S10, kind: decision, said: "unsupported is a state of its own: an assertion the harness could not evaluate is the thing most often counted as success" }
-  - { id: S11, kind: decision, said: "2026-10-01: the proof is a project artifact, not an execution state — one record per unit beside the briefs in the artifact root, written by test/, read by the others" }
-  - { id: S12, kind: decision, said: "no phase reaches into another's lifecycle, so the three stay independently driven, budgeted and stoppable" }
+  - { id: S11, kind: decision, said: "2026-10-01: the proof is a project artifact, not an execution state — one record per unit beside the briefs in the artifact root, written by prove/, read by the others" }
+  - { id: S12, kind: reference, ref: "plans/a-project-is-brief-work-and-proof.md", said: "the phases are calls of one project workflow: no phase reaches into another's lifecycle, and the proof is handed the criteria the brief returned" }
   - { id: S13, kind: decision, said: "a proof can be manual: the record makes it one, not who ran it; it names the scenario, each assertion's status, who ran it and what it ran against" }
   - { id: S14, kind: decision, said: "a proof records the code digest and the brief revision it proved; when either moves it stops counting and the unit is unproven, which does not count as done" }
-  - { id: S15, kind: decision, said: "a missing brief/ or test/ is a warning: the project boots and amy doctor names each missing folder and what it loses" }
+  - { id: S15, kind: reference, ref: "plans/a-project-is-brief-work-and-proof.md", said: "a phase neither present nor declared absent is refused at mount; one declared absent boots, and amy doctor names what the project loses without it" }
   - { id: S16, kind: decision, said: "naming the proving scenario in planning forces an example, the cheapest instrument for the case a prose requirement left open, two phases before a reviewer" }
 touches:
   - packages/core/src/proving.ts
@@ -30,7 +30,7 @@ criteria:
   - { id: A4, statement: "a proof is a record in the project's artifact root, written by the proving phase and read by the others, with no phase reading another's records or queue", proof: "assertion:proof.a_proof_crosses_the_phase_boundary", sources: [S11, S12] }
   - { id: A5, statement: "a person can record a manual run as the proof, naming who ran it and each assertion's status", proof: "assertion:proof.a_manual_run_is_a_proof", sources: [S13] }
   - { id: A6, statement: "a proof whose code digest or brief revision no longer matches what it certified stops counting, and the unit it proved is unproven again", proof: "assertion:proof.the_artifact_expires_with_its_subject", sources: [S14] }
-  - { id: A7, statement: "a project without brief/ or test/ boots, and amy doctor names each missing folder and what the project loses without it", proof: "test:packages/cli/tests/doctor.test.ts", sources: [S15] }
+  - { id: A7, statement: "a project declaring brief/ or prove/ absent boots and amy doctor names what it loses; one neither having nor declaring either is refused at mount, naming it", proof: "test:packages/cli/tests/doctor.test.ts", sources: [S15] }
 crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A1, A7" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "the proof port reads and writes project artifacts; no tracker or code-host write is added" }
@@ -41,12 +41,12 @@ failures:
   - { step: planning, when: "a unit names no scenario", goes_to: "cannot leave planning; refusal names the unit" }
   - { step: proving, when: "an assertion cannot be evaluated", goes_to: "completion blocked, naming the assertion and why" }
   - { step: lock, when: "code digest or brief revision moved", goes_to: "the unit is unproven again" }
-  - { step: boot, when: "brief/ or test/ is missing", goes_to: "boots; amy doctor warns" }
+  - { step: boot, when: "brief/ or prove/ is neither present nor declared absent", goes_to: "refused at mount, naming the phase" }
+  - { step: boot, when: "brief/ or prove/ is declared absent", goes_to: "boots; amy doctor names what the project loses" }
 cut:
   - "how a scenario is expressed: any schema; the core mounts a port and refuses an unproven unit, it learns no scenario language"
   - "judging whether the work is any good: this proves a scenario holds"
   - "replacing the walkthrough: the state machine keeps its fast fake-world test; two tests, two subjects"
-  - "refusing a project missing a phase: it would block every project before a proving phase has anything to run"
 exit: "a unit naming no scenario example cannot leave planning; a phase run with an unevaluated assertion is refused, naming it; a person's manual run locks a unit proven; one proven last month on since-changed code or brief becomes unproven unprompted"
 ---
 # A phase is proven, not asserted
