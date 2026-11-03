@@ -28,6 +28,7 @@ sources:
   - { id: S26, kind: decision, said: "an ask about this server's record runs in its worktree; about another server's, in this machine's checkout of that repository at the branch that server pushed. Decided 2026-11-03" }
   - { id: S27, kind: decision, said: "with no checkout of its repository here, the ask reads that record's history, evidence, kept runs and diff through its server's API, as text, and says it has no code to read" }
   - { id: S28, kind: reference, ref: "plans/the-window-is-served.md", said: "a server never runs an agent for a paired device: the machine asking is the one whose harness answers, so connecting two amys never lends one's agents, or shell, to the other" }
+  - { id: S29, kind: decision, said: "a discussion turn is answered by an agent, so one from a paired device is refused; its decisions still move the work, since a decision runs no agent" }
 touches:
   - packages/core/src/ports/Conversation.ts
   - plugins/slack/src/SlackConversation.ts
@@ -50,6 +51,7 @@ criteria:
   - { id: A9, statement: "an ask about a record of this server runs in that record's worktree", proof: "deferred:assertion:window.an_ask_runs_where_its_record_is", sources: [S4, S5, S6, S26] }
   - { id: A14, statement: "an ask about another server's TBO-1 runs on this machine's harness, in its checkout at the branch that server pushed, while this server also has a TBO-1, and that server records no agent run", proof: "deferred:assertion:window.an_ask_about_another_server_runs_here", sources: [S6, S26, S28] }
   - { id: A15, statement: "with no checkout of the record's repository here, the ask is given that record's history, evidence and diff from its server's API, and says it has no code", proof: "deferred:assertion:window.an_ask_without_the_code_reads_the_record", sources: [S27] }
+  - { id: A16, statement: "a discussion turn from a paired device is refused and no agent runs on the host, while its decision moves the waiting record", proof: "deferred:assertion:window.a_remote_discussion_runs_no_agent", sources: [S28, S29] }
   - { id: A10, statement: "a turn sent from the panel is in the Slack thread, and one the operator writes in Slack is in the panel, both through the installed Slack adapter", proof: "deferred:assertion:window.the_thread_is_one_thread", sources: [S13, S14, S15] }
   - { id: A11, statement: "with only plugin-file-conversation mounted, a decision pressed in the panel resumes the record in the running daemon, and a discussion turn does not", proof: "deferred:assertion:window.a_decision_without_slack_resumes_the_record", sources: [S18, S19, S20] }
   - { id: A12, statement: "a loop started before its conversation plugin was mounted makes the panel say it must restart, and offer no decision", proof: "deferred:assertion:window.a_stale_loop_is_named_not_answered", sources: [S21] }

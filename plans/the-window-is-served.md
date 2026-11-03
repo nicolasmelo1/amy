@@ -32,8 +32,8 @@ sources:
   - { id: S34, kind: decision, said: "each install has its own key pair, made the first time amy runs; the private key never leaves that machine's amy home, and nothing reaches its server from another machine until that machine is paired. Decided 2026-11-03" }
   - { id: S35, kind: decision, said: "connecting to a server not yet paired is the pairing, with no command of its own: amy ui given it, or Add server in the window, asks; its owner approves once, matching a short code both sides show" }
   - { id: S36, kind: decision, said: "the owner approves from their window or the conversation channel amy already uses, so pairing a phone later is scanning a code the window shows, exchanging public keys, never a private one" }
-  - { id: S37, kind: decision, said: "a paired device reads; acting (poke, decide) is granted at approval or later. A shell, an editor, config.yaml and running an agent are never offered to a paired device, whatever it was granted" }
-  - { id: S38, kind: decision, said: "amy ui unpair <device>, or Settings in the window, revokes one device: its next connection is refused and every other device keeps working" }
+  - { id: S37, kind: decision, said: "a paired device reads; acting (poke, decide) is granted at approval or later. Shells, editors, config.yaml and whatever runs an agent (asks, grooming, discussion turns) are never offered to one, whatever it was granted" }
+  - { id: S38, kind: decision, said: "amy ui unpair <device>, or Settings in the window, revokes one device: its open sessions and streams end at once, its next connection is refused, and every other device keeps working" }
   - { id: S39, kind: decision, said: "every connection to a paired device is mutually authenticated with the paired keys and encrypted, so a tunnel run by somebody else carries nothing it can read or replay" }
   - { id: S40, kind: decision, said: "the window's speed is measured, not hoped: event-log line to every client's frame, p50, p95 and p99 over alternating trials, held to thresholds in the policy beside the other ceilings. Decided 2026-11-03" }
   - { id: S41, kind: reference, ref: "plans/the-performance-guard-can-fail.md", said: "a benchmark that cannot fail protects nothing: a baseline names its environment, a comparison across environments gives no verdict, and the guard proves every run that it goes red" }
@@ -84,7 +84,7 @@ criteria:
   - { id: A22, statement: "a fresh install opens no TCP listener, and with remote access on, a machine never paired is refused before any route", proof: "deferred:assertion:server.nothing_answers_an_unpaired_machine", sources: [S15, S16, S34] }
   - { id: A23, statement: "connecting to a new server pairs once its owner approves the matching code, with no command but amy ui, and the private keys stay each in its own home", proof: "deferred:assertion:server.connecting_is_pairing", sources: [S30, S34, S35, S36] }
   - { id: A24, statement: "a read-only device gets no intent, one granted acting pokes, and neither is ever offered a shell, an editor, config or an agent run", proof: "deferred:assertion:server.a_paired_device_gets_what_it_was_granted", sources: [S33, S37] }
-  - { id: A25, statement: "amy ui unpair refuses that device's next connection and leaves another paired device connected", proof: "deferred:assertion:server.unpairing_one_leaves_the_others", sources: [S38] }
+  - { id: A25, statement: "with two paired devices connected, amy ui unpair ends one's session and stream at once and refuses its next request, while the other's session keeps moving", proof: "deferred:assertion:server.unpairing_one_leaves_the_others", sources: [S38] }
   - { id: A26, statement: "a connection replayed through a recording tunnel, or presenting a key the server did not pair, is refused", proof: "deferred:assertion:server.a_tunnel_reads_nothing", sources: [S17, S39] }
   - { id: A27, statement: "the ui-server scenario records event-log line to frame latency at p50, p95 and p99 for every client, and a build slower than the policy's threshold turns it red, naming the measure", proof: "deferred:assertion:server.a_patch_reaches_the_frame_in_budget", sources: [S40, S41] }
   - { id: A18, statement: "an intent leaves the same record, queue and log its command leaves", proof: "deferred:assertion:server.an_intent_is_its_command", sources: [S4] }
@@ -93,7 +93,7 @@ crosses:
   - { mechanism: profiles-and-state, answer: works, proof: "deferred:assertion:server.it_listens_on_its_socket_by_default; token and serve.sock live under amy's home" }
   - { mechanism: config, answer: works, proof: "deferred:A23; ui.servers is a new config key read by amy ui, holding names and URLs, never a secret" }
 guarantee:
-  - { holds: "nothing answers without the token", not_against: "the two webhook receivers, which verify a signature instead" }
+  - { holds: "nothing answers without the token on the socket, or a pairing over TCP", not_against: "the two webhook receivers, which verify a signature instead" }
   - { holds: "local-only operations do not exist on TCP", not_against: "a person who forwards serve.sock on purpose, handing out their shell on purpose" }
   - { holds: "a client is never a second road to a write", not_against: "an intent, which runs the function its command already calls" }
 failures:
@@ -107,7 +107,7 @@ cut:
   - "validating bodies against the Zod source: refused; it would only prove the source agrees with itself (S12)"
   - "writing the protocol by hand or twice: refused (S6)"
   - "compatibility guessed from a version: refused; asked as a capability (S13)"
-exit: "a dropped response field reddens its renderer's build pre-run; restored, amy serve on one machine, amy ui text --server <url> on a stateless second with only URL and token shows work moving, its poke moves the record, tunnelled shell absent"
+exit: "a dropped response field reddens its renderer's build pre-run; restored, amy serve on one machine, amy ui text --server <url> on a stateless second, paired and granted acting, shows work moving, its poke moves the record, tunnelled shell absent"
 ---
 # The window is served
 
