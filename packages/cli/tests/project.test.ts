@@ -310,12 +310,27 @@ describe("a project is three phases", () => {
       .toThrow("@amykit/plugin-file-worktree.workflow is shared across profiles");
   });
 
-  it.each(["@amykit/plugin-file-brief-store", "@amykit/plugin-file-tasks", "@amykit/plugin-slack", "@amykit/plugin-telegram"])("rejects a global %s directory for phases", (plugin) => {
+  it.each(["@amykit/plugin-file-brief-store", "@amykit/plugin-file-tasks", "@amykit/plugin-slack"])("rejects a global %s directory for phases", (plugin) => {
     const known = profiles(config, "/amy");
     const overridden = { ...config, plugins: { [plugin]: { directory: "shared-on-volume" } } };
 
     expect(() => pluginSlices(overridden, known.execution!, "/amy"))
       .toThrow(`${plugin}.directory is shared across profiles`);
+  });
+
+  it("lets a phase that does not mount Telegram sit beside a Telegram directory an ordinary profile uses", () => {
+    const known = profiles(config, "/amy");
+    const ordinary = { ...config, plugins: { "@amykit/plugin-telegram": { directory: "shared-on-volume" } } };
+
+    expect(() => pluginSlices(ordinary, known.execution!, "/amy")).not.toThrow();
+  });
+
+  it("rejects a global Telegram directory for a phase that mounts Telegram", () => {
+    const mounted = { ...config, extraPlugins: ["@amykit/plugin-telegram"], plugins: { "@amykit/plugin-telegram": { directory: "shared-on-volume" } } };
+    const known = profiles(mounted, "/amy");
+
+    expect(() => pluginSlices(mounted, known.execution!, "/amy"))
+      .toThrow("@amykit/plugin-telegram.directory is shared across profiles");
   });
 
   it("keeps prototype-named profiles as configured own entries", () => {

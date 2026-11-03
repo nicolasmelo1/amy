@@ -250,6 +250,9 @@ function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Pro
     "@amykit/plugin-slack",
     "@amykit/plugin-telegram",
   ] as const) {
+    // Telegram is never recommended, so a phase that does not name it does not mount it, and a
+    // directory set for an ordinary profile's Telegram is not this phase's to refuse.
+    if (plugin === "@amykit/plugin-telegram" && !pluginList(config, profile).includes(plugin)) continue;
     const slice = config.plugins[plugin];
     if (isRecord(slice) && typeof slice.directory === "string") {
       throw new Error(`${plugin}.directory is shared across profiles and cannot be overridden for project phases`);

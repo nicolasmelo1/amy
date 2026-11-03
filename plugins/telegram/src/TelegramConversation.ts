@@ -98,6 +98,8 @@ interface Filed {
   author: string;
   text: string;
   files: { id: string; unique: string; name: string; size?: number }[];
+  /** What the operator marked it as, by a command at its start. */
+  kind?: "decision" | "discussion";
 }
 
 /**
@@ -147,10 +149,16 @@ export class TelegramConversation implements Conversation {
       });
       // Owner first: a reply that arrives before the work knows its topic is still filed here.
       // The directory is kept relative to the bot's, so a state root moved or mounted elsewhere still finds it.
+      // A profile removed while Telegram was answering is not made again, and owns nothing.
+      if (readIdentity(this.options.directory) !== this.identity) {
+        throw new Error(`${this.options.directory} was removed while its topic was being opened`);
+      }
       const owner: Owner = { directory: path.relative(this.shared(), this.options.directory), identity: this.identity };
-      createOnce(path.join(this.shared(), "owners", `${this.chat()}-${topic.message_thread_id}.json`), owner);
+      const key = `${this.chat()}-${topic.message_thread_id}`;
+      createOnce(path.join(this.shared(), "owners", `${key}.json`), owner, this.shared());
       // Created once: if another process recorded a topic for this work first, that one is the work's.
-      createOnce(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`), { topic: topic.message_thread_id });
+      createOnce(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`), { topic: topic.message_thread_id }, this.options.directory);
+      this.adopt(key);
       return { id: String(this.topicOfWork(workId)) };
     }).finally(() => this.opening.delete(workId));
     this.opening.set(workId, opened);
@@ -184,7 +192,7 @@ export class TelegramConversation implements Conversation {
     for (const filed of filedUnder(this.inbox(this.options.directory, this.identity, topic))) {
       if (Date.parse(filed.at) <= after) continue;
       const { paths, skipped } = await this.downloadAll(topic, filed.files);
-      replies.push({ at: filed.at, author: filed.author, text: [filed.text, ...skipped].filter(Boolean).join("\n"), files: paths });
+      replies.push({ at: filed.at, author: filed.author, text: [filed.text, ...skipped].filter(Boolean).join("\n"), files: paths, ...(filed.kind ? { kind: filed.kind } : {}) });
     }
     return replies;
   }
@@ -276,28 +284,58 @@ export class TelegramConversation implements Conversation {
   private file(message: TelegramMessage): void {
     const topic = message.message_thread_id!;
     // Keyed by chat: one bot's topics in two operators' chats are two owners.
-    const owner = readJson<Owner>(path.join(this.shared(), "owners", `${message.chat.id}-${topic}.json`));
-    if (!owner) return;
-    const directory = path.resolve(this.shared(), owner.directory);
-    if (readIdentity(directory) !== owner.identity) return;
-    const inbox = this.inbox(directory, owner.identity, topic);
-    if (!ensureInbox(directory, inbox)) return;
-    const target = path.join(inbox, `${message.message_id}.json`);
-    if (readJson<Filed>(target, true)) return;
-    const filed = filedUnder(inbox);
-    const last = filed.length ? Date.parse(filed[filed.length - 1]!.at) : Number.NEGATIVE_INFINITY;
+    const key = `${message.chat.id}-${topic}`;
+    const owner = readJson<Owner>(path.join(this.shared(), "owners", `${key}.json`));
+    if (!owner) {
+      // A topic being opened right now has no owner yet: kept until it has, never confirmed away.
+      createOnce(path.join(this.shared(), "unowned", key, `${message.message_id}.json`), message, this.shared());
+      return;
+    }
+    const place = this.inboxOf(owner, topic);
+    if (!place || filedAlready(place.inbox, message.message_id)) return;
+    const { directory, inbox } = place;
     // Telegram says when to the second; a reply is placed at the end of its second, and after the last
     // one filed, so replies keep their order and none falls before a question asked earlier in that second.
+    const cursor = readJson<{ at: string }>(path.join(inbox, ".last"), true)?.at;
+    const last = cursor ? Date.parse(cursor) : Number.NEGATIVE_INFINITY;
     const at = new Date(Math.max(message.date * 1000 + 999, last + 1)).toISOString();
-    // The largest picture by its size on screen, which every size states; a byte count is optional.
-    const largest = message.photo?.length ? [...message.photo].sort((a, b) => b.width * b.height - a.width * a.height)[0] : undefined;
-    const files = [
-      ...(message.document ? [{ id: message.document.file_id, unique: message.document.file_unique_id, name: message.document.file_name ?? message.document.file_unique_id, size: message.document.file_size }] : []),
-      ...(largest ? [{ id: largest.file_id, unique: largest.file_unique_id, name: `${largest.file_unique_id}.jpg`, size: largest.file_size }] : []),
-    ];
-    // Created once: a late reader filing the same message keeps the first file and its time.
-    createOnce(target, { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files } satisfies Filed, true);
+    const { kind, text } = markedBy(message.text ?? message.caption ?? "");
+    const filed: Filed = { messageId: message.message_id, at, author: String(message.from!.id), text, files: filesOf(message), ...(kind ? { kind } : {}) };
+    // Created once: a late reader filing the same message keeps the first file and its time. A file
+    // somebody damaged is never deleted; the reply is filed beside it instead.
+    const target = path.join(inbox, `${message.message_id}.json`);
+    createOnce(fs.existsSync(target) ? path.join(inbox, `${message.message_id}-again.json`) : target, filed, directory);
+    if (at > (cursor ?? "")) writeJson(path.join(inbox, ".last"), { at });
   }
+
+  /**
+   * Where a topic's replies are filed for its owner, if that owner's directory
+   * still carries the identity that opened the topic; made if needed.
+   */
+  private inboxOf(owner: Owner, topic: number): { directory: string; inbox: string } | undefined {
+    const directory = path.resolve(this.shared(), owner.directory);
+    if (readIdentity(directory) !== owner.identity) return undefined;
+    const inbox = this.inbox(directory, owner.identity, topic);
+    return ensureInbox(directory, inbox) ? { directory, inbox } : undefined;
+  }
+
+  /** Files what arrived in a topic before its owner was recorded, now that it is. */
+  private adopt(key: string): void {
+    const waiting = path.join(this.shared(), "unowned", key);
+    let names: string[];
+    try {
+      names = fs.readdirSync(waiting).filter((name) => name.endsWith(".json"));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+      throw error;
+    }
+    for (const name of names) {
+      const message = readJson<TelegramMessage>(path.join(waiting, name), true);
+      if (message) this.file(message);
+      fs.rmSync(path.join(waiting, name), { force: true });
+    }
+  }
+
 
   /**
    * The offset to confirm with, unless it has outlived Telegram's update
@@ -358,7 +396,9 @@ export class TelegramConversation implements Conversation {
       if (error instanceof TooLarge) return false;
       throw error;
     }
-    privateDirectory(path.dirname(target));
+    // Within the profile's own directory, which is not made again if it was removed meanwhile.
+    if (readIdentity(this.options.directory) !== this.identity) throw new Error(`${this.options.directory} was removed while its file was being fetched`);
+    durableDirectory(path.dirname(target), this.options.directory);
     // Staged under a short name of its own and renamed, so a path that exists is always a whole file.
     const partial = path.join(path.dirname(target), `.${randomUUID()}.partial`);
     fs.writeFileSync(partial, bytes, { flag: "wx", mode: 0o600 });
@@ -441,6 +481,40 @@ function removeStale(directory: string): void {
   }
 }
 
+/** The files a message carries: its document, and its photo at the largest size on screen, which every size states. */
+function filesOf(message: TelegramMessage): Filed["files"] {
+  const largest = message.photo?.length ? [...message.photo].sort((a, b) => b.width * b.height - a.width * a.height)[0] : undefined;
+  return [
+    ...(message.document ? [{ id: message.document.file_id, unique: message.document.file_unique_id, name: message.document.file_name ?? message.document.file_unique_id, size: message.document.file_size }] : []),
+    ...(largest ? [{ id: largest.file_id, unique: largest.file_unique_id, name: `${largest.file_unique_id}.jpg`, size: largest.file_size }] : []),
+  ];
+}
+
+/** Whether a message is filed under the topic already, readably. */
+function filedAlready(inbox: string, messageId: number): boolean {
+  return [`${messageId}.json`, `${messageId}-again.json`].some((name) => readJson<Filed>(path.join(inbox, name), true) !== undefined);
+}
+
+/**
+ * What the operator marked a reply as, by a command at its start, taken off
+ * the text: /decide (or ✅) is the decision that moves the work, /discuss (or
+ * 💬) a turn in a discussion. Unmarked, it carries no kind, and the
+ * workflow's policy reads it.
+ */
+function markedBy(text: string): { kind?: "decision" | "discussion"; text: string } {
+  const trimmed = text.trimStart();
+  const marks: [string, "decision" | "discussion"][] = [["/decide", "decision"], ["✅", "decision"], ["/discuss", "discussion"], ["💬", "discussion"]];
+  for (const [mark, kind] of marks) {
+    if (!trimmed.startsWith(mark)) continue;
+    let rest = trimmed.slice(mark.length);
+    // A command may be addressed to the bot by name: /decide@amy_work_bot.
+    if (mark.startsWith("/") && rest.startsWith("@")) rest = rest.slice(rest.search(/\s|$/));
+    if (rest !== "" && !/^\s/.test(rest)) continue;
+    return { kind, text: rest.trim() };
+  }
+  return { text };
+}
+
 /** Every reply filed under a topic, in order. A file that does not parse is skipped, and filed again. */
 function filedUnder(inbox: string): Filed[] {
   let names: string[];
@@ -516,13 +590,12 @@ function readIdentity(directory: string): string | undefined {
 }
 
 /**
- * A JSON file written once: whoever writes it first is the answer. A file
- * that does not parse, with `replaceUnreadable`, is not an answer and is
- * replaced. A directory made for it is flushed into its parent first.
+ * A JSON file written once: whoever writes it first is the answer. Every
+ * directory made for it is flushed into its parent first, and none is made
+ * at or above `within`, which must already exist.
  */
-function createOnce(file: string, value: unknown, replaceUnreadable = false): void {
-  durableDirectory(path.dirname(file));
-  if (replaceUnreadable && fs.existsSync(file) && readJson(file, true) === undefined) fs.rmSync(file, { force: true });
+function createOnce(file: string, value: unknown, within: string): void {
+  durableDirectory(path.dirname(file), within);
   const staged = path.join(path.dirname(file), `.${randomUUID()}.partial`);
   const handle = fs.openSync(staged, "wx", 0o600);
   try {
@@ -567,14 +640,12 @@ function normalisedId(id: string): string {
 }
 
 /**
- * A work id as one file name on every system, readable when short; a long
- * one is cut and finished with a digest of the whole, so it stays bounded and
- * two ids never share a name.
+ * A work id as one file name on every system: a lowercase digest of the
+ * whole id, so `build` and `Build` stay two on a case-insensitive disk, no id
+ * is too long, and none is a name Windows reserves.
  */
 function fileNameOf(workId: string): string {
-  const encoded = encodeURIComponent(workId).replace(/\*/g, "%2A").replace(/^\./, "%2E");
-  if (encoded.length <= 120) return encoded;
-  return `${encoded.slice(0, 56).replace(/%[0-9A-F]?$/, "")}-${createHash("sha256").update(workId).digest("hex")}`;
+  return createHash("sha256").update(workId).digest("hex");
 }
 
 function topicOf(thread: ThreadRef): number {
@@ -683,9 +754,13 @@ function syncDirectory(directory: string): void {
 }
 
 /** A directory made, if it is not there, and flushed into its parent so it survives a power loss. */
-function durableDirectory(directory: string): void {
+function durableDirectory(directory: string, within: string): void {
   if (fs.existsSync(directory)) return;
-  durableDirectory(path.dirname(directory));
+  const relative = path.relative(within, directory);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`${within} is gone, and nothing is made in its place`);
+  }
+  durableDirectory(path.dirname(directory), within);
   try {
     fs.mkdirSync(directory, { mode: 0o700 });
   } catch (error) {

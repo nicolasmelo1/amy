@@ -705,3 +705,107 @@ describe("the fifth review", () => {
     expect(await amy.open(`${id}x`, "Another")).not.toEqual(thread);
   });
 });
+
+describe("the sixth review", () => {
+  it("keeps the token out of an error that carries it URI-encoded", async () => {
+    const api = new BotApi(TOKEN, {
+      transport: async () => { throw new Error(`connect ECONNREFUSED https://proxy.test/bot${encodeURIComponent(TOKEN).toLowerCase()}/getMe`); },
+    });
+
+    const error = await api.call("getMe").catch((caught: Error) => caught);
+
+    expect(String(error)).not.toContain(encodeURIComponent(TOKEN));
+    expect(String(error).toLowerCase()).not.toContain(encodeURIComponent(TOKEN).toLowerCase());
+  });
+
+  it("keeps a reply that arrives before its topic's owner is recorded, and files it once it is", async () => {
+    const telegram = botApiStandIn();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-unowned-"));
+    const shared = path.join(root, "bot");
+    let answerEarly = true;
+    const late: { reader?: TelegramConversation } = {};
+    const api = new BotApi(TOKEN, {
+      transport: async (request) => {
+        const answer = await telegram.transport(request);
+        if (answerEarly && request.url.endsWith("/createForumTopic")) {
+          answerEarly = false;
+          // The operator answers, and another process reads it, before this one records the topic.
+          const topic = (JSON.parse(new TextDecoder().decode(answer.body)) as { result: { message_thread_id: number } }).result.message_thread_id;
+          telegram.say("BRL, said at once", { topic });
+          // Paused past its lease: the hold is taken over, as a stale one is.
+          fs.rmSync(path.join(shared, "lock"), { recursive: true, force: true });
+          await late.reader!.replies({ id: String(topic) }, new Date(0).toISOString());
+        }
+        return answer;
+      },
+    });
+    const opener = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared, leaseMs: 20 });
+    late.reader = new TelegramConversation(new BotApi(TOKEN, { transport: telegram.transport }), { operator: String(OPERATOR), directory: path.join(root, "other"), shared, lockWaitMs: 5_000, leaseMs: 20 });
+
+    const thread = await opener.open("TBO-1", "Build TBO-1");
+
+    expect(telegram.pending()).toBe(0);
+    expect((await opener.replies(thread, new Date(0).toISOString())).map((reply) => reply.text)).toEqual(["BRL, said at once"]);
+  });
+
+  it("files a reply beside one somebody damaged, never deleting it", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    const said = telegram.say("BRL", { topic: Number(thread.id) });
+    const identity = fs.readFileSync(path.join(directory, "identity"), "utf-8");
+    const inbox = path.join(directory, `inbox-${identity}`, thread.id);
+    fs.mkdirSync(inbox, { recursive: true });
+    fs.writeFileSync(path.join(inbox, `${said.message_id}.json`), "damaged");
+
+    expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
+    expect(fs.readFileSync(path.join(inbox, `${said.message_id}.json`), "utf-8")).toBe("damaged");
+  });
+
+  it("keeps work ids that differ only in case as two topics", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+
+    const lower = await amy.open("build", "build");
+    const upper = await amy.open("Build", "Build");
+
+    expect(lower).not.toEqual(upper);
+  });
+
+  it("makes nothing again for a profile removed while its topic was being opened", async () => {
+    const telegram = botApiStandIn();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-removed-"));
+    const directory = path.join(root, "build");
+    const api = new BotApi(TOKEN, {
+      transport: async (request) => {
+        if (request.url.endsWith("/createForumTopic")) fs.rmSync(directory, { recursive: true, force: true });
+        return telegram.transport(request);
+      },
+    });
+    const amy = new TelegramConversation(api, { operator: String(OPERATOR), directory, shared: path.join(root, "bot") });
+
+    await expect(amy.open("TBO-1", "Build TBO-1")).rejects.toThrow(/was removed while its topic was being opened/);
+    expect(fs.existsSync(directory)).toBe(false);
+  });
+
+  it("reads a reply marked /decide as the decision and /discuss as a turn, without the mark", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("why BRL?", { topic: Number(thread.id) });
+    telegram.say("/discuss what about EUR?", { topic: Number(thread.id) });
+    telegram.say("/decide BRL, beside the total", { topic: Number(thread.id) });
+    telegram.say("✅ and no rounding", { topic: Number(thread.id) });
+
+    const replies = await amy.replies(thread, since);
+
+    expect(replies.map((reply) => [reply.text, reply.kind])).toEqual([
+      ["why BRL?", undefined],
+      ["what about EUR?", "discussion"],
+      ["BRL, beside the total", "decision"],
+      ["and no rounding", "decision"],
+    ]);
+  });
+});

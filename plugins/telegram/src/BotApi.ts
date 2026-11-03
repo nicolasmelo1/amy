@@ -188,7 +188,11 @@ function parse(method: string, response: HttpResponse): Answer {
   }
 }
 
+/** The message with the token taken out, as written and as a URL would encode it, in either case. */
 function withoutToken(error: unknown, token: string): string {
   const text = error instanceof Error ? error.message : String(error);
-  return token ? text.split(token).join("<token>") : text;
+  if (!token) return text;
+  const encoded = encodeURIComponent(token);
+  const forms = [...new Set([token, encoded, encoded.replace(/%[0-9A-F]{2}/g, (escape) => escape.toLowerCase())])];
+  return forms.reduce((said, form) => said.split(form).join("<token>"), text);
 }

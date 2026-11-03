@@ -50,7 +50,7 @@ guarantee:
 deviations:
   - "the token is TELEGRAM_BOT_TOKEN in amy's environment, read the way Linear's key is, rather than a reference in the config"
   - "a server setting, Telegram's by default, so a local Bot API server or the scenario's stand-in can answer"
-  - "a reply carries no kind: Telegram tells a bot of a reaction only when it asks for message_reaction updates, so marking a decision is left to the workflow's policy, as an unmarked Slack reply is"
+  - "a reply is marked by a command at its start, /decide (or ✅) for the decision and /discuss (or 💬) for a turn, taken off its text; Telegram tells a bot of a reaction only when it asks for message_reaction updates, so a command is the mark, and an unmarked reply is read by the workflow's policy (sixth review)"
   - "replies are filed on disk under their topic before the update offset moves, once per bot and operator, so any profile reads them; one process at a time reads updates, by a lock renewed while it is held and released only by its holder (review)"
   - "a profile's topics are its own, and a project's phase is handed its own directory by the CLI, as Slack's threads are; switching bot or operator starts afresh (review)"
   - "an offset older than six days is not sent, since Telegram renumbers its updates after a week without any (review)"
@@ -62,6 +62,8 @@ deviations:
   - "a local Bot API server's file path is never said, since it may carry the token; the operator's id is read as Telegram spells it (fourth review)"
   - "the bot's updates are read once per bot, whoever the operator, and filed by chat and topic, so two operators of one bot never discard each other's answers; a reply is published once and keeps its first time; work ids too long for a file name are cut and finished with a digest (fifth review)"
   - "Telegram keeps an unconfirmed update for 24 hours, and amy reads updates only when a profile looks for replies: an answer given while no amy using this bot runs for a whole day is lost. amy says so here rather than running a receiver of its own (fifth review)"
+  - "a reply that arrives before its topic's owner is recorded is kept under the bot's unowned/ until the topic is, never confirmed away; each topic keeps a cursor of its last reply's time, so filing does not reread the inbox; a damaged reply file is never deleted, the reply is filed beside it; a work id is a lowercase digest as a file name; a profile removed while Telegram answers is not made again (sixth review)"
+  - "the hold on the bot is taken over without fencing the generation it observed: two takers of one stale hold can both open a topic, and the topic map keeps one, the other orphaned. Declined in the sixth review, since no reply depends on the hold"
   - "a method's documented return alternatives are all derived, as editMessageText's Message or True (third review)"
   - "every exchange with the Bot API has a deadline covering its body, a local Bot API server's absolute file paths are read where they lie, and text is cut at a character, never inside one (second review)"
   - "a reply is placed at the end of the second Telegram stamps it with, and after the last one filed, so two replies in a second keep their order and neither falls before a question asked within it"
