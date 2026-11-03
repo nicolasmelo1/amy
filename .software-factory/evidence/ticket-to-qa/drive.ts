@@ -455,6 +455,8 @@ interface Morning {
   confirm: Said;
   doctor: Said;
   discover: Said;
+  /** The engine's own settings, said by the machine that keeps them. */
+  explainEngine: Said;
   /** The profile's roster file, as the operator's edits and the confirm left it. */
   rosterFile: string | null;
   /** The machine root carries none: the file moved into the profile. */
@@ -540,6 +542,8 @@ interface World extends Morning, Settled, Concurrent, Pruned, NamedRoot, Held {
   moves: Move[];
   trail: Look[];
   leftBehind: boolean;
+  /** The retune, on the world that proves the engine owns its delay. */
+  retuned?: { edited: string; doctor: Said; explainEngine: Said };
 }
 
 /** The morning's commands, in the order the README gives them. */
@@ -572,6 +576,10 @@ function morning(root: string, endpoint: string, engine: EngineChoice, trail: Lo
   const doctorStale = amy(root, ["doctor"]);
   const confirm = amy(root, ["roster", "confirm"]);
   const doctor = amy(root, ["doctor"]);
+  // The engine's own list of settings, read before anything later changes the
+  // config: the poll one profile carries is a different setting, and the two
+  // lists answering apart is the claim the retuned check below holds to.
+  const explainEngine = amy(root, ["config", "explain", "@amykit/plugin-serial-engine"]);
 
   // `tick` looks before it moves: discovery is the loop's first act, and the
   // command that only discovered is gone. The move it makes here is the
@@ -587,7 +595,7 @@ function morning(root: string, endpoint: string, engine: EngineChoice, trail: Lo
   const rosterFile = fs.existsSync(rosterPath) ? fs.readFileSync(rosterPath, "utf-8") : null;
   const rosterAtRoot = fs.existsSync(path.join(root, "home", ".amy", "roster.yaml"));
 
-  return { version, init, initWrote, doctorStale, confirm, doctor, discover, help, rosterFile, rosterAtRoot };
+  return { version, init, initWrote, doctorStale, confirm, doctor, discover, explainEngine, help, rosterFile, rosterAtRoot };
 }
 
 /** Ticks the first ticket until it settles, letting the world move whenever amy waits. */
@@ -903,6 +911,10 @@ async function lifecycle(engine: EngineChoice = "serial"): Promise<World> {
     const prunedWorld = pruned(root);
     const named = namedRoot(root, react, moves);
     const held = await heldUntilStarted(root);
+    // The retune runs inside the world that is about to be taken down, and
+    // on the serial one alone: the same edit on three worlds is three times
+    // the doctor for one claim.
+    const retuned = engine === "serial" ? retune(root) : undefined;
 
     world = {
       root,
@@ -915,6 +927,7 @@ async function lifecycle(engine: EngineChoice = "serial"): Promise<World> {
       ...prunedWorld,
       ...named,
       ...held,
+      ...(retuned ? { retuned } : {}),
     };
     return world;
   } finally {
@@ -994,6 +1007,7 @@ function assertionsFor(first: World, second: World, concurrent: World): { type: 
     ...extraChecks(first),
     ...commandChecks(first),
     ...rosterChecks(first),
+    ...retuneChecks(first),
   ].map(([type, ok]) => ({ type, status: ok ? "passed" : "failed" }));
 }
 
@@ -1509,6 +1523,27 @@ function rosterChecks(first: World): Check[] {
   ];
 }
 
+/**
+ * The engine's delay is its setting, held apart from the ticket's poll.
+ *
+ * Run at the end, so the lifecycle the run just proved is untouched by the
+ * edit: the ticket's own poll is turned to a number nothing defaults to, the
+ * machine is asked to boot again, and the engine's list of settings is read
+ * once more. If the engine's retry were still derived from that poll, the
+ * number the machine was just told would show up over there — it does not.
+ */
+function retune(root: string): { edited: string; doctor: Said; explainEngine: Said } {
+  const file = path.join(root, "home", ".amy", "config.yaml");
+  const edited = fs.readFileSync(file, "utf-8").replace("pollBackoffMs: 0", "pollBackoffMs: 4242");
+  if (edited === fs.readFileSync(file, "utf-8") || !edited.includes("pollBackoffMs: 4242")) {
+    throw new Error("retune did not find the poll to turn: the config drifted from the form the assertions read");
+  }
+  fs.writeFileSync(file, edited);
+  const doctor = amy(root, ["doctor"]);
+  const explainEngine = amy(root, ["config", "explain", "@amykit/plugin-serial-engine"]);
+  return { edited, doctor, explainEngine };
+}
+
 /** The command line and the brake, on the installed executable. */
 function commandChecks(first: World): Check[] {
   return [
@@ -1535,6 +1570,33 @@ function commandChecks(first: World): Check[] {
         first.started.code === 0 &&
         first.releasedRun.code === 0 &&
         !first.releasedRun.out.includes("handbrake"),
+    ],
+  ];
+}
+
+/**
+ * The engine retries on its own delay, not on a workflow's.
+ *
+ * The poll one profile tuned is turned to a number nothing defaults to
+ * (4242), and the machine boots with it. What the engine's list of settings
+ * says about retryDelayMs is unchanged through that — the same default
+ * announced before and after — and the number carries over to nothing there.
+ * The engine's retry and a ticket's poll started the same setting once; a
+ * retune of the second must not be a retune of the first.
+ */
+function retuneChecks(first: World): Check[] {
+  const retuned = first.retuned;
+  const engine = retuned?.explainEngine.out ?? "";
+  return [
+    [
+      "lifecycle.the_engine_retries_on_its_own_delay",
+      retuned !== undefined &&
+        retuned.edited.includes("pollBackoffMs: 4242") &&
+        retuned.doctor.code === 0 &&
+        retuned.explainEngine.code === 0 &&
+        engine.includes("retryDelayMs") &&
+        engine.includes("default 300000") &&
+        !engine.includes("4242"),
     ],
   ];
 }

@@ -172,13 +172,14 @@ function configuration(entry: MountedFact): string {
     ].join("\n");
   }
 
-  const value = (setting: MountedFact["settings"][number]): string =>
-    setting.default !== undefined ? JSON.stringify(setting.default) : `<${setting.type}>`;
   // A called workflow is configured where it is called, so its settings are
-  // shown as the binding's `config`, never as a slice of `config.yaml`.
+  // shown as the binding's `config`, never as a slice of `config.yaml`. A
+  // dotted setting name is the schema's spelling of one nested group; the
+  // example the operator copies is the shape the validator accepts, so the
+  // dots are opened out into that nesting in either spelling.
   const example = entry.workflow?.called
-    ? ["```ts", `call(${camel(entry.workflow.name)}, { config: { ${entry.settings.map((setting) => `${setting.name}: ${value(setting)}`).join(", ")} } })`, "```"]
-    : ["```yaml", "plugins:", `  "${entry.name}":`, ...entry.settings.map((setting) => `    ${setting.name}: ${value(setting)}`), "```"];
+    ? ["```ts", `call(${camel(entry.workflow.name)}, { config: ${inline(nested(entry.settings))} })`, "```"]
+    : ["```yaml", "plugins:", `  "${entry.name}":`, ...block(nested(entry.settings)), "```"];
 
   return [
     ...example,
@@ -256,4 +257,57 @@ function sentence(items: string[]): string {
   if (items.length === 0) return "";
   if (items.length === 1) return items[0] ?? "";
   return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
+/** One settings slice, as the schema's dotted paths read when given in full. */
+function nested(settings: MountedFact["settings"]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const setting of settings) {
+    const value = setting.default !== undefined ? JSON.stringify(setting.default) : `<${setting.type}>`;
+    const path = setting.name.split(".");
+    const leaf = path.pop()!;
+    let node = out;
+    for (const segment of path) {
+      const existing = node[segment];
+      if (typeof existing !== "object" || existing === null) node[segment] = plain();
+      node = node[segment] as Record<string, unknown>;
+    }
+    node[leaf] = value;
+  }
+  return out;
+}
+
+/** A mapping a dotted path opens out into, before any of it is filled. */
+function plain(): Record<string, unknown> {
+  return {} as Record<string, unknown>;
+}
+
+/** The YAML the config accepts, nested where the schema said a group, indented where the config reads it. */
+function block(nested: Record<string, unknown>, depth = 2): string[] {
+  const pad = "  ".repeat(depth);
+  return Object.entries(nested).flatMap(([key, value]) =>
+    isMapping(value) && Object.keys(value).length > 0
+      ? [`${pad}${key}:`, ...block(value as Record<string, unknown>, depth + 1)]
+      : [`${pad}${key}: ${isMapping(value) ? "{}" : String(value)}`],
+  );
+}
+
+/** The same slice, spelled for `call()`'s `config`, one line, groups nested. */
+function inline(nested: Record<string, unknown>): string {
+  const parts = Object.entries(nested).map(([key, value]) =>
+    isMapping(value) ? `${key}: { ${joined(value as Record<string, unknown>)} }` : `${key}: ${String(value)}`,
+  );
+  return parts.length > 0 ? `{ ${parts.join(", ")} }` : "{}";
+}
+
+/** The keys of one mapping, joined without the braces around them. */
+function joined(nested: Record<string, unknown>): string {
+  return Object.entries(nested)
+    .map(([key, value]) => (isMapping(value) ? `${key}: { ${joined(value as Record<string, unknown>)} }` : `${key}: ${String(value)}`))
+    .join(", ");
+}
+
+/** Whether a dotted example value opened into a mapping. */
+function isMapping(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

@@ -143,13 +143,33 @@ const AGENT_SCRIPT: { attempts: Record<string, number> } = { attempts: {} };
 
 function config(root: string): string {
   return `# There is no tracker in this run, and no ticket workflow settings that
-# would need one. What is here is the second workflow's own vocabulary, and
-# the workflow itself is named rather than shipped: a machine drives nothing
-# until the config declares one.
+# would need one. What is here is the second workflow's own vocabulary, said
+# under the profile that drives it — where plans may land, and what judges
+# one — and the workflow itself is named rather than shipped: a machine
+# drives nothing until the config declares one.
 workflows:
   plans:
     workflow: "@amykit/workflow-note-to-plan"
     notes: true
+    settings:
+      repos:
+        - ${REPO}
+        - ${OTHER_REPO}
+        - ${UNWRITABLE_REPO}
+        - ${REFUSING_REPO}
+      check:
+        default:
+          - sf check
+      policy:
+        # One, so a second note arriving while the first is still in flight
+        # meets the ceiling rather than sailing past it.
+        maxOpenPlansPerRepo: 1
+        # Zero, because the queue is the schedule and this run is driven a
+        # move at a time. In production this is an hour.
+        ceilingBackoffMs: 0
+        # Three drafts before a plan that will not hold together is left
+        # behind as a note the agent can still read.
+        maxDraftAttempts: 3
 defaultWorkflow: plans
 
 repos: []
@@ -164,24 +184,6 @@ maxItemAttempts: 1
 # every twentieth command would ask the real registry.
 autoUpdate:
   enabled: false
-
-plans:
-  repos:
-    - ${REPO}
-    - ${OTHER_REPO}
-    - ${UNWRITABLE_REPO}
-    - ${REFUSING_REPO}
-  check:
-    default:
-      - sf check
-  policy:
-    # One, so a second note arriving while the first is still in flight meets
-    # the ceiling rather than sailing past it.
-    maxOpenPlansPerRepo: 1
-    # Zero, because the queue is the schedule and this run is driven a move at
-    # a time. In production this is an hour.
-    ceilingBackoffMs: 0
-    maxDraftAttempts: 3
 
 agent:
   model: sonnet

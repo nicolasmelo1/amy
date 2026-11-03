@@ -10,6 +10,7 @@ import {
   BriefStore,
   Check,
   CommandRunner,
+  ConfigSchema,
   Engine,
   FileStopSwitch,
   NodeCommandRunner,
@@ -37,6 +38,7 @@ import {
   EXAMPLE_CONFIG,
   configuredAutoUpdateProblems,
   loadConfig,
+  profileSettingsFrom,
   removeExtraPlugin,
   removeProfile,
   writeExtraPlugins,
@@ -51,6 +53,7 @@ import { describePoke, poke } from "./poke.js";
 import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, assembleProfile } from "./assemble.js";
 import { installedStamp } from "./stamp.js";
+import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
 import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
 import {
@@ -88,7 +91,7 @@ import {
 import { refreshPricesWhenStale } from "./prices.js";
 import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { addWorkflowInto } from "./workflow-add.js";
-import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, move, Release, restore, Root, roots, survey } from "./update.js";
+import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, migrateSettingsFile, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
 
@@ -378,7 +381,7 @@ program
     if (!resolution.ok) {
       await doctorReport(
         config,
-        { name: "", workflow: "", plugins: [], takesNotes: false, takesTasks: false },
+        { name: "", workflow: "", plugins: [], takesNotes: false, takesTasks: false, settings: {} },
         resolution.problem,
       );
       process.exitCode = 1;
@@ -1048,12 +1051,17 @@ async function writeAddedEntry(
   config: AmyConfig,
   picked: Picked,
   workflow: boolean,
+  schema: ConfigSchema | undefined,
 ): Promise<{ message: string; profile?: string }> {
   if (workflow) {
     const name = workflowProfileName(picked.imported);
     const conflict = workflowProfileConflict(config.workflows, picked.imported);
     if (conflict) throw new Error(conflict);
-    writeWorkflowProfile(home, name, picked.imported, config);
+    // The schema is what the package says it needs asked of it: the required
+    // settings it carries an example for are the ones the operator starts
+    // with, written in its own words. The rest is the schema's defaults, at
+    // the mount.
+    writeWorkflowProfile(home, name, picked.imported, config, schema ? profileSettingsFrom(schema) : {});
     return { message: `added ${picked.imported} as the workflow \`${name}\``, profile: name };
   }
 
@@ -1109,7 +1117,7 @@ async function addCommand(home: string, spec: string): Promise<void> {
 
   let added: { message: string; profile?: string };
   try {
-    added = await writeAddedEntry(home, config, outcome.picked, outcome.workflow);
+    added = await writeAddedEntry(home, config, outcome.picked, outcome.workflow, outcome.schema);
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
     console.error(why);
@@ -1169,6 +1177,17 @@ async function writeAddedFiles(home: string, spec: string, profileName?: string)
 }
 
 /**
+ * The contributions the update's own epilogue reads, taken after the update:
+ * the register-time read ran against the file that may only now have moved,
+ * and a config the update migrated refuses its old shape — the catch that
+ * keeps `amy --help` alive on such a machine would otherwise leave the move
+ * below with nothing to read.
+ */
+async function postUpdateContributions(): Promise<readonly Contribution[]> {
+  return pluginContributions();
+}
+
+/**
  * The refusals `add` answers before it writes: already the workflow this
  * profile drives, unable to import, and unable to mount.
  *
@@ -1193,6 +1212,8 @@ interface Added {
   workflow: boolean;
   /** Complete root snapshot, so a refusal never removes an older package. */
   before: readonly string[];
+  /** What the package says it mounts with, for the settings it requires. */
+  schema: ConfigSchema | undefined;
 }
 
 /** Boots the profile the write just created; a bare plugin was already probed alone. */
@@ -1277,7 +1298,7 @@ async function addInstalled(
     );
   }
 
-  return { picked: completed, workflow: probe.workflow, before };
+  return { picked: completed, workflow: probe.workflow, before, schema: loaded.plugin.configSchema };
 }
 
 /**
@@ -1633,8 +1654,9 @@ program
         skillsInto: rewriteSkillsInto,
       });
       if (code === 0 && options.check !== true) {
-        migrateRootFiles(home, contributions, commandOut);
-        await refreshPricesWhenStale(contributions, commandEnvironment());
+        const moved = await postUpdateContributions();
+        migrateRootFiles(home, moved, commandOut);
+        await refreshPricesWhenStale(moved, commandEnvironment());
       }
       process.exitCode = code;
     } catch (error) {
@@ -1642,6 +1664,13 @@ program
       process.exitCode = 1;
     }
   });
+
+/** The migration's own words, printed the way an update says anything. */
+function migrationSays(home: string): void {
+  const said = migrateSettingsFile(home);
+  for (const line of said.said) console.log(line);
+  if (said.movedTo !== undefined) console.log(`kept   ${said.movedTo}`);
+}
 
 /** Claims package mutation before inspecting the daemon state. */
 function updateBoundary(home: string): () => void {
@@ -1667,6 +1696,13 @@ export async function updateCommand(
 ): Promise<number> {
     const release = updateBoundary(home);
     try {
+    // An older file carries the workflows' vocabulary at the top level, and
+    // the release this update moves to reads it nowhere: the tuned values
+    // move to the profiles they serve before anything reads the config, and
+    // the daemon check below reads profiles too. A read that refused would
+    // refuse the one command built to fix the file.
+    if (!check) migrationSays(home);
+
     const refused = refuseWhileRunning(home);
     if (refused !== undefined) return refused;
 
@@ -2186,6 +2222,33 @@ pluginCommand
     console.log(`workflow: ${mounted.workflow?.name ?? "none"}`);
   });
 
+/** The settings one mounted thing would take, printed the way explain says them. */
+
+const configCommand = program.command("config").description("What this machine would read, if it mounted");
+
+configCommand
+  .command("explain [plugin]")
+  .description("Every setting the machine and its mounted plugins carry, with its type, default and why")
+  .action(async (plugin: string | undefined) => {
+    // The report is data in its own module, so the tests and the gate can
+    // read what this prints without a subprocess. What the command adds is
+    // only where the answer lands — stdout, or nothing worth an exit of 0.
+    const config = loadConfig(home);
+    // Where the installed packages are: the report reads the plugins this
+    // machine mounted, not whichever copy a repo checkout sees first.
+    const report = await explainReport(config, selected(config), plugin, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
+    for (const line of report.lines) console.log(line);
+    if (report.refused !== undefined) {
+      console.error(report.refused);
+      process.exitCode = 1;
+      return;
+    }
+    for (const problem of report.problems) {
+      console.error(problem);
+      process.exitCode = 1;
+    }
+  });
+
 program
   .command("skills")
   .description("Install amy's skills into the harnesses on this machine")
@@ -2527,7 +2590,13 @@ const contributions = await pluginContributions();
 function commandEnvironment(): CommandEnvironment {
   return {
     home,
-    config: loadConfig(home),
+    // Read when a command asks for it, not before the command runs: `amy
+    // update` is the command that moves a config whose shape was retired, and
+    // a config read at register time would refuse, before the migration, the
+    // one command built to fix it.
+    get config() {
+      return loadConfig(home);
+    },
     profileFor: profileForContribution,
     mount: async (profile) => {
       const assembled = await assemble(profile);

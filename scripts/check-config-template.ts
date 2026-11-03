@@ -26,7 +26,7 @@ async function built<Module>(spec: string): Promise<Module> {
 
 type ConfigTemplate = typeof import("../packages/cli/src/config-template.js");
 
-const { EXAMPLE_CONFIG, DEFAULT_CONFIG } = await built<typeof import("../packages/cli/src/config.js")>(
+const { EXAMPLE_CONFIG, machineSchema } = await built<typeof import("../packages/cli/src/config.js")>(
   "packages/cli/dist/config.js",
 );
 const { checkConfigTemplate } = await built<ConfigTemplate>("packages/cli/dist/config-template.js");
@@ -44,12 +44,15 @@ const document = yaml.parseDocument(EXAMPLE_CONFIG);
 const parsed = document.errors.length === 0 ? document.toJS() : {};
 
 const problems = checkConfigTemplate(
-  EXAMPLE_CONFIG,
   [
-    { at: "", accepts: DEFAULT_CONFIG, given: parsed },
-    { at: "policy", accepts: ticket.DEFAULT_POLICY, given: parsed.policy },
-    { at: "plans.policy", accepts: plans.DEFAULT_POLICY, given: parsed.plans?.policy },
-    { at: "errands.policy", accepts: errands.DEFAULT_POLICY, given: parsed.errands?.policy },
+    { at: "", schema: machineSchema, given: parsed },
+    {
+      at: "workflows.ticket-to-qa.settings",
+      schema: ticket.configSchema,
+      given: undefined,
+    },
+    { at: "workflows.note-to-plan.settings", schema: plans.configSchema, given: undefined },
+    { at: "workflows.errand.settings", schema: errands.configSchema, given: undefined },
   ],
   document.errors.map((error) => error.message),
 );

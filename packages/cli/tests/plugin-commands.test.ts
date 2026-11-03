@@ -51,6 +51,7 @@ const WORK: Profile = {
   plugins: ["@acme/plugin-demo"],
   takesNotes: false,
   takesTasks: false,
+  settings: {},
 };
 
 const CONFIG = {
@@ -239,13 +240,14 @@ describe("a plugin's commands, check and file", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-migrate-"));
     fs.writeFileSync(path.join(home, "team.yaml"), "the team's own\n", "utf-8");
     const { out } = spoken();
-    const second: Profile = { name: "other", workflow: "@acme/workflow-unheard-of", plugins: [], takesNotes: false, takesTasks: false };
+    const second: Profile = { name: "other", workflow: "@acme/workflow-unheard-of", plugins: [], takesNotes: false, takesTasks: false, settings: {} };
 
     const copied = migrateRootFiles(
       home,
       [
         {
           owner: "@acme/plugin-demo",
+          spec: "@acme/plugin-demo",
           plugin: demo(),
           profiles: [WORK],
           commands: [],
@@ -254,6 +256,7 @@ describe("a plugin's commands, check and file", () => {
         },
         {
           owner: "@acme/plugin-second",
+          spec: "@acme/plugin-second",
           plugin: demo({ name: "@acme/plugin-second" }),
           profiles: [second],
           commands: [],
@@ -304,6 +307,7 @@ describe("a plugin's commands, check and file", () => {
       [
         {
           owner: "@acme/plugin-credentials",
+          spec: "@acme/plugin-credentials",
           plugin: demo({ name: "@acme/plugin-credentials" }),
           profiles: [WORK],
           commands: [],

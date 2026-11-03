@@ -1,8 +1,10 @@
 import fs from "node:fs";
+import yaml from "yaml";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CommandRunner } from "@amykit/core";
 import { packageManager, shellCommand } from "./install.js";
+import { paths } from "./paths.js";
 
 /**
  * One package this machine's two roots hold, and what the range in them
@@ -591,4 +593,281 @@ function writeManifestEntry(root: string, name: string, range: string | undefine
   } catch (error) {
     return error instanceof Error ? error.message : String(error);
   }
+}
+
+/**
+ * The config the machine has, rewritten into the shape what reads it expects.
+ *
+ * A release that stops reading a workflow's vocabulary off the top level
+ * still owes the machine its tuned values: the update is the one moment an
+ * operator is already accepting changes, so this is where the old blocks
+ * move — under the profiles mounting the workflow that reads each, or beside
+ * the plugin whose slice names them — and the file as it was is kept at
+ * `config.yaml.moved`, for the person to read and for a rollback to point at.
+ * A file with none of the moved keys left changes nothing, so running this
+ * twice is one move.
+ *
+ * The edit goes through the document, not a restringify of parsed values:
+ * the comments that explain each setting are most of the file's value, and
+ * they are kept the way every other config writer keeps them.
+ */
+export interface SettingsMoved {
+  ok: boolean;
+  /** What moved, said the way the operator would read it. */
+  said: string[];
+  /** The file the original was kept at, when it moved. */
+  movedTo?: string;
+}
+
+/** The first-party workflows that read each of the moved top-level keys. */
+const READ_BY_WORKFLOW: ReadonlyMap<string, readonly string[]> = new Map([
+  ["policy", ["@amykit/workflow-ticket-to-qa"]],
+  ["qaStatusName", ["@amykit/workflow-ticket-to-qa"]],
+  ["plans", ["@amykit/workflow-note-to-plan"]],
+  ["errands", ["@amykit/workflow-errand"]],
+  // The tracker's two did not move under a workflow at all: the profile that
+  // reads them is wherever the linear plugin mounts, so the migration puts
+  // them under `plugins: "@amykit/plugin-linear"` whether or not the machine
+  // had named a plugins block.
+  ["workingStatusName", ["@amykit/plugin-linear"]],
+  ["repoByTeam", ["@amykit/plugin-linear"]],
+]);
+
+/** What `settings` under one profile gets for one moved top-level key. */
+function settingsFor(key: string, value: unknown): Record<string, unknown> | undefined {
+  if (key === "plans") return plansSettings(value);
+  if (key === "qaStatusName") {
+    return typeof value === "string" ? { qaStatusName: value } : undefined;
+  }
+  if (key === "policy" || key === "errands") return ceilingSettings(key, value);
+  return undefined;
+}
+
+/** The plans block's repos, gate keepers and ceilings, as the planner's settings. */
+function plansSettings(value: unknown): Record<string, unknown> | undefined {
+  if (!isPlain(value)) return undefined;
+  const block = value as { repos?: unknown; check?: unknown; policy?: unknown };
+  const settings: Record<string, unknown> = {};
+  if (Array.isArray(block.repos)) settings.repos = block.repos;
+  if (isPlain(block.check)) settings.check = block.check;
+  // The ceilings the planner reads rode under this block too, and they are
+  // the workflow's policy, which today lives under `settings.policy`.
+  if (isPlain(block.policy)) settings.policy = block.policy;
+  return Object.keys(settings).length > 0 ? settings : undefined;
+}
+
+/** The ceilings block, or the ceilings nested under the errands block, as-is. */
+function ceilingSettings(key: string, value: unknown): Record<string, unknown> | undefined {
+  const policy = key === "errands" ? (isPlain(value) ? (value as { policy?: unknown }).policy : undefined) : value;
+  if (!isPlain(policy)) return undefined;
+  return Object.keys(policy).length > 0 ? { policy } : undefined;
+}
+
+function isPlain(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function migrateSettingsFile(home: string): SettingsMoved {
+  const place = paths(home).config;
+  if (!fs.existsSync(place)) return { ok: true, said: [] };
+  const text = fs.readFileSync(place, "utf-8");
+  const document = yaml.parseDocument(text);
+  if (document.errors.length > 0) {
+    return { ok: false, said: [`could not parse ${place}: ${document.errors[0]!.message}`] };
+  }
+  const top = document.contents;
+  if (!yaml.isMap(top)) return { ok: true, said: [] };
+
+  const said: string[] = [];
+  const workflows = entryOf(top, "workflows");
+  const dropped = moveRetiredKeys(document, top, workflows, said);
+
+  // An old EXAMPLE always named the QA status, but a hand-written ticket
+  // profile can name none of the retired keys and still lean on the
+  // implicit default the old loader supplied: materializing it changes the
+  // file even when nothing moved from place to place, so it is answered
+  // before deciding that no migration is needed at all.
+  const materialized = materializeTicketStatus(document, top, said);
+
+  if (dropped.length === 0 && !materialized) return { ok: true, said: [] };
+
+  const movedTo = `${place}.moved`;
+  // The kept file is the machine's config before its first move, a byte the
+  // operator can always go back to; rewriting it now would archive a state
+  // that already moved the way the file beside it now says it did.
+  if (!fs.existsSync(movedTo)) fs.writeFileSync(movedTo, text, "utf-8");
+  fs.writeFileSync(place, String(document), "utf-8");
+  return { ok: true, said, movedTo };
+}
+
+/** One retired key's journey from the top level to the workflow that reads it.
+ *
+ * Every retired key is taken off the top: where something mounted reads it,
+ * the move places it and says so; where nothing does, the file it would make
+ * unmountable loses it and the backup keeps the operator's bytes. The walk
+ * returns what it moved off, so the caller knows whether the file changed at
+ * all — materializing a default the file never had is a change the move did
+ * not make, and only the two kinds together decide that no update is due. */
+function moveRetiredKeys(
+  document: yaml.Document,
+  top: yaml.YAMLMap,
+  workflows: ReturnType<typeof entryOf>,
+  said: string[],
+): string[] {
+  const dropped: string[] = [];
+  for (const [key, readers] of READ_BY_WORKFLOW) {
+    const entry = entryOf(top, key);
+    if (entry === undefined) continue;
+    const value = unwrap(entry.value);
+
+    const moved =
+      moveIntoWorkflows(workflows, key, value, readers) || moveToTrackerSlice(document, top, key, entry);
+
+    if (!moved) {
+      // An init-era block nobody mounted still names itself at the top
+      // level, and a later boot refuses it by name: the move takes it out
+      // of the file it would break, keeps the original beside the move, and
+      // says what became of it rather than leaving a machine that cannot
+      // mount after the one command built to fix the file.
+      top.delete(key);
+      dropped.push(key);
+      said.push(`${key}: nothing mounted reads it; kept only in the backup`);
+      continue;
+    }
+    top.delete(key);
+    dropped.push(key);
+    const where = key === "workingStatusName" || key === "repoByTeam"
+      ? "the linear plugin's slice"
+      : `the ${readers.map((one) => one.replace("@amykit/", "")).join(", ")} workflow's profile settings`;
+    said.push(`${key}: moved to ${where}`);
+  }
+  return dropped;
+}
+
+/**
+ * A machine the old EXAMPLE wrote always named its QA status, but one edited
+ * by hand may not have: the ticket schema requires the status, no slice
+ * supplies it any more, and a machine this update touches cannot be left
+ * without a value the mount will refuse. The ticket's profile gains what
+ * init would have written, said the way a move is said.
+ */
+function materializeTicketStatus(document: yaml.Document, top: yaml.YAMLMap, said: string[]): boolean {
+  const workflowsMap = entryOf(top, "workflows");
+  if (workflowsMap === undefined || !yaml.isMap(workflowsMap.value)) return false;
+  let wrote = false;
+  for (const item of workflowsMap.value.items) {
+    const profile = item.value;
+    if (!yaml.isMap(profile) || unwrap(profile.get("workflow")) !== "@amykit/workflow-ticket-to-qa") continue;
+    if (entryOf(top, "qaStatusName") !== undefined) continue;
+    const settingsMap = profile.get("settings");
+    // A profile that already names the status was placed by the move above,
+    // not left behind by init: saying so again would rewrite a file that did
+    // not drift, and an update nobody sees say something twice.
+    if (yaml.isMap(settingsMap) && settingsMap.has("qaStatusName")) continue;
+    if (yaml.isMap(settingsMap)) {
+      settingsMap.add(new yaml.Pair("qaStatusName", "In QA"));
+    } else {
+      profile.add(new yaml.Pair("settings", toMap({ qaStatusName: "In QA" })));
+    }
+    said.push("qaStatusName: set to In QA, the value init wrote, which the ticket workflow requires");
+    wrote = true;
+  }
+  return wrote;
+}
+
+/**
+ * Places one moved key's settings under every profile that declares a
+ * workflow known to read it, and says whether any profile took it.
+ */
+function moveIntoWorkflows(
+  workflows: yaml.Pair | undefined,
+  key: string,
+  value: unknown,
+  readers: readonly string[],
+): boolean {
+  if (workflows === undefined || !yaml.isMap(workflows.value)) return false;
+
+  let placed = false;
+  for (const item of workflows.value.items) {
+    const profile = item.value;
+    if (!yaml.isMap(profile)) continue;
+    const workflow = profile.get("workflow");
+    if (typeof workflow !== "string" || !readers.includes(workflow)) continue;
+    const settings = settingsFor(key, value);
+    if (settings === undefined) continue;
+    if (!placeProfileSettings(profile, settings)) continue;
+    placed = true;
+  }
+  return placed;
+}
+
+/** Adds the moved settings to a profile's own map, as `amy add` would write them. */
+function placeProfileSettings(profile: yaml.YAMLMap, settings: Record<string, unknown>): boolean {
+  const settingsMap = profile.get("settings");
+  if (yaml.isMap(settingsMap)) {
+    for (const [name, to] of Object.entries(settings)) if (!settingsMap.has(name)) settingsMap.add(new yaml.Pair(name, to));
+    return true;
+  }
+  profile.add(new yaml.Pair("settings", toMap(settings)));
+  return true;
+}
+
+/**
+ * Puts the tracker's two moved keys in the mounted tracker's slice, and when
+ * the machine never named a plugins block, writes one the way `amy add`
+ * would — the tracker's slice beside whatever else lands there later.
+ *
+ * Read fresh each time the function runs: the first of the tracker's keys
+ * may have created the plugins block that the second needs.
+ */
+function moveToTrackerSlice(
+  document: yaml.Document,
+  top: yaml.YAMLMap,
+  key: string,
+  entry: yaml.Pair,
+): boolean {
+  if (key !== "workingStatusName" && key !== "repoByTeam") return false;
+
+  const mounted = entryOf(top, "plugins");
+  if (mounted !== undefined && yaml.isMap(mounted.value)) {
+    const linear = mounted.value.get("@amykit/plugin-linear");
+    if (yaml.isMap(linear)) {
+      if (linear.get(key) === undefined) linear.add(new yaml.Pair(key, entry.value));
+    } else {
+      mounted.value.add(new yaml.Pair("@amykit/plugin-linear", toMap({ [key]: entry.value })));
+    }
+  } else {
+    // Built through the document, so the nodes the parser would have made
+    // are the nodes the file gets written back with. The write goes
+    // through the document's own type, which the parser narrows further
+    // than a node made now can satisfy.
+    const block = document.createNode({ "@amykit/plugin-linear": { [key]: unwrap(entry.value) } });
+    const added = new yaml.Pair(document.createNode("plugins"), block);
+    top.set?.(added.key as never, added.value as never);
+  }
+  return true;
+}
+
+/** The top-level entry one key names, whether or not it has a value. */
+function entryOf(map: yaml.YAMLMap, key: string): yaml.Pair | undefined {
+  return map.items.find((item) => yaml.isPair(item) && isKey(item, key)) as yaml.Pair | undefined;
+}
+
+/** Whether a document item's key is this string, however it was parsed. */
+function isKey(item: yaml.Pair, key: string): boolean {
+  const name = item.key;
+  return yaml.isScalar(name) && name.value === key;
+}
+
+/** A plain value for a YAML node, when it holds one. */
+function unwrap(node: unknown): unknown {
+  if (yaml.isScalar(node)) return node.value;
+  if (yaml.isMap(node) || yaml.isSeq(node)) return node.toJSON();
+  return node;
+}
+
+function toMap(value: Record<string, unknown>): yaml.YAMLMap {
+  const map = new yaml.YAMLMap();
+  for (const [key, item] of Object.entries(value)) map.add(new yaml.Pair(key, item));
+  return map;
 }

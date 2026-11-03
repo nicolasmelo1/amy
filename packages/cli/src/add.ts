@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, Mounted, Plugin, mount, mountedActions } from "@amykit/core";
+import { CommandRunner, type ConfigSchema, Mounted, Plugin, mountedActions } from "@amykit/core";
 import { classify } from "./spec.js";
 import { packageManager, shellCommand } from "./install.js";
+import { drawn } from "./drawn.js";
 
 /**
  * What one spec argument turns into, when the point is adding it.
@@ -161,9 +162,14 @@ export async function importPluginBySpec(
   resolve: (spec: string) => string,
 ): Promise<{ ok: true; plugin: Plugin } | { ok: false; problem: string }> {
   try {
-    const module = (await import(resolve(imported))) as { plugin?: Plugin };
+    const specifier = resolve(imported);
+    const module = (await import(specifier)) as { plugin?: Plugin };
     if (!module.plugin) return { ok: false, problem: `${imported}: imported, but exports no \`plugin\`` };
-    return { ok: true, plugin: module.plugin };
+    // The boot resolves the same import through `drawn`, which shapes the
+    // plugin by the `workflow.mmd` beside the entry. The probe mounts what
+    // the boot would mount, so a workflow whose shape lives in a diagram
+    // cannot be judged by a shapeless stand-in of itself.
+    return { ok: true, plugin: drawn(module.plugin, specifier) };
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
     return { ok: false, problem: `${imported}: could not be imported — ${why}` };
@@ -171,37 +177,94 @@ export async function importPluginBySpec(
 }
 
 /**
- * Whether mounting this one package alone answers "workflow" or "plugin".
+ * Whether this package registers a workflow, asked the way the boot asks.
  *
- * The plan's question — no name convention, no manifest field — is the one
- * `mount()` answers at boot, asked one package at a time. The probe mounts
- * into a registry nothing reads, on paths nothing reads, and the answer is
- * `mounted.workflow`: a package that registers a workflow is a workflow,
- * everything else is a plugin.
+ * `mount()` answers this at boot, but a boot needs every port the workflow
+ * needs mounted by somebody — and the package being added is the thing that
+ * would bring them, written by this very command after the answer. So the
+ * probe runs `register` once against a registry and a context of stand-ins:
+ * the registry marks what the plugin says it is, and the context answers any
+ * port with one whose every method answers, so a workflow that is waiting on
+ * its providers still says what it is without mounting a machine that does
+ * not exist. Nothing the register builds is ever run: the runners are the
+ * ones a mount never uses, and the state paths are a throwaway.
  */
 export async function whatMountingSays(
   plugin: Plugin,
   home: string,
 ): Promise<{ ok: true; workflow: boolean } | { ok: false; problems: string[] }> {
   const throwaway = path.join(home, "add-probe");
+  let workflow = false;
   try {
-    const outcome = await mount(
-      [plugin],
-      {},
-      {
-        // A runner a mount never uses: registration wires names, and the
-        // probe drives no tick.
-        runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
-        now: () => new Date(),
-        paths: { workspace: throwaway, checkouts: {}, state: throwaway },
-      },
-    );
-
-    if (!outcome.ok) return { ok: false, problems: outcome.problems };
-    return { ok: true, workflow: outcome.mounted.workflow !== undefined };
+    // No method on the registry refuses: the whole machine with its one
+    // workflow is what the boot check judges after the write, and a package
+    // that would refuse there is refused there, rolled back with it.
+    const registry = new Proxy({}, { get: (_, method) => (method === "workflow" ? () => { workflow = true; } : () => {}) });
+    // A port whose methods answer functions: a need that requires methods is
+    // satisfied shape-wise, and the implementations are never called.
+    const portStub = new Proxy({}, { get: (_, method) => (typeof method === "string" ? async () => undefined : undefined) });
+    const ctx = {
+      // The configuration a shipped install would hand the register: the
+      // defaults its schema fills in, and a stand-in of the right shape for
+      // what it requires. The register reads configuration to build runners
+      // — a notifier that counts `ctx.config.models.length` during
+      // registration dies on an empty map, not on a real missing setting.
+      config: standInConfig(plugin.configSchema),
+      runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      now: () => new Date(),
+      log: undefined,
+      paths: { workspace: throwaway, checkouts: {}, state: throwaway },
+      contributions: () => new Map<string, object>(),
+      port: () => portStub,
+      workflow: () => undefined,
+      workflowPort: () => undefined,
+      checkouts: () => portStub,
+    };
+    await plugin.register(registry as never, ctx as never);
+    return { ok: true, workflow };
+  } catch (error) {
+    return { ok: false, problems: [`${plugin.name}: failed to register — ${error instanceof Error ? error.message : String(error)}`] };
   } finally {
     fs.rmSync(throwaway, { recursive: true, force: true });
   }
+}
+
+/**
+ * The configuration the register meets: what the schema defaults, plus a
+ * shapeless stand-in for each required leaf. A stand-in answers "a value of
+ * the type asked for" and nothing more — the probe judges whether the
+ * register works, not whether a setting's value does.
+ */
+function standInConfig(schema: ConfigSchema | undefined): Record<string, unknown> {
+  if (schema === undefined) return {};
+  const config: Record<string, unknown> = {};
+  for (const [dotted, spec] of Object.entries(schema)) {
+    const value = spec.default !== undefined ? spec.default : spec.required ? standin[spec.type] : undefined;
+    if (value === undefined) continue;
+    const path = dotted.split(".");
+    const leaf = path.pop()!;
+    let node = config;
+    for (const segment of path) {
+      const existing = node[segment];
+      if (!isRecord(existing)) node[segment] = {};
+      node = node[segment] as Record<string, unknown>;
+    }
+    node[leaf] = value;
+  }
+  return config;
+}
+
+const standin = {
+  string: "",
+  number: 0,
+  boolean: false,
+  "string[]": [],
+  record: {},
+} as const;
+
+/** Whether a value is a mapping a dotted path can be written into. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export interface BootCheck {

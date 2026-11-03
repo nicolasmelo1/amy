@@ -35,10 +35,14 @@ const CONFIG = {
   gate: { "acme/widgets": ["npm test"] },
   workspaceRoot: "/checkouts",
   notify: { hermes: null, inbox: false },
-  plans: {
-    ...DEFAULT_CONFIG.plans,
-    repos: ["acme/amy", "acme/software-factory"],
-    check: { default: ["sf check"] },
+  // The note workflow's profile, said the way the config file would say it:
+  // the plan repositories and the check that judges a plan are its settings,
+  // and the failure notes the other workflows file are about them.
+  workflows: {
+    "note-to-plan": {
+      workflow: "@amykit/workflow-note-to-plan",
+      settings: { repos: ["acme/amy", "acme/software-factory"], check: { default: ["sf check"] } },
+    },
   },
   // Pointed at a port nothing is listening on, so the tracker is reachable
   // only in the sense that trying takes no time. No test here should touch
@@ -60,6 +64,7 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
+  settings: { qaStatusName: "In QA" },
 };
 const PLANS: Profile = {
   name: "note-to-plan",
@@ -67,6 +72,10 @@ const PLANS: Profile = {
   plugins: [],
   takesNotes: true,
   takesTasks: false,
+  settings: {
+    repos: ["acme/amy", "acme/software-factory"],
+    check: { default: ["sf check"] },
+  },
 };
 const ERRAND_PROFILE: Profile = {
   name: "errand",
@@ -74,6 +83,7 @@ const ERRAND_PROFILE: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: true,
+  settings: {},
 };
 
 const OK: CommandResult = { ok: true, exitCode: 0, stdout: "", stderr: "" };

@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   ConfigSchema,
+  ConfigOf,
   HostServices,
   Plugin,
   Plan,
@@ -15,6 +16,7 @@ import {
   optional,
   planning,
   port,
+  validateConfig,
   WORKFLOW_RUNTIME,
   withDiagram,
   workflowActions,
@@ -44,7 +46,8 @@ interface RequiredPort { read(): string }
 interface OptionalPort { notify(): void }
 
 const schema = {
-  policy: { type: "record", description: "workflow policy", default: {} },
+  "policy.attempts": { type: "number", default: 3, description: "how many times one piece of work may be tried" },
+  "policy.backoffMs": { type: "number", default: 1000, description: "how long a held look waits before it is taken again" },
 } satisfies ConfigSchema;
 
 function workflow(seen: { optional?: OptionalPort; policy?: Policy } = {}) {
@@ -124,7 +127,136 @@ describe("defineWorkflow", () => {
     );
 
     expect(outcome.ok).toBe(false);
-    expect(outcome.ok === false && outcome.problems.join("; ")).toContain("example policy.attemptz is not declared");
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain("`policy.attemptz` is not a setting this plugin has");
+  });
+
+  it("refuses a typo three segments deep by the path it was written at", async () => {
+    const plugin = {
+      name: "deep-kept",
+      configSchema: {
+        "policy.limits.maxAttempts": { type: "number", default: 2, description: "how many tries an attempt gets" },
+      } satisfies ConfigSchema,
+      register() {},
+    };
+    const outcome = await mount(
+      [plugin, source],
+      { [plugin.name]: { policy: { limits: { maxAttemps: 9 } } } },
+      HOST,
+    );
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "`policy.limits.maxAttemps` is not a setting this plugin has",
+    );
+  });
+
+  it("refuses an absent group whose schema requires a leaf", async () => {
+    const plugin = {
+      name: "owed-kept",
+      configSchema: {
+        "auth.token": { type: "string", required: true, description: "the credential the workflow signs with" },
+      } satisfies ConfigSchema,
+      register() {},
+    };
+    const outcome = await mount([plugin, source], { [plugin.name]: {} }, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "`auth.token` is required — the credential the workflow signs with",
+    );
+  });
+
+  // A dotted schema names a nested group, and the plugin reads it nested:
+  // the validator fills the group where the schema put it, and the type the
+  // checker promises the plugin compiles without a cast, or it lies about
+  // what the validator just filled.
+  it("fills a dotted schema's group nested, typed without a cast", () => {
+    const schema = {
+      "policy.attempts": { type: "number", default: 2, description: "tries per item" },
+    } as const;
+    const outcome = validateConfig("nested-reader", schema, {});
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok === false ? undefined : outcome.config).toEqual({ policy: { attempts: 2 } });
+    const config = (outcome.ok ? outcome.config : {}) as ConfigOf<typeof schema>;
+    const attempts: number | undefined = config.policy?.attempts;
+    expect(attempts).toBe(2);
+  });
+
+  // A path three segments deep is spelled the way the operator wrote it: it
+  // is read, not refused for sitting next to itself, and the type reaches it.
+  it("accepts a declared path three segments deep and types it", () => {
+    const schema = {
+      "policy.limits.maxAttempts": { type: "number", default: 2, description: "tries per item" },
+    } as const;
+    const outcome = validateConfig("deep-user", schema, { policy: { limits: { maxAttempts: 9 } } });
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok === false ? undefined : outcome.config).toEqual({ policy: { limits: { maxAttempts: 9 } } });
+    const config = (outcome.ok ? outcome.config : {}) as ConfigOf<typeof schema>;
+    const attempts: number | undefined = config.policy?.limits?.maxAttempts;
+    expect(attempts).toBe(9);
+  });
+
+  // A group nothing fills is still handed over, because the type the checker
+  // promised is read unguarded: `{}` there, not a missing group.
+  it("hands an absent optional-only group as an empty mapping", () => {
+    const schema = {
+      "auth.token": { type: "string", description: "the credential the workflow signs with" },
+    } as const;
+    const outcome = validateConfig("present-group", schema, {});
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok === false ? undefined : outcome.config).toEqual({ auth: {} });
+    const config = (outcome.ok ? outcome.config : {}) as ConfigOf<typeof schema>;
+    const token: string | undefined = config.auth?.token;
+    expect(token).toBe(undefined);
+  });
+
+  it("refuses a decision default its schema does not declare, naming the key", async () => {
+    const plugin = defineWorkflow({
+      name: "unproven",
+      configSchema: {
+        repos: { type: "string[]", required: true, description: "the repositories this workflow works in" },
+      } satisfies ConfigSchema,
+      states: ["NEW"],
+      waiting: [],
+      terminal: ["NEW"],
+      policy: { ceiling: 5 },
+      needs: { source: port<RequiredPort>() },
+      plan: () => ({ kind: "settled", why: "done" }),
+      record: () => ({}),
+      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
+    });
+    const outcome = await mount([plugin, source], { [plugin.name]: { repos: ["acme/widgets"] } }, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "the unproven workflow reads `policy.ceiling`, and its schema declares no such setting",
+    );
+  });
+
+  it("refuses a schema default that differs from the one the decision reads", async () => {
+    const plugin = defineWorkflow({
+      name: "twoanswers",
+      configSchema: {
+        "policy.attempts": { type: "number", default: 5, description: "how many times one piece of work may be tried" },
+      } satisfies ConfigSchema,
+      states: ["NEW"],
+      waiting: [],
+      terminal: ["NEW"],
+      policy: { attempts: 3 },
+      needs: { source: port<RequiredPort>() },
+      plan: () => ({ kind: "settled", why: "done" }),
+      record: () => ({}),
+      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
+    });
+    const outcome = await mount([plugin, source], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "`policy.attempts` defaults to 5, and its decision reads 3",
+    );
   });
 
   it("constructs records with the six core fields and only the declared domain fields", async () => {
@@ -152,7 +284,7 @@ describe("defineWorkflow", () => {
       name: "claimed",
       configSchema: {
         repos: { type: "string[]", required: true, description: "the repositories this workflow works in" },
-        policy: { type: "record", description: "workflow policy", default: {} },
+        "policy.attempts": { type: "number", default: 3, description: "how many times one piece of work may be tried" },
       } satisfies ConfigSchema,
       states: ["NEW"],
       waiting: [],

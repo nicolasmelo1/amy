@@ -10,6 +10,7 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
+  settings: {},
 };
 const PLANS: Profile = {
   name: "plans",
@@ -17,39 +18,42 @@ const PLANS: Profile = {
   plugins: [],
   takesNotes: true,
   takesTasks: false,
+  settings: {},
 };
 
 const CONFIG = {
   ...DEFAULT_CONFIG,
   repos: ["acme/widgets"],
-  workingStatusName: "In Progress",
-  qaStatusName: "In QA",
   defaultBranch: "dev",
   gate: { "acme/widgets": ["npm test"] },
-  repoByTeam: { ACME: "acme/widgets" },
 };
 
 describe("pluginSlices", () => {
-  it("gives the tracker the status name it matches on", () => {
-    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
+  it("names the machine's default repository for the tracker, and leaves its vocabulary to its slice", () => {
+    const slices = pluginSlices(
+      {
+        ...CONFIG,
+        plugins: { "@amykit/plugin-linear": { workingStatusName: "In Progress", repoByTeam: { ACME: "acme/widgets" } } },
+      },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
 
+    // The status names a ticket moves between and the map of teams to
+    // repositories are the tracker's vocabulary, not the machine's: they
+    // live under the plugin it belongs to, and the machine hands it only
+    // what the machine owns — where unlisted work happens.
     expect(slices["@amykit/plugin-linear"]).toMatchObject({
       workingStatusName: "In Progress",
       repoByTeam: { ACME: "acme/widgets" },
+      defaultRepo: "acme/widgets",
     });
   });
 
-  it("tells the tracker the status name it matches on, and nothing about channels", () => {
+  it("hands the tracker nothing but the default repository when nobody wrote a slice", () => {
     const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
 
-    // The plugin used to be handed `notify.tracker` as `announceOnTicket` and
-    // contributed a comment channel with it. A tracker comment is for a
-    // question that needs a person, so the setting is gone with the channel.
-    expect(Object.keys(slices["@amykit/plugin-linear"] ?? {})).toEqual([
-      "workingStatusName",
-      "repoByTeam",
-      "defaultRepo",
-    ]);
+    expect(Object.keys(slices["@amykit/plugin-linear"] ?? {})).toEqual(["defaultRepo"]);
+    expect(slices["@amykit/plugin-linear"]?.defaultRepo).toBe("acme/widgets");
   });
 
   it("gives the gate and the workflow the branch new work is cut from", () => {
@@ -142,17 +146,20 @@ describe("pluginSlices", () => {
     expect(slices["@amykit/plugin-file-worktree"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
   });
 
-  it("gives the workflow the policy, so a configured ceiling reaches the machine", () => {
-    const slices = pluginSlices({
-      ...CONFIG,
-      policy: { ...CONFIG.policy, maxOpenReviewsPerReviewer: 0 },
-    }, TICKETS) as Record<string, Record<string, unknown>>;
+  it("carries the workflow's own settings to its slice, over what was derived", () => {
+    const slices = pluginSlices(CONFIG, {
+      ...TICKETS,
+      settings: { qaStatusName: "In QA", policy: { maxOpenReviewsPerReviewer: 0 } },
+    }) as Record<string, Record<string, unknown>>;
 
     // The policy is written in the workflow's vocabulary — attempt ceilings,
-    // backoffs, how many open reviews one person may be handed — so it goes
-    // to the workflow rather than to whatever is driving it.
-    expect(slices["@amykit/workflow-ticket-to-qa"]?.policy).toMatchObject({
-      maxOpenReviewsPerReviewer: 0,
+    // backoffs, how many open reviews one person may be handed — under the
+    // profile that drives it, because that is who is tuned: a second profile
+    // running the same workflow carries its own numbers.
+    expect(slices["@amykit/workflow-ticket-to-qa"]).toMatchObject({
+      repos: ["acme/widgets"],
+      qaStatusName: "In QA",
+      policy: { maxOpenReviewsPerReviewer: 0 },
     });
   });
 
@@ -343,6 +350,7 @@ describe("pluginList", () => {
       plugins: [],
       takesNotes: false,
       takesTasks: false,
+  settings: {},
     };
 
     const suggested = pluginList(CONFIG, oncall);

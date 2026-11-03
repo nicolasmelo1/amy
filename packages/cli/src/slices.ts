@@ -7,20 +7,71 @@ import { profilePaths } from "./paths.js";
  * The settings each plugin gets, derived from the top-level config.
  *
  * A compatibility shim, and named as one. The config file still carries the
- * shape it had before plugins declared their own settings, so this translates
- * it. An explicit `plugins:` slice always wins, which is the direction this
- * is moving in.
+ * machine's own settings at the top level, so this translates those — the
+ * repositories, the branches, the agent block, the engine's ceilings. A
+ * workflow's own vocabulary is not translated anywhere: it lives in the
+ * profile that drives it, and the mount checks it against the workflow's own
+ * schema. An explicit `plugins:` slice always wins, which is the direction
+ * this is moving in.
  */
-export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: string): Record<string, unknown> {
+export function pluginSlices(
+  config: AmyConfig,
+  profile: Profile,
+  stateDir?: string,
+  pluginNames?: ReadonlyMap<string, string>,
+): Record<string, unknown> {
   assertPhaseStateDirectoriesAreNotShared(config, profile);
   const dirs = stateDirectories(stateDir, profile);
   const own = pluginStateDirectories(stateDir, profile);
   const agent = effectiveAgent(config, profile);
 
-  const derived: Record<string, unknown> = {
+  const derived = derivedSlices(config, profile, dirs, own, agent, stateDir);
+  Object.assign(derived, slackSlice(own.slack));
+  addNotifySlices(config, derived);
+  // The profile's own settings come first, and a slice written by hand wins
+  // over them: that is the order the config always read in. The settings are
+  // the workflow's vocabulary, checked against its configSchema at mount.
+  applyOwnProfileSettings(profile, pluginNames ?? new Map(), derived);
+  mergeInGivenSlices(derived, config.plugins);
+
+  // The command that writes a file and the adapter that read it must agree,
+  // including when somebody overrode the adapter's directory by hand. The
+  // workflow's destination follows the effective adapter, not the default it
+  // was derived from before the merge; the queue follows the queue adapter
+  // the same way, because a note queued where the engine does not read is a
+  // note the machine never sees.
+  followAdapter(derived, "@amykit/workflow-errand", "tasksDirectory", "@amykit/plugin-file-tasks");
+  followAdapter(derived, "@amykit/workflow-note-to-plan", "notesDirectory", "@amykit/plugin-file-notes");
+  followAdapter(derived, "@amykit/workflow-errand", "queueDirectory", "@amykit/plugin-file-queue");
+  followAdapter(derived, "@amykit/workflow-note-to-plan", "queueDirectory", "@amykit/plugin-file-queue");
+
+  // The worktree adapter reads records directly to classify trees. Its path
+  // is an invariant of the mounted file store, not an independent preference:
+  // an explicit store directory must move both readers together.
+  const recordsDirectory = effectiveRecordsDirectory(derived["@amykit/plugin-file-store"], stateDir, dirs.records);
+  derived["@amykit/plugin-file-worktree"] = withWorktreeRecordsDirectory(
+    derived["@amykit/plugin-file-worktree"],
+    recordsDirectory,
+  );
+
+  return derived;
+}
+
+/** Whether a state directory was given in, or the machine's own. */
+/**
+ * The slices every install derives from the machine's shape, before a hand
+ * writes a slice of its own.
+ */
+function derivedSlices(
+  config: AmyConfig,
+  profile: Profile,
+  dirs: ReturnType<typeof stateDirectories>,
+  own: ReturnType<typeof pluginStateDirectories>,
+  agent: { ladder?: unknown; ladderByStep?: unknown; budget?: unknown },
+  stateDir?: string,
+): Record<string, unknown> {
+  return {
     "@amykit/plugin-linear": {
-      workingStatusName: config.workingStatusName,
-      repoByTeam: config.repoByTeam,
       defaultRepo: config.repos[0] ?? "",
     },
     "@amykit/plugin-claude": harnessSlice(config, profile, "claude"),
@@ -45,25 +96,16 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     },
     "@amykit/plugin-file-store": { directory: dirs.records },
     "@amykit/plugin-file-brief-store": briefStoreSlice(config, profile),
-    // Mounted in both profiles: one writes the notes, the other reads them,
-    // and an install running only the first would still be filing the
-    // friction the second will pick up.
-    "@amykit/plugin-file-notes": {
-      directory: "notes",
-      repo: config.plans.repos[0] ?? "",
-      writeFailureNotes: config.plans.repos.length > 0,
-    },
-    // The second workflow's own vocabulary: which repositories it may write a
-    // plan into, and the ceilings its decision function reads.
+    // One workflow writes the notes and another reads them, and an install
+    // running only the first would still be filing the friction the second
+    // is there to pick up. Where those notes go is wherever the plan
+    // workflow's own profile says work happens.
+    "@amykit/plugin-file-notes": notesSlice(config),
+    // The second workflow's own vocabulary — which repositories it may write
+    // a plan into — is the profile's, not the machine's top level's.
     "@amykit/workflow-note-to-plan": {
-      repos: config.plans.repos,
-      // Where `amy note` writes, handed over rather than guessed: the notes
-      // are the machine's, because one workflow writes a failure and another
-      // turns it into a plan.
-      notesDirectory: "notes",
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
-      policy: config.plans.policy,
     },
     // The third workflow's vocabulary: where an errand may be done, and the
     // ceilings its decision function reads.
@@ -73,7 +115,6 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
       tasksDirectory: own.tasks,
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
-      policy: config.errands.policy,
     },
     "@amykit/workflow-feature-grooming": {
       repos: config.repos,
@@ -89,11 +130,11 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     "@amykit/plugin-plan-check": {
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
-      commands: config.plans.check,
+      ...(commandsFromCheck(profile) === undefined ? {} : { commands: commandsFromCheck(profile) }),
     },
     // The workflow's own vocabulary: which repositories it counts review
-    // load across, where it hands work over, and the ceilings its decision
-    // function reads.
+    // load across, and who a review is answered for. The ceilings its
+    // decisions read and the status a ticket moves to are the profile's.
     "@amykit/workflow-ticket-to-qa": {
       repos: config.repos,
       ...ticketBudgetSlice(config, profile),
@@ -103,11 +144,9 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
       // branch mapping of its own.
       defaultBranch: config.defaultBranch,
       baseBranch: config.baseBranch,
-      qaStatusName: config.qaStatusName,
       // Written under `agent:` in config.yaml, because it is how a reviewer
       // is answered, and read by the workflow whose review prompt it is.
       reviewerHints: reviewerHintsFor(config, profile),
-      policy: config.policy,
     },
     // The workplace: where the trees live and how long finished ones stay.
     // `workflow` names the mount itself, because the tree paths carry it —
@@ -127,47 +166,77 @@ export function pluginSlices(config: AmyConfig, profile: Profile, stateDir?: str
     "@amykit/plugin-serial-engine": engineSlice(config),
     "@amykit/plugin-concurrent-engine": engineSlice(config),
   };
+}
 
-  Object.assign(derived, slackSlice(own.slack));
+/** A machine that asks for answers gets the adapters that deliver them. */
+function addNotifySlices(config: AmyConfig, derived: Record<string, unknown>): void {
+  if (config.notify.hermes) derived["@amykit/plugin-notify-hermes"] = { target: config.notify.hermes };
+  if (config.notify.inbox) derived["@amykit/plugin-notify-inbox"] = { directory: "needs-input" };
+}
 
-  if (config.notify.hermes) {
-    derived["@amykit/plugin-notify-hermes"] = { target: config.notify.hermes };
+// Merged per plugin, not replaced. A slice written by hand names the one
+// or two settings somebody meant to change; replacing the whole slice would
+// drop the derived ones beside them — which is how two profiles ended up
+// sharing a queue, because the operator had set `retentionDays` and lost
+// `directory` without being told.
+function mergeInGivenSlices(derived: Record<string, unknown>, given: Record<string, unknown>): void {
+  for (const [name, slice] of Object.entries(given)) {
+    derived[name] = isRecord(derived[name]) && isRecord(slice) ? { ...derived[name], ...slice } : slice;
   }
-  if (config.notify.inbox) {
-    derived["@amykit/plugin-notify-inbox"] = { directory: "needs-input" };
+}
+
+// The profile's own settings are the workflow's vocabulary, checked against
+// the workflow's own schema at mount: they beat what was derived, and an
+// unknown key there is a boot refusal naming it. A workflow brought by spec
+// can be named by its plugin differently — a local declaration without a
+// plugin name answers to `workflow-oncall` — so the settings land on the
+// name the mount reads the plugin by.
+function applyOwnProfileSettings(
+  profile: Profile,
+  pluginNames: ReadonlyMap<string, string>,
+  merged: Record<string, unknown>,
+): void {
+  const ownSettings = profile.settings ?? {};
+  if (Object.keys(ownSettings).length === 0) return;
+  const mountName = pluginNames.get(profile.workflow) ?? profile.workflow;
+  const current = merged[mountName];
+  merged[mountName] = isRecord(current) ? { ...current, ...ownSettings } : { ...ownSettings };
+}
+
+/**
+ * The repositories the machine's notes are about, taken from the profiles
+ * that turn a note into a plan.
+ *
+ * The notes directory is the machine's — one workflow writes a failure and
+ * another reads it — so the destinations are read off every profile that
+ * mounts the plan workflow, wherever in the config they now live, and an
+ * install with none of them files nothing.
+ */
+function notesDestinations(config: AmyConfig): readonly string[] {
+  const repos = new Set<string>();
+  for (const one of Object.values(config.workflows)) {
+    if (one.workflow !== "@amykit/workflow-note-to-plan") continue;
+    const declared = one.settings?.repos;
+    if (Array.isArray(declared)) {
+      for (const repo of declared) if (typeof repo === "string") repos.add(repo);
+    }
   }
+  return [...repos];
+}
 
-  // Merged per plugin, not replaced. A slice written by hand names the one
-  // or two settings somebody meant to change; replacing the whole slice would
-  // drop the derived ones beside them — which is how two profiles ended up
-  // sharing a queue, because the operator had set `retentionDays` and lost
-  // `directory` without being told.
-  const merged: Record<string, unknown> = { ...derived };
-  for (const [name, given] of Object.entries(config.plugins)) {
-    merged[name] = isRecord(derived[name]) && isRecord(given) ? { ...derived[name], ...given } : given;
-  }
+function notesSlice(config: AmyConfig): Record<string, unknown> {
+  const destinations = notesDestinations(config);
+  return {
+    directory: "notes",
+    repo: destinations[0] ?? "",
+    writeFailureNotes: destinations.length > 0,
+  };
+}
 
-  // The command that writes a file and the adapter that reads it must agree,
-  // including when somebody overrode the adapter's directory by hand. The
-  // workflow's destination follows the effective adapter, not the default it
-  // was derived from before the merge; the queue follows the queue adapter
-  // the same way, because a note queued where the engine does not read is a
-  // note the machine never sees.
-  followAdapter(merged, "@amykit/workflow-errand", "tasksDirectory", "@amykit/plugin-file-tasks");
-  followAdapter(merged, "@amykit/workflow-note-to-plan", "notesDirectory", "@amykit/plugin-file-notes");
-  followAdapter(merged, "@amykit/workflow-errand", "queueDirectory", "@amykit/plugin-file-queue");
-  followAdapter(merged, "@amykit/workflow-note-to-plan", "queueDirectory", "@amykit/plugin-file-queue");
-
-  // The worktree adapter reads records directly to classify trees. Its path
-  // is an invariant of the mounted file store, not an independent preference:
-  // an explicit store directory must move both readers together.
-  const recordsDirectory = effectiveRecordsDirectory(merged["@amykit/plugin-file-store"], stateDir, dirs.records);
-  merged["@amykit/plugin-file-worktree"] = withWorktreeRecordsDirectory(
-    merged["@amykit/plugin-file-worktree"],
-    recordsDirectory,
-  );
-
-  return merged;
+/** The plan check a profile names for its own workflow, or nothing for the default. */
+function commandsFromCheck(profile: Profile): Record<string, unknown> | undefined {
+  const check = (profile.settings ?? {}).check;
+  return isRecord(check) ? check : undefined;
 }
 
 /** Global state-directory overrides have no profile slot, so phases cannot safely share one. */
@@ -356,8 +425,9 @@ export function pluginList(config: AmyConfig, profile: Profile): string[] {
   const recommended = recommendedFor(profile).filter((name) => {
     // A note needs somewhere to go. An install that named no repository to
     // write plans into would be watching a directory nothing could ever come
-    // out of, so it does not watch one.
-    if (name === "@amykit/plugin-file-notes") return config.plans.repos.length > 0;
+    // out of, so it does not watch one. Where those destinations are named
+    // now lives under the plan workflow's own profile.
+    if (name === "@amykit/plugin-file-notes") return notesDestinations(config).length > 0;
     if (name === "@amykit/plugin-notify-hermes") return Boolean(config.notify.hermes);
     if (name === "@amykit/plugin-notify-inbox") return config.notify.inbox;
     if (name === "@amykit/plugin-codex") return ladderNames(ladder, "codex");
@@ -402,7 +472,10 @@ function engineSlice(config: AmyConfig): Record<string, unknown> {
     staleClaimMs: config.staleClaimMs,
     retentionDays: config.retentionDays,
     maxItemAttempts: config.maxItemAttempts,
-    retryDelayMs: config.policy.pollBackoffMs,
+    // No retryDelayMs here: how quickly the engine comes back to a failed
+    // item is the engine's own answer, declared and defaulted in its schema.
+    // It was once a ticket workflow's review poll, which is how tuning how
+    // often a review is looked at moved how the whole machine retried.
   };
 }
 

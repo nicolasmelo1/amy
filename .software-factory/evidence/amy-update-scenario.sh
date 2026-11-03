@@ -481,11 +481,14 @@ npm install --prefix "$HOME/.amy/plugins" --no-audit --no-fund --loglevel=error 
   "@amykit/plugin-agent-relay@$later" "@amykit/plugin-notify-fanout@$later" \
   "@amykit/plugin-notify-hermes@$later" "@amykit/plugin-notify-inbox@$later" \
   "@amykit/plugin-serial-engine@$later" "@amykit/plugin-command-gate@$later" \
-  "@amykit/workflow-ticket-to-qa@$later" >/dev/null
+  "@amykit/plugin-plan-check@$later" "@amykit/plugin-file-tasks@$later" \
+  "@amykit/workflow-ticket-to-qa@$later" "@amykit/workflow-note-to-plan@$later" \
+  "@amykit/workflow-errand@$later" >/dev/null
 "$tsx" "$machine" add-tickets
 "$tsx" "$machine" root-roster
 if [ ! -e .amy/tickets/roster.yaml ] && [ -f .amy/roster.yaml ]; then
   export LINEAR_API_KEY="scenario-fixture-key-not-a-real-key"
+  cp .amy/config.yaml "$work/config-before-the-move"
   moved=$("$amy" update 2>&1 || echo "")
   printf '%s\n' "$moved" > "$work/roster-move.log"
   says update.the_update_names_the_roster_move "$moved" "moved $HOME/.amy/roster.yaml"
@@ -500,6 +503,45 @@ if [ ! -e .amy/tickets/roster.yaml ] && [ -f .amy/roster.yaml ]; then
 else
   record update.the_roster_moves_into_its_profile 1
 fi
+
+# The settings a v1 machine kept at the top level moved under the work that
+# reads them, in the same update that moved the roster: the ticket's ceilings
+# and status under its profile, the planner's repositories and check under
+# its own, the errand's under its own, the tracker's under its slice — with
+# the original file kept beside the config for the operator to read.
+if [ -f .amy/config.yaml.moved ] &&
+   ! grep -q '^policy:' .amy/config.yaml &&
+   ! grep -q '^plans:' .amy/config.yaml &&
+   ! grep -q '^errands:' .amy/config.yaml &&
+   ! grep -q '^qaStatusName:' .amy/config.yaml &&
+   ! grep -q '^workingStatusName:' .amy/config.yaml &&
+   ! grep -q '^repoByTeam:' .amy/config.yaml &&
+   grep -q 'qaStatusName: In QA' .amy/config.yaml &&
+   grep -q 'workingStatusName: In Progress' .amy/config.yaml &&
+   cmp -s "$work/config-before-the-move" .amy/config.yaml.moved; then
+  record update.the_settings_move_under_their_workflow 0
+else
+  record update.the_settings_move_under_their_workflow 1
+fi
+
+# A second update answers the same machine with nothing: the keys it moved
+# are not there any more, and a run that rewrote the file again would mean
+# the migration is not the move nobody sees twice.
+cp .amy/config.yaml "$work/config-after-first-update"
+"$amy" update >/dev/null 2>&1 || true
+if cmp -s "$work/config-after-first-update" .amy/config.yaml; then
+  record update.a_second_update_moves_nothing 0
+else
+  record update.a_second_update_moves_nothing 1
+fi
+
+# A key put back where it lived is refused at boot, naming the place it moved
+# to rather than dropping it. The refusal is why nothing is silently read
+# from the old place, and the wording is what an operator acts on.
+printf '\nqaStatusName: In QA\n' >> .amy/config.yaml
+refused=$("$amy" doctor 2>&1 || echo "")
+says update.a_moved_key_named_at_its_new_place "$refused" '`qaStatusName`'
+says update.a_moved_key_names_its_destination "$refused" 'settings.qaStatusName'
 
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
 total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)

@@ -32,8 +32,22 @@ describe("config", () => {
     const config = loadConfig(root);
 
     expect(config.repos).toEqual(["a/b"]);
-    expect(config.qaStatusName).toBe("In QA");
-    expect(config.policy).toEqual(DEFAULT_CONFIG.policy);
+    expect(config.retentionDays).toBe(7);
+    expect(config.staleClaimMs).toBe(30 * 60 * 1000);
+  });
+
+  const MOVED = ["policy", "qaStatusName", "plans", "errands", "workingStatusName", "repoByTeam"];
+
+  it.each(MOVED)("refuses a top-level key that was a workflow's vocabulary, naming where it now lives: %s", (key) => {
+    fs.writeFileSync(paths(root).config, `${key}: 1\n`);
+
+    expect(() => loadConfig(root)).toThrow(/is where it used to live — it moved/);
+  });
+
+  it("says where a moved setting went, in the message that refuses it", () => {
+    fs.writeFileSync(paths(root).config, "policy:\n  maxGateAttempts: 9\n");
+
+    expect(() => loadConfig(root)).toThrow(/settings\.policy/);
   });
 
   it("keeps relative filesystem workflows portable when loading config", () => {
@@ -68,15 +82,18 @@ describe("config", () => {
     expect(loadConfig(root).checkouts).toEqual({});
   });
 
-  it("merges a partial policy rather than replacing it", () => {
-    fs.writeFileSync(paths(root).config, "policy:\n  maxGateAttempts: 9\n");
+  it("carries a workflow profile's settings through the load untouched", () => {
+    fs.writeFileSync(
+      paths(root).config,
+      'workflows:\n  tickets:\n    workflow: "@amykit/workflow-ticket-to-qa"\n    settings:\n      qaStatusName: In QA\n      policy:\n        maxGateAttempts: 9\n',
+    );
 
     const config = loadConfig(root);
 
-    expect(config.policy.maxGateAttempts).toBe(9);
-    expect(config.policy.maxImplementAttempts).toBe(
-      DEFAULT_CONFIG.policy.maxImplementAttempts,
-    );
+    expect(config.workflows["tickets"]).toMatchObject({
+      workflow: "@amykit/workflow-ticket-to-qa",
+      settings: { qaStatusName: "In QA", policy: { maxGateAttempts: 9 } },
+    });
   });
 
 });

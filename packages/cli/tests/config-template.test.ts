@@ -3,12 +3,9 @@ import yaml from "yaml";
 import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { mount, NodeCommandRunner } from "@amykit/core";
+import { ConfigSchema, mount, NodeCommandRunner } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
-import { DEFAULT_POLICY as ERRAND_POLICY } from "@amykit/workflow-errand";
-import { DEFAULT_POLICY as PLAN_POLICY } from "@amykit/workflow-note-to-plan";
-import { DEFAULT_POLICY as TICKET_POLICY } from "@amykit/workflow-ticket-to-qa";
-import { DEFAULT_CONFIG, EXAMPLE_CONFIG, loadConfigFrom } from "../src/config.js";
+import { EXAMPLE_CONFIG, machineSchema, loadConfigFrom } from "../src/config.js";
 import {
   checkConfigBoots,
   SettingsSurface,
@@ -20,21 +17,13 @@ import { load } from "../src/loader.js";
 import { profiles } from "../src/profiles.js";
 import { hostPaths, pluginList, pluginSlices } from "../src/slices.js";
 
-interface TemplateShape {
-  policy?: object;
-  plans?: { policy?: object };
-  errands?: { policy?: object };
-}
+const parsed = (): object | undefined => {
+  const document = yaml.parseDocument(EXAMPLE_CONFIG);
+  return document.errors.length === 0 ? (document.toJS() as object) : {};
+};
 
-const parsed = (): TemplateShape => yaml.parse(EXAMPLE_CONFIG) as TemplateShape;
-
-function surfacesOf(config: TemplateShape): SettingsSurface[] {
-  return [
-    { at: "", accepts: DEFAULT_CONFIG, given: config },
-    { at: "policy", accepts: TICKET_POLICY, given: config.policy },
-    { at: "plans.policy", accepts: PLAN_POLICY, given: config.plans?.policy },
-    { at: "errands.policy", accepts: ERRAND_POLICY, given: config.errands?.policy },
-  ];
+function surfacesOf(given: object | undefined): SettingsSurface[] {
+  return [{ at: "", schema: machineSchema, given }];
 }
 
 describe("the config amy init writes", () => {
@@ -44,12 +33,16 @@ describe("the config amy init writes", () => {
     expect(yaml.parseDocument(EXAMPLE_CONFIG).errors).toEqual([]);
   });
 
-  it("sets no key that nothing reads, and names every setting there is", () => {
-    expect(checkConfigTemplate(EXAMPLE_CONFIG, surfacesOf(parsed()), [])).toEqual([]);
+  it("carries only settings the machine schema declares, and no workflow's vocabulary", () => {
+    expect(checkConfigTemplate(surfacesOf(parsed()), [])).toEqual([]);
   });
 
   it("names the backoff a poke exists to collapse", () => {
     expect(EXAMPLE_CONFIG).toContain("pollBackoffMs");
+  });
+
+  it("points at the command that writes what it no longer ships", () => {
+    expect(EXAMPLE_CONFIG).toContain("amy add");
   });
 });
 
@@ -173,38 +166,40 @@ describe("the machine the template describes", () => {
 });
 
 describe("checkConfigTemplate", () => {
-  const surface = (given: object): SettingsSurface[] => [
-    { at: "policy", accepts: { pollBackoffMs: 1, maxGateAttempts: 3 }, given },
-  ];
+  const schema: ConfigSchema = {
+    "policy.pollBackoffMs": { type: "number", default: 1, description: "how long a waiting state holds" },
+    "policy.maxGateAttempts": { type: "number", default: 3, description: "how many times the gate may see one change" },
+  };
+  const surfaces = (): SettingsSurface[] => [{ at: "workflows.example.settings", schema, given: undefined }];
 
-  it("reports a setting the template never names", () => {
-    const problems = checkConfigTemplate("maxGateAttempts: 3", surface({ maxGateAttempts: 3 }), []);
+  it("reports a schema setting whose description is missing, naming it", () => {
+    const blind: ConfigSchema = {
+      "policy.attempts": { type: "number", default: 3, description: "" },
+      ...schema,
+    };
+    const problems = checkConfigTemplate([{ at: "workflows.example.settings", schema: blind, given: undefined }], []);
 
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("policy.pollBackoffMs");
-    expect(problems[0]).toContain("nobody can find it");
+    expect(problems[0]).toContain("workflows.example.settings.policy.attempts");
   });
 
   it("reports a key the template sets that is not a setting", () => {
-    const template = "pollBackoffMs: 1\nmaxGateAttempts: 3\npollBackoff: 1";
-    const problems = checkConfigTemplate(template, surface({ pollBackoff: 1 }), []);
+    const problems = checkConfigTemplate([{ at: "", schema: machineSchema, given: { pollBackoff: 1 } }], []);
 
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("policy.pollBackoff`");
+    expect(problems[0]).toContain("`pollBackoff`");
     expect(problems[0]).toContain("nothing would read it");
   });
 
   it("reports a template that does not parse, and nothing else", () => {
-    const problems = checkConfigTemplate("", surface({}), ["Map keys must be unique"]);
+    const problems = checkConfigTemplate(surfaces(), ["Map keys must be unique"]);
 
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain("Map keys must be unique");
     expect(problems[0]).toContain("amy init");
   });
 
-  it("counts a setting that is only commented out as named", () => {
-    const template = "# pollBackoffMs: 300000 — how long a waiting state holds\nmaxGateAttempts: 3";
-
-    expect(checkConfigTemplate(template, surface({ maxGateAttempts: 3 }), [])).toEqual([]);
+  it("gives nothing for a machine whose every setting is described", () => {
+    expect(checkConfigTemplate(surfaces(), [])).toEqual([]);
   });
 });

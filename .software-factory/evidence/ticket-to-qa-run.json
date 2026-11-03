@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 60,
+    "assertions_run": 61,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 47,
@@ -64,21 +64,21 @@
       "DONE"
     ],
     "in_flight_at_the_brake": {
-      "pid": 64088,
+      "pid": 51021,
       "ended": true,
       "pidFileGone": true
     },
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at cbf0e12 and left one comment",
-      "the automated reviewer looked at 187ac5c and had nothing to say",
+      "the automated reviewer looked at e05db48 and left one comment",
+      "the automated reviewer looked at a20a77f and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 187ac5c",
+      "ada asked for changes on a20a77f",
       "the owner settled the disagreement on the ticket",
-      "ada approved 56ca7aa",
-      "the automated reviewer looked at 56ca7aa and had nothing to say",
-      "the automated reviewer looked at 2a7445c and had nothing to say",
-      "ada approved 2a7445c"
+      "ada approved 621bedd",
+      "the automated reviewer looked at 621bedd and had nothing to say",
+      "the automated reviewer looked at f36989a and had nothing to say",
+      "ada approved f36989a"
     ],
     "agent_calls": [
       "triage",
@@ -106,7 +106,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-02T00:15:27.883Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-02T00:15:27.510Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-03T00:06:01.886Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-03T00:06:01.504Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
     "second_run_transitions": 22,
@@ -114,12 +114,12 @@
     "concurrent_looks_that_moved_lanes_side_by_side": 4,
     "gate_runs": [
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-ITfo5j/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
-        "head": "a06ecadc17f202d0c8a8e5800ba02ea1df907c0c"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-2KUcZD/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "79943f26df53a2faf352b9448ad87c295871d1ac"
       },
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-ITfo5j/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
-        "head": "cbf0e12e3d5ce1222f7a98906ea7cf992d2ecc7f"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-2KUcZD/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "e05db48c26afd92c4d3ff63331a254f98d066277"
       }
     ]
   },
@@ -362,6 +362,10 @@
     },
     {
       "type": "lifecycle.the_roster_is_the_profiles",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.the_engine_retries_on_its_own_delay",
       "status": "passed"
     }
   ]

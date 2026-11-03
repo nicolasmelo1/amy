@@ -42,9 +42,13 @@ It emits `announce`, `check-plan`, `draft-plan` and `open-pull-request`.
 plugins:
   "@amykit/workflow-note-to-plan":
     baseBranch: {}
+    check: {"default":["sf check"]}
     defaultBranch: "main"
     notesDirectory: "notes"
-    policy: {}
+    policy:
+      ceilingBackoffMs: 3600000
+      maxDraftAttempts: 3
+      maxOpenPlansPerRepo: 2
     queueDirectory: "queue"
     repos: <string[]>
 ```
@@ -52,9 +56,12 @@ plugins:
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
+| `check` | `record` | no | `{"default":["sf check"]}` | the check commands per repository, with a `default` fallback, that judge a plan before it goes anywhere. `sf check` is the whole quality bar in a repository that has one; the plan-check plugin mounts them |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `notesDirectory` | `string` | no | `notes` | where this machine keeps the notes `amy note` writes, relative to the state root. The host sets it; a value here only stands in for one |
-| `policy` | `record` | no | `{}` | maxDraftAttempts, maxOpenPlansPerRepo and ceilingBackoffMs. Anything left out keeps its default |
+| `policy.ceilingBackoffMs` | `number` | no | `3600000` | how long a note is held while the plan ceiling is reached |
+| `policy.maxDraftAttempts` | `number` | no | `3` | how many times an agent may try to write a plan the check accepts before it is handed back |
+| `policy.maxOpenPlansPerRepo` | `number` | no | `2` | how many plans this machine may carry in flight for one repository. A machine that files twelve plans a day into three repositories is producing a backlog with a robot's name on it, and past this many it holds |
 | `queueDirectory` | `string` | no | `queue` | where this machine keeps the queue `amy note` puts the note on, relative to the state root. The host sets it; a value here only stands in for one |
 | `repos` | `string[]` | **yes** |  | the repositories a plan may be written into. A note about anything else is handed back to the operator |
 

@@ -42,9 +42,12 @@ plugins:
   "@amykit/workflow-errand":
     baseBranch: {}
     defaultBranch: "main"
-    policy: {}
+    policy:
+      ceilingBackoffMs: 1800000
+      maxAttempts: 2
+      maxInFlight: 3
     queueDirectory: "queue"
-    repos: <string[]>
+    repos: []
     tasksDirectory: "tasks"
 ```
 
@@ -52,9 +55,11 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
-| `policy` | `record` | no | `{}` | maxAttempts, maxInFlight and ceilingBackoffMs. Anything left out keeps its default |
+| `policy.ceilingBackoffMs` | `number` | no | `1800000` | how long a task is held while the in-flight ceiling is reached |
+| `policy.maxAttempts` | `number` | no | `2` | how many times an agent may try one errand before it is handed back |
+| `policy.maxInFlight` | `number` | no | `3` | how many errands this machine may carry in flight at once. Capturing costs nothing, which is the whole point and also the failure, and past this many it holds rather than opening another pull request nobody asked to review |
 | `queueDirectory` | `string` | no | `queue` | where this machine keeps the queue `amy btw` puts the task on, relative to the state root. The host sets it; a value here only stands in for one |
-| `repos` | `string[]` | **yes** |  | the repositories an errand may be done in. A task about anything else is handed back to whoever asked |
+| `repos` | `string[]` | no | `[]` | where an errand may be done. The machine's own list of repositories names this by default, and a profile narrows or widens it. An errand about a place not on the list is handed back to whoever asked |
 | `tasksDirectory` | `string` | no | `tasks` | where this machine keeps the tasks `amy btw` writes, relative to the state root. The host sets it; a value here only stands in for one |
 
 Every field is checked at boot against the schema this package declares. A key that is

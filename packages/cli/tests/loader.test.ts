@@ -19,6 +19,7 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
+  settings: {},
 };
 
 describe("load", () => {

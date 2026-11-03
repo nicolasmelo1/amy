@@ -322,6 +322,9 @@ gates:
       # The roster is the profile's: confirmed into it, read from it by the
       # next look, and nowhere at the machine root any more.
       - "lifecycle.the_roster_is_the_profiles"
+      # The engine's retry is the engine's setting: a poll one profile tuned
+      # does not reach it, and the machine boots tuned with proof.
+      - "lifecycle.the_engine_retries_on_its_own_delay"
 
   # The second workflow, and the claim the whole plugin model rests on: an
   # engine that learnt nothing drives it. What no unit test can say is that
@@ -427,6 +430,10 @@ gates:
       # The roster is the mounted workflow's file: init writes none of it, and
       # the doctor is green on the machine that reviews nothing.
       - "errand.doctor_is_green_without_a_roster"
+      # The shortest road into the machine, and the config that wrote it: init
+      # names no workflow's vocabulary at the top level, add writes the block
+      # its schema asks for, and the doctor is green on what they left.
+      - "errand.init_and_add_write_a_config_that_boots"
 
   # A workflow calls another the way code calls a function. What only an
   # installed machine can say: that a workflow of somebody's own calls one
@@ -603,6 +610,14 @@ gates:
       # root, and the update is the move that gives it to the profile.
       - "update.the_roster_moves_into_its_profile"
       - "update.the_update_names_the_roster_move"
+      # Same move for the retired vocabulary: the ceilings, repositories,
+      # check and status names a v1 machine kept at the top level, each under
+      # the work that reads it, the original kept, and a second update a
+      # no-op. A key put back is refused at boot, naming its new place.
+      - "update.the_settings_move_under_their_workflow"
+      - "update.a_second_update_moves_nothing"
+      - "update.a_moved_key_named_at_its_new_place"
+      - "update.a_moved_key_names_its_destination"
 
   feature-grooming:
     activation:

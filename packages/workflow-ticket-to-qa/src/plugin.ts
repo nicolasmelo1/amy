@@ -94,17 +94,65 @@ const rosterCheck: PluginCheck<Settings> = {
 export const configSchema = {
   repos: { type: "string[]", required: true, description: "every repository review load is counted across" },
   ...BRANCH_SETTINGS,
-  qaStatusName: { type: "string", required: true, description: "the status a ticket moves to when it is handed to QA" },
+  qaStatusName: {
+    type: "string",
+    required: true,
+    example: "In QA",
+    description: "the status a ticket moves to when it is handed to QA",
+  },
   reviewerHints: {
     type: "record",
     description: "guidance appended to the review prompt when answering a particular reviewer, by host login",
     default: {},
   },
-  policy: {
-    type: "record",
+  "policy.maxImplementAttempts": {
+    type: "number",
+    default: 3,
+    description: "how many times an agent may try to implement one ticket before it is escalated",
+  },
+  "policy.maxGateAttempts": {
+    type: "number",
+    default: 3,
+    description: "how many times the gate may see one change before the work is escalated",
+  },
+  "policy.pollBackoffMs": {
+    type: "number",
+    default: 5 * 60 * 1000,
+    description: "how long a waiting state holds before it looks again: waiting on an answer, or on a review",
+  },
+  "policy.rosterBackoffMs": {
+    type: "number",
+    default: 30 * 60 * 1000,
+    description: "how long to hold while the roster is waiting to be confirmed",
+  },
+  "policy.maxOpenReviewsPerReviewer": {
+    type: "number",
+    default: 2,
     description:
-      "maxImplementAttempts, maxGateAttempts, pollBackoffMs, rosterBackoffMs, maxOpenReviewsPerReviewer, maxPullRequestFiles, maxPullRequestLines, and writes — `machine` makes the tracker and code-host writes, `operator` hands each one to you once, in the work's thread or through the notifier, waits until it sees it made, and claims no writes at all — and conversation — `answer` reads a reply nobody marked as the decision, `discuss` reads it as a turn in a discussion, answered in the thread while the work waits for a reply marked as the decision. Anything left out keeps its default",
-    default: {},
+      "how many open reviews one person may be carrying before this machine stops adding to their pile. Review time is somebody else's, and it is the one currency here that cannot be topped up",
+  },
+  "policy.maxPullRequestFiles": {
+    type: "number",
+    default: 60,
+    description:
+      "how large a pull request may get, in files, before this machine stops handing it to an agent. The forge has already told us the size, so a pull request nobody should automate is handed back before an agent is called. Zero switches it off",
+  },
+  "policy.maxPullRequestLines": {
+    type: "number",
+    default: 2000,
+    description: "how large a pull request may get, in changed lines, under the same rule as maxPullRequestFiles. Zero switches it off",
+  },
+  "policy.writes": {
+    type: "string",
+    default: "machine",
+    description:
+      "machine: amy comments, opens pull requests, requests reviews and moves the ticket to QA. operator: each of those is said to you once instead, and amy waits until it sees you made it. Nothing is written on the tracker or the code host",
+  },
+  "policy.conversation": {
+    type: "string",
+    default: "answer",
+    description:
+      "answer: a reply in the work's thread is your decision, and the work moves on it. discuss: a reply is a turn in a discussion, answered in the thread while the work waits; mark the reply that decides and only that one moves it. A reply you marked reads as marked under either, and without a thread a comment on the ticket is always the decision",
   },
   budget: {
     type: "record",

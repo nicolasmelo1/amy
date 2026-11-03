@@ -40,6 +40,14 @@ export interface Profile {
   readonly project?: ProjectIdentity;
   /** Per-profile model and budget overrides, merged by the CLI before mount. */
   readonly agent?: WorkflowProfile["agent"];
+  /**
+   * The workflow's own settings, checked against its configSchema at mount.
+   *
+   * Whatever the profile drives may tune here — the ceilings its decisions
+   * read, the status its tracker hands work to — and everything else it takes
+   * from the machine's top level or its own schema's defaults.
+   */
+  readonly settings: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -131,6 +139,7 @@ export function profiles(config: AmyConfig, home?: string): Record<string, Profi
       takesTasks: entry.tasks ?? false,
       project: projectFor(workflow),
       agent: entry.agent,
+      settings: entry.settings ?? {},
     };
   }
 
@@ -170,7 +179,9 @@ export function resolveProfile(config: AmyConfig, asked?: string, home?: string)
 
 /** Resolve a portable filesystem spec only while constructing its live profile. */
 function filesystemWorkflow(home: string | undefined, workflow: string): string {
-  return home && workflow.startsWith(".") ? path.resolve(home, workflow) : workflow;
+  // The home resolves a workflow-of-your-own; a package named by spec comes
+  // through untouched, with or without a home to resolve against.
+  return workflow.startsWith(".") && home ? path.resolve(home, workflow) : workflow;
 }
 
 /**

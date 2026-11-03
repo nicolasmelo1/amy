@@ -1,29 +1,18 @@
 import fs from "node:fs";
 import yaml from "yaml";
-import type { Policy as PlanPolicy } from "@amykit/workflow-note-to-plan";
-import type { Policy as ErrandPolicy } from "@amykit/workflow-errand";
 import os from "node:os";
 import path from "node:path";
+import { ConfigSchema } from "@amykit/core";
 import { paths } from "./paths.js";
 
 /**
- * The second workflow's vocabulary: friction written down becomes a plan.
+ * The workflow's own settings, checked against its configSchema at mount.
  *
- * Deliberately its own block rather than reusing `repos` and `gate`. The
- * repositories a plan may be written into are the ones this work lives in,
- * which is a different list from the ones the team's tickets land in, and the
- * check that judges a plan is `sf check` rather than the implementation gate.
+ * This is what `amy add <workflow>` writes when the schema asks for a setting
+ * nothing else fills in: one entry per required field that carries an
+ * `example`, the value the plugin itself says it would mount with.
  */
-interface PlansConfig {
-  /**
-   * The repositories a plan may be written into. The first is what a note
-   * that does not name one is filed against, which is usually this machine.
-   */
-  repos: string[];
-  /** The check per repository, with a `default` fallback. */
-  check: Record<string, string[]>;
-  policy: Partial<PlanPolicy>;
-}
+export type ProfileSettings = Record<string, unknown>;
 
 /**
  * One profile: which workflow drives, and what mounts under it.
@@ -49,17 +38,13 @@ export interface WorkflowProfile {
   tasks?: boolean;
   /** A profile may spend differently from the machine-wide default. */
   agent?: Partial<AmyConfig["agent"]>;
-}
-
-/**
- * The third workflow's vocabulary: something said in passing becomes work.
- *
- * Its own block for the same reason the plans have one. The repositories are
- * `repos` — an errand happens where the team already works — but what it may
- * spend and how many it may carry are its own numbers.
- */
-interface ErrandsConfig {
-  policy: Partial<ErrandPolicy>;
+  /**
+   * The workflow's own settings, over what its schema and the machine fill in.
+   *
+   * Whichever workflow the profile drives owns this block; a setting a
+   * workflow's schema does not declare is refused at mount, naming the key.
+   */
+  settings?: ProfileSettings;
 }
 
 interface NotifyConfig {
@@ -104,35 +89,6 @@ export function configuredAutoUpdateProblems(config: AmyConfig): string[] {
   return autoUpdateProblems(config.autoUpdateSource === undefined ? config.autoUpdate : config.autoUpdateSource);
 }
 
-/**
- * The lifecycle ceilings, named here rather than imported from a workflow.
- *
- * A config that declares no workflow yet still has to be a whole file: the
- * ceilings are settings this machine reads and hands to whichever workflow
- * drives, and importing the type would put a workflow package in the
- * command's dependencies for a name. The numbers were the ticket workflow's
- * defaults; the shape is the host's.
- */
-interface Policy {
-  maxImplementAttempts: number;
-  maxGateAttempts: number;
-  pollBackoffMs: number;
-  rosterBackoffMs: number;
-  maxOpenReviewsPerReviewer: number;
-  maxPullRequestFiles: number;
-  maxPullRequestLines: number;
-}
-
-const DEFAULT_POLICY: Policy = {
-  maxImplementAttempts: 3,
-  maxGateAttempts: 3,
-  pollBackoffMs: 5 * 60 * 1000,
-  rosterBackoffMs: 30 * 60 * 1000,
-  maxOpenReviewsPerReviewer: 2,
-  maxPullRequestFiles: 60,
-  maxPullRequestLines: 2000,
-};
-
 export interface AmyConfig {
   /**
    * The workflows this install can drive, by the name typed after
@@ -154,14 +110,11 @@ export interface AmyConfig {
   /** A scalar/null source value retained so malformed YAML cannot become valid. */
   autoUpdateSource?: unknown;
 
+  /** Repositories this machine's work happens in, handoffs and reviews alike. */
   repos: string[];
-  qaStatusName: string;
-  /** The tracker status a ticket must be in to be picked up. */
-  workingStatusName: string;
   retentionDays: number;
   staleClaimMs: number;
   maxItemAttempts: number;
-  policy: Policy;
 
   /** Directory holding one checkout per repository. `~` is expanded. */
   workspaceRoot: string;
@@ -186,8 +139,6 @@ export interface AmyConfig {
    * write the map.
    */
   baseBranch: Record<string, string>;
-  /** Which repository a team's tickets land in, by team key. */
-  repoByTeam: Record<string, string>;
   /** Gate commands per repository, with a `default` fallback. */
   gate: Record<string, string[]>;
   agent: {
@@ -227,8 +178,6 @@ export interface AmyConfig {
    */
   skills: Record<string, string[]>;
   notify: NotifyConfig;
-  plans: PlansConfig;
-  errands: ErrandsConfig;
   /**
    * Where isolated worktrees live, and how long finished ones stay.
    *
@@ -258,27 +207,172 @@ export const DEFAULT_CONFIG: AmyConfig = {
   extraPlugins: [],
   autoUpdate: DEFAULT_AUTO_UPDATE,
   repos: [],
-  qaStatusName: "In QA",
-  workingStatusName: "In Progress",
   retentionDays: 7,
   staleClaimMs: 30 * 60 * 1000,
   maxItemAttempts: 5,
-  policy: DEFAULT_POLICY,
   workspaceRoot: ".",
   checkouts: {},
   defaultBranch: "main",
   baseBranch: {},
-  repoByTeam: {},
   gate: {},
   agent: {},
   skills: {},
   // A tracker comment is for a question that needs a person, and the workflow
   // posts those itself — announcements are the operator's channels' job.
   notify: { hermes: null, inbox: true },
-  plans: { repos: [], check: { default: ["sf check"] }, policy: {} },
-  errands: { policy: {} },
   worktrees: { root: "", retentionDays: 7 },
   plugins: {},
+};
+
+/**
+ * The machine's half of the configuration, as a schema.
+ *
+ * The workflows' settings were never the top level's to carry: `policy`, the
+ * second workflow's `plans` block and the third's `errands`, the tracker's
+ * status names and the team map, all of them lived here and moved a workflow's
+ * vocabulary in front of somebody who never drives that workflow. What stays
+ * is the machine's own: the repositories, the checkouts and branches, what the
+ * agent may spend and who it reaches, the engine's ceilings, and the two
+ * mounting blocks the profiles and plugins are named in.
+ *
+ * Every entry carries a description, a type and a default, because this is
+ * what `amy config explain` prints — the machine describing itself is how a
+ * setting somebody has not met is found without reading the source. A dotted
+ * entry is a leaf of a nested block: `agent.ladder` is one setting of the
+ * agent's, written nested in the file and named whole here.
+ */
+export const machineSchema: ConfigSchema = {
+  workflows: {
+    type: "record",
+    description: "the profiles this install can drive, each naming its workflow, and `amy add` writes one",
+  },
+  defaultWorkflow: {
+    type: "string",
+    description: "which profile runs when none is named. Empty means the first one declared",
+    default: "",
+  },
+  extraPlugins: {
+    type: "string[]",
+    description: "packages mounted under every profile, named here or added with `amy add`",
+    default: [],
+  },
+  "autoUpdate.enabled": {
+    type: "boolean",
+    description: "whether the machine refreshes its installed packages around workflow invocations",
+    default: true,
+  },
+  "autoUpdate.timing": {
+    type: "string",
+    description: "whether the refresh happens before the work starts or after it ends",
+    default: "before",
+  },
+  "autoUpdate.everyRuns": {
+    type: "number",
+    description: "how many workflow runs sit between two refreshes; the count is kept per profile",
+    default: 20,
+  },
+  repos: {
+    type: "string[]",
+    description: "repositories this machine's work happens in, from review load to where an errand may be done",
+    default: [],
+  },
+  retentionDays: {
+    type: "number",
+    description: "how long a finished queue item is kept before it is pruned",
+    default: 7,
+  },
+  staleClaimMs: {
+    type: "number",
+    description: "how long a claimed item may sit before it counts as abandoned and is handed back",
+    default: 30 * 60 * 1000,
+  },
+  maxItemAttempts: {
+    type: "number",
+    description: "how many times one item may fail before the operator is told and it is dropped",
+    default: 5,
+  },
+  workspaceRoot: {
+    type: "string",
+    description: "where one checkout per repository lives; `~` is expanded",
+    default: ".",
+  },
+  checkouts: {
+    type: "record",
+    description: "where one repository's checkout is, instead of under workspaceRoot, so work can span parents",
+    default: {},
+  },
+  defaultBranch: {
+    type: "string",
+    description: "the branch new work is cut from by every repository that names no other",
+    default: "main",
+  },
+  baseBranch: {
+    type: "record",
+    description: "where one repository's base branch is, instead of defaultBranch, by repository",
+    default: {},
+  },
+  gate: {
+    type: "record",
+    description: "the deterministic gate commands per repository, with a `default` fallback",
+    default: {},
+  },
+  "agent.model": {
+    type: "string",
+    description: "the model every harness runs, when the ladder names none for it",
+  },
+  "agent.models": {
+    type: "string[]",
+    description: "model tiers a harness contributes, in order, when nothing in the ladder names it",
+  },
+  "agent.ladder": {
+    type: "string[]",
+    description: "which contributed agents to try, in order, cheapest first — naming a harness here mounts it",
+  },
+  "agent.ladderByStep": {
+    type: "record",
+    description: "a ladder for one step, keyed by the workflow's action name, overriding the one above",
+  },
+  "agent.reviewerHints": {
+    type: "record",
+    description: "guidance appended when answering a particular reviewer, by host login",
+  },
+  "agent.timeoutMs": {
+    type: "number",
+    description: "how long one agent call may run before it is given up on",
+  },
+  "agent.budget": {
+    type: "record",
+    description: "what the agents may spend, per window: token and dollar ceilings, and when new work stops",
+  },
+  skills: {
+    type: "record",
+    description: "which skills answer for a step, in the order they are tried, keyed by the workflow's action name",
+    default: {},
+  },
+  "notify.hermes": {
+    type: "string",
+    description: "a Hermes delivery target, e.g. telegram. Null disables the channel",
+  },
+  "notify.inbox": {
+    type: "boolean",
+    description: "a file under .amy/needs-input plus a desktop notification, for what needs a person",
+    default: true,
+  },
+  "worktrees.root": {
+    type: "string",
+    description: "where isolated worktrees live; left out, they live beside the state directory",
+    default: "",
+  },
+  "worktrees.retentionDays": {
+    type: "number",
+    description: "how long a terminal, clean tree stays before a prune takes it",
+    default: 7,
+  },
+  plugins: {
+    type: "record",
+    description: "one slice per plugin, keyed by package name; each plugin declares what its own looks like",
+    default: {},
+  },
 };
 
 /** `~/workspaces/northwind` becomes an absolute path. */
@@ -353,19 +447,42 @@ function autoUpdateFrom(parsed: Partial<AmyConfig>): Pick<AmyConfig, "autoUpdate
   return { autoUpdate, ...autoUpdateSource };
 }
 
+/**
+ * The top-level keys a workflow's vocabulary used to live under, and where
+ * each one went.
+ *
+ * A config that was written for the old shape boots nowhere useful — the
+ * workflow it tuned reads a block it no longer finds — so the loader refuses
+ * the file by name, saying where the setting lives now, and `amy update` is
+ * the move that rewrites it.
+ */
+const MOVED_KEYS: ReadonlyMap<string, string> = new Map([
+  ["policy", "under the profile mounting @amykit/workflow-ticket-to-qa, as that workflow's settings.policy"],
+  ["qaStatusName", "under that profile, as settings.qaStatusName"],
+  ["plans", "under the profile mounting @amykit/workflow-note-to-plan, as settings.repos and settings.check"],
+  ["errands", "under the profile mounting @amykit/workflow-errand, as settings.policy"],
+  ["workingStatusName", "under plugins: \"@amykit/plugin-linear\", as workingStatusName"],
+  ["repoByTeam", "under plugins: \"@amykit/plugin-linear\", as repoByTeam"],
+]);
+
+function refusedMovedKeys(parsed: Partial<AmyConfig>): void {
+  for (const [key, where] of MOVED_KEYS) {
+    if (!Object.hasOwn(parsed, key)) continue;
+    throw new Error(`\`${key}\` at the top level of the config is where it used to live — it moved ${where}; \`amy update\` moves an old install`);
+  }
+}
+
 function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
+  refusedMovedKeys(parsed);
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
     ...mountingFrom(root, parsed),
     ...autoUpdateFrom(parsed),
-    policy: { ...DEFAULT_POLICY, ...(parsed.policy ?? {}) },
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
     skills: parsed.skills ?? {},
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
-    plans: plansFrom(parsed.plans),
-    errands: { policy: parsed.errands?.policy ?? {} },
     worktrees: {
       root: expandHome(parsed.worktrees?.root ?? DEFAULT_CONFIG.worktrees.root),
       retentionDays:
@@ -401,45 +518,40 @@ function mountingFrom(
   };
 }
 
-/**
- * The second workflow's block, over its defaults.
- *
- * The policy is not merged with the workflow's own defaults here: the plugin
- * does that over its slice, and doing it in two places means two places to
- * change when a default moves.
- */
-function plansFrom(given: Partial<PlansConfig> | undefined): PlansConfig {
-  return { ...DEFAULT_CONFIG.plans, ...(given ?? {}), policy: given?.policy ?? {} };
-}
-
 export const EXAMPLE_CONFIG = `# The workflows this install can drive. The name is what goes after
 # --workflow, and it is also the directory the profile's records and queue
 # live in, so switching between two of them never loses the state of either.
 #
 # Declared here, not shipped: this machine drives nothing until a workflow is
-# named. \`amy workflow new <name>\` writes the block for a workflow of your
-# own, under ~/.amy/workflows; a published one is a line you add here plus its
-# package installed. The two below are the ones this repository publishes,
-# kept as examples rather than defaults — uncomment one to drive it.
+# named. \`amy add <package>\` installs one and writes the profile block for
+# you, from what the workflow's own schema asks for — the settings below are
+# the example that teaches, and \`amy config explain\` names every setting the
+# machine could take, with its type, its default and why it is there.
 #
 #   workflows:
 #     ticket-to-qa:
 #       workflow: "@amykit/workflow-ticket-to-qa"
-#       # plugins: []   # empty means the recommended set for this workflow
-#       # briefStore: "@acme/plugin-git-brief-store"  # replaces the local brief provider
-#     note-to-plan:
-#       workflow: "@amykit/workflow-note-to-plan"
-#       notes: true     # \`amy note\` files friction onto this profile's queue
+#       settings:
+#         # The status a ticket moves to when it is handed to QA.
+#         qaStatusName: In QA
+#         # The ceilings the ticket workflow's decisions read live here too —
+#         # every one has a default, so naming a block is starting a tune.
+#         # policy:
+#         #   maxImplementAttempts: 3
+#         #   pollBackoffMs: 300000
+#
+# A workflow of your own is the same shape, under ~/.amy/workflows;
+# \`amy workflow new <name>\` writes one.
 #
 # Which one runs when --workflow is not given. The first, if this is empty.
 # defaultWorkflow: ticket-to-qa
-
+#
 # Plugins mounted under every workflow, named here or added with \`amy add\`.
 # Kept apart from a profile's own \`plugins:\` so a profile left on the
 # recommended set stays on it and gains one, rather than having the whole
 # recommendation copied into the config behind your back.
 # extraPlugins: []
-
+#
 # Keep the packages this machine mounts current around workflow invocations.
 # The count is kept per workflow profile under ~/.amy, so restarting does not
 # reset it. Set enabled false to leave updates entirely to the operator.
@@ -450,17 +562,11 @@ autoUpdate:
 
 # Repositories the team reviews in. Review load is counted across all of
 # them, because counting one would send every review to whoever happens to be
-# quiet in that one.
+# quiet in that one. They are also where an errand may be done, and the first
+# is where this machine's own failures are filed.
 repos:
   - Northwind/northwind-backend
   - Northwind/northwind-frontend
-
-# Tracker status names, matched exactly. Not categories: the tracker files
-# In Review, In QA and Ready To Release under the same category as
-# In Progress, so a category match picks up work that is already past
-# implementation.
-workingStatusName: In Progress
-qaStatusName: In QA
 
 # Finished queue items are only useful for reading the log afterwards.
 retentionDays: 7
@@ -472,18 +578,6 @@ retentionDays: 7
 staleClaimMs: 1800000
 maxItemAttempts: 5
 
-# The third workflow: something you said in passing becomes a pull request.
-# \`amy btw "bump the deps in the api"\` puts one on the queue. It works in the
-# repositories named above, so it needs no list of its own — only its ceilings.
-errands:
-  policy:
-    maxAttempts: 2
-    # Capturing an errand costs nothing, which is the whole point and also the
-    # failure: past this many in flight it holds rather than opening a
-    # thirtieth pull request nobody asked to review.
-    maxInFlight: 3
-    ceilingBackoffMs: 1800000
-
 # Where isolated worktrees live, and how long finished ones stay. Every tree
 # is one work item's own checkout under this root, so two tickets on one
 # repository run at the same time without contending for a shared tree. A
@@ -494,48 +588,6 @@ errands:
 worktrees:
   root: ~/workspaces/northwind-worktrees
   retentionDays: 7
-
-# The worktree plugin itself, mounted when a workflow names it. The path
-# segment it puts every tree under is the profile's name, so two workflows
-# under one install never share a tree.
-#
-#   "@amykit/plugin-file-worktree":
-#     workflow: ticket-to-qa
-
-# How the machine behaves when something is in its way. Anything left out
-# keeps its default. maxOpenReviewsPerReviewer is the one that spends a
-# currency nobody can top up: past it, the pull request stays open with
-# nobody assigned rather than landing on somebody already buried.
-#
-# The two ceilings on size are the cheap ones: the forge already told us how
-# big the change is, so a pull request nobody should automate is handed back
-# before an agent is called rather than after three attempts at it. Zero on
-# either switches it off.
-#
-# The two backoffs are how long a waiting state holds before it looks again.
-# Neither one runs while work is happening: a step that takes half an hour is
-# one look that takes half an hour, and the look after it is queued the moment
-# it finishes. They only govern how quickly the machine notices somebody else
-# moved, and \`amy poke <workId>\` collapses either on demand.
-policy:
-  maxImplementAttempts: 3
-  maxGateAttempts: 3
-  pollBackoffMs: 300000       # 5 minutes: waiting on an answer, or on a review
-  rosterBackoffMs: 1800000    # 30 minutes: waiting for the roster to be confirmed
-  maxOpenReviewsPerReviewer: 2
-  maxPullRequestFiles: 60
-  maxPullRequestLines: 2000
-  # machine: amy comments, opens pull requests, requests reviews and moves the
-  # ticket to QA. operator: each of those is said to you once instead, and amy
-  # waits until it sees you made it. Nothing is written on the tracker or the
-  # code host.
-  writes: machine
-  # answer: a reply in the work's thread is your decision, and the work moves
-  # on it. discuss: a reply is a turn in a discussion, answered in the thread
-  # while the work waits; mark the reply that decides (✅ in Slack) and only
-  # that one moves it. A reply you marked reads as marked under either, and
-  # without a thread a comment on the ticket is always the decision.
-  conversation: answer
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it, so leaving codex and hermes out means they are never required to be
@@ -589,12 +641,6 @@ defaultBranch: main
 # baseBranch:
 #   Northwind/northwind-frontend: trunk
 
-# Which repository a team's tickets land in, by team key. A team that is not
-# listed falls back to the first entry in "repos".
-repoByTeam:
-  PROJ: Northwind/northwind-backend
-  WEB: Northwind/northwind-backend
-
 # The deterministic gate. Nothing reaches a pull request until this is green.
 # A repository with no entry here, and no "default", is refused rather than
 # waved through.
@@ -626,28 +672,6 @@ notify:
   hermes: slack:my-channel   # a Hermes delivery target, or null
   inbox: true        # a file in .amy/needs-input plus a desktop notification
 
-# The second workflow: friction this machine hits becomes a plan in the
-# repository it is about. Leave "repos" out and nothing here is mounted at all
-# — a note would have nowhere to go.
-#
-# The check is the whole quality bar, and it is the repository's own rather
-# than a rubric invented here: a plan with no exit condition, or one missing
-# from the ordered list, is red and goes back to the agent with the finding.
-plans:
-  repos:
-    - Northwind/amy
-    - Northwind/software-factory
-  check:
-    default:
-      - sf check
-  policy:
-    maxDraftAttempts: 2
-    # Past this many plans in flight for one repository, it holds rather than
-    # opening another pull request nobody has read. The reviewer ceiling's
-    # argument with a different number.
-    maxOpenPlansPerRepo: 2
-    ceilingBackoffMs: 1800000
-
 # Any command line tool, reached by a name. One adapter for all of them: the
 # machine learns that a name maps to a line somebody wrote down, and nothing
 # about what pup or ntn mean.
@@ -660,19 +684,25 @@ plans:
 #     allow:
 #       datadog: pup monitors list --json
 #       notion: ntn page get
-
-# One slice per plugin, keyed by package name. Nothing here is read by the
-# host: each plugin declares what its own slice looks like, and "amy doctor"
-# refuses a field that is not one the plugin has. A plugin with no slice runs
-# on its defaults. Nothing is mounted until a workflow names it, so these are
-# examples too — uncomment with the workflow that carries them.
+#
+# The tracker's settings and every workflow's own live with what mounts them —
+# an install carries only the vocabulary of what it drives. The status names a
+# ticket moves between belong to the tracker plugin; a team map belongs beside
+# it; the ceilings each workflow's decisions read belong to that workflow's
+# profile. \`amy add\` writes the block; \`amy config explain\` lists them.
 #
 # plugins:
 #   "@amykit/plugin-notify-hermes":
 #     target: slack:my-channel
 #   "@amykit/plugin-file-queue":
 #     retentionDays: 7
+#   "@amykit/plugin-linear":
+#     workingStatusName: In Progress
+#     repoByTeam:
+#       PROJ: Northwind/northwind-backend
 `;
+
+
 
 /**
  * The file without one top-level block, its indented lines included.
@@ -713,14 +743,22 @@ function writeBlock(root: string, header: string, block: string): void {
 
 /**
  * Adds one workflow profile without rewriting the rest of the operator's config.
+ *
+ * `settings` are the placeholders the workflow's own schema asked for: every
+ * required field it carries an `example` for, written with that example — a
+ * value the plugin says it would mount with, and one the operator edits. The
+ * rest of the schema's settings stay out: they have defaults, and the mount
+ * fills them in.
  */
 export function writeWorkflowProfile(
   root: string,
   profile: string,
   workflow: string,
   config: AmyConfig,
+  settings: ProfileSettings = {},
 ): void {
-  const workflows = { ...config.workflows, [profile]: { workflow } };
+  const entry: Record<string, unknown> = { workflow, ...(Object.keys(settings).length > 0 ? { settings } : {}) };
+  const workflows = { ...config.workflows, [profile]: entry };
   const defaultLine = config.defaultWorkflow || Object.keys(config.workflows).length > 0
     ? ""
     : `\ndefaultWorkflow: ${profile}\n`;
@@ -730,6 +768,26 @@ export function writeWorkflowProfile(
     "workflows:",
     `${yaml.stringify({ workflows })}${defaultLine}`.trimEnd(),
   );
+}
+
+/**
+ * The settings one workflow's schema asks the profile to carry.
+ *
+ * Only the required ones without a default are the operator's to start: a
+ * required setting whose machine hands it over gets no entry here, and one
+ * with a default gets no entry either — leaving it out IS its default. What
+ * is written is the schema's own `example`, so the value that lands in the
+ * config is one the plugin itself said it would mount with.
+ */
+export function profileSettingsFrom(schema: ConfigSchema): ProfileSettings {
+  const settings: ProfileSettings = {};
+  for (const [key, spec] of Object.entries(schema)) {
+    if (key.includes(".")) continue;
+    if (spec.required && spec.default === undefined && spec.example !== undefined) {
+      settings[key] = spec.example;
+    }
+  }
+  return settings;
 }
 
 export function writeProfilePlugins(

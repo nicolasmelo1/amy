@@ -112,6 +112,13 @@ the criterion holds because the refused errand is asked exactly once.
       in its state and no output naming one: the roster belongs to the
       workflow that assigns, which this machine did not mount
       (proof: assertion:errand.doctor_is_green_without_a_roster)
+- [x] The shortest road into the machine stays short: `amy init` writes a
+      config with no workflow's vocabulary at the top level, and
+      `amy add @amykit/workflow-errand` appends the profile block the
+      workflow's own schema asks for, leaving a machine whose boot check is
+      green without one hand editing either — from
+      [a config is typed by its schema](a-config-is-typed-by-its-schema.md)
+      (proof: assertion:errand.init_and_add_write_a_config_that_boots)
 
 **Exit condition:** editing `packages/workflow-errand/src` or
 `plugins/file-tasks/src` turns `sf check` red until the errand scenario is run
