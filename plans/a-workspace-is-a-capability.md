@@ -12,7 +12,9 @@ sources:
   - { id: S10, kind: decision, said: "amy doctor asks about repositories, checkouts and worktrees only of an install that mounts a workspace" }
   - { id: S11, kind: decision, said: "amy update moves the seven keys under the plugin that now owns each, as it moved the workflows' vocabulary: original kept, a second run a no-op, a key put back refused at boot naming its new place" }
   - { id: S12, kind: decision, said: "the proof is a workflow with no code, a support inbox: a request arrives, an agent triages it and drafts the answer, the operator approves it in the conversation, it is sent; installed and driven by the executable" }
-  - { id: S13, kind: decision, said: "a new gate, a-workspace-is-a-capability, runs that inbox on an install whose config.yaml has none of the seven keys and mounts no workspace, from amy init to a sent answer" }
+  - { id: S14, kind: code, ref: "packages/core/src/define-workflow.ts", symbol: "defineWorkflow", said: "building a declared workflow's runtime calls ctx.checkouts() for every workflow, so refusing it where no workspace is mounted would refuse workflows that never touch a repository" }
+  - { id: S15, kind: decision, said: "a workflow is handed checkouts only when it uses them, asked for when first read; one that never reads them mounts with no workspace" }
+  - { id: S13, kind: decision, said: "a new gate, a-workspace-is-a-capability, runs that inbox on an install with none of the seven keys and no workspace, from amy init to a sent answer, and drives ticket-to-qa, errand and note-to-plan with their workspace in its plugin" }
 touches:
   - packages/cli/src/config.ts
   - packages/cli/src/slices.ts
@@ -20,6 +22,7 @@ touches:
   - packages/cli/src/update.ts
   - packages/core/src/plugin.ts
   - packages/core/src/mount.ts
+  - packages/core/src/define-workflow.ts
   - packages/core/src/checkouts.ts
   - plugins/file-worktree/src/**
   - plugins/command-gate/src/**
@@ -28,16 +31,19 @@ touches:
 criteria:
   - { id: A1, statement: "the machine's schema has none of the seven keys; the file-worktree plugin's slice has the six workspace keys and the command-gate plugin's has gate, each with its default and description", proof: "deferred:test:packages/cli/tests/config.test.ts", sources: [S1, S7, S8] }
   - { id: A2, statement: "a plugin calling checkouts() on a mount with no workspace is refused at mount, naming the plugin and the workspace it needs", proof: "deferred:test:packages/core/tests/checkouts.test.ts", sources: [S2, S9] }
+  - { id: A8, statement: "a workflow declared with defineWorkflow that never reads its checkouts mounts and walks with no workspace mounted", proof: "deferred:test:packages/core/tests/define-workflow.test.ts", sources: [S14, S15] }
   - { id: A3, statement: "amy doctor on an install that mounts no workspace asks nothing about repositories, checkouts or worktrees, and says ready", proof: "deferred:test:packages/cli/tests/doctor.test.ts", sources: [S3, S10] }
   - { id: A4, statement: "the host hands no plugin a repository, branch or gate it did not read from that plugin's own slice", proof: "deferred:test:packages/cli/tests/slices.test.ts", sources: [S4, S8] }
   - { id: A5, statement: "amy update moves the seven keys under their plugins, keeps the original, moves nothing the second time, and a key put back is refused at boot naming its new place", proof: "deferred:assertion:update.the_workspace_moves_into_its_plugin", sources: [S5, S11] }
   - { id: A6, statement: "on an install with none of the seven keys and no workspace mounted, the installed support inbox walks a request from arrival to a sent answer, after the operator approves it in the conversation", proof: "deferred:assertion:workspace.a_workflow_without_code_needs_no_workspace", sources: [S6, S12, S13] }
-  - { id: A7, statement: "ticket-to-qa, errand and note-to-plan walk as their gates prove, with the workspace in the plugin's slice instead of the machine's", proof: "deferred:assertion:update.the_new_version_drives_the_work", sources: [S7, S8, S11] }
+  - { id: A7, statement: "ticket-to-qa, errand and note-to-plan walk as their gates prove, with the workspace in the plugin's slice instead of the machine's", proof: "deferred:assertion:workspace.the_code_workflows_walk_with_their_workspace_in_its_plugin", sources: [S7, S8, S11] }
 crosses:
   - { mechanism: config, answer: works, proof: "deferred:A1, A5" }
   - { mechanism: checkouts-and-leases, answer: works, proof: "deferred:A2, A7" }
-  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A2" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A2, A8" }
   - { mechanism: install-and-update, answer: works, proof: "deferred:A5" }
+  - { mechanism: calls, answer: works, proof: "deferred:A8; a called workflow's runtime is built on the same path, so it too is handed checkouts only when it reads them" }
+  - { mechanism: hooks, answer: n/a, why: "before, after and interrupt are untouched; only when a runtime's checkouts are built changes" }
 guarantee:
   - { holds: "an install that drives no code is asked for no repository, by the config, the doctor or the mount" }
 failures:
