@@ -413,6 +413,11 @@
           "description": ""
         },
         {
+          "title": "The config is written by what is mounted",
+          "path": "/design/the-config-is-written-by-what-is-mounted",
+          "description": ""
+        },
+        {
           "title": "The errand is proven end to end",
           "path": "/design/the-errand-is-proven-end-to-end",
           "description": ""
@@ -2915,6 +2920,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/the-config-is-written-by-what-is-mounted",
+      "file": "docs/design/the-config-is-written-by-what-is-mounted.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-config-is-written-by-what-is-mounted.md",
+      "title": "The config is written by what is mounted",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/the-engine-fails-out-loud",
