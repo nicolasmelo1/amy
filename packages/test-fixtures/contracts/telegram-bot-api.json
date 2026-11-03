@@ -501,6 +501,7 @@
         "required": true
       }
     },
+    "CallbackGame": {},
     "CallbackQuery": {
       "id": {
         "type": "String",
@@ -1543,6 +1544,7 @@
         "required": true
       }
     },
+    "CommunityChatRemoved": {},
     "Contact": {
       "phone_number": {
         "type": "String",
@@ -1601,6 +1603,7 @@
         "required": false
       }
     },
+    "DisabledButton": {},
     "Document": {
       "file_id": {
         "type": "String",
@@ -1857,6 +1860,7 @@
         "required": false
       }
     },
+    "ForumTopicClosed": {},
     "ForumTopicCreated": {
       "name": {
         "type": "String",
@@ -1885,6 +1889,7 @@
         "required": false
       }
     },
+    "ForumTopicReopened": {},
     "Game": {
       "title": {
         "type": "String",
@@ -1925,6 +1930,8 @@
         "required": true
       }
     },
+    "GeneralForumTopicHidden": {},
+    "GeneralForumTopicUnhidden": {},
     "Gift": {
       "id": {
         "type": "String",
@@ -3269,6 +3276,7 @@
         "required": false
       }
     },
+    "InputFile": {},
     "InputInvoiceMessageContent": {
       "title": {
         "type": "String",
@@ -8141,6 +8149,7 @@
         "required": true
       }
     },
+    "VideoChatStarted": {},
     "VideoNote": {
       "file_id": {
         "type": "String",
@@ -8296,19 +8305,120 @@
       "BackgroundTypePattern",
       "BackgroundTypeChatTheme"
     ],
+    "BotCommandScope": [
+      "BotCommandScopeDefault",
+      "BotCommandScopeAllPrivateChats",
+      "BotCommandScopeAllGroupChats",
+      "BotCommandScopeAllChatAdministrators",
+      "BotCommandScopeChat",
+      "BotCommandScopeChatAdministrators",
+      "BotCommandScopeChatMember"
+    ],
     "ChatBoostSource": [
       "ChatBoostSourcePremium",
       "ChatBoostSourceGiftCode",
       "ChatBoostSourceGiveaway"
+    ],
+    "ChatMember": [
+      "ChatMemberOwner",
+      "ChatMemberAdministrator",
+      "ChatMemberMember",
+      "ChatMemberRestricted",
+      "ChatMemberLeft",
+      "ChatMemberBanned"
+    ],
+    "InlineQueryResult": [
+      "InlineQueryResultCachedAudio",
+      "InlineQueryResultCachedDocument",
+      "InlineQueryResultCachedGif",
+      "InlineQueryResultCachedMpeg4Gif",
+      "InlineQueryResultCachedPhoto",
+      "InlineQueryResultCachedSticker",
+      "InlineQueryResultCachedVideo",
+      "InlineQueryResultCachedVoice",
+      "InlineQueryResultArticle",
+      "InlineQueryResultAudio",
+      "InlineQueryResultContact",
+      "InlineQueryResultGame",
+      "InlineQueryResultDocument",
+      "InlineQueryResultGif",
+      "InlineQueryResultLocation",
+      "InlineQueryResultMpeg4Gif",
+      "InlineQueryResultPhoto",
+      "InlineQueryResultVenue",
+      "InlineQueryResultVideo",
+      "InlineQueryResultVoice"
+    ],
+    "InputMedia": [
+      "InputMediaAnimation",
+      "InputMediaAudio",
+      "InputMediaDocument",
+      "InputMediaLivePhoto",
+      "InputMediaPhoto",
+      "InputMediaVideo"
+    ],
+    "InputMessageContent": [
+      "InputTextMessageContent",
+      "InputRichMessageContent",
+      "InputLocationMessageContent",
+      "InputVenueMessageContent",
+      "InputContactMessageContent",
+      "InputInvoiceMessageContent"
     ],
     "InputPaidMedia": [
       "InputPaidMediaLivePhoto",
       "InputPaidMediaPhoto",
       "InputPaidMediaVideo"
     ],
+    "InputPollMedia": [
+      "InputMediaAnimation",
+      "InputMediaAudio",
+      "InputMediaDocument",
+      "InputMediaLivePhoto",
+      "InputMediaLocation",
+      "InputMediaPhoto",
+      "InputMediaVenue",
+      "InputMediaVideo"
+    ],
+    "InputPollOptionMedia": [
+      "InputMediaAnimation",
+      "InputMediaLink",
+      "InputMediaLivePhoto",
+      "InputMediaLocation",
+      "InputMediaPhoto",
+      "InputMediaSticker",
+      "InputMediaVenue",
+      "InputMediaVideo"
+    ],
     "InputProfilePhoto": [
       "InputProfilePhotoStatic",
       "InputProfilePhotoAnimated"
+    ],
+    "InputRichBlock": [
+      "InputRichBlockParagraph",
+      "InputRichBlockSectionHeading",
+      "InputRichBlockPreformatted",
+      "InputRichBlockFooter",
+      "InputRichBlockDivider",
+      "InputRichBlockMathematicalExpression",
+      "InputRichBlockAnchor",
+      "InputRichBlockList",
+      "InputRichBlockBlockQuotation",
+      "InputRichBlockExpandableBlockQuotation",
+      "InputRichBlockPullQuotation",
+      "InputRichBlockCollage",
+      "InputRichBlockSlideshow",
+      "InputRichBlockTable",
+      "InputRichBlockDetails",
+      "InputRichBlockMap",
+      "InputRichBlockButtons",
+      "InputRichBlockAnimation",
+      "InputRichBlockAudio",
+      "InputRichBlockDocument",
+      "InputRichBlockPhoto",
+      "InputRichBlockVideo",
+      "InputRichBlockVoiceNote",
+      "InputRichBlockThinking"
     ],
     "InputStoryContent": [
       "InputStoryContentPhoto",
@@ -8317,6 +8427,11 @@
     "MaybeInaccessibleMessage": [
       "Message",
       "InaccessibleMessage"
+    ],
+    "MenuButton": [
+      "MenuButtonCommands",
+      "MenuButtonWebApp",
+      "MenuButtonDefault"
     ],
     "MessageOrigin": [
       "MessageOriginUser",
@@ -8334,6 +8449,17 @@
       "PaidMediaPreview",
       "PaidMediaVideo"
     ],
+    "PassportElementError": [
+      "PassportElementErrorDataField",
+      "PassportElementErrorFrontSide",
+      "PassportElementErrorReverseSide",
+      "PassportElementErrorSelfie",
+      "PassportElementErrorFile",
+      "PassportElementErrorFiles",
+      "PassportElementErrorTranslationFile",
+      "PassportElementErrorTranslationFiles",
+      "PassportElementErrorUnspecified"
+    ],
     "ReactionType": [
       "ReactionTypeEmoji",
       "ReactionTypeCustomEmoji",
@@ -8343,6 +8469,60 @@
       "RevenueWithdrawalStatePending",
       "RevenueWithdrawalStateSucceeded",
       "RevenueWithdrawalStateFailed"
+    ],
+    "RichBlock": [
+      "RichBlockParagraph",
+      "RichBlockSectionHeading",
+      "RichBlockPreformatted",
+      "RichBlockFooter",
+      "RichBlockDivider",
+      "RichBlockMathematicalExpression",
+      "RichBlockAnchor",
+      "RichBlockList",
+      "RichBlockBlockQuotation",
+      "RichBlockExpandableBlockQuotation",
+      "RichBlockPullQuotation",
+      "RichBlockCollage",
+      "RichBlockSlideshow",
+      "RichBlockTable",
+      "RichBlockDetails",
+      "RichBlockMap",
+      "RichBlockButtons",
+      "RichBlockAnimation",
+      "RichBlockAudio",
+      "RichBlockDocument",
+      "RichBlockPhoto",
+      "RichBlockVideo",
+      "RichBlockVoiceNote",
+      "RichBlockThinking"
+    ],
+    "RichText": [
+      "RichTextBold",
+      "RichTextItalic",
+      "RichTextUnderline",
+      "RichTextStrikethrough",
+      "RichTextSpoiler",
+      "RichTextDateTime",
+      "RichTextTextMention",
+      "RichTextSubscript",
+      "RichTextSuperscript",
+      "RichTextMarked",
+      "RichTextCode",
+      "RichTextCustomEmoji",
+      "RichTextMathematicalExpression",
+      "RichTextUrl",
+      "RichTextEmailAddress",
+      "RichTextPhoneNumber",
+      "RichTextBankCardNumber",
+      "RichTextMention",
+      "RichTextHashtag",
+      "RichTextCashtag",
+      "RichTextBotCommand",
+      "RichTextButton",
+      "RichTextAnchor",
+      "RichTextAnchorLink",
+      "RichTextReference",
+      "RichTextReferenceLink"
     ],
     "StoryAreaType": [
       "StoryAreaTypeLocation",
@@ -9766,7 +9946,7 @@
           "required": false
         }
       },
-      "returns": ""
+      "returns": "Array of ChatMember"
     },
     "getChatGifts": {
       "parameters": {
@@ -9828,7 +10008,7 @@
           "required": true
         }
       },
-      "returns": ""
+      "returns": "ChatMember"
     },
     "getChatMemberCount": {
       "parameters": {
@@ -9846,7 +10026,7 @@
           "required": false
         }
       },
-      "returns": ""
+      "returns": "MenuButton"
     },
     "getCustomEmojiStickers": {
       "parameters": {

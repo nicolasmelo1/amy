@@ -232,6 +232,20 @@ describe("the Telegram Bot API, derived from its page", () => {
     expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { message_id: 1, date: 1, chat: { id: 1, type: "private" }, topic: 3 } }])).toThrow(/topic is not a field of Message/);
   });
 
+  it("reads an array of several types as an array of any of them", () => {
+    const photo = { type: "photo", media: "attach://a", has_spoiler: true };
+    const video = { type: "video", media: "attach://b" };
+    expect(() => assertValidBotApiCall("sendMediaGroup", { chat_id: 1, media: [photo, video] })).not.toThrow();
+    expect(() => assertValidBotApiCall("sendMediaGroup", { chat_id: 1, media: [{ type: "pigeon", media: "x", wings: 2 }] })).toThrow(/media\[0\]/);
+  });
+
+  it("reads a type that holds no information, and a method returning a union", () => {
+    const closed = { message_id: 1, date: 1, chat: { id: 1, type: "private" }, forum_topic_closed: {} };
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: closed }])).not.toThrow();
+    expect(() => assertValidBotApiResult("getChatMember", { status: "member", user: { id: 1, is_bot: false, first_name: "Ada" } })).not.toThrow();
+    expect(() => assertValidBotApiResult("getChatMember", { status: "pigeon" })).toThrow(/is a ChatMember, and is none of/);
+  });
+
   it("reads a type the page defines only as one of others", () => {
     const forwarded = { message_id: 1, date: 1, chat: { id: 1, type: "private" }, forward_origin: { type: "hidden_user", date: 1, sender_user_name: "Ada" } };
     expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: forwarded }])).not.toThrow();

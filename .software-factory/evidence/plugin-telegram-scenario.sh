@@ -32,21 +32,26 @@ for built in packages/core/dist/index.js plugins/telegram/dist/index.js packages
   test -f "$repo/$built" || { echo "build it first: npm run build" >&2; exit 1; }
 done
 
-bin=$(mktemp -d)
-pids="$bin/trackers.pid"
+# One root for the whole run, the install's library inside it: the installer
+# puts its library beside the bin directory's parent, which for a bare
+# mktemp -d is the shared temporary directory every other run uses.
+root=$(mktemp -d)
+bin="$root/bin"
+mkdir -p "$bin"
+pids="$root/trackers.pid"
 cleanup() {
   trap - EXIT INT TERM
   if [ -f "$pids" ]; then
     while read -r pid; do kill "$pid" 2>/dev/null || true; done < "$pids"
   fi
-  rm -rf "$bin"
+  rm -rf "$root"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-"$repo/scripts/install.sh" "$bin" >/dev/null
+AMY_INSTALL_LIB="$root/lib/amy" "$repo/scripts/install.sh" "$bin" >/dev/null
 test -x "$bin/amy" || { echo "the installer produced no command" >&2; exit 1; }
 
-AMY_E2E_PIDFILE="$pids" AMY_E2E_TARBALLS="$bin/../lib/amy/packages" \
+AMY_E2E_PIDFILE="$pids" AMY_E2E_TARBALLS="$root/lib/amy/packages" \
   "$repo/node_modules/.bin/tsx" "$here/plugin-telegram/drive.ts" "$repo" "$bin/amy" "$report" $keep

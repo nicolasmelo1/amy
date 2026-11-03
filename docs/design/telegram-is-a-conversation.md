@@ -43,6 +43,8 @@ failures:
 cut:
   - "a forum supergroup: the private chat is the one shape"
   - "sharing a bot token another program already polls"
+crosses:
+  - { mechanism: profiles-and-state, answer: works, proof: "test:plugins/telegram/tests/TelegramConversation.test.ts (a removed profile's replies and files go with its directory; a phase's topics are its own, test:packages/cli/tests/project.test.ts)" }
 deviations:
   - "the token is TELEGRAM_BOT_TOKEN in amy's environment, read the way Linear's key is, rather than a reference in the config"
   - "a server setting, Telegram's by default, so a local Bot API server or the scenario's stand-in can answer"
@@ -52,6 +54,9 @@ deviations:
   - "an offset older than six days is not sent, since Telegram renumbers its updates after a week without any (review)"
   - "a message with no text, caption or file, such as a topic renamed, is no answer (review)"
   - "a topic whose creation lost its answer is not recovered: a bot cannot list a private chat's topics, so the next look opens another (review, declined)"
+  - "replies and their files are kept under the profile that owns the topic, found through owners.json in the bot's shared directory, so removing a profile forgets them; the bot's directory keeps only the owners, the offset and the lock (second review)"
+  - "the lock is a numbered generation taken by creating the next number, and a holder checks before every write that no later one exists; the inbox and every state file are flushed, and their directory, before the offset confirms them (second review)"
+  - "every exchange with the Bot API has a deadline covering its body, a local Bot API server's absolute file paths are read where they lie, and text is cut at a character, never inside one (second review)"
   - "a reply is placed at the end of the second Telegram stamps it with, and after the last one filed, so two replies in a second keep their order and neither falls before a question asked within it"
   - "the Bot API contract is derived from Telegram's reference page into types and methods (scripts/bot-api-contract.ts) and checked fresh in check:contracts, since Telegram publishes no schema; the stand-in is held to it on every call and answer"
   - "Slack's stand-ins are held the same way, to the OpenAPI description Slack serves; it predates message metadata and cursor pagination, so those are let through by method, each naming Slack's documentation"

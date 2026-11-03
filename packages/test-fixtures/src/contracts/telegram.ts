@@ -65,7 +65,10 @@ export function botApiVersion(): string {
 }
 
 function mismatch(type: string, value: unknown, at: string): string | null {
-  const alternatives = type.split(/\s+or\s+|,\s*/).map((one) => one.trim()).filter(Boolean);
+  // "Array of A, B and C" is an array of any of them, not A or an array of B.
+  const array = /^Array of (.+)$/.exec(type);
+  if (array) return arrayOf(array[1]!, type, value, at);
+  const alternatives = type.split(/\s+or\s+|\s+and\s+|,\s*/).map((one) => one.trim()).filter(Boolean);
   const failures = alternatives.map((one) => single(one, value, at));
   return failures.some((failure) => failure === null) ? null : failures[0]!;
 }
@@ -82,8 +85,6 @@ const SCALARS: Record<string, (value: unknown) => boolean> = {
 };
 
 function single(type: string, value: unknown, at: string): string | null {
-  const array = /^Array of (.+)$/.exec(type);
-  if (array) return arrayOf(array[1]!, type, value, at);
   const scalar = SCALARS[type];
   if (scalar) return scalar(value) ? null : `${at} is ${type}, and holds ${JSON.stringify(value)}`;
   return object(type, value, at);

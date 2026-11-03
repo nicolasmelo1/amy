@@ -37,11 +37,15 @@ export function deriveBotApi(html: string): BotApiContract {
     const table = rowsOf(section.html);
     if (!/^[A-Z]/.test(section.name)) methods[section.name] = { parameters: parametersOf(table), returns: "" };
     else if (table.header[0] === "Field") types[section.name] = fieldsOf(table);
-    else if (table.header.length === 0 && membersOf(section.html).length > 0) unions[section.name] = membersOf(section.html);
+    else if (table.header.length > 0) continue;
+    else if (membersOf(section.html).length > 0) unions[section.name] = membersOf(section.html);
+    // A type with no table and no members holds nothing, such as ForumTopicClosed.
+    else types[section.name] = {};
   }
+  const known = new Set([...Object.keys(types), ...Object.keys(unions)]);
   for (const section of sections) {
     const method = methods[section.name];
-    if (method) method.returns = returnsOf(section.html, types);
+    if (method) method.returns = returnsOf(section.html, known);
   }
   return { version, types: sorted(types), unions: sorted(unions), methods: sorted(methods) };
 }
@@ -67,11 +71,17 @@ function parametersOf(table: { header: string[]; rows: string[][] }): Record<str
   return Object.fromEntries(table.rows.map(([name, type, required]) => [name!, { type: type!, required: required === "Yes" }]));
 }
 
-/** The types a section says it "can be one of", from the list right after it says so. */
+/**
+ * The types a table-less section lists right after its description, however
+ * it words it ("can be one of", "should be one of", "the following 6 types"):
+ * a list whose every item is a link to a type is the union's members.
+ */
 function membersOf(html: string): string[] {
-  const list = /can be one of[\s\S]*?<ul>([\s\S]*?)<\/ul>/.exec(html.split("<table")[0] ?? "")?.[1];
+  const list = /^\s*<p>[\s\S]*?<\/p>\s*<ul>([\s\S]*?)<\/ul>/.exec(html)?.[1];
   if (!list) return [];
-  return [...list.matchAll(/<li><a href="#[a-z0-9]+">([A-Z]\w*)<\/a><\/li>/g)].map((member) => member[1]!);
+  const items = [...list.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((item) => item[1]!.trim());
+  const members = items.map((item) => /^<a href="#[a-z0-9]+">([A-Z]\w*)<\/a>$/.exec(item)?.[1]);
+  return members.every(Boolean) ? (members as string[]) : [];
 }
 
 /** The first table in a section, as text: its header and its rows. */
@@ -89,12 +99,12 @@ function rowsOf(html: string): { header: string[]; rows: string[][] } {
  * What a method returns, from the sentence of its description that says so:
  * a type the page links, `Array of` one, or a literal such as `True`.
  */
-function returnsOf(html: string, types: BotApiContract["types"]): string {
+function returnsOf(html: string, types: ReadonlySet<string>): string {
   const description = (html.split("<table")[0] ?? "").replace(/<\/?p>/g, " ");
   for (const sentence of description.split(/\.\s+(?=[A-Z<])/)) {
     if (!/Returns|returned|returns/.test(sentence)) continue;
     const linked = /(Array of )?<a href="#[a-z0-9]+">([A-Z]\w*)<\/a>/.exec(sentence);
-    if (linked && types[linked[2]!]) return `${linked[1] ? "Array of " : ""}${linked[2]}`;
+    if (linked && types.has(linked[2]!)) return `${linked[1] ? "Array of " : ""}${linked[2]}`;
     const literal = /<em>(True|Int|Integer|String|Boolean)<\/em>/.exec(sentence);
     if (literal) return literal[1] === "Int" ? "Integer" : literal[1]!;
   }

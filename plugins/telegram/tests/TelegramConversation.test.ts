@@ -421,3 +421,145 @@ describe("files Telegram will not hand over", () => {
     expect(String(error)).not.toContain(TOKEN);
   });
 });
+
+describe("the second review", () => {
+  it("takes a photo's largest size by its dimensions when no size says its bytes", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("the screen", { topic: Number(thread.id), photo: true, file: { name: "photo", bytes: new Uint8Array([4, 5, 6]) } });
+
+    const [reply] = await amy.replies(thread, since);
+
+    expect([...fs.readFileSync(reply!.files[0]!)]).toEqual([4, 5, 6]);
+  });
+
+  it("fails the look, not the attachment, when getFile gives no path to download", async () => {
+    const telegram = botApiStandIn({ noFilePath: true });
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("see", { topic: Number(thread.id), file: { name: "total.png", bytes: new Uint8Array([1]) } });
+
+    await expect(amy.replies(thread, since)).rejects.toThrow(/gave no path to download total.png/);
+  });
+
+  it("reads a file a local Bot API server keeps on a shared disk, and says so when it cannot", async () => {
+    const local = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-local-"));
+    const telegram = botApiStandIn({ localFiles: local });
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("see", { topic: Number(thread.id), file: { name: "total.png", bytes: new Uint8Array([7, 7]) } });
+
+    const [reply] = await amy.replies(thread, since);
+    expect([...fs.readFileSync(reply!.files[0]!)]).toEqual([7, 7]);
+
+    const elsewhere = botApiStandIn({ localFiles: local });
+    const { amy: other } = amyWith(elsewhere);
+    const otherThread = await other.open("BILL-8", "Credit");
+    const otherSince = askedAt(elsewhere);
+    elsewhere.say("see", { topic: Number(otherThread.id), file: { name: "note.png", bytes: new Uint8Array([1]) } });
+    fs.rmSync(local, { recursive: true, force: true });
+    fs.mkdirSync(local);
+    fs.chmodSync(local, 0o000);
+    try {
+      await expect(other.replies(otherThread, otherSince)).rejects.toThrow();
+    } finally {
+      fs.chmodSync(local, 0o700);
+    }
+  });
+
+  it("keeps a file whose name is nearly as long as a file name may be", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    const name = `${"n".repeat(220)}.pdf`;
+    telegram.say("the contract", { topic: Number(thread.id), file: { name, bytes: new Uint8Array([1]) } });
+
+    const [reply] = await amy.replies(thread, since);
+
+    expect(path.basename(reply!.files[0]!)).toBe(name);
+  });
+
+  it("never splits a character, and sends no empty last part", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "😀".repeat(70));
+
+    await amy.post(thread, { text: `${"a".repeat(4095)}😀b` });
+    await amy.post(thread, { text: `${"c".repeat(4096)}\n` });
+
+    expect(telegram.sent.map((message) => message.text)).toEqual([`${"a".repeat(4095)}`, "😀b", "c".repeat(4096)]);
+    const [name] = [...telegram.topics.values()];
+    // A lone surrogate does not survive a round trip through UTF-8.
+    expect(Buffer.from(name!, "utf8").toString("utf8")).toBe(name);
+  });
+
+  it("writes nothing over a successor once another process took the bot over", async () => {
+    const telegram = botApiStandIn();
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-fence-"));
+    const api = new BotApi(TOKEN, {
+      transport: async (request) => {
+        // Another process takes the bot over while this one waits on Telegram.
+        if (request.url.endsWith("/createForumTopic")) fs.mkdirSync(path.join(directory, "lock-99"));
+        return telegram.transport(request);
+      },
+    });
+    const amy = new TelegramConversation(api, { operator: String(OPERATOR), directory });
+
+    await expect(amy.open("BILL-7", "Total")).rejects.toThrow(/another process took over/);
+    expect(fs.existsSync(path.join(directory, "topics.json"))).toBe(false);
+  });
+
+  it("forgets a removed profile's replies and files, and confirms its topic's messages without keeping them", async () => {
+    const telegram = botApiStandIn();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-remove-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport });
+    const shared = path.join(root, "bot");
+    const brief = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "brief"), shared });
+    const build = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared });
+    const briefThread = await brief.open("TBO-1", "Brief TBO-1");
+    const buildThread = await build.open("TBO-1", "Build TBO-1");
+    const since = askedAt(telegram);
+    telegram.say("for the brief", { topic: Number(briefThread.id), file: { name: "notes.txt", bytes: new Uint8Array([1]) } });
+    expect(await brief.replies(briefThread, since)).toHaveLength(1);
+
+    // The phase is removed, the way amy remove does: its directory goes.
+    fs.rmSync(path.join(root, "brief"), { recursive: true, force: true });
+    telegram.say("still for the brief", { topic: Number(briefThread.id) });
+    telegram.say("for the build", { topic: Number(buildThread.id) });
+
+    expect((await build.replies(buildThread, since)).map((reply) => reply.text)).toEqual(["for the build"]);
+    expect(telegram.pending()).toBe(0);
+    expect(fs.existsSync(path.join(root, "brief"))).toBe(false);
+    expect(fs.readdirSync(shared).filter((name) => !/^(owners|offset)\.json$/.test(name))).toEqual([]);
+  });
+});
+
+describe("a server that never finishes answering", () => {
+  it("is cut off at the deadline, body included, and the token is not in the error", async () => {
+    const http = await import("node:http");
+    const server = http.createServer((_request, response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.write("{");
+      // And nothing more, ever.
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = (server.address() as { port: number }).port;
+    try {
+      const api = new BotApi(TOKEN, { server: `http://127.0.0.1:${port}`, deadlineMs: 200 });
+      const started = Date.now();
+      const error = await api.call("getUpdates").catch((caught: Error) => caught);
+
+      expect(String(error)).toMatch(/telegram getUpdates could not be reached/);
+      expect(String(error)).not.toContain(TOKEN);
+      expect(Date.now() - started).toBeLessThan(5_000);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+  });
+});

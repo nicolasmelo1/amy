@@ -7,19 +7,21 @@ import { BotApi, BotApiRefusal, TooLarge } from "./BotApi.js";
 export interface TelegramConversationOptions {
   /** The operator's user id, which is also their private chat with the bot. */
   operator: string;
-  /** Where this profile's topics are remembered, by work id. */
+  /**
+   * What this profile owns: its topics by work id, the replies filed under
+   * them and the files they carried. Removing the profile removes all of it.
+   */
   directory: string;
   /**
-   * Where everything one bot shares across profiles lives: the replies filed
-   * by topic, the update offset, the lock and the downloads. The directory
-   * itself when not given.
+   * What one bot shares across profiles: which profile owns each topic, the
+   * update offset and the lock. The directory itself when not given.
    */
   shared?: string;
   /** The largest file downloaded; a larger one is named in the reply instead. */
   maxFileBytes?: number;
-  /** How long to wait for another process holding the directory. */
+  /** How long to wait for another process holding the bot. */
   lockWaitMs?: number;
-  /** How long a hold on the directory lasts before it is taken as abandoned. */
+  /** How long a hold on the bot lasts without being renewed. */
   leaseMs?: number;
 }
 
@@ -39,6 +41,15 @@ const MAX_MESSAGE_CHARS = 4096;
 /** Telegram's limit on a topic's name. */
 const MAX_TOPIC_NAME_CHARS = 128;
 
+/**
+ * Telegram restarts its update ids at random after a week without updates, so
+ * an offset older than this is not sent: it could confirm, unread, the new
+ * updates numbered below it.
+ */
+const OFFSET_LIFETIME_MS = 6 * 24 * 60 * 60 * 1000;
+
+const LOCK = /^lock-(\d+)$/;
+
 interface TelegramUser {
   id: number;
   is_bot?: boolean;
@@ -53,6 +64,11 @@ interface TelegramFileRef {
   file_name?: string;
 }
 
+interface TelegramPhotoSize extends TelegramFileRef {
+  width: number;
+  height: number;
+}
+
 interface TelegramMessage {
   message_id: number;
   message_thread_id?: number;
@@ -63,20 +79,13 @@ interface TelegramMessage {
   text?: string;
   caption?: string;
   document?: TelegramFileRef;
-  photo?: TelegramFileRef[];
+  photo?: TelegramPhotoSize[];
 }
 
 interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
 }
-
-/**
- * Telegram restarts its update ids at random after a week without updates, so
- * an offset older than this is not sent: it could confirm, unread, the new
- * updates numbered below it.
- */
-const OFFSET_LIFETIME_MS = 6 * 24 * 60 * 60 * 1000;
 
 /** A reply as filed under its topic: what it said, and the files it carried, not yet fetched. */
 interface Filed {
@@ -87,14 +96,17 @@ interface Filed {
   files: { id: string; unique: string; name: string; size?: number }[];
 }
 
+/** A hold that was taken over: whatever its holder was about to write is not written. */
+class Superseded extends Error {}
+
 /**
  * One topic per piece of work, in the operator's private chat with the bot.
  *
- * Telegram hands a bot its updates once, to whoever asks first, so every
- * message read is filed on disk under its topic before the offset that
- * confirms it moves. A restart, or another process mounting the same
- * directory, reads the same file rather than an update stream that has
- * already moved past it.
+ * Telegram hands a bot its updates once, to whoever asks first, so the one
+ * process reading them files each message, durably, under the profile that
+ * owns its topic before the offset that confirms it moves. A restart, or the
+ * profile's own process, reads that file rather than an update stream that
+ * has already moved past it.
  */
 export class TelegramConversation implements Conversation {
   private readonly opening = new Map<string, Promise<ThreadRef>>();
@@ -113,7 +125,7 @@ export class TelegramConversation implements Conversation {
     // Two looks at the same work in one process must not open two topics.
     const pending = this.opening.get(workId);
     if (pending) return pending;
-    const opened = this.held(async () => {
+    const opened = this.held(async (fence) => {
       // Another process may have opened it while this one waited.
       const already = topicFor(this.topics(), workId);
       if (already !== undefined) return { id: String(already) };
@@ -121,6 +133,9 @@ export class TelegramConversation implements Conversation {
         chat_id: this.chat(),
         name: topicName(title, workId),
       });
+      fence();
+      // Owner first: a reply that arrives before the map is written is still filed here.
+      writeJson(path.join(this.shared(), "owners.json"), { ...this.owners(), [topic.message_thread_id]: path.resolve(this.options.directory) });
       writeJson(path.join(this.options.directory, "topics.json"), { ...this.topics(), [workId]: topic.message_thread_id });
       return { id: String(topic.message_thread_id) };
     }).finally(() => this.opening.delete(workId));
@@ -149,10 +164,10 @@ export class TelegramConversation implements Conversation {
     const after = Date.parse(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
     const topic = topicOf(thread);
-    await this.held(() => this.fileUpdates());
+    await this.held((fence) => this.fileUpdates(fence));
 
     const replies: Reply[] = [];
-    for (const filed of this.filed(topic)) {
+    for (const filed of filedUnder(this.options.directory, topic)) {
       if (Date.parse(filed.at) <= after) continue;
       const { paths, skipped } = await this.downloadAll(topic, filed.files);
       replies.push({ at: filed.at, author: filed.author, text: [filed.text, ...skipped].filter(Boolean).join("\n"), files: paths });
@@ -213,12 +228,11 @@ export class TelegramConversation implements Conversation {
 
   /**
    * Reads every update Telegram holds and files each of the operator's
-   * messages in a topic under that topic, whichever profile's work it is: the
-   * reader is one per bot, the topics are each profile's. The offset moves
-   * only once what it confirms is on disk, and a message filed twice is
-   * filed once.
+   * messages under the profile owning its topic. A topic no profile owns any
+   * more, its profile removed, is skipped. The offset moves only once what it
+   * confirms is durably on disk, and a message filed twice is filed once.
    */
-  private async fileUpdates(): Promise<void> {
+  private async fileUpdates(fence: () => void): Promise<void> {
     for (;;) {
       const offset = this.offset();
       const updates = await this.api.call<TelegramUpdate[]>("getUpdates", {
@@ -228,10 +242,16 @@ export class TelegramConversation implements Conversation {
         allowed_updates: ["message"],
       });
       if (updates.length === 0) return;
+      const owners = this.owners();
       for (const update of updates) {
         const message = update.message;
-        if (message && this.isOperatorAnswer(message)) this.file(message.message_thread_id!, message);
+        if (!message || !this.isOperatorAnswer(message)) continue;
+        const owner = owners[message.message_thread_id!];
+        if (owner === undefined || !fs.existsSync(owner)) continue;
+        fence();
+        file(owner, message.message_thread_id!, message);
       }
+      fence();
       writeJson(path.join(this.shared(), "offset.json"), {
         offset: Math.max(...updates.map((update) => update.update_id)) + 1,
         receivedAt: Date.now(),
@@ -264,80 +284,46 @@ export class TelegramConversation implements Conversation {
     return Boolean(message.text?.trim() || message.caption?.trim() || message.document || message.photo?.length);
   }
 
-  /**
-   * Files one message under its topic, once. Telegram says when to the
-   * second; a reply is placed at the end of its second, and after the last
-   * one filed, so replies keep their order and none falls before a question
-   * asked earlier in the same second. The whole inbox is rewritten aside and
-   * renamed, so a reader never meets half a line.
-   */
-  private file(topic: number, message: TelegramMessage): void {
-    const filed = this.filed(topic);
-    if (filed.some((one) => one.messageId === message.message_id)) return;
-    const last = filed.length ? Date.parse(filed[filed.length - 1]!.at) : Number.NEGATIVE_INFINITY;
-    const at = new Date(Math.max(message.date * 1000 + 999, last + 1)).toISOString();
-    const largest = message.photo?.length ? [...message.photo].sort((a, b) => (b.file_size ?? 0) - (a.file_size ?? 0))[0] : undefined;
-    const files = [
-      ...(message.document ? [{ id: message.document.file_id, unique: message.document.file_unique_id, name: message.document.file_name ?? message.document.file_unique_id, size: message.document.file_size }] : []),
-      ...(largest ? [{ id: largest.file_id, unique: largest.file_unique_id, name: `${largest.file_unique_id}.jpg`, size: largest.file_size }] : []),
-    ];
-    const entry: Filed = { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files };
-    const inbox = path.join(this.shared(), "inbox");
-    privateDirectory(inbox);
-    writeText(path.join(inbox, `${topic}.jsonl`), [...filed, entry].map((one) => `${JSON.stringify(one)}\n`).join(""));
-  }
-
-  /** What is filed under a topic. A line that does not parse is skipped: its update was never confirmed, so it is filed again. */
-  private filed(topic: number): Filed[] {
-    const file = path.join(this.shared(), "inbox", `${topic}.jsonl`);
-    if (!fs.existsSync(file)) return [];
-    return fs.readFileSync(file, "utf-8").split("\n").filter(Boolean).flatMap((line) => {
-      try {
-        return [JSON.parse(line) as Filed];
-      } catch {
-        return [];
-      }
-    });
-  }
-
   /** The files as local paths, and a line naming each one too large to fetch. */
   private async downloadAll(topic: number, files: Filed["files"]): Promise<{ paths: string[]; skipped: string[] }> {
     const limit = this.options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
     const paths: string[] = [];
     const skipped: string[] = [];
-    for (const file of files) {
-      const target = path.join(this.shared(), "files", String(topic), safeName(file.unique), safeName(file.name));
-      const kept = (file.size ?? 0) <= limit && (fs.existsSync(target) || (await this.download(file.id, target, limit)));
+    for (const one of files) {
+      const target = path.join(this.options.directory, "files", String(topic), safeName(one.unique), safeName(one.name));
+      const kept = (one.size ?? 0) <= limit && (fs.existsSync(target) || (await this.download(one, target, limit)));
       if (kept) paths.push(target);
-      else skipped.push(`[${file.name} was not downloaded: it is larger than ${limit} bytes]`);
+      else skipped.push(`[${one.name} was not downloaded: it is larger than ${limit} bytes]`);
     }
     return { paths, skipped };
   }
 
   /**
-   * Fetches one file to its place, or answers false when it is too large:
-   * by what getFile says, by Telegram refusing it as too big when the
-   * message did not say its size, or by its bytes as they arrive.
+   * Fetches one file to its place, or answers false when it is too large: by
+   * what getFile says, by Telegram refusing it as too big when the message did
+   * not say its size, or by its bytes as they arrive. A local Bot API server
+   * answers with a path on its own disk, which is read where it lies.
    */
-  private async download(fileId: string, target: string, limit: number): Promise<boolean> {
+  private async download(one: Filed["files"][number], target: string, limit: number): Promise<boolean> {
     let found: { file_path?: string; file_size?: number };
     try {
-      found = await this.api.call("getFile", { file_id: fileId });
+      found = await this.api.call("getFile", { file_id: one.id });
     } catch (error) {
       if (error instanceof BotApiRefusal && /file is too big/i.test(error.description)) return false;
       throw error;
     }
-    if ((found.file_size ?? 0) > limit || !found.file_path) return false;
+    if ((found.file_size ?? 0) > limit) return false;
+    if (!found.file_path) throw new Error(`telegram gave no path to download ${one.name}; it is asked for again on the next look`);
     let bytes: Uint8Array;
     try {
-      bytes = await this.api.download(found.file_path, limit);
+      bytes = path.isAbsolute(found.file_path) ? localFile(found.file_path, limit) : await this.api.download(found.file_path, limit);
     } catch (error) {
       if (error instanceof TooLarge) return false;
       throw error;
     }
     privateDirectory(path.dirname(target));
-    // Staged and renamed, so a path that exists is always a whole file.
-    const partial = `${target}.${randomUUID()}.partial`;
+    // Staged under a short name of its own and renamed, so a path that exists is always a whole file.
+    const partial = path.join(path.dirname(target), `.${randomUUID()}.partial`);
     fs.writeFileSync(partial, bytes, { flag: "wx", mode: 0o600 });
     fs.renameSync(partial, target);
     return true;
@@ -347,37 +333,112 @@ export class TelegramConversation implements Conversation {
     return readJson<Record<string, number>>(path.join(this.options.directory, "topics.json")) ?? {};
   }
 
+  private owners(): Record<string, string> {
+    return readJson<Record<string, string>>(path.join(this.shared(), "owners.json")) ?? {};
+  }
+
   /**
-   * Runs `work` holding the bot's shared directory: one process reads its
-   * updates or opens a topic at a time. The hold is renewed while the work
-   * runs, so a slow call or a flood wait is not mistaken for a dead holder; a
-   * hold not renewed within its lease is taken over, and a holder releases
-   * only a hold that is still its own.
+   * Runs `work` holding the bot: one process reads its updates or opens a
+   * topic at a time. A hold is a numbered generation, taken by creating the
+   * next number, which exactly one contender can; it is renewed while the work
+   * runs, and one not renewed within its lease is passed by the next number.
+   * `fence` throws once a later generation exists, so a holder that was paused
+   * past its lease writes nothing over its successor.
    */
-  private async held<T>(work: () => Promise<T>): Promise<T> {
-    const lock = path.join(this.shared(), "lock");
+  private async held<T>(work: (fence: () => void) => Promise<T>): Promise<T> {
     const lease = this.options.leaseMs ?? 60_000;
     const deadline = Date.now() + (this.options.lockWaitMs ?? 120_000);
-    const me = randomUUID();
-    while (!claim(lock, me)) {
-      const since = mtimeOf(lock);
-      if (since !== undefined && Date.now() - since > lease) {
-        // Moved aside first, so of two processes taking it over one wins.
-        ignoringGone(() => fs.renameSync(lock, `${lock}.${randomUUID()}.stale`));
-        removeStale(this.shared());
-        continue;
+    const mine = await this.take(lease, deadline);
+    const lock = path.join(this.shared(), `lock-${mine}`);
+    const fence = () => {
+      if (!fs.existsSync(lock) || generations(this.shared()).some((n) => n > mine)) {
+        throw new Superseded(`another process took over ${this.shared()}; this one writes nothing more`);
+      }
+    };
+    const renew = setInterval(() => ignoringGone(() => fs.utimesSync(lock, new Date(), new Date())), Math.max(10, lease / 3));
+    try {
+      return await work(fence);
+    } finally {
+      clearInterval(renew);
+      fs.rmSync(lock, { recursive: true, force: true });
+    }
+  }
+
+  private async take(lease: number, deadline: number): Promise<number> {
+    for (;;) {
+      const held = generations(this.shared());
+      const top = held.length ? Math.max(...held) : 0;
+      const since = top ? mtimeOf(path.join(this.shared(), `lock-${top}`)) : undefined;
+      if (!top || since === undefined || Date.now() - since > lease) {
+        try {
+          fs.mkdirSync(path.join(this.shared(), `lock-${top + 1}`));
+          for (const older of held) fs.rmSync(path.join(this.shared(), `lock-${older}`), { recursive: true, force: true });
+          return top + 1;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+          continue;
+        }
       }
       if (Date.now() > deadline) throw new Error(`${this.shared()} is held by another process; waited for it and gave up`);
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    const renew = setInterval(() => ignoringGone(() => ownedBy(lock, me) && fs.utimesSync(lock, new Date(), new Date())), Math.max(10, lease / 3));
-    try {
-      return await work();
-    } finally {
-      clearInterval(renew);
-      if (ownedBy(lock, me)) fs.rmSync(lock, { recursive: true, force: true });
-    }
   }
+}
+
+/**
+ * Files one message under its topic in the owning profile, once. Telegram
+ * says when to the second; a reply is placed at the end of its second, and
+ * after the last one filed, so replies keep their order and none falls before
+ * a question asked earlier in the same second.
+ */
+function file(owner: string, topic: number, message: TelegramMessage): void {
+  const filed = filedUnder(owner, topic);
+  if (filed.some((one) => one.messageId === message.message_id)) return;
+  const last = filed.length ? Date.parse(filed[filed.length - 1]!.at) : Number.NEGATIVE_INFINITY;
+  const at = new Date(Math.max(message.date * 1000 + 999, last + 1)).toISOString();
+  // The largest picture by its size on screen, which every size states; a byte count is optional.
+  const largest = message.photo?.length ? [...message.photo].sort((a, b) => b.width * b.height - a.width * a.height)[0] : undefined;
+  const files = [
+    ...(message.document ? [{ id: message.document.file_id, unique: message.document.file_unique_id, name: message.document.file_name ?? message.document.file_unique_id, size: message.document.file_size }] : []),
+    ...(largest ? [{ id: largest.file_id, unique: largest.file_unique_id, name: `${largest.file_unique_id}.jpg`, size: largest.file_size }] : []),
+  ];
+  const entry: Filed = { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files };
+  const inbox = path.join(owner, "inbox");
+  privateDirectory(inbox);
+  writeText(path.join(inbox, `${topic}.jsonl`), [...filed, entry].map((one) => `${JSON.stringify(one)}\n`).join(""));
+}
+
+/** What is filed under a topic. A line that does not parse is skipped: its update was never confirmed, so it is filed again. */
+function filedUnder(owner: string, topic: number): Filed[] {
+  const inbox = path.join(owner, "inbox", `${topic}.jsonl`);
+  if (!fs.existsSync(inbox)) return [];
+  return fs.readFileSync(inbox, "utf-8").split("\n").filter(Boolean).flatMap((line) => {
+    try {
+      return [JSON.parse(line) as Filed];
+    } catch {
+      return [];
+    }
+  });
+}
+
+/** A file a local Bot API server keeps on a disk amy shares, read within the limit. */
+function localFile(file: string, limit: number): Uint8Array {
+  let size: number;
+  try {
+    size = fs.statSync(file).size;
+  } catch (error) {
+    throw new Error(`the local Bot API server keeps this file at ${file}, which amy cannot read; the server and amy must share that disk`, { cause: error });
+  }
+  if (size > limit) throw new TooLarge(limit);
+  return fs.readFileSync(file);
+}
+
+/** The generations of the bot's lock present now. */
+function generations(directory: string): number[] {
+  return fs.readdirSync(directory).flatMap((name) => {
+    const match = LOCK.exec(name);
+    return match ? [Number(match[1])] : [];
+  });
 }
 
 /** A work's topic, read as the map's own entry: a work id such as `constructor` is not the map's prototype. */
@@ -385,30 +446,46 @@ function topicFor(topics: Record<string, number>, workId: string): number | unde
   return Object.hasOwn(topics, workId) ? topics[workId] : undefined;
 }
 
-/** Takes the lock if nobody holds it, writing who holds it inside. */
-function claim(lock: string, me: string): boolean {
-  try {
-    fs.mkdirSync(lock);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
-    throw error;
-  }
-  fs.writeFileSync(path.join(lock, "owner"), me, { mode: 0o600 });
-  return true;
+function topicOf(thread: ThreadRef): number {
+  const topic = Number(thread.id);
+  if (!Number.isInteger(topic)) throw new Error(`${thread.id} is not a telegram topic`);
+  return topic;
 }
 
-function ownedBy(lock: string, me: string): boolean {
+/** The title, as much of it as a topic's name holds; the work id when there is none. */
+function topicName(title: string, workId: string): string {
+  const name = (title.trim() || workId).replace(/\s+/g, " ");
+  return name.length > MAX_TOPIC_NAME_CHARS ? `${name.slice(0, whole(name, MAX_TOPIC_NAME_CHARS - 1))}…` : name;
+}
+
+/**
+ * The text in messages Telegram accepts, split at a line where one falls in
+ * reach, never inside a character, and never leaving an empty last part.
+ */
+function parts(text: string): string[] {
+  const out: string[] = [];
+  let rest = text;
+  while (rest.length > MAX_MESSAGE_CHARS) {
+    const cut = rest.lastIndexOf("\n", MAX_MESSAGE_CHARS);
+    const at = cut > MAX_MESSAGE_CHARS / 2 ? cut : whole(rest, MAX_MESSAGE_CHARS);
+    out.push(rest.slice(0, at));
+    rest = rest.slice(at).replace(/^\n/, "");
+  }
+  if (rest !== "" || out.length === 0) out.push(rest);
+  return out;
+}
+
+/** The cut at `at`, moved back one if it would split a surrogate pair. */
+function whole(text: string, at: number): number {
+  const code = text.charCodeAt(at - 1);
+  return code >= 0xd800 && code <= 0xdbff ? at - 1 : at;
+}
+
+function mtimeOf(file: string): number | undefined {
   try {
-    return fs.readFileSync(path.join(lock, "owner"), "utf-8") === me;
+    return fs.statSync(file).mtimeMs;
   } catch {
-    return false;
-  }
-}
-
-/** Removes the holds taken over and moved aside. */
-function removeStale(directory: string): void {
-  for (const name of fs.readdirSync(directory)) {
-    if (name.endsWith(".stale")) fs.rmSync(path.join(directory, name), { recursive: true, force: true });
+    return undefined;
   }
 }
 
@@ -428,44 +505,35 @@ function writeJson(file: string, value: unknown): void {
   writeText(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-/** Written aside and renamed, so a reader never sees half of it. */
+/**
+ * Written aside, flushed to the disk, renamed, and the rename flushed too: a
+ * reader never sees half of it, and a crash after this returns loses none of
+ * it, which is what lets the offset that follows confirm it to Telegram.
+ */
 function writeText(file: string, text: string): void {
-  const partial = `${file}.${randomUUID()}.partial`;
-  fs.writeFileSync(partial, text, { mode: 0o600 });
-  fs.renameSync(partial, file);
-}
-
-function topicOf(thread: ThreadRef): number {
-  const topic = Number(thread.id);
-  if (!Number.isInteger(topic)) throw new Error(`${thread.id} is not a telegram topic`);
-  return topic;
-}
-
-/** The title, as much of it as a topic's name holds; the work id when there is none. */
-function topicName(title: string, workId: string): string {
-  const name = (title.trim() || workId).replace(/\s+/g, " ");
-  return name.length > MAX_TOPIC_NAME_CHARS ? `${name.slice(0, MAX_TOPIC_NAME_CHARS - 1)}…` : name;
-}
-
-/** The text in messages Telegram accepts, split at a line where one falls in reach. */
-function parts(text: string): string[] {
-  const out: string[] = [];
-  let rest = text;
-  while (rest.length > MAX_MESSAGE_CHARS) {
-    const cut = rest.lastIndexOf("\n", MAX_MESSAGE_CHARS);
-    const at = cut > MAX_MESSAGE_CHARS / 2 ? cut : MAX_MESSAGE_CHARS;
-    out.push(rest.slice(0, at));
-    rest = rest.slice(at).replace(/^\n/, "");
-  }
-  out.push(rest);
-  return out;
-}
-
-function mtimeOf(file: string): number | undefined {
+  const partial = path.join(path.dirname(file), `.${randomUUID()}.partial`);
+  const handle = fs.openSync(partial, "wx", 0o600);
   try {
-    return fs.statSync(file).mtimeMs;
-  } catch {
-    return undefined;
+    fs.writeSync(handle, text);
+    fs.fsyncSync(handle);
+  } finally {
+    fs.closeSync(handle);
+  }
+  fs.renameSync(partial, file);
+  syncDirectory(path.dirname(file));
+}
+
+/** A directory's entries flushed; a platform that cannot open a directory for this keeps the rename as it is. */
+function syncDirectory(directory: string): void {
+  let handle: number | undefined;
+  try {
+    handle = fs.openSync(directory, "r");
+    fs.fsyncSync(handle);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "EISDIR" && code !== "EPERM" && code !== "EINVAL" && code !== "EBADF") throw error;
+  } finally {
+    if (handle !== undefined) fs.closeSync(handle);
   }
 }
 

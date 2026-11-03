@@ -2,6 +2,7 @@
 // contract both ways: every call amy makes is checked against the method's
 // parameters, and every answer this gives against the type the method
 // returns, so the stand-in cannot drift from what Telegram documents.
+import { writeFileSync } from "node:fs";
 import { assertValidBotApiCall, assertValidBotApiResult } from "@amykit/test-fixtures";
 import type { HttpRequest, HttpResponse, HttpTransport } from "../src/index.js";
 
@@ -28,6 +29,10 @@ export interface StandInOptions {
   polledElsewhere?: boolean;
   /** getFile refuses a file larger than this, as Telegram refuses one past 20 MB. */
   largestFile?: number;
+  /** getFile answers with no file_path, which the Bot API allows. */
+  noFilePath?: boolean;
+  /** A local Bot API server: getFile answers an absolute path under this directory. */
+  localFiles?: string;
 }
 
 /**
@@ -85,6 +90,12 @@ export function botApiStandIn(options: StandInOptions = {}) {
       const file = files.get(String(args.file_id));
       if (!file) return refuse(400, "Bad Request: invalid file_id");
       if (options.largestFile !== undefined && file.size > options.largestFile) return refuse(400, "Bad Request: file is too big");
+      if (options.noFilePath) return { file_id: file.id, file_unique_id: file.unique, file_size: file.size };
+      if (options.localFiles) {
+        const local = `${options.localFiles}/${file.unique}`;
+        writeFileSync(local, file.bytes);
+        return { file_id: file.id, file_unique_id: file.unique, file_size: file.size, file_path: local };
+      }
       return { file_id: file.id, file_unique_id: file.unique, file_size: file.size, file_path: `documents/${file.unique}` };
     },
   };
@@ -144,7 +155,15 @@ export function botApiStandIn(options: StandInOptions = {}) {
       const file: File = { id: `f${nextMessage}`, unique, bytes: where.file.bytes, size: where.file.size ?? where.file.bytes.byteLength };
       files.set(file.id, file);
       message.caption = text;
-      if (where.photo) message.photo = [{ file_id: file.id, file_unique_id: unique, width: 640, height: 480, file_size: file.size }];
+      if (where.photo) {
+        // A thumbnail too, listed first and with no byte count, as Telegram may send them.
+        const thumb: File = { id: `t${nextMessage}`, unique: `t${unique}`, bytes: new Uint8Array([0]), size: 1 };
+        files.set(thumb.id, thumb);
+        message.photo = [
+          { file_id: thumb.id, file_unique_id: thumb.unique, width: 90, height: 67 },
+          { file_id: file.id, file_unique_id: unique, width: 640, height: 480 },
+        ];
+      }
       else message.document = { file_id: file.id, file_unique_id: unique, file_name: where.file.name, ...(where.file.unsized ? {} : { file_size: file.size }) };
     }
     updates.push({ update_id: nextUpdate++, message });

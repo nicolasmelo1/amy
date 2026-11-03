@@ -6,6 +6,8 @@ export interface HttpRequest {
   body?: string;
   /** Refuse the answer once its body passes this many bytes, while it arrives. */
   maxBytes?: number;
+  /** Abandon the exchange, the body's last byte included, after this long. */
+  deadlineMs?: number;
 }
 
 export interface HttpResponse {
@@ -23,7 +25,9 @@ export class TooLarge extends Error {
 }
 
 export const fetchTransport: HttpTransport = async (request) => {
-  const response = await fetch(request.url, { method: request.method, headers: request.headers, body: request.body });
+  // One signal for the request and the body, so a server that trickles bytes forever is cut off too.
+  const signal = request.deadlineMs === undefined ? undefined : AbortSignal.timeout(request.deadlineMs);
+  const response = await fetch(request.url, { method: request.method, headers: request.headers, body: request.body, ...(signal ? { signal } : {}) });
   return { status: response.status, body: await readBody(response, request.maxBytes) };
 };
 
@@ -66,6 +70,13 @@ export const TELEGRAM_API = "https://api.telegram.org";
 export const DEFAULT_RATE_LIMIT_RETRIES = 5;
 
 /**
+ * How long one exchange may take, body included. Updates are asked for with
+ * no long poll, so anything this slow is a server that stopped answering, and
+ * holding the bot's lock for it would stall every profile.
+ */
+export const DEFAULT_DEADLINE_MS = 60_000;
+
+/**
  * What the Bot API answered when it refused, with its `error_code` kept
  * apart, so a 409 is told from a 400 without reading the words.
  */
@@ -84,6 +95,7 @@ export interface BotApiOptions {
   transport?: HttpTransport;
   sleep?: (ms: number) => Promise<void>;
   maxRateLimitRetries?: number;
+  deadlineMs?: number;
 }
 
 interface Answer {
@@ -105,6 +117,7 @@ export class BotApi {
   private readonly transport: HttpTransport;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly maxRetries: number;
+  private readonly deadlineMs: number;
 
   constructor(
     private readonly token: string,
@@ -114,6 +127,7 @@ export class BotApi {
     this.transport = options.transport ?? fetchTransport;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.maxRetries = options.maxRateLimitRetries ?? DEFAULT_RATE_LIMIT_RETRIES;
+    this.deadlineMs = options.deadlineMs ?? DEFAULT_DEADLINE_MS;
   }
 
   /** The method's `result`, or a {@link BotApiRefusal} when `ok` is false. */
@@ -124,6 +138,7 @@ export class BotApi {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(args),
+        deadlineMs: this.deadlineMs,
       });
       const answer = parse(method, response);
       if (answer.ok === true) return answer.result as T;
@@ -144,6 +159,7 @@ export class BotApi {
       url: `${this.server}/file/bot${this.token}/${filePath}`,
       method: "GET",
       headers: {},
+      deadlineMs: this.deadlineMs,
       ...(maxBytes === undefined ? {} : { maxBytes }),
     });
     if (response.status !== 200) throw new Error(`telegram file download answered HTTP ${response.status}`);
