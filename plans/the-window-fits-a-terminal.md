@@ -15,6 +15,8 @@ sources:
   - { id: S13, kind: reference, ref: "plans/the-workplace-opens-where-you-work.md", said: "the terminal half of its opener: the window suspends, the person's $EDITOR or a shell runs in the record's checkout, and the window comes back on the same record when it exits" }
   - { id: S14, kind: decision, said: "the renderer only translates primitives, holding no view, snapshot or rule the desktop renderer does not, so the two cannot disagree about what a record says" }
   - { id: S15, kind: decision, said: "as the second real renderer, plugins/ui-ink/src/** joins ui-frame's activation; the script runs on the installed Ink plugin at 120×40 by default keys, conformance remap and SGR mouse input, comparing desktop and terminal projections every step" }
+  - { id: S16, kind: decision, said: "the terminal renderer is measured: launch to PTY ready, launch to the first matching frame, and typing latency at p50, p95, p99 and max, held to thresholds in the policy. Decided 2026-11-03" }
+  - { id: S17, kind: reference, ref: "plans/the-performance-guard-can-fail.md", said: "a baseline names its environment and a comparison across environments gives no verdict; the guard proves every run that it can go red" }
 touches:
   - plugins/ui-ink/**
   - packages/ui-conformance/src/**
@@ -33,6 +35,7 @@ criteria:
   - { id: A11, statement: "a terminal that reports no mouse still answers every key", proof: "deferred:test:plugins/ui-ink/tests/mouse.test.ts", sources: [S12] }
   - { id: A12, statement: "the terminal draws no menu bar, as its contribution declares", proof: "deferred:assertion:frame.a_surface_is_drawn_only_where_declared", sources: [S2] }
   - { id: A13, statement: "the narrowest width the frame allows still draws every region", proof: "deferred:assertion:frame.no_region_is_lost_at_the_narrowest_width", sources: [S4, S15] }
+  - { id: A14, statement: "the terminal scenario records launch to PTY ready, first matching frame and typing latency, and one past its threshold turns the gate red naming it", proof: "deferred:assertion:frame.the_terminal_is_within_its_budget", sources: [S16, S17] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A1, A2, A8" }
 failures:

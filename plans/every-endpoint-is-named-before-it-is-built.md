@@ -10,10 +10,10 @@ sources:
   - { id: S8, kind: decision, said: "a row delivering an operation flips it to delivered in the same pull request; a row needing one the registry lacks adds it here first" }
   - { id: S9, kind: reference, ref: "plans/the-server-speaks-in-domains.md", said: "no database: every read comes from files amy keeps, through the ports and the event log; every write lands as the matching amy command's would" }
   - { id: S10, kind: decision, said: "paths are versioned, /v1/…, each owned by one domain" }
-  - { id: S11, kind: decision, said: "every request carries Authorization: Bearer <token>; 401 session.unauthorized is declared on every operation" }
+  - { id: S11, kind: decision, said: "a request on the socket carries Authorization: Bearer <token>; over TCP the connection is a paired device's, authenticated by its key; 401 session.unauthorized is declared on every operation" }
   - { id: S12, kind: decision, said: "only receiveGitHubEvent and receiveLinearEvent skip the token: a webhook cannot carry it, so the tool's signature, verified before reading, authenticates them, with no session; every other operation, listEventSources included, keeps both" }
   - { id: S13, kind: decision, said: "every request after openSession carries X-Amy-Session: <sessionId>, naming the client and the stream later events go to; getCompatibility and openSession carry none" }
-  - { id: S14, kind: decision, said: "a session belongs to the token that opened it; another token's session answers 404 session.not_found, declared on every operation" }
+  - { id: S14, kind: decision, said: "a session belongs to the token or the paired device that opened it; another's session answers 404 session.not_found, declared on every operation" }
   - { id: S15, kind: decision, said: "work is addressed {profile}/{workId}: records are kept per profile and two profiles may hold the same id" }
   - { id: S16, kind: reference, ref: "plans/the-window-is-served.md", said: "local-only operations are served on the local socket only; over TCP they are not routed (404, absent from views) whatever the source address, so a tunnel ending on 127.0.0.1 gains nothing" }
   - { id: S17, kind: decision, said: "writes name what an operation changes beyond the server's memory; none writes to a tracker or forge; every write is one an amy command can make" }
@@ -40,6 +40,16 @@ sources:
   - { id: S38, kind: decision, said: "getHandbrake GET /v1/machine/handbrake → { paused, reason?, since? }; setHandbrake PUT { paused, reason? }, amy pause and resume for every workflow: 200 { paused, reason?, since? }; writes stop switch and event log" }
   - { id: S39, kind: decision, said: "getWorkflowDiagram GET /v1/workflows/{profile}/diagram → { text (workflow.mmd), revision (digest), editable (only under ~/.amy/workflows) }, what amy workflow export prints; 404 workflows.not_found; 404 workflows.no_diagram for one written without a diagram" }
   - { id: S74, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "the profile's workflow.mmd that getWorkflowDiagram returns and saveWorkflowDiagram writes" }
+  - { id: S75, kind: reference, ref: "plans/the-window-is-served.md", said: "a paired device is never offered running an agent, and an ask runs on the window's own server: so startAsk and addAskTurn are local-only, never routed over TCP" }
+  - { id: S76, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "an ask's about names the server its record lives on as well as profile and workId; absent, this server, so two servers' TBO-1 are two targets" }
+  - { id: S77, kind: reference, ref: "plans/the-window-is-served.md", said: "startGrooming and addGroomingTurn are local-only: grooming is an agent conversation, and no agent runs for a client over TCP" }
+  - { id: S78, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "over TCP addThreadTurn takes decisions only: a discussion turn is answered by an agent, so a paired device's is 403 threads.discussion_local_only" }
+  - { id: S79, kind: reference, ref: "plans/the-window-is-served.md", said: "unpairing a device ends its open sessions and their streams at once; its next request answers 401" }
+  - { id: S80, kind: decision, said: "listDevices GET /v1/devices → the paired devices { deviceId, name, acting, pairedAt, connected }; local-only" }
+  - { id: S81, kind: decision, said: "unpairDevice DELETE /v1/devices/{deviceId} → 204: revokes the device's pairing and ends its sessions and streams; 404 devices.not_found; local-only; what amy ui unpair and Settings call" }
+  - { id: S82, kind: decision, said: "setRemoteAccess PUT /v1/settings/remote { on } → 200 { on, listening }: opens or closes the TCP listener; local-only; what Settings and every renderer on this machine offer" }
+  - { id: S83, kind: decision, said: "listPairingRequests GET /v1/devices/requests → the machines asking to pair { requestId, name, code, askedAt }; approvePairing POST /v1/devices/requests/{requestId} { code, acting } → 201 { deviceId }; 409 devices.code_mismatch; local-only" }
+  - { id: S84, kind: decision, said: "setDeviceActing PUT /v1/devices/{deviceId}/acting { acting } → 200: grants or withdraws acting from a paired device, effective on its open sessions; 404 devices.not_found; local-only" }
   - { id: S40, kind: decision, said: "saveWorkflowDiagram PUT /v1/workflows/{profile}/diagram { text, baseRevision }: reads with the host's mount subset, writes workflow.mmd, runs amy workflow check; 200 { revision, undrawn[], unwalked[] }; local-only; writes the workflow's directory" }
   - { id: S41, kind: decision, said: "saveWorkflowDiagram refuses 409 workflows.stale_revision { current }; 409 workflows.not_yours for a package; 422 workflows.diagram_refused { line, construct }" }
   - { id: S42, kind: decision, said: "and 409 workflows.state_in_use { state, records[] } when it drops a state a record is in or has an edge into under the mounted diagram" }
@@ -90,6 +100,13 @@ criteria:
   - { id: A6, statement: "an ask's answer and a shell's output reach only the session in the request's X-Amy-Session, with two clients on one token", proof: "deferred:assertion:server.an_event_reaches_only_its_session", sources: [S13, S14, S54, S68] }
   - { id: A7, statement: "a view whose intent names an operationId the registry does not list fails the build", proof: "deferred:assertion:server.every_intent_names_an_operation", sources: [S34, S35] }
   - { id: A8, statement: "editing surface.yaml without sf lock fails the build", proof: "deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED", sources: [S3] }
+  - { id: A9, statement: "startAsk and addAskTurn called over TCP are not routed, 404, and no harness runs", proof: "deferred:assertion:server.no_ask_runs_for_a_tcp_client", sources: [S51, S54, S75] }
+  - { id: A10, statement: "startAsk's about carries the record's server, and two asks about TBO-1 on two servers start from two different records", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S51, S76] }
+  - { id: A11, statement: "startGrooming and addGroomingTurn called over TCP are not routed, 404, and no harness runs", proof: "deferred:assertion:server.no_grooming_runs_for_a_tcp_client", sources: [S60, S62, S77] }
+  - { id: A12, statement: "a discussion turn sent over TCP is refused 403 and no agent answers it, while a decision from a device granted acting is taken", proof: "deferred:assertion:server.a_remote_discussion_runs_no_agent", sources: [S57, S78] }
+  - { id: A13, statement: "unpairing a device closes its stream and answers its next request 401, while another device's session keeps receiving", proof: "deferred:assertion:server.unpairing_ends_the_session", sources: [S14, S79] }
+  - { id: A14, statement: "listDevices, unpairDevice and setRemoteAccess are absent over TCP and answer on the socket, and unpairDevice ends that device's sessions", proof: "deferred:assertion:server.the_devices_are_the_owners_to_manage", sources: [S80, S81, S82] }
+  - { id: A15, statement: "a pairing request is approved on the socket only with its matching code, and a device approved read-only pokes only after setDeviceActing grants it, in the same session", proof: "deferred:assertion:server.approving_and_granting_are_the_owners", sources: [S83, S84] }
 guarantee:
   - { holds: "a local-only operation or view is reached only on the local socket", not_against: "a TCP connection from 127.0.0.1, a tunnel included" }
   - { holds: "only the two webhook routes answer without amy's token", not_against: "a valid tool signature, which authenticates those two" }
