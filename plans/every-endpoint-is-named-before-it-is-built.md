@@ -48,6 +48,8 @@ sources:
   - { id: S80, kind: decision, said: "listDevices GET /v1/devices → the paired devices { deviceId, name, acting, pairedAt, connected }; local-only" }
   - { id: S81, kind: decision, said: "unpairDevice DELETE /v1/devices/{deviceId} → 204: revokes the device's pairing and ends its sessions and streams; 404 devices.not_found; local-only; what amy ui unpair and Settings call" }
   - { id: S82, kind: decision, said: "setRemoteAccess PUT /v1/settings/remote { on } → 200 { on, listening }: opens or closes the TCP listener; local-only; what Settings and every renderer on this machine offer" }
+  - { id: S83, kind: decision, said: "listPairingRequests GET /v1/devices/requests → the machines asking to pair { requestId, name, code, askedAt }; approvePairing POST /v1/devices/requests/{requestId} { code, acting } → 201 { deviceId }; 409 devices.code_mismatch; local-only" }
+  - { id: S84, kind: decision, said: "setDeviceActing PUT /v1/devices/{deviceId}/acting { acting } → 200: grants or withdraws acting from a paired device, effective on its open sessions; 404 devices.not_found; local-only" }
   - { id: S40, kind: decision, said: "saveWorkflowDiagram PUT /v1/workflows/{profile}/diagram { text, baseRevision }: reads with the host's mount subset, writes workflow.mmd, runs amy workflow check; 200 { revision, undrawn[], unwalked[] }; local-only; writes the workflow's directory" }
   - { id: S41, kind: decision, said: "saveWorkflowDiagram refuses 409 workflows.stale_revision { current }; 409 workflows.not_yours for a package; 422 workflows.diagram_refused { line, construct }" }
   - { id: S42, kind: decision, said: "and 409 workflows.state_in_use { state, records[] } when it drops a state a record is in or has an edge into under the mounted diagram" }
@@ -104,6 +106,7 @@ criteria:
   - { id: A12, statement: "a discussion turn sent over TCP is refused 403 and no agent answers it, while a decision from a device granted acting is taken", proof: "deferred:assertion:server.a_remote_discussion_runs_no_agent", sources: [S57, S78] }
   - { id: A13, statement: "unpairing a device closes its stream and answers its next request 401, while another device's session keeps receiving", proof: "deferred:assertion:server.unpairing_ends_the_session", sources: [S14, S79] }
   - { id: A14, statement: "listDevices, unpairDevice and setRemoteAccess are absent over TCP and answer on the socket, and unpairDevice ends that device's sessions", proof: "deferred:assertion:server.the_devices_are_the_owners_to_manage", sources: [S80, S81, S82] }
+  - { id: A15, statement: "a pairing request is approved on the socket only with its matching code, and a device approved read-only pokes only after setDeviceActing grants it, in the same session", proof: "deferred:assertion:server.approving_and_granting_are_the_owners", sources: [S83, S84] }
 guarantee:
   - { holds: "a local-only operation or view is reached only on the local socket", not_against: "a TCP connection from 127.0.0.1, a tunnel included" }
   - { holds: "only the two webhook routes answer without amy's token", not_against: "a valid tool signature, which authenticates those two" }
