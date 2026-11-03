@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BotApi, TelegramConversation } from "../src/index.js";
 import { BotApiStandIn, OPERATOR, SOMEBODY_ELSE, TOKEN, botApiStandIn } from "./stand-in.js";
 
@@ -877,5 +877,30 @@ describe("the seventh review", () => {
 
     expect(fs.existsSync(path.join(directory, "unowned"))).toBe(false);
     expect(telegram.pending()).toBe(0);
+  });
+});
+
+describe("the eighth review", () => {
+  it("files a reply whose topic's owner was recorded while the reader was looking for an opening", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("BRL", { topic: Number(thread.id) });
+    // The reader finds no owner, as if it looked just before the opener recorded it.
+    const ownerFile = path.join(directory, "owners", `${OPERATOR}-${thread.id}.json`);
+    const owner = fs.readFileSync(ownerFile, "utf-8");
+    fs.rmSync(ownerFile);
+    const readdir = fs.readdirSync;
+    const spy = vi.spyOn(fs, "readdirSync").mockImplementation(((target: fs.PathLike, ...rest: unknown[]) => {
+      // The opener records the owner and closes its opening while the reader looks for one.
+      if (String(target).includes(`${path.sep}opening${path.sep}`)) fs.writeFileSync(ownerFile, owner);
+      return (readdir as (...args: unknown[]) => unknown)(target, ...rest);
+    }) as typeof fs.readdirSync);
+    try {
+      expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

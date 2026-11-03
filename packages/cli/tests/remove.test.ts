@@ -281,6 +281,38 @@ describe("removing a workflow profile", () => {
     expect(fs.existsSync(path.join(home, "tickets", "records", "one.json"))).toBe(true);
   });
 
+  it("never deletes a conversation directory the removed profile does not mount", async () => {
+    const profile = aMachine();
+    fs.writeFileSync(
+      path.join(home, "config.yaml"),
+      ["repos:", "  - acme/widgets", "plugins:", "  \"@amykit/plugin-telegram\":", "    directory: telegram-left-behind", "workflows:", "  tickets:", '    workflow: "@amykit/workflow-ticket-to-qa"', ""].join("\n"),
+      "utf-8",
+    );
+    const left = path.join(home, "telegram-left-behind");
+    fs.mkdirSync(left, { recursive: true });
+    fs.writeFileSync(path.join(left, "topics.json"), "{}", "utf-8");
+
+    await removeProfileAndState(home, loadConfig(home), profile, { yes: true }, deps().deps);
+
+    expect(fs.existsSync(path.join(left, "topics.json"))).toBe(true);
+  });
+
+  it("leaves a directory that holds another profile's state, not only one that is it", async () => {
+    const profile = aMachine();
+    fs.writeFileSync(
+      path.join(home, "config.yaml"),
+      ["repos:", "  - acme/widgets", "plugins:", "  \"@amykit/plugin-telegram\":", "    directory: tickets/records/telegram", "workflows:", "  tickets:", '    workflow: "@amykit/workflow-ticket-to-qa"', "  plans:", '    workflow: "@amykit/workflow-note-to-plan"', ""].join("\n"),
+      "utf-8",
+    );
+    const nested = path.join(home, "tickets", "records", "telegram");
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, "topics.json"), "{}", "utf-8");
+
+    await removeProfileAndState(home, loadConfig(home), profile, { yes: true }, deps().deps);
+
+    expect(fs.existsSync(path.join(nested, "topics.json"))).toBe(true);
+  });
+
   it("keeps the state when asked to, and says how to delete it", async () => {
     const profile = aMachine();
     const wired = deps();

@@ -306,12 +306,18 @@ export class TelegramConversation implements Conversation {
     const topic = message.message_thread_id!;
     // Keyed by chat: one bot's topics in two operators' chats are two owners.
     const key = `${message.chat.id}-${topic}`;
-    const owner = readJson<Owner>(path.join(this.shared(), "owners", `${key}.json`));
+    const ownerFile = path.join(this.shared(), "owners", `${key}.json`);
+    let owner = readJson<Owner>(ownerFile);
     if (!owner) {
       // A topic being opened right now has no owner yet: kept until it has, never confirmed away.
+      if (this.openingIn(message.chat.id)) {
+        createOnce(path.join(this.shared(), "unowned", key, `${message.message_id}.json`), message, this.shared());
+        return;
+      }
+      // No opening now, but one may have finished since the owner was looked up: its owner says so.
+      owner = readJson<Owner>(ownerFile);
       // Anything else in a chat nobody is opening a topic in is nobody's, and is not kept.
-      if (this.openingIn(message.chat.id)) createOnce(path.join(this.shared(), "unowned", key, `${message.message_id}.json`), message, this.shared());
-      return;
+      if (!owner) return;
     }
     const place = this.inboxOf(owner, topic);
     if (!place || filedAlready(place.inbox, message.message_id)) return;
