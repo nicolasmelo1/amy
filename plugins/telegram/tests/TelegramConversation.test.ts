@@ -286,6 +286,12 @@ describe("flood control", () => {
   });
 });
 
+/** Telegram told every update was read, as a reader that kept them does. */
+async function confirmEverything(telegram: BotApiStandIn): Promise<void> {
+  await telegram.transport({ url: `https://api.telegram.org/bot${TOKEN}/getUpdates`, method: "POST", headers: {}, body: JSON.stringify({ offset: 2_000_000_000 }) });
+  expect(telegram.pending()).toBe(0);
+}
+
 function filesUnder(directory: string): string[] {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(directory, entry.name);
@@ -807,5 +813,69 @@ describe("the sixth review", () => {
       ["BRL, beside the total", "decision"],
       ["and no rounding", "decision"],
     ]);
+  });
+});
+
+describe("the seventh review", () => {
+  it("adopts replies kept for a topic when its opener stopped before adopting them", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    // What a reader kept while the opener had recorded the topic and not yet adopted.
+    const waiting = path.join(directory, "unowned", `${OPERATOR}-${thread.id}`);
+    fs.mkdirSync(waiting, { recursive: true });
+    const said = telegram.say("BRL", { topic: Number(thread.id) });
+    await confirmEverything(telegram); // as the reader that kept it did
+    fs.writeFileSync(path.join(waiting, `${said.message_id}.json`), JSON.stringify(said));
+
+    await amy.open("BILL-7", "Total");
+
+    expect((await amy.replies(thread, new Date(0).toISOString())).map((reply) => reply.text)).toEqual(["BRL"]);
+  });
+
+  it("files one reply once when two readers file it at once", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    telegram.say("BRL", { topic: Number(thread.id) });
+    const other = amyWith(telegram, directory).amy;
+
+    await Promise.all([amy.replies(thread, since).catch(() => []), other.replies(thread, since).catch(() => [])]);
+
+    expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
+  });
+
+  it("orders replies in one second by the order they were written, whoever filed them first", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const first = telegram.say("BRL", { topic: Number(thread.id) });
+    const second = telegram.say("and no rounding", { topic: Number(thread.id) });
+    second.date = first.date;
+    const waiting = path.join(directory, "unowned", `${OPERATOR}-${thread.id}`);
+    fs.mkdirSync(waiting, { recursive: true });
+    // Kept out of order, and listed out of order.
+    fs.writeFileSync(path.join(waiting, `${second.message_id}.json`), JSON.stringify(second));
+    fs.writeFileSync(path.join(waiting, `${first.message_id}.json`), JSON.stringify(first));
+    await confirmEverything(telegram);
+
+    await amy.open("BILL-7", "Total");
+    const replies = await amy.replies(thread, new Date(Number(first.date) * 1000 + 500).toISOString());
+
+    expect(replies.map((reply) => reply.text)).toEqual(["BRL", "and no rounding"]);
+    expect(await amy.replies(thread, replies[0]!.at)).toHaveLength(1);
+  });
+
+  it("keeps nothing from a topic nobody is opening in a chat no profile owns", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    telegram.say("hello from a topic amy never opened", { topic: 999 });
+
+    await amy.replies(thread, askedAt(telegram));
+
+    expect(fs.existsSync(path.join(directory, "unowned"))).toBe(false);
+    expect(telegram.pending()).toBe(0);
   });
 });

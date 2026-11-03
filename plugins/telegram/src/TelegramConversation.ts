@@ -48,6 +48,9 @@ const MAX_TOPIC_NAME_CHARS = 128;
  */
 const OFFSET_LIFETIME_MS = 6 * 24 * 60 * 60 * 1000;
 
+/** An opening, and what was kept for it, left this long is abandoned. */
+const ABANDONED_MS = 24 * 60 * 60 * 1000;
+
 /** Who owns a topic: its profile's directory, relative to the bot's, and that directory's identity. */
 interface Owner {
   directory: string;
@@ -135,7 +138,11 @@ export class TelegramConversation implements Conversation {
 
   open(workId: string, title: string): Promise<ThreadRef> {
     const known = this.topicOfWork(workId);
-    if (known !== undefined) return Promise.resolve({ id: String(known) });
+    if (known !== undefined) {
+      // An opener that stopped between recording the topic and adopting its early replies left them waiting.
+      this.adopt(`${this.chat()}-${known}`);
+      return Promise.resolve({ id: String(known) });
+    }
     // Two looks at the same work in one process must not open two topics.
     const pending = this.opening.get(workId);
     if (pending) return pending;
@@ -143,10 +150,19 @@ export class TelegramConversation implements Conversation {
       // Another process may have opened it while this one waited.
       const already = this.topicOfWork(workId);
       if (already !== undefined) return { id: String(already) };
-      const topic = await this.api.call<{ message_thread_id: number }>("createForumTopic", {
-        chat_id: this.chat(),
-        name: topicName(title, workId),
-      });
+      // Said before asking, so a reply in a topic Telegram creates now is kept until its owner is recorded.
+      const opening = path.join(this.shared(), "opening", String(this.chat()), `${randomUUID()}.json`);
+      createOnce(opening, { workId }, this.shared());
+      let topic: { message_thread_id: number };
+      try {
+        topic = await this.api.call<{ message_thread_id: number }>("createForumTopic", {
+          chat_id: this.chat(),
+          name: topicName(title, workId),
+        });
+      } catch (error) {
+        closeOpening(opening);
+        throw error;
+      }
       // Owner first: a reply that arrives before the work knows its topic is still filed here.
       // The directory is kept relative to the bot's, so a state root moved or mounted elsewhere still finds it.
       // A profile removed while Telegram was answering is not made again, and owns nothing.
@@ -159,6 +175,7 @@ export class TelegramConversation implements Conversation {
       // Created once: if another process recorded a topic for this work first, that one is the work's.
       createOnce(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`), { topic: topic.message_thread_id }, this.options.directory);
       this.adopt(key);
+      closeOpening(opening);
       return { id: String(this.topicOfWork(workId)) };
     }).finally(() => this.opening.delete(workId));
     this.opening.set(workId, opened);
@@ -183,14 +200,17 @@ export class TelegramConversation implements Conversation {
   }
 
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
-    const after = Date.parse(since);
+    const after = instantToMicros(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
     const topic = topicOf(thread);
-    await this.held(() => this.fileUpdates());
+    await this.held(async () => {
+      this.adopt(`${this.chat()}-${topic}`);
+      await this.fileUpdates();
+    });
 
     const replies: Reply[] = [];
     for (const filed of filedUnder(this.inbox(this.options.directory, this.identity, topic))) {
-      if (Date.parse(filed.at) <= after) continue;
+      if (instantToMicros(filed.at) <= after) continue;
       const { paths, skipped } = await this.downloadAll(topic, filed.files);
       replies.push({ at: filed.at, author: filed.author, text: [filed.text, ...skipped].filter(Boolean).join("\n"), files: paths, ...(filed.kind ? { kind: filed.kind } : {}) });
     }
@@ -259,6 +279,7 @@ export class TelegramConversation implements Conversation {
    * only once what it confirms is durably on disk.
    */
   private async fileUpdates(): Promise<void> {
+    this.pruneAbandoned();
     for (;;) {
       const offset = this.offset();
       const updates = await this.api.call<TelegramUpdate[]>("getUpdates", {
@@ -288,24 +309,21 @@ export class TelegramConversation implements Conversation {
     const owner = readJson<Owner>(path.join(this.shared(), "owners", `${key}.json`));
     if (!owner) {
       // A topic being opened right now has no owner yet: kept until it has, never confirmed away.
-      createOnce(path.join(this.shared(), "unowned", key, `${message.message_id}.json`), message, this.shared());
+      // Anything else in a chat nobody is opening a topic in is nobody's, and is not kept.
+      if (this.openingIn(message.chat.id)) createOnce(path.join(this.shared(), "unowned", key, `${message.message_id}.json`), message, this.shared());
       return;
     }
     const place = this.inboxOf(owner, topic);
     if (!place || filedAlready(place.inbox, message.message_id)) return;
     const { directory, inbox } = place;
-    // Telegram says when to the second; a reply is placed at the end of its second, and after the last
-    // one filed, so replies keep their order and none falls before a question asked earlier in that second.
-    const cursor = readJson<{ at: string }>(path.join(inbox, ".last"), true)?.at;
-    const last = cursor ? Date.parse(cursor) : Number.NEGATIVE_INFINITY;
-    const at = new Date(Math.max(message.date * 1000 + 999, last + 1)).toISOString();
     const { kind, text } = markedBy(message.text ?? message.caption ?? "");
-    const filed: Filed = { messageId: message.message_id, at, author: String(message.from!.id), text, files: filesOf(message), ...(kind ? { kind } : {}) };
-    // Created once: a late reader filing the same message keeps the first file and its time. A file
-    // somebody damaged is never deleted; the reply is filed beside it instead.
+    const filed: Filed = { messageId: message.message_id, at: instantOf(message), author: String(message.from!.id), text, files: filesOf(message), ...(kind ? { kind } : {}) };
+    // Created once: a late reader filing the same message finds it there. Only when the file that is
+    // there does not parse, somebody having damaged it, is the reply filed beside it; nothing is deleted.
     const target = path.join(inbox, `${message.message_id}.json`);
-    createOnce(fs.existsSync(target) ? path.join(inbox, `${message.message_id}-again.json`) : target, filed, directory);
-    if (at > (cursor ?? "")) writeJson(path.join(inbox, ".last"), { at });
+    if (!createOnce(target, filed, directory) && readJson<Filed>(target, true) === undefined) {
+      createOnce(path.join(inbox, `${message.message_id}-again.json`), filed, directory);
+    }
   }
 
   /**
@@ -329,10 +347,47 @@ export class TelegramConversation implements Conversation {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
       throw error;
     }
-    for (const name of names) {
+    // In the order the operator wrote them, which a directory listing does not promise.
+    for (const name of names.sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))) {
       const message = readJson<TelegramMessage>(path.join(waiting, name), true);
       if (message) this.file(message);
       fs.rmSync(path.join(waiting, name), { force: true });
+    }
+  }
+
+  /** Whether a topic is being opened in this chat now, by any process: an opening older than a day was abandoned. */
+  private openingIn(chat: number): boolean {
+    const openings = path.join(this.shared(), "opening", String(chat));
+    let names: string[];
+    try {
+      names = fs.readdirSync(openings);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+      throw error;
+    }
+    return names.some((name) => {
+      const since = mtimeOf(path.join(openings, name));
+      return since !== undefined && Date.now() - since < ABANDONED_MS;
+    });
+  }
+
+  /** Replies kept for a topic whose opening was abandoned a day ago, and the openings themselves, go. */
+  private pruneAbandoned(): void {
+    for (const area of ["unowned", "opening"]) {
+      const root = path.join(this.shared(), area);
+      let entries: string[];
+      try {
+        entries = fs.readdirSync(root);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw error;
+      }
+      for (const entry of entries) {
+        const directory = path.join(root, entry);
+        const newest = Math.max(0, ...fs.readdirSync(directory).map((name) => mtimeOf(path.join(directory, name)) ?? 0));
+        const owned = area === "unowned" && fs.existsSync(path.join(this.shared(), "owners", `${entry}.json`));
+        if (!owned && Date.now() - newest > ABANDONED_MS) fs.rmSync(directory, { recursive: true, force: true });
+      }
     }
   }
 
@@ -490,6 +545,38 @@ function filesOf(message: TelegramMessage): Filed["files"] {
   ];
 }
 
+/**
+ * When a reply was written, to the microsecond, from what Telegram says: the
+ * end of its second, so none falls before a question asked earlier in that
+ * second, and then its message id, so two replies in one second keep the
+ * order they were written in. Derived from the message alone, so any reader,
+ * at any time, files it with the same instant.
+ */
+function instantOf(message: TelegramMessage): string {
+  const end = new Date(message.date * 1000 + 999).toISOString();
+  return end.replace(/Z$/, `${String(1 + (message.message_id % 999)).padStart(3, "0")}Z`);
+}
+
+/** An instant to the microsecond: the digits past the millisecond are read too. */
+function instantToMicros(instant: string): number {
+  const ms = Date.parse(instant);
+  if (Number.isNaN(ms)) return Number.NaN;
+  const extra = /\.\d{3}(\d{1,3})Z$/.exec(instant)?.[1] ?? "";
+  return ms * 1000 + Number(extra.padEnd(3, "0"));
+}
+
+/** An opening done with, and the directories it leaves empty; one still in use by another opening stays. */
+function closeOpening(opening: string): void {
+  fs.rmSync(opening, { force: true });
+  for (const directory of [path.dirname(opening), path.dirname(path.dirname(opening))]) {
+    try {
+      fs.rmdirSync(directory);
+    } catch {
+      return;
+    }
+  }
+}
+
 /** Whether a message is filed under the topic already, readably. */
 function filedAlready(inbox: string, messageId: number): boolean {
   return [`${messageId}.json`, `${messageId}-again.json`].some((name) => readJson<Filed>(path.join(inbox, name), true) !== undefined);
@@ -594,7 +681,7 @@ function readIdentity(directory: string): string | undefined {
  * directory made for it is flushed into its parent first, and none is made
  * at or above `within`, which must already exist.
  */
-function createOnce(file: string, value: unknown, within: string): void {
+function createOnce(file: string, value: unknown, within: string): boolean {
   durableDirectory(path.dirname(file), within);
   const staged = path.join(path.dirname(file), `.${randomUUID()}.partial`);
   const handle = fs.openSync(staged, "wx", 0o600);
@@ -604,14 +691,17 @@ function createOnce(file: string, value: unknown, within: string): void {
   } finally {
     fs.closeSync(handle);
   }
+  let published = true;
   try {
     fs.linkSync(staged, file);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    published = false;
   } finally {
     fs.rmSync(staged, { force: true });
   }
   syncDirectory(path.dirname(file));
+  return published;
 }
 
 /**

@@ -254,6 +254,33 @@ describe("removing a workflow profile", () => {
     expect(fs.readFileSync(path.join(shared, "oncall.json"), "utf-8")).toBe("{}");
   });
 
+  it("leaves a Telegram directory another profile set, even where a phase would derive the same path", async () => {
+    const profile = aMachine();
+    // The topics an ordinary profile keeps, at the path the removed profile also counts as its own.
+    fs.writeFileSync(
+      path.join(home, "config.yaml"),
+      [
+        "repos:",
+        "  - acme/widgets",
+        "plugins:",
+        "  \"@amykit/plugin-telegram\":",
+        "    directory: tickets/records",
+        "workflows:",
+        "  tickets:",
+        '    workflow: "@amykit/workflow-ticket-to-qa"',
+        "  plans:",
+        '    workflow: "@amykit/workflow-note-to-plan"',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const wired = deps();
+    await removeProfileAndState(home, loadConfig(home), profile, { yes: true }, wired.deps);
+
+    expect(fs.existsSync(path.join(home, "tickets", "records", "one.json"))).toBe(true);
+  });
+
   it("keeps the state when asked to, and says how to delete it", async () => {
     const profile = aMachine();
     const wired = deps();

@@ -92,7 +92,9 @@ function ownedDirectories(home: string, profile: Profile, config: AmyConfig): st
 /** The declared directories plus the ones this profile's slices actually use. */
 function directoriesOf(home: string, profile: Profile, config: AmyConfig): string[] {
   const slices = pluginSlices(config, profile, home);
-  const effective = ["@amykit/plugin-file-store", "@amykit/plugin-file-queue"].flatMap((owner) => {
+  // The conversation adapters keep a profile's threads and topics too, and a directory set for one
+  // profile's is that profile's, even when a phase would have derived the same path.
+  const effective = ["@amykit/plugin-file-store", "@amykit/plugin-file-queue", "@amykit/plugin-slack", "@amykit/plugin-telegram"].flatMap((owner) => {
     const slice = slices[owner];
     if (typeof slice !== "object" || slice === null) return [];
     const directory = (slice as { directory?: unknown }).directory;
