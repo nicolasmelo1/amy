@@ -9543,7 +9543,7 @@
           "required": false
         }
       },
-      "returns": "Message"
+      "returns": "Message or True"
     },
     "editMessageChecklist": {
       "parameters": {
@@ -9617,7 +9617,7 @@
           "required": false
         }
       },
-      "returns": "Message"
+      "returns": "Message or True"
     },
     "editMessageMedia": {
       "parameters": {
@@ -9646,7 +9646,7 @@
           "required": false
         }
       },
-      "returns": "Message"
+      "returns": "Message or True"
     },
     "editMessageReplyMarkup": {
       "parameters": {
@@ -9671,7 +9671,7 @@
           "required": false
         }
       },
-      "returns": "Message"
+      "returns": "Message or True"
     },
     "editMessageText": {
       "parameters": {
@@ -9716,7 +9716,7 @@
           "required": false
         }
       },
-      "returns": "Message"
+      "returns": "Message or True"
     },
     "editStory": {
       "parameters": {
@@ -12689,7 +12689,7 @@
           "required": false
         }
       },
-      "returns": "Message"
+      "returns": "Message or True"
     },
     "setManagedBotAccessSettings": {
       "parameters": {
@@ -12979,7 +12979,7 @@
           "required": false
         }
       },
-      "returns": "Message"
+      "returns": "Message or True"
     },
     "stopPoll": {
       "parameters": {

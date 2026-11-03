@@ -535,7 +535,7 @@ describe("the second review", () => {
     expect((await build.replies(buildThread, since)).map((reply) => reply.text)).toEqual(["for the build"]);
     expect(telegram.pending()).toBe(0);
     expect(fs.existsSync(path.join(root, "brief"))).toBe(false);
-    expect(fs.readdirSync(shared).filter((name) => !/^(owners|offset)\.json$/.test(name))).toEqual([]);
+    expect(fs.readdirSync(shared).filter((name) => !/^(owners|offset)\.json$|^released-\d+$/.test(name))).toEqual([]);
   });
 });
 
@@ -561,5 +561,67 @@ describe("a server that never finishes answering", () => {
       server.closeAllConnections();
       server.close();
     }
+  });
+});
+
+describe("the third review", () => {
+  it("finds a topic's owner after the state root is moved", async () => {
+    const telegram = botApiStandIn();
+    const before = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-moved-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport });
+    const at = (root: string) => new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared: path.join(root, "bot") });
+    const thread = await at(before).open("TBO-1", "Build TBO-1");
+    const since = askedAt(telegram);
+    const after = `${before}-moved`;
+    fs.renameSync(before, after);
+    telegram.say("BRL", { topic: Number(thread.id) });
+
+    expect((await at(after).replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
+  });
+
+  it("gives a profile made again at a removed one's path none of its old topics' replies", async () => {
+    const telegram = botApiStandIn();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-again-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport });
+    const build = () => new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared: path.join(root, "bot") });
+    const old = await build().open("TBO-1", "Build TBO-1");
+    fs.rmSync(path.join(root, "build"), { recursive: true, force: true });
+    const again = build();
+    const fresh = await again.open("TBO-2", "Build TBO-2");
+    const since = askedAt(telegram);
+    telegram.say("for the old phase", { topic: Number(old.id) });
+
+    expect(await again.replies(fresh, since)).toEqual([]);
+    expect(await again.replies(old, since)).toEqual([]);
+    expect(telegram.pending()).toBe(0);
+  });
+
+  it("never takes over a hold whose process is alive, however old, and takes over one whose process is gone", async () => {
+    const telegram = botApiStandIn();
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-alive-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport });
+    const amy = new TelegramConversation(api, { operator: String(OPERATOR), directory, leaseMs: 50, lockWaitMs: 300 });
+    const lock = path.join(directory, "lock-7");
+    fs.mkdirSync(lock);
+    fs.writeFileSync(path.join(lock, "pid"), String(process.pid));
+    const old = new Date(Date.now() - 60_000);
+    fs.utimesSync(lock, old, old);
+
+    await expect(amy.open("BILL-7", "Total")).rejects.toThrow(/held by another process/);
+
+    fs.writeFileSync(path.join(lock, "pid"), "2147483646");
+    fs.utimesSync(lock, old, old);
+    await expect(amy.open("BILL-7", "Total")).resolves.toEqual({ id: expect.any(String) });
+    expect(fs.readdirSync(directory).filter((name) => /^(lock|released)-/.test(name))).toEqual(["released-8"]);
+  });
+
+  it("never hands out a number twice, so a released hold is never somebody's again", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    await amy.replies(thread, askedAt(telegram));
+    await amy.replies(thread, askedAt(telegram));
+
+    expect(fs.readdirSync(directory).filter((name) => /^(lock|released)-/.test(name))).toEqual(["released-3"]);
   });
 });

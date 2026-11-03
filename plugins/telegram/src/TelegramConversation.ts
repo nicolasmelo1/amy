@@ -48,7 +48,13 @@ const MAX_TOPIC_NAME_CHARS = 128;
  */
 const OFFSET_LIFETIME_MS = 6 * 24 * 60 * 60 * 1000;
 
-const LOCK = /^lock-(\d+)$/;
+const LOCK = /^(lock|released)-(\d+)$/;
+
+/** Who owns a topic: its profile's directory, relative to the bot's, and that directory's identity. */
+interface Owner {
+  directory: string;
+  identity: string;
+}
 
 interface TelegramUser {
   id: number;
@@ -111,12 +117,16 @@ class Superseded extends Error {}
 export class TelegramConversation implements Conversation {
   private readonly opening = new Map<string, Promise<ThreadRef>>();
 
+  /** Who this profile's directory is: a directory removed and made again is somebody else. */
+  private readonly identity: string;
+
   constructor(
     private readonly api: BotApi,
     private readonly options: TelegramConversationOptions,
   ) {
     privateDirectory(options.directory);
     privateDirectory(this.shared());
+    this.identity = identityOf(options.directory);
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
@@ -134,8 +144,10 @@ export class TelegramConversation implements Conversation {
         name: topicName(title, workId),
       });
       fence();
-      // Owner first: a reply that arrives before the map is written is still filed here.
-      writeJson(path.join(this.shared(), "owners.json"), { ...this.owners(), [topic.message_thread_id]: path.resolve(this.options.directory) });
+      // Owner first: a reply that arrives before the map is written is still filed here. The
+      // directory is kept relative to the bot's, so a state root moved or mounted elsewhere still finds it.
+      const owner: Owner = { directory: path.relative(this.shared(), this.options.directory), identity: this.identity };
+      writeJson(path.join(this.shared(), "owners.json"), { ...this.owners(), [topic.message_thread_id]: owner });
       writeJson(path.join(this.options.directory, "topics.json"), { ...this.topics(), [workId]: topic.message_thread_id });
       return { id: String(topic.message_thread_id) };
     }).finally(() => this.opening.delete(workId));
@@ -246,8 +258,8 @@ export class TelegramConversation implements Conversation {
       for (const update of updates) {
         const message = update.message;
         if (!message || !this.isOperatorAnswer(message)) continue;
-        const owner = owners[message.message_thread_id!];
-        if (owner === undefined || !fs.existsSync(owner)) continue;
+        const owner = this.ownerOf(owners[message.message_thread_id!]);
+        if (owner === undefined) continue;
         fence();
         file(owner, message.message_thread_id!, message);
       }
@@ -333,17 +345,30 @@ export class TelegramConversation implements Conversation {
     return readJson<Record<string, number>>(path.join(this.options.directory, "topics.json")) ?? {};
   }
 
-  private owners(): Record<string, string> {
-    return readJson<Record<string, string>>(path.join(this.shared(), "owners.json")) ?? {};
+  private owners(): Record<string, Owner> {
+    return readJson<Record<string, Owner>>(path.join(this.shared(), "owners.json")) ?? {};
+  }
+
+  /**
+   * The directory a topic's replies are filed in, if the profile that opened
+   * it still has it: a removed profile's topics, and the same path made again
+   * by a later profile, own nothing.
+   */
+  private ownerOf(owner: Owner | undefined): string | undefined {
+    if (!owner) return undefined;
+    const directory = path.resolve(this.shared(), owner.directory);
+    return readIdentity(directory) === owner.identity ? directory : undefined;
   }
 
   /**
    * Runs `work` holding the bot: one process reads its updates or opens a
    * topic at a time. A hold is a numbered generation, taken by creating the
-   * next number, which exactly one contender can; it is renewed while the work
-   * runs, and one not renewed within its lease is passed by the next number.
-   * `fence` throws once a later generation exists, so a holder that was paused
-   * past its lease writes nothing over its successor.
+   * next number, which exactly one contender can, and numbers are never
+   * reused: a released hold leaves its number behind. A hold is passed only
+   * when its lease ran out and its process is gone, so a holder that is slow,
+   * or paused, is never written over; `fence` still refuses any write once a
+   * later generation exists. amy's state is one machine's, which is what
+   * makes a process id an answer.
    */
   private async held<T>(work: (fence: () => void) => Promise<T>): Promise<T> {
     const lease = this.options.leaseMs ?? 60_000;
@@ -360,24 +385,29 @@ export class TelegramConversation implements Conversation {
       return await work(fence);
     } finally {
       clearInterval(renew);
-      fs.rmSync(lock, { recursive: true, force: true });
+      // The number stays taken, so no later hold is ever this one again.
+      ignoringGone(() => fs.renameSync(lock, path.join(this.shared(), `released-${mine}`)));
     }
   }
 
   private async take(lease: number, deadline: number): Promise<number> {
     for (;;) {
-      const held = generations(this.shared());
-      const top = held.length ? Math.max(...held) : 0;
-      const since = top ? mtimeOf(path.join(this.shared(), `lock-${top}`)) : undefined;
-      if (!top || since === undefined || Date.now() - since > lease) {
+      const taken = generations(this.shared());
+      const top = taken.length ? Math.max(...taken) : 0;
+      const holder = path.join(this.shared(), `lock-${top}`);
+      const held = top > 0 && fs.existsSync(holder);
+      if (!held || abandoned(holder, lease)) {
+        const next = path.join(this.shared(), `lock-${top + 1}`);
         try {
-          fs.mkdirSync(path.join(this.shared(), `lock-${top + 1}`));
-          for (const older of held) fs.rmSync(path.join(this.shared(), `lock-${older}`), { recursive: true, force: true });
-          return top + 1;
+          fs.mkdirSync(next);
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
           continue;
         }
+        fs.writeFileSync(path.join(next, "pid"), String(process.pid), { mode: 0o600 });
+        // Only the newest number is kept, as a lock or a marker; older ones say nothing.
+        for (const older of taken) removeGeneration(this.shared(), older);
+        return top + 1;
       }
       if (Date.now() > deadline) throw new Error(`${this.shared()} is held by another process; waited for it and gave up`);
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -404,7 +434,11 @@ function file(owner: string, topic: number, message: TelegramMessage): void {
   ];
   const entry: Filed = { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files };
   const inbox = path.join(owner, "inbox");
-  privateDirectory(inbox);
+  if (!fs.existsSync(inbox)) {
+    // Not recursive: a profile removed between the reader's look and this is not made again.
+    fs.mkdirSync(inbox, { mode: 0o700 });
+    syncDirectory(owner);
+  }
   writeText(path.join(inbox, `${topic}.jsonl`), [...filed, entry].map((one) => `${JSON.stringify(one)}\n`).join(""));
 }
 
@@ -421,6 +455,28 @@ function filedUnder(owner: string, topic: number): Filed[] {
   });
 }
 
+/** The identity a profile directory carries, made the first time it is used. */
+function identityOf(directory: string): string {
+  const known = readIdentity(directory);
+  if (known) return known;
+  const made = randomUUID();
+  try {
+    fs.writeFileSync(path.join(directory, "identity"), made, { flag: "wx", mode: 0o600 });
+    return made;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    return readIdentity(directory)!;
+  }
+}
+
+function readIdentity(directory: string): string | undefined {
+  try {
+    return fs.readFileSync(path.join(directory, "identity"), "utf-8");
+  } catch {
+    return undefined;
+  }
+}
+
 /** A file a local Bot API server keeps on a disk amy shares, read within the limit. */
 function localFile(file: string, limit: number): Uint8Array {
   let size: number;
@@ -433,12 +489,35 @@ function localFile(file: string, limit: number): Uint8Array {
   return fs.readFileSync(file);
 }
 
-/** The generations of the bot's lock present now. */
+/** Every generation of the bot's lock still on disk, held or released. */
 function generations(directory: string): number[] {
   return fs.readdirSync(directory).flatMap((name) => {
     const match = LOCK.exec(name);
-    return match ? [Number(match[1])] : [];
+    return match ? [Number(match[2])] : [];
   });
+}
+
+function removeGeneration(directory: string, n: number): void {
+  fs.rmSync(path.join(directory, `lock-${n}`), { recursive: true, force: true });
+  fs.rmSync(path.join(directory, `released-${n}`), { recursive: true, force: true });
+}
+
+/** A hold whose lease ran out and whose process is gone; one being created, with no pid yet, is not. */
+function abandoned(lock: string, lease: number): boolean {
+  const since = mtimeOf(lock);
+  if (since === undefined || Date.now() - since <= lease) return false;
+  let pid: number;
+  try {
+    pid = Number(fs.readFileSync(path.join(lock, "pid"), "utf-8"));
+  } catch {
+    return true;
+  }
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ESRCH";
+  }
 }
 
 /** A work's topic, read as the map's own entry: a work id such as `constructor` is not the map's prototype. */
@@ -514,7 +593,8 @@ function writeText(file: string, text: string): void {
   const partial = path.join(path.dirname(file), `.${randomUUID()}.partial`);
   const handle = fs.openSync(partial, "wx", 0o600);
   try {
-    fs.writeSync(handle, text);
+    // Every byte or an error: a short write is not published.
+    fs.writeFileSync(handle, text);
     fs.fsyncSync(handle);
   } finally {
     fs.closeSync(handle);

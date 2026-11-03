@@ -103,10 +103,13 @@ function returnsOf(html: string, types: ReadonlySet<string>): string {
   const description = (html.split("<table")[0] ?? "").replace(/<\/?p>/g, " ");
   for (const sentence of description.split(/\.\s+(?=[A-Z<])/)) {
     if (!/Returns|returned|returns/.test(sentence)) continue;
-    const linked = /(Array of )?<a href="#[a-z0-9]+">([A-Z]\w*)<\/a>/.exec(sentence);
-    if (linked && types.has(linked[2]!)) return `${linked[1] ? "Array of " : ""}${linked[2]}`;
-    const literal = /<em>(True|Int|Integer|String|Boolean)<\/em>/.exec(sentence);
-    if (literal) return literal[1] === "Int" ? "Integer" : literal[1]!;
+    // Every alternative the sentence names, as editMessageText's "the edited Message ... otherwise True".
+    const found = [...sentence.matchAll(/(Array of )?<a href="#[a-z0-9]+">([A-Z]\w*)<\/a>|<em>(True|Int|Integer|String|Boolean)<\/em>/g)].flatMap((match) => {
+      if (match[2]) return types.has(match[2]) ? [`${match[1] ? "Array of " : ""}${match[2]}`] : [];
+      return [match[3] === "Int" ? "Integer" : match[3]!];
+    });
+    const alternatives = [...new Set(found)];
+    if (alternatives.length > 0) return alternatives.join(" or ");
   }
   return "";
 }

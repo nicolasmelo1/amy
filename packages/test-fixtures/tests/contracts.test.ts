@@ -239,6 +239,12 @@ describe("the Telegram Bot API, derived from its page", () => {
     expect(() => assertValidBotApiCall("sendMediaGroup", { chat_id: 1, media: [{ type: "pigeon", media: "x", wings: 2 }] })).toThrow(/media\[0\]/);
   });
 
+  it("takes every result a method documents, not only the first", () => {
+    expect(() => assertValidBotApiResult("editMessageText", true)).not.toThrow();
+    expect(() => assertValidBotApiResult("editMessageText", { message_id: 1, date: 1, chat: { id: 1, type: "private" } })).not.toThrow();
+    expect(() => assertValidBotApiResult("editMessageText", "edited")).toThrow();
+  });
+
   it("reads a type that holds no information, and a method returning a union", () => {
     const closed = { message_id: 1, date: 1, chat: { id: 1, type: "private" }, forum_topic_closed: {} };
     expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: closed }])).not.toThrow();
