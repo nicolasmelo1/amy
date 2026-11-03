@@ -1,4 +1,5 @@
 ---
+base: cde9855a078395b11605901e5d92dc0ac0ad51a1
 sources:
   - { id: S1, kind: code, ref: "packages/core/src/ports/Conversation.ts", said: "the Conversation port is three methods — open a work item's thread, post into it, read its replies — with one adapter, Slack" }
   - { id: S2, kind: code, ref: "plugins/notify-hermes/src/", said: "notify-hermes delivers to Telegram only outward: a notification is not a question, and no answer is read back into its work" }
