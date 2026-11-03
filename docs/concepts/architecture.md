@@ -111,6 +111,7 @@ plugins/
 ├── plan-check           The quality bar for a drafted plan: the repository's own check, run in its checkout.
 ├── serial-engine        Advances one work item by one move per tick.
 ├── slack                A Slack thread per piece of work, over the Web API, as the conversation port.
+├── telegram             A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.
 └── ui-stub              The stub renderers that draw exactly the frame: one in pixels, one in cells. What the conformance script is proven against before a real window exists.
 ```
 
@@ -161,6 +162,7 @@ this repository.
 | `@amykit/plugin-plan-check` | plugin | `@amykit/core`, `@amykit/workflow-note-to-plan` |
 | `@amykit/plugin-serial-engine` | plugin | `@amykit/core` |
 | `@amykit/plugin-slack` | plugin | `@amykit/core` |
+| `@amykit/plugin-telegram` | plugin | `@amykit/core` |
 | `@amykit/plugin-ui-stub` | library | `@amykit/ui` |
 
 <!-- amy:end workspace-dependencies -->

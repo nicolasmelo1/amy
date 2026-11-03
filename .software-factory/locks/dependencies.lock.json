@@ -4,7 +4,7 @@
     ".software-factory/evidence/amy-add-remove/plugin-extra/package.json": "fdf46ddf207e8cd09cf998cc6b9f41268b0e5485efd7e95db94438f9a04e7724",
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "ef3d2175b8b0be268e780511700afb153c5f31b3b15a542689336286b2236d22",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "1f704509661427d7ff41b0387187879d02f61fb5a01da5e1db115581a013f1f0",
-    "package.json": "8f31a13151d573d9a3e132f038131cf5c8f4f20e84c893a780f58af2ca29b4db",
+    "package.json": "e515c392fe3072066efc95b4d0b66f34387aaae24a50211b64ddb732487a2e83",
     "packages/agent-kit/package.json": "d0933d431a84ca506e4c8129d8174f8f3b47f1caad1fcd7c4f76f823114a20a6",
     "packages/cli/package.json": "af34cad5cb5a229b6187239fde72cd8194e46f2bd9c9d3672a4ba65fb21d174e",
     "packages/core/package.json": "3c7f26da90f9263db1e922f91ef1660ddedfb19c37451d34b4841167ee5e16d3",
@@ -41,6 +41,7 @@
     "plugins/plan-check/package.json": "38acddecc27fa6cfb8d94030d2a586de257a382d138f37dbd066c885efec152c",
     "plugins/serial-engine/package.json": "ed01f7194d54924c2371d1d536a376caddcc993b7ee259383a67dea512fd7528",
     "plugins/slack/package.json": "63cf9f819e5e7194e04b838311ae933fbba46cc60ce60fce1ad93247e7fec84c",
+    "plugins/telegram/package.json": "f2b670e32bbdb3c30c5b2368feb20c4dbf54730b55bb1643b117da7ade494164",
     "plugins/ui-stub/package.json": "6a01970fbf137313290ed26f4a979776eb49c5d9776a54916cf96fece1c8e06c"
   }
 }

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
+import { heldToTheContract } from "./held-to-the-contract.js";
 
 /**
  * The state directory is machine-wide, so every daemon that mounts this
@@ -22,7 +23,7 @@ function slackAt(directory: string, handler: Handler, calls: HttpRequest[] = [])
     if (answer instanceof Uint8Array) return { status: 200, headers: {}, body: answer };
     return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify(answer)) };
   };
-  const api = new SlackApi("xoxb-test", { transport, sleep: () => Promise.resolve() });
+  const api = new SlackApi("xoxb-test", { transport: heldToTheContract(transport), sleep: () => Promise.resolve() });
   return new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory, lockWaitMs: 5_000 });
 }
 

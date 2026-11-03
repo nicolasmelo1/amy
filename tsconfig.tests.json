@@ -59,6 +59,9 @@
       "@amykit/plugin-next-steps": [
         "plugins/next-steps/src/index.ts"
       ],
+      "@amykit/plugin-telegram": [
+        "plugins/telegram/src/index.ts"
+      ],
       "@amykit/plugin-hermes-agent": [
         "plugins/hermes-agent/src/index.ts"
       ],

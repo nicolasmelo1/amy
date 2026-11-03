@@ -95,6 +95,7 @@ A page is markdown with markers in it:
 | `@amykit/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
 | `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
 | `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
+| `@amykit/plugin-telegram` | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | `conversation` |  |
 | `@amykit/workflow-feature-grooming` | Feature grooming against read-only base-branch source snapshots. | `grooming-source`<br>`grooming-tracker` |  |
 
 <!-- amy:end plugin-index -->

@@ -12,7 +12,7 @@
       "file": "github-rest.json.gz",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
       "publisher": "GitHub — the OpenAPI description of the github.com REST API",
-      "sha256": "0f85424a3c9603e75d11d3819c47f7e67f51d24bd6deb19cbb6b006e953195e1"
+      "sha256": "12d2d764fafe2333ffacf967d7191dd933b13ae1ed0f493b3e370e05620fc9b5"
     },
     {
       "name": "linear-graphql",
@@ -20,6 +20,13 @@
       "url": "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql",
       "publisher": "Linear — the GraphQL schema its own SDK is generated from",
       "sha256": "73fac69ae08c0cf8329bbc85a3728a9e24e6e66116ac2f5d6aebbef922b30daf"
+    },
+    {
+      "name": "slack-web",
+      "file": "slack-web.json.gz",
+      "url": "https://api.slack.com/specs/openapi/v2/slack_web.json",
+      "publisher": "Slack — the OpenAPI description of the Web API, served by Slack",
+      "sha256": "1f41356634b6636d1cd64ba68b72aa12b76989bde483c334f6069e2828e9f2d5"
     }
   ],
   "gh": {
@@ -33,5 +40,15 @@
       "file": "gh-pr-json-fields.txt",
       "sha256": "8a3cfb2cb7a8ee04670f80ffd744d09bead569554eaf1eb6e46e23a01025bcc6"
     }
-  }
+  },
+  "derived": [
+    {
+      "name": "telegram-bot-api",
+      "file": "telegram-bot-api.json",
+      "url": "https://core.telegram.org/bots/api",
+      "publisher": "Telegram — the Bot API reference page, derived into its types and methods",
+      "version": "10.3",
+      "sha256": "7cc10445a34908c2ceda5960487eca693cf9950213cc05eea690a9155d47e6f9"
+    }
+  ]
 }

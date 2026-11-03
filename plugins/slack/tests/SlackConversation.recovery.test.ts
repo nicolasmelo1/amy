@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
+import { heldToTheContract } from "./held-to-the-contract.js";
 
 /**
  * What the plugin keeps is private, and what a crash or a concurrent process
@@ -49,7 +50,7 @@ async function answer(request: HttpRequest): Promise<HttpResponse> {
 }
 
 function slack(channel = "C0WORK", retentionDays = 30): SlackConversation {
-  return new SlackConversation(new SlackApi("xoxb-test", { transport: answer }), { channel, operator: OPERATOR, directory, retentionDays });
+  return new SlackConversation(new SlackApi("xoxb-test", { transport: heldToTheContract(answer) }), { channel, operator: OPERATOR, directory, retentionDays });
 }
 
 function chainOf(workId: string): string {

@@ -20,6 +20,9 @@
       "path": "./plugins/next-steps"
     },
     {
+      "path": "./plugins/telegram"
+    },
+    {
       "path": "packages/agent-kit"
     },
     {

@@ -40,6 +40,7 @@ maintains.
 | `@amykit/plugin-plan-check` | The quality bar for a drafted plan: the repository's own check, run in its checkout. | `plan-check` |  |
 | `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
 | `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
+| `@amykit/plugin-telegram` | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | `conversation` |  |
 | `@amykit/workflow-feature-grooming` | Feature grooming against read-only base-branch source snapshots. | `grooming-source`<br>`grooming-tracker` |  |
 
 <!-- amy:end plugin-index -->
@@ -639,6 +640,32 @@ plugins:
 | `operator` | `string` | **yes** |  | the user id, such as U0XXXXXXX, whose replies are answers; everybody else's are ignored |
 | `retentionDays` | `number` | no | `30` | days a downloaded file or a thread's memory stays unused before it is pruned, 0 to keep everything. A pruned file is fetched again when its reply is read; a pruned thread means the next question opens a new one |
 | `token` | `string` | **yes** |  | where the bot token lives: `env:SLACK_BOT_TOKEN` or `file:<path>#<KEY>`, never the token itself |
+
+### `@amykit/plugin-telegram`
+
+A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/telegram` |
+| Mounts | `conversation` |
+| Contributes | _nothing_ |
+| Needs in the environment | `TELEGRAM_BOT_TOKEN` |
+| Depends on | `@amykit/core` |
+
+```yaml
+plugins:
+  "@amykit/plugin-telegram":
+    directory: telegram
+    operator: …
+    server: https://api.telegram.org
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `directory` | `string` | no | `telegram` | where each work item's topic and the replies read for it are kept, relative to the state directory |
+| `operator` | `string` | **yes** |  | your Telegram user id, a number such as 123456789: the private chat each work item's topic opens in, and the only person whose replies are answers |
+| `server` | `string` | no | `https://api.telegram.org` | the Bot API server, for a local one instead of Telegram's |
 
 ### `@amykit/workflow-feature-grooming`
 

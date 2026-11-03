@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
+import { heldToTheContract } from "./held-to-the-contract.js";
 
 /**
  * What the plugin keeps on this machine goes away: by `forget` for one piece
@@ -58,7 +59,7 @@ async function answer(request: HttpRequest): Promise<HttpResponse> {
 }
 
 function slack(now: () => Date, retentionDays = 30): SlackConversation {
-  return new SlackConversation(new SlackApi("xoxb-test", { transport: answer }), {
+  return new SlackConversation(new SlackApi("xoxb-test", { transport: heldToTheContract(answer) }), {
     channel: CHANNEL,
     operator: OPERATOR,
     directory,

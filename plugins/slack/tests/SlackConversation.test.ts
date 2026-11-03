@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
+import { heldToTheContract } from "./held-to-the-contract.js";
 
 /**
  * The adapter against a scripted HTTP transport, the way the tracker and the
@@ -66,7 +67,7 @@ afterEach(() => {
 
 function conversation(http: ScriptedHttp, sleeps: number[] = []): SlackConversation {
   const api = new SlackApi("xoxb-test", {
-    transport: http.transport,
+    transport: heldToTheContract(http.transport),
     sleep: (ms) => {
       sleeps.push(ms);
       return Promise.resolve();

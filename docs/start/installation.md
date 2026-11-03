@@ -179,6 +179,7 @@ Which variables matter depends on which plugins you mount:
 | Variable | Read by |
 | :-- | :-- |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
+| `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
 
 <!-- amy:end environment -->
 

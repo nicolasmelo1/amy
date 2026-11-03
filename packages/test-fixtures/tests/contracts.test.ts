@@ -7,6 +7,8 @@ import {
   ScriptedRunner,
   whenArgsInclude,
 } from "../src/index.js";
+import { assertValidBotApiCall, assertValidBotApiResult, botApiVersion } from "../src/contracts/telegram.js";
+import { assertValidSlackAnswer, assertValidSlackCall } from "../src/contracts/slack.js";
 
 // Every check the doubles make, shown firing. A contract check nothing
 // proves goes quiet the day it breaks, and the doubles go back to answering
@@ -186,5 +188,46 @@ describe("the doubles hold themselves to the contracts", () => {
     await expect(client.request("query I($id: String!) { issue(id: $id) { id } }", { id: "x" })).rejects.toThrow(
       "Entity not found: Issue",
     );
+  });
+});
+
+describe("the Slack Web API description", () => {
+  it("takes a call it lists, and refuses an argument, a method or a type it does not", () => {
+    expect(() => assertValidSlackCall("chat.postMessage", { channel: "C0WORK", text: "hi", thread_ts: "1.2" })).not.toThrow();
+    expect(() => assertValidSlackCall("chat.postMessage", { channel: "C0WORK", colour: "red" })).toThrow(/chat.postMessage takes no argument colour/);
+    expect(() => assertValidSlackCall("chat.post", { channel: "C0WORK" })).toThrow(/has no method chat.post/);
+    expect(() => assertValidSlackCall("conversations.replies", { channel: "C0WORK", ts: "soon" })).toThrow(/conversations.replies.ts is number/);
+    expect(() => assertValidSlackCall("chat.postMessage", { text: "hi" })).toThrow(/requires channel/);
+  });
+
+  it("lets through only what Slack documents beyond it, and says so by method", () => {
+    expect(() => assertValidSlackCall("chat.postMessage", { channel: "C0WORK", metadata: "{}" })).not.toThrow();
+    expect(() => assertValidSlackCall("conversations.info", { channel: "C0WORK", metadata: "{}" })).toThrow(/takes no argument metadata/);
+  });
+
+  it("refuses an answer carrying what the method never answers", () => {
+    expect(() => assertValidSlackAnswer("auth.test", { ok: true, user_id: "U0AMY", user: "amy" })).not.toThrow();
+    expect(() => assertValidSlackAnswer("auth.test", { ok: true, scopes: "chat:write" })).toThrow(/auth.test answers no property scopes/);
+    expect(() => assertValidSlackAnswer("auth.test", { ok: false })).toThrow(/without naming an error/);
+  });
+});
+
+describe("the Telegram Bot API, derived from its page", () => {
+  it("is a version of the API", () => {
+    expect(botApiVersion()).toMatch(/^\d+\.\d+$/);
+  });
+
+  it("takes a call it lists, and refuses a parameter, a type or a missing one", () => {
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1, message_thread_id: 2, text: "hi" })).not.toThrow();
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1, text: "hi", thread: 2 })).toThrow(/sendMessage takes no parameter thread/);
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1, text: 7 })).toThrow(/sendMessage.text is String/);
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1 })).toThrow(/sendMessage requires text/);
+    expect(() => assertValidBotApiCall("sendTopic", {})).toThrow(/has no method sendTopic/);
+  });
+
+  it("refuses a result with a field its type does not have, or without one it requires", () => {
+    expect(() => assertValidBotApiResult("createForumTopic", { message_thread_id: 3, name: "x", icon_color: 1 })).not.toThrow();
+    expect(() => assertValidBotApiResult("createForumTopic", { message_thread_id: 3, name: "x" })).toThrow(/has no icon_color/);
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { message_id: 1, date: 1, chat: { id: 1, type: "private" }, topic: 3 } }])).toThrow(/topic is not a field of Message/);
   });
 });

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "gate": "plugin-telegram",
+  "implementation_sha256": "e1e983bc1e1963ccb4c6a1a8d8f697ac5adfb7db0b06aa15ae75a306e9878336",
+  "runs": [
+    {
+      "scenario": "plugin-telegram",
+      "status": "passed",
+      "actor": "Claude (agent), driving the installed executable with the Telegram plugin as ticket-to-qa's conversation, against a stand-in Bot API held to the vendored contract, the stand-in Linear, gh and agent, and real git, on macOS, for Nicolas Melo",
+      "report": ".software-factory/evidence/plugin-telegram-run.json",
+      "report_sha256": "93c706fba3707f0a112a42a676588e3f8f5af9ebd8f37df3167310db05b52f91",
+      "required_assertions": []
+    }
+  ]
+}
