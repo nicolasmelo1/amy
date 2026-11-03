@@ -45,6 +45,8 @@ cut:
   - "sharing a bot token another program already polls"
 crosses:
   - { mechanism: profiles-and-state, answer: works, proof: "test:plugins/telegram/tests/TelegramConversation.test.ts (a removed profile's replies and files go with its directory; a phase's topics are its own, test:packages/cli/tests/project.test.ts)" }
+guarantee:
+  - { holds: "an answer read off Telegram is on disk under its topic before Telegram is told it was read", not_against: "an answer left unread by any amy for the 24 hours Telegram keeps it" }
 deviations:
   - "the token is TELEGRAM_BOT_TOKEN in amy's environment, read the way Linear's key is, rather than a reference in the config"
   - "a server setting, Telegram's by default, so a local Bot API server or the scenario's stand-in can answer"
@@ -58,6 +60,8 @@ deviations:
   - "correctness does not depend on one reader: every reply is a file of its own, created and never rewritten, under an inbox named for its profile directory's identity; every topic and owner is a file created once; the offset only moves forward; each is flushed with its directory before the offset confirms it. The hold on the bot is a renewed lease that saves work (a 409, a topic opened twice) and nothing else (fourth review)"
   - "an owner is kept relative to the bot's directory with the identity of the profile directory that opened the topic, published whole by a link; a moved state root still finds it, a profile made again at a removed one's path owns none of its topics, and an identity that cannot be read confirms nothing (third and fourth reviews)"
   - "a local Bot API server's file path is never said, since it may carry the token; the operator's id is read as Telegram spells it (fourth review)"
+  - "the bot's updates are read once per bot, whoever the operator, and filed by chat and topic, so two operators of one bot never discard each other's answers; a reply is published once and keeps its first time; work ids too long for a file name are cut and finished with a digest (fifth review)"
+  - "Telegram keeps an unconfirmed update for 24 hours, and amy reads updates only when a profile looks for replies: an answer given while no amy using this bot runs for a whole day is lost. amy says so here rather than running a receiver of its own (fifth review)"
   - "a method's documented return alternatives are all derived, as editMessageText's Message or True (third review)"
   - "every exchange with the Bot API has a deadline covering its body, a local Bot API server's absolute file paths are read where they lie, and text is cut at a character, never inside one (second review)"
   - "a reply is placed at the end of the second Telegram stamps it with, and after the last one filed, so two replies in a second keep their order and neither falls before a question asked within it"

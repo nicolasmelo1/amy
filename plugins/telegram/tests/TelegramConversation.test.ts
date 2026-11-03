@@ -657,3 +657,51 @@ describe("the fourth review", () => {
     expect((await amy.replies(thread, since)).map((reply) => reply.text)).toEqual(["BRL"]);
   });
 });
+
+describe("the fifth review", () => {
+  it("keeps the first filing of a reply, and its time, when a late reader files it again", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const since = askedAt(telegram);
+    const said = telegram.say("BRL", { topic: Number(thread.id) });
+    const identity = fs.readFileSync(path.join(directory, "identity"), "utf-8");
+    const inbox = path.join(directory, `inbox-${identity}`, thread.id);
+    fs.mkdirSync(inbox, { recursive: true });
+    const first = { messageId: said.message_id, at: new Date(Date.now() + 60_000).toISOString(), author: String(OPERATOR), text: "BRL", files: [] };
+    fs.writeFileSync(path.join(inbox, `${said.message_id}.json`), JSON.stringify(first));
+
+    const [reply] = await amy.replies(thread, since);
+
+    expect(reply!.at).toBe(first.at);
+  });
+
+  it("reads one bot's updates once for two operators, and gives each operator's answer to its own topic", async () => {
+    const telegram = botApiStandIn();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-operators-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport });
+    const shared = path.join(root, "bot");
+    const ada = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "ada"), shared });
+    const grace = new TelegramConversation(api, { operator: String(SOMEBODY_ELSE), directory: path.join(root, "grace"), shared });
+    const adas = await ada.open("BILL-7", "Ada's");
+    const graces = await grace.open("BILL-8", "Grace's");
+    const since = askedAt(telegram);
+    telegram.say("for Grace's work", { topic: Number(graces.id), from: SOMEBODY_ELSE });
+    telegram.say("for Ada's work", { topic: Number(adas.id) });
+
+    // Ada's process reads first, and with it confirms Grace's answer too.
+    expect((await ada.replies(adas, since)).map((reply) => reply.text)).toEqual(["for Ada's work"]);
+    expect((await grace.replies(graces, since)).map((reply) => reply.text)).toEqual(["for Grace's work"]);
+  });
+
+  it("opens a topic for a work id whose spelt-out name would be too long for a file", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+    const id = "é".repeat(43);
+
+    const thread = await amy.open(id, "A long name");
+
+    expect(await amy.open(id, "A long name")).toEqual(thread);
+    expect(await amy.open(`${id}x`, "Another")).not.toEqual(thread);
+  });
+});

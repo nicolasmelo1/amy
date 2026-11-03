@@ -71,7 +71,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
       : refuse(400, "Bad Request: chat not found"),
     createForumTopic: (args) => {
       if (options.topicsEnabled === false) return refuse(400, "Bad Request: the chat is not a forum");
-      if (!started(args)) return refuse(400, "Bad Request: chat not found");
+      if (!started(args) && Number(args.chat_id) !== SOMEBODY_ELSE) return refuse(400, "Bad Request: chat not found");
       const id = nextTopic++;
       topics.set(id, String(args.name));
       return { message_thread_id: id, name: String(args.name), icon_color: 7322096 };

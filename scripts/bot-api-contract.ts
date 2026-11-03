@@ -12,6 +12,8 @@ interface BotApiField {
   /** As written, such as `Integer`, `Array of PhotoSize`, `Integer or String`. */
   type: string;
   required: boolean;
+  /** The one value the page says the field always holds, such as a union member's `type`. */
+  value?: string;
 }
 
 export interface BotApiContract {
@@ -63,7 +65,10 @@ function sectionsOf(html: string): { name: string; html: string }[] {
 }
 
 function fieldsOf(table: { rows: string[][] }): Record<string, BotApiField> {
-  return Object.fromEntries(table.rows.map(([name, type, description]) => [name!, { type: type!, required: !/^Optional\b/.test(description ?? "") }]));
+  return Object.fromEntries(table.rows.map(([name, type, description]) => {
+    const value = /\balways “([^”]+)”/.exec(description ?? "")?.[1];
+    return [name!, { type: type!, required: !/^Optional\b/.test(description ?? ""), ...(value ? { value } : {}) }];
+  }));
 }
 
 function parametersOf(table: { header: string[]; rows: string[][] }): Record<string, BotApiField> {

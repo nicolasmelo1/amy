@@ -6,6 +6,7 @@ const CONTRACT = "telegram-bot-api";
 interface Field {
   type: string;
   required: boolean;
+  value?: string;
 }
 
 interface Contract {
@@ -110,11 +111,16 @@ function object(type: string, value: unknown, at: string): string | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return `${at} is a ${type}, and holds ${JSON.stringify(value)}`;
   const given = value as Record<string, unknown>;
   for (const [name, field] of Object.entries(given)) {
-    const declared = fields[name];
-    if (!declared) return `${at}.${name} is not a field of ${type}`;
-    const failure = mismatch(declared.type, field, `${at}.${name}`);
+    const failure = fieldMismatch(type, fields[name], name, field, at);
     if (failure) return failure;
   }
   const missing = Object.entries(fields).find(([name, field]) => field.required && given[name] === undefined);
   return missing ? `${at} is a ${type}, and has no ${missing[0]}` : null;
+}
+
+/** One field held to what its type declares: that it exists, its fixed value if it has one, and its type. */
+function fieldMismatch(type: string, declared: Field | undefined, name: string, field: unknown, at: string): string | null {
+  if (!declared) return `${at}.${name} is not a field of ${type}`;
+  if (declared.value !== undefined && field !== declared.value) return `${at}.${name} is always ${JSON.stringify(declared.value)} in a ${type}, and holds ${JSON.stringify(field)}`;
+  return mismatch(declared.type, field, `${at}.${name}`);
 }

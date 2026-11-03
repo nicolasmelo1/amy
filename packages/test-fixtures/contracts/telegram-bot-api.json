@@ -124,7 +124,8 @@
     "BackgroundFillFreeformGradient": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "freeform_gradient"
       },
       "colors": {
         "type": "Array of Integer",
@@ -134,7 +135,8 @@
     "BackgroundFillGradient": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "gradient"
       },
       "top_color": {
         "type": "Integer",
@@ -152,7 +154,8 @@
     "BackgroundFillSolid": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "solid"
       },
       "color": {
         "type": "Integer",
@@ -162,7 +165,8 @@
     "BackgroundTypeChatTheme": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "chat_theme"
       },
       "theme_name": {
         "type": "String",
@@ -172,7 +176,8 @@
     "BackgroundTypeFill": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "fill"
       },
       "fill": {
         "type": "BackgroundFill",
@@ -186,7 +191,8 @@
     "BackgroundTypePattern": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "pattern"
       },
       "document": {
         "type": "Document",
@@ -212,7 +218,8 @@
     "BackgroundTypeWallpaper": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "wallpaper"
       },
       "document": {
         "type": "Document",
@@ -691,7 +698,8 @@
     "ChatBoostSourceGiftCode": {
       "source": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "gift_code"
       },
       "user": {
         "type": "User",
@@ -701,7 +709,8 @@
     "ChatBoostSourceGiveaway": {
       "source": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "giveaway"
       },
       "giveaway_message_id": {
         "type": "Integer",
@@ -723,7 +732,8 @@
     "ChatBoostSourcePremium": {
       "source": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "premium"
       },
       "user": {
         "type": "User",
@@ -1043,7 +1053,8 @@
     "ChatMemberAdministrator": {
       "status": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "administrator"
       },
       "user": {
         "type": "User",
@@ -1133,7 +1144,8 @@
     "ChatMemberBanned": {
       "status": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "kicked"
       },
       "user": {
         "type": "User",
@@ -1147,7 +1159,8 @@
     "ChatMemberLeft": {
       "status": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "left"
       },
       "user": {
         "type": "User",
@@ -1157,7 +1170,8 @@
     "ChatMemberMember": {
       "status": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "member"
       },
       "tag": {
         "type": "String",
@@ -1175,7 +1189,8 @@
     "ChatMemberOwner": {
       "status": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "creator"
       },
       "user": {
         "type": "User",
@@ -1193,7 +1208,8 @@
     "ChatMemberRestricted": {
       "status": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "restricted"
       },
       "tag": {
         "type": "String",
@@ -3834,7 +3850,8 @@
     "InputRichBlockAnchor": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "anchor"
       },
       "name": {
         "type": "String",
@@ -3844,7 +3861,8 @@
     "InputRichBlockAnimation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "animation"
       },
       "animation": {
         "type": "InputMediaAnimation",
@@ -3858,7 +3876,8 @@
     "InputRichBlockAudio": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "audio"
       },
       "audio": {
         "type": "InputMediaAudio",
@@ -3872,7 +3891,8 @@
     "InputRichBlockBlockQuotation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "blockquote"
       },
       "blocks": {
         "type": "Array of InputRichBlock",
@@ -3886,7 +3906,8 @@
     "InputRichBlockButtons": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "buttons"
       },
       "buttons": {
         "type": "Array of RichMessageButton",
@@ -3900,7 +3921,8 @@
     "InputRichBlockCollage": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "collage"
       },
       "blocks": {
         "type": "Array of InputRichBlock",
@@ -3914,7 +3936,8 @@
     "InputRichBlockDetails": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "details"
       },
       "summary": {
         "type": "RichText",
@@ -3932,13 +3955,15 @@
     "InputRichBlockDivider": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "divider"
       }
     },
     "InputRichBlockDocument": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "document"
       },
       "document": {
         "type": "InputMediaDocument",
@@ -3952,7 +3977,8 @@
     "InputRichBlockExpandableBlockQuotation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "expandable_blockquote"
       },
       "text": {
         "type": "RichText",
@@ -3966,7 +3992,8 @@
     "InputRichBlockFooter": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "footer"
       },
       "text": {
         "type": "RichText",
@@ -3976,7 +4003,8 @@
     "InputRichBlockList": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "list"
       },
       "items": {
         "type": "Array of InputRichBlockListItem",
@@ -4008,7 +4036,8 @@
     "InputRichBlockMap": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "map"
       },
       "location": {
         "type": "Location",
@@ -4034,7 +4063,8 @@
     "InputRichBlockMathematicalExpression": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "mathematical_expression"
       },
       "expression": {
         "type": "String",
@@ -4044,7 +4074,8 @@
     "InputRichBlockParagraph": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "paragraph"
       },
       "text": {
         "type": "RichText",
@@ -4054,7 +4085,8 @@
     "InputRichBlockPhoto": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "photo"
       },
       "photo": {
         "type": "InputMediaPhoto",
@@ -4068,7 +4100,8 @@
     "InputRichBlockPreformatted": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "pre"
       },
       "text": {
         "type": "RichText",
@@ -4082,7 +4115,8 @@
     "InputRichBlockPullQuotation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "pullquote"
       },
       "text": {
         "type": "RichText",
@@ -4096,7 +4130,8 @@
     "InputRichBlockSectionHeading": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "heading"
       },
       "text": {
         "type": "RichText",
@@ -4110,7 +4145,8 @@
     "InputRichBlockSlideshow": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "slideshow"
       },
       "blocks": {
         "type": "Array of InputRichBlock",
@@ -4124,7 +4160,8 @@
     "InputRichBlockTable": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "table"
       },
       "cells": {
         "type": "Array of Array of RichBlockTableCell",
@@ -4150,7 +4187,8 @@
     "InputRichBlockThinking": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "thinking"
       },
       "text": {
         "type": "RichText",
@@ -4160,7 +4198,8 @@
     "InputRichBlockVideo": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "video"
       },
       "video": {
         "type": "InputMediaVideo",
@@ -4174,7 +4213,8 @@
     "InputRichBlockVoiceNote": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "voice_note"
       },
       "voice_note": {
         "type": "InputMediaVoiceNote",
@@ -5236,7 +5276,8 @@
     "MessageOriginChannel": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "channel"
       },
       "date": {
         "type": "Integer",
@@ -5258,7 +5299,8 @@
     "MessageOriginChat": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "chat"
       },
       "date": {
         "type": "Integer",
@@ -5276,7 +5318,8 @@
     "MessageOriginHiddenUser": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "hidden_user"
       },
       "date": {
         "type": "Integer",
@@ -5290,7 +5333,8 @@
     "MessageOriginUser": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "user"
       },
       "date": {
         "type": "Integer",
@@ -5370,7 +5414,8 @@
     "OwnedGiftRegular": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "regular"
       },
       "gift": {
         "type": "Gift",
@@ -5446,7 +5491,8 @@
     "OwnedGiftUnique": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "unique"
       },
       "gift": {
         "type": "UniqueGift",
@@ -5494,7 +5540,8 @@
     "PaidMediaLivePhoto": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "live_photo"
       },
       "live_photo": {
         "type": "LivePhoto",
@@ -5504,7 +5551,8 @@
     "PaidMediaPhoto": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "photo"
       },
       "photo": {
         "type": "Array of PhotoSize",
@@ -5514,7 +5562,8 @@
     "PaidMediaPreview": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "preview"
       },
       "width": {
         "type": "Integer",
@@ -5542,7 +5591,8 @@
     "PaidMediaVideo": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "video"
       },
       "video": {
         "type": "Video",
@@ -6064,7 +6114,8 @@
     "ReactionTypeCustomEmoji": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "custom_emoji"
       },
       "custom_emoji_id": {
         "type": "String",
@@ -6074,7 +6125,8 @@
     "ReactionTypeEmoji": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "emoji"
       },
       "emoji": {
         "type": "String",
@@ -6084,13 +6136,15 @@
     "ReactionTypePaid": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "paid"
       }
     },
     "RefundedPayment": {
       "currency": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "XTR"
       },
       "total_amount": {
         "type": "Integer",
@@ -6204,19 +6258,22 @@
     "RevenueWithdrawalStateFailed": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "failed"
       }
     },
     "RevenueWithdrawalStatePending": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "pending"
       }
     },
     "RevenueWithdrawalStateSucceeded": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "succeeded"
       },
       "date": {
         "type": "Integer",
@@ -6230,7 +6287,8 @@
     "RichBlockAnchor": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "anchor"
       },
       "name": {
         "type": "String",
@@ -6240,7 +6298,8 @@
     "RichBlockAnimation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "animation"
       },
       "animation": {
         "type": "Animation",
@@ -6258,7 +6317,8 @@
     "RichBlockAudio": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "audio"
       },
       "audio": {
         "type": "Audio",
@@ -6272,7 +6332,8 @@
     "RichBlockBlockQuotation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "blockquote"
       },
       "blocks": {
         "type": "Array of RichBlock",
@@ -6286,7 +6347,8 @@
     "RichBlockButtons": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "buttons"
       },
       "buttons": {
         "type": "Array of RichMessageButton",
@@ -6310,7 +6372,8 @@
     "RichBlockCollage": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "collage"
       },
       "blocks": {
         "type": "Array of RichBlock",
@@ -6324,7 +6387,8 @@
     "RichBlockDetails": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "details"
       },
       "summary": {
         "type": "RichText",
@@ -6342,13 +6406,15 @@
     "RichBlockDivider": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "divider"
       }
     },
     "RichBlockDocument": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "document"
       },
       "document": {
         "type": "Document",
@@ -6362,7 +6428,8 @@
     "RichBlockExpandableBlockQuotation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "expandable_blockquote"
       },
       "text": {
         "type": "RichText",
@@ -6376,7 +6443,8 @@
     "RichBlockFooter": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "footer"
       },
       "text": {
         "type": "RichText",
@@ -6386,7 +6454,8 @@
     "RichBlockList": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "list"
       },
       "items": {
         "type": "Array of RichBlockListItem",
@@ -6422,7 +6491,8 @@
     "RichBlockMap": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "map"
       },
       "location": {
         "type": "Location",
@@ -6448,7 +6518,8 @@
     "RichBlockMathematicalExpression": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "mathematical_expression"
       },
       "expression": {
         "type": "String",
@@ -6458,7 +6529,8 @@
     "RichBlockParagraph": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "paragraph"
       },
       "text": {
         "type": "RichText",
@@ -6468,7 +6540,8 @@
     "RichBlockPhoto": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "photo"
       },
       "photo": {
         "type": "Array of PhotoSize",
@@ -6486,7 +6559,8 @@
     "RichBlockPreformatted": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "pre"
       },
       "text": {
         "type": "RichText",
@@ -6500,7 +6574,8 @@
     "RichBlockPullQuotation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "pullquote"
       },
       "text": {
         "type": "RichText",
@@ -6514,7 +6589,8 @@
     "RichBlockSectionHeading": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "heading"
       },
       "text": {
         "type": "RichText",
@@ -6528,7 +6604,8 @@
     "RichBlockSlideshow": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "slideshow"
       },
       "blocks": {
         "type": "Array of RichBlock",
@@ -6542,7 +6619,8 @@
     "RichBlockTable": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "table"
       },
       "cells": {
         "type": "Array of Array of RichBlockTableCell",
@@ -6594,7 +6672,8 @@
     "RichBlockThinking": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "thinking"
       },
       "text": {
         "type": "RichText",
@@ -6604,7 +6683,8 @@
     "RichBlockVideo": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "video"
       },
       "video": {
         "type": "Video",
@@ -6622,7 +6702,8 @@
     "RichBlockVoiceNote": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "voice_note"
       },
       "voice_note": {
         "type": "Voice",
@@ -6692,7 +6773,8 @@
     "RichTextAnchor": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "anchor"
       },
       "name": {
         "type": "String",
@@ -6702,7 +6784,8 @@
     "RichTextAnchorLink": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "anchor_link"
       },
       "text": {
         "type": "RichText",
@@ -6716,7 +6799,8 @@
     "RichTextBankCardNumber": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "bank_card_number"
       },
       "text": {
         "type": "RichText",
@@ -6730,7 +6814,8 @@
     "RichTextBold": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "bold"
       },
       "text": {
         "type": "RichText",
@@ -6740,7 +6825,8 @@
     "RichTextBotCommand": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "bot_command"
       },
       "text": {
         "type": "RichText",
@@ -6754,7 +6840,8 @@
     "RichTextButton": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "button"
       },
       "button": {
         "type": "RichMessageButton",
@@ -6764,7 +6851,8 @@
     "RichTextCashtag": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "cashtag"
       },
       "text": {
         "type": "RichText",
@@ -6778,7 +6866,8 @@
     "RichTextCode": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "code"
       },
       "text": {
         "type": "RichText",
@@ -6788,7 +6877,8 @@
     "RichTextCustomEmoji": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "custom_emoji"
       },
       "custom_emoji_id": {
         "type": "String",
@@ -6802,7 +6892,8 @@
     "RichTextDateTime": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "date_time"
       },
       "text": {
         "type": "RichText",
@@ -6820,7 +6911,8 @@
     "RichTextEmailAddress": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "email_address"
       },
       "text": {
         "type": "RichText",
@@ -6834,7 +6926,8 @@
     "RichTextHashtag": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "hashtag"
       },
       "text": {
         "type": "RichText",
@@ -6848,7 +6941,8 @@
     "RichTextItalic": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "italic"
       },
       "text": {
         "type": "RichText",
@@ -6858,7 +6952,8 @@
     "RichTextMarked": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "marked"
       },
       "text": {
         "type": "RichText",
@@ -6868,7 +6963,8 @@
     "RichTextMathematicalExpression": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "mathematical_expression"
       },
       "expression": {
         "type": "String",
@@ -6878,7 +6974,8 @@
     "RichTextMention": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "mention"
       },
       "text": {
         "type": "RichText",
@@ -6892,7 +6989,8 @@
     "RichTextPhoneNumber": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "phone_number"
       },
       "text": {
         "type": "RichText",
@@ -6906,7 +7004,8 @@
     "RichTextReference": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "reference"
       },
       "text": {
         "type": "RichText",
@@ -6920,7 +7019,8 @@
     "RichTextReferenceLink": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "reference_link"
       },
       "text": {
         "type": "RichText",
@@ -6934,7 +7034,8 @@
     "RichTextSpoiler": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "spoiler"
       },
       "text": {
         "type": "RichText",
@@ -6944,7 +7045,8 @@
     "RichTextStrikethrough": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "strikethrough"
       },
       "text": {
         "type": "RichText",
@@ -6954,7 +7056,8 @@
     "RichTextSubscript": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "subscript"
       },
       "text": {
         "type": "RichText",
@@ -6964,7 +7067,8 @@
     "RichTextSuperscript": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "superscript"
       },
       "text": {
         "type": "RichText",
@@ -6974,7 +7078,8 @@
     "RichTextTextMention": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "text_mention"
       },
       "text": {
         "type": "RichText",
@@ -6988,7 +7093,8 @@
     "RichTextUnderline": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "underline"
       },
       "text": {
         "type": "RichText",
@@ -6998,7 +7104,8 @@
     "RichTextUrl": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "url"
       },
       "text": {
         "type": "RichText",
@@ -7276,7 +7383,8 @@
     "StoryAreaTypeLink": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "link"
       },
       "url": {
         "type": "String",
@@ -7286,7 +7394,8 @@
     "StoryAreaTypeLocation": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "location"
       },
       "latitude": {
         "type": "Float",
@@ -7304,7 +7413,8 @@
     "StoryAreaTypeSuggestedReaction": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "suggested_reaction"
       },
       "reaction_type": {
         "type": "ReactionType",
@@ -7322,7 +7432,8 @@
     "StoryAreaTypeUniqueGift": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "unique_gift"
       },
       "name": {
         "type": "String",
@@ -7332,7 +7443,8 @@
     "StoryAreaTypeWeather": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "weather"
       },
       "temperature": {
         "type": "Float",
@@ -7528,7 +7640,8 @@
     "TransactionPartnerAffiliateProgram": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "affiliate_program"
       },
       "sponsor_user": {
         "type": "User",
@@ -7542,7 +7655,8 @@
     "TransactionPartnerChat": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "chat"
       },
       "chat": {
         "type": "Chat",
@@ -7556,7 +7670,8 @@
     "TransactionPartnerFragment": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "fragment"
       },
       "withdrawal_state": {
         "type": "RevenueWithdrawalState",
@@ -7566,19 +7681,22 @@
     "TransactionPartnerOther": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "other"
       }
     },
     "TransactionPartnerTelegramAds": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "telegram_ads"
       }
     },
     "TransactionPartnerTelegramApi": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "telegram_api"
       },
       "request_count": {
         "type": "Integer",
@@ -7588,7 +7706,8 @@
     "TransactionPartnerUser": {
       "type": {
         "type": "String",
-        "required": true
+        "required": true,
+        "value": "user"
       },
       "transaction_type": {
         "type": "String",

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Conversation, Reply, ThreadRef } from "@amykit/core";
@@ -129,7 +129,6 @@ export class TelegramConversation implements Conversation {
     privateDirectory(this.shared());
     this.operator = normalisedId(options.operator);
     this.identity = identityOf(options.directory);
-    sweepOtherInboxes(options.directory, this.identity);
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
@@ -149,7 +148,7 @@ export class TelegramConversation implements Conversation {
       // Owner first: a reply that arrives before the work knows its topic is still filed here.
       // The directory is kept relative to the bot's, so a state root moved or mounted elsewhere still finds it.
       const owner: Owner = { directory: path.relative(this.shared(), this.options.directory), identity: this.identity };
-      createOnce(path.join(this.shared(), "owners", `${topic.message_thread_id}.json`), owner);
+      createOnce(path.join(this.shared(), "owners", `${this.chat()}-${topic.message_thread_id}.json`), owner);
       // Created once: if another process recorded a topic for this work first, that one is the work's.
       createOnce(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`), { topic: topic.message_thread_id });
       return { id: String(this.topicOfWork(workId)) };
@@ -263,7 +262,7 @@ export class TelegramConversation implements Conversation {
       if (updates.length === 0) return;
       for (const update of updates) {
         const message = update.message;
-        if (message && this.isOperatorAnswer(message)) this.file(message);
+        if (message && isAnAnswer(message)) this.file(message);
       }
       this.confirm(Math.max(...updates.map((update) => update.update_id)) + 1);
     }
@@ -276,7 +275,8 @@ export class TelegramConversation implements Conversation {
    */
   private file(message: TelegramMessage): void {
     const topic = message.message_thread_id!;
-    const owner = readJson<Owner>(path.join(this.shared(), "owners", `${topic}.json`));
+    // Keyed by chat: one bot's topics in two operators' chats are two owners.
+    const owner = readJson<Owner>(path.join(this.shared(), "owners", `${message.chat.id}-${topic}.json`));
     if (!owner) return;
     const directory = path.resolve(this.shared(), owner.directory);
     if (readIdentity(directory) !== owner.identity) return;
@@ -295,7 +295,8 @@ export class TelegramConversation implements Conversation {
       ...(message.document ? [{ id: message.document.file_id, unique: message.document.file_unique_id, name: message.document.file_name ?? message.document.file_unique_id, size: message.document.file_size }] : []),
       ...(largest ? [{ id: largest.file_id, unique: largest.file_unique_id, name: `${largest.file_unique_id}.jpg`, size: largest.file_size }] : []),
     ];
-    writeJson(target, { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files } satisfies Filed);
+    // Created once: a late reader filing the same message keeps the first file and its time.
+    createOnce(target, { messageId: message.message_id, at, author: String(message.from!.id), text: message.text ?? message.caption ?? "", files } satisfies Filed, true);
   }
 
   /**
@@ -319,18 +320,6 @@ export class TelegramConversation implements Conversation {
     writeJson(file, { offset: next, receivedAt: Date.now() });
   }
 
-  /**
-   * By who wrote it and where, never by a marker in the text, and only when
-   * it says something: a topic renamed, a sticker or a voice note carries no
-   * answer, and an empty reply would read as one.
-   */
-  private isOperatorAnswer(message: TelegramMessage): boolean {
-    if (message.from?.is_bot) return false;
-    if (String(message.from?.id) !== this.operator) return false;
-    if (String(message.chat.id) !== this.operator) return false;
-    if (message.is_topic_message !== true || message.message_thread_id === undefined) return false;
-    return Boolean(message.text?.trim() || message.caption?.trim() || message.document || message.photo?.length);
-  }
 
   /** The files as local paths, and a line naming each one too large to fetch. */
   private async downloadAll(topic: number, files: Filed["files"]): Promise<{ paths: string[]; skipped: string[] }> {
@@ -412,6 +401,19 @@ export class TelegramConversation implements Conversation {
   }
 }
 
+/**
+ * A message that answers: written by the person whose private chat it is (a
+ * bot's own messages excluded), in a topic, and saying something. A topic
+ * renamed, a sticker or a voice note carries no answer, and an empty reply
+ * would read as one. Whose topic it is the owners decide, by chat.
+ */
+function isAnAnswer(message: TelegramMessage): boolean {
+  if (message.from?.is_bot) return false;
+  if (message.chat.type !== "private" || message.from?.id !== message.chat.id) return false;
+  if (message.is_topic_message !== true || message.message_thread_id === undefined) return false;
+  return Boolean(message.text?.trim() || message.caption?.trim() || message.document || message.photo?.length);
+}
+
 /** Takes the hold if nobody has it, writing who holds it inside. */
 function claim(lock: string, me: string): boolean {
   try {
@@ -476,12 +478,6 @@ function ensureInbox(directory: string, inbox: string): boolean {
   return fs.existsSync(directory);
 }
 
-/** A profile's leftovers from an identity it no longer has, such as a reply filed while it was removed. */
-function sweepOtherInboxes(directory: string, identity: string): void {
-  for (const name of fs.readdirSync(directory)) {
-    if (name.startsWith("inbox-") && name !== `inbox-${identity}`) fs.rmSync(path.join(directory, name), { recursive: true, force: true });
-  }
-}
 
 /** The identity a profile directory carries, published whole and durable the first time it is used. */
 function identityOf(directory: string): string {
@@ -519,9 +515,14 @@ function readIdentity(directory: string): string | undefined {
   }
 }
 
-/** A JSON file written once: whoever writes it first is the answer. */
-function createOnce(file: string, value: unknown): void {
-  privateDirectory(path.dirname(file));
+/**
+ * A JSON file written once: whoever writes it first is the answer. A file
+ * that does not parse, with `replaceUnreadable`, is not an answer and is
+ * replaced. A directory made for it is flushed into its parent first.
+ */
+function createOnce(file: string, value: unknown, replaceUnreadable = false): void {
+  durableDirectory(path.dirname(file));
+  if (replaceUnreadable && fs.existsSync(file) && readJson(file, true) === undefined) fs.rmSync(file, { force: true });
   const staged = path.join(path.dirname(file), `.${randomUUID()}.partial`);
   const handle = fs.openSync(staged, "wx", 0o600);
   try {
@@ -565,9 +566,15 @@ function normalisedId(id: string): string {
   return String(Number(id));
 }
 
-/** A work id as one file name on every system. */
+/**
+ * A work id as one file name on every system, readable when short; a long
+ * one is cut and finished with a digest of the whole, so it stays bounded and
+ * two ids never share a name.
+ */
 function fileNameOf(workId: string): string {
-  return encodeURIComponent(workId).replace(/\*/g, "%2A").replace(/^\./, "%2E");
+  const encoded = encodeURIComponent(workId).replace(/\*/g, "%2A").replace(/^\./, "%2E");
+  if (encoded.length <= 120) return encoded;
+  return `${encoded.slice(0, 56).replace(/%[0-9A-F]?$/, "")}-${createHash("sha256").update(workId).digest("hex")}`;
 }
 
 function topicOf(thread: ThreadRef): number {
@@ -673,6 +680,18 @@ function syncDirectory(directory: string): void {
   } finally {
     if (handle !== undefined) fs.closeSync(handle);
   }
+}
+
+/** A directory made, if it is not there, and flushed into its parent so it survives a power loss. */
+function durableDirectory(directory: string): void {
+  if (fs.existsSync(directory)) return;
+  durableDirectory(path.dirname(directory));
+  try {
+    fs.mkdirSync(directory, { mode: 0o700 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  syncDirectory(path.dirname(directory));
 }
 
 /** What threads a machine's work lives in, and the operator's files, are nobody else's to read. */

@@ -256,5 +256,7 @@ describe("the Telegram Bot API, derived from its page", () => {
     const forwarded = { message_id: 1, date: 1, chat: { id: 1, type: "private" }, forward_origin: { type: "hidden_user", date: 1, sender_user_name: "Ada" } };
     expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: forwarded }])).not.toThrow();
     expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { ...forwarded, forward_origin: { type: "pigeon" } } }])).toThrow(/is a MessageOrigin, and is none of/);
+    // Every other field fits a hidden user; only the type says what it is.
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { ...forwarded, forward_origin: { type: "pigeon", date: 1, sender_user_name: "Ada" } } }])).toThrow(/is a MessageOrigin, and is none of/);
   });
 });
