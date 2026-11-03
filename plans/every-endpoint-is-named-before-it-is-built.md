@@ -40,6 +40,8 @@ sources:
   - { id: S38, kind: decision, said: "getHandbrake GET /v1/machine/handbrake → { paused, reason?, since? }; setHandbrake PUT { paused, reason? }, amy pause and resume for every workflow: 200 { paused, reason?, since? }; writes stop switch and event log" }
   - { id: S39, kind: decision, said: "getWorkflowDiagram GET /v1/workflows/{profile}/diagram → { text (workflow.mmd), revision (digest), editable (only under ~/.amy/workflows) }, what amy workflow export prints; 404 workflows.not_found; 404 workflows.no_diagram for one written without a diagram" }
   - { id: S74, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "the profile's workflow.mmd that getWorkflowDiagram returns and saveWorkflowDiagram writes" }
+  - { id: S75, kind: reference, ref: "plans/the-window-is-served.md", said: "a paired device is never offered running an agent, and an ask runs on the window's own server: so startAsk and addAskTurn are local-only, never routed over TCP" }
+  - { id: S76, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "an ask's about names the server its record lives on as well as profile and workId; absent, this server, so two servers' TBO-1 are two targets" }
   - { id: S40, kind: decision, said: "saveWorkflowDiagram PUT /v1/workflows/{profile}/diagram { text, baseRevision }: reads with the host's mount subset, writes workflow.mmd, runs amy workflow check; 200 { revision, undrawn[], unwalked[] }; local-only; writes the workflow's directory" }
   - { id: S41, kind: decision, said: "saveWorkflowDiagram refuses 409 workflows.stale_revision { current }; 409 workflows.not_yours for a package; 422 workflows.diagram_refused { line, construct }" }
   - { id: S42, kind: decision, said: "and 409 workflows.state_in_use { state, records[] } when it drops a state a record is in or has an edge into under the mounted diagram" }
@@ -90,6 +92,8 @@ criteria:
   - { id: A6, statement: "an ask's answer and a shell's output reach only the session in the request's X-Amy-Session, with two clients on one token", proof: "deferred:assertion:server.an_event_reaches_only_its_session", sources: [S13, S14, S54, S68] }
   - { id: A7, statement: "a view whose intent names an operationId the registry does not list fails the build", proof: "deferred:assertion:server.every_intent_names_an_operation", sources: [S34, S35] }
   - { id: A8, statement: "editing surface.yaml without sf lock fails the build", proof: "deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED", sources: [S3] }
+  - { id: A9, statement: "startAsk and addAskTurn called over TCP are not routed, 404, and no harness runs", proof: "deferred:assertion:server.no_ask_runs_for_a_tcp_client", sources: [S51, S54, S75] }
+  - { id: A10, statement: "startAsk's about carries the record's server, and two asks about TBO-1 on two servers start from two different records", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S51, S76] }
 guarantee:
   - { holds: "a local-only operation or view is reached only on the local socket", not_against: "a TCP connection from 127.0.0.1, a tunnel included" }
   - { holds: "only the two webhook routes answer without amy's token", not_against: "a valid tool signature, which authenticates those two" }

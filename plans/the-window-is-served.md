@@ -14,8 +14,8 @@ sources:
   - { id: S12, kind: decision, said: "in tests and the gate scenario every response and event is validated against the generated openapi.json, not the Zod source; every route carries an example, validated too" }
   - { id: S13, kind: decision, said: "the handshake sends SDK contract hash, renderer name, surfaces drawn and primitives known; a different hash is refused by name telling the client to update; a missing primitive a mounted view uses is refused naming it" }
   - { id: S14, kind: decision, said: "no renderer imports a store, a queue, the log or a path under amy's home, and a rule keeps it so" }
-  - { id: S15, kind: decision, ref: "packages/cli/src/home.ts", said: "listens on its socket and 127.0.0.1 only; a client on this machine presents a token generated into amy's home, never the config, rotated by amy serve --rotate-token" }
-  - { id: S16, kind: decision, said: "listening elsewhere is a flag, amy serve --host 0.0.0.0; internet exposure is a tunnel the operator runs in front of it, which is where TLS comes from" }
+  - { id: S15, kind: decision, ref: "packages/cli/src/home.ts", said: "listens on its socket only by default; a client on this machine presents a token generated into amy's home, never the config, rotated by amy serve --rotate-token" }
+  - { id: S16, kind: decision, said: "a TCP listener opens only once its owner turns remote access on, in Settings; on 127.0.0.1, or elsewhere by amy serve --host. Whatever reaches it must be a paired device, encrypted with the paired keys" }
   - { id: S17, kind: decision, said: "a tunnel (ngrok, ssh -L, reverse proxy) reaches amy from 127.0.0.1, so a remote client with the token looks local; hence two transports, not a peer-address check" }
   - { id: S18, kind: decision, said: "TCP carries every operation except local-only ones, which are not routed there at all (absent, not refused); serve.sock under amy's home, 0600 for the user, carries every operation" }
   - { id: S19, kind: decision, said: "the desktop app and same-machine terminal use the socket; a client given --server <url> uses TCP and is remote. Local-only: a shell, starting an editor on the host, removing a workflow, reading or saving config.yaml" }
@@ -65,7 +65,7 @@ criteria:
   - { id: A2, statement: "a client in a home with no amy state draws the conformance world, and moves when the daemon advances a record", proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server", sources: [S1, S2, S3, S5, S21, S26, S27] }
   - { id: A3, statement: "two clients connected at once receive the same patch for the same change", proof: "deferred:assertion:server.every_client_sees_the_same_change", sources: [S20] }
   - { id: A4, statement: "a connection from this machine without the token, or from another without a pairing, is refused on every route except the two webhook receivers (an event is a reason to look), which refuse a bad signature instead", proof: "deferred:assertion:server.nothing_answers_without_the_token", sources: [S15, S25] }
-  - { id: A5, statement: "the server listens on loopback unless told otherwise, and its socket is 0600", proof: "deferred:assertion:server.it_listens_on_loopback_by_default", sources: [S15, S16, S18] }
+  - { id: A5, statement: "a server listens on its socket only, 0600, until remote access is turned on, and then on 127.0.0.1 unless told otherwise", proof: "deferred:assertion:server.it_listens_on_its_socket_by_default", sources: [S15, S16, S18] }
   - { id: A6, statement: "a client reaching the server through a TCP forward on 127.0.0.1 (a tunnel) with the right token gets no local-only operation: absent from its views, 404 on its transport", proof: "deferred:assertion:server.a_tunnelled_client_gets_no_shell", sources: [S17, S18, S19, S29] }
   - { id: A7, statement: "a client on the socket gets the local-only operations", proof: "deferred:assertion:server.the_socket_is_the_local_door", sources: [S18, S19] }
   - { id: A8, statement: "a client missing a primitive a mounted view uses is refused at the handshake, naming the primitive", proof: "deferred:test:packages/ui/tests/handshake.test.ts", sources: [S13] }
@@ -81,7 +81,7 @@ criteria:
   - { id: A19, statement: "a window connected to two servers lists both servers' records under their names, and a work id the two share stays two records", proof: "deferred:assertion:server.one_window_holds_many_servers", sources: [S20, S30, S31] }
   - { id: A20, statement: "a poke on one server's record moves that record and leaves the other server's untouched", proof: "deferred:assertion:server.an_intent_reaches_only_its_server", sources: [S31] }
   - { id: A21, statement: "a server stopped shows away by name while the other's view keeps moving, and its return reconnects without restarting the window", proof: "deferred:assertion:server.a_server_away_leaves_the_others", sources: [S32] }
-  - { id: A22, statement: "a fresh install listens on no network address, and a machine never paired is refused before any route", proof: "deferred:assertion:server.nothing_answers_an_unpaired_machine", sources: [S15, S34] }
+  - { id: A22, statement: "a fresh install opens no TCP listener, and with remote access on, a machine never paired is refused before any route", proof: "deferred:assertion:server.nothing_answers_an_unpaired_machine", sources: [S15, S16, S34] }
   - { id: A23, statement: "connecting to a new server pairs once its owner approves the matching code, with no command but amy ui, and the private keys stay each in its own home", proof: "deferred:assertion:server.connecting_is_pairing", sources: [S30, S34, S35, S36] }
   - { id: A24, statement: "a read-only device gets no intent, one granted acting pokes, and neither is ever offered a shell, an editor, config or an agent run", proof: "deferred:assertion:server.a_paired_device_gets_what_it_was_granted", sources: [S33, S37] }
   - { id: A25, statement: "amy ui unpair refuses that device's next connection and leaves another paired device connected", proof: "deferred:assertion:server.unpairing_one_leaves_the_others", sources: [S38] }
@@ -90,7 +90,7 @@ criteria:
   - { id: A18, statement: "an intent leaves the same record, queue and log its command leaves", proof: "deferred:assertion:server.an_intent_is_its_command", sources: [S4] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server" }
-  - { mechanism: profiles-and-state, answer: works, proof: "deferred:assertion:server.it_listens_on_loopback_by_default; token and serve.sock live under amy's home" }
+  - { mechanism: profiles-and-state, answer: works, proof: "deferred:assertion:server.it_listens_on_its_socket_by_default; token and serve.sock live under amy's home" }
   - { mechanism: config, answer: works, proof: "deferred:A23; ui.servers is a new config key read by amy ui, holding names and URLs, never a secret" }
 guarantee:
   - { holds: "nothing answers without the token", not_against: "the two webhook receivers, which verify a signature instead" }
