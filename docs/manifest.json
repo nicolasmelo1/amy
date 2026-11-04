@@ -253,6 +253,11 @@
           "description": ""
         },
         {
+          "title": "A project is brief, work and proof",
+          "path": "/design/a-project-is-brief-work-and-proof",
+          "description": ""
+        },
+        {
           "title": "A project is three phases, and amy reads them",
           "path": "/design/a-project-is-three-phases",
           "description": ""
@@ -961,6 +966,11 @@
           "depth": 3,
           "title": "**A command belongs to the package that means it.** A plugin declares commands, checks and files beside register, read after the module is imported and before anything mounts: amy --help lists amy roster beside the workflow that brought it, amy doctor runs the checks it brought, and amy init/amy add write the files it brought into the profile's state, once. A command that declares mount: true receives the mounted ports or a refusal naming why the machine did not come up; every other command answers on the machine that will not boot, which is when it matters.",
           "slug": "a-command-belongs-to-the-package-that-means-it-a-plugin-declares-commands-checks-and-files-beside-register-read-after-the-module-is-imported-and-before-anything-mounts-amy---help-lists-amy-roster-beside-the-workflow-that-brought-it-amy-doctor-runs-the-checks-it-brought-and-amy-initamy-add-write-the-files-it-brought-into-the-profiles-state-once-a-command-that-declares-mount-true-receives-the-mounted-ports-or-a-refusal-naming-why-the-machine-did-not-come-up-every-other-command-answers-on-the-machine-that-will-not-boot-which-is-when-it-matters"
+        },
+        {
+          "depth": 3,
+          "title": "**A project is brief, work and proof.** The brief/, workflow/ and prove/ folders of a project compose the one workflow its config entry drives: each phase a call() to the defineWorkflow declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named refused carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for amy status to show; a test/ folder is told the phase is named prove/.",
+          "slug": "a-project-is-brief-work-and-proof-the-brief-workflow-and-prove-folders-of-a-project-compose-the-one-workflow-its-config-entry-drives-each-phase-a-call-to-the-defineworkflow-declaration-its-folder-exports-walked-as-child-records-of-one-record-one-profile-and-one-daemon-for-the-whole-walk-the-briefs-own-declared-sections-give-the-walk-its-vocabulary-what-the-brief-workflow-returned-is-what-the-proving-workflow-is-handed-as-its-input-exactly-and-an-end-named-refused-carries-the-row-back-to-work-saying-what-did-not-hold-a-phase-neither-present-nor-declared-absent-is-refused-at-the-walks-mount-naming-it-a-phase-declared-absent-carries-its-reason-on-the-workflow-for-amy-status-to-show-a-test-folder-is-told-the-phase-is-named-prove"
         },
         {
           "depth": 3,
@@ -1995,6 +2005,28 @@
           "depth": 2,
           "title": "Not here",
           "slug": "not-here"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-project-is-brief-work-and-proof",
+      "file": "docs/design/a-project-is-brief-work-and-proof.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-project-is-brief-work-and-proof.md",
+      "title": "A project is brief, work and proof",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The delivery",
+          "slug": "the-delivery"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance",
+          "slug": "acceptance"
         }
       ]
     },
@@ -8890,6 +8922,7 @@
         "assertions": [
           "update.added_the_first_version",
           "update.the_installed_cli_keeps_a_registry_intent",
+          "update.the_phases_become_one_project",
           "update.v1_finds_the_page",
           "update.v1_moves_the_page",
           "update.a_check_names_what_would_move",
@@ -9269,31 +9302,28 @@
         "name": "project-phases",
         "activation": [
           "packages/cli/src/assemble.ts",
+          "packages/cli/src/project.ts",
           "packages/cli/src/index.ts",
           "packages/cli/src/paths.ts",
           "packages/cli/src/profiles.ts",
           "packages/cli/src/slices.ts",
           "packages/cli/src/loader.ts",
+          "packages/core/src/define-workflow.ts",
           "packages/core/src/mount.ts",
           "plugins/file-brief-store/src/**"
         ],
         "evidence": ".software-factory/evidence/project-phases.json",
-        "plan": "docs/design/a-project-is-three-phases.md",
+        "plan": "docs/design/a-project-is-brief-work-and-proof.md",
         "assertions": [
+          "project.the_three_phases_walk_as_one",
+          "project.what_was_briefed_is_what_is_proven",
+          "project.a_declared_absent_phase_says_why_at_the_status",
+          "project.a_packaged_workflow_declares_its_phases",
           "project.a_packaged_workflow_is_unchanged",
-          "project.a_lone_workflow_is_a_phase",
-          "project.a_project_without_brief_keeps_no_briefs",
-          "project.every_phase_mounts",
-          "project.each_phase_has_its_own_queue",
-          "project.each_phase_spends_its_own_budget",
-          "project.each_phase_is_its_own_daemon",
-          "project.each_phase_keeps_its_own_tasks",
-          "project.grooming_and_execution_choose_their_own_models",
-          "project.a_brief_crosses_the_phase_boundary",
+          "project.a_phase_without_a_workflow_is_refused_by_name",
           "project.no_config_names_a_shared_directory",
           "project.no_phase_state_escapes_home",
-          "project.a_phase_never_reads_an_old_profiles_records",
-          "project.a_phase_without_a_workflow_is_refused_by_name"
+          "project.a_phase_never_reads_an_old_profiles_records"
         ],
         "scenario": ".software-factory/evidence/project-phases-scenario.sh"
       },
@@ -10058,6 +10088,34 @@
           },
           {
             "package": "@amykit/plugin-file-worktree",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-project-is-brief-work-and-proof",
+        "title": "**A project is brief, work and proof.** The `brief/`, `workflow/` and `prove/` folders of a project compose the one workflow its config entry drives: each phase a `call()` to the `defineWorkflow` declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named `refused` carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for `amy status` to show; a `test/` folder is told the phase is named `prove/`.",
+        "body": "`defineWorkflow` gains the optional `phases` member — one reason per\ndeclared-absent phase — which the plugin carries beside its workflow; the\nshipped `errand`, `note-to-plan` and `ticket-to-qa` declare brief and prove\nout with their reasons, and every other package is unchanged. A project's\nqueue, records, tasks, threads and log live under\n`projects/<project>/<profile>` with its briefs under the project's shared\nartifact root; the per-phase layout of an older machine stays on disk,\nunread, and `amy update` folds a config that named one project as three\nphase profiles into its single project profile, saying every fold and\nmoving nothing the second time.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
             "level": "minor"
           },
           {

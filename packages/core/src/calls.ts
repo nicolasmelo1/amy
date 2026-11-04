@@ -63,6 +63,12 @@ const LEASE_WAIT_MS = 1_000;
  */
 export interface CallBinding<R extends WorkRecord = WorkRecord, I = unknown, Outs = Record<string, unknown>> {
   readonly input?: (work: R) => I;
+  /**
+   * The caller's queue is this callee's queue too. A composed root marks its
+   * entry call, so work the entry phase discovers begins at the root rather
+   * than disappearing because the root has no separate provider.
+   */
+  readonly discover?: boolean;
   readonly config?: Readonly<Record<string, unknown>>;
   readonly ports?: Readonly<Record<string, string>>;
   readonly output?: { readonly [End in keyof Outs]?: (work: R, out: Outs[End]) => R };
@@ -514,6 +520,11 @@ export function composedRuntime(own: WorkflowRuntime, sites: ReadonlyMap<string,
 
   return {
     ...own,
+    found: async () => {
+      const delegated = [...sites.values()].filter((site) => site.binding.discover);
+      const found = await Promise.all([own.found(), ...delegated.map((site) => runtimeOf(site).found())]);
+      return found.flat();
+    },
     newRecord: (workId, now) => {
       const record = own.newRecord(workId, now);
       const site = siteOf(record);

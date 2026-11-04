@@ -7,12 +7,12 @@
       "type": "next_steps.the_declaration_claims_no_tracker_writes",
       "status": "passed",
       "detail": [
-        "ok   config file  /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-jf3iGH/home/.amy/config.yaml",
+        "ok   config file  /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-7pnIjW/home/.amy/config.yaml",
         "ok   settings for @amykit/plugin-next-steps",
         "ok   workflow write surface  read-only: it cannot write the tracker or code host",
-        "ok   checkout acme/widgets  asked the workspace root (/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-jf3iGH/checkouts)",
-        "ok   checkout acme/gadgets  asked the workspace root (/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-jf3iGH/checkouts)",
-        "ok   worktrees root  /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-jf3iGH/worktrees (checkouts stay in /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-jf3iGH/checkouts)"
+        "ok   checkout acme/widgets  asked the workspace root (/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-7pnIjW/checkouts)",
+        "ok   checkout acme/gadgets  asked the workspace root (/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-7pnIjW/checkouts)",
+        "ok   worktrees root  /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-7pnIjW/worktrees (checkouts stay in /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-next-steps-7pnIjW/checkouts)"
       ]
     },
     {

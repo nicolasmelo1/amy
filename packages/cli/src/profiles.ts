@@ -1,11 +1,23 @@
 import { createHash } from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
 import type { AmyConfig, WorkflowProfile } from "./config.js";
 
-const PROJECT_PHASES = ["brief", "workflow", "test"] as const;
+/**
+ * The phase folders a project may carry, in walk order: the brief's, the
+ * work's and the proving one's. A folder named any of these is a phase of
+ * the project its parent folder is; the walk of the project calls the
+ * workflows its folders export.
+ */
+export const PROJECT_PHASES = ["brief", "workflow", "prove"] as const;
 type ProjectPhase = (typeof PROJECT_PHASES)[number];
 
+/**
+ * A project, inferred from the folder a phase spec names.
+ *
+ * `project` is the whole project's identity — the root directory its phases
+ * walk, not a case in a switch — and the phase the spec named, which tells a
+ * refusal which folder was expected to say so.
+ */
 export interface ProjectIdentity {
   readonly root: string;
   readonly phase: ProjectPhase;
@@ -110,12 +122,17 @@ const NEEDS: Record<string, readonly string[]> = {
 
 /** What `amy init` suggests installing for a profile that lists nothing. */
 export function recommendedFor(profile: Profile): readonly string[] {
-  const needs = NEEDS[profile.workflow] ?? [];
+  return recommendedPluginsFor(profile.workflow);
+}
+
+/** What a workflow would mount, named by its spec: the recommendation the boot would read. */
+function recommendedPluginsFor(workflow: string): readonly string[] {
+  const needs = NEEDS[workflow] ?? [];
   // Workflow ports need their providers during registration, while the
   // worktree captures the workflow's terminal states and must follow it.
   const prerequisites = needs.filter((plugin) => plugin === "@amykit/plugin-linear");
   const consumers = needs.filter((plugin) => plugin !== "@amykit/plugin-linear");
-  return [...PROVIDERS, ...prerequisites, profile.workflow, ...WORKTREE_AND_CONSUMERS, ...consumers];
+  return [...PROVIDERS, ...prerequisites, workflow, ...WORKTREE_AND_CONSUMERS, ...consumers];
 }
 
 /** Every profile this install can drive: the shipped ones, plus the config's. */
@@ -141,6 +158,24 @@ export function profiles(config: AmyConfig, home?: string): Record<string, Profi
       agent: entry.agent,
       settings: entry.settings ?? {},
     };
+  }
+
+  // A project is one profile and one daemon: its phases are child records of
+  // the project's record, walked in the one walk the project's workflow
+  // declares. Two profiles naming one project would run the same walk twice,
+  // and the second would find the work of the first already under way.
+  const roots = new Map<string, string[]>();
+  for (const [name, profile] of Object.entries(resolved)) {
+    if (!profile.project) continue;
+    const names = roots.get(profile.project.root) ?? [];
+    names.push(name);
+    roots.set(profile.project.root, names);
+  }
+  for (const [root, names] of roots) {
+    if (names.length < 2) continue;
+    throw new Error(
+      `the project at ${root} is one profile: ${names.map((name) => `\`${name}\``).join(" and ")} both name it — a project walks its phases as child records of one profile, so fold them into the one entry naming its workflow/ (the update's migration folds such a config)`,
+    );
   }
 
   return resolved;
@@ -174,6 +209,18 @@ export function resolveProfile(config: AmyConfig, asked?: string, home?: string)
     return { ok: false, problem: `there is no \`${wanted}\` workflow. Try: ${names.join(", ")}` };
   }
 
+  // A config that names a `test/` folder as its workflow is the legacy
+  // proving-phase anchor, and it is refused with the rename: under the
+  // project vocabulary the proving phase is `prove/`, and a `test/` spec
+  // would otherwise mount as an ordinary workflow without a word about it.
+  const spec = filesystemWorkflow(home, profile.workflow);
+  if (path.basename(spec) === "test") {
+    return {
+      ok: false,
+      problem: `\`${profile.workflow}\` is the old proving phase's folder, and the phase is named \`prove/\` now — rename the folder to \`prove/\`, or name another workflow`,
+    };
+  }
+
   return { ok: true, profile };
 }
 
@@ -185,12 +232,13 @@ function filesystemWorkflow(home: string | undefined, workflow: string): string 
 }
 
 /**
- * Where a profile keeps its records and its queue, under one `.amy`.
+ * Where a project keeps its records and its queue, under one `.amy`.
  *
- * One directory per profile, named after it, so a second workflow never
- * writes over the first's state — swapping which one you drive keeps both.
- * Everything else under `.amy` stays shared: one log means one budget, and
- * one handbrake means `amy stop` stops whichever workflow is running.
+ * A project is one profile now: its phases are child records of the
+ * project's record, not profiles of their own, so every phase shares the
+ * one state key the project has. Everything else under `.amy` stays shared:
+ * one log means one budget, and one handbrake means `amy stop` stops the
+ * project's daemon.
  */
 export function directoriesFor(profile: string | Pick<Profile, "name" | "project">): { records: string; queue: string } {
   if (typeof profile !== "string" && profile.project) {
@@ -203,7 +251,7 @@ export function directoriesFor(profile: string | Pick<Profile, "name" | "project
 
 /**
  * The shared project root is inferred from a phase directory, never from `..`
- * configuration. Every `brief/`, `workflow/` or `test/` is a phase, alone or
+ * configuration. Every `brief/`, `workflow/` or `prove/` is a phase, alone or
  * not: a folder a project lacks is a part of the work nobody drives.
  */
 function projectFor(workflow: string): ProjectIdentity | undefined {
@@ -213,15 +261,9 @@ function projectFor(workflow: string): ProjectIdentity | undefined {
   return { root: path.resolve(workflow, ".."), phase };
 }
 
-/** Why a command that needs one phase cannot answer for this profile's project, if it cannot. */
-export function missingPhase(profile: Pick<Profile, "name" | "project">, phase: ProjectPhase): string | undefined {
-  if (!profile.project || fs.existsSync(path.join(profile.project.root, phase))) return undefined;
-  return `${profile.name}'s project has no ${phase}/ phase, so nothing drives that part of its work: add ${path.join(profile.project.root, phase)}`;
-}
-
 /** A stable, path-safe state name that cannot make a profile leave Amy home. */
 export function projectStateKey(project: ProjectIdentity, profile?: string): string {
-  return `${projectRootKey(project)}${profile ? `/${profile}` : ""}/${project.phase}`;
+  return `${projectRootKey(project)}${profile ? `/${profile}` : ""}`;
 }
 
 /** A profile name becomes part of its state path, so it has one safe component. */
@@ -237,7 +279,7 @@ function projectRootKey(project: ProjectIdentity): string {
   return `projects/${safe}`;
 }
 
-/** The one directory phases share; queues, records and budgets remain phase-local. */
+/** The one directory the project's phases share; its state stays the project's alone. */
 export function artifactDirectory(profile: Pick<Profile, "project">): string | undefined {
   return profile.project ? `${projectRootKey(profile.project)}/artifacts` : undefined;
 }

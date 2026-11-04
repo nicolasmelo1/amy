@@ -11,10 +11,10 @@ sources:
   - { id: S9, kind: decision, said: "a link to the common document is not a substitute for the phase's own scenario: each phase names its own, cited rather than gestured at" }
   - { id: S10, kind: decision, said: "unsupported is a state of its own: an assertion the harness could not evaluate is the thing most often counted as success" }
   - { id: S11, kind: decision, said: "2026-10-01: the proof is a project artifact, not an execution state — one record per unit beside the briefs in the artifact root, written by prove/, read by the others" }
-  - { id: S12, kind: reference, ref: "plans/a-project-is-brief-work-and-proof.md", said: "the phases are calls of one project workflow: no phase reaches into another's lifecycle, and the proof is handed the criteria the brief returned" }
+  - { id: S12, kind: reference, ref: "../docs/design/a-project-is-brief-work-and-proof.md", said: "the phases are calls of one project workflow: no phase reaches into another's lifecycle, and the proof is handed the criteria the brief returned" }
   - { id: S13, kind: decision, said: "a proof can be manual: the record makes it one, not who ran it; it names the scenario, each assertion's status, who ran it and what it ran against" }
   - { id: S14, kind: decision, said: "a proof records the code digest and the brief revision it proved; when either moves it stops counting and the unit is unproven, which does not count as done" }
-  - { id: S15, kind: reference, ref: "plans/a-project-is-brief-work-and-proof.md", said: "a phase neither present nor declared absent is refused at mount; one declared absent boots, and amy doctor names what the project loses without it" }
+  - { id: S15, kind: reference, ref: "../docs/design/a-project-is-brief-work-and-proof.md", said: "a phase neither present nor declared absent is refused at mount; one declared absent boots, and amy doctor names what the project loses without it" }
   - { id: S16, kind: decision, said: "naming the proving scenario in planning forces an example, the cheapest instrument for the case a prose requirement left open, two phases before a reviewer" }
 touches:
   - packages/core/src/proving.ts

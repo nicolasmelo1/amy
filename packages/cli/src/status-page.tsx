@@ -33,6 +33,13 @@ interface StatusLane {
   readonly history: readonly Transition[];
 }
 
+/** One phase of a project as `amy status --json` reports it: where it walks, or why it is out. */
+interface StatusPhase {
+  readonly phase: string;
+  readonly absent: boolean;
+  readonly reason: string | null;
+}
+
 /** One call a record is waiting on, as `amy status --json` reports it. */
 interface StatusCall {
   readonly id: string;
@@ -60,6 +67,8 @@ export interface StatusSnapshot {
   readonly terminalStates: readonly string[];
   readonly records: readonly StatusRecord[];
   readonly queue: { readonly due: number; readonly pending: number; readonly running: number; readonly finished: number };
+  /** The project's phases: the ones this walk drives, and the ones declared out, with the reason. */
+  readonly phases?: readonly StatusPhase[];
   readonly loop: StatusLoop | null;
   readonly paused: string | null;
   readonly notes: number;
@@ -156,6 +165,7 @@ export function statusView(snapshot: StatusSnapshot, options: StatusOptions): No
     <Stack gap={1}>
       <Records snapshot={snapshot} all={options.all} />
       {records.finished > 0 && <Text tone="muted">{`${records.finished} finished, not shown. \`amy status --all\` lists them.`}</Text>}
+      <Phases snapshot={snapshot} />
       <Section>
         <Text>{`queue: ${queue.due} due, ${queue.pending} pending, ${queue.running} in flight, ${queue.finished} finished`}</Text>
         <Text>{loopLine(snapshot)}</Text>
@@ -166,5 +176,23 @@ export function statusView(snapshot: StatusSnapshot, options: StatusOptions): No
         <Text tone="warning">{`${snapshot.needsInput} question(s) waiting for you in ${options.inbox}`}</Text>
       )}
     </Stack>
+  );
+}
+
+/**
+ * The phases of a project, said on one line: the ones the walk drives in
+ * order, then every phase declared absent with the reason its declaration
+ * gave, which is what a project without that phase loses.
+ */
+function Phases(props: { readonly snapshot: StatusSnapshot }): Node | null {
+  const phases = props.snapshot.phases ?? [];
+  if (phases.length === 0) return null;
+  const walking = phases.filter((one) => !one.absent).map((one) => one.phase);
+  const absent = phases.filter((one) => one.absent).map((one) => `${one.phase} is out: ${one.reason}`);
+  return (
+    <Section>
+      {walking.length > 0 && <Text>{`phases: ${walking.join(" › ")}`}</Text>}
+      {absent.map((line) => <Text tone="muted">{line}</Text>)}
+    </Section>
   );
 }

@@ -29,6 +29,50 @@ const CONFIG = {
 };
 
 describe("pluginSlices", () => {
+  it("builds the composed workflow's slice after the config's own entries, its given entry standing", () => {
+    const slices = pluginSlices(
+      {
+        ...CONFIG,
+        plugins: {
+          "workflow-phase": { destination: "/tmp/the-phase-wrote-it-here" },
+          "workflow-project": { theWord: "by hand" },
+        },
+      },
+      TICKETS,
+      undefined,
+      new Map([["project", "workflow-project"]]),
+      { name: "workflow-project", callees: ["workflow-phase"] },
+    ) as Record<string, Record<string, unknown>>;
+    const composed = slices["workflow-project"] ?? {};
+
+    // The composed slice reads the phase's effective slice, which the config
+    // wrote for the phase by name: the setting rides the call that runs it.
+    expect(composed.destination).toBe("/tmp/the-phase-wrote-it-here");
+    // An entry the config wrote for the composed name itself survives the
+    // composition, and beats nothing derived.
+    expect(composed.theWord).toBe("by hand");
+  });
+
+  it("keeps separate dotted-setting leaves supplied by different project phases", () => {
+    const brief = { policy: { maxQuestions: 2 } };
+    const slices = pluginSlices(
+      {
+        ...CONFIG,
+        plugins: {
+          "workflow-brief": brief,
+          "workflow-work": { policy: { maxAttempts: 3 } },
+        },
+      },
+      TICKETS,
+      undefined,
+      new Map([["project", "workflow-project"]]),
+      { name: "workflow-project", callees: ["workflow-brief", "workflow-work"] },
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(slices["workflow-project"]?.policy).toEqual({ maxQuestions: 2, maxAttempts: 3 });
+    expect(brief).toEqual({ policy: { maxQuestions: 2 } });
+  });
+
   it("names the machine's default repository for the tracker, and leaves its vocabulary to its slice", () => {
     const slices = pluginSlices(
       {

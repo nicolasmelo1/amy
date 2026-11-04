@@ -11,7 +11,7 @@ import { Call, CallSite, ForkSite, Signature, composedRuntime, composedWorkflow,
 import { BranchLeases, FileLeases } from "./leases.js";
 import { PortLookup } from "./dispatch.js";
 import { deferred } from "./deferred.js";
-import { Plugin, PluginContext, Registry, Workflow } from "./plugin.js";
+import { Plugin, PluginContext, Registry, Workflow, ProjectPhases } from "./plugin.js";
 import { WorkflowRuntime } from "./runtime.js";
 import { Action, Moved, Plan, WorkRecord } from "./work.js";
 import { ActionContext, ActionImplementation, FoundWork, ProgressPolicy } from "./runtime.js";
@@ -101,6 +101,12 @@ export interface WorkflowPlugin<R extends WorkRecord = WorkRecord, O = unknown, 
   /** Throws, naming why, when the workflow has no states: no diagram was read and none were declared. */
   readonly workflow: Workflow<O, P>;
   newRecord(workId: string, now: Date): R;
+  /**
+   * The project phases this workflow declared, readable without a mount:
+   * the composition of a project reads these off the workflow its config
+   * names, and `amy status` reads the mounted one's through the workflow.
+   */
+  readonly phases?: ProjectPhases;
 }
 
 // Registered rather than private: a workflow may be defined against another
@@ -201,6 +207,11 @@ interface DeclarationBase<
 > {
   readonly name: string;
   readonly pluginName?: string;
+  /**
+   * The project phases this workflow declares, every value the reason the
+   * phase it names is absent. See `ProjectPhases`.
+   */
+  readonly phases?: ProjectPhases;
   /**
    * Required only when no diagram lies beside the workflow. A workflow with a
    * `workflow.mmd` declares none of these: the host reads them from the file,
@@ -318,7 +329,7 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
   let unmounted: Assembled | undefined;
   const assembled = (): Assembled => {
     if (typeof shape === "string") refused();
-    return (unmounted ??= assemble(declaration as unknown as AnyDeclaration, shape as Shape, undefined, [declaration.name], [declaration.name]));
+    return (unmounted ??= assemble(declaration as unknown as AnyDeclaration, shape as Shape, undefined, [declaration.name], [declaration as unknown as AnyDeclaration]));
   };
 
   const plugin = {
@@ -327,12 +338,13 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
     ...(declaration.commands ? { commands: declaration.commands as unknown as readonly PluginCommand[] } : {}),
     ...(declaration.checks ? { checks: declaration.checks as unknown as readonly PluginCheck[] } : {}),
     ...(declaration.files ? { files: declaration.files as unknown as readonly PluginFile[] } : {}),
+    ...(declaration.phases ? { phases: declaration.phases } : {}),
     newRecord: (workId: string, now: Date): R => assembled().newRecord(workId, now) as R,
     [DRAW]: (diagram: Diagram | Error) => drawnWith(declaration, diagram),
     register(registry: Registry, untyped: PluginContext) {
       if (typeof shape === "string") refused();
       declarationMode(declaration);
-      const mounted = assemble(declaration as unknown as AnyDeclaration, shape as Shape, untyped, [declaration.name], [declaration.name]);
+      const mounted = assemble(declaration as unknown as AnyDeclaration, shape as Shape, untyped, [declaration.name], [declaration as unknown as AnyDeclaration]);
       const registerWorkflow = () => {
         registry.workflow(mounted.workflow as Workflow<never, never>);
         registry.contribute(WORKFLOW_RUNTIME, mounted.workflow.name, deferred(mounted.runtime));
@@ -346,6 +358,41 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
   // so the unmounted declaration says why when it is asked, not at import.
   Object.defineProperty(plugin, "workflow", { get: () => assembled().workflow, enumerable: typeof shape !== "string" });
   return plugin as unknown as WorkflowPlugin<R, O, P>;
+}
+
+/**
+ * What a caller composes against, read off a declared workflow its module
+ * exports.
+ *
+ * `input` is the schema the declaration says a caller must pass, undefined
+ * when the workflow takes none; `returns` names the ends it returns
+ * something at, so a composition folds only where there is something to
+ * fold. Nothing for a plugin that is not a `defineWorkflow` declaration —
+ * which is the whole answer: such a workflow can be mounted but never
+ * called, and a project composes its phases by calling them.
+ */
+export function declaredCallee(plugin: object): {
+  readonly configSchema: ConfigSchema;
+  readonly policy: object;
+  readonly input?: ConfigSchema;
+  readonly returns: readonly string[];
+  readonly trackerWrites?: Claims<ConfigSchema, object>;
+  readonly codeHostWrites?: Claims<ConfigSchema, object>;
+} {
+  const callee = (plugin as Partial<Record<typeof CALLEE, Callable | undefined>>)?.[CALLEE];
+  if (!callee || typeof callee.shape === "string") return { configSchema: {}, policy: {}, returns: [] };
+  const declaration = callee.declaration as Partial<{
+    readonly trackerWrites?: Claims<ConfigSchema, object>;
+    readonly codeHostWrites?: Claims<ConfigSchema, object>;
+  }>;
+  return {
+    configSchema: callee.declaration.configSchema,
+    policy: callee.declaration.policy,
+    ...(callee.declaration.input ? { input: callee.declaration.input as ConfigSchema } : {}),
+    returns: Object.keys(callee.declaration.output ?? {}),
+    ...(declaration.trackerWrites !== undefined ? { trackerWrites: declaration.trackerWrites } : {}),
+    ...(declaration.codeHostWrites !== undefined ? { codeHostWrites: declaration.codeHostWrites } : {}),
+  };
 }
 
 /** A declaration with its types let go of, as assembly reads it. */
@@ -380,13 +427,14 @@ function assemble(
   shape: Shape,
   ctx: PluginContext | undefined,
   path: readonly string[],
-  trail: readonly string[],
+  trail: readonly AnyDeclaration[],
 ): Assembled {
   const config = ctx?.config;
   // Refused before a word of it is merged: a policy default the schema does
   // not describe is a setting whose real answer nobody could find from the
   // config the machine explains.
   if (ctx) policyFits(declaration.name, declaration.configSchema, declaration.policy);
+  if (ctx && declaration.phases) phasesFit(declaration.name, declaration.phases);
   const policy = policyFor(declaration.name, declaration.policy, config?.policy);
   // Only a workflow with lanes holds branches, and only its lanes take them.
   const forked = Object.keys(shape.diagram?.forks ?? {}).length > 0;
@@ -448,7 +496,7 @@ function callSites(
   ctx: PluginContext | undefined,
   policy: object,
   path: readonly string[],
-  trail: readonly string[],
+  trail: readonly AnyDeclaration[],
   held?: LaneHolds,
 ): Map<string, PendingSite> {
   const sites = new Map<string, PendingSite>();
@@ -506,7 +554,7 @@ function callSite(
   ctx: PluginContext | undefined,
   policy: object,
   path: readonly string[],
-  trail: readonly string[],
+  trail: readonly AnyDeclaration[],
   state: string,
   binding: Call,
   held?: LaneHolds,
@@ -514,7 +562,8 @@ function callSite(
   const at = `${[...path, state].join(" → ")}`;
   const callee = calleeOf(binding, at);
   const name = callee.declaration.name;
-  if (trail.includes(name)) throw new Error(`a cycle of calls: ${[...trail.slice(trail.indexOf(name)), name].join(" → ")}`);
+  const seen = trail.indexOf(callee.declaration);
+  if (seen >= 0) throw new Error(`a cycle of calls: ${[...trail.slice(seen), callee.declaration].map((one) => one.name).join(" → ")}`);
   if (typeof callee.shape === "string") throw new Error(`${at}: ${callee.shape}`);
   const declaration = callee.declaration as AnyDeclaration;
   if (declaration.extend) {
@@ -534,7 +583,7 @@ function callSite(
     // A lane takes a branch before it moves it, so two lanes never write one.
     ...(held ? { checkouts: () => leasedCheckouts(ctx.checkouts(), held) } : {}),
   };
-  const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, name]);
+  const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, declaration]);
   if (ctx) claimsFit(caller, ctx.config, policy, declaration, settings.config, assembled.policy, at);
 
   return {
@@ -764,6 +813,7 @@ function completeRuntime<R extends WorkRecord, O, P>(
 function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRecord, O>(
   declaration: {
     readonly name: string;
+    readonly phases?: ProjectPhases;
     readonly trackerWrites?: Claims<S, P>;
     readonly codeHostWrites?: Claims<S, P>;
     plan?(record: R, observation: O, policy: P): Plan;
@@ -792,6 +842,7 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     initialState: shape.initial,
     terminalStates: shape.terminal,
     ...(shape.diagram ? { diagram: shape.diagram } : {}),
+    ...(declaration.phases ? { phases: declaration.phases } : {}),
     trackerWrites: claims(declaration.trackerWrites),
     codeHostWrites: claims(declaration.codeHostWrites),
     // What it says before any decision passes through `after` like any plan,
@@ -905,7 +956,7 @@ function portsFor(workflow: string, needs: Needs, ctx: PluginContext, path: read
  * consistency check. What is left here is the one merge both of those made
  * possible: what somebody wrote wins, what they left out keeps its default.
  */
-function policyFor<P extends object>(workflow: string, defaults: P, configured: unknown): P {
+export function policyFor<P extends object>(workflow: string, defaults: P, configured: unknown): P {
   const overrides = configured ?? {};
   if (typeof overrides !== "object" || overrides === null || Array.isArray(overrides)) {
     throw new Error(`${workflow} policy must be a mapping`);
@@ -945,4 +996,19 @@ function policyFits(workflow: string, schema: ConfigSchema, defaults: object): v
 
 function describeDefault(value: unknown): string {
   return typeof value === "string" ? `"${value}"` : String(value);
+}
+
+/**
+ * Every phase a declaration names absent must say why in one word or more.
+ *
+ * `phases` is a declaration of absence, not a flag: a value that is empty or
+ * not prose tells nobody what the project loses without the phase, which is
+ * the only reason it earns a word at all.
+ */
+function phasesFit(workflow: string, phases: ProjectPhases): void {
+  const absent = Object.entries(phases).filter(([, reason]) => reason !== undefined);
+  const empty = absent.filter(([, reason]) => typeof reason !== "string" || (reason as string).trim() === "");
+  if (empty.length > 0) {
+    throw new Error(`the ${workflow} workflow's \`phases\` names ${empty.map(([phase]) => `\`${phase}\``).join(", ")} with no reason: say in one sentence why it is absent`);
+  }
 }

@@ -1,8 +1,10 @@
-import { CommandRunner, Engine, EventLog, Mounted, Plugin, mount, unmetNeeds } from "@amykit/core";
+import path from "node:path";
+import { CommandRunner, Engine, EventLog, Mounted, Plugin, WorkflowPlugin, mount, unmetNeeds } from "@amykit/core";
 import { AmyConfig } from "./config.js";
-import { LoadResult } from "./loader.js";
+import { isFilesystemWorkflow, LoadResult } from "./loader.js";
 import { profilePaths } from "./paths.js";
 import { Profile } from "./profiles.js";
+import { composeProject, composedPluginName, projectSpecs, ProjectPhase, resolvePhases } from "./project.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
 
 /** What assembling needs from the process running it, and nothing it decides. */
@@ -15,7 +17,7 @@ export interface AssemblyServices {
   readonly host: readonly Plugin[];
 }
 
-export type Assembled = { ok: true; engine: Engine; mounted: Mounted } | { ok: false; problems: string[] };
+export type Assembled = { ok: true; engine: Engine; mounted: Mounted; workflowPlugin?: Plugin } | { ok: false; problems: string[] };
 
 /**
  * Loads the plugins the config asks for and assembles them.
@@ -23,6 +25,11 @@ export type Assembled = { ok: true; engine: Engine; mounted: Mounted } | { ok: f
  * Every refusal happens here, by name, before a ticket is touched: a plugin
  * that will not import, a setting that is not one it has, two plugins
  * claiming the same port, an action the workflow emits that nothing can run.
+ *
+ * A project assembles its one workflow out of the phases its folders export:
+ * the phases are called and never mounted on their own, and the composed
+ * workflow takes the configured folder's place in the mount order, so the
+ * consumers that capture a workflow's terminal states still follow it.
  */
 export async function assembleProfile(
   home: string,
@@ -33,26 +40,43 @@ export async function assembleProfile(
   const place = profilePaths(home, profile);
   const specs = pluginList(config, profile);
 
-  const loaded = await services.load(specs);
-  if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
-  if (profile.project && !loaded.bySpec.has(profile.workflow)) {
-    return { ok: false, problems: [`${profile.project.phase}/: configured workflow plugin is not mounted`] };
+  if (!profile.project) {
+    const loaded = await services.load(specs);
+    if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
+    return await assemble(
+      [...loaded.plugins, ...services.host],
+      pluginSlices(config, profile, home, new Map([[profile.workflow, loaded.bySpec.get(profile.workflow)?.name ?? profile.workflow]])),
+      config, place, profile, services, undefined,
+    );
   }
 
-  const outcome = await mount(
-    [...loaded.plugins, ...services.host],
-    pluginSlices(config, profile, home, new Map([[profile.workflow, loaded.bySpec.get(profile.workflow)?.name ?? profile.workflow]])),
-    {
-      runner: services.runner,
-      now: () => new Date(),
-      log: services.log(place.log),
-      paths: hostPaths(config, place.base, profile),
-    },
-    profile.project ? {
-      workflowLabel: `${profile.project.phase}/`,
-      workflowPlugin: loaded.bySpec.get(profile.workflow),
-    } : undefined,
+  const loaded = await services.load(unique([...specs, ...projectSpecs(profile.project.root)]));
+  if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
+  const prepared = await walkOf(config, profile, home, loaded, specs);
+  if (prepared.ok === false) return { ok: false, problems: [...prepared.problems] };
+  return await assemble(
+    [...prepared.plugins, ...services.host],
+    prepared.slices,
+    config, place, profile, services,
+    { workflowLabel: `the project at ${profile.project.root}`, workflowPlugin: prepared.plugin },
   );
+}
+
+async function assemble(
+  plugins: readonly Plugin[],
+  slices: Record<string, unknown>,
+  config: AmyConfig,
+  place: ReturnType<typeof profilePaths>,
+  profile: Profile | undefined,
+  services: AssemblyServices,
+  requirements: { readonly workflowLabel: string; readonly workflowPlugin: Plugin } | undefined,
+): Promise<Assembled> {
+  const outcome = await mount(plugins, slices, {
+    runner: services.runner,
+    now: () => new Date(),
+    log: services.log(place.log),
+    paths: hostPaths(config, place.base, profile),
+  }, requirements);
 
   if (!outcome.ok) return { ok: false, problems: outcome.problems };
 
@@ -67,5 +91,103 @@ export async function assembleProfile(
   const unmet = unmetNeeds(mounted, mounted.workflow);
   if (unmet.length > 0) return { ok: false, problems: unmet };
 
-  return { ok: true, engine: mounted.engine, mounted };
+  return { ok: true, engine: mounted.engine, mounted, ...(requirements ? { workflowPlugin: requirements.workflowPlugin } : {}) };
+}
+
+/**
+ * The project's walk: the phases it drives, the one workflow that walks them,
+ * and the slices the machine hands the plugins — computed against the composed
+ * name, so the phases' settings ride the calls that run them.
+ */
+async function walkOf(
+  config: AmyConfig,
+  profile: Profile,
+  home: string,
+  loaded: LoadResult,
+  specs: readonly string[],
+): Promise<{ ok: true; plugin: Plugin; plugins: readonly Plugin[]; slices: Record<string, unknown> } | { ok: false; problems: readonly string[] }> {
+  const project = profile.project!;
+  const loadedByKey = new Map([...loaded.bySpec].map(([spec, plugin]) => [keyOf(spec), plugin]));
+  const anchor = loadedByKey.get(keyOf(profile.workflow));
+  if (!anchor) return { ok: false, problems: [`${project.phase}/: configured workflow plugin is not mounted`] };
+  const anchorPlugin = anchor as WorkflowPlugin;
+  if (!anchorPlugin.workflow) return { ok: false, problems: [declaredWorkflowProblem(project.phase)] };
+
+  const resolved = resolvePhases(project.root, anchorPlugin.phases);
+  if (resolved.problems.length > 0) return { ok: false, problems: resolved.problems };
+
+  const walking: ProjectPhase[] = [];
+  for (const { phase, spec } of resolved.walking) {
+    const plugin = loadedByKey.get(keyOf(spec)) as WorkflowPlugin | undefined;
+    if (!plugin || !plugin.workflow) return { ok: false, problems: [declaredWorkflowProblem(phase)] };
+    walking.push({ phase, plugin, name: plugin.name });
+  }
+
+  const name = composedPluginName(profile);
+  const slices = pluginSlices(
+    config, profile, home,
+    new Map([[profile.workflow, name]]),
+    { name, callees: walking.map((one) => one.name) },
+  );
+  const composed = composeProject({
+    profile,
+    slices,
+    phases: walking,
+    absent: resolved.absent,
+    root: project.root,
+  });
+  if (composed.problems.length > 0) return { ok: false, problems: composed.problems };
+
+  return { ok: true, plugin: composed.plugin, plugins: mountListFor(loaded, specs, composed.plugin, profile), slices };
+}
+
+/** The plugins that mount: the config's, with the composed workflow in the configured phase's slot. */
+function mountListFor(
+  loaded: LoadResult,
+  specs: readonly string[],
+  composed: Plugin,
+  profile: Profile,
+): readonly Plugin[] {
+  const phases = new Set(projectSpecs(profile.project!.root).map((spec) => keyOf(spec)));
+  const list: Plugin[] = [];
+  const seen = new Set<string>();
+  for (const spec of unique(specs)) {
+    const key = keyOf(spec);
+    if (phases.has(key)) {
+      if (!seen.has(key) && key === keyOf(profile.workflow)) {
+        seen.add(key);
+        list.push(composed);
+      }
+      continue;
+    }
+    const plugin = loaded.bySpec.get(spec);
+    if (plugin && !seen.has(key)) {
+      seen.add(key);
+      list.push(plugin);
+    }
+  }
+  if (!list.includes(composed)) list.push(composed);
+  return list;
+}
+
+/** The project's phases are called, and a call needs the declaration a mount does not. */
+function declaredWorkflowProblem(phase: string): string {
+  return `\`${phase}/\` exports no workflow declared with \`defineWorkflow\`: a project's walk calls its phases, and a call needs the workflow's declaration`;
+}
+
+/** Deduplicates specs that name one folder: a configured spelling and the phase's own are the same folder. */
+function unique(specs: readonly string[]): readonly string[] {
+  const seen = new Set<string>();
+  for (const spec of specs) seen.add(keyOf(spec));
+  const kept = new Map<string, string>();
+  for (const spec of specs) {
+    const key = keyOf(spec);
+    if (!kept.has(key)) kept.set(key, spec);
+  }
+  return [...kept.values()];
+}
+
+/** One spec's identity: the folder it resolves to, or the package spelled as it was. */
+function keyOf(spec: string): string {
+  return isFilesystemWorkflow(spec) ? path.resolve(spec) : spec;
 }

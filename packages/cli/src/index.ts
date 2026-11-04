@@ -50,8 +50,9 @@ import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
-import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
+import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, assembleProfile } from "./assemble.js";
+import { phasesOf } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
@@ -437,9 +438,12 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     env: process.env,
     now: new Date(),
     cwd: process.cwd(),
-    schemas: Object.fromEntries(
-      loaded.plugins.flatMap((plugin) => (plugin.configSchema ? [[plugin.name, plugin.configSchema]] : [])),
-    ),
+    schemas: Object.fromEntries([
+      ...loaded.plugins.flatMap((plugin) => (plugin.configSchema ? [[plugin.name, plugin.configSchema]] : [])),
+      ...(assembled.ok && assembled.workflowPlugin?.configSchema
+        ? [[assembled.workflowPlugin.name, assembled.workflowPlugin.configSchema]]
+        : []),
+    ]),
     workflow: mounted?.workflow,
     // Mounted, then asked: whether a notification target is reachable is
     // the channel's own knowledge, and a mount that did not happen is its
@@ -889,14 +893,8 @@ program
   .option("--json", "the same snapshot as data, for something else to render")
   .action(async (id: string, options: { json?: boolean }) => {
     const profile = selected();
-    // A project without `brief/` has no grooming phase, so it keeps no briefs:
-    // say which folder is missing rather than that a brief was not found.
-    const missing = missingPhase(profile, "brief");
-    if (missing) {
-      console.error(missing);
-      process.exitCode = 1;
-      return;
-    }
+    // A project whose brief/ phase is neither present nor declared is refused
+    // at the mount, naming the folder; the answer here is that refusal.
 
     // Assembled, because the store is a mounted port rather than a path:
     // `amy brief show` resolves the adapter the same way a tick does, and a
@@ -1009,6 +1007,7 @@ program
           running: queue.running().length,
           finished: queue.completed().length,
         },
+        phases: phasesOf(profile.project, workflow),
         loop: live ?? null,
         paused: held,
         notes,
@@ -1718,12 +1717,13 @@ export async function updateCommand(
 ): Promise<number> {
     const release = updateBoundary(home);
     try {
-    // An older file carries the workflows' vocabulary at the top level, and
-    // the release this update moves to reads it nowhere: the tuned values
-    // move to the profiles they serve before anything reads the config, and
-    // the daemon check below reads profiles too. A read that refused would
-    // refuse the one command built to fix the file.
-    if (!check) migrationSays(home);
+    // Migrate old settings before parsing their new homes, but check legacy
+    // profile PIDs first so a refusal leaves each live profile selectable.
+    if (!check) {
+      const legacyRefusal = refuseRecordedDaemon(home);
+      if (legacyRefusal !== undefined) return legacyRefusal;
+      migrationSays(home);
+    }
 
     const refused = refuseWhileRunning(home);
     if (refused !== undefined) return refused;
@@ -1862,11 +1862,18 @@ async function rewriteSkillsOrRollBack(
  * it names the pid it is refusing to interrupt.
  */
 function refuseWhileRunning(home: string): number | undefined {
-    const live = [
-      running(paths(home).pid),
-      ...Object.values(profiles(loadConfig(home), home)).map(runningProfileDaemon).map((daemon) => daemon?.record),
-      ...orphanedProfileDaemons(home),
-    ].find((record) => record !== undefined);
+    const recorded = refuseRecordedDaemon(home);
+    if (recorded !== undefined) return recorded;
+    const live = Object.values(profiles(loadConfig(home), home)).map(runningProfileDaemon).map((daemon) => daemon?.record)
+      .find((record) => record !== undefined);
+    if (!live) return undefined;
+    console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
+    return 1;
+}
+
+/** Refuses a machine-level or legacy-profile daemon without parsing its config. */
+function refuseRecordedDaemon(home: string): number | undefined {
+    const live = running(paths(home).pid) ?? orphanedProfileDaemons(home)[0];
     if (!live) return undefined;
     console.error(`the loop is running as pid ${live.pid}, driving ${live.workflow}. Run \`amy stop\` first.`);
     return 1;

@@ -624,3 +624,49 @@ describe("what a caller says about the call it is in", () => {
   });
 });
 
+describe("a piece, called and never a project", () => {
+  it("mounts with no phases declared, and a caller carrying its own phases gains neither brief nor proof from calling it", async () => {
+    // The piece: declared, never mounted as a project, no phases of its own.
+    const piece = withDiagram(defineWorkflow({
+      name: "piece",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { DRAWN: () => advance("DRAFTED", "drawn"), DRAFTED: () => settled("drafted") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> DRAWN\nDRAWN --> DRAFTED\nDRAFTED --> [*]\n");
+    const outcome = await mount([piece], {}, HOST);
+    expect(outcome.ok).toBe(true);
+    expect(piece.phases).toBeUndefined();
+
+    // The caller: a workflow whose own project shape says the brief is out,
+    // calling the piece. The walk stays the caller's own, the piece's ends
+    // move the caller only through the edges the caller drew, and nothing
+    // the piece is called for adds a brief or a proof the caller never had.
+    const root = withDiagram(defineWorkflow({
+      name: "composes-piece",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      phases: { brief: "the caller is its own brief", prove: "the caller's gate is its own proof" },
+      calls: { DRAW: call(piece) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> DRAW\nDRAW --> DONE: DRAFTED\nDONE --> [*]\nclass DRAW call\n");
+    const { workflow, runtime } = await mounted([root]);
+    expect(workflow.phases?.brief).toBe("the caller is its own brief");
+
+    const record = await walk(workflow, runtime, "W-7");
+    expect(record.state).toBe("DONE");
+    expect(record.history.map((edge) => `${edge.from}>${edge.to}`)).toEqual(["DRAW>DONE"]);
+    expect(Object.keys(record).filter((key) => key === "brief" || key === "prove")).toEqual([]);
+    expect((record as workRecordWith).calls?.["W-7/DRAW#1"]?.state).toBe("DRAFTED");
+  });
+});
+
+type workRecordWith = WorkRecord & { calls?: Record<string, WorkRecord> };
+

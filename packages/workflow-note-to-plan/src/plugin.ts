@@ -159,6 +159,13 @@ export const plugin = defineWorkflow({
   configSchema,
   policy: DEFAULT_POLICY,
   needs,
+  // A project is brief, work and proof; a plan is the work half alone. The
+  // friction note a plan comes from already says what the work is, and the
+  // plan check the install runs before the pull request is what judges it.
+  phases: {
+    brief: "the friction note a plan is written from already says what the work is, so no brief phase runs first",
+    prove: "the plan check the machine runs on every draft is what judges a plan; the work runs no separate proving phase",
+  },
   codeHostWrites: ["open-pull-request"],
   calls: {
     // The pull request is opened by the workflow every shipped workflow

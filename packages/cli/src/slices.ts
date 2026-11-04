@@ -19,6 +19,7 @@ export function pluginSlices(
   profile: Profile,
   stateDir?: string,
   pluginNames?: ReadonlyMap<string, string>,
+  composed?: { readonly name: string; readonly callees: readonly string[] },
 ): Record<string, unknown> {
   assertPhaseStateDirectoriesAreNotShared(config, profile);
   const dirs = stateDirectories(stateDir, profile);
@@ -33,6 +34,7 @@ export function pluginSlices(
   // the workflow's vocabulary, checked against its configSchema at mount.
   applyOwnProfileSettings(profile, pluginNames ?? new Map(), derived);
   mergeInGivenSlices(derived, config.plugins);
+  composedSlice(derived, composed);
 
   // The command that writes a file and the adapter that read it must agree,
   // including when somebody overrode the adapter's directory by hand. The
@@ -204,6 +206,47 @@ function applyOwnProfileSettings(
 }
 
 /**
+ * The composed workflow's slice: the settings of the phases it walks, under
+ * the one name the mount reads it by.
+ *
+ * A project's phases are called, not mounted, so their settings ride the
+ * composed workflow's own config: each phase's derived slice is merged in,
+ * and the composition splits it back out per call site. The machine's own
+ * settings follow through the ordinary `applyOwnProfileSettings`.
+ */
+function composedSlice(derived: Record<string, unknown>, composed: { readonly name: string; readonly callees: readonly string[] } | undefined): void {
+  if (!composed) return;
+  const shared: Record<string, unknown> = {};
+  for (const callee of composed.callees) {
+    const slice = derived[callee];
+    if (!isRecord(slice)) continue;
+    mergeSlice(shared, slice);
+  }
+  // An entry the config wrote for the composed workflow itself survives the
+  // composition: it was merged in as a given slice, and a thing written by
+  // hand beats what was derived for the phases.
+  const entry = derived[composed.name];
+  const given: Record<string, unknown> = isRecord(entry) ? entry : {};
+  mergeSlice(shared, given);
+  derived[composed.name] = shared;
+}
+
+/** Merges phase slices by leaf, so sibling dotted settings reach their own callees. */
+function mergeSlice(target: Record<string, unknown>, added: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(added)) {
+    const current = target[key];
+    if (isRecord(current) && isRecord(value)) mergeSlice(current, value);
+    else target[key] = copySliceValue(value);
+  }
+}
+
+/** Copies mappings before a later phase adds sibling leaves to the composed slice. */
+function copySliceValue(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, copySliceValue(nested)]));
+}
+
+/**
  * The repositories the machine's notes are about, taken from the profiles
  * that turn a note into a plan.
  *
@@ -239,7 +282,7 @@ function commandsFromCheck(profile: Profile): Record<string, unknown> | undefine
   return isRecord(check) ? check : undefined;
 }
 
-/** Global state-directory overrides have no profile slot, so phases cannot safely share one. */
+/** Global state-directory overrides have no profile slot, so a project's mounts cannot safely share one. */
 function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Profile): void {
   if (!profile.project) return;
   for (const plugin of [
@@ -250,17 +293,17 @@ function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Pro
     "@amykit/plugin-slack",
     "@amykit/plugin-telegram",
   ] as const) {
-    // Telegram is never recommended, so a phase that does not name it does not mount it, and a
-    // directory set for an ordinary profile's Telegram is not this phase's to refuse.
+    // Telegram is never recommended, so a project that does not name it does not mount it, and a
+    // directory set for an ordinary profile's Telegram is not this project's to refuse.
     if (plugin === "@amykit/plugin-telegram" && !pluginList(config, profile).includes(plugin)) continue;
     const slice = config.plugins[plugin];
     if (isRecord(slice) && typeof slice.directory === "string") {
-      throw new Error(`${plugin}.directory is shared across profiles and cannot be overridden for project phases`);
+      throw new Error(`${plugin}.directory is shared across profiles and cannot be overridden for a project`);
     }
   }
   const worktree = config.plugins["@amykit/plugin-file-worktree"];
   if (isRecord(worktree) && typeof worktree.workflow === "string") {
-    throw new Error("@amykit/plugin-file-worktree.workflow is shared across profiles and cannot be overridden for project phases");
+    throw new Error("@amykit/plugin-file-worktree.workflow is shared across profiles and cannot be overridden for a project");
   }
 }
 
@@ -297,7 +340,7 @@ function pluginStateDirectories(stateDir: string | undefined, profile: Profile):
   };
 }
 
-/** A phase checkout belongs to both its project and its configured profile. */
+/** A checkout belongs to the project and its configured profile: one namespace, not one per phase. */
 export function worktreeNamespace(profile: Profile): string {
   return profile.project ? projectStateKey(profile.project, profile.name) : profile.name;
 }

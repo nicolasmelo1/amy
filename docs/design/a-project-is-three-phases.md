@@ -1,5 +1,13 @@
 # A project is three phases, and amy reads them
 
+> Superseded by [A project is brief, work and proof](a-project-is-brief-work-and-proof.md):
+> the three phases compose the one workflow a project's config names — calls
+> and child records of one profile and daemon — rather than one phase per
+> profile. The per-phase daemons and per-phase state this note described were
+> the mechanism that taught amy the folder vocabulary; `test/` became
+> `prove/`, and a phase neither present nor declared absent is now refused at
+> the walk's mount. The criteria below record only what still holds.
+
 A machine that drives work needs three things: decide what the work is, do it,
 show it holds. amy is the middle one.
 
@@ -62,33 +70,17 @@ leaving generic plugin-only mounts valid.
 
 ## Acceptance
 
-- [x] A project laid out with the three directories mounts all three, and each
-      is driven with its own queue, records, log, daemon identity, tasks and
-      budget (proof: test:packages/cli/tests/project.test.ts)
-      (proof: assertion:project.every_phase_mounts)
-      (proof: assertion:project.each_phase_has_its_own_queue)
-      (proof: assertion:project.each_phase_spends_its_own_budget)
-      (proof: assertion:project.each_phase_is_its_own_daemon)
-      (proof: assertion:project.each_phase_keeps_its_own_tasks)
-- [x] Grooming and execution choose their own models and budgets
-      (proof: assertion:project.grooming_and_execution_choose_their_own_models)
-- [x] A lone `workflow/` is a phase with no new configuration key, and a
-      packaged workflow keeps the layout it always had
+- [x] A packaged workflow keeps the layout it always had
       (proof: test:packages/cli/tests/project.test.ts)
-      (proof: assertion:project.a_lone_workflow_is_a_phase)
-      (proof: assertion:project.a_packaged_workflow_is_unchanged)
-- [x] A project without `brief/` is told which folder it lacks when asked for
-      a brief (proof: assertion:project.a_project_without_brief_keeps_no_briefs)
-- [x] A brief written by one phase is read by another phase of the same
-      project, with no shared directory named in config and no path escaping a
+- [x] A brief written by one part of the same project is read by another
+      without a shared directory named in config and no path escaping a
       profile's state
-      (proof: assertion:project.a_brief_crosses_the_phase_boundary)
       (proof: assertion:project.no_config_names_a_shared_directory)
       (proof: assertion:project.no_phase_state_escapes_home)
 - [x] A phase never reads the records an old profile of the same name left
       (proof: assertion:project.a_phase_never_reads_an_old_profiles_records)
-- [x] A phase directory that exists but exports no workflow is refused at
-      boot, naming the directory (proof: test:packages/core/tests/mount.test.ts)
+- [x] A phase directory that exists but exports no workflow is refused,
+      naming the directory (proof: test:packages/core/tests/mount.test.ts)
       (proof: assertion:project.a_phase_without_a_workflow_is_refused_by_name)
 - [x] The core reads no phase's content: a fixture whose sections are nonsense
       to every schema still mounts and still delivers

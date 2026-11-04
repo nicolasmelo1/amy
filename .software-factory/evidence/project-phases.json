@@ -1,29 +1,24 @@
 {
   "schema_version": 1,
   "gate": "project-phases",
-  "implementation_sha256": "7948dfa2c4298c7a712b949b61dd553449324a21d51199a4788a7ffd21ab175c",
+  "implementation_sha256": "d0b2fe76ecf73d1415767d5a0232c2872be86134ec9134f40e51e3ad084ca7d7",
   "runs": [
     {
       "scenario": "project-phases",
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/project-phases-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/project-phases-run.json",
-      "report_sha256": "8d540fef27a82f2a072ab3c4bbc4812d8ffd217e2bb3265980a34d9788642f0b",
+      "report_sha256": "d77ac0ea9092831cce593b7488d16bff30e34a9e3035dc401527402cdc1ab2ba",
       "required_assertions": [
+        "project.the_three_phases_walk_as_one",
+        "project.what_was_briefed_is_what_is_proven",
+        "project.a_declared_absent_phase_says_why_at_the_status",
+        "project.a_packaged_workflow_declares_its_phases",
         "project.a_packaged_workflow_is_unchanged",
-        "project.a_lone_workflow_is_a_phase",
-        "project.a_project_without_brief_keeps_no_briefs",
-        "project.every_phase_mounts",
-        "project.each_phase_has_its_own_queue",
-        "project.each_phase_spends_its_own_budget",
-        "project.each_phase_is_its_own_daemon",
-        "project.each_phase_keeps_its_own_tasks",
-        "project.grooming_and_execution_choose_their_own_models",
-        "project.a_brief_crosses_the_phase_boundary",
+        "project.a_phase_without_a_workflow_is_refused_by_name",
         "project.no_config_names_a_shared_directory",
         "project.no_phase_state_escapes_home",
-        "project.a_phase_never_reads_an_old_profiles_records",
-        "project.a_phase_without_a_workflow_is_refused_by_name"
+        "project.a_phase_never_reads_an_old_profiles_records"
       ]
     }
   ]

@@ -150,6 +150,13 @@ export const plugin = defineWorkflow({
   configSchema,
   policy: DEFAULT_POLICY,
   needs,
+  // A project is brief, work and proof; an errand is the work half alone.
+  // Said in passing, its own words are the brief, and it is a person who
+  // looks at the draft it opens — so no brief phase and no proving phase.
+  phases: {
+    brief: "an errand is said in passing: the note itself says what to do, so there is no brief phase to run first",
+    prove: "an errand opens a draft pull request on purpose, and the person who asked reads it; the work runs no separate proving phase",
+  },
   codeHostWrites: ["open-pull-request"],
   calls: {
     // A draft, because nobody asked for this at the moment it landed. Work

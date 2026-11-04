@@ -11,6 +11,23 @@ import { Queue } from "./ports/Queue.js";
 import { Store } from "./ports/Store.js";
 
 /**
+ * The project phases a workflow declares, every value the reason the phase
+ * it names is absent.
+ *
+ * A phase present on disk needs no word here: the folders are the part of
+ * the declaration amy derives. What a phase that is gone lacks is said in
+ * the declaration — `phases: { prove: "a person reviews this work" }` — so
+ * a project without it still mounts, saying at every view what it loses
+ * (`amy status`, `amy doctor`). A phase neither present nor declared is
+ * refused at the mount, naming it.
+ */
+export interface ProjectPhases {
+  readonly brief?: string;
+  readonly workflow?: string;
+  readonly prove?: string;
+}
+
+/**
  * A workflow: the order in which actions happen.
  *
  * It does not define actions, it composes the ones the core ships. `plan` is
@@ -62,6 +79,12 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    * gives this workflow a port whose unclaimed mutations refuse at the call.
    */
   readonly codeHostWrites?: readonly string[];
+  /**
+   * The project phases the workflow declares, every value the reason the
+   * phase it names is absent, when it declares any: what `amy status` and
+   * `amy doctor` read to say what a project without that phase loses.
+   */
+  readonly phases?: ProjectPhases;
   plan(record: WorkRecord, observation: Observation, policy: Policy): Plan;
   /**
    * Every move a record waiting in a fork can make at once, one per lane

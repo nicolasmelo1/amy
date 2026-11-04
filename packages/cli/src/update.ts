@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 import { CommandRunner } from "@amykit/core";
 import { packageManager, shellCommand } from "./install.js";
 import { paths } from "./paths.js";
+import { type AmyConfig, DEFAULT_CONFIG } from "./config.js";
+import { type Profile } from "./profiles.js";
+import { pluginList } from "./slices.js";
 
 /**
  * One package this machine's two roots hold, and what the range in them
@@ -681,6 +684,10 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   const said: string[] = [];
   const workflows = entryOf(top, "workflows");
   const dropped = moveRetiredKeys(document, top, workflows, said);
+  const parsed = { ...DEFAULT_CONFIG, ...(document.toJS() as Record<string, unknown>) } as AmyConfig;
+  const foldedByName = convergeProjectProfiles(home, workflows, said, parsed);
+  foldDefaultWorkflow(top, foldedByName, said);
+  const converged = foldedByName.size > 0;
 
   // An old EXAMPLE always named the QA status, but a hand-written ticket
   // profile can name none of the retired keys and still lean on the
@@ -689,7 +696,7 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   // before deciding that no migration is needed at all.
   const materialized = materializeTicketStatus(document, top, said);
 
-  if (dropped.length === 0 && !materialized) return { ok: true, said: [] };
+  if (dropped.length === 0 && !materialized && !converged) return { ok: true, said: [] };
 
   const movedTo = `${place}.moved`;
   // The kept file is the machine's config before its first move, a byte the
@@ -851,6 +858,237 @@ function moveToTrackerSlice(
 /** The top-level entry one key names, whether or not it has a value. */
 function entryOf(map: yaml.YAMLMap, key: string): yaml.Pair | undefined {
   return map.items.find((item) => yaml.isPair(item) && isKey(item, key)) as yaml.Pair | undefined;
+}
+
+/** Groups the config's profiles by the project root their workflow folder names. */
+function projectGroupsOf(
+  home: string,
+  workflows: yaml.Pair,
+): Map<string, { name: string; profile: yaml.YAMLMap; spec: string }[]> {
+  const groups = new Map<string, { name: string; profile: yaml.YAMLMap; spec: string }[]>();
+  for (const item of (workflows.value as yaml.YAMLMap).items) {
+    if (!yaml.isPair(item) || !yaml.isScalar(item.key)) continue;
+    if (!yaml.isMap(item.value)) continue;
+    const spec = unwrap(item.value.get("workflow"));
+    const root = projectRootOf(home, spec);
+    if (root === undefined) continue;
+    const group = groups.get(root) ?? [];
+    group.push({ name: String(item.key.value), profile: item.value, spec: String(spec) });
+    groups.set(root, group);
+  }
+  return groups;
+}
+
+/** Folds one project's phase profiles into the single entry the walk is driven by. */
+function foldOneProject(
+  home: string,
+  root: string,
+  group: { name: string; profile: yaml.YAMLMap; spec: string }[],
+  workflows: yaml.Pair,
+  said: string[],
+  parsed: AmyConfig,
+): { readonly kept: string; readonly folded: readonly string[] } {
+  const kept = group.find((one) => path.basename(one.spec) === "workflow") ?? group[0]!;
+  const others = group.filter((one) => one !== kept);
+  const workFolder = path.join(root, "workflow");
+  for (const one of others) said.push(`${one.name}: folded into \`${kept.name}\`, the single profile the project at ${root} walks`);
+  const keptWorkflow = unwrap(kept.profile.get("workflow"));
+  const keepsWorkPhase = typeof keptWorkflow === "string" && path.resolve(home, keptWorkflow) === workFolder;
+  if (fs.existsSync(workFolder) && !keepsWorkPhase) {
+    const field = (kept.profile as yaml.YAMLMap).items.find((item) => yaml.isPair(item) && isKey(item, "workflow")) as yaml.Pair | undefined;
+    if (field) field.value = new yaml.Scalar(workFolder);
+    said.push(`${kept.name}: names ${workFolder} now, the project's work phase`);
+  }
+  for (const one of others) {
+    carryProfileFields(home, root, { name: kept.name, profile: kept.profile }, one.profile, one.name, said, parsed);
+    (workflows.value as yaml.YAMLMap).delete(one.name);
+  }
+  return { kept: kept.name, folded: others.map((one) => one.name) };
+}
+
+/**
+ * Turns one project's phase profiles into the project's single profile.
+ *
+ * A project is one profile and one daemon now: its phases are child records
+ * of the project's record, walked by the one workflow the project's folders
+ * compose. A config that still names the brief, the work and the proof as
+ * three entries is rewritten down to the one entry naming the work folder —
+ * the entry the walk is driven by — and everything the dropped entries
+ * carried is carried into it or said. Nothing is moved twice: a config
+ * already carrying one entry per project changes nothing.
+ */
+function convergeProjectProfiles(
+  home: string,
+  workflows: yaml.Pair | undefined,
+  said: string[],
+  parsed: AmyConfig,
+): Map<string, string> {
+  if (workflows === undefined || !yaml.isMap(workflows.value)) return new Map();
+  const foldedByName = new Map<string, string>();
+  for (const [root, group] of projectGroupsOf(home, workflows)) {
+    if (group.length < 2) continue;
+    const folded = foldOneProject(home, root, group, workflows, said, parsed);
+    for (const name of folded.folded) foldedByName.set(name, folded.kept);
+  }
+  return foldedByName;
+}
+
+/**
+ * Where a config's top-level selector points, once one of the profiles it
+ * named folded: at the single profile the project walks now. A selector left
+ * on a folded name leaves every command without `--workflow` failing to
+ * resolve the one profile that survived.
+ */
+function foldDefaultWorkflow(
+  top: yaml.YAMLMap,
+  foldedByName: Map<string, string>,
+  said: string[],
+): void {
+  const defaultEntry = entryOf(top, "defaultWorkflow");
+  const wanted = defaultEntry && yaml.isScalar(defaultEntry.value) ? defaultEntry.value.value : undefined;
+  const kept = typeof wanted === "string" ? foldedByName.get(wanted) : undefined;
+  if (kept === undefined || defaultEntry === undefined) return;
+  defaultEntry.value = new yaml.Scalar(kept);
+  said.push(`the default workflow \`${wanted}\` folded into \`${kept}\` and names what the project walks now`);
+}
+
+/** Carries a folded profile's agent block when the single one carried none. */
+function carryAgent(
+  kept: { name: string; profile: yaml.YAMLMap },
+  folded: yaml.YAMLMap,
+  name: string,
+  said: string[],
+): void {
+  if (kept.profile.get("agent") !== undefined) return;
+  const agent = folded.get("agent");
+  if (agent === undefined) return;
+  kept.profile.add(new yaml.Pair("agent", agent));
+  said.push(`${name}: its agent block moved to \`${kept.name}\`, which carried none`);
+}
+
+/** A phase's work is the project's alone: flags, brief store, plugins and settings it carried move in, each said. */
+function carryOwnState(
+  home: string,
+  root: string,
+  kept: { name: string; profile: yaml.YAMLMap },
+  folded: yaml.YAMLMap,
+  said: string[],
+  parsed: AmyConfig,
+): void {
+  for (const flag of ["notes", "tasks"] as const) {
+    if (folded.get(flag) !== true) continue;
+    const ownFlag = kept.profile.get(flag);
+    // A flag the survivor never said is carried; an explicit value the
+    // survivor wrote by hand is a choice, and is left standing, said.
+    if (ownFlag === undefined) kept.profile.add(new yaml.Pair(flag, true));
+    else if (ownFlag !== true) said.push(`\`${kept.name}\` keeps \`${flag}\` off by hand, so the folded phase's want for it is left off`);
+  }
+  const briefStore = folded.get("briefStore");
+  if (briefStore !== undefined && kept.profile.get("briefStore") === undefined) kept.profile.add(new yaml.Pair("briefStore", briefStore));
+  carryPlugins(home, root, kept, folded, said, parsed);
+  carrySettings(kept, folded);
+}
+
+/** Mounts a folded phase's plugins, keeping only the ones another project does not already mount. */
+function carryPlugins(
+  home: string,
+  root: string,
+  kept: { name: string; profile: yaml.YAMLMap },
+  folded: yaml.YAMLMap,
+  said: string[],
+  parsed: AmyConfig,
+): void {
+  const plugins = folded.get("plugins");
+  if (!yaml.isSeq(plugins)) return;
+  const foldedSpecs = plugins.items.map((item) => String(unwrap(item)));
+  let mounted = kept.profile.get("plugins");
+  if (!yaml.isSeq(mounted)) {
+    // A survivor that says nothing about what it mounts picks what the
+    // machine can serve at boot, the way the mount would have picked it —
+    // a channel nobody configured does not ride along — and the folded
+    // phases' plugins ride beside that set.
+    const effective = parsed;
+    const survivor = {
+      name: kept.name,
+      workflow: String(kept.profile.get("workflow") ?? ""),
+      plugins: [],
+      takesNotes: false,
+      takesTasks: false,
+      settings: {},
+      ...(kept.profile.get("agent") !== undefined ? { agent: unwrap(kept.profile.get("agent")) as Profile["agent"] } : {}),
+    } as Profile;
+    mounted = new yaml.YAMLSeq();
+    const seen = new Set<string>();
+    for (const spec of [...pluginList(effective, survivor), ...foldedSpecs]) {
+      if (projectRootOf(home, spec) !== undefined && path.resolve(spec) !== path.resolve(survivor.workflow)) continue;
+      if (seen.has(spec)) continue;
+      seen.add(spec);
+      (mounted as yaml.YAMLSeq).add(new yaml.Scalar(spec));
+    }
+    kept.profile.set("plugins", mounted);
+    said.push(`${kept.name}: keeps the mounts it was going to be recommended, and carries the folded phases' plugins beside them`);
+  }
+  for (const spec of foldedSpecs) {
+    if (projectRootOf(home, spec) === root) continue;
+    if (!(mounted as yaml.YAMLSeq).items.some((one) => unwrap(one) === spec)) (mounted as yaml.YAMLSeq).add(new yaml.Scalar(spec));
+  }
+}
+
+/** Carries a folded phase's settings into the single profile's own, filling only what is unset. */
+function carrySettings(
+  kept: { name: string; profile: yaml.YAMLMap },
+  folded: yaml.YAMLMap,
+): void {
+  const settings = folded.get("settings");
+  if (!yaml.isMap(settings)) return;
+  const own = kept.profile.get("settings");
+  if (yaml.isMap(own)) {
+    mergeUnsetSettings(own, settings);
+  } else if (kept.profile.get("settings") === undefined) {
+    kept.profile.add(new yaml.Pair("settings", settings));
+  } else {
+    kept.profile.set("settings", settings);
+  }
+}
+
+/** Carries only leaves the survivor did not write, including within nested setting groups. */
+function mergeUnsetSettings(kept: yaml.YAMLMap, folded: yaml.YAMLMap): void {
+  for (const pair of folded.items) {
+    const key = String(unwrap(pair.key));
+    const own = kept.get(key, true);
+    if (own === undefined) {
+      kept.add(new yaml.Pair(pair.key, pair.value));
+    } else if (yaml.isMap(own) && yaml.isMap(pair.value)) {
+      mergeUnsetSettings(own, pair.value);
+    }
+  }
+}
+
+/** Carries one folded profile's agent, flags, brief store, plugins and settings into the single one, saying every carry. */
+function carryProfileFields(
+  home: string,
+  root: string,
+  kept: { name: string; profile: yaml.YAMLMap },
+  folded: yaml.YAMLMap,
+  name: string,
+  said: string[],
+  parsed: AmyConfig,
+): void {
+  // The project's one profile carries the work phase's agent when it has
+  // one; a folded phase's own block is said, because the ladder it tuned is
+  // not the ladder the single profile drives.
+  carryAgent(kept, folded, name, said);
+  carryOwnState(home, root, kept, folded, said, parsed);
+}
+
+/** Whether a spec is one of the project's own phase folders, which the walk calls and nothing mounts. */
+function projectRootOf(home: string, spec: unknown): string | undefined {
+  if (typeof spec !== "string") return undefined;
+  const resolved = spec.startsWith(".") ? path.resolve(home, spec) : path.resolve(spec);
+  if (!fs.existsSync(resolved)) return undefined;
+  const folder = path.basename(resolved);
+  if (!["brief", "workflow", "prove", "test"].includes(folder)) return undefined;
+  return path.resolve(resolved, "..");
 }
 
 /** Whether a document item's key is this string, however it was parsed. */

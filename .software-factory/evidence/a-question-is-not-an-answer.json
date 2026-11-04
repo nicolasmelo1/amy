@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "a-question-is-not-an-answer",
-  "implementation_sha256": "33289f4537c71614fc788244ae495c254f4ce2f6a22f9f8c2e813a4463efcbba",
+  "implementation_sha256": "8bd238e1c3005abeac1e431793a09aa8815b2f7ba3f59389839ca167e986515e",
   "runs": [
     {
       "scenario": "a-question-is-not-an-answer",

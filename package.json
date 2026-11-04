@@ -18,6 +18,7 @@
     "check:config": "tsx scripts/check-config-template.ts",
     "check:plans": "tsx scripts/check-plan-board.ts",
     "check:delivered": "tsx scripts/check-delivered-plans.ts",
+    "plans:renew": "tsx scripts/renew-plan-board.ts",
     "check:private": "tsx scripts/check-private-refs.ts",
     "check:toolchain": "tsx scripts/check-toolchain.ts",
     "check:contracts": "tsx scripts/contracts.ts --check",
