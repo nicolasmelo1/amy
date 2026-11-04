@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**61 rules shipped**, 50 enabled here, 11 switched off, 50 carrying a mutation fixture, 1 violations frozen.
+**62 rules shipped**, 51 enabled here, 11 switched off, 51 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -24,7 +24,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L2** | Contract | no drift from the source of truth | 8 | 7 |
 | **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
 | **L4** | Cadence | docs, plans and rules stay attached | 10 | 9 |
-| **L5** | Meta | the guardrail is proven to fire | 2 | 2 |
+| **L5** | Meta | the guardrail is proven to fire | 3 | 3 |
 | **L6** | Hazard | the defect classes this repository hunts | 14 | 9 |
 
 <!-- sf:end layer-index -->
@@ -383,11 +383,11 @@ Each enabled rule is referenced at least once from documentation by its id, and 
 
 **Every acceptance criterion names the check that proves it**
 
-Each acceptance criterion written as a checkbox in a plan closes with a proof marker — `(proof: assertion:ID)`, `(proof: test:PATH)`, `(proof: deferred:REASON)` or `(proof: unspecified:REASON)`.
+Each acceptance criterion written as a checkbox in a plan closes with a proof marker — `(proof: assertion:ID)`, `(proof: test:PATH)`, `(proof: property:PATH#FALSIFIER)`, `(proof: deferred:REASON)` or `(proof: unspecified:REASON)`.
 
 **Why.** A plan states its criteria in prose and the gate enforces a list of checks, and nothing joins the two. That gap does not need anybody to be dishonest to become expensive: a criterion is promised, the gate never covered it, the plan records the gap on some line in the middle of a long document, and the only way to learn a phase's real status is to re-read the phase. Naming the check inside the criterion makes the join mechanical, and forces the decision at the moment of writing rather than at the moment someone asks. The two debt kinds are the load-bearing half — `deferred` for a criterion that is not built and `unspecified` for one no check has been designed for are both legitimate, and declaring them is what turns an admission into something greppable.
 
-**Fix.** Append the marker naming what proves the criterion, or give a declared criterion a `proof:` key in the same grammar. If nothing proves it yet, say which: `deferred:` when the criterion is not built, `unspecified:` when no check has been designed for it. Both take a reason, and both are a supported answer — an unmarked criterion is not.
+**Fix.** Append the marker naming what proves the criterion, or give a declared criterion a `proof:` key in the same grammar. A statement over every input is a `property:`, and it names after `#` the mutation it must reject. If nothing proves it yet, say which: `deferred:` when the criterion is not built, `unspecified:` when no check has been designed for it. Both take a reason, and both are a supported answer — an unmarked criterion is not.
 
 ### L4.PLAN_DECLARES_EXIT_CONDITION
 
@@ -403,11 +403,11 @@ Each document in the plans directory contains an explicit exit condition, and is
 
 **A plan is a declaration where every line is tied to another**
 
-A plan written as a YAML frontmatter declaration carries only the keys a declaration has, every criterion names a source it declares and every source is named by a criterion, every crossing is answered with its proof, what refuses it or why it does not apply, and every mechanism its touched files reach is crossed.
+A plan written as a YAML frontmatter declaration carries only the keys a declaration has, every criterion names a source it declares and every source is named by a criterion, every crossing is answered with its proof, what refuses it or why it does not apply, and every mechanism its touched files reach is crossed. When the run knows what the work changed, from `--changed` or from `project.default_branch`, a plan whose own file is in that change is in flight: every changed file has to be in an in-flight plan's `touches`, match the rule's `incidental` globs, or be named under its `deviations`, and every mechanism a changed file reaches is crossed.
 
-**Why.** A plan is read by whoever builds it and by whoever reviews what was built, and both of them read it with a limited budget of attention. Prose grows without an owner: context nobody asked for crowds out the one line that would have changed the code. And the lines that matter most are the ones the plan never wrote, what happens when the new thing meets a mechanism that already exists, so a reviewer finds them one round at a time. A declaration fixes both: a line that names nothing and is named by nothing is cut, and the mechanisms a plan must answer are derived from the files it touches rather than remembered by its author.
+**Why.** A plan is read by whoever builds it and by whoever reviews what was built, and both of them read it with a limited budget of attention. Prose grows without an owner: context nobody asked for crowds out the one line that would have changed the code. And the lines that matter most are the ones the plan never wrote, what happens when the new thing meets a mechanism that already exists, so a reviewer finds them one round at a time. A declaration fixes both: a line that names nothing and is named by nothing is cut, and the mechanisms a plan must answer are derived from the files it touches rather than remembered by its author. Derived from the touches alone, they are still remembered: a file the work changed without the plan declaring it reaches its mechanism unseen, and review finds it instead. So the change itself is read, deterministically, from local refs and the tree, and a pre-commit hook goes red on the same findings CI would.
 
-**Fix.** Give every criterion a `sources:` list naming the decision, ticket or reference it comes from, and remove a source no criterion cites. Answer each `crosses` entry with `works` and a `proof`, `refused` and the `by` that refuses it, or `n/a` and `why`. When the plan touches files where a mechanism in the catalog lives, add a crossing for it. Move prose past the ceiling into the declaration or delete it.
+**Fix.** Give every criterion a `sources:` list naming the decision, ticket or reference it comes from, and remove a source no criterion cites. Answer each `crosses` entry with `works` and a `proof`, `refused` and the `by` that refuses it, or `n/a` and `why`. When the plan touches files where a mechanism in the catalog lives, add a crossing for it. Move prose past the ceiling into the declaration or delete it. For `untouched:<path>`, add the file to the plan's `touches`, list it under the rule's `incidental` if no plan should ever have to name it, or name it under `deviations` if the work outgrew the plan; then answer any `uncrossed` mechanism it reaches. For `changed-set`, give `sf check` a `--changed` ref git can resolve, or set `project.default_branch` to a branch this clone has.
 
 ### L4.ROOT_FILES_ARE_DECLARED
 
@@ -440,6 +440,16 @@ For each enabled rule there is a mutation fixture that violates it, and `sf veri
 **Why.** Without this layer every other layer is theatre. A check with a typo in its query, a glob that matches nothing, or a scope that excludes the whole source tree passes silently forever and reads exactly like a check that works — a green build proves nothing about a rule that never ran. The mutation is the only thing that distinguishes enforcement from decoration.
 
 **Fix.** Write the smallest file that violates the rule under the mutations directory and run `sf verify`. If the rule does not fire on it, the rule is broken — fix the rule, not the fixture.
+
+### L5.EVERY_PROPERTY_HAS_A_FALSIFIER
+
+**Every property a plan cites is proven able to fail**
+
+A criterion proven by `(proof: property:PATH#FALSIFIER)` names a falsifier that the file at PATH carries, and the rule's `run` command passes with nothing planted and fails with `SF_FALSIFIER` set to that falsifier.
+
+**Why.** A plan's rules are mostly statements over every input — an explicit zero survives a merge, a retry with no evidence is refused, a migration run twice changes nothing — and three examples do not check a statement. A property-based test does, and it is also the easiest proof to make vacuous: a generator that never reaches the case passes forever and reads exactly like a property that holds. So `property:` cannot be a renamed `test:`; it carries the obligation `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` puts on a rule, one level out. The falsifier is the implementation mutation the property must reject, named where the plan cites it, and the rule runs both directions the way `sf verify` does: passing as the code is, failing with the mutation planted. Both, because a command that always fails rejects every falsifier. What it does not hold against is written down rather than implied: surviving a planted mutation proves the generator reaches that case, not every case, and nobody audits a generator's distribution.
+
+**Fix.** Name the mutation after `#` and write it in the property file, planted only when `SF_FALSIFIER` names it; point this rule's `run` at the command that runs the property at `SF_PROPERTY`, and run `sf check --allow-commands`. A property that passes with its falsifier planted has a generator that never reaches the case: widen the generator, do not soften the falsifier.
 
 ### L5.NO_INERT_RULE
 

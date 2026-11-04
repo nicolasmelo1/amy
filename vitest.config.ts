@@ -10,6 +10,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts", "scripts/docs/tests/**/*.test.ts", "scripts/plans/tests/**/*.test.ts"],
+    // fast-check runs from a fixed seed, so a property a plan cites is
+    // deterministic. See CONTRIBUTING.md, on `property:` proofs.
+    setupFiles: ["scripts/properties.setup.ts"],
 
     // Named explicitly, or the default pattern walks
     // `.software-factory/mutations` as well, where the repositories are

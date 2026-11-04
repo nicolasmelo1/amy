@@ -18,7 +18,7 @@ optional.** It is the tool that turns this repository's rules into checks that
 fail, and `npm run gate` runs it. The setup script installs it; by hand it is:
 
 ```sh
-cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.3 --locked
+cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.4 --locked
 ```
 
 That version is not a suggestion. The catalog ships inside the binary, so a
@@ -203,6 +203,24 @@ failure outside it is a question for the person, not a fix. Prefer refusing a co
 need to supporting it: that is one `cut` line and one check at mount, not a
 fix found in review. When a review finds a crossing no plan asked about, add
 the mechanism to the catalog rather than a paragraph to the next plan.
+
+A criterion that is a statement over every input — a merge keeps an explicit
+zero, a retry with no evidence is refused, a second run changes nothing — is
+proven by a property, not by three examples: `proof:
+"property:PATH#FALSIFIER"`, where PATH is a fast-check test,
+`tests/<topic>.property.test.ts`, and FALSIFIER is the implementation mutation
+it must reject, planted only when `SF_FALSIFIER` names it. Every property runs
+from the fixed seed in `scripts/properties.setup.ts`, so it decides the same
+way on every machine. `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` runs it both ways and refuses a property
+that passes with its mutation planted. Until the work is built the file does
+not exist, so the plan says which property it will be: `proof: "deferred:not
+built; property PATH#FALSIFIER"`, and delivery turns it into `property:`.
+
+Once a plan's own file is in the change, it is in flight, and every file the
+change edits has to be in its `touches`, under `deviations`, or one of the
+files every change carries (the changeset, the changelog, `docs/manifest.json`).
+`sf check` reads that change against `main` in the pre-commit hook, and CI
+reads it against the pull request's base.
 
 ## Where to ask
 

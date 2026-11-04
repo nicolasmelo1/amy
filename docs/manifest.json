@@ -4851,6 +4851,11 @@
         },
         {
           "depth": 3,
+          "title": "L5.EVERY_PROPERTY_HAS_A_FALSIFIER",
+          "slug": "l5everypropertyhasafalsifier"
+        },
+        {
+          "depth": 3,
           "title": "L5.NO_INERT_RULE",
           "slug": "l5noinertrule"
         },
@@ -9751,7 +9756,14 @@
             "mechanisms": "docs/mechanisms.yaml",
             "max_words": 40,
             "max_body_lines": 6,
-            "require_declaration": true
+            "require_declaration": true,
+            "incidental": [
+              ".software-factory/**",
+              "plans/next-steps.md",
+              ".changeset/*.md",
+              "docs/changelog/index.md",
+              "docs/manifest.json"
+            ]
           }
         },
         "title": "A plan is a declaration where every line is tied to another",
@@ -9776,6 +9788,21 @@
         "enabled": true,
         "settings": {},
         "title": "Every enabled rule has a mutation that proves it fires",
+        "reason": ""
+      },
+      {
+        "id": "L5.EVERY_PROPERTY_HAS_A_FALSIFIER",
+        "enabled": true,
+        "settings": {
+          "options": {
+            "scope": [
+              "plans/*.md",
+              "docs/design/*.md"
+            ],
+            "run": "set -eu\nnpx vitest run --reporter=dot \"$SF_PROPERTY\"\n"
+          }
+        },
+        "title": "Every property a plan cites is proven able to fail",
         "reason": ""
       },
       {
