@@ -19,7 +19,7 @@
       "file": "linear.graphql",
       "url": "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql",
       "publisher": "Linear — the GraphQL schema its own SDK is generated from",
-      "sha256": "73fac69ae08c0cf8329bbc85a3728a9e24e6e66116ac2f5d6aebbef922b30daf"
+      "sha256": "dc0f838785760f8daa692e438fcd15071c5bc39c6997758d5c2d303364f98e56"
     },
     {
       "name": "slack-web",
