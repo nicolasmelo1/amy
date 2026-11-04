@@ -55,6 +55,7 @@ cut:
   - "carrying env or apiKeyHelper from ~/.claude/settings.json into the isolated run: the process environment reaches the CLI as before"
 deviations:
   - "a blank profile is refused at boot, since it would run Hermes in the operator's own profile; a relative skill root is linked by its absolute place; and amy init prepares again after it installs, so a plugin it installed gets its files and setup in the same invocation, proven in the installed-plugins scenario (first review)"
+  - "a missing profile sends the operator to amy init alone, since a bare hermes profile create --clone copies the active profile's settings and leaves the doctor red (second review)"
   - "the Hermes profile is checked by running hermes from the doctor check itself, since a check is handed no runner"
   - "the generated plugin reference and docs manifest change with the new profile setting; docs/concepts/plugins.md did not need to"
   - "proven by hand against the real CLIs (claude 2.1.318, codex-cli 0.164.0, Hermes 0.21.6): one run each left ~/.claude/projects, ~/.codex/sessions, ~/.hermes/memories and ~/.hermes/skills unchanged, apart from two files the operator's own running Hermes gateway rewrites every ten seconds with or without amy, and the Claude run saw amy-btw and only the skills bundled with Claude Code"
