@@ -29,6 +29,11 @@ criteria:
   - { id: A6, statement: "the terminal opener is offered only when its plugin is mounted, only in the desktop app, and only on the local socket; a tunnelled client with the token does not get it", proof: "deferred:test:plugins/ui-shell/tests/plugin.test.ts", sources: [S5, S6, S10] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A3" }
+  - { mechanism: checkouts-and-leases, answer: n/a, why: "reads the path the Worktree port answers and runs git diff read-only; nothing here takes a lease, moves a branch or commits" }
+guarantee:
+  - { holds: "the shell and host editors are offered only on the local socket", not_against: "a process running as the same user, which can read the token and start a shell anyway" }
+  - { holds: "the Diff tab runs git diff <base>... read-only and writes nothing to the checkout", not_against: "uncommitted changes, which git diff <base>... does not show" }
+  - { holds: "each opener starts in the record's checkout", not_against: "a person's edits or git commands there racing the agent's run in the same checkout" }
 cut:
   - "the terminal renderer's half (suspend the window for $EDITOR, resume on exit): ships with the-window-fits-a-terminal (S10), since that renderer does not exist before it"
 exit: "from one record, a person reads its diff in the window, opens nvim on its checkout in the app's terminal, and a second person on the same install opens it in VS Code, neither typing a path"

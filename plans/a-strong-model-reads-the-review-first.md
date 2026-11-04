@@ -38,6 +38,10 @@ crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "assertion:review.an_answerable_objection_is_answered_without_a_code_change" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "test:packages/core/tests/mount.test.ts" }
   - { mechanism: agent-replies, answer: works, proof: "assertion:review.a_thread_without_a_verdict_is_never_dropped" }
+guarantee:
+  - { holds: "every thread in the review ends with one verdict, or goes to the owner (A5)", not_against: "a verdict that is well-formed and wrong: the model's judgement is read as data, its shape checked, its content not" }
+  - { holds: "an answer verdict's reply is posted as the model wrote it, and changes no code", not_against: "a reviewer's comment text steering the triage model: thread bodies are handed to it as written" }
+  - { holds: "the triage reads the review as observed in the look that ran it", not_against: "a thread replied to, resolved or deleted upstream while the triage runs: the next look reads it" }
 failures:
   - { step: triage-review, when: "the model returns no verdict for a thread", goes_to: "the thread is handed to the owner, never dropped" }
 cut:

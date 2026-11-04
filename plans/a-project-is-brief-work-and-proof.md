@@ -46,7 +46,7 @@ crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A4, A5" }
   - { mechanism: hooks, answer: n/a, why: "before, after and interrupt run around a phase's plan as around any call's; the project adds no hook" }
 guarantee:
-  - { holds: "no project reaches DONE with a phase that was neither run nor declared absent with a reason" }
+  - { holds: "no project reaches DONE with a phase that was neither run nor declared absent with a reason", not_against: "a reason that is wrong: a phase declared absent is the person's word, not a proof" }
 failures:
   - { step: mount, when: "a project neither has a phase's folder nor declares it absent", goes_to: "refused, naming the phase" }
   - { step: mount, when: "a project folder is named test/", goes_to: "refused, naming prove/" }

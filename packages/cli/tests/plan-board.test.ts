@@ -53,4 +53,42 @@ describe("checkPlanBoard", () => {
 
     expect(problems).toEqual(["gate queue points at missing design note docs/design/queue.md"]);
   });
+
+  describe("a plan's declaration", () => {
+    const declared = {
+      crosses: [{ mechanism: "engines", answer: "n/a", why: "no engine is called" }],
+      guarantee: [{ holds: "a restart loses no answer", not_against: "a power loss" }],
+    };
+    const withDeclaration = (declaration: unknown) =>
+      checkPlanBoard(input({ declarations: { "plans/a-future.md": declaration } }));
+
+    it("accepts a plan that answers crosses and names what it does not hold against", () => {
+      expect(withDeclaration(declared)).toEqual([]);
+    });
+
+    it("rejects a plan with no crosses", () => {
+      expect(withDeclaration({ ...declared, crosses: [] })).toEqual([
+        "plans/a-future.md answers no mechanism under crosses",
+      ]);
+    });
+
+    it("rejects a plan with no guarantee", () => {
+      expect(withDeclaration({ crosses: declared.crosses })).toEqual([
+        "plans/a-future.md declares no guarantee, so its review has no failure model",
+      ]);
+    });
+
+    it("rejects a guarantee that does not say what it is not against", () => {
+      expect(withDeclaration({ ...declared, guarantee: [{ holds: "it works" }] })).toEqual([
+        "plans/a-future.md guarantee 1 needs both holds and not_against",
+      ]);
+    });
+
+    it("rejects a plan with no declaration at all", () => {
+      expect(withDeclaration(undefined)).toEqual([
+        "plans/a-future.md answers no mechanism under crosses",
+        "plans/a-future.md declares no guarantee, so its review has no failure model",
+      ]);
+    });
+  });
 });

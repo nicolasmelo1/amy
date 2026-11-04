@@ -26,6 +26,11 @@ Read the rules where they are kept, not here:
    sf ready plans/<plan>.md
    ```
 
+   and `npm run check:plans`, which refuses a plan without `crosses` or
+   without a `guarantee` whose every line says what it is `not_against`.
+   The guarantee is the review's failure model: whatever it does not name,
+   the reviewer will find one round at a time.
+
    `✗` is a fact that no longer holds — a cited file or test that is gone, a
    `symbol:` the file no longer has, a line number. Fix the line: cite the
    file in `ref:` and name what you mean in `symbol:`. `~` is a file the plan
@@ -58,3 +63,19 @@ Read the rules where they are kept, not here:
   ([`.github/copilot-instructions.md`](../../../.github/copilot-instructions.md)).
 - A gate whose evidence went stale is re-run and re-sealed, never hand-edited:
   `./.software-factory/evidence/<gate>-scenario.sh`, then `sf seal <gate>`.
+
+## When the review comes back
+
+Sort every finding before fixing any:
+
+- **Inside the declaration** — a criterion, a `failures` entry, a `crosses`
+  answer or a `guarantee` it holds is broken. Fix it.
+- **Outside it** — a failure the `guarantee` does not name (two processes, a
+  power loss, a hostile server, a filesystem quirk), or a file outside
+  `touches`. Do not fix it. Ask the person which way it goes: into the scope,
+  as a `kind: decision` source and the code that holds it, or out of it, as a
+  `not_against` or `cut` line, answered on the thread by citing that line.
+- **About something an earlier round's fix added.** Stop. The fixes are
+  growing the surface they are reviewed on; ask before the next one.
+
+A watcher that fixes review comments on its own fixes only the first kind.

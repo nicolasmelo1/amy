@@ -46,6 +46,11 @@ criteria:
 crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A5, A6, A7, A8, A9" }
   - { mechanism: rendering, answer: n/a, why: "plugins/ui-stub only moves @amykit/core to a peer in its package.json; no view or renderer changes" }
+  - { mechanism: install-and-update, answer: works, proof: "unspecified:amy add and amy update install into the plugins root, where npm now resolves the core as a peer; no criterion proves one copy there yet" }
+guarantee:
+  - { holds: "a plugin naming a member the installed core removed is refused at boot, with the others", not_against: "a member whose name stays but whose signature or behaviour changed: only the canary finds that" }
+  - { holds: "a plugin is judged by the needs it declares", not_against: "a needs list that omits a member the plugin calls: it fails where it calls it, as today" }
+  - { holds: "the release check refuses a manifest in this repository that names the core as a dependency", not_against: "a plugin published elsewhere with the core as a dependency, or npm told to skip peers (legacy-peer-deps)" }
 cut:
   - "locking the core: refused; it stops the core moving, the accidental status quo"
   - "publishing a supported version window: refused; the number is guessed, nobody knows which change breaks whom, so authors bump it on reflex every release"

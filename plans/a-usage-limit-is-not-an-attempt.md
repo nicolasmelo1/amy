@@ -26,6 +26,11 @@ crosses:
   - { mechanism: budget-and-evidence, answer: works, proof: "deferred:A5" }
   - { mechanism: record-migration, answer: n/a, why: "no record shape changes; a wait is a look already counted" }
   - { mechanism: workflow-tooling, answer: n/a, why: "the testkit only gains a walkthrough; its walking is unchanged" }
+guarantee:
+  - { holds: "a run Codex reports limited through a structured field charges no attempt and waits", not_against: "a limit Codex reports only in prose, or a Codex release that moves or renames the field: it reads as failed, as today" }
+  - { holds: "the step reruns after the reported reset, or the policy backoff when none", not_against: "a reset time the provider reports wrong, or a local clock off from the provider's" }
+  - { holds: "a single-rung ladder survives any number of limits", not_against: "a limit that never lifts: the step keeps waiting and nobody is escalated" }
+  - { holds: "the rerun continues on the tree the limited run left", not_against: "the checkout edited by hand while the step waits" }
 failures:
   - { step: Codex classify, when: "no structured limit signal exists in codex exec --json", goes_to: "Codex stays failed; the plan records that" }
   - { step: last rung, when: rate-limited, goes_to: "wait until reset or backoff; the same step reruns on the tree it left, the handoff note saying it continues" }

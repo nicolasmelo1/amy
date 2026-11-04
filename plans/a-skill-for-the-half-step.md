@@ -25,6 +25,10 @@ criteria:
 crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A2, A5" }
   - { mechanism: agent-replies, answer: n/a, why: "only which skill and ladder keys are accepted changes; how a reply is read does not" }
+guarantee:
+  - { holds: "a skills or ladderByStep key that is no core agent action, no agent-reaching workflow action and no declared step is refused at boot, naming the steps there were", not_against: "a declared step the workflow never passes as AskContext.step: its ladder is accepted and never fires" }
+  - { holds: "the keys are checked once, when the daemon mounts", not_against: "config.yaml edited while the daemon runs: the edit is checked at the next boot" }
+  - { holds: "the steps checked are the ones the mounted workflow declares", not_against: "a step only a workflow it calls declares" }
 exit: "a workflow that phases one action into several steps can give each its own skill and its own model ladder, from config.yaml, with the typos refused at boot by name"
 ---
 # A skill for the half-step

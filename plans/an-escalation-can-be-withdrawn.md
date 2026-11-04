@@ -43,6 +43,12 @@ crosses:
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A8" }
   - { mechanism: calls, answer: n/a, why: "defineWorkflow only gains two optional members asked by amy withdraw; how a workflow calls another is unchanged" }
   - { mechanism: hooks, answer: n/a, why: "resumeTarget and resumed are asked by amy withdraw, not run around a plan; before, after and interrupt are unchanged" }
+  - { mechanism: queue-and-store, answer: works, proof: "deferred:A2, A3; the claim check reads the queue as amy poke does, and the backup is a sibling the store's all() does not list" }
+guarantee:
+  - { holds: "a record is changed only while no worker of its profile holds its work, and no worker claims it until the withdrawal is written", not_against: "a daemon on another machine, or a store shared over a network filesystem: the check reads this profile's queue on this disk" }
+  - { holds: "the record is backed up before it is rewritten, and a crash leaves either the old record or the new one", not_against: "a power loss: the backup and the record are written by rename, not fsynced" }
+  - { holds: "the workflow's own fields are dropped by its resumed, and refused without one and without --to", not_against: "a resumed that returns a record its own decide cannot plan: the workflow's to get right" }
+  - { holds: "one withdrawal of a record at a time is safe", not_against: "two people withdrawing the same record at the same moment, or a hand edit during one" }
 failures:
   - { step: amy withdraw, when: "the work is claimed or in flight", goes_to: "refused; the record is untouched" }
   - { step: amy withdraw without --to, when: "the state is not marked returns and the workflow has no resumeTarget", goes_to: "refused rather than guessed" }

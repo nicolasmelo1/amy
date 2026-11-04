@@ -42,6 +42,12 @@ criteria:
   - { id: A9, statement: "a record the daemon rewrites on disk is what the server answers next, with no restart and no cache in between", proof: "deferred:test:packages/server/tests/core/files-are-the-truth.test.ts", sources: [S13, S14] }
   - { id: A10, statement: "restarting the server loses no work: every record, queue item, brief and ask is where it was", proof: "deferred:test:packages/server/tests/core/restart.test.ts", sources: [S15] }
   - { id: A11, statement: "the empty server, core/ and no domain, builds a valid OpenAPI 3.1 document", proof: "deferred:test:packages/server/tests/core/app.test.ts", sources: [S4] }
+crosses:
+  - { mechanism: queue-and-store, answer: n/a, why: "a repository reaches file-store and file-queue only through their ports, whose claim, recovery and pruning are unchanged; this row ships no domain that writes" }
+  - { mechanism: briefs, answer: n/a, why: "read only through the brief store's port; this row ships no domain that reads it" }
+  - { mechanism: events-and-notifications, answer: n/a, why: "the server reads the event log to know when to ask again; it logs and tells no one anything in this row" }
+  - { mechanism: mount-and-capabilities, answer: n/a, why: "the empty server mounts no port; how it assembles profiles read-only is the-window-is-served's" }
+  - { mechanism: rendering, answer: n/a, why: "@amykit/ui is imported for its types; packages/ui is untouched" }
 guarantee:
   - { holds: "nothing the server holds in memory is ever more current than the files on disk", not_against: "the daemon writing those files from another process at any moment" }
 cut:

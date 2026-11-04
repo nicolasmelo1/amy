@@ -25,6 +25,11 @@ criteria:
 crosses:
   - { mechanism: calls, answer: n/a, why: "defineWorkflow gains an optional brief member; how one workflow calls another is unchanged" }
   - { mechanism: hooks, answer: n/a, why: "the brief check runs from amy brief check, not around a plan; before, after and interrupt are unchanged" }
+  - { mechanism: briefs, answer: works, proof: "deferred:A4" }
+guarantee:
+  - { holds: "amy brief check is green only on a brief the workflow's own check accepts", not_against: "a workflow check that accepts a brief it should refuse" }
+  - { holds: "the shipped skill tells the agent to write only through the brief port", not_against: "an agent that ignores the skill and writes to a tracker or code host itself" }
+  - { holds: "each answer is written through the brief port under its lock", not_against: "another writer changing a section between the skill reading it and writing its answer" }
 cut:
   - "a default check that always passes for a workflow declaring none"
   - "the skill writing to a tracker or code host"

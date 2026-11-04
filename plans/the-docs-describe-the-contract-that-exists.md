@@ -38,6 +38,14 @@ criteria:
   - { id: A1, statement: "every code block on the five pages typechecks against the current core", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S2, S4, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S20, S22] }
   - { id: A2, statement: "no heading or sentence on the five pages states a count of members that is not generated", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S1, S2, S21] }
   - { id: A3, statement: "the example Write a workflow builds is the one amy workflow new writes, and it runs before anybody edits it", proof: "assertion:mine.the_scaffold_runs_before_it_is_edited", sources: [S3, S5, S6, S18, S19, S23, S24, S25] }
+crosses:
+  - { mechanism: workflow-tooling, answer: n/a, why: "the page teaches what amy workflow new already writes (workflow.mmd, index.ts); the scaffold and amy workflow check are unchanged, and A3 runs them as they are" }
+  - { mechanism: diagram, answer: n/a, why: "the pages describe workflow.mmd as diagram.ts already reads it; the reader is unchanged" }
+  - { mechanism: config, answer: n/a, why: "Write a plugin shows definePlugin's typed config as the schema already types it; no schema changes" }
+guarantee:
+  - { holds: "every code block on the five pages typechecks against the current core", not_against: "a block that typechecks but no longer does what its prose says: types prove the shape, not the behaviour" }
+  - { holds: "no hand-written count of members on the five pages", not_against: "pages outside these five, which keep their prose as it is" }
+  - { holds: "the page's example runs before anybody edits it, on this repository's amy", not_against: "a reader on an installed amy older than this repository's core" }
 cut:
   - "renaming workflow-feature-grooming: a breaking change to every config naming it; its own plan if the answer is yes"
 exit: "somebody who has never seen this repository writes a workflow from Write a workflow alone, as a diagram and one file, and it mounts on the first boot"

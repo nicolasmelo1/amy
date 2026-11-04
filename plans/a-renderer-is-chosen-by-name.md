@@ -12,6 +12,7 @@ sources:
   - { id: S10, kind: decision, said: "ui-frame finds every renderer by name through ui-renderer, not a list in the script, so an installed renderer cannot escape the gate; ui-window gains the command" }
 touches:
   - packages/cli/src/index.ts
+  - packages/cli/src/ui/**
   - packages/core/src/config-schema.ts
   - packages/core/src/mount.ts
   - packages/ui/**
@@ -33,6 +34,10 @@ crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A4, A5" }
   - { mechanism: config, answer: works, proof: "deferred:A1" }
   - { mechanism: rendering, answer: works, proof: "deferred:A6, A7" }
+guarantee:
+  - { holds: "amy ui opens only a renderer an installed plugin contributes by name, and refuses any other name", not_against: "an installed renderer itself, which runs with the person's rights as every plugin does" }
+  - { holds: "a view-only plugin installed after a build shows in the built app without a rebuild", not_against: "a plugin changing how something is drawn, which asks for amy ui build again" }
+  - { holds: "text opens on a bare install with no display", not_against: "a renderer needing a display or toolchain the machine lacks: its start or build fails as that tool does" }
 cut:
   - "a flag per renderer on amy ui (--terminal, --desktop, --phone): refused; a renderer is chosen by name"
   - "shipping any renderer but text with the CLI: refused; an install carrying Electron is a hundred megabytes nobody asked for on a maybe screenless machine"

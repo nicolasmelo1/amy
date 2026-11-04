@@ -12,11 +12,18 @@ touches:
   - packages/core/tests/bench-baseline.json
   - .github/workflows/software-factory.yml
   - .software-factory/policy.yaml
+  - scripts/check-bench.ts
 criteria:
   - { id: A1, statement: "a baseline claiming the code used to be twenty times faster fails the gate, and the failure names the benchmark and the ratio", proof: "test:scripts/tests/bench-gate.test.ts", sources: [S1, S2, S3, S6] }
   - { id: A2, statement: "the unmutated baseline passes the same gate, so a guard that always fails is refused too", proof: "test:scripts/tests/bench-gate.test.ts", sources: [S6] }
   - { id: A3, statement: "the threshold lives in the policy the guardrail watches, and raising it is a weakening the policy check reports", proof: "test:scripts/tests/bench-gate.test.ts", sources: [S3] }
   - { id: A4, statement: "a baseline carries the environment it was measured on, and comparing across two environments reports unavailable rather than a verdict", proof: "unspecified:whether the environment rides in the baseline's own format or in an evidence artifact is the first thing the work decides, and it changes where the field is read", sources: [S4, S5] }
+crosses:
+  - { mechanism: budget-and-evidence, answer: n/a, why: "the benches time the budget ledger; budget.ts is untouched, only the judgment of its timing changes" }
+guarantee:
+  - { holds: "a benchmark slower than the policy threshold, against a baseline from the same environment, fails the build naming it and the ratio", not_against: "regressions each under the threshold adding up across commits, or a noisy shared runner making one run slow or fast" }
+  - { holds: "comparing across two environments reports unavailable, not a verdict", not_against: "two machines that report the same environment with different hardware, such as two hosted runners of one label" }
+  - { holds: "a gate that only reports goes red every run, since the mutated baseline must fail it", not_against: "one commit that removes the bench step, the gate and its mutation together; the policy check reporting a weakening is what sees that" }
 failures:
   - { step: bench comparison, when: "a benchmark is slower than the declared threshold allows", goes_to: "non-zero exit naming the benchmark and the ratio" }
   - { step: bench comparison, when: "baseline and run come from two environments", goes_to: "unavailable, neither pass nor fail" }

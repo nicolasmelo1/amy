@@ -27,6 +27,10 @@ criteria:
 crosses:
   - { mechanism: attempts-and-waits, answer: n/a, why: "a decider is asked while the observation is built, not as an agent run; no attempt is charged" }
   - { mechanism: agent-replies, answer: n/a, why: "measuring reads typed verdicts and labels, never an agent's prose reply" }
+guarantee:
+  - { holds: "a rung decides only under a threshold measured against the weights digest or model version it reports now", not_against: "a hosted decider whose answers change under an unchanged reported version" }
+  - { holds: "the written threshold keeps the expensive error under the tolerance on the labelled examples", not_against: "examples unrepresentative of the replies to come, or a label a person set wrong" }
+  - { holds: "one measure run writes one threshold per decider and question", not_against: "two measure runs on the same question at once: the last write wins" }
 cut:
   - "refusing a hand-written accept outright: refused, it would leave somebody with no examples yet with no ladder at all"
 exit: "a decider whose threshold was never measured only records what it would have said; after amy decide measure runs on the examples it decides, and new weights for the same model return it to shadow until measured again"

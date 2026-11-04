@@ -62,6 +62,18 @@ criteria:
 crosses:
   - { mechanism: config, answer: works, proof: "deferred:A6, A7, A13" }
   - { mechanism: rendering, answer: works, proof: "deferred:A2, A3, A9" }
+  - { mechanism: diagram, answer: works, proof: "deferred:A8" }
+  - { mechanism: workflow-tooling, answer: works, proof: "deferred:A8" }
+  - { mechanism: queue-and-store, answer: works, proof: "deferred:A15" }
+  - { mechanism: install-and-update, answer: works, proof: "deferred:A15, A16" }
+  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A5, A15" }
+guarantee:
+  - { holds: "a config.yaml or diagram saved over a newer revision is refused as stale, never overwritten", not_against: "the running daemon, which reads a saved config.yaml or diagram at its next start, not mid-run" }
+  - { holds: "a record the daemon advances moves in the open window within a second of its event", not_against: "the server restarting under an open window, which shows it away by name until it answers again" }
+  - { holds: "the global shortcut is off unless configured, and one the system already owns is refused", not_against: "an app registering the same shortcut after amy, which macOS arbitrates" }
+  - { holds: "amy ui build desktop produces a macOS app that opens on the machine that built it", not_against: "Gatekeeper on another Mac: the app is neither signed nor notarised" }
+  - { holds: "the window is built and measured on macOS", not_against: "Windows and Linux builds, which no gate measures yet" }
+  - { holds: "every region is reached by the frame's keys", not_against: "screen readers: no accessibility tree beyond what Chromium gives the page" }
 cut:
   - "a window served to a browser tab: refused, it cannot sit in the menu bar or own a global shortcut (S13)"
   - "Tauri: refused, a gate green in one system webview says nothing about the other two (S14)"
