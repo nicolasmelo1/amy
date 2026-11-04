@@ -1,14 +1,14 @@
 ---
 sources:
   - { id: S1, kind: friction, said: "eight rows add to the server, each built another day by somebody reading only it; without one list, rows invent differing paths, build one operation twice, and the document grows in need order, not shape" }
-  - { id: S2, kind: decision, said: "packages/server/surface.yaml lists every operation (operationId, domain, method, path, local-only, writes) and fixed view (viewId, params schema, slot, surface, local-only), each with its delivering plan and status, planned or delivered" }
+  - { id: S2, kind: decision, said: "packages/services/surface.yaml lists every operation (operationId, domain, method, path, cli words, local-only, writes) and fixed view (viewId, params schema, slot, surface, local-only), each with its delivering plan and status, planned or delivered" }
   - { id: S3, kind: decision, said: "surface.yaml is locked like openapi.json, so changing the surface is a reviewed diff" }
-  - { id: S4, kind: decision, said: "gate the-surface-is-the-registry compares it with the generated document every build: each delivered operation present with the registry's method, path, local-only flag and writes; none unlisted; no planned one yet" }
+  - { id: S4, kind: decision, said: "gate the-surface-is-the-registry compares it with the contract every build: each delivered operation present with the registry's method, path, cli words, local-only flag and writes; none unlisted; no planned one yet" }
   - { id: S5, kind: decision, said: "each delivered view is answered by listViews on a plugin-less server with the registry's slot, surface, params schema, and a subscription with its example params yields a snapshot; no unlisted or planned fixed view answers" }
   - { id: S6, kind: decision, said: "a local-only view is answered on the socket and never over TCP" }
   - { id: S7, kind: decision, said: "a planned entry names a row of next-steps.md; a delivered one names the design note under docs/design/ its plan became, because a delivered plan leaves the table" }
   - { id: S8, kind: decision, said: "a row delivering an operation flips it to delivered in the same pull request; a row needing one the registry lacks adds it here first" }
-  - { id: S9, kind: reference, ref: "plans/the-server-speaks-in-domains.md", said: "no database: every read comes from files amy keeps, through the ports and the event log; every write lands as the matching amy command's would" }
+  - { id: S9, kind: reference, ref: "plans/amy-speaks-in-domains.md", said: "no database: every read comes from files amy keeps, through the ports and the event log; every write lands as the matching amy command's would" }
   - { id: S10, kind: decision, said: "paths are versioned, /v1/…, each owned by one domain" }
   - { id: S11, kind: decision, said: "a request on the socket carries Authorization: Bearer <token>; over TCP the connection is a paired device's, authenticated by its key; 401 session.unauthorized is declared on every operation" }
   - { id: S12, kind: decision, said: "only receiveGitHubEvent and receiveLinearEvent skip the token: a webhook cannot carry it, so the tool's signature, verified before reading, authenticates them, with no session; every other operation, listEventSources included, keeps both" }
@@ -20,7 +20,7 @@ sources:
   - { id: S18, kind: decision, said: "long work answers 202 and finishes on the session stream, so no request is held open for an agent run" }
   - { id: S19, kind: decision, said: "domain rows: session, views and work from the-window-is-served; machine, workflows and settings from amy-has-a-window; actions from the-window-takes-plugins; asks and threads from a-conversation-before-the-work" }
   - { id: S20, kind: decision, said: "grooming from grooming-happens-in-the-window; events from an-event-is-a-reason-to-look; workplace from the-workplace-opens-where-you-work" }
-  - { id: S21, kind: decision, said: "getCompatibility GET /v1/compatibility → { apiMajor, contractDigest, build, capabilities[] }, what a client checks before opening a session" }
+  - { id: S21, kind: decision, said: "getCompatibility GET /v1/compatibility → { apiMajor, contractDigest (services alone), plugins[] { package, digest }, build, capabilities[] }, what a client checks before opening a session" }
   - { id: S22, kind: decision, said: "openSession POST /v1/sessions { contractDigest, renderer, surfaces[], primitives[] } → 201 { sessionId, local (arrived on the socket), capabilities[], keymap (resolved from ui.keys), theme in force }" }
   - { id: S23, kind: decision, said: "openSession refuses 409 session.contract_mismatch { expected, got }; 422 session.primitive_unknown { primitive, viewId }; 422 session.surface_not_in_frame { surface }" }
   - { id: S24, kind: decision, said: "closeSession DELETE /v1/sessions/{sessionId} ends the session and every subscription in it: 204; 404 session.not_found" }
@@ -57,6 +57,7 @@ sources:
   - { id: S44, kind: decision, said: "removeWorkflow DELETE /v1/workflows/{profile}, what amy remove <name> does, refusing what the machine would not survive: 200 { removed }; 404 workflows.not_found; 409 workflows.removal_refused { refusals[] }; local-only; writes config.yaml" }
   - { id: S45, kind: decision, said: "getConfig GET /v1/settings/config → { text, revision (digest) }, local-only because a config names paths and channels" }
   - { id: S46, kind: decision, said: "the window draws Settings by subscribing to settings.config — an Input named text, intent saveConfig with the revision in args, last refusals as a List beneath — so no renderer builds the editor" }
+  - { id: S85, kind: reference, ref: "plans/the-command-line-holds-no-rule.md", said: "the built-ins that row moves are listed here as planned, with their cli words and local-only where it says, so the registry lands before them and that row flips them to delivered" }
   - { id: S47, kind: decision, said: "saveConfig PUT /v1/settings/config { text, baseRevision }: assembles like a boot, saves only if it mounts; 200 { revision }; 409 settings.stale_revision { current }; 422 settings.would_not_mount { refusals[] }; local-only; writes config.yaml" }
   - { id: S48, kind: decision, said: "listActions GET /v1/actions → every mounted ui-action { action, title, appliesTo, argsSchema, writes[], localOnly }; a local-only action is listed only on the socket" }
   - { id: S49, kind: decision, said: "runAction POST /v1/actions/{action} { target: { profile, workId? }, args }: args checked against the action's schema at run time, the envelope typed; 200 { outcome }; 404 actions.not_found; 422 actions.args_invalid { errors }" }
@@ -85,14 +86,14 @@ sources:
   - { id: S72, kind: decision, said: "session events: settings.changed { keymap, theme } when config.yaml moved; heartbeat { at }" }
   - { id: S73, kind: decision, said: "asks: ask.answered / ask.failed { askId, turnId, text | reason, harness, cost? }; workplace: shell.output { shellId, data } / shell.exited { shellId, code }" }
 touches:
-  - packages/server/surface.yaml
-  - packages/server/tests/surface.test.ts
+  - packages/services/surface.yaml
+  - packages/services/tests/surface.test.ts
   - .software-factory/policy.yaml
   - .software-factory/mutations/**
 untouched:
   - packages/ui/src/vocabulary.ts
 criteria:
-  - { id: A1, statement: "surface.yaml lists every operation and fixed view above, with its domain, method, path, local-only flag, writes and plan — or its params, slot, surface and plan — all planned", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S1, S2, S8, S9, S10, S11, S12, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25, S26, S27, S28, S29, S30, S31, S32, S33, S36, S37, S38, S39, S40, S41, S42, S43, S44, S45, S46, S47, S48, S49, S50, S51, S52, S53, S54, S55, S56, S57, S58, S59, S60, S61, S62, S63, S64, S65, S66, S67, S69, S70, S71, S72, S73, S74] }
+  - { id: A1, statement: "surface.yaml lists every operation and fixed view above, with its domain, method, path, cli words, local-only flag, writes and plan — or its params, slot, surface and plan — all planned", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S1, S2, S8, S9, S10, S11, S12, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25, S26, S27, S28, S29, S30, S31, S32, S33, S36, S37, S38, S39, S40, S41, S42, S43, S44, S45, S46, S47, S48, S49, S50, S51, S52, S53, S54, S55, S56, S57, S58, S59, S60, S61, S62, S63, S64, S65, S66, S67, S69, S70, S71, S72, S73, S74, S85] }
   - { id: A2, statement: "a delivered operation missing from the document, or one in the document the registry does not list, fails the build naming it", proof: "deferred:test:mutation fixture for the-surface-is-the-registry", sources: [S4] }
   - { id: A3, statement: "a delivered fixed view listViews does not answer, or one it answers the registry does not list, fails the build naming the view", proof: "deferred:test:mutation fixture for the-surface-is-the-registry", sources: [S5, S6] }
   - { id: A4, statement: "an operation whose local-only flag or writes differ from the registry fails the build", proof: "deferred:test:mutation fixture for the-surface-is-the-registry", sources: [S4] }
@@ -101,7 +102,7 @@ criteria:
   - { id: A7, statement: "a view whose intent names an operationId the registry does not list fails the build", proof: "deferred:assertion:server.every_intent_names_an_operation", sources: [S34, S35] }
   - { id: A8, statement: "editing surface.yaml without sf lock fails the build", proof: "deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED", sources: [S3] }
   - { id: A9, statement: "startAsk and addAskTurn called over TCP are not routed, 404, and no harness runs", proof: "deferred:assertion:server.no_ask_runs_for_a_tcp_client", sources: [S51, S54, S75] }
-  - { id: A10, statement: "startAsk's about carries the record's server, and two asks about TBO-1 on two servers start from two different records", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S51, S76] }
+  - { id: A10, statement: "startAsk's about carries the record's server, and two asks about TBO-1 on two servers start from two different records", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S51, S76] }
   - { id: A11, statement: "startGrooming and addGroomingTurn called over TCP are not routed, 404, and no harness runs", proof: "deferred:assertion:server.no_grooming_runs_for_a_tcp_client", sources: [S60, S62, S77] }
   - { id: A12, statement: "a discussion turn sent over TCP is refused 403 and no agent answers it, while a decision from a device granted acting is taken", proof: "deferred:assertion:server.a_remote_discussion_runs_no_agent", sources: [S57, S78] }
   - { id: A13, statement: "unpairing a device closes its stream and answers its next request 401, while another device's session keeps receiving", proof: "deferred:assertion:server.unpairing_ends_the_session", sources: [S14, S79] }
@@ -118,7 +119,7 @@ cut:
   - "a database behind the server: there is none"
   - "a change to the intent vocabulary"
   - "a write to a tracker or forge from any operation"
-exit: "surface.yaml holds every operation in this plan as planned, the gate is green on a server with no domains, and flipping any one entry to delivered without its controller turns the build red naming it"
+exit: "surface.yaml holds every operation in this plan as planned, the gate is green on services with no domains, and flipping any one entry to delivered without its operation turns the build red naming it"
 ---
 # Every endpoint is named before it is built
 

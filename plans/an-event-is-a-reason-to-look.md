@@ -12,7 +12,7 @@ sources:
   - { id: S10, kind: decision, ref: "packages/core/src/diagram.ts", said: "a waiting state's edge may be labelled with an event name (HUMAN_REVIEW --> HUMAN_FIX: code-host.review.submitted); the event wakes the record, plan() still picks the edge" }
   - { id: S11, kind: decision, said: "labels stay prose except one naming a published event; a dotted name nothing publishes is refused at boot; no event edge keeps its backoff; an event edge keeps a slow reconciliation backoff" }
   - { id: S12, kind: decision, ref: "packages/cli/src/doctor.ts", said: "discovery keeps running, longer cadence once a source reports events, finding what an event never reached (asleep, stopped, tunnel down); amy doctor says per source whether events arrive or it polls only" }
-  - { id: S13, kind: decision, ref: "plugins/github/src/plugin.ts", said: "plugin-github receives pull_request, pull_request_review, pull_request_review_comment at POST /v1/events/github (the server speaks in domains), verified by X-Hub-Signature-256 with the webhook secret" }
+  - { id: S13, kind: decision, ref: "plugins/github/src/plugin.ts", said: "plugin-github receives pull_request, pull_request_review, pull_request_review_comment at POST /v1/events/github (amy speaks in domains), verified by X-Hub-Signature-256 with the webhook secret" }
   - { id: S14, kind: reference, said: "a GitHub webhook needs a public HTTPS URL, so a laptop needs a tunnel the person runs; gh webhook forward is testing-only, one person per repository, so docs offer it for trying events only" }
   - { id: S15, kind: decision, ref: "plugins/linear/src/plugin.ts", said: "plugin-linear receives Issue and Comment webhooks at POST /v1/events/linear, verified by Linear-Signature, HMAC-SHA256 of the raw body; Linear needs public non-localhost HTTPS and a workspace admin to create it" }
   - { id: S16, kind: code, ref: "plugins/slack/src/SlackApi.ts", said: "plugin-slack keeps the Web API, avoiding Socket Mode: Slack hands each event to one of an app's connections. Socket Mode becomes a setting, off by default, for an app that is amy's alone" }
@@ -22,7 +22,7 @@ sources:
   - { id: S20, kind: decision, ref: ".software-factory/policy.yaml", said: "the ticket-to-qa gate requires the new assertions and watches the event code in plugins/github/src/** and plugins/linear/src/**" }
   - { id: S21, kind: decision, ref: "docs/build/receive-events.md", said: "Receive events under docs/build/ covers per source: what to create and which events to tick, the secret and its config.yaml place, the tunnel and checking it, what amy doctor prints either way" }
   - { id: S22, kind: decision, said: "every command on the page runs in the docs check against a recorded payload from the tool's docs, kept as a fixture beside the adapter's tests, so a misread signature or field fails the build" }
-  - { id: S23, kind: reference, ref: "plans/the-server-speaks-in-domains.md", said: "webhooks arrive at the server's domain routes, POST /v1/events/github and POST /v1/events/linear" }
+  - { id: S23, kind: reference, ref: "plans/amy-speaks-in-domains.md", said: "webhooks arrive at routes the server generates from the events domain's operations, POST /v1/events/github and POST /v1/events/linear" }
   - { id: S24, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "a label is prose, with one exception this plan adds: a label naming a published event is read" }
 touches:
   - plugins/serial-engine/src/Worker.ts
