@@ -53,6 +53,24 @@ describe("pluginSlices", () => {
     expect(composed.theWord).toBe("by hand");
   });
 
+  it("keeps separate dotted-setting leaves supplied by different project phases", () => {
+    const slices = pluginSlices(
+      {
+        ...CONFIG,
+        plugins: {
+          "workflow-brief": { policy: { maxQuestions: 2 } },
+          "workflow-work": { policy: { maxAttempts: 3 } },
+        },
+      },
+      TICKETS,
+      undefined,
+      new Map([["project", "workflow-project"]]),
+      { name: "workflow-project", callees: ["workflow-brief", "workflow-work"] },
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(slices["workflow-project"]?.policy).toEqual({ maxQuestions: 2, maxAttempts: 3 });
+  });
+
   it("names the machine's default repository for the tracker, and leaves its vocabulary to its slice", () => {
     const slices = pluginSlices(
       {

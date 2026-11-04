@@ -372,18 +372,22 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
  * called, and a project composes its phases by calling them.
  */
 export function declaredCallee(plugin: object): {
+  readonly configSchema: ConfigSchema;
+  readonly policy: object;
   readonly input?: ConfigSchema;
   readonly returns: readonly string[];
   readonly trackerWrites?: Claims<ConfigSchema, object>;
   readonly codeHostWrites?: Claims<ConfigSchema, object>;
 } {
   const callee = (plugin as Partial<Record<typeof CALLEE, Callable | undefined>>)?.[CALLEE];
-  if (!callee || typeof callee.shape === "string") return { returns: [] };
+  if (!callee || typeof callee.shape === "string") return { configSchema: {}, policy: {}, returns: [] };
   const declaration = callee.declaration as Partial<{
     readonly trackerWrites?: Claims<ConfigSchema, object>;
     readonly codeHostWrites?: Claims<ConfigSchema, object>;
   }>;
   return {
+    configSchema: callee.declaration.configSchema,
+    policy: callee.declaration.policy,
     ...(callee.declaration.input ? { input: callee.declaration.input as ConfigSchema } : {}),
     returns: Object.keys(callee.declaration.output ?? {}),
     ...(declaration.trackerWrites !== undefined ? { trackerWrites: declaration.trackerWrites } : {}),
@@ -951,7 +955,7 @@ function portsFor(workflow: string, needs: Needs, ctx: PluginContext, path: read
  * consistency check. What is left here is the one merge both of those made
  * possible: what somebody wrote wins, what they left out keeps its default.
  */
-function policyFor<P extends object>(workflow: string, defaults: P, configured: unknown): P {
+export function policyFor<P extends object>(workflow: string, defaults: P, configured: unknown): P {
   const overrides = configured ?? {};
   if (typeof overrides !== "object" || overrides === null || Array.isArray(overrides)) {
     throw new Error(`${workflow} policy must be a mapping`);

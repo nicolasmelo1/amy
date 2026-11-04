@@ -32,9 +32,9 @@ export function pluginSlices(
   // The profile's own settings come first, and a slice written by hand wins
   // over them: that is the order the config always read in. The settings are
   // the workflow's vocabulary, checked against its configSchema at mount.
+  applyOwnProfileSettings(profile, pluginNames ?? new Map(), derived);
   mergeInGivenSlices(derived, config.plugins);
   composedSlice(derived, composed);
-  applyOwnProfileSettings(profile, pluginNames ?? new Map(), derived);
 
   // The command that writes a file and the adapter that read it must agree,
   // including when somebody overrode the adapter's directory by hand. The
@@ -220,14 +220,24 @@ function composedSlice(derived: Record<string, unknown>, composed: { readonly na
   for (const callee of composed.callees) {
     const slice = derived[callee];
     if (!isRecord(slice)) continue;
-    Object.assign(shared, slice);
+    mergeSlice(shared, slice);
   }
   // An entry the config wrote for the composed workflow itself survives the
   // composition: it was merged in as a given slice, and a thing written by
   // hand beats what was derived for the phases.
   const entry = derived[composed.name];
   const given: Record<string, unknown> = isRecord(entry) ? entry : {};
-  derived[composed.name] = { ...shared, ...given };
+  mergeSlice(shared, given);
+  derived[composed.name] = shared;
+}
+
+/** Merges phase slices by leaf, so sibling dotted settings reach their own callees. */
+function mergeSlice(target: Record<string, unknown>, added: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(added)) {
+    const current = target[key];
+    if (isRecord(current) && isRecord(value)) mergeSlice(current, value);
+    else target[key] = value;
+  }
 }
 
 /**

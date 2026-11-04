@@ -1346,4 +1346,26 @@ describe("one project's phase profiles, as the update folds them", () => {
     expect(rewritten.workflows.execution?.settings).toEqual({ retries: 0, name: "" });
     expect(said.said.some((move) => move.includes("grooming: folded into `execution`"))).toBe(true);
   });
+
+  it("carries an unset nested policy leaf without replacing the survivor's explicit leaf", () => {
+    const base = path.join(home, "invoices");
+    fs.writeFileSync(path.join(home, "config.yaml"), `workflows:
+  grooming:
+    workflow: ${path.join(base, "brief")}
+    settings:
+      policy:
+        pollBackoffMs: 200
+  execution:
+    workflow: ${path.join(base, "workflow")}
+    settings:
+      policy:
+        maxAttempts: 0
+  proving:
+    workflow: ${path.join(base, "test")}
+`, "utf-8");
+
+    expect(migrateSettingsFile(home).ok).toBe(true);
+    const rewritten = yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf-8")) as { workflows: Record<string, { settings?: { policy?: Record<string, unknown> } }> };
+    expect(rewritten.workflows.execution?.settings?.policy).toEqual({ maxAttempts: 0, pollBackoffMs: 200 });
+  });
 });

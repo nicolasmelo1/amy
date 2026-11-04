@@ -289,6 +289,31 @@ describe("a project is brief, work and proof", () => {
     }
   });
 
+  it("projects dotted policy leaves onto the phase that declares each one", () => {
+    const brief = declaredPhase("brief-policy", {
+      states: ["BRIEFED"],
+      terminal: ["BRIEFED"],
+      schema: { "policy.maxQuestions": { type: "number", required: true, description: "the brief ceiling" } },
+    });
+    const work = declaredPhase("work-policy", {
+      states: ["OPENED"],
+      terminal: ["OPENED"],
+      schema: { "policy.maxAttempts": { type: "number", required: true, description: "the work ceiling" } },
+    });
+    const composed = composeProject({
+      profile: { name: "policy", settings: { policy: { maxQuestions: 2, maxAttempts: 3 } } },
+      slices: {},
+      phases: [
+        { phase: "brief", plugin: brief, name: brief.name },
+        { phase: "workflow", plugin: work, name: work.name },
+      ],
+      absent: { prove: "this project has no proving phase" },
+      root,
+    });
+
+    expect(composed.problems).toEqual([]);
+  });
+
   it("refuses a folder named test/, naming prove/", async () => {
     const base = fs.mkdtempSync(path.join(os.tmpdir(), "amy-project-test-"));
     try {

@@ -1013,11 +1013,12 @@ function carryPlugins(
       takesNotes: false,
       takesTasks: false,
       settings: {},
+      ...(kept.profile.get("agent") !== undefined ? { agent: kept.profile.get("agent") as Profile["agent"] } : {}),
     } as Profile;
     mounted = new yaml.YAMLSeq();
     const seen = new Set<string>();
     for (const spec of [...pluginList(effective, survivor), ...foldedSpecs]) {
-      if (projectRootOf(home, spec) !== undefined) continue;
+      if (projectRootOf(home, spec) !== undefined && path.resolve(spec) !== path.resolve(survivor.workflow)) continue;
       if (seen.has(spec)) continue;
       seen.add(spec);
       (mounted as yaml.YAMLSeq).add(new yaml.Scalar(spec));
@@ -1040,16 +1041,24 @@ function carrySettings(
   if (!yaml.isMap(settings)) return;
   const own = kept.profile.get("settings");
   if (yaml.isMap(own)) {
-    for (const [key, value] of Object.entries(settings.toJSON() as Record<string, unknown>)) {
-      // A key the survivor carries is left as it was — including an explicit
-      // false, a zero or an empty string, each of which is a written value,
-      // not a missing one.
-      if (own.get(key) === undefined) own.add(new yaml.Pair(key, value));
-    }
+    mergeUnsetSettings(own, settings);
   } else if (kept.profile.get("settings") === undefined) {
     kept.profile.add(new yaml.Pair("settings", settings));
   } else {
     kept.profile.set("settings", settings);
+  }
+}
+
+/** Carries only leaves the survivor did not write, including within nested setting groups. */
+function mergeUnsetSettings(kept: yaml.YAMLMap, folded: yaml.YAMLMap): void {
+  for (const pair of folded.items) {
+    const key = String(unwrap(pair.key));
+    const own = kept.get(key, true);
+    if (own === undefined) {
+      kept.add(new yaml.Pair(pair.key, pair.value));
+    } else if (yaml.isMap(own) && yaml.isMap(pair.value)) {
+      mergeUnsetSettings(own, pair.value);
+    }
   }
 }
 

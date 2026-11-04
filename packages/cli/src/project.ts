@@ -10,6 +10,8 @@ import {
   call,
   defineWorkflow,
   declaredCallee,
+  policyFor,
+  validateConfig,
   withDiagram,
 } from "@amykit/core";
 import { PROJECT_PHASES, Profile, ProjectIdentity } from "./profiles.js";
@@ -161,14 +163,17 @@ export function resolvePhases(root: string, declared: ProjectPhases | undefined)
  * handed what BRIEF returned when they take an input, exactly as the brief
  * settled them.
  */
-function bindingsFor(phases: readonly ProjectPhase[], slices: Readonly<Record<string, unknown>>, ownSettings: Readonly<Record<string, unknown>>): Record<string, ReturnType<typeof call>> {
-  const record = (key: string) => (work: Record<string, unknown>, out: unknown) => ({ ...work, [key]: out });
+function bindingsFor(phases: readonly ProjectPhase[], contexts: ReadonlyMap<ProjectPhase, PhaseContext>): Record<string, ReturnType<typeof call>> {
+  const record = (key: string) => (work: WorkRecord, out: unknown) => ({
+    ...work,
+    [key]: key === "prove" ? { ...(out as Record<string, unknown>), invocation: work.calling } : out,
+  });
   const bindings: Record<string, ReturnType<typeof call>> = {};
   for (const one of phases) {
     const callee = declaredCallee(one.plugin);
     const output: Record<string, (work: never, out: unknown) => Record<string, unknown>> = {};
     for (const end of callee.returns) output[end] = record(one.phase);
-    const settings = phaseSettings(one, slices, ownSettings);
+    const settings = contexts.get(one)?.config ?? {};
     bindings[PHASE_STATE[one.phase]] = call(one.plugin, {
       ...(one === phases[0] ? { discover: true } : {}),
       ...(Object.keys(output).length > 0 ? { output: output as never } : {}),
@@ -186,28 +191,53 @@ function sliceFor(slices: Readonly<Record<string, unknown>>, name: string): Reco
 }
 
 /** The operator's own settings, kept to the ones the callee's schema declares. */
-function settingsFor(plugin: WorkflowPlugin, ownSettings: Readonly<Record<string, unknown>>): Record<string, unknown> {
-  const schema = plugin.configSchema;
-  if (!schema) return {};
-  // A dotted schema key names a group one leaf at a time (`policy.maxAttempts`),
-  // and the machine writes the group nested, so an own entry matches on the
-  // group's head as well as on a whole top-level key. What the callee's schema
-  // does not say is refused by its own mount, naming it.
-  const heads = new Set(Object.keys(schema).map((key) => key.split(".")[0]!));
+function settingsFor(schema: ConfigSchema, settings: Readonly<Record<string, unknown>>): Record<string, unknown> {
   const kept: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(ownSettings)) {
-    if (schema[key] !== undefined || heads.has(key)) kept[key] = value;
-  }
+  for (const key of Object.keys(schema)) copySetting(key.split("."), settings, kept);
   return kept;
 }
 
-/** The settings one phase's call carries: its derived slice, then the profile's own words for it. */
-function phaseSettings(
-  one: ProjectPhase,
-  slices: Readonly<Record<string, unknown>>,
-  ownSettings: Readonly<Record<string, unknown>>,
-): Record<string, unknown> {
-  return { ...sliceFor(slices, one.name), ...settingsFor(one.plugin, ownSettings) };
+/** Copies one schema-declared setting path without carrying a sibling dotted leaf. */
+function copySetting(path: readonly string[], source: Readonly<Record<string, unknown>>, target: Record<string, unknown>): void {
+  const [head, ...tail] = path;
+  if (head === undefined || !Object.hasOwn(source, head)) return;
+  if (tail.length === 0) {
+    target[head] = source[head];
+    return;
+  }
+  const value = source[head];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+  const nested = target[head] as Record<string, unknown> | undefined;
+  const next = nested ?? {};
+  target[head] = next;
+  copySetting(tail, value as Record<string, unknown>, next);
+}
+
+interface PhaseContext {
+  readonly config: Record<string, unknown>;
+  readonly policy: object;
+}
+
+/** Validates the exact settings and policy the call will hand one phase. */
+function phaseContexts(
+  args: { readonly profile: Pick<Profile, "name" | "settings">; readonly slices: Readonly<Record<string, unknown>>; readonly phases: readonly ProjectPhase[] },
+): { readonly contexts: ReadonlyMap<ProjectPhase, PhaseContext>; readonly problems: readonly string[] } {
+  // The assembled slice has already put explicit plugin settings ahead of the
+  // profile's defaults. Direct composition tests supply no slice, so retain
+  // the profile's settings as the same lower-precedence source.
+  const effective = { ...args.profile.settings, ...sliceFor(args.slices, composedPluginName(args.profile)) };
+  const contexts = new Map<ProjectPhase, PhaseContext>();
+  const problems: string[] = [];
+  for (const phase of args.phases) {
+    const callee = declaredCallee(phase.plugin);
+    const checked = validateConfig(phase.name, callee.configSchema, settingsFor(callee.configSchema, effective));
+    if (!checked.ok) {
+      problems.push(...checked.problems);
+      continue;
+    }
+    contexts.set(phase, { config: checked.config, policy: policyFor(phase.name, callee.policy, checked.config.policy) });
+  }
+  return { contexts, problems };
 }
 
 /** The states a project walks, the initial one first, and where each phase goes. */
@@ -289,13 +319,14 @@ export function composeProject(args: {
   /** The project root, for the refusals a phase's own shape names. */
   readonly root: string;
 }): { readonly plugin: Plugin; readonly problems: readonly string[] } {
-  const { schema, problems } = mergeSchemas(args.phases);
+  const { schema, problems: schemaProblems } = mergeSchemas(args.phases);
+  const { contexts, problems: contextProblems } = phaseContexts(args);
   return {
-    ...{ plugin: build(args, schema), problems },
+    ...{ plugin: build(args, schema, contexts), problems: [...schemaProblems, ...contextProblems] },
   };
 }
 
-function build(args: { readonly profile: Pick<Profile, "name" | "settings">; readonly slices: Readonly<Record<string, unknown>>; readonly phases: readonly ProjectPhase[]; readonly absent: ProjectPhases; readonly root: string }, schema: ConfigSchema): Plugin {
+function build(args: { readonly profile: Pick<Profile, "name" | "settings">; readonly slices: Readonly<Record<string, unknown>>; readonly phases: readonly ProjectPhase[]; readonly absent: ProjectPhases; readonly root: string }, schema: ConfigSchema, contexts: ReadonlyMap<ProjectPhase, PhaseContext>): Plugin {
   const claims = (key: "trackerWrites" | "codeHostWrites") => {
     // The claims are the phases' own: the walk cannot write more than its
     // phases do, and each phase's claim is read the way its own mount would
@@ -305,8 +336,8 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
     const claimed = new Set<string>();
     for (const one of args.phases) {
       const declared = declaredCallee(one.plugin)[key];
-      const settings = phaseSettings(one, args.slices, args.profile.settings ?? {});
-      const effective = typeof declared === "function" ? declared({ config: settings as never, policy: {} }) : declared ?? [];
+      const context = contexts.get(one) ?? { config: {}, policy: {} };
+      const effective = typeof declared === "function" ? declared({ config: context.config as never, policy: context.policy }) : declared ?? [];
       for (const capability of effective) claimed.add(capability);
     }
     return [...claimed];
@@ -332,7 +363,7 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
       } : {}),
       DONE: () => ({ kind: "settled", why: "the project's walk is over" }),
     },
-    calls: bindingsFor(args.phases, args.slices, args.profile.settings ?? {}) as never,
+    calls: bindingsFor(args.phases, contexts) as never,
   });
   return withDiagram(composed, projectDiagram(args.phases), "the project's own folders");
 }
@@ -341,7 +372,10 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
 function proofAnswered(record: WorkRecord & { readonly brief?: unknown; readonly prove?: unknown }): boolean {
   const criteria = criteriaOf(record.brief);
   if (criteria.length === 0) return true;
-  const answered = new Set(criteriaOf(record.prove));
+  const latest = Object.keys(record.calls ?? {}).filter((id) => id.includes("/PROVE#")).at(-1);
+  const result = record.prove as { readonly invocation?: unknown } | undefined;
+  if (result?.invocation !== latest) return false;
+  const answered = new Set(criteriaOf(result));
   return criteria.every((criterion) => answered.has(criterion));
 }
 

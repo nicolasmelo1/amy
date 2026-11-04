@@ -107,7 +107,8 @@ async function walkOf(
   specs: readonly string[],
 ): Promise<{ ok: true; plugin: Plugin; plugins: readonly Plugin[]; slices: Record<string, unknown> } | { ok: false; problems: readonly string[] }> {
   const project = profile.project!;
-  const anchor = loaded.bySpec.get(profile.workflow);
+  const loadedByKey = new Map([...loaded.bySpec].map(([spec, plugin]) => [keyOf(spec), plugin]));
+  const anchor = loadedByKey.get(keyOf(profile.workflow));
   if (!anchor) return { ok: false, problems: [`${project.phase}/: configured workflow plugin is not mounted`] };
   const anchorPlugin = anchor as WorkflowPlugin;
   if (!anchorPlugin.workflow) return { ok: false, problems: [declaredWorkflowProblem(project.phase)] };
@@ -117,7 +118,7 @@ async function walkOf(
 
   const walking: ProjectPhase[] = [];
   for (const { phase, spec } of resolved.walking) {
-    const plugin = loaded.bySpec.get(spec) as WorkflowPlugin | undefined;
+    const plugin = loadedByKey.get(keyOf(spec)) as WorkflowPlugin | undefined;
     if (!plugin || !plugin.workflow) return { ok: false, problems: [declaredWorkflowProblem(phase)] };
     walking.push({ phase, plugin, name: plugin.name });
   }
