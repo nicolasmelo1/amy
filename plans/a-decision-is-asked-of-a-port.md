@@ -25,21 +25,23 @@ touches:
   - packages/agent-kit/src/deciders.ts
   - packages/agent-kit/src/index.ts
   - packages/agent-kit/tests/deciders.test.ts
+  - packages/agent-kit/tests/deciders.property.test.ts
   - packages/workflow-ticket-to-qa/src/discussion.ts
   - packages/workflow-ticket-to-qa/src/observation.ts
   - packages/workflow-ticket-to-qa/src/plugin.ts
   - packages/workflow-ticket-to-qa/src/record.ts
   - packages/workflow-ticket-to-qa/src/runtime.ts
   - packages/workflow-ticket-to-qa/tests/discussion.test.ts
+  - packages/workflow-ticket-to-qa/tests/discussion.property.test.ts
   - packages/workflow-testkit/src/world.ts
   - packages/cli/src/config.ts
 criteria:
   - { id: A1, statement: "Decider, Question and Verdict are exported from the core, in their own file, and name no product", proof: "deferred:test:packages/core/tests/ports.test.ts", sources: [S4, S5, S6, S7] }
   - { id: A2, statement: "a question with more answers than a rung's declared limit is refused at boot naming the question and the rung", proof: "deferred:test:packages/agent-kit/tests/deciders.test.ts", sources: [S8] }
-  - { id: A3, statement: "the first rung at or above its threshold decides; a rung below it, or unreachable, hands to the next; a spent ladder returns the question's fallback", proof: "deferred:test:packages/agent-kit/tests/deciders.test.ts", sources: [S9, S10, S11, S12] }
+  - { id: A3, statement: "the first rung at or above its threshold decides; a rung below it, or unreachable, hands to the next; a spent ladder returns the question's fallback", proof: "deferred:property:packages/agent-kit/tests/deciders.property.test.ts#threshold_compared_strictly", sources: [S9, S10, S11, S12] }
   - { id: A4, statement: "with no decider installed and no decide key, every walkthrough that passes today passes unchanged", proof: "deferred:walkthrough in the testkit", sources: [S12, S18] }
   - { id: A5, statement: "under conversation: read, an unmarked question read as discussion gets an answer in the thread and moves nothing; an unmarked reply read as decision above its threshold resumes the work", proof: "deferred:walkthrough in the testkit", sources: [S2, S3, S15, S18] }
-  - { id: A6, statement: "under conversation: read, a reply the ladder is unsure of reads as a discussion, and a marked reply reads as marked whatever the ladder says", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/discussion.test.ts", sources: [S15, S16, S17] }
+  - { id: A6, statement: "under conversation: read, a reply the ladder is unsure of reads as a discussion, and a marked reply reads as marked whatever the ladder says", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/discussion.property.test.ts#verdict_overrides_the_mark", sources: [S15, S16, S17] }
   - { id: A7, statement: "the record names the question, the rung that decided or the fallback, the answer and its confidence, and a replay of that record asks no decider", proof: "deferred:walkthrough in the testkit", sources: [S1, S13, S14] }
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A4, a saved record with no verdict plans as today" }

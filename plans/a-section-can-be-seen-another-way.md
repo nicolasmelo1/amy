@@ -19,6 +19,7 @@ touches:
   - packages/ui/src/frame/**
   - packages/ui/tests/scene.test.ts
   - packages/ui/tests/vocabulary.test.ts
+  - packages/ui/tests/vocabulary.property.test.ts
   - packages/ui-conformance/src/**
   - packages/core/src/mount.ts
   - packages/cli/src/config.ts
@@ -32,7 +33,7 @@ criteria:
   - { id: A4, statement: "ui.views naming a view nothing contributes is refused at boot, with the installed list", proof: "deferred:test:packages/cli/tests/ui-config.test.ts", sources: [S5, S6] }
   - { id: A5, statement: "a view on a renderer it does not hold falls back to the section's default and says so in the header", proof: "deferred:assertion:frame.a_view_falls_back_where_it_cannot_be_drawn", sources: [S8] }
   - { id: A6, statement: "an escalated record's sprite shows its attention frame with no ui block at all", proof: "deferred:test:packages/ui/tests/scene.test.ts", sources: [S10, S11] }
-  - { id: A7, statement: "Scene, Place and Sprite refuse a property they do not declare and a sprite frame that is not a standing", proof: "deferred:test:packages/ui/tests/vocabulary.test.ts", sources: [S9, S10, S13] }
+  - { id: A7, statement: "Scene, Place and Sprite refuse a property they do not declare and a sprite frame that is not a standing", proof: "deferred:property:packages/ui/tests/vocabulary.property.test.ts#inherited_key_read_as_declared", sources: [S9, S10, S13] }
   - { id: A8, statement: "a view installed with amy plugin add from outside the workspace appears only once mounted", proof: "deferred:assertion:window.a_section_view_from_outside_appears_only_when_mounted", sources: [S1, S2, S12] }
 crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A3, A8" }

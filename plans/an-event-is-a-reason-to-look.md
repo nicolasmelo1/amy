@@ -27,6 +27,7 @@ sources:
 touches:
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/tests/Worker.test.ts
+  - plugins/serial-engine/tests/events.property.test.ts
   - packages/core/src/ports/Queue.ts
   - packages/core/src/diagram.ts
   - packages/core/src/mount.ts
@@ -44,7 +45,7 @@ touches:
   - scripts/docs/tests/examples.test.ts
 criteria:
   - { id: A1, statement: "an event becomes one queue item for the work it concerns, at its kind's priority, and the look it causes is ordinary, reading the world rather than the payload", proof: "deferred:test:plugins/serial-engine/tests/Worker.test.ts", sources: [S1, S2, S3, S4, S7] }
-  - { id: A2, statement: "pending look: promoted and reprioritised, not added; running look: successor due at once; only no-look work gets an item; a duplicate or out-of-order event makes no more moves than one look", proof: "deferred:test:plugins/serial-engine/tests/Worker.test.ts", sources: [S5, S6, S7] }
+  - { id: A2, statement: "pending look: promoted and reprioritised, not added; running look: successor due at once; only no-look work gets an item; a duplicate or out-of-order event makes no more moves than one look", proof: "deferred:property:plugins/serial-engine/tests/events.property.test.ts#duplicate_event_enqueues_second_item", sources: [S5, S6, S7] }
   - { id: A3, statement: "a waiting state with an event edge wakes on that event without waiting for its backoff, and a dotted label nothing publishes is refused at boot", proof: "deferred:test:packages/core/tests/diagram.test.ts", sources: [S8, S10, S11, S24] }
   - { id: A4, statement: "GitHub's and Linear's recorded webhook payloads are verified by their signatures, translated into port events with the right work ids, and a bad signature is refused", proof: "deferred:test:plugins/github/tests/events.test.ts", sources: [S9, S13, S15, S23] }
   - { id: A5, statement: "with no events arriving, discovery and backoffs still find and move every piece of work, and amy doctor says the source is polling only", proof: "deferred:assertion:mine.polling_is_the_net_under_events", sources: [S12, S16, S17] }

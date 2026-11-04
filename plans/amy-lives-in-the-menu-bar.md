@@ -32,13 +32,14 @@ touches:
   - packages/ui/tests/surfaces.test.ts
   - packages/core/tests/mount.test.ts
   - packages/core/tests/diagram.test.ts
+  - packages/core/tests/diagram.property.test.ts
   - .software-factory/policy.yaml
 criteria:
   - { id: A1, statement: "what this row delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S18] }
   - { id: A2, statement: "the menu bar's projection holds the frame's menubar surface on every step of the script", proof: "deferred:assertion:frame.the_menu_bar_holds_its_surface", sources: [S14, S15, S16] }
   - { id: A3, statement: "a primitive outside the menubar subset is refused naming it", proof: "deferred:test:packages/ui/tests/surfaces.test.ts", sources: [S13, S14] }
   - { id: A4, statement: "a workflow whose diagram marks no state attention mounts unchanged", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S6] }
-  - { id: A5, statement: "a state marked attention in a diagram mounts as an attention state", proof: "deferred:test:packages/core/tests/diagram.test.ts", sources: [S4, S5] }
+  - { id: A5, statement: "a state marked attention in a diagram mounts as an attention state", proof: "deferred:property:packages/core/tests/diagram.property.test.ts#only_first_state_of_a_class_line_marked", sources: [S4, S5] }
   - { id: A6, statement: "the title counts exactly the records in an attention state, across every profile", proof: "deferred:assertion:window.the_menu_bar_counts_what_needs_you", sources: [S1, S2, S3, S7, S17] }
   - { id: A7, statement: "a record the daemon advances moves in the menu with the window closed", proof: "deferred:assertion:window.the_menu_bar_moves_without_the_window", sources: [S12, S17] }
   - { id: A8, statement: "choosing a record opens the window on that record", proof: "deferred:assertion:window.a_menu_item_opens_its_record", sources: [S8, S9] }
