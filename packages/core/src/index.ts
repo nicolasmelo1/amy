@@ -12,6 +12,8 @@ export type {
   PluginCheck,
   PluginCommand,
   PluginFile,
+  PluginSetup,
+  SetupContext,
 } from "./commands.js";
 
 export { actionsOf, applyPlan, attemptsIn, looksIn, movedBy, notATryIn } from "./work.js";

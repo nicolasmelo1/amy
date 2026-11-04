@@ -44,6 +44,15 @@ export interface AskContext {
    * refuses the run rather than relying on the prompt asking nicely.
    */
   readOnly?: boolean;
+  /**
+   * The skill the prompt is addressed to, and the directory its `SKILL.md`
+   * is in.
+   *
+   * Set by a relay that addressed the prompt to a skill. A harness that runs
+   * apart from the operator's own setup sees none of their skills, so it is
+   * handed this one by place rather than trusting it to be found.
+   */
+  skill?: { readonly name: string; readonly path: string };
 }
 
 /**

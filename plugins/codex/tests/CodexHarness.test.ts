@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ScriptedRunner } from "@amykit/test-fixtures";
-import { CodexHarness, classify, messageOf, parseEvents, tokensOf } from "../src/index.js";
+import { ISOLATED, CodexHarness, classify, messageOf, parseEvents, tokensOf } from "../src/index.js";
 
 /**
  * The usage `turn.completed` carried on a real run, copied verbatim.
@@ -183,5 +183,19 @@ describe("a step that must change nothing", () => {
 
     const args = runner.argvFor("codex");
     expect(args.slice(0, 4)).toEqual(["exec", "--json", "--sandbox", "read-only"]);
+  });
+});
+
+describe("a run apart from the operator's own Codex", () => {
+  it("loads no user config, hook, plugin, app or memory, and keeps no session", async () => {
+    const { runner, harness } = harnessFor(REAL_STREAM);
+
+    await harness.ask("fix the invoice total", "/w/northwind/backend");
+
+    const args = runner.argvFor("codex").join(" ");
+    expect(args).toContain("--ignore-user-config");
+    expect(args).toContain("--ephemeral");
+    for (const feature of ["hooks", "plugins", "apps", "memories"]) expect(args).toContain(`--disable ${feature}`);
+    expect(runner.argvFor("codex").slice(4, 4 + ISOLATED.length)).toEqual([...ISOLATED]);
   });
 });

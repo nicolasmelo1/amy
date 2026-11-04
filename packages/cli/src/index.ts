@@ -86,6 +86,7 @@ import {
   gather,
   migrateRootFiles,
   register,
+  runSetup,
   writeFiles,
 } from "./plugin-commands.js";
 import { refreshPricesWhenStale } from "./prices.js";
@@ -294,7 +295,10 @@ program
     // never over one somebody has edited: a template is a starting point, not
     // a default to restore.
     const gathered = await gather(config, known, loadMountable);
-    for (const profile of known) writeFiles(home, config, profile, gathered.contributions, commandOut);
+    for (const profile of known) {
+      writeFiles(home, config, profile, gathered.contributions, commandOut);
+      await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
+    }
 
     const wanted = known.flatMap((profile) =>
       pluginList(config, profile),
@@ -1173,7 +1177,10 @@ async function writeAddedFiles(home: string, spec: string, profileName?: string)
     profile.name === profileName || profile.workflow === spec || pluginList(config, profile).includes(spec),
   );
   const gathered = await gather(config, mounting, loadMountable);
-  for (const profile of mounting) writeFiles(home, config, profile, gathered.contributions, commandOut);
+  for (const profile of mounting) {
+    writeFiles(home, config, profile, gathered.contributions, commandOut);
+    await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
+  }
 }
 
 /**

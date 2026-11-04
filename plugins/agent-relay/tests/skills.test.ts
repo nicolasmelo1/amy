@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { installedSkills, parseSkills, skillsNamed } from "../src/skills.js";
+import { installedSkills, locateSkill, parseSkills, skillsNamed } from "../src/skills.js";
 
 /** The problems, or a failure saying the config was wrongly accepted. */
 function problemsOf(value: unknown): string[] {
@@ -101,5 +101,13 @@ describe("installedSkills", () => {
 
   it("shrugs at a root that does not exist", () => {
     expect(installedSkills([path.join(root, "nowhere")])).toEqual([]);
+  });
+
+  it("locates a skill in the first root that holds it, and nothing for one that is only a leftover", () => {
+    install("logion");
+    install("half-installed", false);
+
+    expect(locateSkill([path.join(root, "nowhere"), root], "logion")).toBe(path.join(root, "logion"));
+    expect(locateSkill([root], "half-installed")).toBeUndefined();
   });
 });

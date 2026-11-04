@@ -29,6 +29,7 @@ plugins:
   "@amykit/plugin-hermes-agent":
     model: ""
     models: []
+    profile: "amy"
     timeoutMs: 1800000
 ```
 
@@ -36,11 +37,18 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
+| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 Every field is checked at boot against the schema this package declares. A key that is
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
+
+## What it brings
+
+`amy doctor` runs, after its own checks, every check this package names:
+
+- `hermes profile`
 
 ## Where the reasoning is
 

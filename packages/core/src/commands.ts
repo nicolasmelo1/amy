@@ -1,4 +1,5 @@
 import { PortKind } from "./actions.js";
+import { CommandRunner } from "./ports/CommandRunner.js";
 
 /**
  * What a command writes to. The host owns the terminal; a command says what
@@ -92,6 +93,28 @@ export type CheckContext<Settings extends Record<string, unknown> = Record<strin
 export interface PluginCheck<Settings extends Record<string, unknown> = Record<string, unknown>> {
   readonly name: string;
   run(ctx: CheckContext<Settings>): Check | Promise<Check>;
+}
+
+/**
+ * What a setup is handed: what a check gets, and a way to run a command.
+ *
+ * A setup prepares something outside amy's own state — another program's
+ * profile, say — so unlike a check it is expected to run commands.
+ */
+export type SetupContext<Settings extends Record<string, unknown> = Record<string, unknown>> =
+  CheckContext<Settings> & { readonly runner: CommandRunner };
+
+/**
+ * Something a plugin prepares outside amy's state, run by `amy init` and
+ * `amy add` after the files.
+ *
+ * Run every time, so it must find what an earlier run made and leave it
+ * alone: what is already there belongs to whoever edited it. It answers the
+ * way a check does, and its own doctor check is how a later drift is told.
+ */
+export interface PluginSetup<Settings extends Record<string, unknown> = Record<string, unknown>> {
+  readonly name: string;
+  run(ctx: SetupContext<Settings>): Check | Promise<Check>;
 }
 
 /**

@@ -28,14 +28,14 @@ touches:
   - packages/cli/tests/plugin-commands.test.ts
   - docs/concepts/plugins.md
 criteria:
-  - { id: A1, statement: "a Claude run loads no user setting source and no MCP server it was not given, and persists no session", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1] }
-  - { id: A2, statement: "a Claude run whose step names a skill is lent that skill's directory, and only it, and the lent directory is gone after the run", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1, S4] }
-  - { id: A3, statement: "the relay hands the harness the skill it addressed the prompt to, with the directory it is installed in", proof: "test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S4, S6] }
-  - { id: A4, statement: "a Codex run ignores the user config, runs without hooks, plugins, apps or memories, and persists no session", proof: "test:plugins/codex/tests/CodexHarness.test.ts", sources: [S2] }
-  - { id: A5, statement: "a Hermes run names the configured profile", proof: "test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S3, S5] }
-  - { id: A6, statement: "amy init and amy add run each mounted plugin's setup; the Hermes setup clones the profile when it is missing and sets memory off, skill writes to approval and the curator off, and leaves an existing profile alone", proof: "test:plugins/hermes-agent/tests/setup.test.ts", sources: [S5] }
-  - { id: A7, statement: "amy doctor is red, with the command that fixes it, when the profile is missing or remembers, writes skills unasked or curates", proof: "test:plugins/hermes-agent/tests/setup.test.ts", sources: [S5] }
-  - { id: A8, statement: "the host runs a plugin's setup for the profiles that mount it, and a setup that throws is reported, not fatal", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S5] }
+  - { id: A1, statement: "a Claude run loads no user setting source and no MCP server it was not given, and persists no session", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1], done: true }
+  - { id: A2, statement: "a Claude run whose step names a skill is lent that skill's directory, and only it, and the lent directory is gone after the run", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1, S4], done: true }
+  - { id: A3, statement: "the relay hands the harness the skill it addressed the prompt to, with the directory it is installed in", proof: "test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S4, S6], done: true }
+  - { id: A4, statement: "a Codex run ignores the user config, runs without hooks, plugins, apps or memories, and persists no session", proof: "test:plugins/codex/tests/CodexHarness.test.ts", sources: [S2], done: true }
+  - { id: A5, statement: "a Hermes run names the configured profile", proof: "test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S3, S5], done: true }
+  - { id: A6, statement: "amy init and amy add run each mounted plugin's setup; the Hermes setup clones the profile when it is missing and sets memory off, skill writes to approval and the curator off, and leaves an existing profile alone", proof: "test:plugins/hermes-agent/tests/setup.test.ts", sources: [S5], done: true }
+  - { id: A7, statement: "amy doctor is red, with the command that fixes it, when the profile is missing or remembers, writes skills unasked or curates", proof: "test:plugins/hermes-agent/tests/setup.test.ts", sources: [S5], done: true }
+  - { id: A8, statement: "the host runs a plugin's setup for the profiles that mount it, and a setup that throws is reported, not fatal", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S5], done: true }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "test:plugins/claude/tests/ClaudeHarness.test.ts; the reply is parsed as before, only the argv changed" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "the relay only adds the skill to the context it already passes; no attempt is charged or returned differently" }
@@ -53,6 +53,10 @@ cut:
   - "Codex's ~/.codex/AGENTS.md and user skills: no flag removes them without a second CODEX_HOME and a second login"
   - "per-step skills for Codex and Hermes: neither reads the relay's /skill prefix the way Claude does, and nothing here changes that"
   - "carrying env or apiKeyHelper from ~/.claude/settings.json into the isolated run: the process environment reaches the CLI as before"
+deviations:
+  - "the Hermes profile is checked by running hermes from the doctor check itself, since a check is handed no runner"
+  - "the generated plugin reference and docs manifest change with the new profile setting; docs/concepts/plugins.md did not need to"
+  - "proven by hand against the real CLIs (claude 2.1.318, codex-cli 0.164.0, Hermes 0.21.6): one run each left ~/.claude/projects, ~/.codex/sessions, ~/.hermes/memories and ~/.hermes/skills unchanged, apart from two files the operator's own running Hermes gateway rewrites every ten seconds with or without amy, and the Claude run saw amy-btw and only the skills bundled with Claude Code"
 exit: "a ticket run on each of the three CLIs leaves ~/.claude/projects, ~/.codex/sessions and ~/.hermes/memories, ~/.hermes/skills untouched"
 ---
 # A run carries only what amy hands it

@@ -19,6 +19,28 @@ interface CodexEvent {
 }
 
 /**
+ * What keeps a run apart from the operator's own Codex.
+ *
+ * `--ignore-user-config` alone still left the operator's plugins and apps —
+ * MCP servers for their GitHub and their mail — and their hooks in the run,
+ * so each is switched off by name. The login still comes from `CODEX_HOME`.
+ * Their `~/.codex/AGENTS.md` and skills are not something Codex can be told
+ * to skip short of a second `CODEX_HOME`, which would take the login too.
+ */
+export const ISOLATED = [
+  "--ignore-user-config",
+  "--ephemeral",
+  "--disable",
+  "hooks",
+  "--disable",
+  "plugins",
+  "--disable",
+  "apps",
+  "--disable",
+  "memories",
+] as const;
+
+/**
  * The `codex` CLI, over the JSONL event stream `exec --json` prints.
  *
  * The stream ends with a `turn.completed` carrying the usage, and the answer
@@ -37,6 +59,7 @@ export class CodexHarness implements Harness {
     if (this.config.model) {
       args.push("--model", this.config.model);
     }
+    args.push(...ISOLATED);
     // amy always runs in a checkout it prepared itself, so the repository
     // check is redundant here, and without skipping it an untrusted-directory
     // prompt would hang a run nobody is watching.

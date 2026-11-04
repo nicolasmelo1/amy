@@ -7,6 +7,12 @@ import { costOf, specFor } from "@amykit/model-specs";
 export interface HermesHarnessConfig {
   model?: string;
   timeoutMs?: number;
+  /**
+   * The profile the run is in. Without one, `-z` runs in the operator's own
+   * Hermes: their memory read into the run, and whatever it learns written
+   * back, with approvals bypassed.
+   */
+  profile?: string;
 }
 
 /** The report `--usage-file` writes, which it writes even on a failed run. */
@@ -53,7 +59,8 @@ export class HermesHarness implements Harness {
       };
     }
     const report = path.join(this.tmpDir, `amy-hermes-${process.pid}-${Date.now()}.json`);
-    const args = ["-z", prompt, "--usage-file", report];
+    const args = this.config.profile ? ["-p", this.config.profile] : [];
+    args.push("-z", prompt, "--usage-file", report);
     if (this.config.model) {
       args.push("-m", this.config.model);
     }

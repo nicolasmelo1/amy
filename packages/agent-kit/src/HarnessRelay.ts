@@ -9,6 +9,12 @@ export type SkillLadders = Readonly<Record<string, readonly string[]>>;
 
 export interface HarnessRelayDeps extends HandoffLog {
   skills?: SkillLadders;
+  /**
+   * Where a skill named in a ladder is installed: the directory holding its
+   * `SKILL.md`. A harness that runs apart from the operator's own setup is
+   * handed that directory, since it would not find the skill otherwise.
+   */
+  locate?: (skill: string) => string | undefined;
 }
 
 /**
@@ -86,10 +92,11 @@ export class HarnessRelay implements Harness {
     let index = 0;
     let handoff: string | undefined;
     let last: HarnessReply | null = null;
+    const handed = withSkill(context, skill, this.deps.locate);
 
     while (index < ladder.length) {
       const rung = ladder[index]!;
-      last = await rung.cli.ask(asked(prompt, skill, handoff), cwd, context);
+      last = await rung.cli.ask(asked(prompt, skill, handoff), cwd, handed);
       // The caller says whether a completed run holds while there is still a
       // rung to climb to, rather than after the ladder has stopped.
       if (last.run.outcome === "completed" && context.verify) last = await context.verify(last);
@@ -116,6 +123,19 @@ export class HarnessRelay implements Harness {
 function asked(prompt: string, skill: string | undefined, handoff: string | undefined): string {
   const body = handoff ? `${prompt}\n\n${handoff}` : prompt;
   return skill ? `/${skill}\n\n${body}` : body;
+}
+
+/**
+ * The context a rung is asked with: the caller's, plus the skill the prompt
+ * is addressed to and where it lives, when the relay knows.
+ */
+function withSkill(
+  context: AskContext,
+  skill: string | undefined,
+  locate: ((skill: string) => string | undefined) | undefined,
+): AskContext {
+  const path = skill ? locate?.(skill) : undefined;
+  return skill && path ? { ...context, skill: { name: skill, path } } : context;
 }
 
 /** What the log calls the step, for a caller that did not say. */
