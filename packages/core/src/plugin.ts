@@ -1,6 +1,6 @@
 import { ActionSpec, PortKind } from "./actions.js";
 import { Checkouts } from "./checkouts.js";
-import { PluginCheck, PluginCommand, PluginFile } from "./commands.js";
+import { PluginCheck, PluginCommand, PluginFile, PluginSetup } from "./commands.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
@@ -249,6 +249,8 @@ export interface Plugin {
   readonly checks?: readonly PluginCheck[];
   /** The files `amy init` and `amy add` write into the profile's state, once. */
   readonly files?: readonly PluginFile[];
+  /** What `amy init` and `amy add` prepare outside amy's state, after the files. */
+  readonly setup?: readonly PluginSetup[];
   register(r: Registry, ctx: PluginContext): void | Promise<void>;
   /**
    * Checked once every plugin has registered and every deferred
@@ -277,6 +279,7 @@ export function definePlugin<const S extends ConfigSchema>(plugin: {
   readonly commands?: readonly PluginCommand<ConfigOf<S>>[];
   readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
   readonly files?: readonly PluginFile<ConfigOf<S>>[];
+  readonly setup?: readonly PluginSetup<ConfigOf<S>>[];
   register(r: Registry, ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
   ready?(ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
 }): Plugin {

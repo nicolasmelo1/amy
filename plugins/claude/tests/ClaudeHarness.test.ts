@@ -1,7 +1,10 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { CommandResult } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
-import { ClaudeHarness } from "../src/ClaudeHarness.js";
+import { ClaudeHarness, ISOLATED, lend } from "../src/ClaudeHarness.js";
 
 /**
  * The envelope `claude -p --output-format json` prints, shaped from a real
@@ -60,7 +63,7 @@ describe("how it calls the CLI", () => {
 
     await ask();
 
-    expect(runner.argvFor("claude")).toEqual(["--output-format", "json", "-p"]);
+    expect(runner.argvFor("claude")).toEqual([...ISOLATED, "--output-format", "json", "-p"]);
   });
 
   it("selects the model with the long flag the CLI actually accepts", async () => {
@@ -68,7 +71,7 @@ describe("how it calls the CLI", () => {
 
     await ask();
 
-    expect(runner.argvFor("claude")).toEqual(["--model", "sonnet", "--output-format", "json", "-p"]);
+    expect(runner.argvFor("claude")).toEqual(["--model", "sonnet", ...ISOLATED, "--output-format", "json", "-p"]);
   });
 
   it("streams the prompt over stdin, in the directory it was handed", async () => {
@@ -197,5 +200,95 @@ describe("a step that must change nothing", () => {
     const [readOnly, writing] = runner.callsTo("claude");
     expect(readOnly!.args.join(" ")).toContain("--permission-mode plan");
     expect(writing!.args).not.toContain("--permission-mode");
+  });
+});
+
+describe("a run apart from the operator's own Claude", () => {
+  it("loads only the repository's settings, no MCP server it was not given, and keeps no session", async () => {
+    const { runner, ask } = harnessFor([claudeReturns(envelope())]);
+
+    await ask();
+
+    const args = runner.argvFor("claude");
+    expect(args.join(" ")).toContain("--setting-sources project,local");
+    expect(args).toContain("--strict-mcp-config");
+    expect(args).toContain("--no-session-persistence");
+    expect(args).not.toContain("--mcp-config");
+  });
+
+  it("lends the step's skill, and only it, for the length of the run", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "amy-claude-test-"));
+    const installed = path.join(tmp, "installed", "factory-author");
+    fs.mkdirSync(installed, { recursive: true });
+    fs.writeFileSync(path.join(installed, "SKILL.md"), "---\nname: factory-author\n---\n");
+    let seen: string[] = [];
+    const runner = new ScriptedRunner([
+      {
+        match: (command, args) => {
+          if (command !== "claude") return false;
+          const lent = args[args.indexOf("--add-dir") + 1]!;
+          seen = fs.readdirSync(path.join(lent, ".claude", "skills"));
+          return true;
+        },
+        result: { stdout: envelope(), exitCode: 0 },
+      },
+    ]);
+    const harness = new ClaudeHarness(runner, {}, tmp);
+
+    await harness.ask("/factory-author\n\nwrite the gate", "/w", { skill: { name: "factory-author", path: installed } });
+
+    const args = runner.argvFor("claude");
+    const lent = args[args.indexOf("--add-dir") + 1]!;
+    expect(seen).toEqual(["factory-author"]);
+    expect(fs.existsSync(lent)).toBe(false);
+    expect(fs.existsSync(path.join(installed, "SKILL.md"))).toBe(true);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("links the skill by its absolute place, so a relative skill root still lends it", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "amy-claude-test-"));
+    const previous = process.cwd();
+    fs.mkdirSync(path.join(tmp, "skills", "logion"), { recursive: true });
+    fs.writeFileSync(path.join(tmp, "skills", "logion", "SKILL.md"), "x");
+    process.chdir(tmp);
+    try {
+      const lent = lend(tmp, { name: "logion", path: "./skills/logion" })!;
+      expect(fs.existsSync(path.join(lent, ".claude", "skills", "logion", "SKILL.md"))).toBe(true);
+    } finally {
+      process.chdir(previous);
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("lends nothing when the step names no skill", async () => {
+    const { runner, ask } = harnessFor([claudeReturns(envelope())]);
+
+    await ask();
+
+    expect(runner.argvFor("claude")).not.toContain("--add-dir");
+  });
+
+  it("goes ahead without a skill whose directory is gone", async () => {
+    const { runner } = harnessFor([claudeReturns(envelope())]);
+    const harness = new ClaudeHarness(runner);
+
+    const reply = await harness.ask("/gone\n\nwork", "/w", { skill: { name: "gone", path: "/nowhere/gone" } });
+
+    expect(reply.run.outcome).toBe("completed");
+    expect(runner.argvFor("claude")).not.toContain("--add-dir");
+  });
+
+  it("returns the lent directory even when the run throws", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "amy-claude-test-"));
+    const installed = path.join(tmp, "installed", "logion");
+    fs.mkdirSync(installed, { recursive: true });
+    fs.writeFileSync(path.join(installed, "SKILL.md"), "x");
+    const runner = { run: async () => { throw new Error("spawn failed"); } };
+    const harness = new ClaudeHarness(runner as never, {}, tmp);
+
+    await expect(harness.ask("p", "/w", { skill: { name: "logion", path: installed } })).rejects.toThrow("spawn failed");
+
+    expect(fs.readdirSync(tmp)).toEqual(["installed"]);
+    fs.rmSync(tmp, { recursive: true, force: true });
   });
 });

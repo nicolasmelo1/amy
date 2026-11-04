@@ -69,6 +69,7 @@ describe("how it calls the CLI", () => {
     const args = runner.argvFor("hermes");
     // -z prints only the final response, which is the only part worth parsing.
     expect(args[0]).toBe("-z");
+    expect(args).not.toContain("-p");
     expect(args[1]).toBe("fix the invoice total");
     expect(args).toContain("--usage-file");
     expect(runner.callsTo("hermes")[0]?.options?.cwd).toBe("/w/northwind/backend");
@@ -210,5 +211,16 @@ describe("a step that must change nothing", () => {
     expect(runner.callsTo("hermes")).toEqual([]);
     expect(reply.run.outcome).toBe("failed");
     expect(reply.run.output).toMatch(/read-only/);
+  });
+});
+
+describe("a run apart from the operator's own Hermes", () => {
+  it("runs in the configured profile, named before the one-shot", async () => {
+    const runner = new ScriptedRunner([{ match: (command) => command === "hermes", result: { stdout: "done", exitCode: 0 } }]);
+    const harness = new HermesHarness(runner, { profile: "amy" }, tmp);
+
+    await harness.ask("fix the invoice total", "/w/northwind/backend");
+
+    expect(runner.argvFor("hermes").slice(0, 4)).toEqual(["-p", "amy", "-z", "fix the invoice total"]);
   });
 });

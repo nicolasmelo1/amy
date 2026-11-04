@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { AgentRun, AskContext, CommandRunner, Harness, HarnessReply } from "@amykit/core";
 import { costOf, specFor } from "@amykit/model-specs";
 import { ParsedRun, parseRun } from "./envelope.js";
@@ -6,6 +9,44 @@ export interface ClaudeHarnessConfig {
   /** Passed to the CLI as --model. Omit to use whatever the CLI defaults to. */
   model?: string;
   timeoutMs?: number;
+}
+
+/**
+ * What keeps a run apart from the operator's own Claude.
+ *
+ * Without these a ticket run read the operator's personal CLAUDE.md, every
+ * skill they had installed, their hooks and plugins, and kept a session and
+ * an auto-memory under `~/.claude/projects`. The repository's own settings —
+ * `project` and `local` — still load: they belong to the code being worked
+ * on, not to the person running amy.
+ */
+export const ISOLATED = [
+  "--setting-sources",
+  "project,local",
+  "--strict-mcp-config",
+  "--no-session-persistence",
+] as const;
+
+/**
+ * Lends one skill to a run: a fresh directory whose `.claude/skills/<name>`
+ * links to where the skill is installed, for `--add-dir`.
+ *
+ * Dropping the user setting source drops `~/.claude/skills` with it, so the
+ * skill a step was addressed to is handed over by place, and nothing else of
+ * the operator's comes along. A skill whose directory is gone is not lent,
+ * and the run goes ahead without it.
+ */
+export function lend(tmpDir: string, skill: { name: string; path: string }): string | undefined {
+  // Absolute, since a link is read from where it lies: a relative skill root
+  // would otherwise point inside the lent directory and lend nothing.
+  const source = path.resolve(skill.path);
+  if (!fs.existsSync(path.join(source, "SKILL.md"))) return undefined;
+
+  const root = fs.mkdtempSync(path.join(tmpDir, "amy-claude-skill-"));
+  const skills = path.join(root, ".claude", "skills");
+  fs.mkdirSync(skills, { recursive: true });
+  fs.symlinkSync(source, path.join(skills, skill.name), "dir");
+  return root;
 }
 
 /**
@@ -21,6 +62,7 @@ export class ClaudeHarness implements Harness {
   constructor(
     private readonly runner: CommandRunner,
     private readonly config: ClaudeHarnessConfig = {},
+    private readonly tmpDir: string = os.tmpdir(),
   ) {}
 
   async ask(prompt: string, cwd: string, context: AskContext = {}): Promise<HarnessReply> {
@@ -31,14 +73,23 @@ export class ClaudeHarness implements Harness {
     }
     // Plan mode reads and does not edit or run anything, enforced by the CLI.
     if (context.readOnly) args.push("--permission-mode", "plan");
+    args.push(...ISOLATED);
+
+    const lent = context.skill ? lend(this.tmpDir, context.skill) : undefined;
+    if (lent) args.push("--add-dir", lent);
     args.push("--output-format", "json", "-p");
 
     const started = Date.now();
-    const result = await this.runner.run("claude", args, {
-      cwd,
-      stdin: prompt,
-      timeoutMs: this.config.timeoutMs,
-    });
+    let result: Awaited<ReturnType<CommandRunner["run"]>>;
+    try {
+      result = await this.runner.run("claude", args, {
+        cwd,
+        stdin: prompt,
+        timeoutMs: this.config.timeoutMs,
+      });
+    } finally {
+      if (lent) fs.rmSync(lent, { recursive: true, force: true });
+    }
     const elapsed = Date.now() - started;
 
     const parsed = parseRun(result.stdout, result.ok, asked);

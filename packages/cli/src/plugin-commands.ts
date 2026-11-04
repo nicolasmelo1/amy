@@ -8,7 +8,9 @@ import {
   Plugin,
   PluginCheck,
   PluginCommand,
+  CommandRunner,
   PluginFile,
+  PluginSetup,
   PortKind,
   validateConfig,
 } from "@amykit/core";
@@ -44,6 +46,7 @@ export interface Contribution {
   readonly commands: readonly PluginCommand[];
   readonly checks: readonly PluginCheck[];
   readonly files: readonly PluginFile[];
+  readonly setup: readonly PluginSetup[];
 }
 
 export interface Gathered {
@@ -85,6 +88,7 @@ export async function gather(
       commands: plugin.commands ?? existing?.commands ?? [],
       checks: plugin.checks ?? existing?.checks ?? [],
       files: plugin.files ?? existing?.files ?? [],
+      setup: plugin.setup ?? existing?.setup ?? [],
     });
   }
 
@@ -371,6 +375,47 @@ export function writeFiles(
   }
 
   return written;
+}
+
+/**
+ * Runs what a profile's plugins prepare outside amy's state, after their files.
+ *
+ * The same two moments as the files, for the same reason. A setup that
+ * throws is answered red under its owner's name rather than taking `init`
+ * down with it: the next plugin's setup still has its own work to do, and
+ * the doctor will say what this one left undone.
+ */
+export async function runSetup(
+  home: string,
+  config: AmyConfig,
+  profile: Profile,
+  contributions: readonly Contribution[],
+  out: CommandOutput,
+  runner: CommandRunner,
+): Promise<Check[]> {
+  const answered: Check[] = [];
+
+  for (const contribution of mountedBy(profile, contributions)) {
+    for (const setup of contribution.setup) {
+      let answer: Check;
+      try {
+        answer = await setup.run({
+          state: stateDirectory(home, profile),
+          home,
+          settings: settingsFor(contribution, profile, home, config, new Map(contributions.map((one) => [one.spec, one.owner]))),
+          out,
+          runner,
+        });
+      } catch (error) {
+        answer = { label: setup.name, ok: false, detail: error instanceof Error ? error.message : String(error) };
+      }
+      const said = `${answer.ok ? "set up" : "could not set up"} ${contribution.owner}: ${answer.label}`;
+      out.line(answer.detail ? `${said} — ${answer.detail}` : said);
+      answered.push({ ...answer, label: `${contribution.owner}: ${answer.label}` });
+    }
+  }
+
+  return answered;
 }
 
 /** Where a plugin's file goes, refused when it would leave this profile. */

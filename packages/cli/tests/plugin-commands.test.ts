@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { Check, ConfigSchema, Plugin } from "@amykit/core";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import type { LoadResult } from "../src/loader.js";
-import { BUILT_IN_COMMANDS, checks, gather, migrateRootFiles, register, writeFiles } from "../src/plugin-commands.js";
+import { BUILT_IN_COMMANDS, checks, gather, migrateRootFiles, register, runSetup, writeFiles } from "../src/plugin-commands.js";
 import type { Profile } from "../src/profiles.js";
 
 /**
@@ -201,6 +201,48 @@ describe("a plugin's commands, check and file", () => {
     fs.rmSync(home, { recursive: true, force: true });
   });
 
+  it("runs the plugin's setup with its settings and a runner, and reports one that throws without stopping the next", async () => {
+    const ran: string[] = [];
+    const plugin = demo({
+      setup: [
+        {
+          name: "breaks",
+          run() {
+            throw new Error("the other program is not installed");
+          },
+        },
+        {
+          name: "prepares",
+          async run({ settings, runner }) {
+            const result = await runner.run("other-program", ["profile", "create", String(settings.greeting)]);
+            ran.push(result.stdout);
+            return { label: "prepares", ok: true, detail: "made it" };
+          },
+        },
+      ],
+    });
+    const gathered = await gather(CONFIG, [WORK], loading(plugin));
+    const { out, said } = spoken();
+    const runner = { run: async (command: string, args: readonly string[]) => ({ ok: true, exitCode: 0, stdout: `${command} ${args.join(" ")}`, stderr: "" }) };
+
+    const answered = await runSetup("/amy", CONFIG, WORK, gathered.contributions, out, runner);
+
+    expect(answered.map((one) => [one.label, one.ok])).toEqual([
+      ["@acme/plugin-demo: breaks", false],
+      ["@acme/plugin-demo: prepares", true],
+    ]);
+    expect(ran).toEqual(["other-program profile create hello"]);
+    expect(said.join("\n")).toContain("could not set up @acme/plugin-demo: breaks — the other program is not installed");
+    expect(said.join("\n")).toContain("set up @acme/plugin-demo: prepares — made it");
+  });
+
+  it("runs no setup for a profile that does not mount the plugin", async () => {
+    const gathered = await gather(CONFIG, [WORK], loading(demo({ setup: [{ name: "x", run: () => ({ label: "x", ok: true }) }] })));
+    const other: Profile = { ...WORK, name: "other", plugins: [] };
+
+    expect(await runSetup("/amy", CONFIG, other, gathered.contributions, spoken().out, { run: async () => { throw new Error("ran"); } })).toEqual([]);
+  });
+
   it("refuses a file that would land outside the profile that mounted it", async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-plugin-escape-"));
     const gathered = await gather(CONFIG, [WORK], loading(demo({ files: [{ path: "../elsewhere.txt", content: "no\n" }] })));
@@ -253,6 +295,7 @@ describe("a plugin's commands, check and file", () => {
           commands: [],
           checks: [],
           files: [{ path: "team.yaml", content: () => "the team's own\n" }],
+          setup: [],
         },
         {
           owner: "@acme/plugin-second",
@@ -262,6 +305,7 @@ describe("a plugin's commands, check and file", () => {
           commands: [],
           checks: [],
           files: [{ path: "./team.yaml", content: () => "the team's own\n" }],
+          setup: [],
         },
       ],
       out,
@@ -313,6 +357,7 @@ describe("a plugin's commands, check and file", () => {
           commands: [],
           checks: [],
           files: [{ path: ".env", content: () => "an example's placeholders\n" }],
+          setup: [],
         },
       ],
       out,

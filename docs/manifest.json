@@ -278,6 +278,11 @@
           "description": ""
         },
         {
+          "title": "A run carries only what amy hands it",
+          "path": "/design/a-run-carries-only-what-amy-hands-it",
+          "description": ""
+        },
+        {
           "title": "A Slack thread per piece of work",
           "path": "/design/a-slack-thread-per-piece-of-work",
           "description": ""
@@ -976,6 +981,11 @@
           "depth": 3,
           "title": "A row of next steps is a ticket. @amykit/plugin-next-steps mounts the tracker port over an execution-order table — plans/next-steps.md by default — read from the base branch, never from the standing checkout: a row is a work item, its linked plan the body, its place in the table the priority. A relative link is a plan in the table's repository, its id the slug; an owner/name:plans/<slug>.md link is one in another, its id owner+name+<slug>, so one table can order the work of several. Only the top rows (one by default) are work at once, a row gone from the table with its plan in docs/design/ reads as delivered, and the branch is branchPrefix (plan/ by default) and the plan's slug.",
           "slug": "a-row-of-next-steps-is-a-ticket-amykitplugin-next-steps-mounts-the-tracker-port-over-an-execution-order-table-plansnext-stepsmd-by-default-read-from-the-base-branch-never-from-the-standing-checkout-a-row-is-a-work-item-its-linked-plan-the-body-its-place-in-the-table-the-priority-a-relative-link-is-a-plan-in-the-tables-repository-its-id-the-slug-an-ownernameplansslugmd-link-is-one-in-another-its-id-ownernameslug-so-one-table-can-order-the-work-of-several-only-the-top-rows-one-by-default-are-work-at-once-a-row-gone-from-the-table-with-its-plan-in-docsdesign-reads-as-delivered-and-the-branch-is-branchprefix-plan-by-default-and-the-plans-slug"
+        },
+        {
+          "depth": 3,
+          "title": "**A run carries only what amy hands it.** The three agent CLIs amy drives used to carry the operator's own setup into a ticket run and write back into it. Now each run is kept apart:",
+          "slug": "a-run-carries-only-what-amy-hands-it-the-three-agent-clis-amy-drives-used-to-carry-the-operators-own-setup-into-a-ticket-run-and-write-back-into-it-now-each-run-is-kept-apart"
         },
         {
           "depth": 3,
@@ -2116,6 +2126,17 @@
       "file": "docs/design/a-row-of-next-steps-is-a-ticket.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-row-of-next-steps-is-a-ticket.md",
       "title": "A row of next steps is a ticket",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/a-run-carries-only-what-amy-hands-it",
+      "file": "docs/design/a-run-carries-only-what-amy-hands-it.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-run-carries-only-what-amy-hands-it.md",
+      "title": "A run carries only what amy hands it",
       "description": "",
       "group": "",
       "order": 999,
@@ -7766,6 +7787,13 @@
             "description": "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes`"
           },
           {
+            "name": "profile",
+            "type": "string",
+            "required": false,
+            "default": "amy",
+            "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot"
+          },
+          {
             "name": "timeoutMs",
             "type": "number",
             "required": false,
@@ -10148,6 +10176,42 @@
         "bumps": [
           {
             "package": "@amykit/plugin-next-steps",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-run-carries-only-what-amy-hands-it",
+        "title": "**A run carries only what amy hands it.** The three agent CLIs amy drives used to carry the operator's own setup into a ticket run and write back into it. Now each run is kept apart:",
+        "body": "- **Claude** runs with `--setting-sources project,local --strict-mcp-config --no-session-persistence`. The operator's `CLAUDE.md`, hooks, plugins, MCP servers and skills stay out, and no session or auto-memory is written under `~/.claude/projects`. The repository's own settings still load. A step whose skill ladder names a skill is lent that one skill through `--add-dir`, and nothing else of the operator's.\n- **Codex** runs with `--ignore-user-config --ephemeral --disable hooks --disable plugins --disable apps --disable memories`. The login still comes from `CODEX_HOME`, and `~/.codex/AGENTS.md` and user skills still load, since Codex has no switch for them.\n- **Hermes** runs in its own profile, `hermes -p amy`, set by the new `profile` setting. `amy init` and `amy add` create that profile from the active one when it is missing, with memory, unasked skill writes and the curator turned off. `amy doctor` goes red, naming the fix, when the profile is missing or has any of those turned back on.\n\n**A plugin can prepare something outside amy's state.** `Plugin.setup` is run by `amy init` and `amy add` after a plugin's files. A setup gets the plugin's settings and a command runner, answers the way a check does, and one that throws is reported without stopping the next. `AskContext.skill` carries the skill a relay addressed the prompt to, with the directory it is installed in.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
             "level": "minor"
           }
         ],
