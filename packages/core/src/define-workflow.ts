@@ -329,7 +329,7 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
   let unmounted: Assembled | undefined;
   const assembled = (): Assembled => {
     if (typeof shape === "string") refused();
-    return (unmounted ??= assemble(declaration as unknown as AnyDeclaration, shape as Shape, undefined, [declaration.name], [declaration.name]));
+    return (unmounted ??= assemble(declaration as unknown as AnyDeclaration, shape as Shape, undefined, [declaration.name], [declaration as unknown as AnyDeclaration]));
   };
 
   const plugin = {
@@ -344,7 +344,7 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
     register(registry: Registry, untyped: PluginContext) {
       if (typeof shape === "string") refused();
       declarationMode(declaration);
-      const mounted = assemble(declaration as unknown as AnyDeclaration, shape as Shape, untyped, [declaration.name], [declaration.name]);
+      const mounted = assemble(declaration as unknown as AnyDeclaration, shape as Shape, untyped, [declaration.name], [declaration as unknown as AnyDeclaration]);
       const registerWorkflow = () => {
         registry.workflow(mounted.workflow as Workflow<never, never>);
         registry.contribute(WORKFLOW_RUNTIME, mounted.workflow.name, deferred(mounted.runtime));
@@ -427,7 +427,7 @@ function assemble(
   shape: Shape,
   ctx: PluginContext | undefined,
   path: readonly string[],
-  trail: readonly string[],
+  trail: readonly AnyDeclaration[],
 ): Assembled {
   const config = ctx?.config;
   // Refused before a word of it is merged: a policy default the schema does
@@ -496,7 +496,7 @@ function callSites(
   ctx: PluginContext | undefined,
   policy: object,
   path: readonly string[],
-  trail: readonly string[],
+  trail: readonly AnyDeclaration[],
   held?: LaneHolds,
 ): Map<string, PendingSite> {
   const sites = new Map<string, PendingSite>();
@@ -554,7 +554,7 @@ function callSite(
   ctx: PluginContext | undefined,
   policy: object,
   path: readonly string[],
-  trail: readonly string[],
+  trail: readonly AnyDeclaration[],
   state: string,
   binding: Call,
   held?: LaneHolds,
@@ -562,7 +562,8 @@ function callSite(
   const at = `${[...path, state].join(" → ")}`;
   const callee = calleeOf(binding, at);
   const name = callee.declaration.name;
-  if (trail.includes(name)) throw new Error(`a cycle of calls: ${[...trail.slice(trail.indexOf(name)), name].join(" → ")}`);
+  const seen = trail.indexOf(callee.declaration);
+  if (seen >= 0) throw new Error(`a cycle of calls: ${[...trail.slice(seen), callee.declaration].map((one) => one.name).join(" → ")}`);
   if (typeof callee.shape === "string") throw new Error(`${at}: ${callee.shape}`);
   const declaration = callee.declaration as AnyDeclaration;
   if (declaration.extend) {
@@ -582,7 +583,7 @@ function callSite(
     // A lane takes a branch before it moves it, so two lanes never write one.
     ...(held ? { checkouts: () => leasedCheckouts(ctx.checkouts(), held) } : {}),
   };
-  const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, name]);
+  const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, declaration]);
   if (ctx) claimsFit(caller, ctx.config, policy, declaration, settings.config, assembled.policy, at);
 
   return {

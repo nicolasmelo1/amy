@@ -682,6 +682,29 @@ describe("the running loop", () => {
     expect(runner.calls).toHaveLength(0);
   });
 
+  it("leaves legacy phase profiles intact when a live phase daemon refuses the update", async () => {
+    const project = path.join(home, "invoices");
+    for (const phase of ["brief", "workflow", "test"]) fs.mkdirSync(path.join(project, phase), { recursive: true });
+    const original = `workflows:\n  grooming:\n    workflow: ${path.join(project, "brief")}\n  execution:\n    workflow: ${path.join(project, "workflow")}\n  proving:\n    workflow: ${path.join(project, "test")}\n`;
+    fs.writeFileSync(path.join(home, "config.yaml"), original, "utf-8");
+    const { writeDaemon } = await import("../src/daemon.js");
+    writeDaemon(path.join(home, "profiles", "grooming", "daemon.pid"), {
+      pid: process.pid,
+      workflow: "grooming",
+      startedAt: new Date().toISOString(),
+    });
+
+    const { updateCommand } = await import("../src/index.js");
+    const code = await updateCommand(home, new ScriptedRunner(), undefined, false, {
+      mountProfiles: async () => ({ ok: true as const }),
+      skillsInto: () => [],
+    });
+
+    expect(code).toBe(1);
+    expect(fs.readFileSync(path.join(home, "config.yaml"), "utf-8")).toBe(original);
+    expect(fs.existsSync(path.join(home, "config.yaml.moved"))).toBe(false);
+  });
+
   it("moves nothing while `--check` only names what would move", async () => {
     rootWith(home, { "@acme/workflow-oncall": "^1.0.0" });
     const runner = new ScriptedRunner([

@@ -112,6 +112,22 @@ describe("a project is brief, work and proof", () => {
     expect(Object.keys(walk.workflow!.calls ?? {})).toEqual(["BRIEF", "WORK", "PROVE"]);
   });
 
+  it("gives the generated project a distinct declaration identity from a same-named phase", () => {
+    const work = declaredPhase("project-invoices", { states: ["OPENED"], terminal: ["OPENED"] });
+    const composed = composeProject({
+      profile: { name: "invoices", settings: {} },
+      slices: {},
+      phases: [{ phase: "workflow", plugin: work, name: work.name }],
+      absent: { brief: "not needed", prove: "not needed" },
+      root,
+    });
+
+    expect(composed.problems).toEqual([]);
+    const walk = composed.plugin as PhasePlugin;
+    expect(walk.name).toBe("workflow-invoices");
+    expect(walk.workflow?.name).toBe("project-invoices");
+  });
+
   it("never starts WORK before BRIEF has ended, and moves to WORK only when the brief's child is over", () => {
     const brief = declaredPhase("brief-of-gate", { states: ["GROOMING", "BRIEFED"], terminal: ["BRIEFED"] });
     const work = declaredPhase("work-of-gate", { states: ["OPENED"], terminal: ["OPENED"] });

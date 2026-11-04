@@ -162,4 +162,19 @@ describe("amy status, as a view", () => {
 
     expect(printedNow(structuredClone(snapshot), false)).toBe(printedNow(snapshot, false));
   });
+
+  it("shows the walked phase and each declared absence with its reason", () => {
+    const page = printedNow({
+      ...BASE,
+      phases: [
+        { phase: "workflow", absent: false, reason: null },
+        { phase: "brief", absent: true, reason: "this work arrives already briefed" },
+        { phase: "prove", absent: true, reason: "a person reviews this work" },
+      ],
+    }, false);
+
+    expect(page).toContain("phases: workflow");
+    expect(page).toContain("brief is out: this work arrives already briefed");
+    expect(page).toContain("prove is out: a person reviews this work");
+  });
 });

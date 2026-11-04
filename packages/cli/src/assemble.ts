@@ -17,7 +17,7 @@ export interface AssemblyServices {
   readonly host: readonly Plugin[];
 }
 
-export type Assembled = { ok: true; engine: Engine; mounted: Mounted } | { ok: false; problems: string[] };
+export type Assembled = { ok: true; engine: Engine; mounted: Mounted; workflowPlugin?: Plugin } | { ok: false; problems: string[] };
 
 /**
  * Loads the plugins the config asks for and assembles them.
@@ -91,7 +91,7 @@ async function assemble(
   const unmet = unmetNeeds(mounted, mounted.workflow);
   if (unmet.length > 0) return { ok: false, problems: unmet };
 
-  return { ok: true, engine: mounted.engine, mounted };
+  return { ok: true, engine: mounted.engine, mounted, ...(requirements ? { workflowPlugin: requirements.workflowPlugin } : {}) };
 }
 
 /**
@@ -154,7 +154,7 @@ function mountListFor(
   for (const spec of unique(specs)) {
     const key = keyOf(spec);
     if (phases.has(key)) {
-      if (!seen.has(key) && spec === profile.workflow) {
+      if (!seen.has(key) && key === keyOf(profile.workflow)) {
         seen.add(key);
         list.push(composed);
       }

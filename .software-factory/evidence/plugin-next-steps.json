@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable on a next-steps table with its writes handed to an operator, against real git and a stand-in gh, on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-next-steps-run.json",
-      "report_sha256": "0147600d541a433b0db1604a43f99952948a830b73c1fbae422b9962944c8eb9",
+      "report_sha256": "5839a61cd3011770b01e517bc16527f013b49772491a1ea2aa4fc8b90b5f146c",
       "required_assertions": []
     }
   ]

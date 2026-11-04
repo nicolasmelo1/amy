@@ -1015,7 +1015,7 @@ function carryPlugins(
       takesNotes: false,
       takesTasks: false,
       settings: {},
-      ...(kept.profile.get("agent") !== undefined ? { agent: kept.profile.get("agent") as Profile["agent"] } : {}),
+      ...(kept.profile.get("agent") !== undefined ? { agent: unwrap(kept.profile.get("agent")) as Profile["agent"] } : {}),
     } as Profile;
     mounted = new yaml.YAMLSeq();
     const seen = new Set<string>();

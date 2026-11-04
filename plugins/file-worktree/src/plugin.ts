@@ -43,7 +43,7 @@ function settingsFor(ctx: TypedContext): WorktreeManagerConfig {
     // truth about what the store holds now.
     record: (workId) => {
       try {
-        return JSON.parse(fs.readFileSync(path.join(recordsDirectory, `${workId}.json`), "utf-8")) as {
+        return JSON.parse(fs.readFileSync(path.join(recordsDirectory, `${rootRecordId(workId)}.json`), "utf-8")) as {
           state: string;
         };
       } catch {
@@ -53,6 +53,11 @@ function settingsFor(ctx: TypedContext): WorktreeManagerConfig {
     terminalStates: ctx.workflow()?.terminalStates ?? [],
     log: ctx.log,
   };
+}
+
+/** Called pieces live inside their root record, while a worktree remains root-owned. */
+function rootRecordId(workId: string): string {
+  return workId.split("/", 1)[0] ?? workId;
 }
 
 type Settings = ConfigOf<typeof configSchema>;

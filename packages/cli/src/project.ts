@@ -343,7 +343,12 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
     return [...claimed];
   };
   const composed = defineWorkflow({
-    name: args.profile.name,
+    // A configured profile names the generated root's plugin and slice, but
+    // a phase may legitimately use that same workflow declaration name.
+    // Give the caller its own identity so core does not read that shape as a
+    // recursive call.
+    name: `project-${args.profile.name}`,
+    pluginName: composedPluginName(args.profile),
     configSchema: schema,
     policy: {},
     needs: {},

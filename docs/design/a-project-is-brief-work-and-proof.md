@@ -102,6 +102,9 @@ drew, and it brings no brief and no proof of its own into its caller.
       profile, names the change, and moves nothing the second time
       (proof: test:packages/cli/tests/update.test.ts)
 
+crosses:
+  - { mechanism: status, answer: works, proof: "test:packages/cli/tests/status-page.test.ts" }
+
 **Exit condition:** a project's folders — `brief/`, `workflow/`, `prove/` —
 mount as the one profile whose workflow they compose, and a row walks from
 BRIEF through PROVE; without `prove/` and no reason given it is refused at
