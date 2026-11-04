@@ -51,6 +51,7 @@ touches:
   - packages/services/openapi.json
   - packages/ui/src/**
   - packages/ui/tests/handshake.test.ts
+  - packages/ui/tests/handshake.property.test.ts
   - packages/ui/tests/contract.test.ts
   - packages/sdk/**
   - packages/ui-conformance/**
@@ -74,7 +75,7 @@ criteria:
   - { id: A5, statement: "a server listens on its socket only, 0600, until remote access is turned on, and then on 127.0.0.1 unless told otherwise", proof: "deferred:assertion:server.it_listens_on_its_socket_by_default", sources: [S15, S16, S18] }
   - { id: A6, statement: "a client reaching the server through a TCP forward on 127.0.0.1 (a tunnel) with the right token gets no local-only operation: absent from its views, 404 on its transport", proof: "deferred:assertion:server.a_tunnelled_client_gets_no_shell", sources: [S17, S18, S19, S29] }
   - { id: A7, statement: "a client on the socket gets the local-only operations", proof: "deferred:assertion:server.the_socket_is_the_local_door", sources: [S18, S19] }
-  - { id: A8, statement: "a client missing a primitive a mounted view uses is refused at the handshake, naming the primitive", proof: "deferred:test:packages/ui/tests/handshake.test.ts", sources: [S13] }
+  - { id: A8, statement: "a client missing a primitive a mounted view uses is refused at the handshake, naming the primitive", proof: "deferred:property:packages/ui/tests/handshake.property.test.ts#only_root_primitive_checked", sources: [S13] }
   - { id: A9, statement: "npm run build writes openapi.json and the SDK from the contract, and nothing else has to be run", proof: "deferred:test:packages/ui/tests/contract.test.ts", sources: [S6, S7, S8, S9, S28] }
   - { id: A10, statement: "removing a field from a server response turns a renderer that reads it red in the type check, in the same build", proof: "deferred:test:a mutation fixture that drops a response field", sources: [S10] }
   - { id: A11, statement: "a committed openapi.json or SDK that differs from what the build generates fails the gate", proof: "deferred:assertion:server.the_contract_is_what_the_code_says", sources: [S11] }

@@ -19,6 +19,7 @@ touches:
   - packages/core/src/lineage.ts
   - packages/core/tests/lineage.test.ts
   - plugins/serial-engine/src/Worker.ts
+  - plugins/serial-engine/tests/triggers.property.test.ts
   - packages/workflow-ticket-to-qa/workflow.mmd
   - packages/workflow-ticket-to-qa/src/machine.ts
   - packages/workflow-ticket-to-qa/src/record.ts
@@ -30,7 +31,7 @@ touches:
   - docs/build/write-a-workflow.md
   - .software-factory/policy.yaml
 criteria:
-  - { id: A1, statement: "an event named on a workflow's [*] edge starts one record keyed by the workflow's key; a second event for the same key while that run is going wakes it instead of starting another", proof: "deferred:test:packages/workflow-testkit/tests/triggers.test.ts", sources: [S2, S3, S4, S5, S8] }
+  - { id: A1, statement: "an event named on a workflow's [*] edge starts one record keyed by the workflow's key; a second event for the same key while that run is going wakes it instead of starting another", proof: "deferred:property:plugins/serial-engine/tests/triggers.property.test.ts#event_for_a_running_key_starts_another", sources: [S2, S3, S4, S5, S8] }
   - { id: A2, statement: "a run reads the records of earlier runs in its lineage, read-only, and a write to one is refused", proof: "deferred:test:packages/core/tests/lineage.test.ts", sources: [S6, S7] }
   - { id: A3, statement: "amy show <key> lists every run of every workflow with that key, in order, with each one's history and evidence", proof: "deferred:test:packages/cli/tests/show.test.ts", sources: [S9] }
   - { id: A4, statement: "in the ticket-to-qa scenario the ticket's work runs as three event-started workflows, two reviews a minute apart make one round, and amy show tells the story across all three", proof: "deferred:assertion:lifecycle.a_review_round_is_its_own_workflow", sources: [S1, S10, S11, S12] }

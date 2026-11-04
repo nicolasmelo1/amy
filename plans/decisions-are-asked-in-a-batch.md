@@ -16,9 +16,10 @@ touches:
   - packages/workflow-ticket-to-qa/tests/machine.test.ts
   - packages/workflow-ticket-to-qa/tests/plugin.test.ts
   - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts
+  - packages/workflow-ticket-to-qa/tests/decisions.property.test.ts
 criteria:
   - { id: A1, statement: "with immediate, a disagreement escalates in the look it is found, as today", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S1, S4] }
-  - { id: A2, statement: "with batch, a round with a disagreement does not escalate and the rest of its changes are made", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S2, S3, S5] }
+  - { id: A2, statement: "with batch, a round with a disagreement does not escalate and the rest of its changes are made", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/decisions.property.test.ts#batch_read_as_immediate", sources: [S2, S3, S5] }
   - { id: A3, statement: "two rounds with one disagreement each, then a round with none, escalate once with both", proof: "deferred:walkthrough in the testkit", sources: [S5, S6, S7] }
   - { id: A4, statement: "a held disagreement whose thread was resolved or outdated before the batch is sent is dropped from it", proof: "deferred:walkthrough in the testkit", sources: [S6] }
   - { id: A5, statement: "a batch whose every held decision was dropped escalates nothing and the work moves on", proof: "deferred:walkthrough in the testkit", sources: [S6] }
