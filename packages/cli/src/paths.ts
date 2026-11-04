@@ -42,12 +42,12 @@ function statePaths(home: string, profile: string | Profile) {
   return {
     records: path.join(home, dirs.records),
     queue: path.join(home, dirs.queue),
-    // Plugin-owned state follows the phase the way its queue does.
+    // Plugin-owned state follows the project the way its queue does.
     tasks: path.join(home, project ?? "", "tasks"),
     // One Slack identity per machine, so one thread map: splitting this per
     // profile would forget the threads a running install already answered in.
     slack: path.join(home, project ?? "", "slack"),
-    // A phase's Telegram topics are its own; the bot's reader is shared.
+    // A project's Telegram topics are its own; the bot's reader is shared.
     telegram: path.join(home, project ?? "", "telegram"),
     ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
     ...(project ? { log: path.join(home, project, "log"), pid: profileDaemonPid(home, profile) } : {}),
@@ -65,7 +65,12 @@ function profileDaemonPid(home: string, profile: string | Profile): string {
   return typeof profile === "string" ? path.join(home, "daemon.pid") : path.join(home, "profiles", profile.name, "daemon.pid");
 }
 
-/** Every PID location a profile may own across a packaged/phase transition. */
+/**
+ * Every PID location a profile may own across a packaged/project transition.
+ *
+ * A project is one profile now, and its phases walk as child records of one
+ * record; what moved at the update is the profile's own layout.
+ */
 export function profileDaemonPids(home: string, profile: string | Profile): readonly string[] {
   if (typeof profile === "string") return [path.join(home, "daemon.pid")];
   const current = profilePaths(home, profile).pid;
@@ -84,9 +89,9 @@ function projectArtifacts(profile: string | Profile): string | undefined {
 /**
  * What `amy workflow rm` may delete: the directories no other profile reads.
  *
- * A phase owns its tasks, Slack threads and Telegram topics as well as its records and queue;
- * an ordinary profile shares those with its neighbours. Never the log: it is
- * append-only because the budget is measured off it.
+ * A project owns its tasks, Slack threads and Telegram topics as well as its
+ * records and queue; an ordinary profile shares those with its neighbours.
+ * Never the log: it is append-only because the budget is measured off it.
  */
 export function profileOwnedDirectories(home: string, profile: Profile): string[] {
   const place = profilePaths(home, profile);

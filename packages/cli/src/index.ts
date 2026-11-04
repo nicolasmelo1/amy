@@ -50,8 +50,9 @@ import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
-import { Profile, missingPhase, profiles, resolveProfile } from "./profiles.js";
+import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, assembleProfile } from "./assemble.js";
+import { phasesOf } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
@@ -870,14 +871,8 @@ program
   .option("--json", "the same snapshot as data, for something else to render")
   .action(async (id: string, options: { json?: boolean }) => {
     const profile = selected();
-    // A project without `brief/` has no grooming phase, so it keeps no briefs:
-    // say which folder is missing rather than that a brief was not found.
-    const missing = missingPhase(profile, "brief");
-    if (missing) {
-      console.error(missing);
-      process.exitCode = 1;
-      return;
-    }
+    // A project whose brief/ phase is neither present nor declared is refused
+    // at the mount, naming the folder; the answer here is that refusal.
 
     // Assembled, because the store is a mounted port rather than a path:
     // `amy brief show` resolves the adapter the same way a tick does, and a
@@ -990,6 +985,7 @@ program
           running: queue.running().length,
           finished: queue.completed().length,
         },
+        phases: phasesOf(profile.project, workflow),
         loop: live ?? null,
         paused: held,
         notes,

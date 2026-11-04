@@ -223,6 +223,14 @@ export const plugin = defineWorkflow({
   configSchema,
   policy: DEFAULT_POLICY,
   needs,
+  // A project is brief, work and proof; a ticket's walk is the work half
+  // alone. The ticket already carries its own statement of the work, and the
+  // gate's scenario run before every pull request is what proves a ticket's
+  // code holds — so no brief phase and no proving phase of amy's own.
+  phases: {
+    brief: "the ticket itself says what the work is; grooming a feature is not what this walk does, so no brief phase runs first",
+    prove: "the command gate's scenario run after every implementation is what proves the work; this walk keeps no separate proving phase",
+  },
   trackerWrites: ({ policy }) => writesOf(policy) === "operator"
     ? []
     : ["comment", "set-status", "assign", "create-follow-up"],

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import yaml from "yaml";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 import {
   compareVersions,
@@ -13,6 +14,7 @@ import {
   isRange,
   line,
   manifestOf,
+  migrateSettingsFile,
   move,
   oneVersion,
   restore,
@@ -1214,5 +1216,58 @@ describe("the CLI's registry intent in a local install root", () => {
 
     expect(release).toEqual({ version: "0.8.0", intent: "latest" });
     expect(found.find((one) => one.name === "@amykit/cli")).toMatchObject({ have: "0.7.0", want: "0.8.0" });
+  });
+});
+
+describe("one project's phase profiles, as the update folds them", () => {
+  let home: string;
+  let project: string;
+
+  const configFor = (base: string): string => `workflows:
+  grooming:
+    workflow: ${path.join(base, "brief")}
+    agent:
+      ladder: [claude:opus]
+  execution:
+    workflow: ${path.join(base, "workflow")}
+    agent:
+      ladder: [claude:haiku]
+  proving:
+    workflow: ${path.join(base, "test")}
+`;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-phases-"));
+    project = path.join(home, "invoices");
+    fs.mkdirSync(path.join(project, "brief"), { recursive: true });
+    fs.mkdirSync(path.join(project, "workflow"), { recursive: true });
+    fs.mkdirSync(path.join(project, "test"), { recursive: true });
+    fs.writeFileSync(path.join(home, "config.yaml"), configFor(project), "utf-8");
+  });
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+  it("turns three phase profiles into the one project profile, says what it folded, and moves nothing the second time", () => {
+    const said = migrateSettingsFile(home);
+
+    expect(said.ok).toBe(true);
+    expect(said.said.some((line) => line.includes("grooming") && line.includes("folded into `execution`"))).toBe(true);
+    expect(said.said.some((line) => line.includes("proving") && line.includes("folded into `execution`"))).toBe(true);
+    // The kept entry is the work phase's, naming the folder the walk runs,
+    // and the other two are gone with their settings carried or said.
+    const rewritten = fs.readFileSync(path.join(home, "config.yaml"), "utf-8");
+    expect(rewritten).toContain(path.join(project, "workflow"));
+    expect(rewritten).not.toContain(path.join(project, "brief"));
+    expect(rewritten).not.toContain(path.join(project, "test"));
+    expect((yaml.parse(rewritten) as { workflows: Record<string, unknown> }).workflows).toStrictEqual({
+      execution: {
+        workflow: path.join(project, "workflow"),
+        agent: { ladder: ["claude:haiku"] },
+      },
+    });
+    // The file as it was is kept, for the person and the rollback.
+    expect(fs.existsSync(path.join(home, "config.yaml.moved"))).toBe(true);
+
+    // The second run moves nothing: one profile per project is the shape.
+    expect(migrateSettingsFile(home).said).toEqual([]);
   });
 });
