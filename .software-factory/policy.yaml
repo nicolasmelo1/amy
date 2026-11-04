@@ -6,6 +6,11 @@ project:
   name: amy
   languages: [typescript]
   exclude: []
+  # The branch work merges into. `sf check` with no `--changed`, which is what
+  # the pre-commit hook runs, reads the work's diff against its merge-base with
+  # this branch, so L4.PLAN_IS_A_LINKED_DECLARATION holds an in-flight plan to
+  # what the change actually edits before it is pushed.
+  default_branch: main
 
 docs:
   scan:
@@ -1039,6 +1044,16 @@ rules:
       max_words: 40
       max_body_lines: 6
       require_declaration: true
+      # Changed files no plan has to declare. This list replaces the rule's
+      # default, so it re-lists the factory's own state and the plan board;
+      # the rest is what every change carries and `npm run docs:generate`
+      # writes from it: the changeset, the changelog and the docs manifest.
+      incidental:
+        - ".software-factory/**"
+        - "plans/next-steps.md"
+        - ".changeset/*.md"
+        - "docs/changelog/index.md"
+        - "docs/manifest.json"
   # L4 — New top-level files are declared before they appear
   L4.ROOT_FILES_ARE_DECLARED:
     enabled: true
@@ -1051,6 +1066,21 @@ rules:
   # L5 — An enabled rule must be capable of producing a finding
   L5.NO_INERT_RULE:
     enabled: true
+  # L5 — Every property a plan cites is proven able to fail
+  L5.EVERY_PROPERTY_HAS_A_FALSIFIER:
+    enabled: true
+    options:
+      # Delivered plans move to `docs/design/` with their criteria, and a
+      # property cited there still has to be able to fail.
+      scope:
+        - "plans/*.md"
+        - "docs/design/*.md"
+      # A property is a fast-check test file, `tests/<topic>.property.test.ts`,
+      # that plants its mutant when `SF_FALSIFIER` names it. Only the cited
+      # file runs, and vitest exits non-zero when a property is refuted.
+      run: |
+        set -eu
+        npx vitest run --reporter=dot "$SF_PROPERTY"
   # L6 — Concurrent code is exercised under a race detector
   L6.DATA_RACES_ARE_DETECTED:
     # Disabled: there is no dynamic race detector for this language, and the

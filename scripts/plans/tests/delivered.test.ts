@@ -68,6 +68,28 @@ describe("a delivered plan", () => {
     expect(problems[1]).toContain("cites a unspecified proof");
   });
 
+  it("passes a property whose file exists and names its falsifier", () => {
+    expect(judge("- [x] Holds for every input (proof: property:tests/it.test.ts#zero_read_as_unset)")).toEqual([]);
+  });
+
+  it("refuses a property with no falsifier, and one whose file does not exist", () => {
+    expect(judge([
+      "- [x] A (proof: property:tests/it.test.ts)",
+      "- [x] B (proof: property:tests/it.test.ts#)",
+      "- [x] C (proof: property:tests/gone.property.test.ts#zero_read_as_unset)",
+    ].join("\n"))).toEqual([
+      "docs/design/x.md:1 cites the property tests/it.test.ts with no falsifier, so nothing shows it can fail — name the mutation it rejects after #",
+      "docs/design/x.md:2 cites the property tests/it.test.ts with no falsifier, so nothing shows it can fail — name the mutation it rejects after #",
+      "docs/design/x.md:3 cites tests/gone.property.test.ts, which does not exist",
+    ]);
+  });
+
+  it("refuses a property still deferred, even ticked", () => {
+    const problems = judge("- [x] Later (proof: deferred:property:tests/it.test.ts#zero_read_as_unset)");
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("cites a deferred proof");
+  });
+
   it("refuses an assertion no gate requires, and a test that does not exist", () => {
     expect(judge("- [x] A (proof: assertion:gate.nobody_runs_this, and test:tests/gone.test.ts for the rest)")).toEqual([
       "docs/design/x.md:1 cites the assertion gate.nobody_runs_this, and no gate requires it, so nothing proves it",

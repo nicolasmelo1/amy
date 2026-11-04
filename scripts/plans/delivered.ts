@@ -28,9 +28,9 @@ interface Criterion {
 
 const BOX = /^- \[( |x)\] /;
 const PROOF_MARKER = /\(proof: ([^)]*)\)/g;
-const PROOF = /\b(assertion|test|command|deferred|unspecified):(\S+)/g;
+const PROOF = /\b(assertion|test|property|command|deferred|unspecified):(\S+)/g;
 /** The same marker, unanchored and without `g`, for a yes-or-no test. */
-const IS_PROOF = /\b(assertion|test|command|deferred|unspecified):\S+/;
+const IS_PROOF = /\b(assertion|test|property|command|deferred|unspecified):\S+/;
 
 export function deliveredPromises(input: DeliveredInput): string[] {
   const problems: string[] = [];
@@ -67,9 +67,26 @@ function unprovenIn(at: string, proof: string, input: DeliveredInput): string[] 
       problems.push(`${at} cites the assertion ${cited}, and no gate requires it, so nothing proves it`);
     } else if (kind === "test" && !input.exists(cited)) {
       problems.push(`${at} cites ${cited}, which does not exist`);
+    } else if (kind === "property") {
+      problems.push(...unprovenProperty(at, cited, input));
     }
   }
   return problems;
+}
+
+/**
+ * A `property:PATH#FALSIFIER` proof: the file has to exist here, and naming
+ * the mutation it rejects is what makes it a property rather than a renamed
+ * test. That the mutation actually fails it is
+ * `L5.EVERY_PROPERTY_HAS_A_FALSIFIER`'s, which runs it.
+ */
+function unprovenProperty(at: string, cited: string, input: DeliveredInput): string[] {
+  const hash = cited.lastIndexOf("#");
+  const path = hash < 0 ? cited : cited.slice(0, hash);
+  if (hash < 0 || hash === cited.length - 1) {
+    return [`${at} cites the property ${path} with no falsifier, so nothing shows it can fail — name the mutation it rejects after #`];
+  }
+  return input.exists(path) ? [] : [`${at} cites ${path}, which does not exist`];
 }
 
 /**

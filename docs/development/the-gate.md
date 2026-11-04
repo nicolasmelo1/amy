@@ -71,6 +71,7 @@ held to a gate that is proven to work.
 | `L4.ROOT_FILES_ARE_DECLARED` | New top-level files are declared before they appear |
 | `L4.RULE_PROSE_NAMES_A_REAL_COMMAND` | Every command a rule's prose quotes is one this `sf` accepts |
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
+| `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` | Every property a plan cites is proven able to fail |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |
 | `L6.A_PUSH_NEVER_FORCES` | A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md) |
 | `L6.BRANCH_RESET_LOSES_COMMITS` | scaffolded workflow ships with, here because the core drives git too. |

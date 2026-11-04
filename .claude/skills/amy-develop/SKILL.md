@@ -52,7 +52,12 @@ Read the rules where they are kept, not here:
 
 4. **Deliver it.** Each criterion gets `done: true` with a proof that runs,
    `deviations:` says what changed from the plan, and the file moves to
-   `docs/design/`.
+   `docs/design/`. A criterion deferred as `deferred:property:PATH#FALSIFIER`
+   is delivered as `property:PATH#FALSIFIER`: the fast-check test at PATH plants
+   FALSIFIER when `SF_FALSIFIER` names it, and `sf check --allow-commands`
+   proves it fails that way and passes without it. A property that passes with
+   its falsifier planted has a generator that never reaches the case: widen
+   the generator, not the falsifier.
 
 ## Before opening the pull request
 
