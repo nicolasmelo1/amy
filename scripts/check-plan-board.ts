@@ -53,7 +53,7 @@ const declarations = Object.fromEntries(
   planFiles
     .filter((plan) => plan !== "plans/next-steps.md")
     .map((plan) => {
-      const text = fs.readFileSync(file(plan), "utf8");
+      const text = fs.readFileSync(file(plan), "utf8").replaceAll("\r\n", "\n");
       const match = /^---\n([\s\S]*?)\n---\n/.exec(text);
       return [plan, match === null ? undefined : yaml.parse(match[1] ?? "")];
     }),
