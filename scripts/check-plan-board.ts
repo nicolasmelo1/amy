@@ -1,5 +1,6 @@
 // Checks that delivered work is proved by durable design notes, while
-// plans/ remains an honest list of unfinished work.
+// plans/ remains an honest list of unfinished work whose every plan
+// declares what it crosses and what it does not hold against.
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -48,7 +49,16 @@ const gates = Object.entries(policy.gates ?? {}).map(([name, gate]) => ({
   plan: gate.plan,
   requiredAssertions: gate.required_assertions ?? [],
 }));
-const problems = checkPlanBoard({ gates, planFiles, listedPlans, designNotes });
+const declarations = Object.fromEntries(
+  planFiles
+    .filter((plan) => plan !== "plans/next-steps.md")
+    .map((plan) => {
+      const text = fs.readFileSync(file(plan), "utf8");
+      const match = /^---\n([\s\S]*?)\n---\n/.exec(text);
+      return [plan, match === null ? undefined : yaml.parse(match[1] ?? "")];
+    }),
+);
+const problems = checkPlanBoard({ gates, planFiles, listedPlans, designNotes, declarations });
 
 if (problems.length > 0) {
   console.error("The plan board and the gate policy have drifted apart:\n");
@@ -56,4 +66,4 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log("plan board: gates cite durable design notes, and plans list unfinished work");
+console.log("plan board: gates cite durable design notes, and plans list unfinished work with a declared scope");

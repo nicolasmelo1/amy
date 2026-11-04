@@ -196,7 +196,10 @@ exit:      "the externally visible effect that ends it"
 `L4.PLAN_IS_A_LINKED_DECLARATION` holds it: every criterion names a source and
 every source is named, and every mechanism in
 [`docs/mechanisms.yaml`](docs/mechanisms.yaml) whose paths `touches` reaches
-is answered under `crosses`. Prefer refusing a composition the work does not
+is answered under `crosses`. `npm run check:plans` adds that a plan in
+`plans/` answers at least one crossing and declares a `guarantee` whose every
+line names what it is `not_against`: that line is the review's scope, and a
+failure outside it is a question for the person, not a fix. Prefer refusing a composition the work does not
 need to supporting it: that is one `cut` line and one check at mount, not a
 fix found in review. When a review finds a crossing no plan asked about, add
 the mechanism to the catalog rather than a paragraph to the next plan.

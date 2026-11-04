@@ -16,6 +16,10 @@ review.
   and generated files (evidence digests, `docs/manifest.json`, changelogs,
   generated README tables), is worth one question: why is it here.
 - **A `failures` entry the code does not honour is a finding.**
+- **A failure mode the `guarantee` neither holds nor names as `not_against`**
+  — two processes, a power loss, a hostile server, a filesystem quirk — is one
+  question, not a finding per scenario: name the mode once and ask which side
+  of the guarantee it belongs on.
 
 Report a defect with the file and line, the concrete state that breaks it and
 what it does wrong. Do not report style, naming or comment wording.
