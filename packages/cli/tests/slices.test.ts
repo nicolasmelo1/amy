@@ -54,11 +54,12 @@ describe("pluginSlices", () => {
   });
 
   it("keeps separate dotted-setting leaves supplied by different project phases", () => {
+    const brief = { policy: { maxQuestions: 2 } };
     const slices = pluginSlices(
       {
         ...CONFIG,
         plugins: {
-          "workflow-brief": { policy: { maxQuestions: 2 } },
+          "workflow-brief": brief,
           "workflow-work": { policy: { maxAttempts: 3 } },
         },
       },
@@ -69,6 +70,7 @@ describe("pluginSlices", () => {
     ) as Record<string, Record<string, unknown>>;
 
     expect(slices["workflow-project"]?.policy).toEqual({ maxQuestions: 2, maxAttempts: 3 });
+    expect(brief).toEqual({ policy: { maxQuestions: 2 } });
   });
 
   it("names the machine's default repository for the tracker, and leaves its vocabulary to its slice", () => {

@@ -236,8 +236,14 @@ function mergeSlice(target: Record<string, unknown>, added: Record<string, unkno
   for (const [key, value] of Object.entries(added)) {
     const current = target[key];
     if (isRecord(current) && isRecord(value)) mergeSlice(current, value);
-    else target[key] = value;
+    else target[key] = copySliceValue(value);
   }
+}
+
+/** Copies mappings before a later phase adds sibling leaves to the composed slice. */
+function copySliceValue(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, copySliceValue(nested)]));
 }
 
 /**

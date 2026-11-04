@@ -892,7 +892,9 @@ function foldOneProject(
   const others = group.filter((one) => one !== kept);
   const workFolder = path.join(root, "workflow");
   for (const one of others) said.push(`${one.name}: folded into \`${kept.name}\`, the single profile the project at ${root} walks`);
-  if (fs.existsSync(workFolder) && unwrap(kept.profile.get("workflow")) !== workFolder) {
+  const keptWorkflow = unwrap(kept.profile.get("workflow"));
+  const keepsWorkPhase = typeof keptWorkflow === "string" && path.resolve(home, keptWorkflow) === workFolder;
+  if (fs.existsSync(workFolder) && !keepsWorkPhase) {
     const field = (kept.profile as yaml.YAMLMap).items.find((item) => yaml.isPair(item) && isKey(item, "workflow")) as yaml.Pair | undefined;
     if (field) field.value = new yaml.Scalar(workFolder);
     said.push(`${kept.name}: names ${workFolder} now, the project's work phase`);

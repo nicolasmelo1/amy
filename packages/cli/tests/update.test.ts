@@ -1271,6 +1271,24 @@ describe("one project's phase profiles, as the update folds them", () => {
     expect(migrateSettingsFile(home).said).toEqual([]);
   });
 
+  it("keeps the survivor's relative work-phase spelling when its plugin names the same phase", () => {
+    const relative = "./invoices/workflow";
+    fs.writeFileSync(path.join(home, "config.yaml"), `workflows:
+  grooming:
+    workflow: ${path.join(project, "brief")}
+  execution:
+    workflow: ${relative}
+    plugins: [${relative}]
+  proving:
+    workflow: ${path.join(project, "test")}
+`, "utf-8");
+
+    expect(migrateSettingsFile(home).ok).toBe(true);
+    const rewritten = yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf-8")) as { workflows: Record<string, { workflow: string; plugins?: string[] }> };
+    expect(rewritten.workflows.execution?.workflow).toBe(relative);
+    expect(rewritten.workflows.execution?.plugins).toContain(relative);
+  });
+
   it("points the config's own selector at the profile that survived the fold", () => {
     const base = path.join(home, "invoices");
     fs.writeFileSync(path.join(home, "config.yaml"), `defaultWorkflow: grooming\n${configFor(base)}`, "utf-8");
