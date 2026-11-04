@@ -142,9 +142,6 @@ export function resolvePhases(root: string, declared: ProjectPhases | undefined)
   return { walking, absent: declaredAbsent as ProjectPhases, problems };
 }
 
-/** Where a project's phases come from: the plugins its folders export, keyed by phase. */
-export type LoadedPhases = ReadonlyMap<ProjectPhaseFolder, WorkflowPlugin>;
-
 /**
  * The composed workflow's calls, by phase state: what the phase's folding is.
  *

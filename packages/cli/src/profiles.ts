@@ -9,7 +9,7 @@ import type { AmyConfig, WorkflowProfile } from "./config.js";
  * workflows its folders export.
  */
 export const PROJECT_PHASES = ["brief", "workflow", "prove"] as const;
-export type ProjectPhase = (typeof PROJECT_PHASES)[number];
+type ProjectPhase = (typeof PROJECT_PHASES)[number];
 
 /**
  * A project, inferred from the folder a phase spec names.

@@ -34,7 +34,7 @@ interface StatusLane {
 }
 
 /** One phase of a project as `amy status --json` reports it: where it walks, or why it is out. */
-export interface StatusPhase {
+interface StatusPhase {
   readonly phase: string;
   readonly absent: boolean;
   readonly reason: string | null;
