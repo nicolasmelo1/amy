@@ -763,6 +763,33 @@ gates:
       # From the seventh review.
       - "compose.a_second_review_round_on_one_head_is_said_again"
 
+  # A Telegram topic is a work item's thread: ticket-to-qa, with the plugin as
+  # its conversation, asks each ticket's question in that ticket's topic of
+  # the operator's private chat with the bot, and the answer moves that
+  # ticket and no other. What no unit test can say is that the installed
+  # executable, the packaged plugin and the workflow agree on it, across the
+  # processes every look is.
+  #
+  # The activation is the adapter, the port it implements, the contract its
+  # stand-in is held to and the stand-in itself, because a change to any of
+  # them means the last run proved a conversation that no longer exists.
+  plugin-telegram:
+    activation:
+      - "plugins/telegram/src/**"
+      - "plugins/telegram/tests/stand-in.ts"
+      - "packages/core/src/ports/Conversation.ts"
+      - "packages/test-fixtures/contracts/telegram-bot-api.json"
+      - "packages/test-fixtures/src/contracts/telegram.ts"
+      # The workflow the scenario drives through the plugin, and its shape.
+      - "packages/workflow-ticket-to-qa/src/**"
+      - "packages/workflow-ticket-to-qa/workflow.mmd"
+    evidence: ".software-factory/evidence/plugin-telegram.json"
+    plan: "docs/design/telegram-is-a-conversation.md"
+    required_assertions:
+      - "telegram.a_question_reaches_its_own_topic"
+      - "telegram.the_answer_moves_its_own_ticket_and_no_other"
+      - "telegram.the_token_is_in_no_file_amy_wrote"
+
   # A next-steps table is a tracker: ticket-to-qa, mounted on one, walks the
   # first committed row to a pull request in its plan's repository and writes
   # nothing where a tracker would have been. What no unit test can say is that

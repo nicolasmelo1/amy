@@ -1,0 +1,80 @@
+{
+  "scenario": "plugin-telegram",
+  "goal": "Prove ticket-to-qa, mounted through the installed executable with the Telegram plugin as its conversation, asks each ticket's question in that ticket's own topic of the operator's private chat with the bot, and that the operator's answer there, read by a later process, moves that ticket and no other, with every call one the Bot API takes and the token in no file amy wrote.",
+  "status": "passed",
+  "assertions": [
+    {
+      "type": "telegram.doctor_asks_telegram_and_passes",
+      "status": "passed",
+      "detail": [
+        "ok   telegram bot  @amy_work_bot, with topics in private chats",
+        "ok   telegram chat  private chat with 4021",
+        "ok   telegram updates  read by amy alone"
+      ]
+    },
+    {
+      "type": "telegram.a_question_reaches_its_own_topic",
+      "status": "passed",
+      "detail": {
+        "topics": {
+          "11": "Show the currency on the invoice total",
+          "12": "Round nothing on the invoice"
+        },
+        "sent": [
+          {
+            "topic": 11,
+            "text": "- Which currency should the invoice total be shown in?"
+          },
+          {
+            "topic": 11,
+            "text": "BILL-4021 needs an answer before I can start."
+          },
+          {
+            "topic": 12,
+            "text": "- Which currency should the invoice total be shown in?"
+          },
+          {
+            "topic": 12,
+            "text": "BILL-4030 needs an answer before I can start."
+          }
+        ],
+        "questionsOnTracker": 0,
+        "states": [
+          "CLARIFYING",
+          "CLARIFYING"
+        ]
+      }
+    },
+    {
+      "type": "telegram.the_answer_moves_its_own_ticket_and_no_other",
+      "status": "passed",
+      "detail": {
+        "states": {
+          "BILL-4021": "READY",
+          "BILL-4030": "CLARIFYING"
+        },
+        "rereads": 1
+      }
+    },
+    {
+      "type": "telegram.every_call_is_one_the_bot_api_takes",
+      "status": "passed",
+      "detail": {
+        "violations": [],
+        "pending": 0,
+        "calls": [
+          "getMe",
+          "getChat",
+          "getUpdates",
+          "createForumTopic",
+          "sendMessage"
+        ]
+      }
+    },
+    {
+      "type": "telegram.the_token_is_in_no_file_amy_wrote",
+      "status": "passed",
+      "detail": []
+    }
+  ]
+}

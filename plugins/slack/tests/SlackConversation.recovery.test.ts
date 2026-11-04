@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
+import { HISTORY_FIELDS, heldToTheContract, postedAnswer, whoAmI } from "./held-to-the-contract.js";
 
 /**
  * What the plugin keeps is private, and what a crash or a concurrent process
@@ -32,11 +33,11 @@ async function answer(request: HttpRequest): Promise<HttpResponse> {
   switch (request.url.replace("https://slack.com/api/", "")) {
     case "chat.postMessage":
       posted += 1;
-      return json({ ok: true, ts: `179000000${posted}.000100` });
+      return json({ ok: true, ...postedAnswer(`179000000${posted}.000100`) });
     case "auth.test":
-      return json({ ok: true, user_id: BOT });
+      return json({ ok: true, ...whoAmI(BOT) });
     case "conversations.history":
-      return json({ ok: true, messages: [], has_more: false });
+      return json({ ok: true, ...HISTORY_FIELDS, messages: [], has_more: false });
     default: {
       const ts = new URLSearchParams(request.body ?? "").get("ts")!;
       return json({
@@ -49,7 +50,7 @@ async function answer(request: HttpRequest): Promise<HttpResponse> {
 }
 
 function slack(channel = "C0WORK", retentionDays = 30): SlackConversation {
-  return new SlackConversation(new SlackApi("xoxb-test", { transport: answer }), { channel, operator: OPERATOR, directory, retentionDays });
+  return new SlackConversation(new SlackApi("xoxb-test", { transport: heldToTheContract(answer) }), { channel, operator: OPERATOR, directory, retentionDays });
 }
 
 function chainOf(workId: string): string {

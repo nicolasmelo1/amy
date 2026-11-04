@@ -47,6 +47,8 @@ function statePaths(home: string, profile: string | Profile) {
     // One Slack identity per machine, so one thread map: splitting this per
     // profile would forget the threads a running install already answered in.
     slack: path.join(home, project ?? "", "slack"),
+    // A phase's Telegram topics are its own; the bot's reader is shared.
+    telegram: path.join(home, project ?? "", "telegram"),
     ...(artifacts ? { artifacts: path.join(home, artifacts) } : {}),
     ...(project ? { log: path.join(home, project, "log"), pid: profileDaemonPid(home, profile) } : {}),
   };
@@ -82,11 +84,11 @@ function projectArtifacts(profile: string | Profile): string | undefined {
 /**
  * What `amy workflow rm` may delete: the directories no other profile reads.
  *
- * A phase owns its tasks and Slack threads as well as its records and queue;
+ * A phase owns its tasks, Slack threads and Telegram topics as well as its records and queue;
  * an ordinary profile shares those with its neighbours. Never the log: it is
  * append-only because the budget is measured off it.
  */
 export function profileOwnedDirectories(home: string, profile: Profile): string[] {
   const place = profilePaths(home, profile);
-  return profile.project ? [place.records, place.queue, place.tasks, place.slack] : [place.records, place.queue];
+  return profile.project ? [place.records, place.queue, place.tasks, place.slack, place.telegram] : [place.records, place.queue];
 }

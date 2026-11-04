@@ -23,6 +23,7 @@ import os from "node:os";
 import path from "node:path";
 import { URL } from "node:url";
 import { gunzipSync, gzipSync } from "node:zlib";
+import { deriveBotApi } from "./bot-api-contract.js";
 
 const repo = path.resolve(import.meta.dirname, "..");
 const directory = path.join(repo, "packages/test-fixtures/contracts");
@@ -52,6 +53,7 @@ interface Vendored {
 /** `manifest.json` in the vendored directory: what was downloaded, from where. */
 interface ContractsManifest {
   documents: (ContractDocument & { sha256: string })[];
+  derived?: (typeof BOT_API & { version: string; sha256: string })[];
   gh: { version: string; releases: string } & Partial<Record<GhPart, Vendored>>;
 }
 
@@ -82,7 +84,31 @@ const DOCUMENTS: ContractDocument[] = [
     url: "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql",
     publisher: "Linear — the GraphQL schema its own SDK is generated from",
   },
+  {
+    name: "slack-web",
+    file: "slack-web.json.gz",
+    gzip: true,
+    url: "https://api.slack.com/specs/openapi/v2/slack_web.json",
+    publisher: "Slack — the OpenAPI description of the Web API, served by Slack",
+  },
 ];
+
+/**
+ * Telegram publishes its Bot API as one HTML page and no schema, so its
+ * contract is derived from that page (scripts/bot-api-contract.ts): fresh
+ * means today's page derives to the same types, methods and version.
+ */
+const BOT_API = {
+  name: "telegram-bot-api",
+  file: "telegram-bot-api.json",
+  url: "https://core.telegram.org/bots/api",
+  publisher: "Telegram — the Bot API reference page, derived into its types and methods",
+};
+
+async function botApiContract(): Promise<string> {
+  const { body } = await published(BOT_API);
+  return `${JSON.stringify(deriveBotApi(body.toString("utf8")), null, 2)}\n`;
+}
 
 /**
  * The `gh` CLI publishes no machine-readable contract, so its contract is
@@ -218,6 +244,7 @@ const latestGh = async () => String((await release("latest")).tag_name).replace(
 async function update(): Promise<void> {
   const bodies: { document: ContractDocument; body: Buffer }[] = [];
   for (const document of DOCUMENTS) bodies.push({ document, body: (await published(document)).body });
+  const botApi = await botApiContract();
   const version = await latestGh();
   const gh = await ghContract(version);
 
@@ -234,7 +261,20 @@ async function update(): Promise<void> {
   }
   console.log(`gh: ${version}`);
 
+  fs.writeFileSync(path.join(directory, BOT_API.file), botApi);
+  manifest.derived = [{ ...BOT_API, version: (JSON.parse(botApi) as { version: string }).version, sha256: sha256(botApi) }];
+  console.log(`${BOT_API.name}: Bot API ${manifest.derived[0]!.version} from ${BOT_API.url}`);
+
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+/** Whether today's reference page derives to the vendored Bot API contract. */
+async function botApiProblems(): Promise<string[]> {
+  const botApi = await botApiContract();
+  const vendored = path.join(directory, BOT_API.file);
+  if (fs.existsSync(vendored) && fs.readFileSync(vendored, "utf8") === botApi) return [];
+  const now = (JSON.parse(botApi) as { version: string }).version;
+  return [`${BOT_API.name} moved: ${BOT_API.url} now describes Bot API ${now} differently from the vendored derivation`];
 }
 
 async function check(): Promise<void> {
@@ -253,6 +293,8 @@ async function check(): Promise<void> {
       problems.push(`${document.name} moved: ${document.url} no longer serves the vendored copy (${served.servedAs || "no cache headers"})`);
     }
   }
+
+  problems.push(...(await botApiProblems()));
 
   const latest = await latestGh();
   if (latest !== manifest.gh.version) {

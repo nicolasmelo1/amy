@@ -64,6 +64,7 @@ For what the two halves mean and why, see
 | Variable | Read by |
 | :-- | :-- |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
+| `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
 
 <!-- amy:end environment -->
 

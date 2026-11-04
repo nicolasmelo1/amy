@@ -7,3 +7,5 @@ export * from "./exercised.js";
 export { ContractViolation } from "./contracts/violation.js";
 export { assertValidGhAnswer, assertValidGhInvocation } from "./contracts/gh.js";
 export { restExample } from "./contracts/openapi.js";
+export { assertValidSlackAnswer, assertValidSlackCall } from "./contracts/slack.js";
+export { assertValidBotApiCall, assertValidBotApiResult, botApiVersion } from "./contracts/telegram.js";

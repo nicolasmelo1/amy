@@ -3,7 +3,7 @@ import path from "node:path";
 import { AmyConfig, loadConfig, removeProfile } from "./config.js";
 import { Profile, profiles } from "./profiles.js";
 import { profileOwnedDirectories } from "./paths.js";
-import { pluginSlices } from "./slices.js";
+import { pluginList, pluginSlices } from "./slices.js";
 import { stillMounted } from "./remove.js";
 
 /** What removing a profile needs from the process that asked. */
@@ -79,20 +79,26 @@ export async function removeProfileAndState(
  * would take the other's work with it, silently, under `--yes`.
  */
 function ownedDirectories(home: string, profile: Profile, config: AmyConfig): string[] {
-  const mine = new Set(directoriesOf(home, profile, config));
+  const mine = new Set(directoriesOf(home, profile, config, "mounted"));
+  const theirs = Object.values(profiles(config, home))
+    .filter((other) => other.name !== profile.name)
+    .flatMap((other) => directoriesOf(home, other, config, "named"));
 
-  for (const other of Object.values(profiles(config, home))) {
-    if (other.name === profile.name) continue;
-    for (const directory of directoriesOf(home, other, config)) mine.delete(directory);
-  }
-
-  return [...mine];
+  // Not one another profile names, and not one holding one: deleting a parent takes what is inside it.
+  return [...mine].filter((directory) => !theirs.some((other) => other === directory || other.startsWith(`${directory}${path.sep}`)));
 }
 
-/** The declared directories plus the ones this profile's slices actually use. */
-function directoriesOf(home: string, profile: Profile, config: AmyConfig): string[] {
+/**
+ * The declared directories plus the ones this profile's slices actually use.
+ * A conversation adapter's directory is a deletion candidate only for a
+ * profile that mounts it ("mounted"); as something to protect, a directory
+ * any slice names counts ("named").
+ */
+function directoriesOf(home: string, profile: Profile, config: AmyConfig, counting: "mounted" | "named"): string[] {
   const slices = pluginSlices(config, profile, home);
-  const effective = ["@amykit/plugin-file-store", "@amykit/plugin-file-queue"].flatMap((owner) => {
+  const mounted = pluginList(config, profile);
+  const adapters = ["@amykit/plugin-slack", "@amykit/plugin-telegram"].filter((owner) => counting === "named" || mounted.includes(owner));
+  const effective = ["@amykit/plugin-file-store", "@amykit/plugin-file-queue", ...adapters].flatMap((owner) => {
     const slice = slices[owner];
     if (typeof slice !== "object" || slice === null) return [];
     const directory = (slice as { directory?: unknown }).directory;

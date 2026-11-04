@@ -7,6 +7,8 @@ import {
   ScriptedRunner,
   whenArgsInclude,
 } from "../src/index.js";
+import { assertValidBotApiCall, assertValidBotApiResult, botApiVersion } from "../src/contracts/telegram.js";
+import { assertValidSlackAnswer, assertValidSlackCall } from "../src/contracts/slack.js";
 
 // Every check the doubles make, shown firing. A contract check nothing
 // proves goes quiet the day it breaks, and the doubles go back to answering
@@ -186,5 +188,75 @@ describe("the doubles hold themselves to the contracts", () => {
     await expect(client.request("query I($id: String!) { issue(id: $id) { id } }", { id: "x" })).rejects.toThrow(
       "Entity not found: Issue",
     );
+  });
+});
+
+describe("the Slack Web API description", () => {
+  it("takes a call it lists, and refuses an argument, a method or a type it does not", () => {
+    expect(() => assertValidSlackCall("chat.postMessage", { channel: "C0WORK", text: "hi", thread_ts: "1.2" })).not.toThrow();
+    expect(() => assertValidSlackCall("chat.postMessage", { channel: "C0WORK", colour: "red" })).toThrow(/chat.postMessage takes no argument colour/);
+    expect(() => assertValidSlackCall("chat.post", { channel: "C0WORK" })).toThrow(/has no method chat.post/);
+    expect(() => assertValidSlackCall("conversations.replies", { channel: "C0WORK", ts: "soon" })).toThrow(/conversations.replies.ts is number/);
+    expect(() => assertValidSlackCall("chat.postMessage", { text: "hi" })).toThrow(/requires channel/);
+  });
+
+  it("lets through only what Slack documents beyond it, and says so by method", () => {
+    expect(() => assertValidSlackCall("chat.postMessage", { channel: "C0WORK", metadata: "{}" })).not.toThrow();
+    expect(() => assertValidSlackCall("conversations.info", { channel: "C0WORK", metadata: "{}" })).toThrow(/takes no argument metadata/);
+  });
+
+  it("refuses an answer carrying what the method never answers", () => {
+    expect(() => assertValidSlackAnswer("auth.test", { ok: true, url: "https://w.slack.com/", team: "W", user: "amy", team_id: "T0", user_id: "U0AMY" })).not.toThrow();
+    expect(() => assertValidSlackAnswer("auth.test", { ok: true })).toThrow(/auth.test always answers url/);
+    expect(() => assertValidSlackAnswer("auth.test", { ok: true, scopes: "chat:write" })).toThrow(/auth.test answers no property scopes/);
+    expect(() => assertValidSlackAnswer("auth.test", { ok: false })).toThrow(/without naming an error/);
+  });
+});
+
+describe("the Telegram Bot API, derived from its page", () => {
+  it("is a version of the API", () => {
+    expect(botApiVersion()).toMatch(/^\d+\.\d+$/);
+  });
+
+  it("takes a call it lists, and refuses a parameter, a type or a missing one", () => {
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1, message_thread_id: 2, text: "hi" })).not.toThrow();
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1, text: "hi", thread: 2 })).toThrow(/sendMessage takes no parameter thread/);
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1, text: 7 })).toThrow(/sendMessage.text is String/);
+    expect(() => assertValidBotApiCall("sendMessage", { chat_id: 1 })).toThrow(/sendMessage requires text/);
+    expect(() => assertValidBotApiCall("sendTopic", {})).toThrow(/has no method sendTopic/);
+  });
+
+  it("refuses a result with a field its type does not have, or without one it requires", () => {
+    expect(() => assertValidBotApiResult("createForumTopic", { message_thread_id: 3, name: "x", icon_color: 1 })).not.toThrow();
+    expect(() => assertValidBotApiResult("createForumTopic", { message_thread_id: 3, name: "x" })).toThrow(/has no icon_color/);
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { message_id: 1, date: 1, chat: { id: 1, type: "private" }, topic: 3 } }])).toThrow(/topic is not a field of Message/);
+  });
+
+  it("reads an array of several types as an array of any of them", () => {
+    const photo = { type: "photo", media: "attach://a", has_spoiler: true };
+    const video = { type: "video", media: "attach://b" };
+    expect(() => assertValidBotApiCall("sendMediaGroup", { chat_id: 1, media: [photo, video] })).not.toThrow();
+    expect(() => assertValidBotApiCall("sendMediaGroup", { chat_id: 1, media: [{ type: "pigeon", media: "x", wings: 2 }] })).toThrow(/media\[0\]/);
+  });
+
+  it("takes every result a method documents, not only the first", () => {
+    expect(() => assertValidBotApiResult("editMessageText", true)).not.toThrow();
+    expect(() => assertValidBotApiResult("editMessageText", { message_id: 1, date: 1, chat: { id: 1, type: "private" } })).not.toThrow();
+    expect(() => assertValidBotApiResult("editMessageText", "edited")).toThrow();
+  });
+
+  it("reads a type that holds no information, and a method returning a union", () => {
+    const closed = { message_id: 1, date: 1, chat: { id: 1, type: "private" }, forum_topic_closed: {} };
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: closed }])).not.toThrow();
+    expect(() => assertValidBotApiResult("getChatMember", { status: "member", user: { id: 1, is_bot: false, first_name: "Ada" } })).not.toThrow();
+    expect(() => assertValidBotApiResult("getChatMember", { status: "pigeon" })).toThrow(/is a ChatMember, and is none of/);
+  });
+
+  it("reads a type the page defines only as one of others", () => {
+    const forwarded = { message_id: 1, date: 1, chat: { id: 1, type: "private" }, forward_origin: { type: "hidden_user", date: 1, sender_user_name: "Ada" } };
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: forwarded }])).not.toThrow();
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { ...forwarded, forward_origin: { type: "pigeon" } } }])).toThrow(/is a MessageOrigin, and is none of/);
+    // Every other field fits a hidden user; only the type says what it is.
+    expect(() => assertValidBotApiResult("getUpdates", [{ update_id: 1, message: { ...forwarded, forward_origin: { type: "pigeon", date: 1, sender_user_name: "Ada" } } }])).toThrow(/is a MessageOrigin, and is none of/);
   });
 });

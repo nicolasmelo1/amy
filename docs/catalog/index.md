@@ -43,6 +43,7 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/plugin-plan-check` | plugin | The quality bar for a drafted plan: the repository's own check, run in its checkout. | [npm](https://www.npmjs.com/package/@amykit/plugin-plan-check) |
 | `@amykit/plugin-serial-engine` | plugin | Advances one work item by one move per tick. | [npm](https://www.npmjs.com/package/@amykit/plugin-serial-engine) |
 | `@amykit/plugin-slack` | plugin | A Slack thread per piece of work, over the Web API, as the conversation port. | [npm](https://www.npmjs.com/package/@amykit/plugin-slack) |
+| `@amykit/plugin-telegram` | plugin | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | [npm](https://www.npmjs.com/package/@amykit/plugin-telegram) |
 
 <!-- amy:end catalog-shipped -->
 

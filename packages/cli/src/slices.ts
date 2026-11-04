@@ -26,7 +26,7 @@ export function pluginSlices(
   const agent = effectiveAgent(config, profile);
 
   const derived = derivedSlices(config, profile, dirs, own, agent, stateDir);
-  Object.assign(derived, slackSlice(own.slack));
+  Object.assign(derived, slackSlice(own.slack), telegramSlice(own.telegram));
   addNotifySlices(config, derived);
   // The profile's own settings come first, and a slice written by hand wins
   // over them: that is the order the config always read in. The settings are
@@ -248,7 +248,11 @@ function assertPhaseStateDirectoriesAreNotShared(config: AmyConfig, profile: Pro
     "@amykit/plugin-file-brief-store",
     "@amykit/plugin-file-tasks",
     "@amykit/plugin-slack",
+    "@amykit/plugin-telegram",
   ] as const) {
+    // Telegram is never recommended, so a phase that does not name it does not mount it, and a
+    // directory set for an ordinary profile's Telegram is not this phase's to refuse.
+    if (plugin === "@amykit/plugin-telegram" && !pluginList(config, profile).includes(plugin)) continue;
     const slice = config.plugins[plugin];
     if (isRecord(slice) && typeof slice.directory === "string") {
       throw new Error(`${plugin}.directory is shared across profiles and cannot be overridden for project phases`);
@@ -274,14 +278,23 @@ function slackSlice(directory: string): Record<string, unknown> {
   return directory === "slack" ? {} : { "@amykit/plugin-slack": { directory } };
 }
 
+/** The topics a phase opened are its own, as its threads are; an ordinary profile's slice stays as it was. */
+function telegramSlice(directory: string): Record<string, unknown> {
+  return directory === "telegram" ? {} : { "@amykit/plugin-telegram": { directory } };
+}
+
 /** Plugin-owned state directories, relative to the state root the plugin is handed. */
-function pluginStateDirectories(stateDir: string | undefined, profile: Profile): { tasks: string; slack: string } {
+function pluginStateDirectories(stateDir: string | undefined, profile: Profile): { tasks: string; slack: string; telegram: string } {
   if (!stateDir) {
     const base = profile.project ? `${projectStateKey(profile.project, profile.name)}/` : "";
-    return { tasks: `${base}tasks`, slack: `${base}slack` };
+    return { tasks: `${base}tasks`, slack: `${base}slack`, telegram: `${base}telegram` };
   }
   const place = profilePaths(stateDir, profile);
-  return { tasks: path.relative(stateDir, place.tasks), slack: path.relative(stateDir, place.slack) };
+  return {
+    tasks: path.relative(stateDir, place.tasks),
+    slack: path.relative(stateDir, place.slack),
+    telegram: path.relative(stateDir, place.telegram),
+  };
 }
 
 /** A phase checkout belongs to both its project and its configured profile. */

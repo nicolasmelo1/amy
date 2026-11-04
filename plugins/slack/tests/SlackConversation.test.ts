@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
+import { heldToTheContract, postedAnswer, whoAmI } from "./held-to-the-contract.js";
 
 /**
  * The adapter against a scripted HTTP transport, the way the tracker and the
@@ -48,7 +49,7 @@ function ok(json: Record<string, unknown>, headers: Record<string, string> = {})
   return { json: { ok: true, ...json }, headers };
 }
 
-const WHO_AM_I: Script = { match: method("auth.test"), answer: ok({ user_id: BOT, user: "amy", team: "Workshop" }) };
+const WHO_AM_I: Script = { match: method("auth.test"), answer: ok(whoAmI(BOT)) };
 
 function thread(messages: unknown[]): Script {
   return { match: method("conversations.replies"), answer: ok({ messages, has_more: false }) };
@@ -66,7 +67,7 @@ afterEach(() => {
 
 function conversation(http: ScriptedHttp, sleeps: number[] = []): SlackConversation {
   const api = new SlackApi("xoxb-test", {
-    transport: http.transport,
+    transport: heldToTheContract(http.transport),
     sleep: (ms) => {
       sleeps.push(ms);
       return Promise.resolve();
@@ -78,9 +79,9 @@ function conversation(http: ScriptedHttp, sleeps: number[] = []): SlackConversat
 describe("a Slack thread per piece of work", () => {
   it("opens a thread with the first post and lands every later post in it, across a restart", async () => {
     const http = new ScriptedHttp([
-      { match: method("chat.postMessage"), answer: ok({ ts: THREAD }) },
-      { match: method("chat.postMessage"), answer: ok({ ts: "1790000001.000200" }) },
-      { match: method("chat.postMessage"), answer: ok({ ts: "1790000002.000300" }) },
+      { match: method("chat.postMessage"), answer: ok(postedAnswer(THREAD)) },
+      { match: method("chat.postMessage"), answer: ok(postedAnswer("1790000001.000200")) },
+      { match: method("chat.postMessage"), answer: ok(postedAnswer("1790000002.000300")) },
     ]);
 
     const first = conversation(http);
@@ -103,7 +104,7 @@ describe("a Slack thread per piece of work", () => {
   });
 
   it("opens one thread when the same work is opened twice at once", async () => {
-    const http = new ScriptedHttp([{ match: method("chat.postMessage"), answer: ok({ ts: THREAD }) }]);
+    const http = new ScriptedHttp([{ match: method("chat.postMessage"), answer: ok(postedAnswer(THREAD)) }]);
     const slack = conversation(http);
 
     const [a, b] = await Promise.all([slack.open("ENG-2", "ENG-2"), slack.open("ENG-2", "ENG-2")]);
@@ -114,8 +115,8 @@ describe("a Slack thread per piece of work", () => {
 
   it("gives each piece of work its own thread", async () => {
     const http = new ScriptedHttp([
-      { match: method("chat.postMessage"), answer: ok({ ts: THREAD }) },
-      { match: method("chat.postMessage"), answer: ok({ ts: "1790000009.000900" }) },
+      { match: method("chat.postMessage"), answer: ok(postedAnswer(THREAD)) },
+      { match: method("chat.postMessage"), answer: ok(postedAnswer("1790000009.000900")) },
     ]);
     const slack = conversation(http);
 
@@ -271,7 +272,7 @@ describe("rate limits", () => {
     const sleeps: number[] = [];
     const http = new ScriptedHttp([
       { match: method("chat.postMessage"), answer: { status: 429, headers: { "retry-after": "30" } } },
-      { match: method("chat.postMessage"), answer: ok({ ts: "1790000001.000200" }) },
+      { match: method("chat.postMessage"), answer: ok(postedAnswer("1790000001.000200")) },
     ]);
 
     const ts = await conversation(http, sleeps).post({ id: THREAD }, { text: "hello" });
@@ -285,7 +286,7 @@ describe("rate limits", () => {
     const sleeps: number[] = [];
     const http = new ScriptedHttp([
       { match: method("chat.postMessage"), answer: { status: 429 } },
-      { match: method("chat.postMessage"), answer: ok({ ts: "1790000001.000200" }) },
+      { match: method("chat.postMessage"), answer: ok(postedAnswer("1790000001.000200")) },
     ]);
 
     await conversation(http, sleeps).post({ id: THREAD }, { text: "hello" });
@@ -312,7 +313,7 @@ describe("what amy doctor asks", () => {
 
   it("reports the token, the channel and the scopes a private channel needs", async () => {
     const http = new ScriptedHttp([
-      { match: method("auth.test"), answer: ok({ user_id: BOT, user: "amy", team: "Workshop" }, SCOPES) },
+      { match: method("auth.test"), answer: ok(whoAmI(BOT), SCOPES) },
       { match: method("conversations.info"), answer: ok({ channel: { id: CHANNEL, name: "amy-work", is_private: true } }) },
     ]);
 
@@ -327,7 +328,7 @@ describe("what amy doctor asks", () => {
 
   it("names the read and history scopes a public channel needs when the token lacks them", async () => {
     const http = new ScriptedHttp([
-      { match: method("auth.test"), answer: ok({ user_id: BOT, user: "amy", team: "Workshop" }, SCOPES) },
+      { match: method("auth.test"), answer: ok(whoAmI(BOT), SCOPES) },
       { match: method("conversations.info"), answer: ok({ channel: { id: CHANNEL, name: "amy-work", is_private: false } }) },
     ]);
 
@@ -338,7 +339,7 @@ describe("what amy doctor asks", () => {
 
   it("fails the channel, naming the fix, when the bot can read it but is not in it", async () => {
     const http = new ScriptedHttp([
-      { match: method("auth.test"), answer: ok({ user_id: BOT, user: "amy", team: "Workshop" }, { "x-oauth-scopes": "chat:write,channels:read,channels:history,files:read" }) },
+      { match: method("auth.test"), answer: ok(whoAmI(BOT), { "x-oauth-scopes": "chat:write,channels:read,channels:history,files:read" }) },
       { match: method("conversations.info"), answer: ok({ channel: { id: CHANNEL, name: "amy-work", is_private: false, is_member: false } }) },
     ]);
 
@@ -351,7 +352,7 @@ describe("what amy doctor asks", () => {
 
   it("says the channel cannot be seen when Slack says so", async () => {
     const http = new ScriptedHttp([
-      { match: method("auth.test"), answer: ok({ user_id: BOT, user: "amy", team: "Workshop" }, SCOPES) },
+      { match: method("auth.test"), answer: ok(whoAmI(BOT), SCOPES) },
       { match: method("conversations.info"), answer: { json: { ok: false, error: "channel_not_found" } } },
     ]);
 
@@ -456,7 +457,7 @@ describe("a reaction Slack listed only in part", () => {
       thread([truncated]),
       {
         match: method("reactions.get"),
-        answer: ok({ type: "message", message: { ...truncated, reactions: [{ name: "white_check_mark", users: ["U0SOMEONE", OPERATOR, "U0THIRD"], count: 3 }] } }),
+        answer: ok({ type: "message", channel: CHANNEL, message: { ...truncated, reactions: [{ name: "white_check_mark", users: ["U0SOMEONE", OPERATOR, "U0THIRD"], count: 3 }] } }),
       },
     ]);
 
@@ -519,7 +520,7 @@ describe("only what could change the kind is asked again", () => {
     const http = new ScriptedHttp([
       WHO_AM_I,
       thread([{ ts: "1790000101.000100", user: OPERATOR, text: "go", reactions: [short] }]),
-      { match: method("reactions.get"), answer: ok({ type: "message", message: { ts: "1790000101.000100", reactions: [short] } }) },
+      { match: method("reactions.get"), answer: ok({ type: "message", channel: CHANNEL, message: { ts: "1790000101.000100", reactions: [short] } }) },
     ]);
 
     await expect(conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).rejects.toThrow(

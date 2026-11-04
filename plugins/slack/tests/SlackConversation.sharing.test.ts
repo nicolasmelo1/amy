@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
+import { HISTORY_FIELDS, heldToTheContract, postedAnswer, whoAmI } from "./held-to-the-contract.js";
 
 /**
  * The state directory is machine-wide, so every daemon that mounts this
@@ -22,7 +23,7 @@ function slackAt(directory: string, handler: Handler, calls: HttpRequest[] = [])
     if (answer instanceof Uint8Array) return { status: 200, headers: {}, body: answer };
     return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify(answer)) };
   };
-  const api = new SlackApi("xoxb-test", { transport, sleep: () => Promise.resolve() });
+  const api = new SlackApi("xoxb-test", { transport: heldToTheContract(transport), sleep: () => Promise.resolve() });
   return new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory, lockWaitMs: 5_000 });
 }
 
@@ -65,7 +66,7 @@ describe("two processes sharing the thread map", () => {
       if (methodOf(request) !== "chat.postMessage") throw new Error(`unexpected ${request.url}`);
       await new Promise((resolve) => setTimeout(resolve, 30));
       roots += 1;
-      return { ok: true, ts: `1790000000.00000${roots}` };
+      return { ok: true, ...postedAnswer(`1790000000.00000${roots}`) };
     };
 
     const [a, b] = await Promise.all([
@@ -82,7 +83,7 @@ describe("two processes sharing the thread map", () => {
     const handler: Handler = async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       roots += 1;
-      return { ok: true, ts: `1790000000.00000${roots}` };
+      return { ok: true, ...postedAnswer(`1790000000.00000${roots}`) };
     };
 
     const [one, two] = await Promise.all([
@@ -103,13 +104,13 @@ describe("an owner that died while posting", () => {
     const handler: Handler = async (request) => {
       switch (methodOf(request)) {
         case "auth.test":
-          return { ok: true, user_id: BOT };
+          return { ok: true, ...whoAmI(BOT) };
         case "conversations.history":
-          return { ok: true, messages: [], has_more: false };
+          return { ok: true, ...HISTORY_FIELDS, messages: [], has_more: false };
         default:
           await new Promise((resolve) => setTimeout(resolve, 20));
           posted += 1;
-          return { ok: true, ts: "1790000009.000100" };
+          return { ok: true, ...postedAnswer("1790000009.000100") };
       }
     };
 
@@ -165,11 +166,11 @@ describe("an owner that died while posting", () => {
             first = false;
             return { ok: false, error: "fatal_error" };
           }
-          return { ok: true, ts: "1790000009.000100" };
+          return { ok: true, ...postedAnswer("1790000009.000100") };
         case "auth.test":
-          return { ok: true, user_id: BOT };
+          return { ok: true, ...whoAmI(BOT) };
         default:
-          return { ok: true, messages: [], has_more: false };
+          return { ok: true, ...HISTORY_FIELDS, messages: [], has_more: false };
       }
     };
     const slack = slackAt(directory, handler, calls);
@@ -189,11 +190,11 @@ describe("an owner whose pid somebody else has now", () => {
     const handler: Handler = (request) => {
       switch (methodOf(request)) {
         case "auth.test":
-          return { ok: true, user_id: BOT };
+          return { ok: true, ...whoAmI(BOT) };
         case "conversations.history":
-          return { ok: true, messages: [], has_more: false };
+          return { ok: true, ...HISTORY_FIELDS, messages: [], has_more: false };
         default:
-          return { ok: true, ts: "1790000009.000100" };
+          return { ok: true, ...postedAnswer("1790000009.000100") };
       }
     };
 
@@ -208,7 +209,7 @@ describe("an owner whose pid somebody else has now", () => {
     const api = new SlackApi("xoxb-test", {
       transport: async (request) => {
         if (methodOf(request) === "chat.postMessage") await slow;
-        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ...postedAnswer("1790000001.000100") })) };
       },
     });
     const owner = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory, leaseMs: 80 });
@@ -263,7 +264,7 @@ describe("an owner paused past its lease and taken over", () => {
       transport: async (request) => {
         calls.push(request);
         if (methodOf(request) === "chat.postMessage") await slow;
-        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ...postedAnswer("1790000001.000100") })) };
       },
     });
     const paused = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
@@ -290,7 +291,7 @@ describe("a post that outlives its claim, a forget and a new open", () => {
       transport: async (request) => {
         calls.push(request);
         if (methodOf(request) === "chat.postMessage") await slow;
-        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ...postedAnswer("1790000001.000100") })) };
       },
     });
     const delayed = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
@@ -311,7 +312,7 @@ describe("a post that outlives its claim, a forget and a new open", () => {
 
   it("keeps the numbers going after a forget, so none is ever reused", async () => {
     let roots = 0;
-    const slack = slackAt(directory, () => ({ ok: true, ts: `179000000${++roots}.000100` }));
+    const slack = slackAt(directory, () => ({ ok: true, ...postedAnswer(`179000000${++roots}.000100`) }));
     await slack.open("ENG-1", "ENG-1");
     const before = Math.max(...fs.readdirSync(chainOf("ENG-1")).map((name) => Number.parseInt(name, 10)));
 
@@ -332,7 +333,7 @@ describe("a stalled owner whose number compaction freed", () => {
       transport: async (request) => {
         calls.push(request);
         if (methodOf(request) === "chat.postMessage") await slow;
-        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ...postedAnswer("1790000001.000100") })) };
       },
     });
     const stalled = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
@@ -360,7 +361,7 @@ describe("a post whose claim was forgotten, with no open after it", () => {
       transport: async (request) => {
         calls.push(request);
         if (methodOf(request) === "chat.postMessage") await slow;
-        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ...postedAnswer("1790000001.000100") })) };
       },
     });
     const late = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
@@ -387,7 +388,7 @@ describe("a superseded owner whose root the winner recovered", () => {
       transport: async (request) => {
         calls.push(request);
         if (methodOf(request) === "chat.postMessage") await slow;
-        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ts: "1790000001.000100" })) };
+        return { status: 200, headers: {}, body: new TextEncoder().encode(JSON.stringify({ ok: true, ...postedAnswer("1790000001.000100") })) };
       },
     });
     const late = new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
@@ -415,11 +416,11 @@ describe("a superseded owner that only recovered a root", () => {
         calls.push(request);
         switch (methodOf(request)) {
           case "auth.test":
-            return answer({ ok: true, user_id: BOT });
+            return answer({ ok: true, ...whoAmI(BOT) });
           case "conversations.history":
             await slow;
             return answer({
-              ok: true,
+              ok: true, ...HISTORY_FIELDS,
               has_more: false,
               messages: [{ ts: "1790000001.000100", user: BOT, text: "ENG-1", metadata: { event_type: "amy_work_thread", event_payload: { work_id: "ENG-1" } } }],
             });
@@ -495,7 +496,7 @@ describe("a forget racing an open", () => {
     const postedUnderTombstone: boolean[] = [];
     const slack = slackAt(directory, () => {
       postedUnderTombstone.push(fs.existsSync(path.join(chainOf("ENG-1"), "2.json")));
-      return { ok: true, ts: "1790000002.000100" };
+      return { ok: true, ...postedAnswer("1790000002.000100") };
     });
 
     const opening = slack.open("ENG-1", "ENG-1");
@@ -513,7 +514,7 @@ describe("a generation that cannot be read", () => {
     fs.mkdirSync(chainOf("ENG-1"), { recursive: true });
     fs.writeFileSync(path.join(chainOf("ENG-1"), "1.json"), "{ not json");
 
-    await expect(slackAt(directory, () => ({ ok: true, ts: "1" })).open("ENG-1", "ENG-1")).rejects.toThrow(SyntaxError);
+    await expect(slackAt(directory, () => ({ ok: true, ...postedAnswer("1") })).open("ENG-1", "ENG-1")).rejects.toThrow(SyntaxError);
   });
 });
 
@@ -534,10 +535,11 @@ describe("a post Slack took but whose answer was lost", () => {
           }
           throw new Error("a second root must not be posted");
         case "auth.test":
-          return { ok: true, user_id: BOT };
+          return { ok: true, ...whoAmI(BOT) };
         default:
           return {
             ok: true,
+            ...HISTORY_FIELDS,
             has_more: false,
             messages: [{
               ts: (began / 1000).toFixed(6),
@@ -572,10 +574,10 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
     const handler: Handler = (request) => {
       switch (methodOf(request)) {
         case "auth.test":
-          return { ok: true, user_id: BOT };
+          return { ok: true, ...whoAmI(BOT) };
         case "conversations.history":
           return {
-            ok: true,
+            ok: true, ...HISTORY_FIELDS,
             messages: [
               // Another item with the same title, and one posted by somebody else.
               { ts: "1790000004.000100", user: BOT, text: "ENG-1: renamed", metadata: rootOf("ENG-9") },
@@ -607,10 +609,10 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
     const handler: Handler = (request) => {
       switch (methodOf(request)) {
         case "auth.test":
-          return { ok: true, user_id: BOT };
+          return { ok: true, ...whoAmI(BOT) };
         case "conversations.history":
           return {
-            ok: true,
+            ok: true, ...HISTORY_FIELDS,
             messages: [{
               ts: "1790000004.000100",
               user: BOT,
@@ -620,7 +622,7 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
             has_more: false,
           };
         default:
-          return { ok: true, ts: "1790000009.000100" };
+          return { ok: true, ...postedAnswer("1790000009.000100") };
       }
     };
 
@@ -632,11 +634,11 @@ describe("a crash between Slack taking a root and the map remembering it", () =>
     const handler: Handler = (request) => {
       switch (methodOf(request)) {
         case "auth.test":
-          return { ok: true, user_id: BOT };
+          return { ok: true, ...whoAmI(BOT) };
         case "conversations.history":
-          return { ok: true, messages: [], has_more: false };
+          return { ok: true, ...HISTORY_FIELDS, messages: [], has_more: false };
         default:
-          return { ok: true, ts: "1790000009.000100" };
+          return { ok: true, ...postedAnswer("1790000009.000100") };
       }
     };
 
@@ -653,7 +655,7 @@ describe("recovering from a failed call", () => {
     const handler: Handler = (request) => {
       if (methodOf(request) === "auth.test") {
         authTests += 1;
-        return authTests === 1 ? { ok: false, error: "service_unavailable" } : { ok: true, user_id: BOT };
+        return authTests === 1 ? { ok: false, error: "service_unavailable" } : { ok: true, ...whoAmI(BOT) };
       }
       return { ok: true, messages: [{ ts: "1790000100.000100", user: OPERATOR, text: "yes" }], has_more: false };
     };
@@ -669,7 +671,7 @@ describe("recovering from a failed call", () => {
     const picture = new Uint8Array([1, 2, 3, 4]);
     const handler: Handler = (request) => {
       if (request.url.startsWith("https://files.slack.com/")) return picture;
-      if (methodOf(request) === "auth.test") return { ok: true, user_id: BOT };
+      if (methodOf(request) === "auth.test") return { ok: true, ...whoAmI(BOT) };
       return {
         ok: true,
         messages: [{
@@ -704,7 +706,7 @@ describe("recovering from a failed call", () => {
   it("names a picture larger than the limit instead of downloading it, when Slack says how large it is", async () => {
     const calls: HttpRequest[] = [];
     const handler: Handler = (request) => {
-      if (methodOf(request) === "auth.test") return { ok: true, user_id: BOT };
+      if (methodOf(request) === "auth.test") return { ok: true, ...whoAmI(BOT) };
       return {
         ok: true,
         messages: [{
@@ -730,7 +732,7 @@ describe("recovering from a failed call", () => {
         expect(request.maxBytes).toBe(4);
         return new Uint8Array(5);
       }
-      if (methodOf(request) === "auth.test") return { ok: true, user_id: BOT };
+      if (methodOf(request) === "auth.test") return { ok: true, ...whoAmI(BOT) };
       return {
         ok: true,
         messages: [{
