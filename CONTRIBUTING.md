@@ -213,8 +213,9 @@ it must reject, planted only when `SF_FALSIFIER` names it. Every property runs
 from the fixed seed in `scripts/properties.setup.ts`, so it decides the same
 way on every machine. `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` runs it both ways and refuses a property
 that passes with its mutation planted. Until the work is built the file does
-not exist, so the plan says which property it will be: `proof: "deferred:not
-built; property PATH#FALSIFIER"`, and delivery turns it into `property:`.
+not exist, so the plan says which property it will be, the way it already
+says `deferred:test:PATH`: `proof: "deferred:property:PATH#FALSIFIER"`, and
+delivery drops the `deferred:`.
 
 Once a plan's own file is in the change, it is in flight, and every file the
 change edits has to be in its `touches`, under `deviations`, or one of the
