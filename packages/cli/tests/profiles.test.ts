@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { directoriesFor, profiles, recommendedFor, resolveProfile } from "../src/profiles.js";
 
@@ -20,6 +23,25 @@ describe("which workflows an install can drive", () => {
 
     expect(resolution.ok).toBe(true);
     expect(resolution.ok && resolution.profile.workflow).toBe("@acme/workflow-oncall");
+  });
+
+  it("refuses a config whose workflow points at a test/ folder, naming prove/", () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "amy-test-folder-"));
+    try {
+      const config = {
+        ...DEFAULT_CONFIG,
+        workflows: {
+          legacy: { workflow: path.join(base, "test") },
+        },
+      };
+      const resolution = resolveProfile(config, "legacy", base);
+
+      expect(resolution.ok).toBe(false);
+      expect(!resolution.ok && resolution.problem).toContain("prove/");
+      expect(!resolution.ok && resolution.problem).toContain("rename");
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
   });
 
   it("lets a config replace a declared one without renaming it", () => {

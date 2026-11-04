@@ -122,12 +122,17 @@ const NEEDS: Record<string, readonly string[]> = {
 
 /** What `amy init` suggests installing for a profile that lists nothing. */
 export function recommendedFor(profile: Profile): readonly string[] {
-  const needs = NEEDS[profile.workflow] ?? [];
+  return recommendedPluginsFor(profile.workflow);
+}
+
+/** What a workflow would mount, named by its spec: the recommendation the boot would read. */
+function recommendedPluginsFor(workflow: string): readonly string[] {
+  const needs = NEEDS[workflow] ?? [];
   // Workflow ports need their providers during registration, while the
   // worktree captures the workflow's terminal states and must follow it.
   const prerequisites = needs.filter((plugin) => plugin === "@amykit/plugin-linear");
   const consumers = needs.filter((plugin) => plugin !== "@amykit/plugin-linear");
-  return [...PROVIDERS, ...prerequisites, profile.workflow, ...WORKTREE_AND_CONSUMERS, ...consumers];
+  return [...PROVIDERS, ...prerequisites, workflow, ...WORKTREE_AND_CONSUMERS, ...consumers];
 }
 
 /** Every profile this install can drive: the shipped ones, plus the config's. */
@@ -202,6 +207,18 @@ export function resolveProfile(config: AmyConfig, asked?: string, home?: string)
   const profile = known[wanted];
   if (!profile) {
     return { ok: false, problem: `there is no \`${wanted}\` workflow. Try: ${names.join(", ")}` };
+  }
+
+  // A config that names a `test/` folder as its workflow is the legacy
+  // proving-phase anchor, and it is refused with the rename: under the
+  // project vocabulary the proving phase is `prove/`, and a `test/` spec
+  // would otherwise mount as an ordinary workflow without a word about it.
+  const spec = filesystemWorkflow(home, profile.workflow);
+  if (path.basename(spec) === "test") {
+    return {
+      ok: false,
+      problem: `\`${profile.workflow}\` is the old proving phase's folder, and the phase is named \`prove/\` now — rename the folder to \`prove/\`, or name another workflow`,
+    };
   }
 
   return { ok: true, profile };

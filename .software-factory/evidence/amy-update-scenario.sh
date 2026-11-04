@@ -550,8 +550,9 @@ says update.a_moved_key_names_its_destination "$refused" 'settings.qaStatusName'
 # update moves nothing the fold did not already move.
 "$tsx" "$machine" add-project-phases
 project="$work/project"
-folded=$("$amy" update 2>&1 || echo "")
-printf '%s\n' "$folded" > "$work/phases-fold.log"
+fold_rc=0
+"$amy" update > "$work/phases-fold.log" 2>&1 || fold_rc=$?
+folded=$(cat "$work/phases-fold.log")
 fold_says=1
 case "$folded" in
   *"grooming: folded into \`execution\`"*"proving: folded into \`execution\`"*) fold_says=0 ;;
@@ -560,13 +561,16 @@ one_profile=0
 if ! grep -q 'grooming:' .amy/config.yaml &&
    ! grep -q 'proving:' .amy/config.yaml &&
    grep -q "workflow: $project/workflow" .amy/config.yaml &&
+   grep -q 'defaultWorkflow: execution' .amy/config.yaml &&
+   grep -q '@amykit/plugin-file-tasks' .amy/config.yaml &&
    [ -f .amy/config.yaml.moved ]; then
   one_profile=1
 fi
-quiet_again=$("$amy" update 2>&1 || echo "")
+quiet_rc=0
+"$amy" update > "$work/phases-quiet.log" 2>&1 || quiet_rc=$?
 moves_twice=0
-case "$quiet_again" in *"folded into"*) moves_twice=1 ;; esac
-if [ "$fold_says" = 0 ] && [ "$one_profile" = 1 ] && [ "$moves_twice" = 0 ]; then
+case "$(cat "$work/phases-quiet.log")" in *"folded into"*) moves_twice=1 ;; esac
+if [ "$fold_says" = 0 ] && [ "$one_profile" = 1 ] && [ "$moves_twice" = 0 ] && [ "$fold_rc" = 0 ] && [ "$quiet_rc" = 0 ]; then
   record update.the_phases_become_one_project 0
 else
   record update.the_phases_become_one_project 1

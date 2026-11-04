@@ -371,12 +371,23 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
  * which is the whole answer: such a workflow can be mounted but never
  * called, and a project composes its phases by calling them.
  */
-export function declaredCallee(plugin: object): { readonly input?: ConfigSchema; readonly returns: readonly string[] } {
+export function declaredCallee(plugin: object): {
+  readonly input?: ConfigSchema;
+  readonly returns: readonly string[];
+  readonly trackerWrites?: Claims<ConfigSchema, object>;
+  readonly codeHostWrites?: Claims<ConfigSchema, object>;
+} {
   const callee = (plugin as Partial<Record<typeof CALLEE, Callable | undefined>>)?.[CALLEE];
   if (!callee || typeof callee.shape === "string") return { returns: [] };
+  const declaration = callee.declaration as Partial<{
+    readonly trackerWrites?: Claims<ConfigSchema, object>;
+    readonly codeHostWrites?: Claims<ConfigSchema, object>;
+  }>;
   return {
     ...(callee.declaration.input ? { input: callee.declaration.input as ConfigSchema } : {}),
     returns: Object.keys(callee.declaration.output ?? {}),
+    ...(declaration.trackerWrites !== undefined ? { trackerWrites: declaration.trackerWrites } : {}),
+    ...(declaration.codeHostWrites !== undefined ? { codeHostWrites: declaration.codeHostWrites } : {}),
   };
 }
 

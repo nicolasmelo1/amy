@@ -6,6 +6,7 @@ import {
   Plugin,
   ProjectPhases,
   WorkflowPlugin,
+  WorkRecord,
   call,
   defineWorkflow,
   declaredCallee,
@@ -60,18 +61,27 @@ export interface PhaseView {
   readonly reason: string | null;
 }
 
-/** The phases of a project's mounted workflow, or nothing when this is not a project. */
+/** The phases of a project's mounted workflow, or the absences a workflow declares for itself. */
 export function phasesOf(
   project: ProjectIdentity | undefined,
   workflow: { readonly states: readonly string[]; readonly phases?: ProjectPhases } | undefined,
 ): readonly PhaseView[] | undefined {
-  if (!project || !workflow) return undefined;
+  if (!workflow) return undefined;
   const declared = workflow.phases ?? {};
-  return [...PROJECT_PHASES].map((phase) => ({
-    phase: PHASE_STATE[phase].toLowerCase(),
-    absent: !workflow.states.includes(PHASE_STATE[phase]),
-    reason: declared[phase] ?? null,
-  }));
+  if (project) {
+    return [...PROJECT_PHASES].map((phase) => ({
+      phase: PHASE_STATE[phase].toLowerCase(),
+      absent: !workflow.states.includes(PHASE_STATE[phase]),
+      reason: declared[phase] ?? null,
+    }));
+  }
+  // A workflow brought by a package has no project identity, yet it says in
+  // its own declaration which phases of a project's walk it does not carry;
+  // the status reads those absences where they are declared, not from the
+  // composed state names.
+  return Object.entries(declared)
+    .filter((entry): entry is [typeof PROJECT_PHASES[number], string] => entry[1] !== undefined)
+    .map(([phase, reason]) => ({ phase: phase.toLowerCase(), absent: true, reason }));
 }
 
 export interface ProjectPhase {
@@ -158,8 +168,9 @@ function bindingsFor(phases: readonly ProjectPhase[], slices: Readonly<Record<st
     const callee = declaredCallee(one.plugin);
     const output: Record<string, (work: never, out: unknown) => Record<string, unknown>> = {};
     for (const end of callee.returns) output[end] = record(one.phase);
-    const settings = { ...sliceFor(slices, one.name), ...settingsFor(one.plugin, ownSettings) };
+    const settings = phaseSettings(one, slices, ownSettings);
     bindings[PHASE_STATE[one.phase]] = call(one.plugin, {
+      ...(one === phases[0] ? { discover: true } : {}),
       ...(Object.keys(output).length > 0 ? { output: output as never } : {}),
       ...(one.phase !== "brief" && callee.input !== undefined ? { input: ((work: { brief: unknown }) => work.brief) as never } : {}),
       ...(Object.keys(settings).length > 0 ? { config: settings } : {}),
@@ -178,9 +189,25 @@ function sliceFor(slices: Readonly<Record<string, unknown>>, name: string): Reco
 function settingsFor(plugin: WorkflowPlugin, ownSettings: Readonly<Record<string, unknown>>): Record<string, unknown> {
   const schema = plugin.configSchema;
   if (!schema) return {};
+  // A dotted schema key names a group one leaf at a time (`policy.maxAttempts`),
+  // and the machine writes the group nested, so an own entry matches on the
+  // group's head as well as on a whole top-level key. What the callee's schema
+  // does not say is refused by its own mount, naming it.
+  const heads = new Set(Object.keys(schema).map((key) => key.split(".")[0]!));
   const kept: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(ownSettings)) if (schema[key] !== undefined) kept[key] = value;
+  for (const [key, value] of Object.entries(ownSettings)) {
+    if (schema[key] !== undefined || heads.has(key)) kept[key] = value;
+  }
   return kept;
+}
+
+/** The settings one phase's call carries: its derived slice, then the profile's own words for it. */
+function phaseSettings(
+  one: ProjectPhase,
+  slices: Readonly<Record<string, unknown>>,
+  ownSettings: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  return { ...sliceFor(slices, one.name), ...settingsFor(one.plugin, ownSettings) };
 }
 
 /** The states a project walks, the initial one first, and where each phase goes. */
@@ -192,14 +219,23 @@ function projectDiagram(
   const before = (at: number): string => (at > 0 ? state(phases[at - 1]!) : "DONE");
   const lines: string[] = ["stateDiagram-v2", `  [*] --> ${state(phases[0]!)}`];
   phases.forEach((one, at) => {
-    const ends = declaredCallee(one.plugin).returns.length > 0
-      ? declaredCallee(one.plugin).returns
-      : one.plugin.workflow.terminalStates;
+    // Every end the callee can arrive at draws its edge, the folds or not:
+    // an end the callee returns nothing at folds nothing, but the walk still
+    // goes somewhere from it, and an edge named for no end is a refusal.
+    const ends = one.plugin.workflow.terminalStates?.length
+      ? one.plugin.workflow.terminalStates
+      : declaredCallee(one.plugin).returns;
     for (const end of ends) {
-      const to = one.phase === "prove" && end === "refused" ? before(at) : after(at);
+      const to = one.phase === "prove" && end !== "refused" && phases.some((phase) => phase.phase === "brief")
+        ? "PROOF_COMPLETE"
+        : one.phase === "prove" && end === "refused" ? before(at) : after(at);
       lines.push(`  ${state(one)} --> ${to}: ${end}`);
     }
   });
+  if (phases.some((one) => one.phase === "brief") && phases.some((one) => one.phase === "prove")) {
+    lines.push("  PROOF_COMPLETE --> DONE: every criterion is answered");
+    lines.push(`  PROOF_COMPLETE --> ${state(phases.find((one) => one.phase === "workflow") ?? phases[0]!)}: a criterion is unanswered`);
+  }
   // The terminal line is written last, so the states the file names read in
   // walk order: the diagram's own list is the order the lines were read.
   lines.push(`  DONE --> [*]`);
@@ -261,8 +297,18 @@ export function composeProject(args: {
 
 function build(args: { readonly profile: Pick<Profile, "name" | "settings">; readonly slices: Readonly<Record<string, unknown>>; readonly phases: readonly ProjectPhase[]; readonly absent: ProjectPhases; readonly root: string }, schema: ConfigSchema): Plugin {
   const claims = (key: "trackerWrites" | "codeHostWrites") => {
+    // The claims are the phases' own: the walk cannot write more than its
+    // phases do, and each phase's claim is read the way its own mount would
+    // read it — a claim written as a function of its configuration is asked
+    // with the settings this walk hands the phase, because that is the
+    // configuration the mounted phase will actually run under.
     const claimed = new Set<string>();
-    for (const one of args.phases) for (const capability of one.plugin.workflow[key] ?? []) claimed.add(capability);
+    for (const one of args.phases) {
+      const declared = declaredCallee(one.plugin)[key];
+      const settings = phaseSettings(one, args.slices, args.profile.settings ?? {});
+      const effective = typeof declared === "function" ? declared({ config: settings as never, policy: {} }) : declared ?? [];
+      for (const capability of effective) claimed.add(capability);
+    }
     return [...claimed];
   };
   const composed = defineWorkflow({
@@ -278,8 +324,29 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
     observe: async () => ({}),
     actions: {},
     remember: (_scope, record) => record,
-    decide: { DONE: () => ({ kind: "settled", why: "the project's walk is over" }) },
+    decide: {
+      ...(args.phases.some((one) => one.phase === "brief") && args.phases.some((one) => one.phase === "prove") ? {
+        PROOF_COMPLETE: (record) => proofAnswered(record)
+          ? { kind: "advance" as const, to: "DONE", effects: [], why: "the proof answered every criterion the brief settled" }
+          : { kind: "advance" as const, to: PHASE_STATE[args.phases.find((one) => one.phase === "workflow")?.phase ?? args.phases[0]!.phase], effects: [], why: "the proof left a briefed criterion unanswered" },
+      } : {}),
+      DONE: () => ({ kind: "settled", why: "the project's walk is over" }),
+    },
     calls: bindingsFor(args.phases, args.slices, args.profile.settings ?? {}) as never,
   });
   return withDiagram(composed, projectDiagram(args.phases), "the project's own folders");
+}
+
+/** Whether every criterion a brief named appears in the proof's returned answer. */
+function proofAnswered(record: WorkRecord & { readonly brief?: unknown; readonly prove?: unknown }): boolean {
+  const criteria = criteriaOf(record.brief);
+  if (criteria.length === 0) return true;
+  const answered = new Set(criteriaOf(record.prove));
+  return criteria.every((criterion) => answered.has(criterion));
+}
+
+function criteriaOf(value: unknown): readonly string[] {
+  if (typeof value !== "object" || value === null) return [];
+  const criteria = (value as { readonly criteria?: unknown }).criteria;
+  return Array.isArray(criteria) && criteria.every((criterion): criterion is string => typeof criterion === "string") ? criteria : [];
 }

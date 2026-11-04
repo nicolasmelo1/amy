@@ -33,6 +33,10 @@ function declaredPhase(
     readonly returns?: Readonly<Record<string, unknown>>;
     /** The input the workflow declares, when it takes one. */
     readonly takes?: ConfigSchema;
+    /** The configuration the workflow's own mount validates, its vocabulary kept to what it names. */
+    readonly schema?: ConfigSchema;
+    /** The tracker writes the workflow claims, as its declaration carries them. */
+    readonly writes?: unknown;
     /** One decision per state, replacing the default march down the states. */
     readonly decisions?: Readonly<Record<string, (record: WorkRecord) => Plan>>;
   },
@@ -41,10 +45,11 @@ function declaredPhase(
     name,
     states: spec.states,
     terminal: spec.terminal,
-    configSchema: {},
+    configSchema: spec.schema ?? {},
     policy: {},
     ...(spec.takes ? { input: spec.takes } : {}),
     ...(spec.returns ? { output: Object.fromEntries(Object.entries(spec.returns).map(([end, returns]) => [end, () => returns])) } : {}),
+    ...(spec.writes ? { trackerWrites: spec.writes as never } : {}),
     needs: {},
     record: () => ({}),
     discover: async () => [],
@@ -101,7 +106,7 @@ describe("a project is brief, work and proof", () => {
     expect(composed.problems).toEqual([]);
 
     const walk = composed.plugin as PhasePlugin;
-    expect(walk.workflow!.states).toEqual(["BRIEF", "WORK", "PROVE", "DONE"]);
+    expect(walk.workflow!.states).toEqual(["BRIEF", "WORK", "PROVE", "PROOF_COMPLETE", "DONE"]);
     expect(walk.workflow!.terminalStates).toEqual(["DONE"]);
     // The project's phases are child records: every phase is a call.
     expect(Object.keys(walk.workflow!.calls ?? {})).toEqual(["BRIEF", "WORK", "PROVE"]);
@@ -152,7 +157,83 @@ describe("a project is brief, work and proof", () => {
     const edgesFrom = (state: string) => walk.workflow!.diagram!.transitions.filter((edge) => edge.from === state);
 
     expect(edgesFrom("PROVE").find((edge) => edge.label === "refused")?.to).toBe("WORK");
-    expect(edgesFrom("PROVE").find((edge) => edge.label === "SATISFIED")?.to).toBe("DONE");
+    expect(edgesFrom("PROVE").find((edge) => edge.label === "SATISFIED")?.to).toBe("PROOF_COMPLETE");
+  });
+
+    it("draws an edge from every end its phase can end at, the folds or not", async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "amy-project-ends-"));
+    try {
+      const home = path.join(base, ".amy");
+      fs.mkdirSync(home, { recursive: true });
+      writePluginFile(path.join(base, "invoices", "brief"), fixturePhaseModule("brief-of-ends", { states: ["BRIEFED"], terminal: ["BRIEFED"], decide: "settled" }));
+      writePluginFile(path.join(base, "invoices", "workflow"), fixturePhaseModule("work-of-ends", { states: ["OPENED"], terminal: ["OPENED"], decide: "settled" }));
+      writePluginFile(path.join(base, "invoices", "prove"), fixturePhaseModule("prove-of-ends", {
+        states: ["CHECKED"],
+        terminal: ["SATISFIED", "refused"],
+        decide: "settled",
+        output: { SATISFIED: { held: true } },
+      }));
+
+      const spec = path.join(base, "invoices", "workflow");
+      const assembled = await assembledFor(base, home, { invoices: { workflow: spec, plugins: mountsFor(spec) } });
+      expect(assembled.ok).toBe(true);
+      // The walk that mounted draws an edge for every end its proving phase
+      // can arrive at, the fold at SATISFIED and the refusal that carries the
+      // row back to WORK, whatever the phase returns at each.
+      const transitions = assembled.ok ? assembled.mounted.workflow?.diagram?.transitions : undefined;
+      const edges = (transitions ?? []).filter((edge) => edge.from === "PROVE");
+      expect(edges.find((edge) => edge.label === "refused")?.to).toBe("WORK");
+      expect(edges.find((edge) => edge.label === "SATISFIED")?.to).toBe("PROOF_COMPLETE");
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it("claims what its phases' own claims say, a claim read under the configuration it will run in", () => {
+    const writes = ({ config }: { config: { writes?: string } }): readonly string[] =>
+      config.writes === "operator" ? [] : ["comment"];
+    const phaseWith = (settings: Readonly<Record<string, unknown>>) => {
+      const work = declaredPhase("work-of-claims", {
+        states: ["OPENED"],
+        terminal: ["OPENED"],
+        schema: { writes: { type: "string", description: "the write posture the phase runs under" } },
+        writes,
+      });
+      const composed = composeProject({
+        profile: { name: "claims", settings },
+        slices: {},
+        phases: [{ phase: "workflow", plugin: work, name: work.name }],
+        absent: {},
+        root,
+      });
+      return composed.plugin as PhasePlugin;
+    };
+    // The operator's own words reach the phase's claim: what it says it may
+    // write, it says under the settings the walk hands it.
+    expect(phaseWith({ writes: "operator" }).workflow!.trackerWrites).toEqual([]);
+    // And where the machine says nothing, the phase's own default claim stands.
+    expect(phaseWith({}).workflow!.trackerWrites).toEqual(["comment"]);
+  });
+
+  it("says a workflow's own declared absences at the status, packaged or not", () => {
+    // A packaged workflow carries no project identity, yet it declares which
+    // phases of a walk it does not carry, and the status reads those.
+    const packaged = {
+      states: ["OPENED", "SETTLED"],
+      phases: { brief: "the ticket itself says what the work is", prove: "the gate's run proves the work" },
+    };
+    expect(phasesOf(undefined, packaged)).toEqual([
+      { phase: "brief", absent: true, reason: "the ticket itself says what the work is" },
+      { phase: "prove", absent: true, reason: "the gate's run proves the work" },
+    ]);
+    // A project's walk still reports all three phases of its own: the ones
+    // the walk drives, and the ones its declaration said are out, why.
+    const composed = { states: ["BRIEF", "WORK", "DONE"], phases: { prove: "the gate's run proves the work" } };
+    expect(phasesOf({ root, phase: "workflow" }, composed)).toEqual([
+      { phase: "brief", absent: false, reason: null },
+      { phase: "work", absent: false, reason: null },
+      { phase: "prove", absent: true, reason: "the gate's run proves the work" },
+    ]);
   });
 
   it("refuses a project whose proving phase is neither present nor declared, naming the phase", async () => {
@@ -169,6 +250,40 @@ describe("a project is brief, work and proof", () => {
       const said = problems(assembled).join("\n");
       expect(said).toContain("prove/");
       expect(said).toContain(path.join(base, "invoices", "prove"));
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it("hands a phase the dotted settings the machine wrote nested, and refuses none the machine said", async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "amy-project-dotted-"));
+    try {
+      const home = path.join(base, ".amy");
+      fs.mkdirSync(home, { recursive: true });
+      // A phase whose configuration vocabulary is a dotted schema key: the
+      // machine writes the group nested, and the walk hands the phase exactly
+      // what the operator wrote there.
+      writePluginFile(path.join(base, "invoices", "workflow"), fixturePhaseModule("work-of-dotted", {
+        states: ["OPENED"],
+        terminal: ["OPENED"],
+        decide: "settled",
+        schema: { "policy.maxAttempts": { type: "number", required: true, description: "the ceiling the phase retries under" } },
+        phases: {
+          brief: "the work a ticket named is groomed where the ticket lives, not in this walk",
+          prove: "the command gate's run proves the work; this walk keeps no proving phase",
+        },
+      }));
+      const spec = path.join(base, "invoices", "workflow");
+      const assembled = await assembledFor(base, home, {
+        invoices: {
+          workflow: spec,
+          plugins: mountsFor(spec),
+          settings: { policy: { maxAttempts: 3 } },
+        },
+      });
+      // The composed walk carries the setting twice-over: the phase's call
+      // names it, and the composed workflow's own schema accepts it.
+      expect(assembled.ok).toBe(true);
     } finally {
       fs.rmSync(base, { recursive: true, force: true });
     }
@@ -378,7 +493,7 @@ describe("a project walks a row from brief through proof", () => {
       terminal: ["refused", "SATISFIED"],
       decide: "refuse-then-hold",
       takes: { criteria: { type: "string[]", required: true, description: "what this proof must show" } as ConfigField },
-      output: { refused: { criteria: [], held: false }, SATISFIED: { criteria: [], held: true } },
+      output: { refused: { criteria: [], held: false }, SATISFIED: { criteria: ["product", "interface"], held: true } },
     }));
     const spec = path.join(project, "workflow");
     const config: AmyConfig = { ...DEFAULT_CONFIG, notify: { hermes: null, inbox: false }, workflows: { invoices: { workflow: spec, plugins: mountsFor(spec) } } };
@@ -406,7 +521,8 @@ describe("a project walks a row from brief through proof", () => {
       "WORK → PROVE",
       "PROVE → WORK",
       "WORK → PROVE",
-      "PROVE → DONE",
+      "PROVE → PROOF_COMPLETE",
+      "PROOF_COMPLETE → DONE",
     ]);
     // What the brief returned is on the record, and the proof was handed
     // exactly that: the criteria the brief settled.
@@ -474,6 +590,8 @@ function fixturePhaseModule(
     readonly decide: "settled" | "march" | "refuse-then-hold";
     readonly output?: Readonly<Record<string, unknown>>;
     readonly takes?: Record<string, ConfigField>;
+    readonly schema?: Record<string, ConfigField>;
+    readonly phases?: Readonly<Record<string, string>>;
   },
 ): string {
   const decisions: string[] = [];
@@ -495,8 +613,8 @@ export const plugin = defineWorkflow({
   pluginName: "workflow-${name}",
   states: ${JSON.stringify(spec.states)},
   terminal: ${JSON.stringify(spec.terminal)},
-  configSchema: {},
-  ${spec.takes ? `input: ${JSON.stringify(spec.takes)},\n  ` : ""}policy: {},
+  configSchema: ${JSON.stringify(spec.schema ?? {})},
+  ${spec.takes ? `input: ${JSON.stringify(spec.takes)},\n  ` : ""}${spec.phases ? `phases: ${JSON.stringify(spec.phases)},\n  ` : ""}policy: {},
   needs: {},
   record: () => ({}),
   discover: async () => [],

@@ -135,7 +135,7 @@ await attempt("project.the_three_phases_walk_as_one", async () => {
   // The walk's own transitions: every phase in order, the refused proof
   // carrying the row back to WORK once, and DONE only at the end.
   const went = (walked.history ?? []).map((edge) => `${edge.from} -> ${edge.to}`);
-  const wanted = ["BRIEF -> WORK", "WORK -> PROVE", "PROVE -> WORK", "WORK -> PROVE", "PROVE -> DONE"];
+  const wanted = ["BRIEF -> WORK", "WORK -> PROVE", "PROVE -> WORK", "WORK -> PROVE", "PROVE -> PROOF_COMPLETE", "PROOF_COMPLETE -> DONE"];
   if (JSON.stringify(went) !== JSON.stringify(wanted)) throw new Error(`the walk went ${went.join(", ")}`);
   // The phases ran as child records of the row, one per round it entered.
   const entered = Object.keys(walked.calls ?? {});

@@ -12,7 +12,7 @@
       "file": "github-rest.json.gz",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
       "publisher": "GitHub — the OpenAPI description of the github.com REST API",
-      "sha256": "61bef72d98bb860ed1d0a7ef4def991e89f9c62da7dc7f619d5e94784f836595"
+      "sha256": "25c06a5ada7843db70fc54f8888df8f616e8689206c5da4bc60badf9bc577594"
     },
     {
       "name": "linear-graphql",

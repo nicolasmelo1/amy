@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 import { CommandRunner } from "@amykit/core";
 import { packageManager, shellCommand } from "./install.js";
 import { paths } from "./paths.js";
+import { type AmyConfig, DEFAULT_CONFIG } from "./config.js";
+import { type Profile } from "./profiles.js";
+import { pluginList } from "./slices.js";
 
 /**
  * One package this machine's two roots hold, and what the range in them
@@ -681,7 +684,10 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   const said: string[] = [];
   const workflows = entryOf(top, "workflows");
   const dropped = moveRetiredKeys(document, top, workflows, said);
-  const converged = convergeProjectProfiles(home, workflows, said);
+  const parsed = { ...DEFAULT_CONFIG, ...(document.toJS() as Record<string, unknown>) } as AmyConfig;
+  const foldedByName = convergeProjectProfiles(home, workflows, said, parsed);
+  foldDefaultWorkflow(top, foldedByName, said);
+  const converged = foldedByName.size > 0;
 
   // An old EXAMPLE always named the QA status, but a hand-written ticket
   // profile can name none of the retired keys and still lean on the
@@ -880,7 +886,8 @@ function foldOneProject(
   group: { name: string; profile: yaml.YAMLMap; spec: string }[],
   workflows: yaml.Pair,
   said: string[],
-): void {
+  parsed: AmyConfig,
+): { readonly kept: string; readonly folded: readonly string[] } {
   const kept = group.find((one) => path.basename(one.spec) === "workflow") ?? group[0]!;
   const others = group.filter((one) => one !== kept);
   const workFolder = path.join(root, "workflow");
@@ -891,9 +898,10 @@ function foldOneProject(
     said.push(`${kept.name}: names ${workFolder} now, the project's work phase`);
   }
   for (const one of others) {
-    carryProfileFields(home, root, { name: kept.name, profile: kept.profile }, one.profile, one.name, said);
+    carryProfileFields(home, root, { name: kept.name, profile: kept.profile }, one.profile, one.name, said, parsed);
     (workflows.value as yaml.YAMLMap).delete(one.name);
   }
+  return { kept: kept.name, folded: others.map((one) => one.name) };
 }
 
 /**
@@ -911,15 +919,35 @@ function convergeProjectProfiles(
   home: string,
   workflows: yaml.Pair | undefined,
   said: string[],
-): boolean {
-  if (workflows === undefined || !yaml.isMap(workflows.value)) return false;
-  let moved = false;
+  parsed: AmyConfig,
+): Map<string, string> {
+  if (workflows === undefined || !yaml.isMap(workflows.value)) return new Map();
+  const foldedByName = new Map<string, string>();
   for (const [root, group] of projectGroupsOf(home, workflows)) {
     if (group.length < 2) continue;
-    foldOneProject(home, root, group, workflows, said);
-    moved = true;
+    const folded = foldOneProject(home, root, group, workflows, said, parsed);
+    for (const name of folded.folded) foldedByName.set(name, folded.kept);
   }
-  return moved;
+  return foldedByName;
+}
+
+/**
+ * Where a config's top-level selector points, once one of the profiles it
+ * named folded: at the single profile the project walks now. A selector left
+ * on a folded name leaves every command without `--workflow` failing to
+ * resolve the one profile that survived.
+ */
+function foldDefaultWorkflow(
+  top: yaml.YAMLMap,
+  foldedByName: Map<string, string>,
+  said: string[],
+): void {
+  const defaultEntry = entryOf(top, "defaultWorkflow");
+  const wanted = defaultEntry && yaml.isScalar(defaultEntry.value) ? defaultEntry.value.value : undefined;
+  const kept = typeof wanted === "string" ? foldedByName.get(wanted) : undefined;
+  if (kept === undefined || defaultEntry === undefined) return;
+  defaultEntry.value = new yaml.Scalar(kept);
+  said.push(`the default workflow \`${wanted}\` folded into \`${kept}\` and names what the project walks now`);
 }
 
 /** Carries a folded profile's agent block when the single one carried none. */
@@ -942,13 +970,20 @@ function carryOwnState(
   root: string,
   kept: { name: string; profile: yaml.YAMLMap },
   folded: yaml.YAMLMap,
+  said: string[],
+  parsed: AmyConfig,
 ): void {
   for (const flag of ["notes", "tasks"] as const) {
-    if (folded.get(flag) === true && kept.profile.get(flag) !== true) kept.profile.add(new yaml.Pair(flag, true));
+    if (folded.get(flag) !== true) continue;
+    const ownFlag = kept.profile.get(flag);
+    // A flag the survivor never said is carried; an explicit value the
+    // survivor wrote by hand is a choice, and is left standing, said.
+    if (ownFlag === undefined) kept.profile.add(new yaml.Pair(flag, true));
+    else if (ownFlag !== true) said.push(`\`${kept.name}\` keeps \`${flag}\` off by hand, so the folded phase's want for it is left off`);
   }
   const briefStore = folded.get("briefStore");
   if (briefStore !== undefined && kept.profile.get("briefStore") === undefined) kept.profile.add(new yaml.Pair("briefStore", briefStore));
-  carryPlugins(home, root, kept, folded);
+  carryPlugins(home, root, kept, folded, said, parsed);
   carrySettings(kept, folded);
 }
 
@@ -958,14 +993,41 @@ function carryPlugins(
   root: string,
   kept: { name: string; profile: yaml.YAMLMap },
   folded: yaml.YAMLMap,
+  said: string[],
+  parsed: AmyConfig,
 ): void {
   const plugins = folded.get("plugins");
   if (!yaml.isSeq(plugins)) return;
-  for (const item of plugins.items) {
-    const spec = unwrap(item);
+  const foldedSpecs = plugins.items.map((item) => String(unwrap(item)));
+  let mounted = kept.profile.get("plugins");
+  if (!yaml.isSeq(mounted)) {
+    // A survivor that says nothing about what it mounts picks what the
+    // machine can serve at boot, the way the mount would have picked it —
+    // a channel nobody configured does not ride along — and the folded
+    // phases' plugins ride beside that set.
+    const effective = parsed;
+    const survivor = {
+      name: kept.name,
+      workflow: String(kept.profile.get("workflow") ?? ""),
+      plugins: [],
+      takesNotes: false,
+      takesTasks: false,
+      settings: {},
+    } as Profile;
+    mounted = new yaml.YAMLSeq();
+    const seen = new Set<string>();
+    for (const spec of [...pluginList(effective, survivor), ...foldedSpecs]) {
+      if (projectRootOf(home, spec) !== undefined) continue;
+      if (seen.has(spec)) continue;
+      seen.add(spec);
+      (mounted as yaml.YAMLSeq).add(new yaml.Scalar(spec));
+    }
+    kept.profile.set("plugins", mounted);
+    said.push(`${kept.name}: keeps the mounts it was going to be recommended, and carries the folded phases' plugins beside them`);
+  }
+  for (const spec of foldedSpecs) {
     if (projectRootOf(home, spec) === root) continue;
-    const mounted = kept.profile.get("plugins");
-    if (yaml.isSeq(mounted) && !mounted.items.some((one) => unwrap(one) === spec)) mounted.items.push(new yaml.Scalar(String(spec)));
+    if (!(mounted as yaml.YAMLSeq).items.some((one) => unwrap(one) === spec)) (mounted as yaml.YAMLSeq).add(new yaml.Scalar(spec));
   }
 }
 
@@ -979,10 +1041,15 @@ function carrySettings(
   const own = kept.profile.get("settings");
   if (yaml.isMap(own)) {
     for (const [key, value] of Object.entries(settings.toJSON() as Record<string, unknown>)) {
-      if (!own.get(key)) own.add(new yaml.Pair(key, value));
+      // A key the survivor carries is left as it was — including an explicit
+      // false, a zero or an empty string, each of which is a written value,
+      // not a missing one.
+      if (own.get(key) === undefined) own.add(new yaml.Pair(key, value));
     }
-  } else {
+  } else if (kept.profile.get("settings") === undefined) {
     kept.profile.add(new yaml.Pair("settings", settings));
+  } else {
+    kept.profile.set("settings", settings);
   }
 }
 
@@ -994,12 +1061,13 @@ function carryProfileFields(
   folded: yaml.YAMLMap,
   name: string,
   said: string[],
+  parsed: AmyConfig,
 ): void {
   // The project's one profile carries the work phase's agent when it has
   // one; a folded phase's own block is said, because the ladder it tuned is
   // not the ladder the single profile drives.
   carryAgent(kept, folded, name, said);
-  carryOwnState(home, root, kept, folded);
+  carryOwnState(home, root, kept, folded, said, parsed);
 }
 
 /** Whether a spec is one of the project's own phase folders, which the walk calls and nothing mounts. */

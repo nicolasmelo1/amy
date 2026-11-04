@@ -1270,4 +1270,80 @@ describe("one project's phase profiles, as the update folds them", () => {
     // The second run moves nothing: one profile per project is the shape.
     expect(migrateSettingsFile(home).said).toEqual([]);
   });
+
+  it("points the config's own selector at the profile that survived the fold", () => {
+    const base = path.join(home, "invoices");
+    fs.writeFileSync(path.join(home, "config.yaml"), `defaultWorkflow: grooming\n${configFor(base)}`, "utf-8");
+    const said = migrateSettingsFile(home);
+
+    expect(said.ok).toBe(true);
+    const rewritten = yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf-8")) as { defaultWorkflow?: string; workflows: Record<string, unknown> };
+    expect(rewritten.defaultWorkflow).toBe("execution");
+    expect(Object.keys(rewritten.workflows)).toEqual(["execution"]);
+    expect(said.said.some((move) => move.includes("default workflow `grooming` folded into `execution`"))).toBe(true);
+  });
+
+  it("mounts what a folded phase carried even when the survivor said nothing about plugins", () => {
+    const base = path.join(home, "invoices");
+    fs.writeFileSync(path.join(home, "config.yaml"), `workflows:
+  grooming:
+    workflow: ${path.join(base, "brief")}
+  execution:
+    workflow: ${path.join(base, "workflow")}
+  proving:
+    workflow: ${path.join(base, "test")}
+    plugins: ["@amykit/plugin-file-tasks"]
+`, "utf-8");
+    const said = migrateSettingsFile(home);
+
+    expect(said.ok).toBe(true);
+    const rewritten = yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf-8")) as { workflows: Record<string, { plugins?: string[] }> };
+    const plugins = rewritten.workflows.execution?.plugins ?? [];
+    expect(plugins).toContain("@amykit/plugin-file-tasks");
+    // The survivor's own recommendation list is written down first, so the
+    // carried plugin rides beside what the boot would have picked anyway.
+    expect(plugins).toContain("@amykit/plugin-file-queue");
+    expect(new Set(plugins).size).toBe(plugins.length);
+  });
+
+  it("leaves a flag the survivor wrote by hand standing, said instead of thrown over", () => {
+    const base = path.join(home, "invoices");
+    fs.writeFileSync(path.join(home, "config.yaml"), `workflows:
+  grooming:
+    workflow: ${path.join(base, "brief")}
+    notes: true
+  execution:
+    workflow: ${path.join(base, "workflow")}
+    notes: false
+  proving:
+    workflow: ${path.join(base, "test")}
+`, "utf-8");
+    const said = migrateSettingsFile(home);
+
+    expect(said.ok).toBe(true);
+    const rewritten = yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf-8")) as { workflows: Record<string, { notes?: boolean }> };
+    expect(rewritten.workflows.execution?.notes).toBe(false);
+    expect(said.said.some((move) => move.includes("keeps `notes` off by hand"))).toBe(true);
+  });
+
+  it("reads an explicit zero, an empty string and a false as settings the survivor wrote, not gaps to fill", () => {
+    const base = path.join(home, "invoices");
+    fs.writeFileSync(path.join(home, "config.yaml"), `workflows:
+  grooming:
+    workflow: ${path.join(base, "brief")}
+    settings:
+      retries: 2
+  execution:
+    workflow: ${path.join(base, "workflow")}
+    settings:
+      retries: 0
+      name: ""
+`, "utf-8");
+    const said = migrateSettingsFile(home);
+
+    expect(said.ok).toBe(true);
+    const rewritten = yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf-8")) as { workflows: Record<string, { settings?: Record<string, unknown> }> };
+    expect(rewritten.workflows.execution?.settings).toEqual({ retries: 0, name: "" });
+    expect(said.said.some((move) => move.includes("grooming: folded into `execution`"))).toBe(true);
+  });
 });

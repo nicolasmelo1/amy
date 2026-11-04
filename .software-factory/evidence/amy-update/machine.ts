@@ -188,19 +188,32 @@ function addProjectPhases(): void {
     ].join("\n"), "utf-8");
   }
   const lines = fs.readFileSync(config, "utf8").split("\n");
+  // The selector rides at the top level: the machine's own selector is
+  // rewritten to name the folded-away brief phase, wherever the file says
+  // it now — and none is inserted where the file already says one.
+  const saidDefault = lines.some((line: string) => /^defaultWorkflow:/.test(line.trim()) && !line.trim().startsWith("#"));
   const kept: string[] = [];
   let spliced = false;
   for (const line of lines) {
-    kept.push(line);
+    if (/^defaultWorkflow:/.test(line.trim())) {
+      kept.push("defaultWorkflow: grooming");
+      continue;
+    }
     if (!spliced && line.trim() === "workflows:") {
+      if (!saidDefault) kept.push("defaultWorkflow: grooming");
+      kept.push(line);
       kept.push("  grooming:");
       kept.push(`    workflow: ${path.join(root, "brief")}`);
       kept.push("  execution:");
       kept.push(`    workflow: ${path.join(root, "workflow")}`);
       kept.push("  proving:");
       kept.push(`    workflow: ${path.join(root, "prove")}`);
+      kept.push("    plugins:");
+      kept.push('      - "@amykit/plugin-file-tasks"');
       spliced = true;
+      continue;
     }
+    kept.push(line);
   }
   if (!spliced) {
     console.error("the config names no workflows block");
