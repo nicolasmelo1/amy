@@ -12,10 +12,11 @@ sources:
 touches:
   - packages/cli/src/config.ts
   - packages/cli/tests/ui-theme.test.ts
+  - packages/cli/tests/ui-theme.property.test.ts
   - packages/ui/src/**
 criteria:
   - { id: A1, statement: "an escalated record's row carries the attention standing in every renderer, with no ui block at all", proof: "deferred:assertion:frame.renderers_agree_on_every_region", sources: [S1, S2, S9] }
-  - { id: A2, statement: "a colour set for one state of one workflow applies there and nowhere else", proof: "deferred:test:packages/cli/tests/ui-theme.test.ts", sources: [S3, S4, S6, S7] }
+  - { id: A2, statement: "a colour set for one state of one workflow applies there and nowhere else", proof: "deferred:property:packages/cli/tests/ui-theme.property.test.ts#state_override_keyed_by_state_alone", sources: [S3, S4, S6, S7] }
   - { id: A3, statement: "a state the workflow does not declare is refused at boot by name", proof: "deferred:test:packages/cli/tests/ui-theme.test.ts", sources: [S5] }
   - { id: A4, statement: "a colour literal in a renderer outside its token file fails the build", proof: "deferred:test:mutation fixture for a-renderer-names-no-colour", sources: [S8] }
 crosses:

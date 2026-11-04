@@ -7,10 +7,11 @@ sources:
   - { id: S5, kind: decision, said: "the record keeps what the run shows: the states passed, the moves and their why, the pull request's number; no ticket text, customer or colleague's name: those belong to the tracker, and this repository is public" }
 touches:
   - packages/cli/tests/manual-proof.test.ts
+  - packages/cli/tests/manual-proof.property.test.ts
   - .software-factory/policy.yaml
 criteria:
   - { id: A1, statement: "one ticket in the real tracker goes from the working status to QA through the installed amy, with a roster reviewer who reviewed it, and a person records that run as the proof", proof: "deferred:assertion:proof.a_manual_run_is_a_proof", sources: [S1, S2, S3, S4] }
-  - { id: A2, statement: "the recorded run names the states the record walked and its pull request, and nothing a ticket or a colleague wrote", proof: "deferred:test:packages/cli/tests/manual-proof.test.ts", sources: [S5] }
+  - { id: A2, statement: "the recorded run names the states the record walked and its pull request, and nothing a ticket or a colleague wrote", proof: "deferred:property:packages/cli/tests/manual-proof.property.test.ts#move_reason_quotes_the_ticket", sources: [S5] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A1, against the real Linear and GitHub, each write made or handed to the operator as its policy says" }
   - { mechanism: install-and-update, answer: n/a, why: "the run uses amy as installed; nothing is installed or updated by this work" }

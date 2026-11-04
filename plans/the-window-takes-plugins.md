@@ -32,6 +32,7 @@ touches:
   - packages/server/tests/surface.test.ts
   - packages/cli/tests/ui-plugins.test.ts
   - packages/core/tests/mount.test.ts
+  - packages/core/tests/mount.property.test.ts
   - .software-factory/locks/**
 criteria:
   - { id: A1, statement: "what this row delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S21] }
@@ -43,7 +44,7 @@ criteria:
   - { id: A7, statement: "a panel entry's record view follows the open record, and an entry declared for one workflow is not on the rail for another's records", proof: "deferred:assertion:window.a_panel_follows_the_open_record", sources: [S10, S14] }
   - { id: A8, statement: "a panel entry that declares neither view, or a state its workflow does not draw, is refused at boot by name", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S4, S15] }
   - { id: A9, statement: "]p and [p walk the rail and a click on an entry opens it, in every renderer", proof: "deferred:assertion:frame.renderers_agree_on_every_region", sources: [S11, S12, S17] }
-  - { id: A10, statement: "two plugins contributing the same name are refused at boot, naming both", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S2, S3, S5, S6, S8] }
+  - { id: A10, statement: "two plugins contributing the same name are refused at boot, naming both", proof: "deferred:property:packages/core/tests/mount.property.test.ts#collision_checked_across_collections", sources: [S2, S3, S5, S6, S8] }
   - { id: A11, statement: "a ui-action reaching a mutation it did not claim is refused at boot", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S18] }
   - { id: A12, statement: "a contribution replacing Work, Workflows or Settings is refused", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S19] }
   - { id: A13, statement: "a view reading only the budget is not recomputed when a record moves", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S9] }

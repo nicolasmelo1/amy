@@ -25,7 +25,7 @@ touches:
 criteria:
   - { id: A1, statement: "Julia-1's ONNX export answers a choice question under Node with the probabilities it gives in its reference implementation", proof: "unspecified:whether it runs under onnxruntime-node is the first thing the work finds", sources: [S4, S11] }
   - { id: A2, statement: "a recorded local-server response with log-probabilities becomes a verdict whose confidence is the answer's probability, and one without them is refused", proof: "unspecified:which local servers return log-probabilities is found first; the recorded fixtures are the check", sources: [S5, S7, S12] }
-  - { id: A3, statement: "a loopback decider configured with a non-loopback URL is refused at boot naming it", proof: "deferred:test:plugins/decider-loopback/tests/plugin.test.ts", sources: [S1, S8] }
+  - { id: A3, statement: "a loopback decider configured with a non-loopback URL is refused at boot naming it", proof: "deferred:property:plugins/decider-loopback/tests/loopback.property.test.ts#hostname_matched_by_prefix", sources: [S1, S8] }
   - { id: A4, statement: "amy decider pull refuses weights whose digest disagrees with the config, and amy doctor names a configured decider with none", proof: "deferred:test:packages/cli/tests/decider.test.ts", sources: [S9, S10] }
   - { id: A5, statement: "with the network off, the reply-kind ladder on a local model reads a question as a discussion and an instruction as a decision, and the record names the model", proof: "deferred:scenario:decider-local", sources: [S1, S2, S3, S6, S13] }
 crosses:

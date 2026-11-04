@@ -18,6 +18,7 @@ sources:
 touches:
   - packages/cli/src/config.ts
   - packages/cli/src/slices.ts
+  - packages/cli/tests/slices.property.test.ts
   - packages/cli/src/doctor.ts
   - packages/cli/src/update.ts
   - packages/core/src/plugin.ts
@@ -33,7 +34,7 @@ criteria:
   - { id: A2, statement: "a plugin calling checkouts() on a mount with no workspace is refused at mount, naming the plugin and the workspace it needs", proof: "deferred:test:packages/core/tests/checkouts.test.ts", sources: [S2, S9] }
   - { id: A8, statement: "a workflow declared with defineWorkflow that never reads its checkouts mounts and walks with no workspace mounted", proof: "deferred:test:packages/core/tests/define-workflow.test.ts", sources: [S14, S15] }
   - { id: A3, statement: "amy doctor on an install that mounts no workspace asks nothing about repositories, checkouts or worktrees, and says ready", proof: "deferred:test:packages/cli/tests/doctor.test.ts", sources: [S3, S10] }
-  - { id: A4, statement: "the host hands no plugin a repository, branch or gate it did not read from that plugin's own slice", proof: "deferred:test:packages/cli/tests/slices.test.ts", sources: [S4, S8] }
+  - { id: A4, statement: "the host hands no plugin a repository, branch or gate it did not read from that plugin's own slice", proof: "deferred:property:packages/cli/tests/slices.property.test.ts#machine_key_leaks_into_a_slice", sources: [S4, S8] }
   - { id: A5, statement: "amy update moves the seven keys under their plugins, keeps the original, moves nothing the second time, and a key put back is refused at boot naming its new place", proof: "deferred:assertion:update.the_workspace_moves_into_its_plugin", sources: [S5, S11] }
   - { id: A6, statement: "on an install with none of the seven keys and no workspace mounted, the installed support inbox walks a request from arrival to a sent answer, after the operator approves it in the conversation", proof: "deferred:assertion:workspace.a_workflow_without_code_needs_no_workspace", sources: [S6, S12, S13] }
   - { id: A7, statement: "ticket-to-qa, errand and note-to-plan walk as their gates prove, with the workspace in the plugin's slice instead of the machine's", proof: "deferred:assertion:workspace.the_code_workflows_walk_with_their_workspace_in_its_plugin", sources: [S7, S8, S11] }

@@ -13,13 +13,15 @@ touches:
   - packages/workflow-ticket-to-qa/src/**
   - packages/workflow-ticket-to-qa/tests/machine.test.ts
   - packages/workflow-ticket-to-qa/tests/retry.test.ts
+  - packages/workflow-ticket-to-qa/tests/attempts.property.test.ts
+  - packages/workflow-ticket-to-qa/tests/retry.property.test.ts
   - packages/workflow-testkit/src/**
 criteria:
   - { id: A1, statement: "a recorded limited Codex run classifies as rate-limited; a recorded failed one still as failed", proof: "unspecified:which field carries the signal is the first thing the work finds; the fixture is the check once it is known", sources: [S1, S2, S5] }
-  - { id: A2, statement: "a ladder ending on rate-limited records no attempt, and attemptsIn is unchanged", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S3, S4] }
+  - { id: A2, statement: "a ladder ending on rate-limited records no attempt, and attemptsIn is unchanged", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/attempts.property.test.ts#limit_charged_as_attempt", sources: [S3, S4] }
   - { id: A3, statement: "the step waits until the reported reset time, or the policy's backoff when none, then runs again on the tree it left", proof: "deferred:walkthrough in the testkit", sources: [S3, S4] }
   - { id: A4, statement: "with two attempts allowed, limited twice then failed twice escalates after the second failure, not the second limit", proof: "deferred:walkthrough in the testkit", sources: [S3] }
-  - { id: A5, statement: "a limited run spends nothing against no-retry-is-free's no-evidence count", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/retry.test.ts", sources: [S4, S6] }
+  - { id: A5, statement: "a limited run spends nothing against no-retry-is-free's no-evidence count", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/retry.property.test.ts#limit_counted_as_unchanged", sources: [S4, S6] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "unspecified:A1's recorded fixture" }
   - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A2, A3" }
