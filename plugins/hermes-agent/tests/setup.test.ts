@@ -105,3 +105,12 @@ describe("what the doctor says about it", () => {
     expect(check.detail).not.toContain("curates");
   });
 });
+
+describe("a blank profile", () => {
+  it("is refused at boot, since it would run Hermes in the operator's own profile", () => {
+    const registry = { contribute: () => {} } as never;
+    const ctx = { config: { profile: "  ", model: "", models: [], timeoutMs: 1000 }, runner: hermes(true) } as never;
+
+    expect(() => plugin.register(registry, ctx)).toThrow(/profile.*blank/);
+  });
+});

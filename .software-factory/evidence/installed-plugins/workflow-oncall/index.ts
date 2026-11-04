@@ -39,6 +39,18 @@ const runtime = (pages: string): WorkflowRuntime => ({
 
 export const plugin: Plugin = {
   name: "@acme/workflow-oncall",
+  // What it prepares, so `init --install` is seen to prepare a package it
+  // installed in the same invocation, not only one that was already there.
+  files: [{ path: "rota.yaml", content: "# who is on call\n" }],
+  setup: [
+    {
+      name: "pager",
+      run: ({ state }) => {
+        fs.writeFileSync(path.join(state, "pager-ready"), "");
+        return { label: "pager", ok: true };
+      },
+    },
+  ],
   register(registry, ctx) {
     registry.workflow(workflow);
     registry.contribute("workflow-runtime", "oncall", runtime(path.join(ctx.paths.state, "pages")));

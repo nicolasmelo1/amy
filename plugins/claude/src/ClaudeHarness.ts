@@ -37,12 +37,15 @@ export const ISOLATED = [
  * and the run goes ahead without it.
  */
 export function lend(tmpDir: string, skill: { name: string; path: string }): string | undefined {
-  if (!fs.existsSync(path.join(skill.path, "SKILL.md"))) return undefined;
+  // Absolute, since a link is read from where it lies: a relative skill root
+  // would otherwise point inside the lent directory and lend nothing.
+  const source = path.resolve(skill.path);
+  if (!fs.existsSync(path.join(source, "SKILL.md"))) return undefined;
 
   const root = fs.mkdtempSync(path.join(tmpDir, "amy-claude-skill-"));
   const skills = path.join(root, ".claude", "skills");
   fs.mkdirSync(skills, { recursive: true });
-  fs.symlinkSync(skill.path, path.join(skills, skill.name), "dir");
+  fs.symlinkSync(source, path.join(skills, skill.name), "dir");
   return root;
 }
 

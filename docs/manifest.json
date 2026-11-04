@@ -7759,7 +7759,7 @@
             "type": "string",
             "required": false,
             "default": "amy",
-            "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing"
+            "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot"
           },
           {
             "name": "timeoutMs",

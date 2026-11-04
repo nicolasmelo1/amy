@@ -294,11 +294,7 @@ program
     // The files a plugin brings arrive with the machine that mounts it, and
     // never over one somebody has edited: a template is a starting point, not
     // a default to restore.
-    const gathered = await gather(config, known, loadMountable);
-    for (const profile of known) {
-      writeFiles(home, config, profile, gathered.contributions, commandOut);
-      await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
-    }
+    await prepare(config, known);
 
     const wanted = known.flatMap((profile) =>
       pluginList(config, profile),
@@ -312,8 +308,26 @@ program
       return;
     }
 
-    await supply(absent, options.install);
+    // A package installed just now brought no files and ran no setup above,
+    // since it would not import then; it does now, and an `init --install`
+    // that left it unprepared until a second `init` would be half an install.
+    if (await supply(absent, options.install)) await prepare(config, known);
   });
+
+/**
+ * Writes the files each profile's plugins bring, then runs what they set up.
+ *
+ * Both only ever add: a file that is there is kept, and a setup finds what it
+ * made before. So running it again after an install prepares just what the
+ * install brought.
+ */
+async function prepare(config: AmyConfig, known: readonly Profile[]): Promise<void> {
+  const gathered = await gather(config, known, loadMountable);
+  for (const profile of known) {
+    writeFiles(home, config, profile, gathered.contributions, commandOut);
+    await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
+  }
+}
 
 /**
  * Installs what the config asks for and this machine has not got.
@@ -328,7 +342,7 @@ program
  * packages are amy's, resolved through the root the loader reads, and nothing
  * outside `.amy` changes when one is added.
  */
-async function supply(absent: readonly string[], chosen?: boolean): Promise<void> {
+async function supply(absent: readonly string[], chosen?: boolean): Promise<boolean> {
   console.log(`\nThese are not installed yet:`);
   for (const name of absent) console.log(`  ${name}`);
 
@@ -336,7 +350,7 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<void
 
   if (!wanted) {
     console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, "--", ...absent])}`);
-    return;
+    return false;
   }
 
   ensurePluginsRoot(paths(home).plugins);
@@ -348,7 +362,7 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<void
     console.error(outcome.output || "it said nothing");
     console.error("\nInstall them by hand, then run `amy doctor`.");
     process.exitCode = 1;
-    return;
+    return false;
   }
 
   const still = absent.filter((name) => !installedPlugins(paths(home).plugins).includes(name));
@@ -360,10 +374,11 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<void
     console.error(`\nnpm succeeded, but these still do not resolve: ${still.join(", ")}`);
     console.error(`Check what is in ${paths(home).plugins} against the root npm wrote.`);
     process.exitCode = 1;
-    return;
+    return false;
   }
 
   console.log(`installed ${absent.length} package(s). Now run \`amy doctor\`.`);
+  return true;
 }
 
 function confirm(): boolean {

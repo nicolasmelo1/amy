@@ -424,7 +424,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
-| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing |
+| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 ### `@amykit/plugin-linear`

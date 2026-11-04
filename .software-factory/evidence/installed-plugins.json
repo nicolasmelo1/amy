@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), installing four packages and a workflow written outside this repository onto a scratch machine on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/installed-plugins-run.json",
-      "report_sha256": "157174a6ff712475fd86d13de8e2eead316ab7d0cfda4f3a9f97d1f78b526230",
+      "report_sha256": "e575969085d365ca37f830f504b18b8983a164bd92f076a812b28ca30f895c35",
       "required_assertions": []
     }
   ]

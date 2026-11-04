@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { CommandResult } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
-import { ClaudeHarness, ISOLATED } from "../src/ClaudeHarness.js";
+import { ClaudeHarness, ISOLATED, lend } from "../src/ClaudeHarness.js";
 
 /**
  * The envelope `claude -p --output-format json` prints, shaped from a real
@@ -243,6 +243,21 @@ describe("a run apart from the operator's own Claude", () => {
     expect(fs.existsSync(lent)).toBe(false);
     expect(fs.existsSync(path.join(installed, "SKILL.md"))).toBe(true);
     fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("links the skill by its absolute place, so a relative skill root still lends it", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "amy-claude-test-"));
+    const previous = process.cwd();
+    fs.mkdirSync(path.join(tmp, "skills", "logion"), { recursive: true });
+    fs.writeFileSync(path.join(tmp, "skills", "logion", "SKILL.md"), "x");
+    process.chdir(tmp);
+    try {
+      const lent = lend(tmp, { name: "logion", path: "./skills/logion" })!;
+      expect(fs.existsSync(path.join(lent, ".claude", "skills", "logion", "SKILL.md"))).toBe(true);
+    } finally {
+      process.chdir(previous);
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it("lends nothing when the step names no skill", async () => {
