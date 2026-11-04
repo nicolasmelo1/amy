@@ -1,5 +1,5 @@
 ---
-base: a308896ee2b715d2a30c372806cdb5e53c62ab01
+base: f7649ecb325dfa063ee629fab848fab884dd1590
 sources:
   - { id: S1, kind: code, ref: "plugins/claude/src/ClaudeHarness.ts", said: "claude -p runs with the operator's user settings: their hooks, plugins, ~/.claude/CLAUDE.md, every skill in ~/.claude/skills, and auto-memory writing under ~/.claude/projects/<cwd>/memory" }
   - { id: S2, kind: code, ref: "plugins/codex/src/CodexHarness.ts", said: "codex exec runs with ~/.codex/config.toml, its plugins and apps (MCP servers such as github and gmail), its hooks.json, and persists the session" }
