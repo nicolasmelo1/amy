@@ -54,6 +54,12 @@ crosses:
   - { mechanism: hooks, answer: n/a, why: "attentionStates is a declared field, not a hook; before, after and interrupt are unchanged" }
   - { mechanism: calls, answer: n/a, why: "only an optional attentionStates field is added; how workflows call one another is unchanged" }
   - { mechanism: record-migration, answer: n/a, why: "a diagram gains a class line; no record shape changes, and a record's standing is derived, not stored" }
+  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A10" }
+guarantee:
+  - { holds: "the title counts exactly the records in an attention state, or says it cannot see", not_against: "a record that entered and left attention while the server was unreachable" }
+  - { holds: "one notification per entry into an attention state, none when notifications are off", not_against: "macOS Focus or Do Not Disturb holding it back; a record leaving and re-entering attention is a new entry" }
+  - { holds: "the menu moves with the window closed while the app runs", not_against: "an app quit or not yet started at login: nothing is counted or notified then" }
+  - { holds: "the menu bar item is drawn and measured on macOS", not_against: "the Windows and Linux tray, which no gate measures yet" }
 cut:
   - "deciding from the menu bar: refused; a decision happens in the thread"
 exit: "on a Mac, window closed, a ticket escalates; the menu bar's count goes from 0 to 1 and a notification arrives; choosing it opens the window on that ticket; every step's menu bar projection equals the locked golden"

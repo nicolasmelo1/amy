@@ -43,6 +43,10 @@ crosses:
   - { mechanism: agent-replies, answer: n/a, why: "only what is asked changes; a reply is read as today" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "AskContext gains an optional field; the Harness port writes nothing to the tracker or the code host" }
   - { mechanism: config, answer: works, proof: "deferred:A2, A4, A8" }
+guarantee:
+  - { holds: "a skills, ladderByStep or effortByStep key no mounted workflow dispatches to the agent is refused at boot, by name", not_against: "an action written as a bare function, which declares no port: nothing at boot can tell it reaches the agent" }
+  - { holds: "an effort reaches a harness whose adapter maps it; one without the control gets the question unchanged", not_against: "an installed claude or codex CLI that renamed or dropped the effort level the adapter maps to: the run fails as that CLI fails" }
+  - { holds: "the keys are checked once, when the daemon mounts", not_against: "config.yaml edited while the daemon runs: the edit is checked at the next boot" }
 exit: "a self-written workflow gives its own step a cheaper model, its own skill and how hard to think from config.yaml, no amy code naming it; a typo in any is refused at boot, not found by a succeeding run"
 ---
 # A skill ladder for your own steps

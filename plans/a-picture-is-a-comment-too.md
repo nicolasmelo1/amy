@@ -33,6 +33,10 @@ criteria:
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "the adapters and ports only read more fields; no write to the tracker or code host is added" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:assertion:picture.an_attachment_url_the_harness_cannot_open_is_reported_not_swallowed (S10, S12)" }
+guarantee:
+  - { holds: "an attachment reaches the prompt as the URL the tracker or forge returned, and a conversation without one renders as before", not_against: "a URL that expired, needs a credential the harness lacks, or was deleted upstream before the run: the run reports it (A6)" }
+  - { holds: "amy never fetches, stores or inspects an attachment", not_against: "a comment author pointing the harness at a hostile or internal URL: the URL is passed as written, and what the harness may open is its own sandbox's" }
+  - { holds: "a picture written as a markdown image, or returned as a tracker attachment, is carried", not_against: "an image in an HTML img tag or a code fence: it stays body text; one past the page of comments the adapter already reads is not seen" }
 cut:
   - "an image-parsing dependency inside amy: refused; the harness reads the picture (S10)"
   - "passing image bytes through amy: refused; a URL the harness can open is the whole contract (S9)"

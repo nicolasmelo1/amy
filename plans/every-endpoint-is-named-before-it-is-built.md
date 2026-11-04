@@ -107,6 +107,10 @@ criteria:
   - { id: A13, statement: "unpairing a device closes its stream and answers its next request 401, while another device's session keeps receiving", proof: "deferred:assertion:server.unpairing_ends_the_session", sources: [S14, S79] }
   - { id: A14, statement: "listDevices, unpairDevice and setRemoteAccess are absent over TCP and answer on the socket, and unpairDevice ends that device's sessions", proof: "deferred:assertion:server.the_devices_are_the_owners_to_manage", sources: [S80, S81, S82] }
   - { id: A15, statement: "a pairing request is approved on the socket only with its matching code, and a device approved read-only pokes only after setDeviceActing grants it, in the same session", proof: "deferred:assertion:server.approving_and_granting_are_the_owners", sources: [S83, S84] }
+crosses:
+  - { mechanism: mount-and-capabilities, answer: n/a, why: "an operation's writes are checked against the server's registry, not a workflow's claimed capabilities; mount and actions are unchanged" }
+  - { mechanism: tracker-and-host-writes, answer: n/a, why: "surface.yaml only names operations, and none writes to a tracker or forge (cut)" }
+  - { mechanism: rendering, answer: n/a, why: "views are named in surface.yaml only; packages/ui and the intent vocabulary are untouched, and A7 reads the vocabulary as it is" }
 guarantee:
   - { holds: "a local-only operation or view is reached only on the local socket", not_against: "a TCP connection from 127.0.0.1, a tunnel included" }
   - { holds: "only the two webhook routes answer without amy's token", not_against: "a valid tool signature, which authenticates those two" }

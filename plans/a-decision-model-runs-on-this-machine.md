@@ -20,12 +20,22 @@ touches:
   - packages/cli/src/doctor.ts
   - packages/cli/tests/decider.test.ts
   - .software-factory/evidence/decider-local-scenario.sh
+  - packages/cli/src/config.ts
+  - packages/cli/src/paths.ts
 criteria:
   - { id: A1, statement: "Julia-1's ONNX export answers a choice question under Node with the probabilities it gives in its reference implementation", proof: "unspecified:whether it runs under onnxruntime-node is the first thing the work finds", sources: [S4, S11] }
   - { id: A2, statement: "a recorded local-server response with log-probabilities becomes a verdict whose confidence is the answer's probability, and one without them is refused", proof: "unspecified:which local servers return log-probabilities is found first; the recorded fixtures are the check", sources: [S5, S7, S12] }
   - { id: A3, statement: "a loopback decider configured with a non-loopback URL is refused at boot naming it", proof: "deferred:test:plugins/decider-loopback/tests/plugin.test.ts", sources: [S1, S8] }
   - { id: A4, statement: "amy decider pull refuses weights whose digest disagrees with the config, and amy doctor names a configured decider with none", proof: "deferred:test:packages/cli/tests/decider.test.ts", sources: [S9, S10] }
   - { id: A5, statement: "with the network off, the reply-kind ladder on a local model reads a question as a discussion and an instruction as a decision, and the record names the model", proof: "deferred:scenario:decider-local", sources: [S1, S2, S3, S6, S13] }
+crosses:
+  - { mechanism: config, answer: works, proof: "deferred:A3, A4" }
+  - { mechanism: profiles-and-state, answer: n/a, why: "~/.amy/models is machine-wide like plugins/, written only by amy decider pull and read by every profile; no profile's state, PID or log moves" }
+  - { mechanism: mount-and-capabilities, answer: n/a, why: "each plugin registers a Decider through the existing registry and claims no write; mount is unchanged" }
+  - { mechanism: install-and-update, answer: n/a, why: "both plugins install through amy add like any other; weights come only from amy decider pull, never at install, update or boot" }
+  - { mechanism: agent-replies, answer: n/a, why: "a local server's response is read as log-probabilities into a typed Verdict, never as prose; one without them is refused (A2)" }
+  - { mechanism: attempts-and-waits, answer: n/a, why: "a decider is asked while the observation is built, not as an agent run; no attempt is charged or given back" }
+  - { mechanism: record-migration, answer: n/a, why: "the verdict's place on the record is a-decision-is-asked-of-a-port's; this plan only fills its model and confidence" }
 guarantee:
   - { holds: "no decider is installed by default; without the decide key neither plugin is asked anything", not_against: "an install that configures decide" }
 failures:

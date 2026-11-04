@@ -26,6 +26,11 @@ criteria:
   - { id: A7, statement: "an unknown policy.decisions value is refused at boot by name", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S4] }
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A1; immediate is the default, so a record saved with no held decisions plans as today" }
+  - { mechanism: config, answer: works, proof: "deferred:A7; policy.decisions is refused at boot by name, as policy.writes and policy.conversation are" }
+guarantee:
+  - { holds: "held disagreements are kept on the record, so a restart between rounds loses none", not_against: "a held thread whose objection was edited in place upstream: it is re-read for resolved, outdated or answered, not for what it now says" }
+  - { holds: "the batch is true of the pull request when it is sent", not_against: "the pull request moving after the message is sent: the owner's answer is read as today" }
+  - { holds: "a round with no new disagreement sends what is held", not_against: "a reviewer that finds something new every round: the batch waits for a quiet round, however long that is" }
 cut:
   - "holding non-review escalations (gate red past attempts, PR too large, empty roster) under batch: refused (S8)"
 exit: "under policy.decisions: batch, three review rounds that find one, one and zero decisions reach the owner as one message carrying the two that still apply, after the third round and not before"

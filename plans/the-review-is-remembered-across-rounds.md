@@ -17,6 +17,10 @@ touches:
   - packages/workflow-ticket-to-qa/src/machine.ts
   - packages/workflow-ticket-to-qa/src/review.ts
   - packages/workflow-ticket-to-qa/src/agent-steps.ts
+  - packages/core/src/ports/CodeHost.ts
+  - plugins/github/src/GitHubCodeHost.ts
+  - plugins/github/tests/GitHubCodeHost.test.ts
+  - packages/test-fixtures/src/fakes.ts
   - packages/workflow-ticket-to-qa/tests/record.test.ts
   - packages/workflow-ticket-to-qa/tests/machine.test.ts
   - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts
@@ -33,6 +37,10 @@ criteria:
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A6" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts; readVerdicts reads the five verdicts of S6, and disagreed still reaches the owner" }
+  - { mechanism: tracker-and-host-writes, answer: n/a, why: "a thread comment gains the id judgedUpTo names, read from the forge; no write is added" }
+guarantee:
+  - { holds: "a thread is work again only when a comment newer than its judgedUpTo appears in it", not_against: "a comment edited in place, or deleted, upstream: only a new comment reopens a thread" }
+  - { holds: "a verdict and its note outlive the round, the restart and the daemon that wrote them", not_against: "comments past the page of a thread the forge query returns: a reply beyond it is not seen" }
 cut:
   - "the follow-up on a deferred thread: workflow policy; whether deferred means next sprint or never is not amy's question"
 exit: "what a review settled, deferred or answered is remembered across rounds with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it"

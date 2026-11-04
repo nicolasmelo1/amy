@@ -45,7 +45,7 @@ crosses:
   - { mechanism: calls, answer: works, proof: "deferred:A8; a called workflow's runtime is built on the same path, so it too is handed checkouts only when it reads them" }
   - { mechanism: hooks, answer: n/a, why: "before, after and interrupt are untouched; only when a runtime's checkouts are built changes" }
 guarantee:
-  - { holds: "an install that drives no code is asked for no repository, by the config, the doctor or the mount" }
+  - { holds: "an install that drives no code is asked for no repository, by the config, the doctor or the mount", not_against: "a workflow plugin that asks for a repository setting of its own, outside config, doctor and mount" }
 failures:
   - { step: mount, when: "a plugin calls checkouts() and no workspace is mounted", goes_to: "refused at boot, naming the plugin and the workspace it needs" }
   - { step: boot, when: "one of the seven keys is put back at the top level", goes_to: "refused, naming the plugin slice it now lives in" }

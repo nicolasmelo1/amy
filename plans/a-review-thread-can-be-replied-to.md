@@ -26,6 +26,10 @@ criteria:
 crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "test:packages/core/tests/mount.test.ts" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "test:packages/core/tests/mount.test.ts" }
+guarantee:
+  - { holds: "one call posts one reply inside the thread named, as the credential's account", not_against: "a retry after the forge took the reply but its caller failed before saving: the reply is posted twice; the port does not deduplicate" }
+  - { holds: "a refused reply throws and is never reported as posted", not_against: "a thread deleted, a pull request closed or locked, or the forge rate-limiting between the look and the reply: the call throws and the port does not retry" }
+  - { holds: "the reply is the body given, posted as is", not_against: "what the body says or who decided to send it: workflow policy (S8)" }
 failures:
   - { step: replyToReviewThread, when: "the implementor cannot reply (a forge with no thread concept)", goes_to: "it throws; the action fails named, at boot, by the workflow that used it" }
 cut:

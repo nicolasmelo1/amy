@@ -38,6 +38,12 @@ criteria:
   - { id: A14, statement: "the terminal scenario records launch to PTY ready, first matching frame and typing latency, and one past its threshold turns the gate red naming it", proof: "deferred:assertion:frame.the_terminal_is_within_its_budget", sources: [S16, S17] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A1, A2, A8" }
+guarantee:
+  - { holds: "every region is drawn at frame.yaml's narrowest size, 80×24", not_against: "a terminal smaller than that" }
+  - { holds: "terminal and desktop agree on every region, measured in cells", not_against: "a glyph whose width the terminal and Ink disagree on (emoji, East Asian wide, ambiguous width), shifting cells by the difference" }
+  - { holds: "mouse reporting is off after the window exits or suspends", not_against: "a kill -9 or crash, which leaves the terminal in mouse mode until reset" }
+  - { holds: "a terminal reporting no mouse still answers every key", not_against: "a multiplexer (tmux, screen) not passing mouse reports, or a key the terminal never sends (⌘ chords)" }
+  - { holds: "the window returns to the same record when $EDITOR exits", not_against: "an $EDITOR returning before the edit ends, such as code without --wait, whose copy is submitted as it was" }
 failures:
   - { step: diagram edit in $EDITOR, when: "saveWorkflowDiagram refuses the copy or finds it stale", goes_to: "workflow.mmd stays exactly as it was; the copy stays to be edited again" }
   - { step: mouse reporting, when: "the terminal reports no mouse", goes_to: "the keys work exactly as they were" }

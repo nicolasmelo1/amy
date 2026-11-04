@@ -49,9 +49,9 @@ crosses:
   - { mechanism: config, answer: works, proof: "deferred:A2, A4" }
   - { mechanism: workflow-tooling, answer: n/a, why: "the testkit's world gains a scripted decider; its walk of states and edges is unchanged" }
 guarantee:
-  - { holds: "no model takes plan() or any state decision; no confidence reaches a transition except through a recorded verdict" }
-  - { holds: "agent steps that read code (ticket triage, implementation, self-review) stay with the harness; a decider reads only the context it is handed" }
-  - { holds: "answer and discuss read exactly as they do today, and answer stays the default" }
+  - { holds: "no model takes plan() or any state decision; no confidence reaches a transition except through a recorded verdict", not_against: "a workflow whose own code reads a model's output into a transition outside the port" }
+  - { holds: "agent steps that read code (ticket triage, implementation, self-review) stay with the harness; a decider reads only the context it is handed", not_against: "a decider plugin that reads files or the network on its own: it runs with the person's rights, as every plugin does" }
+  - { holds: "answer and discuss read exactly as they do today, and answer stays the default", not_against: "a workflow that sets its own policy.conversation and so its own default" }
 cut:
   - "later, after reply-kind runs on real threads: review triage (a strong model reads the review first), a decider takes the common misunderstanding/real/settled case, leaving unsure threads to the strong model"
   - "later: repeat detection, new versus already-settled disagreement (decisions are asked in a batch)"
