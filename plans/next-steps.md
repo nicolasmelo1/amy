@@ -322,6 +322,8 @@ machine.
 | 40 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) | A decider whose threshold was never measured only records what it would have said; after `amy decide measure` it decides, and new weights put it back in shadow |
 | 41 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) | The same question is answered by a local model, Clef on Workers AI and OpenAI's Decisions API by changing only `config.yaml`, all pass one conformance suite, and a question declared `local` is refused a hosted rung at boot by name |
 
+**Delivered:** *A run carries only what amy hands it* now lives at `docs/design/a-run-carries-only-what-amy-hands-it.md`, where Claude, Codex and Hermes each run apart from the operator's own setup, a Claude step is lent only the skill it names, and `amy init` creates the Hermes profile amy runs in.
+
 **Delivered:** *Telegram is a conversation* now lives at `docs/design/telegram-is-a-conversation.md`, where `@amykit/plugin-telegram` opens a topic per work item in the operator's private chat with a bot, and its Bot API stand-in is held to a contract derived from Telegram's reference page.
 
 **Delivered:** *The config is written by what is mounted* now lives at `docs/design/the-config-is-written-by-what-is-mounted.md`, where `amy init` writes only the machine, `amy add` appends the block a workflow's schema asks for, `amy config explain` lists every mounted setting, and `amy update` moves the retired top-level vocabulary under the work that reads it.

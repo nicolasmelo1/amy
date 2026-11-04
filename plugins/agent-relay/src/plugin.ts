@@ -21,7 +21,7 @@ import { configSchema } from "./config.js";
 
 type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 import { inertCeilingProblems } from "./pricing.js";
-import { DEFAULT_SKILL_ROOT, installedSkills, parseSkills, skillsNamed } from "./skills.js";
+import { DEFAULT_SKILL_ROOT, installedSkills, locateSkill, parseSkills, skillsNamed } from "./skills.js";
 
 type Settings = ConfigOf<typeof configSchema>;
 
@@ -202,6 +202,7 @@ function build(ctx: TypedContext): HarnessRelay {
     log: ctx.log,
     now: ctx.now,
     skills: skillLadders(ctx),
+    locate: (skill) => locateSkill(skillRootsOf(ctx), skill),
   });
 }
 
@@ -260,8 +261,7 @@ function skillLadders(ctx: TypedContext): SkillLadders {
   const parsed = parseSkills(ctx.config.skills);
   if (!parsed.ok) throw new Error(parsed.problems.join("; "));
 
-  const roots = ctx.config.skillRoots;
-  const installed = installedSkills(roots.length > 0 ? roots : [DEFAULT_SKILL_ROOT]);
+  const installed = installedSkills(skillRootsOf(ctx));
 
   const missing = skillsNamed(parsed.ladders).filter((skill) => !installed.includes(skill));
   if (missing.length > 0) {
@@ -272,6 +272,12 @@ function skillLadders(ctx: TypedContext): SkillLadders {
   }
 
   return parsed.ladders;
+}
+
+/** Where installed skills are looked for: the configured roots, or the harness's own. */
+function skillRootsOf(ctx: TypedContext): readonly string[] {
+  const roots = ctx.config.skillRoots;
+  return roots.length > 0 ? roots : [DEFAULT_SKILL_ROOT];
 }
 
 /**

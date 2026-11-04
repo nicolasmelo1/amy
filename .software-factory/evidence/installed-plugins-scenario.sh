@@ -163,6 +163,14 @@ else
   record plugins.a_global_install_is_not_needed 1
 fi
 
+# A package `init --install` installed is prepared by that same invocation:
+# its file written and its setup run, with no second `init`.
+if [ -f "$work/home/.amy/oncall/rota.yaml" ] && [ -f "$work/home/.amy/oncall/pager-ready" ]; then
+  record plugins.an_installed_plugin_is_prepared_by_the_same_init 0
+else
+  record plugins.an_installed_plugin_is_prepared_by_the_same_init 1
+fi
+
 # Something parent-walk resolution would have found, but the explicit root
 # must not. It lives beside the command, never in `.amy/plugins`.
 mkdir -p "$work/lib/node_modules/@amykit/plugin-parent-walk"

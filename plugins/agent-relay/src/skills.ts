@@ -56,6 +56,20 @@ export function installedSkills(roots: readonly string[]): string[] {
   return [...new Set(found)].sort();
 }
 
+/**
+ * The directory a skill is installed in, from the first root that holds it.
+ *
+ * The same roots, in the same order, `installedSkills` answered from, so a
+ * skill the mount accepted is a skill this finds.
+ */
+export function locateSkill(roots: readonly string[], skill: string): string | undefined {
+  for (const root of roots) {
+    const directory = path.join(expandHome(root), skill);
+    if (fs.existsSync(path.join(directory, "SKILL.md"))) return directory;
+  }
+  return undefined;
+}
+
 function skillsUnder(root: string): string[] {
   if (!fs.existsSync(root)) return [];
 

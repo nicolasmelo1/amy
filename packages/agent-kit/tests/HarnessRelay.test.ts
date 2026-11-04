@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AgentOutcome, AgentRun, Harness } from "@amykit/core";
+import { AgentOutcome, AgentRun, AskContext, Harness } from "@amykit/core";
 import { RecordingEventLog } from "@amykit/test-fixtures";
 import { HarnessRelay } from "../src/HarnessRelay.js";
 import { oneLadder } from "../src/ladders.js";
@@ -195,6 +195,26 @@ describe("one harness made of several", () => {
 });
 
 describe("handing the step to a skill", () => {
+  it("hands the harness the skill it addressed the prompt to, with the directory it is installed in", async () => {
+    const contexts: AskContext[] = [];
+    const cli: Harness = {
+      name: "claude",
+      ask: async (_prompt, _cwd, context = {}) => {
+        contexts.push(context);
+        return { text: "done", run: run(contexts.length === 1 ? "failed" : "completed", "claude", "sonnet") };
+      },
+    };
+    const only: NamedHarness = { name: "claude:sonnet", harness: "claude", model: "sonnet", cli };
+
+    await new HarnessRelay(oneLadder([only]), {
+      skills: { "draft-plan": ["factory-author", "logion"] },
+      locate: (skill) => (skill === "factory-author" ? "/skills/factory-author" : undefined),
+    }).ask("write a plan", "/x", { step: "draft-plan", workId: "note-1" });
+
+    expect(contexts.map((context) => context.skill)).toEqual([{ name: "factory-author", path: "/skills/factory-author" }, undefined]);
+    expect(contexts.every((context) => context.workId === "note-1")).toBe(true);
+  });
+
   it("addresses the prompt to the skill named for the step", async () => {
     const only = rung("claude", "sonnet", ["completed"]);
 
