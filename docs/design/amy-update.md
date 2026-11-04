@@ -215,6 +215,14 @@ credential.
 - [x] The refusal names the destination the way the operator would write it,
       as `settings.qaStatusName` under the profile that drives
       (proof: assertion:update.a_moved_key_names_its_destination)
+- [x] A project the config named as three phase profiles turns into the
+      project's one profile in the same update — the walk's own folder named
+      where the profiles were, every fold said, the original file kept beside
+      the config, the folded machine booted by the update's own check, and a
+      second update moving nothing the fold did not already move — from
+      [a project is brief, work and proof](a-project-is-brief-work-and-proof.md)
+      (proof: assertion:update.the_phases_become_one_project)
+      (proof: test:packages/cli/tests/update.test.ts)
 
 **Exit condition:** a machine two versions behind runs one command, ends
 up on the current one with its work untouched, and the skills in its
