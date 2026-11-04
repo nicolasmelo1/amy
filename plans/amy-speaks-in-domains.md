@@ -21,12 +21,12 @@ sources:
   - { id: S19, kind: decision, said: "every operation has an id, a one-line summary, a description of what it does and never does, and its domain; every schema property a description; every input and output an example" }
   - { id: S20, kind: decision, said: "every error is the envelope { code, message, details? }; every code an operation returns is declared on it as <domain>.<reason>; an undeclared domain error is an internal error and a failing test" }
   - { id: S21, kind: decision, said: "the contract is the sum of @amykit/services and every mounted plugin's operations; its document, packages/services/openapi.json, is generated from services alone by npm run build, extensions x-amy-local-only and x-amy-writes included" }
-  - { id: S22, kind: decision, said: "call(contract, id, input, context) runs one operation in process, validating input and output against the operation's own schemas: the one road every door takes" }
+  - { id: S22, kind: decision, said: "invoke(contract, id, input, context) runs one operation in process, validating input and output against its own schemas: the one road every door takes. Not call, which workflow call states already export" }
   - { id: S23, kind: decision, said: "each gate is deterministic, lands with this row before the first domain, and has a mutation fixture sf verify shows tripping it" }
   - { id: S24, kind: decision, said: "the-services-keep-their-domains (layer 0, command over the TS compiler's view of packages/services) refuses an operation file exporting anything but its operation, and an exported input or output schema" }
   - { id: S25, kind: decision, said: "it also refuses a domain importing another; an operation or service importing a port; a service importing an operation; a domain missing operations/, services/, exceptions.ts or index.ts; any transport import under packages/services" }
   - { id: S26, kind: decision, said: "the-contract-documents-itself (layer 4, command over openapi.json) refuses missing id, summary, description or domain; undescribed properties; exampleless input or output; non-envelope errors; codes not <domain>.<reason>; missing x-amy-local-only or x-amy-writes" }
-  - { id: S27, kind: decision, said: "every-declared-error-is-tested (layer 3, command) refuses a declared (operation, error code) no test produced; operation tests run every operation through call, recording each outcome seen" }
+  - { id: S27, kind: decision, said: "every-declared-error-is-tested (layer 3, command) refuses a declared (operation, error code) no test produced; operation tests run every operation through invoke, recording each outcome seen" }
   - { id: S28, kind: decision, said: "the-contract-only-breaks-on-purpose (layer 2, command) refuses an openapi.json change oasdiff breaking reports at ERR against the base document, unless the commit raises apiMajor; oasdiff is pinned in the toolchain lock beside sf and gh" }
   - { id: S29, kind: decision, said: "the-services-keep-no-database (layer 0, text_pattern) refuses better-sqlite3, sqlite3, pg, mysql2, prisma, drizzle-orm, typeorm, knex, level, lmdb under packages/services, and any node:fs call outside repositories/" }
   - { id: S31, kind: decision, said: "no door is written by hand: the command line, the server's routes and the SDK are generated from the contract, so an operation is written once, in its domain, and nowhere else. Decided 2026-11-04" }
@@ -48,19 +48,20 @@ criteria:
   - { id: A3, statement: "a service or operation importing a port, or anything under packages/services importing commander, hono or node:http, fails the build", proof: "deferred:test:mutation fixture for the-services-keep-their-domains", sources: [S1, S4, S12, S13, S14, S25] }
   - { id: A4, statement: "an operation without a description, or a property without one, fails the build naming the operation and the property", proof: "deferred:test:mutation fixture for the-contract-documents-itself", sources: [S2, S19, S26] }
   - { id: A5, statement: "a declared error no test produced fails the build, naming the operation and the code", proof: "deferred:test:mutation fixture for every-declared-error-is-tested", sources: [S27] }
-  - { id: A6, statement: "a domain error no operation declared comes back from call as an internal error and fails the operation's test", proof: "deferred:test:packages/services/tests/errors.test.ts", sources: [S12, S20] }
+  - { id: A6, statement: "a domain error no operation declared comes back from invoke as an internal error and fails the operation's test", proof: "deferred:test:packages/services/tests/errors.test.ts", sources: [S12, S20] }
   - { id: A7, statement: "removing an output field without raising apiMajor fails the build, and raising it lets the change through", proof: "deferred:test:mutation fixture for the-contract-only-breaks-on-purpose", sources: [S28, S30] }
   - { id: A8, statement: "importing a database driver or an ORM under packages/services, or touching node:fs outside a repository, fails the build", proof: "deferred:test:mutation fixture for the-services-keep-no-database", sources: [S16, S29] }
-  - { id: A9, statement: "a record the daemon rewrites on disk is what call answers next, with no restart and no cache in between", proof: "deferred:test:packages/services/tests/files-are-the-truth.test.ts", sources: [S17, S18] }
-  - { id: A10, statement: "an operation declared with a Zod schema and one declared with an ArkType schema both run through call and both appear in the document, and @amykit/core still has no runtime dependency", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S3, S5, S6, S7] }
-  - { id: A11, statement: "call refuses an input its schema rejects and an output its schema rejects, naming the operation, before and after the handler", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S22] }
-  - { id: A12, statement: "a streaming operation yields its named events through call in order, and each event schema is in the document", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S8] }
+  - { id: A9, statement: "a record the daemon rewrites on disk is what invoke answers next, with no restart and no cache in between", proof: "deferred:test:packages/services/tests/files-are-the-truth.test.ts", sources: [S17, S18] }
+  - { id: A10, statement: "an operation declared with a Zod schema and one declared with an ArkType schema both run through invoke and both appear in the document, and @amykit/core still has no runtime dependency", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S3, S5, S6, S7] }
+  - { id: A11, statement: "invoke refuses an input its schema rejects and an output its schema rejects, naming the operation, before and after the handler", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S22] }
+  - { id: A14, statement: "a workflow call state and a call(callee, binding) in errand still run as before, beside invoke, with both exported from @amykit/core", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S22] }
+  - { id: A12, statement: "a streaming operation yields its named events through invoke in order, and each event schema is in the document", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S8] }
   - { id: A13, statement: "services with no domain build a valid OpenAPI 3.1 document, and one example domain adds exactly its operations to it", proof: "deferred:test:packages/services/tests/contract.test.ts", sources: [S9, S21, S31, S32] }
 crosses:
   - { mechanism: queue-and-store, answer: n/a, why: "a repository reaches file-store and file-queue only through their ports, whose claim, recovery and pruning are unchanged; this row ships no domain that writes" }
   - { mechanism: briefs, answer: n/a, why: "read only through the brief store's port; this row ships no domain that reads it" }
   - { mechanism: events-and-notifications, answer: n/a, why: "services read the event log to know when to ask again; they log and tell no one anything in this row" }
-  - { mechanism: mount-and-capabilities, answer: n/a, why: "call is handed the mounted ports by its caller; how a door mounts them is a-plugin-brings-operations-not-commands's and the-window-is-served's" }
+  - { mechanism: mount-and-capabilities, answer: n/a, why: "invoke is handed the mounted ports by its caller; how a door mounts them is a-plugin-brings-operations-not-commands's and the-window-is-served's" }
   - { mechanism: rendering, answer: n/a, why: "@amykit/ui is imported for its types; packages/ui is untouched" }
 guarantee:
   - { holds: "nothing the services hold in memory is ever more current than the files on disk", not_against: "the daemon writing those files from another process at any moment" }
@@ -68,7 +69,7 @@ cut:
   - "a database: refused, a second copy of the machine's state shows an untrue window the first time they disagree; if ever needed, a plugin behind a port, argued here"
   - "oRPC, tRPC or ts-rest underneath: refused (S3); a plugin's operations would depend on a third party's API"
   - "a transport in this row: the command line, the server and the SDK each read the contract in their own row"
-exit: "with one example domain in a mutation fixture, sf verify shows each of five rules tripping on its fixture; the clean tree builds a document every rule accepts, and call runs a Zod and an ArkType operation alike"
+exit: "with one example domain in a mutation fixture, sf verify shows each of five rules tripping on its fixture; the clean tree builds a document every rule accepts, and invoke runs a Zod and an ArkType operation alike"
 ---
 # amy speaks in domains
 

@@ -3,7 +3,7 @@ sources:
   - { id: S1, kind: friction, said: "nothing sends a view over a socket; each renderer would assemble profiles and read store, queue and log from amy's home, so a window works only on amy's machine and a phone could never be one" }
   - { id: S2, kind: reference, said: "OpenCode's split: one headless server owning state and publishing OpenAPI (opencode serve), and clients speaking only that contract (opencode attach <url>), working locally, through a tunnel, or on a phone" }
   - { id: S3, kind: decision, said: "amy serve assembles profiles read-only, watches the event log (the event log can be watched), computes every view a client asked for (a view is data), and streams patches" }
-  - { id: S4, kind: decision, said: "the server runs each intent through call on the operation it names, the same road the command line takes, so a client is never a second road to a write the command line cannot make" }
+  - { id: S4, kind: decision, said: "the server runs each intent through invoke on the operation it names, the same road the command line takes, so a client is never a second road to a write the command line cannot make" }
   - { id: S5, kind: decision, said: "amy serve is not the daemon: the loop advances work, the server shows it and relays intents, and either can restart without the other" }
   - { id: S6, kind: decision, ref: "packages/server/src/**", said: "the server writes no route: at boot it generates one per operation in the contract, services and mounted plugins alike, from the operation's http binding, schemas and declared errors (amy speaks in domains)" }
   - { id: S7, kind: decision, ref: "packages/services/openapi.json", said: "npm run build generates packages/services/openapi.json from the contract (OpenAPI 3.1); patches stream as SSE, intents go up as requests; each stream event a named schema in a oneOf" }
@@ -12,7 +12,7 @@ sources:
   - { id: S10, kind: decision, said: "a renderer speaks only through the SDK: no fetch or EventSource of its own; a change to an operation's output regenerates document and SDK and breaks renderers' type check in the same npm run build" }
   - { id: S11, kind: decision, ref: ".software-factory/policy.yaml", said: "both generated files are committed and in L2.GENERATED_FILES_ARE_LOCKED's scope beside events.json; the gate regenerates them and fails on any difference, as docs:check does" }
   - { id: S12, kind: decision, said: "in tests and the gate scenario every response and event is validated against the generated openapi.json, not the Zod source; every route carries an example, validated too" }
-  - { id: S13, kind: decision, said: "the handshake sends SDK contract hash, renderer name, surfaces drawn and primitives known; a different hash is refused by name telling the client to update; a missing primitive a mounted view uses is refused naming it" }
+  - { id: S13, kind: decision, said: "the handshake sends the SDK's services contract hash (plugins excluded), renderer name, surfaces and primitives; a different hash is refused by name, telling the client to update; a missing primitive a mounted view uses is refused naming it" }
   - { id: S14, kind: decision, said: "no renderer imports a store, a queue, the log or a path under amy's home, and a rule keeps it so" }
   - { id: S15, kind: decision, ref: "packages/cli/src/home.ts", said: "listens on its socket only by default; a client on this machine presents a token generated into amy's home, never the config, rotated by amy serve --rotate-token" }
   - { id: S16, kind: decision, said: "a TCP listener opens only once its owner turns remote access on, through setRemoteAccess, which every renderer on this machine offers; on 127.0.0.1, or elsewhere by amy serve --host. Only a paired device, encrypted, reaches it" }
@@ -20,7 +20,7 @@ sources:
   - { id: S18, kind: decision, said: "TCP carries every operation except local-only ones, which are not routed there at all (absent, not refused); serve.sock under amy's home, 0600 for the user, carries every operation" }
   - { id: S19, kind: decision, said: "the desktop app and same-machine terminal use the socket; a client given --server <url> uses TCP and is remote. Local-only: a shell, starting an editor on the host, removing a workflow, reading or saving config.yaml" }
   - { id: S20, kind: decision, ref: "packages/cli/src/index.ts", said: "amy ui connects to the local server, starting one if none runs, and to each server ui.servers names or --server gives; several clients each with own subscriptions all see the same patch" }
-  - { id: S21, kind: decision, said: "gate ui-server, activated by packages/ui/**, packages/server/src/**, packages/cli/src/ui/**: client from a second home with no amy state, over TCP through a 127.0.0.1 forward, drives the frame script via SDK alone" }
+  - { id: S21, kind: decision, said: "gate ui-server, activated by packages/ui/**, packages/services/src/**, packages/server/src/**, packages/cli/src/ui/**: client from a second home with no amy state, over TCP through a 127.0.0.1 forward, drives the frame script via SDK alone" }
   - { id: S22, kind: decision, said: "local layer-0 rules with mutation fixtures: a-client-reads-only-the-server refuses a renderer importing a store, the event log or node:fs; a-client-speaks-only-through-the-sdk refuses fetch, EventSource or a socket" }
   - { id: S23, kind: decision, said: "from here on, ui-frame's script reaches every renderer through a server" }
   - { id: S24, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers session, views, work domains: getCompatibility, openSession, closeSession, streamSession, listViews, subscribeView, unsubscribeView, pokeWork; views work.list, work.detail, so this row alone shows live work; flipped to delivered in surface.yaml; no unlisted operation" }
@@ -42,13 +42,17 @@ sources:
   - { id: S32, kind: decision, said: "a server that stops answering is shown away, by name, while the others stay live; it is reconnected on its own, and nothing waits on it" }
   - { id: S33, kind: decision, said: "local-only operations reach only the local server's socket; every server ui.servers names is remote, however it is reached" }
   - { id: S29, kind: reference, ref: "plans/the-workplace-opens-where-you-work.md", said: "the shell that plan opens is a local-only operation, absent on TCP" }
-  - { id: S43, kind: decision, said: "the SDK has two transports on one interface: local runs call in process on a mounted machine, remote speaks to a server over the socket or TCP; switching is one argument, every method unchanged. Decided 2026-11-04" }
+  - { id: S43, kind: decision, said: "the SDK has two transports on one interface: local runs invoke in process on a mounted machine, remote speaks to a server over the socket or TCP; switching is one argument, every method unchanged. Decided 2026-11-04" }
   - { id: S44, kind: decision, said: "a plugin changes the contract: once mounted, its operations are routes on the server, entries in GET /v1/contract and methods of the SDK, with no file in packages/server or packages/sdk edited" }
   - { id: S45, kind: decision, said: "amy sdk generate <dir> writes an SDK typed for this install's contract, mounted plugins included, so a product built on amy gets types for the plugins it runs" }
+  - { id: S47, kind: decision, said: "a plugin's operations extend the contract without changing its hash: getCompatibility lists each mounted plugin with its own digest, and a client lacking its types reaches it through the SDK's untyped invoke(id, input)" }
   - { id: S46, kind: decision, said: "the-doors-are-generated (layer 0, command) refuses, under packages/server and packages/sdk, a route registered or a method written outside the generator, and a literal equal to an operation id" }
 touches:
   - packages/server/**
   - packages/services/openapi.json
+  - packages/services/surface.yaml
+  - packages/services/src/**
+  - packages/services/tests/**
   - packages/ui/src/**
   - packages/ui/tests/handshake.test.ts
   - packages/ui/tests/handshake.property.test.ts
@@ -68,7 +72,7 @@ touches:
   - .software-factory/mutations/**
   - .software-factory/evidence/**
 criteria:
-  - { id: A1, statement: "the operations this row delivers are delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S24] }
+  - { id: A1, statement: "the operations this row delivers are delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S24] }
   - { id: A2, statement: "a client in a home with no amy state draws the conformance world, and moves when the daemon advances a record", proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server", sources: [S1, S2, S3, S5, S21, S26, S27] }
   - { id: A3, statement: "two clients connected at once receive the same patch for the same change", proof: "deferred:assertion:server.every_client_sees_the_same_change", sources: [S20] }
   - { id: A4, statement: "a connection from this machine without the token, or from another without a pairing, is refused on every route except the two webhook receivers (an event is a reason to look), which refuse a bad signature instead", proof: "deferred:assertion:server.nothing_answers_without_the_token", sources: [S15, S25] }
@@ -81,7 +85,7 @@ criteria:
   - { id: A11, statement: "a committed openapi.json or SDK that differs from what the build generates fails the gate", proof: "deferred:assertion:server.the_contract_is_what_the_code_says", sources: [S11] }
   - { id: A12, statement: "every response and stream event in the scenario validates against openapi.json, and a server sending a body missing a required field fails it", proof: "deferred:assertion:server.every_body_honours_the_contract", sources: [S12, S21, S23] }
   - { id: A13, statement: "every route's example validates against its own schema", proof: "deferred:test:packages/ui/tests/contract.test.ts", sources: [S12] }
-  - { id: A14, statement: "a client whose SDK was generated from another contract is refused at the handshake, naming both hashes", proof: "deferred:test:packages/ui/tests/handshake.test.ts", sources: [S9, S13] }
+  - { id: A14, statement: "a client whose SDK was generated from another services contract is refused at the handshake, naming both hashes", proof: "deferred:test:packages/ui/tests/handshake.test.ts", sources: [S9, S13] }
   - { id: A15, statement: "editing openapi.json without sf lock fails the build", proof: "deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED", sources: [S11] }
   - { id: A16, statement: "a renderer calling fetch or opening an EventSource itself fails the build, and the rule trips on its fixture", proof: "deferred:test:mutation fixture for a-client-speaks-only-through-the-sdk", sources: [S10, S22] }
   - { id: A17, statement: "a renderer importing a store or node:fs fails the build, and the rule trips on its fixture", proof: "deferred:test:mutation fixture for a-client-reads-only-the-server", sources: [S14, S22] }
@@ -99,6 +103,7 @@ criteria:
   - { id: A29, statement: "the conformance world drawn through the SDK's local transport and through its remote one gives the same projection on every step", proof: "deferred:assertion:server.both_transports_draw_the_same_world", sources: [S43] }
   - { id: A30, statement: "a fixture plugin installed with amy add answers on its generated route, is listed by GET /v1/contract and is called through the SDK; removed, all three are gone, and no file under packages/server or packages/sdk changed", proof: "deferred:assertion:server.a_plugin_changes_the_contract", sources: [S44] }
   - { id: A31, statement: "amy sdk generate on an install mounting the fixture plugin writes an SDK whose fixture method typechecks, and one without it does not offer the method", proof: "deferred:test:packages/sdk/tests/generate.test.ts", sources: [S45] }
+  - { id: A33, statement: "a renderer built before a plugin was installed opens a session after it is installed and after it is removed, without being rebuilt, and calls its operation untyped while it is mounted", proof: "deferred:assertion:server.a_plugin_never_breaks_a_session", sources: [S13, S44, S47] }
   - { id: A32, statement: "a route registered by hand in packages/server, or an SDK method written by hand, fails the build naming the file", proof: "deferred:test:mutation fixture for the-doors-are-generated", sources: [S6, S9, S46] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server" }
@@ -107,7 +112,7 @@ crosses:
 guarantee:
   - { holds: "nothing answers without the token on the socket, or a pairing over TCP", not_against: "the two webhook receivers, which verify a signature instead" }
   - { holds: "local-only operations do not exist on TCP", not_against: "a person who forwards serve.sock on purpose, handing out their shell on purpose" }
-  - { holds: "a client is never a second road to a write", not_against: "an intent, which runs through call on the operation its command runs" }
+  - { holds: "a client is never a second road to a write", not_against: "an intent, which runs through invoke on the operation its command runs" }
 failures:
   - { step: handshake, when: "the SDK's contract hash differs", goes_to: "refused by name, telling the client to update" }
   - { step: handshake, when: "a mounted view uses a primitive the client lacks", goes_to: "refused naming the primitive" }
