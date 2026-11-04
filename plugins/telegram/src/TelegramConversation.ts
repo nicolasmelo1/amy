@@ -188,13 +188,16 @@ export class TelegramConversation implements Conversation {
       throw new Error("@amykit/plugin-telegram does not upload files; post their paths as text");
     }
     let sent = "";
+    const topic = topicOf(thread);
     for (const part of parts(message.text)) {
       const result = await this.api.call<{ message_id: number }>("sendMessage", {
         chat_id: this.chat(),
-        message_thread_id: topicOf(thread),
+        message_thread_id: topic,
         text: part,
       });
       sent = String(result.message_id);
+      // When it was posted, by this machine's clock, kept by its id: what tells a reply written before it apart.
+      createOnce(path.join(this.options.directory, "posted", String(topic), `${result.message_id}.json`), { at: new Date().toISOString() }, this.options.directory);
     }
     return sent;
   }
@@ -208,9 +211,12 @@ export class TelegramConversation implements Conversation {
       await this.fileUpdates();
     });
 
+    // Telegram dates to the second; ids in one chat only grow. A reply numbered below the last message amy
+    // posted by `since` was written before it, whatever second they share.
+    const before = this.postedBy(topic, after);
     const replies: Reply[] = [];
     for (const filed of filedUnder(this.inbox(this.options.directory, this.identity, topic))) {
-      if (instantToMicros(filed.at) <= after) continue;
+      if (instantToMicros(filed.at) <= after || filed.messageId < before) continue;
       const { paths, skipped } = await this.downloadAll(topic, filed.files);
       replies.push({ at: filed.at, author: filed.author, text: [filed.text, ...skipped].filter(Boolean).join("\n"), files: paths, ...(filed.kind ? { kind: filed.kind } : {}) });
     }
@@ -341,6 +347,23 @@ export class TelegramConversation implements Conversation {
     if (readIdentity(directory) !== owner.identity) return undefined;
     const inbox = this.inbox(directory, owner.identity, topic);
     return ensureInbox(directory, inbox) ? { directory, inbox } : undefined;
+  }
+
+  /** The id of the last message amy posted in a topic by an instant, or 0 when none is known. */
+  private postedBy(topic: number, micros: number): number {
+    const directory = path.join(this.options.directory, "posted", String(topic));
+    let names: string[];
+    try {
+      names = fs.readdirSync(directory).filter((name) => name.endsWith(".json"));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+      throw error;
+    }
+    return names.reduce((last, name) => {
+      const posted = readJson<{ at: string }>(path.join(directory, name), true);
+      const id = Number.parseInt(name, 10);
+      return posted && instantToMicros(posted.at) <= micros && id > last ? id : last;
+    }, 0);
   }
 
   /** Files what arrived in a topic before its owner was recorded, now that it is. */

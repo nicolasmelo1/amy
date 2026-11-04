@@ -904,3 +904,22 @@ describe("the eighth review", () => {
     }
   });
 });
+
+describe("the ninth review", () => {
+  it("does not take a reply written before a question, in the same second, as its answer", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = amyWith(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const earlier = telegram.say("/decide BRL", { topic: Number(thread.id) });
+    await amy.post(thread, { text: "- And the tax line?" });
+    // Asked within the second the earlier reply carries, after it was written.
+    const asked = new Date(Number(earlier.date) * 1000 + 1).toISOString();
+    const later = telegram.say("the tax line too", { topic: Number(thread.id) });
+    // All three in one Telegram second.
+    later.date = earlier.date;
+
+    const replies = await amy.replies(thread, asked);
+
+    expect(replies.map((reply) => reply.text)).toEqual(["the tax line too"]);
+  });
+});
