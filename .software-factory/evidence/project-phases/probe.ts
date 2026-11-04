@@ -1,10 +1,18 @@
+// The `project-phases` gate's scenario drive, as the built assembly sees it:
+// a project laid out as `brief/`, `workflow/` and `prove/` is ONE profile
+// whose workflow amy derives from the folders, and the run's manifest credits
+// whoever invoked the harness, never the harness itself. A phase exporting
+// no `defineWorkflow` is refused by name; a packaged workflow keeps the
+// layout it always had and declares its phases.
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import type { BriefStore } from "@amykit/core";
+import type { Plugin, WorkRecord } from "@amykit/core";
 import type { AmyConfig, WorkflowProfile } from "../../../packages/cli/src/config.js";
 import type { Profile } from "../../../packages/cli/src/profiles.js";
+import { FileQueue } from "@amykit/plugin-file-queue";
+import { FileStore } from "@amykit/plugin-file-store";
 
 /** The nth argument the scenario passed, or a usage line and an exit. */
 function argument(n: number): string {
@@ -27,9 +35,8 @@ const { DEFAULT_CONFIG } = (await from("config.js")) as typeof import("../../../
 const { isFilesystemWorkflow, load, pluginsRootResolver } = (await from("loader.js")) as typeof import("../../../packages/cli/src/loader.js");
 const { profilePaths } = (await from("paths.js")) as typeof import("../../../packages/cli/src/paths.js");
 const { profiles } = (await from("profiles.js")) as typeof import("../../../packages/cli/src/profiles.js");
-const { pluginSlices } = (await from("slices.js")) as typeof import("../../../packages/cli/src/slices.js");
+const { phasesOf } = (await from("project.js")) as typeof import("../../../packages/cli/src/project.js");
 const { FileEventLog }: typeof import("@amykit/plugin-file-log") = await import("@amykit/plugin-file-log");
-const { LogBudget }: typeof import("@amykit/core") = await import("@amykit/core");
 
 const assertions: { type: string; status: "passed" | "failed" }[] = [];
 const record = (type: string, ok: boolean): number => assertions.push({ type, status: ok ? "passed" : "failed" });
@@ -41,17 +48,22 @@ const home = path.join(work, ".amy");
 const project = path.join(work, "invoices");
 fs.mkdirSync(home, { recursive: true });
 
+/** How a phase module's import of the core resolves at all: the copy the dist was built from, by absolute URL. */
+const coreEntry = pathToFileURL(path.join(repo, "node_modules", "@amykit", "core", "dist", "index.js")).href;
+
 /**
- * A phase directory as somebody writes one: an index exporting a workflow,
- * written in TypeScript and published beside this probe.
+ * A phase directory as somebody writes one: an index exporting a declared
+ * workflow, written in TypeScript, published beside this probe, and read
+ * by the absolute URL of the core it imports — a scratch tree resolves no
+ * package of its own.
  */
-function phase(name: string, { exportsWorkflow = true, root = project }: { exportsWorkflow?: boolean; root?: string } = {}): string {
-  const directory = path.join(root, name);
-  const fixture = path.join(import.meta.dirname, exportsWorkflow ? "phase" : "phase-without-workflow");
-  const published = spawnSync(path.join(repo, "node_modules", ".bin", "tsx"), [path.join(import.meta.dirname, "..", "lib", "publish.ts"), fixture, directory], {
+function phase(fixture: string, directory: string): string {
+  const published = spawnSync(path.join(repo, "node_modules", ".bin", "tsx"), [path.join(import.meta.dirname, "..", "lib", "publish.ts"), path.join(import.meta.dirname, fixture), directory], {
     encoding: "utf-8",
   });
-  if (published.status !== 0) throw new Error(`publishing ${name} failed: ${published.stderr}`);
+  if (published.status !== 0) throw new Error(`publishing ${fixture} failed: ${published.stderr}`);
+  const entry = path.join(directory, "index.js");
+  fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replaceAll(`from "@amykit/core"`, `from ${JSON.stringify(coreEntry)}`), "utf-8");
   return directory;
 }
 
@@ -75,10 +87,20 @@ const services = {
   host: [],
 };
 const mountedAs = async (config: AmyConfig, name: string) => assembleProfile(home, config, must(profiles(config, home)[name], name), services);
-const briefOf = async (config: AmyConfig, name: string): Promise<BriefStore> => {
-  const assembled = await mountedAs(config, name);
-  if (!assembled.ok) throw new Error(assembled.problems.join("; "));
-  return must(assembled.mounted.ports.get("brief") as BriefStore | undefined, "brief port");
+
+// The walk is what the assertions read: the machine's engine advances the
+// row until it is over, one move per tick, exactly as a running loop would.
+interface Driver { readonly ok: boolean; readonly engine?: { discover(): Promise<unknown>; tick(): Promise<unknown> } }
+interface RecordsView { load(id: string): WorkRecord | null | undefined }
+const walkUntilDone = async (assembled: Driver, records: RecordsView, id: string): Promise<WorkRecord> => {
+  if (!assembled.ok || !assembled.engine) throw new Error("the machine did not assemble, so nothing drove");
+  let walked = records.load(id);
+  for (let tick = 0; tick < 60 && walked?.state !== "DONE"; tick++) {
+    await assembled.engine.discover();
+    await assembled.engine.tick();
+    walked = records.load(id);
+  }
+  return must(walked ?? undefined, "the walked record");
 };
 
 // 0. A packaged workflow is not a phase, and keeps the layout it always had.
@@ -88,147 +110,144 @@ record("project.a_packaged_workflow_is_unchanged",
   && profilePaths(home, packaged).records === path.join(home, "tickets", "records")
   && profilePaths(home, packaged).pid === path.join(home, "daemon.pid"));
 
-// A project that so far has only `workflow/`: a phase already, and its
-// grooming is simply missing. Asked for a brief, the real command says so.
-const workflowDir = phase("workflow");
-const alone = configured({ execution: { workflow: workflowDir } });
-await attempt("project.a_lone_workflow_is_a_phase", async () =>
-  profiles(alone, home).execution?.project?.phase === "workflow" && (await mountedAs(alone, "execution")).ok);
-await attempt("project.a_project_without_brief_keeps_no_briefs", async () => {
-  fs.writeFileSync(path.join(home, "config.yaml"), `workflows:\n  execution:\n    workflow: ${JSON.stringify(workflowDir)}\n`, "utf-8");
-  const asked = spawnSync(process.execPath, [path.join(dist, "index.js"), "--workflow", "execution", "brief", "invoices"], {
-    env: { ...process.env, AMY_HOME: home }, encoding: "utf-8",
-  });
-  fs.rmSync(path.join(home, "config.yaml"));
-  return asked.status === 1 && asked.stderr.includes(path.join(project, "brief"));
-});
-
-// An old profile of the same name left records behind; the phase never reads them.
+// An old profile of the same name left records behind; the project reads none of them.
 fs.mkdirSync(path.join(home, "execution", "records"), { recursive: true });
 fs.writeFileSync(path.join(home, "execution", "records", "OLD-1.json"), "{}\n", "utf-8");
 
-// 1. The project: grooming plans on an expensive model with a large budget,
-// execution runs on a cheap one with a small one, proving takes the defaults.
-const config = configured({
-  grooming: { workflow: phase("brief"), agent: { ladder: ["claude:opus"], budget: { perFiveHours: { tokens: 1000 } } } },
-  execution: { workflow: workflowDir, agent: { ladder: ["claude:haiku"], budget: { perFiveHours: { tokens: 20 } } } },
-  proving: { workflow: phase("test") },
-});
-const known = profiles(config, home);
-const profileNamed = (name: string): Profile => must(known[name], name);
-const places = Object.values(known).map((profile) => profilePaths(home, profile));
-const distinct = (key: keyof (typeof places)[number]): boolean => new Set(places.map((place) => place[key])).size === places.length;
+// 1. The project: its three folders published, one config entry naming the
+// walk's folder. The brief settles the criteria; the proof refuses what it
+// was handed the first round and holds the second, which is what walks the
+// row back to WORK before DONE.
+await attempt("project.the_three_phases_walk_as_one", async () => {
+  phase("phase-brief", path.join(project, "brief"));
+  phase("phase-work", path.join(project, "workflow"));
+  phase("phase-prove", path.join(project, "prove"));
+  const config = configured({ invoices: { workflow: path.join(project, "workflow") } });
+  const profile = must(profiles(config, home).invoices, "invoices");
+  const assembled = await mountedAs(config, "invoices");
+  if (!assembled.ok) throw new Error(assembled.problems.join("; "));
 
-await attempt("project.every_phase_mounts", async () => {
-  for (const name of ["grooming", "execution", "proving"]) {
-    const assembled = await mountedAs(config, name);
-    if (!assembled.ok) throw new Error(`${name}: ${assembled.problems.join("; ")}`);
+  // The row is named the way an operator names it: on the queue, by hand.
+  const records = new FileStore<WorkRecord>(profilePaths(home, profile).records);
+  new FileQueue(profilePaths(home, profile).queue).enqueue({ workId: "INVOICE-1", reason: "said in passing" }, new Date());
+  const walked = await walkUntilDone(assembled, records, "INVOICE-1");
+
+  // The walk's own transitions: every phase in order, the refused proof
+  // carrying the row back to WORK once, and DONE only at the end.
+  const went = (walked.history ?? []).map((edge) => `${edge.from} -> ${edge.to}`);
+  const wanted = ["BRIEF -> WORK", "WORK -> PROVE", "PROVE -> WORK", "WORK -> PROVE", "PROVE -> DONE"];
+  if (JSON.stringify(went) !== JSON.stringify(wanted)) throw new Error(`the walk went ${went.join(", ")}`);
+  // The phases ran as child records of the row, one per round it entered.
+  const entered = Object.keys(walked.calls ?? {});
+  if (entered.length < 5 || !entered.some((id) => id.includes("BRIEF")) || !entered.some((id) => id.includes("WORK")) || !entered.some((id) => id.includes("PROVE"))) {
+    throw new Error(`the phases left child records ${entered.join(", ")}`);
+  }
+  return walked.state === "DONE";
+});
+
+await attempt("project.what_was_briefed_is_what_is_proven", async () => {
+  const config = configured({ invoices: { workflow: path.join(project, "workflow") } });
+  const profile = must(profiles(config, home).invoices, "invoices");
+  const records = new FileStore<WorkRecord & { brief?: unknown }>(profilePaths(home, profile).records);
+  const walked = must(records.load("INVOICE-1"), "the walked record") as WorkRecord & { brief?: unknown };
+  const briefed = walked.brief;
+  if (JSON.stringify(briefed) !== JSON.stringify({ criteria: ["product", "interface"] })) {
+    throw new Error(`the brief returned ${JSON.stringify(briefed)}`);
+  }
+  // The proving phase was handed exactly what the brief settled, at every
+  // round it ran; nothing else was ever its input.
+  const handed = Object.values(walked.calls ?? {})
+    .map((child) => child as WorkRecord & { input?: unknown })
+    .filter((child) => child.id.includes("PROVE"))
+    .map((child) => JSON.stringify(child.input));
+  if (handed.length !== 2 || handed.some((one) => one !== JSON.stringify(briefed))) {
+    throw new Error(`the proof was handed ${handed.join(", ")}`);
   }
   return true;
 });
-record("project.each_phase_has_its_own_queue", distinct("queue"));
-await attempt("project.each_phase_spends_its_own_budget", async () => {
-  const groomingLog = new FileEventLog(profilePaths(home, profileNamed("grooming")).log);
-  groomingLog.append({ at: new Date().toISOString(), kind: "agent.run", detail: { tokens: { input: 1000, output: 0, cacheRead: 0, cacheWrite: 0 } } });
-  const grooming = new LogBudget(groomingLog, { ...config.workflows.grooming?.agent?.budget, stopAt: 0.8 });
-  const execution = new LogBudget(new FileEventLog(profilePaths(home, profileNamed("execution")).log), { ...config.workflows.execution?.agent?.budget, stopAt: 0.8 });
-  return grooming.mayStart(new Date()).ok === false && execution.mayStart(new Date()).ok === true;
-});
-await attempt("project.each_phase_is_its_own_daemon", async () => {
-  const cli = path.join(dist, "index.js");
-  const run = (name: string, command: string) => spawnSync(process.execPath, [cli, "--workflow", name, command, ...(command === "start" ? ["--every", "1"] : [])], {
-    env: { ...process.env, AMY_HOME: home }, encoding: "utf-8",
-  });
-  const live = (file: string): boolean => {
-    if (!fs.existsSync(file)) return false;
-    const { pid }: { pid: number } = JSON.parse(fs.readFileSync(file, "utf-8"));
-    try { process.kill(pid, 0); return true; } catch { return false; }
-  };
-  const waitFor = async (check: () => boolean): Promise<boolean> => {
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      if (check()) return true;
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-    return false;
-  };
-  const groomingPid = profilePaths(home, profileNamed("grooming")).pid;
-  const executionPid = profilePaths(home, profileNamed("execution")).pid;
+
+// 2. One project, one profile: its state is the project's own, nothing in
+// the config names a directory, and none of it escapes Amy home.
+const config = configured({ invoices: { workflow: path.join(project, "workflow") } });
+const profileNamed = (name: string): Profile => must(profiles(config, home)[name], name);
+record("project.no_config_names_a_shared_directory", !JSON.stringify(config).includes("briefs"));
+const place = profilePaths(home, profileNamed("invoices"));
+record("project.no_phase_state_escapes_home",
+  [place.records, place.queue, place.tasks, place.slack, place.telegram, place.pid, place.log].every((dir) => dir !== undefined && path.relative(home, dir as string).startsWith("..") === false));
+record("project.a_phase_never_reads_an_old_profiles_records",
+  place.records !== path.join(home, "execution", "records") && !fs.readFileSync(path.join(home, "execution", "records", "OLD-1.json"), "utf-8").includes("INVOICE"));
+
+// 3. A work phase that declares the phases it does not have: the project
+// mounts, and the status the operator drives says why the phase is out.
+// A second project, because a module this process imported stays imported.
+await attempt("project.a_declared_absent_phase_says_why_at_the_status", async () => {
+  const payroll = path.join(work, "payroll");
+  phase("phase-declared", path.join(payroll, "workflow"));
+  const declared = configured({ payroll: { workflow: path.join(payroll, "workflow") } });
+  const payrollProfile = must(profiles(declared, home).payroll, "payroll");
+  const assembled = await mountedAs(declared, "payroll");
+  if (!assembled.ok) throw new Error(assembled.problems.join("; "));
+  const walk = must(assembled.mounted.workflow, "the walk");
+  const view = phasesOf(payrollProfile.project, walk as { states: readonly string[]; phases?: Record<string, string> });
+  if (!JSON.stringify(view).includes("the ticket itself says what the work is")) {
+    throw new Error(`the walk's phases said too little: ${JSON.stringify(view)}`);
+  }
+
+  // The status command is the machine's own: the config is read from Amy
+  // home, so the file carries the profile that mounts the plugins.
   const pluginsRoot = path.join(home, "plugins", "node_modules", "@amykit");
   fs.mkdirSync(pluginsRoot, { recursive: true });
   for (const name of ["plugin-file-queue", "plugin-file-store", "plugin-file-brief-store", "plugin-notify-fanout", "plugin-serial-engine"]) {
     fs.symlinkSync(path.join(repo, "node_modules", "@amykit", name), path.join(pluginsRoot, name));
   }
-  fs.writeFileSync(path.join(home, "config.yaml"), JSON.stringify(config), "utf-8");
-  try {
-    const groomingStart = run("grooming", "start");
-    // An exited execution daemon still owes a shared package update. While
-    // grooming is live, execution must defer that update and still start.
-    const executionUpdate = path.join(home, "workflows", "execution", "auto-update-daemon");
-    fs.mkdirSync(path.dirname(executionUpdate), { recursive: true });
-    fs.writeFileSync(executionUpdate, "due\n", "utf-8");
-    const executionStart = run("execution", "start");
-    if (groomingStart.status !== 0 || executionStart.status !== 0) {
-      throw new Error(`start failed: ${groomingStart.stderr}${executionStart.stderr}`);
-    }
-    if (!fs.existsSync(executionUpdate)) throw new Error("execution consumed its deferred update while grooming was live");
-    if (!(await waitFor(() => live(groomingPid) && live(executionPid)))) {
-      const output = (file: string): string => fs.existsSync(file) ? fs.readFileSync(path.join(path.dirname(file), "daemon.log"), "utf-8") : "missing pid";
-      throw new Error(`daemons were not both live: grooming=${output(groomingPid)}, execution=${output(executionPid)}`);
-    }
-    const groomingStop = run("grooming", "stop");
-    if (groomingStop.status !== 0) throw new Error(`stop failed: ${groomingStop.stderr}`);
-    const stopped = await waitFor(() => !fs.existsSync(groomingPid));
-    if (!stopped || !live(executionPid)) throw new Error(`stop leaked across phases: stopped=${stopped}, execution=${live(executionPid)}`);
-    return true;
-  } finally {
-    if (live(groomingPid)) run("grooming", "stop");
-    if (live(executionPid)) run("execution", "stop");
-    fs.rmSync(path.join(home, "config.yaml"), { force: true });
-  }
-});
-record("project.each_phase_keeps_its_own_tasks", distinct("tasks"));
-/** The relay's slice of one phase's configuration, as the CLI hands it over. */
-interface RelaySlice { ladder: readonly string[]; budget: unknown }
-const isRelaySlice = (slice: unknown): slice is RelaySlice =>
-  typeof slice === "object" && slice !== null && "ladder" in slice && Array.isArray(slice.ladder);
-const relay = (name: string): RelaySlice => {
-  const slice = pluginSlices(config, profileNamed(name), home)["@amykit/plugin-agent-relay"];
-  return isRelaySlice(slice) ? slice : { ladder: [], budget: undefined };
-};
-record("project.grooming_and_execution_choose_their_own_models",
-  relay("grooming").ladder[0] === "claude:opus" && relay("execution").ladder[0] === "claude:haiku"
-  && JSON.stringify(relay("grooming").budget) !== JSON.stringify(relay("execution").budget));
-
-// 2. The point of the whole thing.
-await attempt("project.a_brief_crosses_the_phase_boundary", async () => {
-  const grooming = await briefOf(config, "grooming");
-  await grooming.write({
-    id: "invoices",
-    sections: [{ name: "Goal", body: "One currency on every invoice line." }],
-    explains: ["BILL-4021"],
-    at: "2026-09-30T12:00:00.000Z",
+  fs.writeFileSync(path.join(home, "config.yaml"), JSON.stringify(declared), "utf-8");
+  const asked = spawnSync(process.execPath, [path.join(dist, "index.js"), "--workflow", "payroll", "status", "--json"], {
+    env: { ...process.env, AMY_HOME: home }, encoding: "utf-8",
   });
-  const execution = await briefOf(config, "execution");
-  const proving = await briefOf(config, "proving");
-  const read = [await execution.get("invoices"), await proving.get("invoices")];
-  return read.every((brief) => brief?.sections[0]?.body === "One currency on every invoice line.");
+  fs.rmSync(path.join(home, "config.yaml"), { force: true });
+  if (asked.status !== 0) throw new Error(`status failed: ${asked.stderr}`);
+  const phases = (JSON.parse(asked.stdout) as { phases?: { phase: string; absent: boolean; reason: string | null }[] }).phases ?? [];
+  if (phases.length !== 3) throw new Error(`the status named ${phases.length} phases`);
+  const one = (phase: string): { absent: boolean; reason: string | null } => must((phases.find((each) => each.phase === phase)), phase);
+  return !one("work").absent
+    && one("brief").absent && one("brief").reason === "the ticket itself says what the work is, so no brief phase runs first"
+    && one("prove").absent && one("prove").reason === "a person reads the pull request the work opens, so no proving phase runs at all";
 });
-record("project.no_config_names_a_shared_directory", !JSON.stringify(config).includes("briefs"));
-record("project.no_phase_state_escapes_home",
-  places.every((place) => Object.values(place).every((dir) => !path.relative(home, dir).startsWith(".."))));
-record("project.a_phase_never_reads_an_old_profiles_records",
-  profilePaths(home, profileNamed("execution")).records !== path.join(home, "execution", "records"));
 
-// 3. A phase that exports no workflow is refused at boot, by its directory.
-// Another project, because a module this process imported stays imported.
-const other = path.join(work, "payroll");
-const empty = configured({
-  grooming: { workflow: phase("brief", { exportsWorkflow: false, root: other }) },
-  execution: { workflow: phase("workflow", { root: other }) },
-});
+// 4. A phase that exports no declared workflow is refused at the walk's
+// mount, by its directory: the walk calls its phases, and a call needs the
+// declaration a mount does not. The anchor declares only its proving phase
+// out, so the refusal names the brief, not the phase that is absent. A
+// third project, for the module cache's sake.
 await attempt("project.a_phase_without_a_workflow_is_refused_by_name", async () => {
-  const assembled = await mountedAs(empty, "grooming");
-  return !assembled.ok && assembled.problems.some((problem) => problem.startsWith("brief/"));
+  const staff = path.join(work, "staff");
+  phase("phase-declare-prove", path.join(staff, "workflow"));
+  phase("phase-without-workflow", path.join(staff, "brief"));
+  const config = configured({ staff: { workflow: path.join(staff, "workflow") } });
+  const assembled = await mountedAs(config, "staff");
+  return !assembled.ok && assembled.problems.some((problem) => problem.includes("brief/"));
+});
+
+// 5. The shipped workflows declare the phases they do not have, each with
+// its reason, and the walk their gates prove is unchanged by saying so.
+// Read the way the loader reads them: the diagram beside the package's own
+// entry is what gives the workflow its states.
+const { drawn } = (await from("drawn.js")) as typeof import("../../../packages/cli/src/drawn.js");
+await attempt("project.a_packaged_workflow_declares_its_phases", async () => {
+  const declared = await Promise.all(["@amykit/workflow-errand", "@amykit/workflow-note-to-plan", "@amykit/workflow-ticket-to-qa"].map(async (name) => {
+    const packageRoot = fs.realpathSync(path.join(repo, "node_modules", ...name.split("/")));
+    const raw = ((await import(name)) as { plugin: { phases?: Record<string, string>; workflow?: { states: readonly string[]; terminalStates: readonly string[] } } }).plugin;
+    const plugin = drawn(raw as unknown as Plugin, pathToFileURL(path.join(packageRoot, "dist", "index.js")).href) as { phases?: Record<string, string>; workflow?: { states: readonly string[]; terminalStates: readonly string[] } };
+    return [plugin.phases ?? {}, plugin.workflow?.states ?? [], plugin.workflow?.terminalStates ?? []] as const;
+  }));
+  return declared.every(([ phases, states, terminal ]) =>
+    (phases.brief ?? "").length > 20
+    && (phases.prove ?? "").length > 20
+    && phases.workflow === undefined
+    // The walk their own gates prove: the shipped workflows' end is their
+    // own, and none of its states is a project phase's name.
+    && !states.includes("BRIEF") && !states.includes("WORK") && !states.includes("PROVE")
+    && terminal.length > 0);
 });
 
 const failed = assertions.filter((a) => a.status !== "passed");
@@ -240,7 +259,7 @@ fs.writeFileSync(
       scenario: "project-phases",
       status: failed.length === 0 ? "passed" : "failed",
       goal:
-        "I keep one project as three phases: grooming decides the work on an expensive model, execution does it continuously on a cheap one, and proving shows it holds. Prove each phase keeps its own queue, budget and daemon, that execution and proving read the brief grooming wrote without my config naming any directory, that a project with no brief/ is told so by name when I ask it for a brief, that a phase never reads records an old profile of the same name left, that a phase with no workflow is refused by name, and that a packaged workflow keeps the layout it always had.",
+        "I keep one project as brief, work and proof: its folders mount as the one profile whose workflow amy derives from them, a row walks from BRIEF through WORK and PROVE as child records, the proof is handed exactly the criteria the brief settled, and a refused proof carries the row back to WORK. A phase declared absent says at the status why it is out; a phase exporting no declared workflow is refused by its directory; a packaged workflow keeps the layout it always had and declares its phases; and the project's records, queue, tasks and threads live under one project state, with no path in the config and none of it outside Amy home.",
       artifact: { package: "@amykit/cli", entry: "dist/assemble.js" },
       observed: {
         assertions_run: assertions.length,

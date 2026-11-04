@@ -154,6 +154,61 @@ function rootRoster(): void {
   fs.writeFileSync(path.join(home, ".amy", "roster.yaml"), `${body}\n`, "utf-8");
 }
 
+/**
+ * A project the way a machine before the walk named it: three profiles,
+ * one per phase folder, each naming the folder beside the last. The phase
+ * modules are declared workflows importing the core the machine installed,
+ * by absolute URL, because a project tree resolves no package of its own.
+ */
+function addProjectPhases(): void {
+  const work = path.dirname(home);
+  const root = path.join(work, "project");
+  const core = path.join(home, ".amy", "plugins", "node_modules", "@amykit", "core", "dist", "index.js");
+  if (!fs.existsSync(core)) {
+    console.error(`the machine's core is not installed where the modules import it: ${core}`);
+    process.exit(1);
+  }
+  const coreUrl = `file://${core.replaceAll("\\", "/")}`;
+  for (const phase of ["brief", "workflow", "prove"] as const) {
+    const directory = path.join(root, phase);
+    fs.mkdirSync(directory, { recursive: true });
+    const name = phase === "workflow" ? "project-work" : `project-${phase}`;
+    fs.writeFileSync(path.join(directory, "index.js"), [
+      `import { defineWorkflow } from ${JSON.stringify(coreUrl)};`,
+      `export const plugin = defineWorkflow({`,
+      `  name: ${JSON.stringify(name)},`,
+      `  pluginName: ${JSON.stringify(`workflow-${name}`)},`,
+      `  states: ["SETTLED"],`,
+      `  terminal: ["SETTLED"],`,
+      `  configSchema: {}, policy: {}, needs: {}, record: () => ({}),`,
+      `  discover: async () => [], observe: async () => ({}), actions: {},`,
+      `  decide: { SETTLED: () => ({ kind: "settled", why: "fixture" }) },`,
+      `});`,
+      ``,
+    ].join("\n"), "utf-8");
+  }
+  const lines = fs.readFileSync(config, "utf8").split("\n");
+  const kept: string[] = [];
+  let spliced = false;
+  for (const line of lines) {
+    kept.push(line);
+    if (!spliced && line.trim() === "workflows:") {
+      kept.push("  grooming:");
+      kept.push(`    workflow: ${path.join(root, "brief")}`);
+      kept.push("  execution:");
+      kept.push(`    workflow: ${path.join(root, "workflow")}`);
+      kept.push("  proving:");
+      kept.push(`    workflow: ${path.join(root, "prove")}`);
+      spliced = true;
+    }
+  }
+  if (!spliced) {
+    console.error("the config names no workflows block");
+    process.exit(1);
+  }
+  fs.writeFileSync(config, kept.join("\n"));
+}
+
 /** The broken profile gone again. */
 function dropAfterhours(): void {
   const lines = fs.readFileSync(config, "utf8").split("\n");
@@ -237,6 +292,7 @@ const steps: Record<string, () => void> = {
   "drop-afterhours": dropAfterhours,
   "add-tickets": addTickets,
   "root-roster": rootRoster,
+  "add-project-phases": addProjectPhases,
   version: () => version(args[0] ?? ""),
   "release-on-disk": () => releaseOnDisk(args),
   "set-intent": () => setIntent(args[0]),

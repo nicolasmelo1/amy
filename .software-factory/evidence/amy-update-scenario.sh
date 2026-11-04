@@ -543,6 +543,35 @@ refused=$("$amy" doctor 2>&1 || echo "")
 says update.a_moved_key_named_at_its_new_place "$refused" '`qaStatusName`'
 says update.a_moved_key_names_its_destination "$refused" 'settings.qaStatusName'
 
+# 12. A project a machine before the walk named as three profiles, one per
+# phase folder: the same update folds them into the one profile the project
+# walk is, says every fold, keeps the original file beside the config, and
+# boots the folded machine — the boot check every update carries. A second
+# update moves nothing the fold did not already move.
+"$tsx" "$machine" add-project-phases
+project="$work/project"
+folded=$("$amy" update 2>&1 || echo "")
+printf '%s\n' "$folded" > "$work/phases-fold.log"
+fold_says=1
+case "$folded" in
+  *"grooming: folded into \`execution\`"*"proving: folded into \`execution\`"*) fold_says=0 ;;
+esac
+one_profile=0
+if ! grep -q 'grooming:' .amy/config.yaml &&
+   ! grep -q 'proving:' .amy/config.yaml &&
+   grep -q "workflow: $project/workflow" .amy/config.yaml &&
+   [ -f .amy/config.yaml.moved ]; then
+  one_profile=1
+fi
+quiet_again=$("$amy" update 2>&1 || echo "")
+moves_twice=0
+case "$quiet_again" in *"folded into"*) moves_twice=1 ;; esac
+if [ "$fold_says" = 0 ] && [ "$one_profile" = 1 ] && [ "$moves_twice" = 0 ]; then
+  record update.the_phases_become_one_project 0
+else
+  record update.the_phases_become_one_project 1
+fi
+
 failed=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"status":"failed"' || true)
 total=$(printf '%s' "$assertions" | tr ',' '\n' | grep -c '"type"' || true)
 status=passed

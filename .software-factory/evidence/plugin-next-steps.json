@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "plugin-next-steps",
-  "implementation_sha256": "d0ffc995a708141db74ac7be68dc5c20b91e6d97ec685259fab4212961e2c70f",
+  "implementation_sha256": "e97cd3dbd58b7b999a0261b345286d3eb89a1d08707981f6c9d3703848d7e2bb",
   "runs": [
     {
       "scenario": "plugin-next-steps",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable on a next-steps table with its writes handed to an operator, against real git and a stand-in gh, on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-next-steps-run.json",
-      "report_sha256": "2bde5b4283d89e6c9e594a33b50114375cf7d471718c286c4bfbd8ce573abf40",
+      "report_sha256": "bc69c072eb7bf16d9650397a128c1f19f83486680f8d66937c59b09cc8cbd0e2",
       "required_assertions": []
     }
   ]
