@@ -1,4 +1,5 @@
 ---
+base: a4fbbce72037c7983f9046f105be58da7a7f61f0
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/profiles.ts", symbol: "PROJECT_PHASES", said: "a workflow whose folder is brief, workflow or test is a phase of the project its parent folder names, and each phase is a profile of its own" }
   - { id: S2, kind: reference, ref: "docs/design/a-project-is-three-phases.md", said: "each phase runs as its own profile with its own daemon, linked only by a shared brief store, and what test/ drives is still open" }
