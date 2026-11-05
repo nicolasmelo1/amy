@@ -1551,6 +1551,17 @@ describe("a workflow drawn as a diagram", () => {
     expect(declaredWorkflowsOnly(new Adapter() as Plugin).name).toBe("plugin-private");
   });
 
+  it("mounts a frozen adapter through the declarations-only host, and still refuses a frozen one that registers a workflow", async () => {
+    const adapter = Object.freeze(plugin("plugin-frozen", { register: (registry) => registry.port("source", { read: () => "value" }) }));
+    const byHand = Object.freeze(plugin("workflow-frozen", { register: (registry) => registry.workflow(WORKFLOW) }));
+
+    const mounted = await mount([declaredWorkflowsOnly(adapter)], {}, HOST);
+    const refused = await mount([declaredWorkflowsOnly(byHand)], {}, HOST);
+
+    expect(mounted.ok === true && mounted.mounted.ports.has("source")).toBe(true);
+    expect(refused.ok === false && refused.problems.join("\n")).toContain("workflow-frozen registers a workflow by hand");
+  });
+
   // The core's own contract underneath: a raw registration stays what core
   // and engine tests mount. A host that mounts installs never takes one.
   it("keeps a workflow without a diagram exactly as it declared itself", async () => {

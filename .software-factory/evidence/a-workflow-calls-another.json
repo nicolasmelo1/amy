@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "a-workflow-calls-another",
-  "implementation_sha256": "751cf78631b82d0ead0ba926de05868e6c8f3701378be096881cf7754b498bf5",
+  "implementation_sha256": "0c16b1e32087065afa9f21750577968842e14244c3bc75d8964988034be62dd6",
   "runs": [
     {
       "scenario": "a-workflow-calls-another",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable through a workflow of its own that calls one copied into it until the callee escalates, and through the note-to-plan and errand scenarios whose pull requests are opened by a call, against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/a-workflow-calls-another-run.json",
-      "report_sha256": "203faaf4c2a0fe4450f269bddf407850382ab6709dae3ccbcb2bf8c5ff0ac7f2",
+      "report_sha256": "faac4a977a9e33b35d1b6bb940a3c963746d5518d9d1f372d9b626c68657cf89",
       "required_assertions": []
     }
   ]

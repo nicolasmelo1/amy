@@ -789,13 +789,24 @@ export function declaredWorkflowsOnly<T extends Plugin>(plugin: T): T {
  * fields throws on any other receiver, so a prototype wrapper cannot do this.
  */
 function receiverKept<T extends object>(target: T, replaced: Readonly<Record<string, unknown>>): T {
-  return new Proxy(target, {
-    get(object, key) {
-      if (typeof key === "string" && Object.hasOwn(replaced, key)) return replaced[key];
-      const value: unknown = Reflect.get(object, key, object);
-      return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(object) : value;
+  const own = (key: string | symbol): boolean => typeof key === "string" && Object.hasOwn(replaced, key);
+  // The proxy stands on an empty object of its own, never on the target: a
+  // frozen target would make every replaced member break a Proxy invariant.
+  const stand = Object.create(Object.getPrototypeOf(target) as object | null) as T;
+  return new Proxy(stand, {
+    get(_stand, key) {
+      if (own(key)) return replaced[key as string];
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
     },
-    has: (object, key) => (typeof key === "string" && Object.hasOwn(replaced, key)) || Reflect.has(object, key),
+    has: (_stand, key) => own(key) || Reflect.has(target, key),
+    ownKeys: () => [...new Set([...Reflect.ownKeys(target), ...Object.keys(replaced)])],
+    getOwnPropertyDescriptor(_stand, key) {
+      const descriptor = own(key)
+        ? { value: replaced[key as string], writable: false, enumerable: true }
+        : Reflect.getOwnPropertyDescriptor(target, key);
+      return descriptor && { ...descriptor, configurable: true };
+    },
   });
 }
 
