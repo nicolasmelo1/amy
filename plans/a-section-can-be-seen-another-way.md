@@ -13,6 +13,7 @@ sources:
   - { id: S11, kind: decision, said: "a pet, a time-of-day clock, a wandering worker are frames and places the view picks from the snapshot; nothing in the renderer knows what an office is" }
   - { id: S12, kind: decision, said: "ui-frame's conformance world gains a scene view: switch Work to it, open a record by click, switch back; the surrounding regions project the same throughout. ui-window installs a view from outside and asserts it appears only once mounted" }
   - { id: S13, kind: decision, said: "the refusals are unit tests on mount() and on the vocabulary" }
+  - { id: S14, kind: decision, said: "seeing your agents as a building is a section view, and nothing more: the plugin brings no frame of its own, because a window every plugin rearranges is another product. Decided 2026-11-04" }
 touches:
   - packages/ui/src/vocabulary.ts
   - packages/ui/src/primitives.ts
@@ -27,7 +28,7 @@ touches:
   - packages/cli/tests/ui-config.test.ts
   - .software-factory/policy.yaml
 criteria:
-  - { id: A1, statement: "switching Work to a plugin's view changes the canvas and nothing else: every other region projects the same before and after", proof: "deferred:assertion:frame.a_section_view_changes_only_the_canvas", sources: [S3, S4, S12] }
+  - { id: A1, statement: "switching Work to a plugin's view changes the canvas and nothing else: every other region projects the same before and after", proof: "deferred:assertion:frame.a_section_view_changes_only_the_canvas", sources: [S3, S4, S12, S14] }
   - { id: A2, statement: "clicking a record in a scene view opens the same record, with the same canvas, as clicking its row in the list", proof: "deferred:assertion:frame.a_scene_opens_what_the_list_opens", sources: [S7, S12] }
   - { id: A3, statement: "a view naming an action frame.yaml does not list is refused at boot, naming the view and the action", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S7, S13] }
   - { id: A4, statement: "ui.views naming a view nothing contributes is refused at boot, with the installed list", proof: "deferred:test:packages/cli/tests/ui-config.test.ts", sources: [S5, S6] }
