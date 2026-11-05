@@ -23,6 +23,8 @@ sources:
   - { id: S20, kind: decision, said: "the window's half lands with the window: the transcript carries asks and answers, addThreadTurn takes an answer, the thread panel shows buttons; written into those two plans, not built here. Decided 2026-11-05" }
   - { id: S21, kind: reference, ref: "plans/next-steps.md", said: "every row is proven in the end-to-end scenario of a workflow this repository ships, through the installed executable, with the assertion that workflow's gate requires" }
   - { id: S22, kind: decision, said: "an answer is what one look reads: a Slack approval showing both ✅ and ❌, or a choice showing two keycaps, is no answer; amy says once which marks it saw and waits. Decided 2026-11-05" }
+  - { id: S23, kind: reference, ref: "plugins/serial-engine/src/Worker.ts", said: "a look reads replies before the budget check, the triage run and the save; a look that fails or is parked is retried from the same since" }
+  - { id: S24, kind: decision, said: "replies is a function of the thread and since: a retry from the same since gets the accepted answer again, and only a different later answer is dropped. Decided 2026-11-05" }
 touches:
   - .software-factory/evidence/ticket-to-qa/**
   - .software-factory/policy.yaml
@@ -65,11 +67,13 @@ criteria:
   - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S1, S2, S17, S18, S19] }
   - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17] }
   - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "deferred:assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21] }
+  - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, in Slack and Telegram alike", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "Conversation.ts gains an optional ask on post and an optional answer on Reply; with no conversation mounted, ask-question comments the numbered list on the tracker exactly as it comments the questions today" }
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A2, A3, A4" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:A10" }
   - { mechanism: record-migration, answer: works, proof: "deferred:A9, a record saved with questions as strings plans as today" }
+  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A13; a look retried after a failure or a budget park reads the accepted answer again" }
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:A8, the testkit world's conversation answers an ask as scripted" }
 guarantee:
   - { holds: "only the configured operator's press or reaction is an answer, as only their reply is one today", not_against: "a person holding the operator's own Slack or Telegram account" }
