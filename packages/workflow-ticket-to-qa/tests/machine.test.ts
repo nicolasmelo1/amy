@@ -1209,7 +1209,7 @@ describe("a discussion, driven through the engine", () => {
   const ASKED = "2026-09-03T10:00:00.000Z";
   const start = new Date("2026-09-03T10:01:00.000Z");
 
-  function world(options: { conversation: "answer" | "discuss"; budget?: Budget }) {
+  async function world(options: { conversation: "answer" | "discuss"; budget?: Budget }) {
     let clock = start;
     const said: Reply[] = [];
     const thread = { id: "thread-PROJ-1239" };
@@ -1245,14 +1245,14 @@ describe("a discussion, driven through the engine", () => {
     const worker = new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         conversation,
         agent,
         git,
         budget: options.budget,
         policy: { ...policy, conversation: options.conversation },
         now: () => clock,
-      }),
+      })),
     });
     return {
       prompts,
@@ -1279,7 +1279,7 @@ describe("a discussion, driven through the engine", () => {
   }
 
   it("answers three questions in the thread without moving, and moves on the decision with all six lines", async () => {
-    const w = world({ conversation: "discuss" });
+    const w = await world({ conversation: "discuss" });
     for (const question of ["why did it fail?", "is the test wrong?", "what would you change?"]) {
       w.say(question);
       await w.look();
@@ -1308,7 +1308,7 @@ describe("a discussion, driven through the engine", () => {
   });
 
   it("commits nothing and counts no attempt for a discussion", async () => {
-    const w = world({ conversation: "discuss" });
+    const w = await world({ conversation: "discuss" });
     w.say("why did it fail?");
     await w.look();
     w.cleanup();
@@ -1320,7 +1320,7 @@ describe("a discussion, driven through the engine", () => {
   });
 
   it("answers on the work's own branch, which a shared checkout may have left", async () => {
-    const w = world({ conversation: "discuss" });
+    const w = await world({ conversation: "discuss" });
     w.say("why did it fail?");
     await w.look();
     w.cleanup();
@@ -1335,7 +1335,7 @@ describe("a discussion, driven through the engine", () => {
     const spent: Budget = {
       mayStart: () => ({ ok: false, window: "perFiveHours", measure: "tokens", used: 10, limit: 10, stopAt: 1, retryAfterMs: 60_000, reason: "spent" }),
     };
-    const w = world({ conversation: "discuss", budget: spent });
+    const w = await world({ conversation: "discuss", budget: spent });
     w.say("why did it fail?");
     await w.look();
     w.cleanup();
@@ -1346,7 +1346,7 @@ describe("a discussion, driven through the engine", () => {
   });
 
   it("under answer, answers a reply marked as a discussion and does not resume", async () => {
-    const w = world({ conversation: "answer" });
+    const w = await world({ conversation: "answer" });
     w.say("why did it fail?", "discussion");
     await w.look();
     w.cleanup();
@@ -1356,7 +1356,7 @@ describe("a discussion, driven through the engine", () => {
   });
 
   it("under answer, resumes on the first unmarked reply, as it always did", async () => {
-    const w = world({ conversation: "answer" });
+    const w = await world({ conversation: "answer" });
     w.say("change the test");
     await w.look();
     w.cleanup();
@@ -1395,7 +1395,7 @@ describe("what a clarification settled", () => {
     const worker = new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({ conversation, agent, policy: { ...policy, conversation: "discuss" }, now: () => clock }),
+      ...(await ticketWorkerDeps({ conversation, agent, policy: { ...policy, conversation: "discuss" }, now: () => clock })),
     });
     for (let look = 0; look < 4 && !prompts.some((p) => p.step === "implement"); look += 1) {
       clock = new Date(clock.getTime() + 60_000);
@@ -1431,7 +1431,7 @@ describe("an escalation answered on the ticket", () => {
     const queue = new FileQueue(path.join(root, "queue"));
     const records = new InMemoryStore();
     records.save(record("ESCALATED", { resumeAt: "IMPLEMENTING", escalation: { reason: "r", askedAt: ASKED } }));
-    const worker = new Worker({ queue, records, ...ticketWorkerDeps({ tracker, agent, now: () => clock }) });
+    const worker = new Worker({ queue, records, ...(await ticketWorkerDeps({ tracker, agent, now: () => clock })) });
     const look = async () => {
       clock = new Date(clock.getTime() + policy.pollBackoffMs);
       queue.enqueue({ workId: "PROJ-1239", reason: "poke" }, clock);

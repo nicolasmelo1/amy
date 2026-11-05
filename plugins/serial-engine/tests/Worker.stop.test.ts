@@ -36,16 +36,16 @@ describe("the handbrake", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: TicketWorkerOverrides = {}): Worker {
+  async function build(overrides: TicketWorkerOverrides = {}): Promise<Worker> {
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         now: () => WORKDAY,
         log,
         stop,
         ...overrides,
-      }),
+      })),
     });
   }
 
@@ -53,7 +53,7 @@ describe("the handbrake", () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
     stop.request("the gate keeps failing");
 
-    const result = await build().tick();
+    const result = await (await build()).tick();
 
     expect(result).toEqual({ kind: "stopped", reason: "the gate keeps failing" });
     // The item is still there, untouched, so releasing picks it back up.
@@ -64,14 +64,14 @@ describe("the handbrake", () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
     stop.request("out of budget");
 
-    await build().tick();
+    await (await build()).tick();
 
     expect(log.of("stop.enforced")[0]?.detail).toEqual({ reason: "out of budget" });
   });
 
   it("picks up where it left off once released", async () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
-    const worker = build();
+    const worker = (await build());
     stop.request("hold");
 
     await worker.tick();
@@ -93,14 +93,14 @@ describe("the handbrake", () => {
       }),
     });
 
-    await build({
+    await (await build({
       tracker,
       plan: () => ({
         kind: "act",
         why: "two actions, and the brake comes down after the first",
         effects: [{ type: "ask-question", questions: ["first"] }, { type: "announce", text: "second" }],
       }),
-    }).tick();
+    })).tick();
 
     expect(log.kinds()).toContain("stop.enforced");
     expect(log.of("stop.enforced")[0]?.detail).toMatchObject({
@@ -114,7 +114,7 @@ describe("the handbrake", () => {
   it("runs perfectly well with no handbrake fitted", async () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
 
-    const result = await build({ stop: undefined }).tick();
+    const result = await (await build({ stop: undefined })).tick();
 
     expect(result.kind).toBe("worked");
   });
@@ -135,20 +135,20 @@ describe("what the engine writes down", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: TicketWorkerOverrides = {}): Worker {
+  async function build(overrides: TicketWorkerOverrides = {}): Promise<Worker> {
     return new Worker({
       queue,
       records: new InMemoryStore(),
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         now: () => WORKDAY,
         log,
         ...overrides,
-      }),
+      })),
     });
   }
 
   it("says nothing was due", async () => {
-    await build().tick();
+    await (await build()).tick();
 
     expect(log.kinds()).toEqual(["run.idle"]);
   });
@@ -156,7 +156,7 @@ describe("what the engine writes down", () => {
   it("records the claim, the decision and the action, in order", async () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
 
-    await build().tick();
+    await (await build()).tick();
 
     expect(log.kinds()).toEqual([
       "run.claimed",
@@ -171,7 +171,7 @@ describe("what the engine writes down", () => {
   it("names the action that ran", async () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
 
-    await build().tick();
+    await (await build()).tick();
 
     expect(log.of("action.started")[0]?.detail).toEqual({ action: "triage" });
   });
@@ -179,7 +179,7 @@ describe("what the engine writes down", () => {
   it("records what the workflow decided and why", async () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
 
-    await build().tick();
+    await (await build()).tick();
 
     expect(log.of("work.planned")[0]).toMatchObject({
       workId: "W-1",
@@ -192,7 +192,7 @@ describe("what the engine writes down", () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
     const agent = fakeAgent({ triage: vi.fn().mockRejectedValue(new Error("the agent died")) });
 
-    await build({ agent }).tick();
+    await (await build({ agent })).tick();
 
     expect(log.of("action.failed")[0]?.detail).toEqual({
       action: "triage",
@@ -217,7 +217,7 @@ describe("what the engine writes down", () => {
       ),
     });
 
-    await build({ agent }).tick();
+    await (await build({ agent })).tick();
 
     expect(log.of("action.failed")[0]?.detail?.error).toContain("rate-limited");
     // The cause survives into the failure, which is what tells the operator
@@ -237,7 +237,7 @@ describe("what the engine writes down", () => {
       ),
     });
 
-    await build({ agent }).tick();
+    await (await build({ agent })).tick();
 
     expect(log.of("agent.run")[0]?.detail).toMatchObject({ outcome: "failed", costUsd: 0.42 });
   });
@@ -245,13 +245,13 @@ describe("what the engine writes down", () => {
   it("runs perfectly well with no log fitted", async () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
 
-    await expect(build({ log: undefined }).tick()).resolves.toMatchObject({ kind: "worked" });
+    await expect((await build({ log: undefined })).tick()).resolves.toMatchObject({ kind: "worked" });
   });
 
   it("writes down what the agent run took, and where the money figure came from", async () => {
     queue.enqueue({ workId: "W-1", reason: "discovered" }, WORKDAY);
 
-    await build().tick();
+    await (await build()).tick();
 
     // Everything the relay and the budget will need, in one line.
     expect(log.of("agent.run")[0]).toMatchObject({
@@ -279,7 +279,7 @@ describe("what the engine writes down", () => {
       ),
     });
 
-    await build({ agent }).tick();
+    await (await build({ agent })).tick();
 
     const detail = log.of("agent.run")[0]?.detail ?? {};
     expect(detail.costSource).toBe("unknown");

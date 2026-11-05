@@ -39,33 +39,33 @@ describe("Worker", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: TicketWorkerOverrides = {}): Worker {
+  async function build(overrides: TicketWorkerOverrides = {}): Promise<Worker> {
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         notifier,
         now: () => clock,
         ...overrides,
-      }),
+      })),
     });
   }
 
   it("is idle when nothing is due", async () => {
-    await expect(build().tick()).resolves.toEqual({ kind: "idle" });
+    await expect((await build()).tick()).resolves.toEqual({ kind: "idle" });
   });
 
   it("is idle when the only item is held back", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "later", delayMs: 60_000 }, clock);
 
-    await expect(build().tick()).resolves.toEqual({ kind: "idle" });
+    await expect((await build()).tick()).resolves.toEqual({ kind: "idle" });
   });
 
   it("reads the ticket on the first look and stays put", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
     const agent = fakeAgent();
 
-    const result = await build({ agent }).tick();
+    const result = await (await build({ agent })).tick();
 
     expect(agent.triage).toHaveBeenCalledOnce();
     expect(result).toMatchObject({ kind: "worked", from: "DISCOVERED", to: "DISCOVERED", plan: "act" });
@@ -74,7 +74,7 @@ describe("Worker", () => {
   it("chains the next look immediately after doing work", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build().tick();
+    await (await build()).tick();
 
     // No schedule involved: the successor is already due.
     expect(queue.ready(clock)).toHaveLength(1);
@@ -85,7 +85,7 @@ describe("Worker", () => {
     records.save({ ...newRecord("PROJ-1239", clock), state: "CLARIFYING" });
     queue.enqueue({ workId: "PROJ-1239", reason: "asked" }, clock);
 
-    const result = await build().tick();
+    const result = await (await build()).tick();
 
     expect(result).toMatchObject({ plan: "wait", retryAfterMs: DEFAULT_POLICY.pollBackoffMs });
     expect(queue.ready(clock)).toHaveLength(0);
@@ -96,7 +96,7 @@ describe("Worker", () => {
     records.save({ ...newRecord("PROJ-1239", clock), state: "DONE" });
     queue.enqueue({ workId: "PROJ-1239", reason: "final look" }, clock);
 
-    const result = await build().tick();
+    const result = await (await build()).tick();
 
     expect(result).toMatchObject({ plan: "settled" });
     expect(queue.pending()).toHaveLength(0);
@@ -105,7 +105,7 @@ describe("Worker", () => {
 
   it("walks a ticket forward one move per tick", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
-    const worker = build();
+    const worker = (await build());
 
     const seen: string[] = [];
     for (let i = 0; i < 4; i += 1) {
@@ -129,7 +129,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "gate is green" }, clock);
     const host = fakeHost();
 
-    await build({ host }).tick();
+    await (await build({ host })).tick();
 
     expect(host.openPullRequest).toHaveBeenCalledWith({
       repo: "Northwind/northwind-backend",
@@ -158,7 +158,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "gate is green" }, clock);
     const host = fakeHost();
 
-    await build({ host, layout }).tick();
+    await (await build({ host, layout })).tick();
 
     expect(host.openPullRequest).toHaveBeenCalledWith(
       expect.objectContaining({ base: "trunk" }),
@@ -170,7 +170,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "waiting" }, clock);
     const host = fakeHost();
 
-    await build({ host }).tick();
+    await (await build({ host })).tick();
 
     expect(host.reviewLoad).not.toHaveBeenCalled();
   });
@@ -186,7 +186,7 @@ describe("Worker", () => {
       reviewLoad: vi.fn().mockResolvedValue({ "ada": 5, alan: 1, edsger: 3 }),
     });
 
-    await build({ host }).tick();
+    await (await build({ host })).tick();
 
     expect(host.reviewLoad).toHaveBeenCalledWith(["Northwind/northwind-backend"]);
     expect(host.requestReview).toHaveBeenCalledWith(
@@ -202,7 +202,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "approved" }, clock);
     const tracker = fakeTracker();
 
-    await build({ tracker }).tick();
+    await (await build({ tracker })).tick();
 
     expect(tracker.setStatus).toHaveBeenCalledWith("PROJ-1239", "In QA");
     expect(tracker.assign).toHaveBeenCalledWith("PROJ-1239", "grace@example.test");
@@ -223,7 +223,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "read" }, clock);
     const tracker = fakeTracker();
 
-    await build({ tracker }).tick();
+    await (await build({ tracker })).tick();
 
     expect(tracker.comment).toHaveBeenCalledWith(
       "PROJ-1239",
@@ -243,7 +243,7 @@ describe("Worker", () => {
     const tracker = fakeTracker();
     const host = fakeHost(pullRequest({ threads: [thread()] }));
 
-    await build({ tracker, host }).tick();
+    await (await build({ tracker, host })).tick();
 
     expect(tracker.createFollowUp).toHaveBeenCalledWith({
       parentTicketId: "PROJ-1239",
@@ -268,7 +268,7 @@ describe("Worker", () => {
       }),
     );
 
-    await build({ agent, host }).tick();
+    await (await build({ agent, host })).tick();
 
     // The review prompt names the threads it asks about, and who left them.
     const [prompt] = agent.addressThreads.mock.calls[0]!;
@@ -281,7 +281,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
     const agent = fakeAgent({ triage: vi.fn().mockRejectedValue(new Error("the agent died")) });
 
-    const result = await build({ agent }).tick();
+    const result = await (await build({ agent })).tick();
 
     expect(result).toMatchObject({ kind: "failed", error: "the agent died" });
     expect(queue.ready(clock)).toHaveLength(0);
@@ -296,7 +296,7 @@ describe("Worker", () => {
     );
     const agent = fakeAgent({ triage: vi.fn().mockRejectedValue(new Error("still dead")) });
 
-    await build({ agent }).tick();
+    await (await build({ agent })).tick();
 
     expect(queue.pending()).toHaveLength(0);
     // Exactly one, so the ceiling can never quietly become two warnings:
@@ -309,7 +309,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
     const tracker = fakeTracker({ get: vi.fn().mockResolvedValue(null) });
 
-    await expect(build({ tracker }).tick()).resolves.toMatchObject({
+    await expect((await build({ tracker })).tick()).resolves.toMatchObject({
       kind: "failed",
       error: "PROJ-1239 is not in the tracker any more",
     });
@@ -327,7 +327,7 @@ describe("Worker", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
     clock = new Date(WORKDAY.getTime() + 40 * 24 * 60 * 60 * 1000);
-    await build().tick();
+    await (await build()).tick();
 
     expect(queue.completed().map((item) => item.id)).not.toContain(done.id);
   });
@@ -348,11 +348,11 @@ describe("Worker.discover", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(tracker = fakeTracker()): Worker {
+  async function build(tracker = fakeTracker()): Promise<Worker> {
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({ tracker, now: () => WORKDAY }),
+      ...(await ticketWorkerDeps({ tracker, now: () => WORKDAY })),
     });
   }
 
@@ -361,17 +361,17 @@ describe("Worker.discover", () => {
       inProgress: vi.fn().mockResolvedValue([ticket({ id: "PROJ-1239" }), ticket({ id: "PROJ-1201" })]),
     });
 
-    await expect(build(tracker).discover()).resolves.toEqual(["PROJ-1239", "PROJ-1201"]);
+    await expect((await build(tracker)).discover()).resolves.toEqual(["PROJ-1239", "PROJ-1201"]);
   });
 
   it("does not queue a ticket that is already finished", async () => {
     records.save({ ...newRecord("PROJ-1239", WORKDAY), state: "DONE" });
 
-    await expect(build().discover()).resolves.toEqual([]);
+    await expect((await build()).discover()).resolves.toEqual([]);
   });
 
   it("does not queue a ticket twice", async () => {
-    const worker = build();
+    const worker = (await build());
 
     await worker.discover();
 
@@ -414,17 +414,17 @@ describe("Worker dispatch", () => {
     };
   }
 
-  function build(
+  async function build(
     runtime: WorkflowRuntime,
     plan: (record: WorkRecord) => Plan,
     port?: (kind: string) => object | undefined,
     initial: Partial<EnqueueRequest> = {},
-  ): Worker {
+  ): Promise<Worker> {
     queue.enqueue({ workId: "W-1", reason: "test", ...initial }, WORKDAY);
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({ now: () => WORKDAY, plan: plan as never }),
+      ...(await ticketWorkerDeps({ now: () => WORKDAY, plan: plan as never })),
       runtime,
       port,
     });
@@ -434,11 +434,11 @@ describe("Worker dispatch", () => {
     const ran: string[] = [];
     const runtime = thin({ announce: async () => void ran.push("announce") });
 
-    const result = await build(runtime, () => ({
+    const result = await (await build(runtime, () => ({
       kind: "act",
       why: "one declared, one not",
       effects: [{ type: "announce" }, { type: "hand-off-to-qa" }],
-    })).tick();
+    }))).tick();
 
     expect(result).toMatchObject({ kind: "failed", state: "NEW" });
     expect(result.kind === "failed" && result.error).toContain('"hand-off-to-qa"');
@@ -450,8 +450,8 @@ describe("Worker dispatch", () => {
     const forge = { merge: acceptsAction(vi.fn(async () => ({ merged: 42 }))) };
     const runtime = thin({ merge: { port: "forge", method: "merge" } });
 
-    await build(runtime, () => ({ kind: "act", why: "merge it", effects: [{ type: "merge", pr: 42 }] }),
-      (kind) => (kind === "forge" ? forge : undefined)).tick();
+    await (await build(runtime, () => ({ kind: "act", why: "merge it", effects: [{ type: "merge", pr: 42 }] }),
+      (kind) => (kind === "forge" ? forge : undefined))).tick();
 
     expect(forge.merge).toHaveBeenCalledWith({ type: "merge", pr: 42 }, expect.objectContaining({ outcomes: expect.any(Object) }));
     expect(records.load("W-1")).toMatchObject({ outcomes: { merge: { merged: 42 } } });
@@ -460,7 +460,7 @@ describe("Worker dispatch", () => {
   it("names the port a port-and-method action needed when nothing mounted it", async () => {
     const runtime = thin({ merge: { port: "forge", method: "merge" } });
 
-    const result = await build(runtime, () => ({ kind: "act", why: "merge it", effects: [{ type: "merge" }] })).tick();
+    const result = await (await build(runtime, () => ({ kind: "act", why: "merge it", effects: [{ type: "merge" }] }))).tick();
 
     expect(result.kind === "failed" && result.error).toBe("action `merge`: needs the `forge` port, which nothing mounted");
   });
@@ -468,7 +468,7 @@ describe("Worker dispatch", () => {
   it("tells the fold the state the tick started in on an advance", async () => {
     const folds: (Moved | null)[] = [];
 
-    await build(thin({}, folds), () => ({ kind: "advance", to: "DONE", why: "go", effects: [] })).tick();
+    await (await build(thin({}, folds), () => ({ kind: "advance", to: "DONE", why: "go", effects: [] }))).tick();
 
     expect(folds).toEqual([{ from: "NEW", to: "DONE" }]);
     // The record the fold was handed had already moved, which is why it is told.
@@ -478,8 +478,8 @@ describe("Worker dispatch", () => {
   it("tells the fold nothing moved when the plan did not advance", async () => {
     const folds: (Moved | null)[] = [];
 
-    await build(thin({}, folds), () => ({ kind: "act", why: "work", effects: [] })).tick();
-    await build(thin({}, folds), () => ({ kind: "wait", retryAfterMs: 0, why: "hold", effects: [] })).tick();
+    await (await build(thin({}, folds), () => ({ kind: "act", why: "work", effects: [] }))).tick();
+    await (await build(thin({}, folds), () => ({ kind: "wait", retryAfterMs: 0, why: "hold", effects: [] }))).tick();
 
     expect(folds).toEqual([null, null]);
   });
@@ -492,11 +492,11 @@ describe("Worker dispatch", () => {
       },
     });
 
-    const result = await build(runtime, () => ({
+    const result = await (await build(runtime, () => ({
       kind: "act",
       why: "the quota stopped it",
       effects: [{ type: "implement" }],
-    })).tick();
+    }))).tick();
 
     expect(records.load("W-1")).toMatchObject({
       attempts: {},
@@ -521,10 +521,10 @@ describe("Worker dispatch", () => {
     const worker = new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         now: () => now,
         plan: (() => ({ kind: "act", why: "the quota stopped it", effects: [{ type: "implement" }] })) as never,
-      }),
+      })),
       runtime,
     });
 
@@ -549,11 +549,11 @@ describe("Worker dispatch", () => {
       }),
       progress: { maxUnchanged: 2, handoff: "park" },
     };
-    const worker = build(runtime, () => ({
+    const worker = (await build(runtime, () => ({
       kind: "act",
       why: "implement it",
       effects: [{ type: "implement" }],
-    }));
+    })));
 
     await worker.tick();
     await worker.tick();
@@ -576,11 +576,11 @@ describe("Worker dispatch", () => {
         return { progress: { kind: "unchanged", key: "custom-agent", detail: "the brief did not change" } };
       }),
     };
-    const worker = build(
+    const worker = (await build(
       runtime,
       () => ({ kind: "act", why: "ask the custom agent", effects: [{ type: "custom-agent" }] }),
       (kind) => (kind === "agent" ? agent : undefined),
-    );
+    ));
 
     await worker.tick();
     await worker.tick();
@@ -604,11 +604,11 @@ describe("Worker dispatch", () => {
       }),
       progress: { maxUnchanged: 2, handoff: "park" },
     };
-    const worker = build(runtime, () => ({
+    const worker = (await build(runtime, () => ({
       kind: "act",
       why: "implement it",
       effects: [{ type: "implement" }],
-    }));
+    })));
 
     await expect(worker.tick()).resolves.toMatchObject({ kind: "parked" });
 
@@ -635,12 +635,12 @@ describe("Worker dispatch", () => {
       }),
       progress: { maxUnchanged: 2, handoff: "park" },
     };
-    const worker = build(runtime, () => ({
+    const worker = (await build(runtime, () => ({
       kind: "advance",
       to: "ESCALATED",
       why: "handoff to the owner",
       effects: [{ type: "implement" }],
-    }));
+    })));
 
     await expect(worker.tick()).resolves.toMatchObject({ kind: "parked", state: "ESCALATED" });
 
@@ -665,7 +665,7 @@ describe("Worker dispatch", () => {
       progress: { maxUnchanged: 2, handoff: "park" },
     };
 
-    await build(
+    await (await build(
       runtime,
       () => ({ kind: "advance", to: "DONE", why: "evidence moved it", effects: [{ type: "implement" }] }),
       undefined,
@@ -675,7 +675,7 @@ describe("Worker dispatch", () => {
           "DONE:implementation": { count: 2, detail: "old target evidence" },
         },
       },
-    ).tick();
+    )).tick();
 
     expect(records.load("W-1")?.state).toBe("DONE");
     expect(queue.pending()[0]?.progress).toBeUndefined();

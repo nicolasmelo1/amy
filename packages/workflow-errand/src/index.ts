@@ -16,9 +16,6 @@ export type { EffectOutcomes } from "./outcomes.js";
 
 export { decide, plan } from "./decide.js";
 
-export { errandRuntime } from "./actions.js";
-export type { ErrandRuntimeConfig, ErrandRuntimeDeps } from "./actions.js";
-
 export { configSchema, plugin } from "./plugin.js";
 
 export type { NewTask, Task, Tasks } from "./ports/Tasks.js";

@@ -36,16 +36,16 @@ describe("what kind of announcement the engine makes", () => {
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  function build(overrides: TicketWorkerOverrides = {}, maxItemAttempts = 5): Worker {
+  async function build(overrides: TicketWorkerOverrides = {}, maxItemAttempts = 5): Promise<Worker> {
     return new Worker({
       queue,
       records: new InMemoryStore(),
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         notifier,
         now: () => clock,
         config: { maxItemAttempts },
         ...overrides,
-      }),
+      })),
     });
   }
 
@@ -59,7 +59,7 @@ describe("what kind of announcement the engine makes", () => {
   it("says it is still retrying on the way down", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ tracker: down() }).tick();
+    await (await build({ tracker: down() })).tick();
 
     expect(kinds()).toEqual(["failing"]);
   });
@@ -67,7 +67,7 @@ describe("what kind of announcement the engine makes", () => {
   it("says it has stopped once it reaches the ceiling", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ tracker: down() }, 1).tick();
+    await (await build({ tracker: down() }, 1)).tick();
 
     expect(kinds()).toEqual(["gave-up"]);
   });
@@ -75,7 +75,7 @@ describe("what kind of announcement the engine makes", () => {
   it("says the work is moving again when it recovers", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "retrying", attempt: 2 }, clock);
 
-    await build().tick();
+    await (await build()).tick();
 
     expect(kinds()).toEqual(["recovered"]);
   });
@@ -83,7 +83,7 @@ describe("what kind of announcement the engine makes", () => {
   it("says nothing at all about a move that went fine", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build().tick();
+    await (await build()).tick();
 
     expect(notifier.announcements).toEqual([]);
   });

@@ -136,14 +136,18 @@ export const plugin = defineWorkflow({
   name: "errand",
   configSchema,
   policy: DEFAULT_POLICY,
-  needs: { tasks: port<Tasks>(), notifier: port<Notifier>() },
+  needs: { tasks: port<Tasks>(), agent: port<Harness>(), notifier: port<Notifier>() },
+  decide,
   record: () => ({}),
-  decide,                       // one key per state workflow.mmd draws
-  discover: ({ ports }) => ports.tasks.pending(),
-  observe: ({ ports }, work) => ports.tasks.read(work.id),
+  // Each piece is a function of the scope the host hands it: the ports
+  // `needs` asked for, the settings, the policy and the checkouts.
+  discover: ({ ports }) => Promise.resolve(ports.tasks.all().map((task) => task.id)),
+  observe,
   actions: {
+    "run-errand": runErrand,
     announce: (scope, _work, effect) => scope.announce(effect.text),
   },
+  remember,
 });
 ```
 

@@ -1,180 +1,132 @@
 import {
   ActionContext,
-  ActionHandler,
   baseBranchFor,
-  Git,
-  Harness,
   Moved,
-  Notifier,
-  Plan,
   RepoLayout,
   Store,
-  WorkflowRuntimeParts,
+  WorkflowActionScope,
+  WorkflowPieceContext,
 } from "@amykit/core";
 import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes } from "./outcomes.js";
 import { ErrandRecord } from "./record.js";
-import { Task, Tasks } from "./ports/Tasks.js";
+import { Task } from "./ports/Tasks.js";
+import type { configSchema, needs } from "./plugin.js";
 import { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./task-file.js";
 import { declinedIn, errandPrompt } from "./prompt.js";
 
-export interface ErrandRuntimeConfig {
-  /** The repositories this install may do an errand in. */
-  repos: readonly string[];
-}
-
-export interface ErrandRuntimeDeps {
-  tasks: Tasks;
-  /** The same mounted port the other workflows reach, at its generic level. */
-  agent: Harness;
-  notifier: Notifier;
-  git: Git;
-  /**
-   * The layout the `Git` above resolves, named for the one question `Git`
-   * does not answer: what a repository's pull request opens against.
-   */
-  layout: RepoLayout;
-  /** Read to count what is already in flight, never written to here. */
-  records: Store<ErrandRecord>;
-  now: () => Date;
-  config: ErrandRuntimeConfig;
-  policy: Policy;
-}
-
-type Context = ActionContext<ErrandRecord, Observation>;
-
-/** Exhaustive over this workflow's actions, checked at compile time. */
-type ErrandHandlers = {
-  [K in Effect["type"]]: (effect: Extract<Effect, { type: K }>, ctx: Context) => Promise<void>;
-};
+/** What the declaration hands every piece: the mounted ports, the settings and the policy. */
+type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
+type ActionScope = WorkflowActionScope<typeof configSchema, Policy, typeof needs>;
+type Work = ActionContext<ErrandRecord, Observation>;
 
 /** States where an errand is on its way somewhere, or already waiting. */
 const IN_FLIGHT = ["WORKING", "PR_OPEN"];
 
-export function errandRuntime(
-  deps: ErrandRuntimeDeps,
-): WorkflowRuntimeParts<ErrandRecord, Observation> {
-  const requireTask = (workId: string): Task => {
-    const found = deps.tasks.get(workId);
-    if (!found) throw new Error(`the task ${workId} is not in the tasks directory any more`);
-    return found;
-  };
+/** Every task on the queue's directory is an errand to look at. */
+export async function discover(scope: Scope): Promise<string[]> {
+  return scope.ports.tasks.all().map((task) => task.id);
+}
 
-  const outcomesOf = (ctx: Context): EffectOutcomes => ctx.outcomes as EffectOutcomes;
-
-  const handlers: ErrandHandlers = {
-    "run-errand": async (effect, ctx) => {
-      const { task } = ctx.observation;
-      const slug = slugFor(task);
-      await deps.git.prepareBranch(task.repo, branchFor(slug), task.id);
-
-      const reply = await deps.agent.ask(
-        errandPrompt(task, effect.finding),
-        deps.git.pathFor(task.repo, task.id),
-        { workId: ctx.record.id, step: "run-errand" },
-      );
-
-      const at = deps.now().toISOString();
-      if (reply.run.outcome !== "completed") {
-        outcomesOf(ctx).attempt = { ok: false, output: reply.run.output, at };
-        return;
-      }
-
-      // A refusal is the agent's decision, and nothing it left in the tree is
-      // published. What it left is stashed under the task's id rather than
-      // committed, so no branch a later errand reuses carries it.
-      const declined = declinedIn(reply.text);
-      if (declined) {
-        outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
-        outcomesOf(ctx).declined = declined;
-        // The refusal stands even when the tree cannot be cleaned; the
-        // operator is told what is still in the checkout instead.
-        try {
-          await deps.git.setAside(task.repo, `amy: what the refused errand ${task.id} left behind`, task.id);
-        } catch (error) {
-          const said = error instanceof Error ? error.message : String(error);
-          outcomesOf(ctx).declined = `${declined}\n\nWhat it left in the checkout could not be set aside: ${said}`;
-        }
-        return;
-      }
-
-      // Whether the errand left something to review is a question about
-      // commits, not about refs. `prepareBranch` already created a branch,
-      // and publishing it for the first time is a new remote ref whether or
-      // not it carries a commit — so "the push moved something" answered
-      // yes for every errand that was a question, and opened a pull request
-      // with no diff in it.
-      const committed = await deps.git.commit(
-        task.repo,
-        `chore: ${pullRequestTitle(task).toLowerCase()}`,
-        task.id,
-      );
-      const changed =
-        committed ||
-        (await deps.git.commitsAhead(task.repo, baseBranchFor(deps.layout, task.repo), task.id)) > 0;
-
-      // Nothing to publish is a finished errand, not a failed one: pushing a
-      // branch that carries no commit only creates a pull request nobody can
-      // act on.
-      if (changed) await deps.git.push(task.repo, branchFor(slug), task.id);
-
-      outcomesOf(ctx).attempt = { ok: true, output: reply.run.output, at };
-      outcomesOf(ctx).changed = changed;
-    },
-
-    // Standalone, a word the operator was owed fails the action; mounted, the
-    // plugin hands this to the host's best-effort `announce` instead.
-    "announce": async (effect, ctx) => {
-      await deps.notifier.announce({ text: effect.text, workId: ctx.record.id, state: ctx.record.state });
-    },
-  };
+export async function observe(scope: Scope, current: ErrandRecord): Promise<Observation> {
+  const task = scope.ports.tasks.get(current.id);
+  if (!task) throw new Error(`the task ${current.id} is not in the tasks directory any more`);
 
   return {
-    async found() {
-      return deps.tasks.all().map((task) => task.id);
-    },
-
-    async observe(current) {
-      const task = requireTask(current.id);
-
-      return {
-        task,
-        workable: deps.config.repos.includes(task.repo),
-        inFlight: inFlightExcept(deps.records, current.id),
-        now: deps.now(),
-      };
-    },
-
-    // The key is the declaration and the value what runs it. The cast is the
-    // boundary: the map is exhaustive over `Effect`, so a new action fails to
-    // compile until something runs it, and the engine only ever hands back an
-    // action it was given by the plan that typed it.
-    actions: Object.fromEntries(
-      Object.entries(handlers).map(([name, handler]) => [
-        name,
-        handler as ActionHandler<ErrandRecord, Observation>,
-      ]),
-    ),
-
-    apply(current, _plan: Plan, outcomes, observation, _now, moved?: Moved | null) {
-      const bag = outcomes as EffectOutcomes;
-      const next: ErrandRecord = {
-        ...current,
-        repo: current.repo ?? observation.task.repo,
-        slug: current.slug ?? slugFor(observation.task),
-        ...(bag.attempt ? { lastAttempt: bag.attempt } : {}),
-        ...(bag.changed === undefined ? {} : { changed: bag.changed }),
-        ...(bag.declined === undefined ? {} : { declined: bag.declined }),
-      };
-      // The call's input is read off the record, and the body carries what
-      // the agent said, so it is worked out on the move that makes the call.
-      return moved?.to === "PR_OPEN"
-        ? { ...next, opening: openingFor(observation.task, next, deps.layout), asked: observation.task.text }
-        : next;
-    },
+    task,
+    workable: scope.config.repos.includes(task.repo),
+    inFlight: inFlightExcept(scope.ports.store, current.id),
+    now: scope.ctx.now(),
   };
+}
+
+/**
+ * The errand itself: the agent does it on its own branch, and what it left is
+ * committed and published only when there is something to review.
+ */
+export async function runErrand(
+  scope: ActionScope,
+  work: Work,
+  effect: Extract<Effect, { type: "run-errand" }>,
+): Promise<void> {
+  const { git, layout } = scope.checkouts;
+  const outcomes = work.outcomes as EffectOutcomes;
+  const { task } = work.observation;
+  const slug = slugFor(task);
+  await git.prepareBranch(task.repo, branchFor(slug), task.id);
+
+  const reply = await scope.ports.agent.ask(
+    errandPrompt(task, effect.finding),
+    git.pathFor(task.repo, task.id),
+    { workId: work.record.id, step: "run-errand" },
+  );
+
+  const at = scope.ctx.now().toISOString();
+  if (reply.run.outcome !== "completed") {
+    outcomes.attempt = { ok: false, output: reply.run.output, at };
+    return;
+  }
+
+  // A refusal is the agent's decision, and nothing it left in the tree is
+  // published. What it left is stashed under the task's id rather than
+  // committed, so no branch a later errand reuses carries it.
+  const declined = declinedIn(reply.text);
+  if (declined) {
+    outcomes.attempt = { ok: true, output: reply.run.output, at };
+    outcomes.declined = declined;
+    // The refusal stands even when the tree cannot be cleaned; the
+    // operator is told what is still in the checkout instead.
+    try {
+      await git.setAside(task.repo, `amy: what the refused errand ${task.id} left behind`, task.id);
+    } catch (error) {
+      const said = error instanceof Error ? error.message : String(error);
+      outcomes.declined = `${declined}\n\nWhat it left in the checkout could not be set aside: ${said}`;
+    }
+    return;
+  }
+
+  // Whether the errand left something to review is a question about
+  // commits, not about refs. `prepareBranch` already created a branch,
+  // and publishing it for the first time is a new remote ref whether or
+  // not it carries a commit — so "the push moved something" answered
+  // yes for every errand that was a question, and opened a pull request
+  // with no diff in it.
+  const committed = await git.commit(task.repo, `chore: ${pullRequestTitle(task).toLowerCase()}`, task.id);
+  const changed = committed || (await git.commitsAhead(task.repo, baseBranchFor(layout, task.repo), task.id)) > 0;
+
+  // Nothing to publish is a finished errand, not a failed one: pushing a
+  // branch that carries no commit only creates a pull request nobody can
+  // act on.
+  if (changed) await git.push(task.repo, branchFor(slug), task.id);
+
+  outcomes.attempt = { ok: true, output: reply.run.output, at };
+  outcomes.changed = changed;
+}
+
+/** Folds what the actions produced, and what the call at `PR_OPEN` is opened with. */
+export function remember(
+  scope: Scope,
+  current: ErrandRecord,
+  outcomes: Record<string, unknown>,
+  observation: Observation,
+  moved: Moved | null,
+): ErrandRecord {
+  const bag = outcomes as EffectOutcomes;
+  const next: ErrandRecord = {
+    ...current,
+    repo: current.repo ?? observation.task.repo,
+    slug: current.slug ?? slugFor(observation.task),
+    ...(bag.attempt ? { lastAttempt: bag.attempt } : {}),
+    ...(bag.changed === undefined ? {} : { changed: bag.changed }),
+    ...(bag.declined === undefined ? {} : { declined: bag.declined }),
+  };
+  // The call's input is read off the record, and the body carries what
+  // the agent said, so it is worked out on the move that makes the call.
+  return moved?.to === "PR_OPEN"
+    ? { ...next, opening: openingFor(observation.task, next, scope.checkouts.layout), asked: observation.task.text }
+    : next;
 }
 
 /** What the pull request for an errand is opened with. */

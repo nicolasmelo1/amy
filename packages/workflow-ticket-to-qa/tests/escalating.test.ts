@@ -54,7 +54,7 @@ const RAISED_FROM: { state: TicketState; record: Partial<TicketRecord>; observat
 ];
 
 /** The shipped runtime, folding the way the engine asks it to. */
-const runtime = ticketWorkerDeps().runtime as unknown as WorkflowRuntime<TicketRecord, Observation>;
+const runtime = (await ticketWorkerDeps()).runtime as unknown as WorkflowRuntime<TicketRecord, Observation>;
 
 function look(current: TicketRecord, seen: Observation, outcomes: Record<string, unknown> = {}): { plan: Plan; next: TicketRecord } {
   const decided = plan(current, seen, policy);

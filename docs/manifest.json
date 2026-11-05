@@ -68,6 +68,11 @@
           "description": "What owns what, the one rule everything else follows from, and where the types live."
         },
         {
+          "title": "MAD and BEP",
+          "path": "/concepts/mad-and-bep",
+          "description": "The two opinions amy does not negotiate — how one workflow is built, and how a piece of work is carried from a brief to its proof."
+        },
+        {
           "title": "Workflows",
           "path": "/concepts/workflows",
           "description": "Three pieces — a diagram, a pure decision per state, and the actions — joined by one declaration."
@@ -320,6 +325,11 @@
         {
           "title": "A workflow is a Mermaid diagram",
           "path": "/design/a-workflow-is-a-mermaid-diagram",
+          "description": ""
+        },
+        {
+          "title": "A workflow is drawn, or it does not mount",
+          "path": "/design/a-workflow-is-drawn-or-it-does-not-mount",
           "description": ""
         },
         {
@@ -1004,6 +1014,11 @@
         },
         {
           "depth": 3,
+          "title": "The amy-workflow skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a workflow.mmd, a decide map with one pure decision per drawn state, and actions written against the scope they are handed. Before, it taught a plan() with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.",
+          "slug": "the-amy-workflow-skill-teaches-the-three-pieces-a-workflow-is-mermaid-act-and-decide-a-workflowmmd-a-decide-map-with-one-pure-decision-per-drawn-state-and-actions-written-against-the-scope-they-are-handed-before-it-taught-a-plan-with-a-runtime-beside-it-and-a-raw-plugin-registering-states-by-hand-neither-of-those-mounts-any-more-so-a-person-following-the-skill-wrote-a-workflow-amy-refuses-the-two-opinions-amy-holds-every-workflow-to-mad-and-bep-brief-execute-prove-are-written-down-in-mad-and-bep-under-how-it-works"
+        },
+        {
+          "depth": 3,
           "title": "**A workflow is one declaration.** defineWorkflow registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. planning supplies the four typed plan constructors, and amy workflow new writes the new declaration.",
           "slug": "a-workflow-is-one-declaration-defineworkflow-registers-the-pure-machine-and-its-deferred-runtime-together-resolves-typed-required-and-optional-ports-validates-and-merges-policy-defaults-and-constructs-the-core-record-fields-planning-supplies-the-four-typed-plan-constructors-and-amy-workflow-new-writes-the-new-declaration"
         },
@@ -1021,6 +1036,11 @@
           "depth": 3,
           "title": "**A workflow runs on lanes.** A diagram may draw state X <<fork>> and state Y <<join>>: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.",
           "slug": "a-workflow-runs-on-lanes-a-diagram-may-draw-state-x-fork-and-state-y-join-every-line-out-of-the-fork-is-a-lane-every-lane-is-a-call-so-a-record-of-its-own-and-the-caller-moves-to-the-join-once-every-lane-has-ended-holding-where-each-ended-and-what-it-returned-keyed-by-lane-there-is-no-setting-for-how-many-the-number-of-lanes-is-the-number-of-lines-drawn-before-this-work-that-could-run-side-by-side-ran-one-piece-after-the-other-or-was-written-by-hand-in-a-runtime-the-diagram-never-showed"
+        },
+        {
+          "depth": 3,
+          "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write discover, observe, remember and every action as a function of the scope defineWorkflow hands it: scope.ports, scope.config, scope.policy, scope.checkouts, scope.ctx and scope.announce. errandRuntime, planRuntime and ticketRuntime are gone, with their …RuntimeDeps and …RuntimeConfig types; a test that built one mounts the declaration instead.",
+          "slug": "the-actions-use-the-ports-the-errand-note-to-plan-and-ticket-to-qa-write-discover-observe-remember-and-every-action-as-a-function-of-the-scope-defineworkflow-hands-it-scopeports-scopeconfig-scopepolicy-scopecheckouts-scopectx-and-scopeannounce-errandruntime-planruntime-and-ticketruntime-are-gone-with-their-runtimedeps-and-runtimeconfig-types-a-test-that-built-one-mounts-the-declaration-instead"
         },
         {
           "depth": 3,
@@ -1341,6 +1361,28 @@
           "depth": 2,
           "title": "Writing a harness plugin",
           "slug": "writing-a-harness-plugin"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/mad-and-bep",
+      "file": "docs/concepts/mad-and-bep.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/mad-and-bep.md",
+      "title": "MAD and BEP",
+      "description": "The two opinions amy does not negotiate — how one workflow is built, and how a piece of work is carried from a brief to its proof.",
+      "group": "How it works",
+      "order": 1.5,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "MAD: Mermaid, Act, Decide",
+          "slug": "mad-mermaid-act-decide"
+        },
+        {
+          "depth": 2,
+          "title": "BEP: Brief, Execute, Prove",
+          "slug": "bep-brief-execute-prove"
         }
       ]
     },
@@ -2401,6 +2443,33 @@
           "depth": 2,
           "title": "What was delivered",
           "slug": "what-was-delivered"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-is-drawn-or-it-does-not-mount",
+      "file": "docs/design/a-workflow-is-drawn-or-it-does-not-mount.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-is-drawn-or-it-does-not-mount.md",
+      "title": "A workflow is drawn, or it does not mount",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "Deviations",
+          "slug": "deviations"
         },
         {
           "depth": 2,
@@ -6943,7 +7012,7 @@
       },
       {
         "name": "amy-workflow",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "description": "Design a new amy workflow, or change one that exists, by being interrogated one question at a time until the shape is settled — then write it as its own package.",
         "directory": "packages/cli/skills/amy-workflow"
       }
@@ -10347,6 +10416,18 @@
         "level": "minor"
       },
       {
+        "id": "a-workflow-is-mad-and-a-project-is-bep",
+        "title": "The `amy-workflow` skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a `workflow.mmd`, a `decide` map with one pure decision per drawn state, and `actions` written against the `scope` they are handed. Before, it taught a `plan()` with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
         "id": "a-workflow-is-one-declaration",
         "title": "**A workflow is one declaration.** `defineWorkflow` registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. `planning` supplies the four typed plan constructors, and `amy workflow new` writes the new declaration.",
         "body": "",
@@ -10441,6 +10522,26 @@
           },
           {
             "package": "@amykit/workflow-testkit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "actions-use-the-ports",
+        "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write `discover`, `observe`, `remember` and every action as a function of the scope `defineWorkflow` hands it: `scope.ports`, `scope.config`, `scope.policy`, `scope.checkouts`, `scope.ctx` and `scope.announce`. `errandRuntime`, `planRuntime` and `ticketRuntime` are gone, with their `…RuntimeDeps` and `…RuntimeConfig` types; a test that built one mounts the declaration instead.",
+        "body": "Before, each workflow kept the factory it had before `defineWorkflow`, and a\n`WeakMap` adapter that assembled a deps object out of the scope to build it:\nthree copies of the same adapter. It cached nothing for an action, whose scope\nis a new object every time, so every action rebuilt the whole runtime; and\nticket-to-qa carried its own `agent.run` and `notify.failed` lines behind an\n`accountsAgentRuns: false` switch, beside the host's, when the framework\nalready hands every action an agent that accounts for each reply and an\n`announce` that cannot cost a move. ticket-to-qa's progress policy is read\nfrom `budget` through the declaration's `progress(scope)`, and its roster is\nread from the profile when a look needs it, as before.",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
             "level": "minor"
           },
           {

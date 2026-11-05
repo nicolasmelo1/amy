@@ -1,190 +1,124 @@
 import {
   ActionContext,
-  ActionHandler,
   baseBranchFor,
-  Git,
-  Harness,
   Moved,
-  Notifier,
-  Plan,
   RepoLayout,
   Store,
-  WorkflowRuntimeParts,
+  WorkflowActionScope,
+  WorkflowPieceContext,
 } from "@amykit/core";
 import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
 import { Observation, Policy } from "./observation.js";
 import { EffectOutcomes, applyOutcomes } from "./outcomes.js";
 import { PlanRecord } from "./record.js";
-import { Note, Notes } from "./ports/Notes.js";
-import { PlanCheck } from "./ports/PlanCheck.js";
+import { Note } from "./ports/Notes.js";
+import type { configSchema, needs } from "./plugin.js";
 import { branchFor, pullRequestBody, pullRequestTitle, slugFor } from "./plan-file.js";
 import { draftPrompt } from "./prompt.js";
 
-export interface PlanRuntimeConfig {
-  /** The repositories this install may write a plan into. */
-  repos: readonly string[];
-}
-
-export interface PlanRuntimeDeps {
-  notes: Notes;
-  /**
-   * The agent, as the only thing it is asked for here: a prompt, a directory
-   * and an account of what the answer cost.
-   *
-   * The same mounted port the ticket workflow reaches for `triage` and
-   * `implement`, narrowed to the half with no vocabulary in it. That is what
-   * puts these prompts on the same ladder and under the same ceiling as the
-   * first workflow's, with neither knowing about the other.
-   */
-  agent: Harness;
-  check: PlanCheck;
-  notifier: Notifier;
-  git: Git;
-  /**
-   * The layout the `Git` above resolves, named for the one question `Git`
-   * does not answer: what a repository's pull request opens against. The
-   * pull request is opened by the workflow `PR_OPEN` calls; this is how the
-   * note says what to open it against.
-   */
-  layout: RepoLayout;
-  /** Read to count what is already in flight, never written to here. */
-  records: Store<PlanRecord>;
-  now: () => Date;
-  config: PlanRuntimeConfig;
-  policy: Policy;
-}
-
-type Context = ActionContext<PlanRecord, Observation>;
-
-/** Exhaustive over this workflow's actions, checked at compile time. */
-type PlanHandlers = {
-  [K in Effect["type"]]: (effect: Extract<Effect, { type: K }>, ctx: Context) => Promise<void>;
-};
+/**
+ * What the declaration hands every piece. Everything here names a note, a
+ * plan file or a repository; what drives it is the same engine that drives
+ * the ticket workflow, which had to learn nothing to do it.
+ */
+type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
+type ActionScope = WorkflowActionScope<typeof configSchema, Policy, typeof needs>;
+type Work = ActionContext<PlanRecord, Observation>;
 
 /** States where a plan is on its way to a pull request, or already is one. */
 const IN_FLIGHT = ["DRAFTED", "CHECKED", "PR_OPEN"];
 
-/**
- * How this workflow's actions run: what the world looks like before a
- * decision, what each action does, and how the result folds back in.
- *
- * Everything here names a note, a plan file or a repository. What it is
- * driven by is the same engine that drives the ticket workflow, which had to
- * learn nothing to do it.
- */
-export function planRuntime(deps: PlanRuntimeDeps): WorkflowRuntimeParts<PlanRecord, Observation> {
-  const requireNote = (workId: string): Note => {
-    const found = deps.notes.get(workId);
-    if (!found) {
-      throw new Error(`the note ${workId} is not in the notes directory any more`);
-    }
-    return found;
-  };
+/** Every note somebody wrote down, except the machine's reports on itself. */
+export async function discover(scope: Scope): Promise<string[]> {
+  return scope.ports.notes.all().filter(plannable).map((note) => note.id);
+}
 
-  /** The outcomes bag, typed at the one boundary that knows what is in it. */
-  const outcomesOf = (ctx: Context): EffectOutcomes => ctx.outcomes as EffectOutcomes;
-
-  const handlers: PlanHandlers = {
-    "draft-plan": async (effect, ctx) => {
-      const { note } = ctx.observation;
-      const slug = slugFor(note);
-      await deps.git.prepareBranch(note.repo, branchFor(slug), note.id);
-
-      const reply = await deps.agent.ask(
-        draftPrompt(note, slug, effect.finding),
-        deps.git.pathFor(note.repo, note.id),
-        { workId: ctx.record.id, step: "draft-plan" },
-      );
-
-      const at = deps.now().toISOString();
-      if (reply.run.outcome !== "completed") {
-        outcomesOf(ctx).draft = { ok: false, output: reply.run.output, at };
-        return;
-      }
-
-      // A run that changed nothing is a failure here rather than a success:
-      // the machine's notion of "drafted" means the plan is on the remote,
-      // because that is what a pull request can be opened against.
-      const pushed = await deps.git.commitAndPush(
-        note.repo,
-        branchFor(slug),
-        `docs(plans): ${slug.replace(/-/g, " ")}`,
-        note.id,
-      );
-
-      outcomesOf(ctx).draft = pushed
-        ? { ok: true, output: reply.run.output, at }
-        : {
-            ok: false,
-            output: `the agent finished without writing any file\n\n${reply.run.output}`,
-            at,
-          };
-    },
-
-    "check-plan": async (_effect, ctx) => {
-      // The plan is judged where it was written: with a worktree port behind
-      // the Git, that is the note's own tree.
-      outcomesOf(ctx).check = await deps.check.check(
-        ctx.observation.note.repo,
-        ctx.observation.note.id,
-      );
-    },
-
-    // Standalone, a word the operator was owed fails the action; mounted, the
-    // plugin hands this to the host's best-effort `announce` instead.
-    "announce": async (effect, ctx) => {
-      await deps.notifier.announce({ text: effect.text, workId: ctx.record.id, state: ctx.record.state });
-    },
-  };
+export async function observe(scope: Scope, current: PlanRecord): Promise<Observation> {
+  const note = scope.ports.notes.get(current.id);
+  if (!note) throw new Error(`the note ${current.id} is not in the notes directory any more`);
 
   return {
-    async found() {
-      return deps.notes.all().filter(plannable).map((note) => note.id);
-    },
-
-    async observe(current) {
-      const note = requireNote(current.id);
-
-      return {
-        note,
-        writable: deps.config.repos.includes(note.repo),
-        plansInFlight: inFlightFor(deps.records, note.repo, current.id),
-        now: deps.now(),
-      };
-    },
-
-    // The key is the declaration and the value what runs it. The cast is the
-    // boundary: the map is exhaustive over `Effect`, so a new action fails to
-    // compile until something runs it, and the engine only ever hands back an
-    // action it was given by the plan that typed it.
-    actions: Object.fromEntries(
-      Object.entries(handlers).map(([name, handler]) => [
-        name,
-        handler as ActionHandler<PlanRecord, Observation>,
-      ]),
-    ),
-
-    /**
-     * Only this workflow's own half of the fold: the engine has already put
-     * the record through `applyPlan`.
-     *
-     * The repository and the slug are copied off the note rather than
-     * produced by an action, so they are folded here. Without them on the
-     * record, counting what is in flight for a repository would mean opening
-     * every other note to find out what it was about.
-     */
-    apply(current, _plan: Plan, outcomes, observation, _now, moved?: Moved | null) {
-      const next = applyOutcomes(current, {
-        ...(outcomes as EffectOutcomes),
-        repo: observation.note.repo,
-        slug: slugFor(observation.note),
-      });
-      // The call's input is read off the record, and the body is the note's
-      // own words, so it is worked out on the move that makes the call.
-      return moved?.to === "PR_OPEN" ? { ...next, opening: openingFor(observation.note, deps.layout) } : next;
-    },
+    note,
+    writable: scope.config.repos.includes(note.repo),
+    plansInFlight: inFlightFor(scope.ports.store, note.repo, current.id),
+    now: scope.ctx.now(),
   };
+}
+
+/**
+ * The agent writes the plan on its own branch, through the same mounted port
+ * the ticket workflow reaches for `triage` and `implement` — which is what
+ * puts these prompts on the same ladder and under the same ceiling.
+ */
+export async function draftPlan(
+  scope: ActionScope,
+  work: Work,
+  effect: Extract<Effect, { type: "draft-plan" }>,
+): Promise<void> {
+  const { git } = scope.checkouts;
+  const outcomes = work.outcomes as EffectOutcomes;
+  const { note } = work.observation;
+  const slug = slugFor(note);
+  await git.prepareBranch(note.repo, branchFor(slug), note.id);
+
+  const reply = await scope.ports.agent.ask(
+    draftPrompt(note, slug, effect.finding),
+    git.pathFor(note.repo, note.id),
+    { workId: work.record.id, step: "draft-plan" },
+  );
+
+  const at = scope.ctx.now().toISOString();
+  if (reply.run.outcome !== "completed") {
+    outcomes.draft = { ok: false, output: reply.run.output, at };
+    return;
+  }
+
+  // A run that changed nothing is a failure here rather than a success:
+  // the machine's notion of "drafted" means the plan is on the remote,
+  // because that is what a pull request can be opened against.
+  const pushed = await git.commitAndPush(note.repo, branchFor(slug), `docs(plans): ${slug.replace(/-/g, " ")}`, note.id);
+
+  outcomes.draft = pushed
+    ? { ok: true, output: reply.run.output, at }
+    : { ok: false, output: `the agent finished without writing any file\n\n${reply.run.output}`, at };
+}
+
+/**
+ * The plan is judged where it was written: with a worktree port behind the
+ * Git, that is the note's own tree.
+ */
+export async function checkPlan(scope: ActionScope, work: Work): Promise<void> {
+  (work.outcomes as EffectOutcomes).check = await scope.ports["plan-check"].check(
+    work.observation.note.repo,
+    work.observation.note.id,
+  );
+}
+
+/**
+ * Only this workflow's own half of the fold: the engine has already put the
+ * record through `applyPlan`.
+ *
+ * The repository and the slug are copied off the note rather than produced
+ * by an action, so they are folded here. Without them on the record, counting
+ * what is in flight for a repository would mean opening every other note to
+ * find out what it was about.
+ */
+export function remember(
+  scope: Scope,
+  current: PlanRecord,
+  outcomes: Record<string, unknown>,
+  observation: Observation,
+  moved: Moved | null,
+): PlanRecord {
+  const next = applyOutcomes(current, {
+    ...(outcomes as EffectOutcomes),
+    repo: observation.note.repo,
+    slug: slugFor(observation.note),
+  });
+  // The call's input is read off the record, and the body is the note's
+  // own words, so it is worked out on the move that makes the call.
+  return moved?.to === "PR_OPEN" ? { ...next, opening: openingFor(observation.note, scope.checkouts.layout) } : next;
 }
 
 /** What the pull request for a note is opened with. */

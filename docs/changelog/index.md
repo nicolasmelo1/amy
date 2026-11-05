@@ -194,6 +194,12 @@ stands through its calls, with a callee's escalation as the root's attention.
 
 
 
+### The `amy-workflow` skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a `workflow.mmd`, a `decide` map with one pure decision per drawn state, and `actions` written against the `scope` they are handed. Before, it taught a `plan()` with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.
+
+`patch` · `@amykit/cli`
+
+
+
 ### **A workflow is one declaration.** `defineWorkflow` registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. `planning` supplies the four typed plan constructors, and `amy workflow new` writes the new declaration.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
@@ -246,6 +252,21 @@ toward `maxGateAttempts`. A record an older version saved in `CHECKED` or
 `SELF_REVIEW` goes straight to `checks` on its next look and is checked again
 in both lanes, without implementing again. A ticket that leaves its repository
 while it is being checked stops where it is, as it did in `CHECKED`.
+
+### **The actions use the ports.** The errand, note-to-plan and ticket-to-qa write `discover`, `observe`, `remember` and every action as a function of the scope `defineWorkflow` hands it: `scope.ports`, `scope.config`, `scope.policy`, `scope.checkouts`, `scope.ctx` and `scope.announce`. `errandRuntime`, `planRuntime` and `ticketRuntime` are gone, with their `…RuntimeDeps` and `…RuntimeConfig` types; a test that built one mounts the declaration instead.
+
+`minor` · `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
+
+Before, each workflow kept the factory it had before `defineWorkflow`, and a
+`WeakMap` adapter that assembled a deps object out of the scope to build it:
+three copies of the same adapter. It cached nothing for an action, whose scope
+is a new object every time, so every action rebuilt the whole runtime; and
+ticket-to-qa carried its own `agent.run` and `notify.failed` lines behind an
+`accountsAgentRuns: false` switch, beside the host's, when the framework
+already hands every action an agent that accounts for each reply and an
+`announce` that cannot cost a move. ticket-to-qa's progress policy is read
+from `budget` through the declaration's `progress(scope)`, and its roster is
+read from the profile when a look needs it, as before.
 
 ### `amy update` reaches the release. It said `nothing to move` with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):
 

@@ -43,13 +43,13 @@ async function drive(
   const worker = new Worker({
     queue,
     records,
-    ...ticketWorkerDeps({
+    ...(await ticketWorkerDeps({
       tracker: overrides.tracker,
       agent: overrides.agent,
       briefs: overrides.briefs,
       conversation: overrides.conversation,
       now: () => clock,
-    }),
+    })),
   });
   for (let look = 0; look < times; look += 1) await worker.tick();
 

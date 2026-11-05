@@ -23,9 +23,6 @@ export type { EffectOutcomes } from "./outcomes.js";
 
 export { decide, plan } from "./decide.js";
 
-export { planRuntime } from "./actions.js";
-export type { PlanRuntimeConfig, PlanRuntimeDeps } from "./actions.js";
-
 export { configSchema, plugin } from "./plugin.js";
 
 export type { NewNote, Note, Notes } from "./ports/Notes.js";
