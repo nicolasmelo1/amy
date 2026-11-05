@@ -72,11 +72,13 @@ later="$major.$((minor + 2)).0"
 
 # The workflows: three versions of one, and a young 0.x one published at
 # 0.1.0 and 0.2.0 from the start. Each is one TypeScript source compiled the
-# way npm ships it; the version it answers with is its manifest's.
+# way npm ships it; the version it answers with is its manifest's, and it
+# depends on the core it is declared with, at this checkout's or later, so
+# a release that crosses the minor carries it rather than nesting the old one.
 fixture() {
   # fixture <source> <name> <version>
   "$tsx" "$here/lib/publish.ts" "$here/amy-update/$1" "$work/fixtures/$2-$3"
-  printf '{"name":"%s","version":"%s","type":"module","main":"./index.js"}\n' "$2" "$3" > "$work/fixtures/$2-$3/package.json"
+  printf '{"name":"%s","version":"%s","type":"module","main":"./index.js","dependencies":{"@amykit/core":">=%s"}}\n' "$2" "$3" "$current" > "$work/fixtures/$2-$3/package.json"
   (cd "$work/fixtures" && npm pack "./$2-$3" --pack-destination "$work/fixtures" >/dev/null 2>&1)
 }
 fixture workflow-oncall @acme/workflow-oncall 1.0.0

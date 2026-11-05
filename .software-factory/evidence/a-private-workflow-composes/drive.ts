@@ -10,7 +10,7 @@
 //   4. the installed `amy`, driving `ticket-to-qa` with its writes handed to
 //      an operator, for a ticket that grows into a second repository
 import type { CodeHost, Conversation, Plan, Plugin, PluginContext, PullRequestView, Queue, QueueItem, Registry, Tracker, Workflow, WorkflowRuntime, WorkRecord } from "@amykit/core";
-import type { Effect, Observation, Roster, TicketRecord } from "@amykit/workflow-ticket-to-qa";
+import type { Effect, Observation, Policy, Roster, TicketRecord } from "@amykit/workflow-ticket-to-qa";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -81,6 +81,41 @@ const assertions: Assertion[] = [];
 const record = (type: string, ok: boolean, detail?: unknown) => assertions.push({ type, status: ok ? "passed" : "failed", ...(detail ? { detail } : {}) });
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "amy-compose-"));
 const git = (cwd: string, ...args: string[]): string => execFileSync("git", args, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+
+/**
+ * ticket-to-qa's runtime as the host builds it from the declaration, mounted
+ * over stand-in ports, with the roster the profile holds.
+ */
+async function mountedTicketToQa(
+  ports: Record<string, object | undefined>,
+  options: { readonly policy?: Partial<Policy>; readonly roster?: Roster } = {},
+): Promise<WorkflowRuntime<TicketRecord, Observation>> {
+  const profile = fs.mkdtempSync(path.join(scratch, "profile-"));
+  const team = options.roster ?? { confirmedOn: new Date().toISOString().slice(0, 10), reviewers: [{ tracker: "ada@example.test", host: "ada", available: true }], qa: { tracker: "qa@example.test", host: "qa", available: true } };
+  fs.writeFileSync(path.join(profile, "roster.yaml"), JSON.stringify(team));
+  const world: Plugin = {
+    name: "@amykit/plugin-world",
+    register: (registry) => {
+      for (const [kind, port] of Object.entries(ports)) if (port) registry.port(kind, port);
+    },
+  };
+  // The workplace is a capability: this world works in a repository, so it mounts one.
+  const workspace: Plugin = {
+    name: "@amykit/plugin-workspace",
+    register: (registry) => registry.port(core.WORKSPACE_PORT, { workspaceRoot: scratch, checkouts: {} }),
+  };
+  const outcome = await core.mount(
+    [drawnTicketToQa, world, workspace],
+    { [drawnTicketToQa.name]: { repos: [REPO], qaStatusName: "In QA", ...(options.policy ? { policy: options.policy } : {}) } },
+    {
+      runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      now: () => new Date(),
+      paths: { state: path.join(scratch, ".amy"), profile },
+    },
+  );
+  if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+  return outcome.mounted.contributions.get(core.WORKFLOW_RUNTIME)!.get("ticket-to-qa") as unknown as WorkflowRuntime<TicketRecord, Observation>;
+}
 for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
 
 /* 1. The adapter, through the stand-in gh. -------------------------------- */
@@ -419,14 +454,11 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
 {
   const posted: string[] = [];
   const announced: string[] = [];
-  const runtime = ticketToQa.ticketRuntime({
-    tracker: standIn(), host: standIn(), agent: standIn(), gate: standIn(), roster: () => standIn<Roster>(), git: standIn(), now: () => new Date(),
-    layout: { workspaceRoot: scratch, defaultBranch: "main" },
-    config: { repos: [REPO], qaStatusName: "In QA" },
-    policy: { ...ticketToQa.DEFAULT_POLICY, writes: "operator" },
-    notifier: { announce: async (a) => void announced.push(a.text) },
+  const runtime = await mountedTicketToQa({
+    tracker: standIn(), "code-host": standIn(), agent: standIn(), gate: standIn(),
+    notifier: { announce: async (a: { text: string }) => void announced.push(a.text) },
     conversation: standIn<Conversation>({ open: async () => ({ id: "T1" }), post: async (_t, m) => (posted.push(m.text), "m"), replies: async () => [] }),
-  });
+  }, { policy: { writes: "operator" } });
   const handOver = runtime.actions["hand-over"];
   if (typeof handOver !== "function") throw new Error("the built runtime has no hand-over to run");
   await handOver(
@@ -491,36 +523,32 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const reSaid = plan(rec("QA_HANDOFF", { handedOver: ["hand-off-to-qa@grace@example.test"] }), obs({ roster: moved }), operator);
   const named = plan(rec("QA_HANDOFF", { handedOver: ["hand-off-to-qa@grace@example.test"] }), obs({ inQa: true, ticket: { ...obs({}).ticket, status: "In QA", assignee: "grace@example.test" } }), operator);
   record("compose.a_qa_handoff_answers_to_the_owner_it_named", firstTurn(reSaid) === "hand-off-to-qa@ada@example.test" && toOf(named) === "DONE", { reSaid: firstTurn(reSaid), named: toOf(named) ?? named.kind });
-  const relabelled = await ticketToQa.ticketRuntime({
+  const relabelled = await (await mountedTicketToQa({
     tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO, repos: [OTHER_REPO] }) }),
-    host: standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} }, roster: () => roster, git: standIn(), now: () => new Date(),
-    layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
-  }).observe(rec("HUMAN_REVIEW"));
+    "code-host": standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} },
+  }, { roster })).observe(rec("HUMAN_REVIEW"));
   const retired = plan(rec("HUMAN_REVIEW"), relabelled, DEFAULT_POLICY);
   // Settled where it stands, not DONE: review 4 found DONE could never resume.
   record("compose.a_repository_that_leaves_the_ticket_retires_its_work_item", relabelled.retired === true && retired.kind === "settled", { retired: relabelled.retired, kind: retired.kind });
 
-  const unlabelled = await ticketToQa.ticketRuntime({
+  const unlabelled = await (await mountedTicketToQa({
     tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO }) }),
-    host: standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} }, roster: () => roster, git: standIn(), now: () => new Date(),
-    layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
-  }).observe({ ...rec("IMPLEMENTING"), id: ticketToQa.workIdFor(TICKET, OTHER_REPO) });
+    "code-host": standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} },
+  }, { roster })).observe({ ...rec("IMPLEMENTING"), id: ticketToQa.workIdFor(TICKET, OTHER_REPO) });
   record("compose.a_repository_whose_last_label_went_retires_its_work_item", unlabelled.retired === true && unlabelled.ticket.repo === OTHER_REPO, { retired: unlabelled.retired });
 
-  const observeAs = (repos: string[]) => ticketToQa.ticketRuntime({
+  const observeAs = async (repos: string[]) => (await mountedTicketToQa({
     tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO, repos }) }),
-    host: standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} }, roster: () => roster, git: standIn(), now: () => new Date(),
-    layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
-  }).observe(rec("HUMAN_FIX", { reviewer: "ada" }));
+    "code-host": standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} },
+  }, { roster })).observe(rec("HUMAN_FIX", { reviewer: "ada" }));
   const stopped = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO]), DEFAULT_POLICY);
   const resumed = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO, REPO]), DEFAULT_POLICY);
   record("compose.a_retired_work_item_resumes_when_its_repository_returns", stopped.kind === "settled" && resumed.kind !== "settled" && !drawnTicketToQa.workflow.terminalStates.includes("HUMAN_FIX"), { stopped: stopped.kind, resumed: resumed.kind });
 
-  const refused = await ticketToQa.ticketRuntime({
+  const refused = await (await mountedTicketToQa({
     tracker: standIn<Tracker>({ inProgress: async () => [{ ...obs({}).ticket, repos: [REPO, OTHER_REPO] }] }),
-    host: standIn<CodeHost>({ findPullRequest: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} }, roster: () => roster, git: standIn(), now: () => new Date(),
-    layout: { workspaceRoot: scratch, defaultBranch: "main" }, config: { repos: [REPO], qaStatusName: "In QA" }, policy: DEFAULT_POLICY,
-  }).found().then(() => "found", (error: unknown) => String(error));
+    "code-host": standIn<CodeHost>({ findPullRequest: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} },
+  }, { roster })).found().then(() => "found", (error: unknown) => String(error));
   record("compose.a_host_that_cannot_read_merges_is_refused_by_name", refused.includes(TICKET) && refused.includes("cannot find a pull request by a ticket's id"), refused);
 }
 

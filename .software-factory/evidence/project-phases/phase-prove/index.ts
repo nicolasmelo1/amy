@@ -8,8 +8,6 @@ let drove = 0;
 export const plugin = defineWorkflow({
   name: "invoices-prove",
   pluginName: "workflow-invoices-prove",
-  states: ["CHECKED", "refused", "SATISFIED"],
-  terminal: ["refused", "SATISFIED"],
   configSchema: {},
   policy: {},
   needs: {},

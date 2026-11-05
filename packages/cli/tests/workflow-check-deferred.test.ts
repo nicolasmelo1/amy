@@ -1,47 +1,41 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import { checkWorkflow } from "../src/workflow.js";
 
+/** The core, by file: the module is written to a directory with no packages. */
+const CORE = pathToFileURL(path.resolve(import.meta.dirname, "..", "..", "core", "dist", "index.js")).href;
+
 /**
  * A workflow whose runtime is deferred and reads another deferred
- * contribution while it builds. `deferred` is spelled out by its global
- * marker, because the module is written to a directory with no packages.
+ * contribution while it builds: its `actions` are built from the scope, and
+ * read the helper its `extend` contributes.
  */
 function workflowModule(helper: string): string {
-  return `const deferred = (build) => ({ [Symbol.for("amykit.deferred")]: build });
-const workflow = {
+  return `import { defineWorkflow, settled, advance } from ${JSON.stringify(CORE)};
+const deferred = (build) => ({ [Symbol.for("amykit.deferred")]: build });
+export const plugin = defineWorkflow({
   name: "oncall",
-  states: ["received", "done"],
-  waitingStates: [],
-  initialState: "received",
-  terminalStates: ["done"],
-  plan: (record) => record.state === "received"
-    ? { kind: "advance", to: "done", effects: [], why: "the work was received" }
-    : { kind: "settled", why: "done" },
-};
-export const plugin = {
-  name: "workflow-oncall",
-  register(registry, ctx) {
-    registry.workflow(workflow);
+  pluginName: "workflow-oncall",
+  configSchema: {}, policy: {}, needs: {},
+  record: () => ({}),
+  decide: { received: () => advance("done", "the work was received"), done: () => settled("done") },
+  observe: async () => ({}),
+  extend(registry, ctx) {
     registry.contribute("helpers", "clock", ${helper});
-    registry.contribute("workflow-runtime", "oncall", deferred(() => {
-      const clock = ctx.contributions("helpers").get("clock");
-      return {
-        policy: {},
-        found: async () => [],
-        newRecord: (id) => ({ id, state: "received", updatedAt: clock.at(), attempts: {}, history: [] }),
-        observe: async () => ({}),
-        actions: {},
-        apply: (record) => record,
-      };
-    }));
   },
-};
+  actions: ({ ctx }) => {
+    ctx.contributions("helpers").get("clock").at();
+    return {};
+  },
+});
 `;
 }
+
+const DIAGRAM = "stateDiagram-v2\n    [*] --> received\n    received --> done\n    done --> [*]\n";
 
 describe("checking a workflow whose runtime is deferred", () => {
   let home: string;
@@ -54,6 +48,7 @@ describe("checking a workflow whose runtime is deferred", () => {
   function check(helper: string): Promise<string[]> {
     const entry = path.join(home, "oncall.ts");
     fs.writeFileSync(entry, workflowModule(helper), "utf-8");
+    fs.writeFileSync(path.join(home, "workflow.mmd"), DIAGRAM, "utf-8");
     const config = { ...DEFAULT_CONFIG, workflows: { oncall: { workflow: "oncall", plugins: [] } } };
     return checkWorkflow(home, "oncall", config, () => entry);
   }

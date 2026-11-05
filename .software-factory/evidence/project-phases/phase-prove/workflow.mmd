@@ -1,0 +1,6 @@
+stateDiagram-v2
+    [*] --> CHECKED
+    CHECKED --> refused: what it is asked to show does not hold yet
+    CHECKED --> SATISFIED: every criterion holds
+    refused --> [*]
+    SATISFIED --> [*]

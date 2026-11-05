@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CommandRunner, type ConfigSchema, Mounted, Plugin, mountedActions } from "@amykit/core";
 import { classify } from "./spec.js";
-import { packageManager, shellCommand } from "./install.js";
+import { PLUGINS_ROOT_FLAGS, packageManager, shellCommand } from "./install.js";
 import { drawn } from "./drawn.js";
 
 /**
@@ -335,8 +335,8 @@ export async function uninstallFromPluginsRoot(
   }
   fs.writeFileSync(manifest, `${JSON.stringify(parsed, null, 2)}\n`, "utf-8");
 
-  const pruneArgs = ["prune", "--prefix", root, "--no-audit", "--no-fund"];
-  const installArgs = ["install", "--prefix", root, "--no-audit", "--no-fund"];
+  const pruneArgs = ["prune", "--prefix", root, ...PLUGINS_ROOT_FLAGS];
+  const installArgs = ["install", "--prefix", root, ...PLUGINS_ROOT_FLAGS];
   const command = [shellCommand(packageManager(), pruneArgs), shellCommand(packageManager(), installArgs)].join(" && ");
   const prune = await runner.run(packageManager(), pruneArgs, { timeoutMs: 10 * 60 * 1000 });
   if (!prune.ok) return { ok: false, command, output: outputOf(prune) };

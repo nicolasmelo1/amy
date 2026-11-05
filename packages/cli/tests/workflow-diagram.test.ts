@@ -31,7 +31,7 @@ describe("a workflow drawn in another tool", () => {
     expect(fs.readFileSync(path.join(directory, "workflow.mmd"), "utf-8")).toBe(DRAWN);
     const index = fs.readFileSync(path.join(directory, "index.ts"), "utf-8");
     expect(index).not.toMatch(/states:|waiting:|terminal:/);
-    expect(index).toContain('"ESCALATED": notWritten(),');
+    expect(fs.readFileSync(path.join(directory, "decide.ts"), "utf-8")).toContain('"ESCALATED": notWritten(),');
   });
 
   it("publishes the diagram with the package, since an installed copy without it cannot mount", () => {
@@ -59,8 +59,8 @@ describe("a workflow drawn in another tool", () => {
 
   it("fails a written decision that moves where the diagram draws no arrow, naming both ends", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG, file);
-    const index = path.join(directory, "index.ts");
-    fs.writeFileSync(index, fs.readFileSync(index, "utf-8").replace(
+    const decide = path.join(directory, "decide.ts");
+    fs.writeFileSync(decide, fs.readFileSync(decide, "utf-8").replace(
       '"PAGED": notWritten(),',
       '"PAGED": () => ({ kind: "advance", to: "ACKNOWLEDGED", effects: [], why: "took it" }),\n  "ACKNOWLEDGED": () => ({ kind: "advance", to: "PAGED", effects: [], why: "again" }),',
     ).replace('  "ACKNOWLEDGED": notWritten(),\n', ""));

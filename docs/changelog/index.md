@@ -28,6 +28,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 
 
+### A frozen adapter, such as `Object.freeze({ name, register })`, mounts again through the host that only takes declarations. The proxy that keeps a plugin's own receiver stood on the plugin itself. Replacing `register` on a frozen object breaks a Proxy invariant, so it threw a `TypeError` before registration ran. It now stands on an empty object of its own and still reads and calls every member on the plugin.
+
+`patch` · `@amykit/core`
+
+
+
 ### **A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-serial-engine`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
@@ -69,6 +75,12 @@ record says `gaveUp`, and `amy look <id>` is the only thing that clears it.
 keeps a file beside its records — the roster — reads what its own command
 writes. The roster moved there, which is why `amy init` no longer writes it on
 a machine that mounts nothing that assigns reviewers.
+
+### `declaredWorkflowsOnly` keeps every member of the plugin and of the registry on its own object. It used to wrap both in a prototype copy, so a class plugin whose getter or method reads a `#private` field threw a `TypeError` on its own name, and boot stopped before mount could report it.
+
+`patch` · `@amykit/core`
+
+
 
 ### **A project is brief, work and proof.** The `brief/`, `workflow/` and `prove/` folders of a project compose the one workflow its config entry drives: each phase a `call()` to the `defineWorkflow` declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named `refused` carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for `amy status` to show; a `test/` folder is told the phase is named `prove/`.
 
@@ -117,6 +129,12 @@ and watched their question turn into work.
   `reactions:read` scope; without it, that one read fails and says so.
 - Without a conversation port, a comment on the ticket is still the decision,
   whatever the policy says.
+
+### `amy update`, and the rollback it runs when a move fails, install into the plugins root with `--install-links`, the way `amy add` does. Before, they installed without it, so updating any other package could turn a workflow copied in from a path back into a link. A linked workflow's `@amykit/core` import resolves from outside the plugins root, and the workflow failed to load.
+
+`patch` · `@amykit/cli`
+
+
 
 ### A row of next steps is a ticket. `@amykit/plugin-next-steps` mounts the `tracker` port over an execution-order table — `plans/next-steps.md` by default — read from the base branch, never from the standing checkout: a row is a work item, its linked plan the body, its place in the table the priority. A relative link is a plan in the table's repository, its id the slug; an `owner/name:plans/<slug>.md` link is one in another, its id `owner+name+<slug>`, so one table can order the work of several. Only the top `rows` (one by default) are work at once, a row gone from the table with its plan in `docs/design/` reads as `delivered`, and the branch is `branchPrefix` (`plan/` by default) and the plan's slug.
 
@@ -194,6 +212,12 @@ stands through its calls, with a callee's escalation as the root's attention.
 
 
 
+### The `amy-workflow` skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a `workflow.mmd`, a `decide` map with one pure decision per drawn state, and `actions` written against the `scope` they are handed. Before, it taught a `plan()` with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.
+
+`patch` · `@amykit/cli`
+
+
+
 ### **A workflow is one declaration.** `defineWorkflow` registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. `planning` supplies the four typed plan constructors, and `amy workflow new` writes the new declaration.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
@@ -210,6 +234,12 @@ so no workflow writes either by hand. `ports.notifier` stays strict.
 
 `amy workflow new` now writes a runnable diagram-backed three-piece workflow.
 The shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.
+
+### **A workflow is its diagram, its decisions and its actions, and nothing else mounts.** `defineWorkflow` takes only the three pieces: `decide`, one pure decision per state the `workflow.mmd` beside it draws, with `before`, `after`, `discover`, `observe`, `actions`, `remember` and `progress`. A declaration that still passes a single `plan()` or a `runtime()` factory is refused at boot, naming each and where it moved, and `states`, `waiting` and `terminal` are gone: a declaration still passing them is refused by name, and one whose host found no `workflow.mmd` beside its entry or at its package root is refused at mount, naming the workflow and the file. Before, both forms and both sources of states mounted side by side, so the boot check of one decision per drawn state applied to some workflows and not others, and the same fact could live in a list in code that nothing held to the drawing. The CLI now mounts only declarations: a plugin it loads from an install or from `~/.amy/workflows` that registers a workflow by hand with `registry.workflow(...)` is refused naming the plugin (`declaredWorkflowsOnly` in the core). Because every installed workflow now imports the core it is declared with, a package added by path is installed into amy's root as a copy with its dependencies (`--install-links`) and probed from there, rather than linked to a directory where its imports do not resolve. `amy workflow new` writes the three pieces each in its own file — `workflow.mmd`, `decide.ts`, `actions.ts` — joined by the one call in `index.ts`, with no runtime factory, and its suite mounts the workflow the way amy does. `defineWorkflow` also carries a plugin's `setup` and `environment`.
+
+`minor` · `@amykit/cli`, `@amykit/core`
+
+
 
 ### **A workflow runs on lanes.** A diagram may draw `state X <<fork>>` and `state Y <<join>>`: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.
 
@@ -246,6 +276,21 @@ while it is being checked stops where it is, as it did in `CHECKED`.
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-command-gate`, `@amykit/plugin-file-worktree`, `@amykit/plugin-github`, `@amykit/plugin-next-steps`, `@amykit/plugin-plan-check`
 
 
+
+### **The actions use the ports.** The errand, note-to-plan and ticket-to-qa write `discover`, `observe`, `remember` and every action as a function of the scope `defineWorkflow` hands it: `scope.ports`, `scope.config`, `scope.policy`, `scope.checkouts`, `scope.ctx` and `scope.announce`. `errandRuntime`, `planRuntime` and `ticketRuntime` are gone, with their `…RuntimeDeps` and `…RuntimeConfig` types; a test that built one mounts the declaration instead.
+
+`minor` · `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
+
+Before, each workflow kept the factory it had before `defineWorkflow`, and a
+`WeakMap` adapter that assembled a deps object out of the scope to build it:
+three copies of the same adapter. It cached nothing for an action, whose scope
+is a new object every time, so every action rebuilt the whole runtime; and
+ticket-to-qa carried its own `agent.run` and `notify.failed` lines behind an
+`accountsAgentRuns: false` switch, beside the host's, when the framework
+already hands every action an agent that accounts for each reply and an
+`announce` that cannot cost a move. ticket-to-qa's progress policy is read
+from `budget` through the declaration's `progress(scope)`, and its roster is
+read from the profile when a look needs it, as before.
 
 ### `amy update` reaches the release. It said `nothing to move` with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):
 
@@ -400,6 +445,12 @@ environment variables it reads — `plugin.environment` — so the errand's
 machine is green without the ticket workflow's tracker key, and no install
 carries a credential checklist nothing on it asked for. The quickstart walks
 the shape the machine has now: init, add a workflow, doctor, start.
+
+### The declaration the `amy-workflow` skill shows declares `policy.maxAttempts` in its `configSchema`, with the same default its policy reads. Before, it left the schema empty, and the mount refuses a policy key the schema does not declare, so a workflow copied from the skill did not boot.
+
+`patch` · `@amykit/cli`
+
+
 
 ### **Waiting is not trying.**
 

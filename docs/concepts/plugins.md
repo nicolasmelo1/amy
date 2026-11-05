@@ -149,7 +149,7 @@ makes. It is for judging, not for building something early: that is what
 
 ```ts
 registry.port("agent", deferred(() => relay(ctx)));
-registry.contribute(WORKFLOW_RUNTIME, "errand", deferred(() => errandRuntime(…)));
+registry.contribute(WORKFLOW_RUNTIME, "errand", deferred(() => runtimeFor(ctx)));
 registry.engine(deferred(() => worker(ctx)));
 ```
 

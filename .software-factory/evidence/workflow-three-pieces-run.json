@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 35,
+    "assertions_run": 36,
     "assertions_failed": 0
   },
   "assertions": [
@@ -18,6 +18,10 @@
     },
     {
       "type": "mine.a_directory_name_is_a_workflow",
+      "status": "passed"
+    },
+    {
+      "type": "mine.the_scaffold_is_three_pieces",
       "status": "passed"
     },
     {

@@ -20,6 +20,9 @@ import { load, pluginsRootResolver } from "../src/loader.js";
 import { Profile } from "../src/profiles.js";
 import { pluginList } from "../src/slices.js";
 
+/** The core a package on disk imports, by file: a temporary root has no workspace to resolve it from. */
+const CORE = new URL("../../core/dist/index.js", import.meta.url).href;
+
 /**
  * A third-party package on disk, built the way `npm pack` lays one out.
  *
@@ -219,39 +222,25 @@ describe("whatMountingSays", () => {
       '{"name":"amy-plugins","private":true}\n',
       "utf-8",
     );
-    packageAt(
+    const directory = packageAt(
       root,
       "@acme/workflow-oncall",
-      `const workflow = {
-  name: "oncall",
-  states: ["paged", "acknowledged"],
-  waitingStates: [],
-  initialState: "paged",
-  terminalStates: ["acknowledged"],
-  usesActions: [],
-  plan: (record) =>
-    record.state === "paged"
-      ? { kind: "advance", to: "acknowledged", effects: [], why: "the page was picked up" }
-      : { kind: "settled", why: "the page was handled" },
-};
+      `import { defineWorkflow, settled } from ${JSON.stringify(CORE)};
 
-export const plugin = {
-  name: "@acme/workflow-oncall",
-  version: "1.0.0",
-  register(registry) {
-    registry.workflow(workflow);
-    registry.contribute("workflow-runtime", "oncall", {
-      policy: {},
-      found: async () => [],
-      newRecord: (id, now) => ({ id, state: "paged", updatedAt: now.toISOString(), attempts: {}, history: [] }),
-      observe: async () => ({}),
-      handlers: () => ({}),
-      apply: (record) => record,
-    });
-  },
-};
+export const plugin = defineWorkflow({
+  name: "oncall",
+  pluginName: "@acme/workflow-oncall",
+  configSchema: {},
+  policy: {},
+  needs: {},
+  record: () => ({}),
+  decide: { paged: () => settled("the page was handled"), acknowledged: () => settled("the page was handled") },
+  observe: async () => ({}),
+  actions: {},
+});
 `,
     );
+    fs.writeFileSync(path.join(directory, "workflow.mmd"), "stateDiagram-v2\n    [*] --> paged\n    paged --> acknowledged\n    acknowledged --> [*]\n", "utf-8");
 
     const loaded = await importPluginBySpec("@acme/workflow-oncall", pluginsRootResolver(home, root));
     expect(loaded.ok).toBe(true);
@@ -308,31 +297,31 @@ export const plugin = {
     if (!probe.ok) expect(probe.problems[0]).toContain("the plugin refused to be asked");
   });
 
-  // A machine with its one workflow is the boot check judgement, not the
-  // probe's: this package registers two, which is a refusal a mounted machine
-  // makes, and the probe stays out of the way.
-  it("answers workflow twice registered, and leaves the refusal to the boot", async () => {
+  // Every workflow amy mounts from an install is a declaration with a
+  // diagram: a package that registers one by hand is refused by the probe,
+  // naming it, the way the boot would refuse it.
+  it("refuses a package that registers a workflow by hand, naming it", async () => {
     fs.mkdirSync(root, { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");
     packageAt(
       root,
-      "@acme/plugin-double",
+      "@acme/plugin-by-hand",
       `export const plugin = {
-  name: "@acme/plugin-double",
+  name: "@acme/plugin-by-hand",
   register(registry) {
     registry.workflow({ name: "w" });
-    registry.workflow({ name: "w2" });
   },
 };
 `,
     );
 
-    const loaded = await importPluginBySpec("@acme/plugin-double", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/plugin-by-hand", pluginsRootResolver(home, root));
     expect(loaded.ok).toBe(true);
 
     const probe = await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
 
-    expect(probe).toEqual({ ok: true, workflow: true });
+    expect(probe.ok).toBe(false);
+    if (!probe.ok) expect(probe.problems[0]).toContain("@acme/plugin-by-hand registers a workflow by hand; amy mounts a workflow declared with `defineWorkflow`");
   });
 
   it("leaves nothing behind the probe created", async () => {

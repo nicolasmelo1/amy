@@ -28,6 +28,13 @@ test -f "$work/home/.amy/workflows/oncall/index.ts" && \
   grep -q 'workflow: oncall' "$work/home/.amy/config.yaml"
 record mine.a_directory_name_is_a_workflow "$?"
 
+# The three pieces, each in its file, joined by the one call in index.ts.
+oncall="$work/home/.amy/workflows/oncall"
+test -f "$oncall/workflow.mmd" && test -f "$oncall/decide.ts" && test -f "$oncall/actions.ts" && \
+  grep -q 'from "./decide.ts"' "$oncall/index.ts" && grep -q 'from "./actions.ts"' "$oncall/index.ts" && \
+  ! grep -q 'function runtime(' "$oncall/index.ts" "$oncall/actions.ts"
+record mine.the_scaffold_is_three_pieces "$?"
+
 # What `npm install` would put there: the core it is typed against and the
 # compiler `prepack` runs, so the pack below is the JavaScript that ships.
 modules="$work/home/.amy/workflows/oncall/node_modules"
@@ -39,7 +46,7 @@ mkdir -p "$modules/.bin" && ln -s ../typescript/bin/tsc "$modules/.bin/tsc"
 record mine.the_scaffold_is_a_publishable_package "$?"
 rm -rf "$work/home/.amy/workflows/oncall/dist"
 
-entry="$work/home/.amy/workflows/oncall/index.ts"
+entry="$work/home/.amy/workflows/oncall/decide.ts"
 cp "$entry" "$entry.clean"
 python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'advance("done", "the work was received")' 'act("it keeps trying")'
 if "$amy" workflow check oncall >/dev/null 2>&1; then spinning=1; else spinning=0; fi
@@ -81,6 +88,7 @@ refused L6.EMPTY_FOLD_AGREES_WITH_EVERYTHING approved.js 'export const approved 
 record guardrails.an_every_over_nothing_is_refused "$?"
 
 # The scaffold's own fold, now that it is TypeScript `sf` can read.
+entry="$work/home/.amy/workflows/oncall/actions.ts"
 cp "$entry" "$entry.clean"
 python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))' "$entry" 'export function remember(record: WorkRecord): WorkRecord { return record; }' 'export function remember(record: WorkRecord): WorkRecord { return record.state === "received" ? { ...record, paged: true } : record; }'
 if sf check --root "$workflow" --rule L6.FOLD_READS_A_MOVED_RECORD >/dev/null 2>&1; then fold=1; else fold=0; fi
@@ -105,6 +113,7 @@ drawn=0
 "$amy" workflow new pager --from "$work/pager.mmd" >/dev/null 2>&1 || drawn=1
 cmp -s "$work/pager.mmd" "$work/home/.amy/workflows/pager/workflow.mmd" || drawn=1
 grep -q 'states:' "$work/home/.amy/workflows/pager/index.ts" && drawn=1
+grep -q '"PAGED": notWritten()' "$work/home/.amy/workflows/pager/decide.ts" || drawn=1
 checked=$("$amy" workflow check pager 2>&1) || drawn=1
 printf '%s\n' "$checked" | grep -q "pager mounts: 3 decision(s) are not written yet" || drawn=1
 for state in PAGED ACKNOWLEDGED ESCALATED; do

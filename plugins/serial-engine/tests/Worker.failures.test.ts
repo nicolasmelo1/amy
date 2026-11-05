@@ -44,16 +44,16 @@ describe("a dependency that goes down and comes back", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: TicketWorkerOverrides = {}): Worker {
+  async function build(overrides: TicketWorkerOverrides = {}): Promise<Worker> {
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         notifier,
         now: () => clock,
         log,
         ...overrides,
-      }),
+      })),
     });
   }
 
@@ -69,7 +69,7 @@ describe("a dependency that goes down and comes back", () => {
   it("warns once on the first failure", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ tracker: down() }).tick();
+    await (await build({ tracker: down() })).tick();
 
     expect(notifier.sent).toHaveLength(1);
     expect(notifier.sent[0]).toContain("PROJ-1239 is failing in DISCOVERED and I am retrying");
@@ -79,7 +79,7 @@ describe("a dependency that goes down and comes back", () => {
 
   it("stays quiet on the middle attempts", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
-    const worker = build({ tracker: down() });
+    const worker = (await build({ tracker: down() }));
 
     await worker.tick();
     later();
@@ -96,9 +96,9 @@ describe("a dependency that goes down and comes back", () => {
   it("warns once when it recovers, and says how many attempts failed", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ tracker: down() }).tick();
+    await (await build({ tracker: down() })).tick();
     later();
-    await build().tick();
+    await (await build()).tick();
 
     expect(notifier.sent).toHaveLength(2);
     expect(notifier.sent[1]).toContain("PROJ-1239 is moving again in DISCOVERED after 1");
@@ -109,9 +109,9 @@ describe("a dependency that goes down and comes back", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
     const agent = fakeAgent();
 
-    await build({ tracker: down() }).tick();
+    await (await build({ tracker: down() })).tick();
     later();
-    const result = await build({ agent }).tick();
+    const result = await (await build({ agent })).tick();
 
     // The state it was in when the dependency went down, and the move it was
     // going to make from there. Nothing was skipped and nothing was reset.
@@ -128,7 +128,7 @@ describe("a dependency that goes down and comes back", () => {
       progress: { "DISCOVERED:implementation": { count: 1, detail: "the checkout did not change" } },
     }, clock);
 
-    await build({ tracker: down() }).tick();
+    await (await build({ tracker: down() })).tick();
 
     expect(queue.pending()[0]).toMatchObject({
       attempt: 1,
@@ -139,7 +139,7 @@ describe("a dependency that goes down and comes back", () => {
   it("says nothing about recovery when nothing had failed", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build().tick();
+    await (await build()).tick();
 
     expect(notifier.sent).toEqual([]);
     expect(log.of("work.recovered")).toEqual([]);
@@ -170,7 +170,7 @@ describe("a dependency that goes down and comes back", () => {
     });
     const budget = new LogBudget(spent, { stopAt: 0.9, perFiveHours: { costUsd: 20 } });
 
-    const result = await build({ budget }).tick();
+    const result = await (await build({ budget })).tick();
 
     expect(result).toMatchObject({ kind: "parked" });
     expect(notifier.sent).toEqual([]);
@@ -183,7 +183,7 @@ describe("a dependency that goes down and comes back", () => {
 
     // maxItemAttempts of one means the first failure is also the last, and
     // that has to read as one warning rather than two.
-    await build({ tracker: down(), config: { ...workerConfig, maxItemAttempts: 1 } }).tick();
+    await (await build({ tracker: down(), config: { ...workerConfig, maxItemAttempts: 1 } })).tick();
 
     expect(notifier.sent).toHaveLength(1);
     expect(notifier.sent[0]).toContain("is off the queue");
@@ -199,10 +199,10 @@ describe("a dependency that goes down and comes back", () => {
       { workId: "PROJ-1239", reason: "retrying", attempt: workerConfig.maxItemAttempts - 1 },
       clock,
     );
-    await build({ tracker: down() }).tick();
+    await (await build({ tracker: down() })).tick();
 
     queue.enqueue({ workId: "PROJ-1239", reason: "found in the working status" }, clock);
-    await build().tick();
+    await (await build()).tick();
 
     expect(notifier.sent).toHaveLength(1);
     expect(log.of("work.recovered")).toEqual([]);

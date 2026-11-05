@@ -3,13 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ActionContext, ActionHandler, Harness, NodeCommandRunner, Notifier, Store, lendCheckouts } from "@amykit/core";
-import { errandRuntime } from "../src/actions.js";
-import { DEFAULT_POLICY, Observation } from "../src/observation.js";
+import { ActionContext, ActionHandler, Harness, NodeCommandRunner, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, mount } from "@amykit/core";
+import { Observation } from "../src/observation.js";
 import { EffectOutcomes } from "../src/outcomes.js";
 import { ErrandRecord } from "../src/record.js";
 import { Task } from "../src/ports/Tasks.js";
 import { branchFor, slugFor } from "../src/task-file.js";
+import { fakeHost, fakeWorkspace } from "@amykit/test-fixtures";
+import { plugin as errand } from "./drawn.js";
 
 const TASK: Task = {
   id: "T-1",
@@ -69,18 +70,24 @@ describe("run-errand", () => {
         };
       },
     } as Harness;
-    const { git: checkoutGit } = lendCheckouts(new NodeCommandRunner(), layout);
-    const runtime = errandRuntime({
+    const ports: Record<string, object> = {
       tasks: { add: () => task, all: () => [task], get: () => task },
       agent,
-      notifier: {} as Notifier,
-      git: checkoutGit,
-      layout,
-      records: { all: () => [] } as unknown as Store<ErrandRecord>,
+      notifier: { announce: async () => {} },
+      store: { all: () => [], load: () => null, save: () => undefined },
+      "code-host": fakeHost(null, { findPullRequestMentioning: async () => null }),
+    };
+    const world: Plugin = {
+      name: "@amykit/plugin-world",
+      register: (registry) => Object.entries(ports).forEach(([kind, port]) => registry.port(kind, port)),
+    };
+    const outcome = await mount([errand, world, fakeWorkspace(layout.workspaceRoot)], { [errand.name]: { repos: [task.repo] } }, {
+      runner: new NodeCommandRunner(),
       now: () => new Date("2026-09-05T10:00:00.000Z"),
-      config: { repos: [task.repo] },
-      policy: DEFAULT_POLICY,
+      paths: { state: path.join(root, "state") },
     });
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get("errand") as WorkflowRuntime<ErrandRecord, Observation>;
     const outcomes: Record<string, unknown> = {};
     const context: ActionContext<ErrandRecord, Observation> = {
       record: { id: task.id, state: "WORKING", updatedAt: task.addedAt, attempts: {}, history: [] } as ErrandRecord,

@@ -2,16 +2,12 @@ import path from "node:path";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import {
   BRANCH_SETTINGS,
-  Action,
-  ActionContext,
-  ActionHandler,
   ConfigOf,
   ConfigSchema,
   Harness,
   Notifier,
   PluginCommand,
   Store,
-  WorkflowPieceContext,
   Worktree,
   call,
   defineWorkflow,
@@ -20,10 +16,10 @@ import {
 } from "@amykit/core";
 import { plugin as pullRequest } from "@amykit/workflow-pull-request";
 import { Effect, decide } from "./decide.js";
-import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
+import { DEFAULT_POLICY } from "./observation.js";
 import { ErrandRecord } from "./record.js";
 import { Tasks } from "./ports/Tasks.js";
-import { errandRuntime } from "./actions.js";
+import { discover, observe, remember, runErrand } from "./actions.js";
 import { branchFor, writeTaskFile } from "./task-file.js";
 
 export const configSchema = {
@@ -102,38 +98,13 @@ const btw: PluginCommand<Settings> = {
   },
 };
 
-const needs = {
+export const needs = {
   tasks: port<Tasks>(),
   agent: port<Harness>(),
   notifier: port<Notifier>(),
   store: port<Store<ErrandRecord>>(),
   worktree: optional<Worktree>(),
 };
-
-type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
-const built = new WeakMap<Scope, ReturnType<typeof errandRuntime>>();
-
-function runtimeFor(scope: Scope): ReturnType<typeof errandRuntime> {
-  const existing = built.get(scope);
-  if (existing) return existing;
-  const runtime = errandRuntime({
-    tasks: scope.ports.tasks,
-    agent: scope.ports.agent,
-    notifier: scope.ports.notifier,
-    records: scope.ports.store,
-    ...scope.checkouts,
-    now: scope.ctx.now,
-    config: { repos: scope.config.repos },
-    policy: scope.policy,
-  });
-  built.set(scope, runtime);
-  return runtime;
-}
-
-async function run(scope: Scope, work: ActionContext<ErrandRecord, Observation>, effect: Action): Promise<void> {
-  const handler = runtimeFor(scope).actions[effect.type] as ActionHandler<ErrandRecord, Observation>;
-  await handler(effect, work);
-}
 
 /**
  * An errand saved in `PR_OPEN` before it was a call worked out nothing to
@@ -188,14 +159,13 @@ export const plugin = defineWorkflow({
   decide,
   commands: [btw],
   record: () => ({}),
-  discover: (scope) => runtimeFor(scope).found(),
-  observe: (scope, record) => runtimeFor(scope).observe(record),
+  discover,
+  observe,
   actions: {
-    "run-errand": run,
+    "run-errand": runErrand,
     // Only worth saying, so a channel that fails never costs the work a move.
     announce: (scope, _work, effect) => scope.announce((effect as Extract<Effect, { type: "announce" }>).text),
   },
-  remember: (scope, record, outcomes, observation, moved, decision, now) =>
-    runtimeFor(scope).apply(record, decision, outcomes, observation, now, moved),
+  remember,
 });
 

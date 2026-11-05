@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mount, type HostServices } from "@amykit/core";
 import { NOT_INSTALLED, installedPlugins, load, pluginsRootResolver } from "../src/loader.js";
 import { Profile, recommendedFor } from "../src/profiles.js";
 
@@ -43,6 +44,69 @@ describe("load", () => {
 
     expect(result.bySpec.size).toBe(0);
     expect(result.problems).toHaveLength(1);
+  });
+
+  // Every workflow amy mounts from an install or from ~/.amy/workflows is a
+  // `defineWorkflow` with a diagram: a raw `registry.workflow(...)` and a
+  // declaration with no `workflow.mmd` beside it are both refused at mount,
+  // naming the plugin and what it needs.
+  describe("a workflow it will not mount", () => {
+    let home: string;
+    beforeEach(() => {
+      home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-load-refused-"));
+    });
+    afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+    const CORE = pathToFileURL(path.resolve(import.meta.dirname, "..", "..", "core", "dist", "index.js")).href;
+    const HOST: HostServices = {
+      runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      now: () => new Date(0),
+      paths: { state: os.tmpdir() },
+    };
+
+    async function mounted(source: string): Promise<string> {
+      const entry = path.join(home, "index.ts");
+      fs.writeFileSync(entry, source);
+      const { plugins, problems } = await load([pathToFileURL(entry).href]);
+      expect(problems).toEqual([]);
+      const outcome = await mount(plugins, {}, HOST);
+      return outcome.ok ? "mounted" : outcome.problems.join("\n");
+    }
+
+    it("refuses a plugin that registers a workflow by hand, naming it", async () => {
+      const refused = await mounted(`export const plugin = {
+  name: "workflow-by-hand",
+  register(registry) {
+    registry.workflow({ name: "by-hand", states: ["done"], waitingStates: [], initialState: "done", terminalStates: ["done"], trackerWrites: [], codeHostWrites: [], plan: () => ({ kind: "settled", why: "done" }) });
+  },
+};
+`);
+
+      expect(refused).toContain("workflow-by-hand registers a workflow by hand; amy mounts a workflow declared with `defineWorkflow` and a workflow.mmd beside it");
+    });
+
+    it("refuses a declaration with no workflow.mmd beside it, naming the workflow and the file", async () => {
+      const refused = await mounted(`import { defineWorkflow, settled } from ${JSON.stringify(CORE)};
+export const plugin = defineWorkflow({
+  name: "undrawn", configSchema: {}, policy: {}, needs: {}, record: () => ({}),
+  decide: { done: () => settled("done") }, observe: async () => ({}), actions: {},
+});
+`);
+
+      expect(refused).toContain("the undrawn workflow has no workflow.mmd: draw one beside its entry or at its package root");
+    });
+
+    it("mounts the same declaration once the diagram lies beside it", async () => {
+      fs.writeFileSync(path.join(home, "workflow.mmd"), "stateDiagram-v2\n    [*] --> done\n    done --> [*]\n");
+      const outcome = await mounted(`import { defineWorkflow, settled } from ${JSON.stringify(CORE)};
+export const plugin = defineWorkflow({
+  name: "drawn", configSchema: {}, policy: {}, needs: {}, record: () => ({}),
+  decide: { done: () => settled("done") }, observe: async () => ({}), actions: {},
+});
+`);
+
+      expect(outcome).toBe("mounted");
+    });
   });
 
   it("takes the `plugin` export of a real package", async () => {

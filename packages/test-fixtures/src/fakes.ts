@@ -28,7 +28,6 @@ import {
   TriageOutcome,
   Ticket,
   TicketRecord,
-  TicketRuntimeConfig,
   Tracker,
 } from "@amykit/workflow-ticket-to-qa";
 export class InMemoryStore implements Store {
@@ -234,12 +233,6 @@ export const workerConfig: WorkerConfig = {
   retentionDays: 7,
   maxItemAttempts: 5,
   retryDelayMs: DEFAULT_POLICY.pollBackoffMs,
-};
-
-/** What the ticket runtime needs told to it, for a test. */
-export const runtimeConfig: TicketRuntimeConfig = {
-  repos: ["Northwind/northwind-backend"],
-  qaStatusName: "In QA",
 };
 
 export function ticketFor(overrides: Partial<Ticket> = {}): Ticket {

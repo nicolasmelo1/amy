@@ -57,7 +57,7 @@ import { phasesOf } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
-import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
+import { PLUGINS_ROOT_FLAGS, ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
 import {
   BootCheck,
   Picked,
@@ -351,7 +351,7 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<bool
   const wanted = chosen ?? (process.stdin.isTTY ? confirm() : false);
 
   if (!wanted) {
-    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, "--", ...absent])}`);
+    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, ...PLUGINS_ROOT_FLAGS, "--", ...absent])}`);
     return false;
   }
 
@@ -1290,16 +1290,11 @@ async function addInstalled(
     );
   }
 
-  // The probe imports the package where it actually is: a path add imports
-  // the directory's own entry, because the name it will carry is not in the
-  // plugins root yet — the install below is what puts it there. Everything
-  // else resolves through the root, the way the next boot will.
-  const probeImport =
-    completed.kind === "path" ? packageEntrySpecifier(completed.absolute!) : completed.imported;
-  const loaded = await importPluginBySpec(
-    probeImport,
-    completed.kind === "path" ? (spec) => spec : pluginsRootResolver(home, place.plugins),
-  );
+  // The probe resolves through the root, the way the next boot will. A path
+  // is installed there as a copy under the name its manifest carries, so a
+  // workflow importing the core it is declared with resolves it there, and
+  // not beside the directory it was added from, where there is none.
+  const loaded = await importPluginBySpec(completed.imported, pluginsRootResolver(home, place.plugins));
   if (!loaded.ok) return rollback(runner, place.plugins, completed, before, loaded.problem);
 
   const probe = await whatMountingSays(loaded.plugin, place.plugins);

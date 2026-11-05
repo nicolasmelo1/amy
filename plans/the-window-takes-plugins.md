@@ -57,6 +57,7 @@ guarantee:
 cut:
   - "a whole new way of seeing a section (a board, an office) as a panel: refused; that is plans/a-section-can-be-seen-another-way.md"
   - "a plugin replacing or removing Work, Workflows or Settings: refused; it adds a section instead"
+  - "a plugin shipping a frame.yaml of its own: refused; the frame is the core's, one per surface, and a plugin changes what a canvas shows and how it looks, never where the regions are"
 exit: "via amy plugin add, an outside plugin's nav 1 section, canvas tab, ⋯ action and home-and-record rail entry appear only once mounted, land alike in the desktop app and text renderer, and the record view follows the open record"
 ---
 # The window takes plugins

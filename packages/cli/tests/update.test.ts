@@ -435,6 +435,7 @@ describe("the move", () => {
       root,
       "--no-audit",
       "--no-fund",
+      "--install-links",
       "--",
     ]);
     // The version, not the range: npm is free to answer a range with what
@@ -515,6 +516,14 @@ describe("the rollback", () => {
     expect(outcome.ok).toBe(true);
     expect(runner.argvFor("npm").at(-1)).toBe("@acme/workflow-oncall@1.0.0");
     expect(manifestOf(root)["@acme/workflow-oncall"]).toBe("^1.0.0");
+  });
+
+  it("restores into the plugins root as a copy, so a workflow added from a path is not turned back into a link", async () => {
+    packageAt(root, "@acme/workflow-oncall", "1.0.0", "export {};");
+
+    await restore(runner, root, "@acme/workflow-oncall", "1.0.0");
+
+    expect(runner.argvFor("npm")).toContain("--install-links");
   });
 });
 
@@ -1065,7 +1074,7 @@ describe("the running loop", () => {
     }
     const installs = runner.callsTo("npm").filter((call) => call.args[0] === "install").map((call) => call.args);
     expect(installs).toEqual([
-      ["install", "--prefix", path.join(home, "plugins"), "--no-audit", "--no-fund", "--", "@amykit/plugin-file-log@0.6.0"],
+      ["install", "--prefix", path.join(home, "plugins"), "--no-audit", "--no-fund", "--install-links", "--", "@amykit/plugin-file-log@0.6.0"],
       ["install", "--global", "--prefix", install.dir, "--no-audit", "--no-fund", "--", "@amykit/cli@0.6.0"],
     ]);
     // The root names the release it is on, not a caret that never reaches the next.

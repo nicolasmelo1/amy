@@ -68,9 +68,14 @@
           "description": "What owns what, the one rule everything else follows from, and where the types live."
         },
         {
+          "title": "MAD and BEP",
+          "path": "/concepts/mad-and-bep",
+          "description": "The two opinions amy does not negotiate — how one workflow is built, and how a piece of work is carried from a brief to its proof."
+        },
+        {
           "title": "Workflows",
           "path": "/concepts/workflows",
-          "description": "Two halves — a pure decision and a runtime — and the seven things a workflow declares."
+          "description": "Three pieces — a diagram, a pure decision per state, and the actions — joined by one declaration."
         },
         {
           "title": "Plugins and the registry",
@@ -127,7 +132,7 @@
         {
           "title": "Write a workflow",
           "path": "/build/write-a-workflow",
-          "description": "Your process, as a directory of yours — the pure decision, the runtime, and the walkthrough test that is the only real proof."
+          "description": "Your process, as a directory of yours — the diagram, the pure decisions, the actions, and the walkthrough test that is the only real proof."
         },
         {
           "title": "Testing",
@@ -320,6 +325,11 @@
         {
           "title": "A workflow is a Mermaid diagram",
           "path": "/design/a-workflow-is-a-mermaid-diagram",
+          "description": ""
+        },
+        {
+          "title": "A workflow is drawn, or it does not mount",
+          "path": "/design/a-workflow-is-drawn-or-it-does-not-mount",
           "description": ""
         },
         {
@@ -791,7 +801,7 @@
       "file": "docs/build/write-a-workflow.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/write-a-workflow.md",
       "title": "Write a workflow",
-      "description": "Your process, as a directory of yours — the pure decision, the runtime, and the walkthrough test that is the only real proof.",
+      "description": "Your process, as a directory of yours — the diagram, the pure decisions, the actions, and the walkthrough test that is the only real proof.",
       "group": "Build your own",
       "order": 2,
       "generated": true,
@@ -833,8 +843,8 @@
         },
         {
           "depth": 2,
-          "title": "6. The runtime — the half that touches the world",
-          "slug": "6-the-runtime-the-half-that-touches-the-world"
+          "title": "6. The actions — the half that touches the world",
+          "slug": "6-the-actions-the-half-that-touches-the-world"
         },
         {
           "depth": 2,
@@ -954,6 +964,11 @@
         },
         {
           "depth": 3,
+          "title": "A frozen adapter, such as Object.freeze({ name, register }), mounts again through the host that only takes declarations. The proxy that keeps a plugin's own receiver stood on the plugin itself. Replacing register on a frozen object breaks a Proxy invariant, so it threw a TypeError before registration ran. It now stands on an empty object of its own and still reads and calls every member on the plugin.",
+          "slug": "a-frozen-adapter-such-as-objectfreeze-name-register-mounts-again-through-the-host-that-only-takes-declarations-the-proxy-that-keeps-a-plugins-own-receiver-stood-on-the-plugin-itself-replacing-register-on-a-frozen-object-breaks-a-proxy-invariant-so-it-threw-a-typeerror-before-registration-ran-it-now-stands-on-an-empty-object-of-its-own-and-still-reads-and-calls-every-member-on-the-plugin"
+        },
+        {
+          "depth": 3,
           "title": "**A mount builds once.** port, engine and contribute accept deferred(() => impl): the host builds it once every plugin has registered, once per mount and before any ready, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own WeakMap<PluginContext, …>, getter proxies and build-early ready. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.",
           "slug": "a-mount-builds-once-port-engine-and-contribute-accept-deferred-impl-the-host-builds-it-once-every-plugin-has-registered-once-per-mount-and-before-any-ready-building-on-demand-when-one-reads-another-so-the-order-plugins-are-listed-in-does-not-matter-a-build-that-throws-is-a-boot-refusal-naming-its-plugin-and-two-builds-that-read-each-other-are-refused-naming-both-the-agent-relay-the-serial-engine-and-the-three-shipped-workflows-use-it-in-place-of-their-own-weakmapplugincontext-getter-proxies-and-build-early-ready-one-behaviour-change-the-serial-engine-is-now-built-at-boot-so-an-engine-with-no-workflow-no-runtime-or-no-queue-store-or-notifier-is-refused-when-the-host-mounts-rather-than-on-its-first-tick"
         },
@@ -969,6 +984,11 @@
         },
         {
           "depth": 3,
+          "title": "declaredWorkflowsOnly keeps every member of the plugin and of the registry on its own object. It used to wrap both in a prototype copy, so a class plugin whose getter or method reads a #private field threw a TypeError on its own name, and boot stopped before mount could report it.",
+          "slug": "declaredworkflowsonly-keeps-every-member-of-the-plugin-and-of-the-registry-on-its-own-object-it-used-to-wrap-both-in-a-prototype-copy-so-a-class-plugin-whose-getter-or-method-reads-a-private-field-threw-a-typeerror-on-its-own-name-and-boot-stopped-before-mount-could-report-it"
+        },
+        {
+          "depth": 3,
           "title": "**A project is brief, work and proof.** The brief/, workflow/ and prove/ folders of a project compose the one workflow its config entry drives: each phase a call() to the defineWorkflow declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named refused carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for amy status to show; a test/ folder is told the phase is named prove/.",
           "slug": "a-project-is-brief-work-and-proof-the-brief-workflow-and-prove-folders-of-a-project-compose-the-one-workflow-its-config-entry-drives-each-phase-a-call-to-the-defineworkflow-declaration-its-folder-exports-walked-as-child-records-of-one-record-one-profile-and-one-daemon-for-the-whole-walk-the-briefs-own-declared-sections-give-the-walk-its-vocabulary-what-the-brief-workflow-returned-is-what-the-proving-workflow-is-handed-as-its-input-exactly-and-an-end-named-refused-carries-the-row-back-to-work-saying-what-did-not-hold-a-phase-neither-present-nor-declared-absent-is-refused-at-the-walks-mount-naming-it-a-phase-declared-absent-carries-its-reason-on-the-workflow-for-amy-status-to-show-a-test-folder-is-told-the-phase-is-named-prove"
         },
@@ -976,6 +996,11 @@
           "depth": 3,
           "title": "**A reply in a work's thread can be a question, not only an answer.**",
           "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
+        },
+        {
+          "depth": 3,
+          "title": "amy update, and the rollback it runs when a move fails, install into the plugins root with --install-links, the way amy add does. Before, they installed without it, so updating any other package could turn a workflow copied in from a path back into a link. A linked workflow's @amykit/core import resolves from outside the plugins root, and the workflow failed to load.",
+          "slug": "amy-update-and-the-rollback-it-runs-when-a-move-fails-install-into-the-plugins-root-with---install-links-the-way-amy-add-does-before-they-installed-without-it-so-updating-any-other-package-could-turn-a-workflow-copied-in-from-a-path-back-into-a-link-a-linked-workflows-amykitcore-import-resolves-from-outside-the-plugins-root-and-the-workflow-failed-to-load"
         },
         {
           "depth": 3,
@@ -1004,6 +1029,11 @@
         },
         {
           "depth": 3,
+          "title": "The amy-workflow skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a workflow.mmd, a decide map with one pure decision per drawn state, and actions written against the scope they are handed. Before, it taught a plan() with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.",
+          "slug": "the-amy-workflow-skill-teaches-the-three-pieces-a-workflow-is-mermaid-act-and-decide-a-workflowmmd-a-decide-map-with-one-pure-decision-per-drawn-state-and-actions-written-against-the-scope-they-are-handed-before-it-taught-a-plan-with-a-runtime-beside-it-and-a-raw-plugin-registering-states-by-hand-neither-of-those-mounts-any-more-so-a-person-following-the-skill-wrote-a-workflow-amy-refuses-the-two-opinions-amy-holds-every-workflow-to-mad-and-bep-brief-execute-prove-are-written-down-in-mad-and-bep-under-how-it-works"
+        },
+        {
+          "depth": 3,
           "title": "**A workflow is one declaration.** defineWorkflow registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. planning supplies the four typed plan constructors, and amy workflow new writes the new declaration.",
           "slug": "a-workflow-is-one-declaration-defineworkflow-registers-the-pure-machine-and-its-deferred-runtime-together-resolves-typed-required-and-optional-ports-validates-and-merges-policy-defaults-and-constructs-the-core-record-fields-planning-supplies-the-four-typed-plan-constructors-and-amy-workflow-new-writes-the-new-declaration"
         },
@@ -1014,6 +1044,11 @@
         },
         {
           "depth": 3,
+          "title": "**A workflow is its diagram, its decisions and its actions, and nothing else mounts.** defineWorkflow takes only the three pieces: decide, one pure decision per state the workflow.mmd beside it draws, with before, after, discover, observe, actions, remember and progress. A declaration that still passes a single plan() or a runtime() factory is refused at boot, naming each and where it moved, and states, waiting and terminal are gone: a declaration still passing them is refused by name, and one whose host found no workflow.mmd beside its entry or at its package root is refused at mount, naming the workflow and the file. Before, both forms and both sources of states mounted side by side, so the boot check of one decision per drawn state applied to some workflows and not others, and the same fact could live in a list in code that nothing held to the drawing. The CLI now mounts only declarations: a plugin it loads from an install or from ~/.amy/workflows that registers a workflow by hand with registry.workflow(...) is refused naming the plugin (declaredWorkflowsOnly in the core). Because every installed workflow now imports the core it is declared with, a package added by path is installed into amy's root as a copy with its dependencies (--install-links) and probed from there, rather than linked to a directory where its imports do not resolve. amy workflow new writes the three pieces each in its own file — workflow.mmd, decide.ts, actions.ts — joined by the one call in index.ts, with no runtime factory, and its suite mounts the workflow the way amy does. defineWorkflow also carries a plugin's setup and environment.",
+          "slug": "a-workflow-is-its-diagram-its-decisions-and-its-actions-and-nothing-else-mounts-defineworkflow-takes-only-the-three-pieces-decide-one-pure-decision-per-state-the-workflowmmd-beside-it-draws-with-before-after-discover-observe-actions-remember-and-progress-a-declaration-that-still-passes-a-single-plan-or-a-runtime-factory-is-refused-at-boot-naming-each-and-where-it-moved-and-states-waiting-and-terminal-are-gone-a-declaration-still-passing-them-is-refused-by-name-and-one-whose-host-found-no-workflowmmd-beside-its-entry-or-at-its-package-root-is-refused-at-mount-naming-the-workflow-and-the-file-before-both-forms-and-both-sources-of-states-mounted-side-by-side-so-the-boot-check-of-one-decision-per-drawn-state-applied-to-some-workflows-and-not-others-and-the-same-fact-could-live-in-a-list-in-code-that-nothing-held-to-the-drawing-the-cli-now-mounts-only-declarations-a-plugin-it-loads-from-an-install-or-from-amyworkflows-that-registers-a-workflow-by-hand-with-registryworkflow-is-refused-naming-the-plugin-declaredworkflowsonly-in-the-core-because-every-installed-workflow-now-imports-the-core-it-is-declared-with-a-package-added-by-path-is-installed-into-amys-root-as-a-copy-with-its-dependencies---install-links-and-probed-from-there-rather-than-linked-to-a-directory-where-its-imports-do-not-resolve-amy-workflow-new-writes-the-three-pieces-each-in-its-own-file-workflowmmd-decidets-actionsts-joined-by-the-one-call-in-indexts-with-no-runtime-factory-and-its-suite-mounts-the-workflow-the-way-amy-does-defineworkflow-also-carries-a-plugins-setup-and-environment"
+        },
+        {
+          "depth": 3,
           "title": "**A workflow runs on lanes.** A diagram may draw state X <<fork>> and state Y <<join>>: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.",
           "slug": "a-workflow-runs-on-lanes-a-diagram-may-draw-state-x-fork-and-state-y-join-every-line-out-of-the-fork-is-a-lane-every-lane-is-a-call-so-a-record-of-its-own-and-the-caller-moves-to-the-join-once-every-lane-has-ended-holding-where-each-ended-and-what-it-returned-keyed-by-lane-there-is-no-setting-for-how-many-the-number-of-lanes-is-the-number-of-lines-drawn-before-this-work-that-could-run-side-by-side-ran-one-piece-after-the-other-or-was-written-by-hand-in-a-runtime-the-diagram-never-showed"
         },
@@ -1021,6 +1056,11 @@
           "depth": 3,
           "title": "**A workspace is a capability.** Nothing is handed a workspace without asking: plugins borrow their checkouts through a workspace port the file-worktree plugin mounts, and workflows inherit them from their support, so a machine that works nowhere in particular needs none. The seven machine keys — repos, workspaceRoot, checkouts, defaultBranch, baseBranch, gate and worktrees — are read from the plugins whose slices carry them (plugins: \"@amykit/plugin-file-worktree\" for the six workspace keys, plugins: \"@amykit/plugin-command-gate\" for the gate). The doctor asks about checkouts and worktrees only where a workspace was mounted, and amy update moves an old install's keys under those slices, saying each move, keeping the original beside the config, and refusing a key put back at the top level by name. The provenance of every derived slice, now a property with its own falsifier (machine_key_leaks_into_a_slice).",
           "slug": "a-workspace-is-a-capability-nothing-is-handed-a-workspace-without-asking-plugins-borrow-their-checkouts-through-a-workspace-port-the-file-worktree-plugin-mounts-and-workflows-inherit-them-from-their-support-so-a-machine-that-works-nowhere-in-particular-needs-none-the-seven-machine-keys-repos-workspaceroot-checkouts-defaultbranch-basebranch-gate-and-worktrees-are-read-from-the-plugins-whose-slices-carry-them-plugins-amykitplugin-file-worktree-for-the-six-workspace-keys-plugins-amykitplugin-command-gate-for-the-gate-the-doctor-asks-about-checkouts-and-worktrees-only-where-a-workspace-was-mounted-and-amy-update-moves-an-old-installs-keys-under-those-slices-saying-each-move-keeping-the-original-beside-the-config-and-refusing-a-key-put-back-at-the-top-level-by-name-the-provenance-of-every-derived-slice-now-a-property-with-its-own-falsifier-machinekeyleaksintoaslice"
+        },
+        {
+          "depth": 3,
+          "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write discover, observe, remember and every action as a function of the scope defineWorkflow hands it: scope.ports, scope.config, scope.policy, scope.checkouts, scope.ctx and scope.announce. errandRuntime, planRuntime and ticketRuntime are gone, with their …RuntimeDeps and …RuntimeConfig types; a test that built one mounts the declaration instead.",
+          "slug": "the-actions-use-the-ports-the-errand-note-to-plan-and-ticket-to-qa-write-discover-observe-remember-and-every-action-as-a-function-of-the-scope-defineworkflow-hands-it-scopeports-scopeconfig-scopepolicy-scopecheckouts-scopectx-and-scopeannounce-errandruntime-planruntime-and-ticketruntime-are-gone-with-their-runtimedeps-and-runtimeconfig-types-a-test-that-built-one-mounts-the-declaration-instead"
         },
         {
           "depth": 3,
@@ -1076,6 +1116,11 @@
           "depth": 3,
           "title": "**The roster belongs to its workflow.** The team list that names who reviews and who owns QA is one ticket-to-qa profile's file, written by init and add beside the profile's records and confirmed by amy roster confirm — the workflow brought its command and its check with it, and none of the host's source names the file any more. Where a profile has no roster of its own, the workflow's red check names the file the machine kept where the roster used to live, so the error is a way back and not a dead end.",
           "slug": "the-roster-belongs-to-its-workflow-the-team-list-that-names-who-reviews-and-who-owns-qa-is-one-ticket-to-qa-profiles-file-written-by-init-and-add-beside-the-profiles-records-and-confirmed-by-amy-roster-confirm-the-workflow-brought-its-command-and-its-check-with-it-and-none-of-the-hosts-source-names-the-file-any-more-where-a-profile-has-no-roster-of-its-own-the-workflows-red-check-names-the-file-the-machine-kept-where-the-roster-used-to-live-so-the-error-is-a-way-back-and-not-a-dead-end"
+        },
+        {
+          "depth": 3,
+          "title": "The declaration the amy-workflow skill shows declares policy.maxAttempts in its configSchema, with the same default its policy reads. Before, it left the schema empty, and the mount refuses a policy key the schema does not declare, so a workflow copied from the skill did not boot.",
+          "slug": "the-declaration-the-amy-workflow-skill-shows-declares-policymaxattempts-in-its-configschema-with-the-same-default-its-policy-reads-before-it-left-the-schema-empty-and-the-mount-refuses-a-policy-key-the-schema-does-not-declare-so-a-workflow-copied-from-the-skill-did-not-boot"
         },
         {
           "depth": 3,
@@ -1341,6 +1386,28 @@
           "depth": 2,
           "title": "Writing a harness plugin",
           "slug": "writing-a-harness-plugin"
+        }
+      ]
+    },
+    {
+      "path": "/concepts/mad-and-bep",
+      "file": "docs/concepts/mad-and-bep.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/mad-and-bep.md",
+      "title": "MAD and BEP",
+      "description": "The two opinions amy does not negotiate — how one workflow is built, and how a piece of work is carried from a brief to its proof.",
+      "group": "How it works",
+      "order": 1.5,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "MAD: Mermaid, Act, Decide",
+          "slug": "mad-mermaid-act-decide"
+        },
+        {
+          "depth": 2,
+          "title": "BEP: Brief, Execute, Prove",
+          "slug": "bep-brief-execute-prove"
         }
       ]
     },
@@ -1652,11 +1719,16 @@
       "file": "docs/concepts/workflows.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/workflows.md",
       "title": "Workflows",
-      "description": "Two halves — a pure decision and a runtime — and the seven things a workflow declares.",
+      "description": "Three pieces — a diagram, a pure decision per state, and the actions — joined by one declaration.",
       "group": "How it works",
       "order": 2,
       "generated": true,
       "headings": [
+        {
+          "depth": 2,
+          "title": "The diagram",
+          "slug": "the-diagram"
+        },
         {
           "depth": 2,
           "title": "The decision half",
@@ -1664,13 +1736,13 @@
         },
         {
           "depth": 2,
-          "title": "The runtime half",
-          "slug": "the-runtime-half"
+          "title": "The world half",
+          "slug": "the-world-half"
         },
         {
           "depth": 2,
-          "title": "One declaration mounts both halves",
-          "slug": "one-declaration-mounts-both-halves"
+          "title": "One declaration joins the pieces",
+          "slug": "one-declaration-joins-the-pieces"
         },
         {
           "depth": 2,
@@ -2396,6 +2468,33 @@
           "depth": 2,
           "title": "What was delivered",
           "slug": "what-was-delivered"
+        },
+        {
+          "depth": 2,
+          "title": "Acceptance criteria",
+          "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-workflow-is-drawn-or-it-does-not-mount",
+      "file": "docs/design/a-workflow-is-drawn-or-it-does-not-mount.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workflow-is-drawn-or-it-does-not-mount.md",
+      "title": "A workflow is drawn, or it does not mount",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "What changed",
+          "slug": "what-changed"
+        },
+        {
+          "depth": 2,
+          "title": "Deviations",
+          "slug": "deviations"
         },
         {
           "depth": 2,
@@ -6938,7 +7037,7 @@
       },
       {
         "name": "amy-workflow",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "description": "Design a new amy workflow, or change one that exists, by being interrogated one question at a time until the shape is settled — then write it as its own package.",
         "directory": "packages/cli/skills/amy-workflow"
       }
@@ -7169,6 +7268,10 @@
       {
         "variable": "TELEGRAM_BOT_TOKEN",
         "package": "@amykit/plugin-telegram"
+      },
+      {
+        "variable": "VITEST",
+        "package": "@amykit/test-fixtures"
       }
     ]
   },
@@ -10063,6 +10166,18 @@
         "level": "minor"
       },
       {
+        "id": "a-frozen-adapter-mounts",
+        "title": "A frozen adapter, such as `Object.freeze({ name, register })`, mounts again through the host that only takes declarations. The proxy that keeps a plugin's own receiver stood on the plugin itself. Replacing `register` on a frozen object breaks a Proxy invariant, so it threw a `TypeError` before registration ran. It now stands on an empty object of its own and still reads and calls every member on the plugin.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
         "id": "a-mount-builds-once",
         "title": "**A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.",
         "body": "",
@@ -10155,6 +10270,18 @@
         "level": "minor"
       },
       {
+        "id": "a-private-field-survives-the-host",
+        "title": "`declaredWorkflowsOnly` keeps every member of the plugin and of the registry on its own object. It used to wrap both in a prototype copy, so a class plugin whose getter or method reads a `#private` field threw a `TypeError` on its own name, and boot stopped before mount could report it.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
         "id": "a-project-is-brief-work-and-proof",
         "title": "**A project is brief, work and proof.** The `brief/`, `workflow/` and `prove/` folders of a project compose the one workflow its config entry drives: each phase a `call()` to the `defineWorkflow` declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named `refused` carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for `amy status` to show; a `test/` folder is told the phase is named `prove/`.",
         "body": "`defineWorkflow` gains the optional `phases` member — one reason per\ndeclared-absent phase — which the plugin carries beside its workflow; the\nshipped `errand`, `note-to-plan` and `ticket-to-qa` declare brief and prove\nout with their reasons, and every other package is unchanged. A project's\nqueue, records, tasks, threads and log live under\n`projects/<project>/<profile>` with its briefs under the project's shared\nartifact root; the per-phase layout of an older machine stays on disk,\nunread, and `amy update` folds a config that named one project as three\nphase profiles into its single project profile, saying every fold and\nmoving nothing the second time.",
@@ -10217,6 +10344,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "a-restore-keeps-the-copy",
+        "title": "`amy update`, and the rollback it runs when a move fails, install into the plugins root with `--install-links`, the way `amy add` does. Before, they installed without it, so updating any other package could turn a workflow copied in from a path back into a link. A linked workflow's `@amykit/core` import resolves from outside the plugins root, and the workflow failed to load.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "a-row-of-next-steps-is-a-ticket",
@@ -10359,6 +10498,18 @@
         "level": "minor"
       },
       {
+        "id": "a-workflow-is-mad-and-a-project-is-bep",
+        "title": "The `amy-workflow` skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a `workflow.mmd`, a `decide` map with one pure decision per drawn state, and `actions` written against the `scope` they are handed. Before, it taught a `plan()` with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
         "id": "a-workflow-is-one-declaration",
         "title": "**A workflow is one declaration.** `defineWorkflow` registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. `planning` supplies the four typed plan constructors, and `amy workflow new` writes the new declaration.",
         "body": "",
@@ -10409,6 +10560,22 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-workflow-requires-a-diagram",
+        "title": "**A workflow is its diagram, its decisions and its actions, and nothing else mounts.** `defineWorkflow` takes only the three pieces: `decide`, one pure decision per state the `workflow.mmd` beside it draws, with `before`, `after`, `discover`, `observe`, `actions`, `remember` and `progress`. A declaration that still passes a single `plan()` or a `runtime()` factory is refused at boot, naming each and where it moved, and `states`, `waiting` and `terminal` are gone: a declaration still passing them is refused by name, and one whose host found no `workflow.mmd` beside its entry or at its package root is refused at mount, naming the workflow and the file. Before, both forms and both sources of states mounted side by side, so the boot check of one decision per drawn state applied to some workflows and not others, and the same fact could live in a list in code that nothing held to the drawing. The CLI now mounts only declarations: a plugin it loads from an install or from `~/.amy/workflows` that registers a workflow by hand with `registry.workflow(...)` is refused naming the plugin (`declaredWorkflowsOnly` in the core). Because every installed workflow now imports the core it is declared with, a package added by path is installed into amy's root as a copy with its dependencies (`--install-links`) and probed from there, rather than linked to a directory where its imports do not resolve. `amy workflow new` writes the three pieces each in its own file — `workflow.mmd`, `decide.ts`, `actions.ts` — joined by the one call in `index.ts`, with no runtime factory, and its suite mounts the workflow the way amy does. `defineWorkflow` also carries a plugin's `setup` and `environment`.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
             "level": "minor"
           }
         ],
@@ -10477,6 +10644,26 @@
           },
           {
             "package": "@amykit/plugin-plan-check",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "actions-use-the-ports",
+        "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write `discover`, `observe`, `remember` and every action as a function of the scope `defineWorkflow` hands it: `scope.ports`, `scope.config`, `scope.policy`, `scope.checkouts`, `scope.ctx` and `scope.announce`. `errandRuntime`, `planRuntime` and `ticketRuntime` are gone, with their `…RuntimeDeps` and `…RuntimeConfig` types; a test that built one mounts the declaration instead.",
+        "body": "Before, each workflow kept the factory it had before `defineWorkflow`, and a\n`WeakMap` adapter that assembled a deps object out of the scope to build it:\nthree copies of the same adapter. It cached nothing for an action, whose scope\nis a new object every time, so every action rebuilt the whole runtime; and\nticket-to-qa carried its own `agent.run` and `notify.failed` lines behind an\n`accountsAgentRuns: false` switch, beside the host's, when the framework\nalready hands every action an agent that accounts for each reply and an\n`announce` that cannot cost a move. ticket-to-qa's progress policy is read\nfrom `budget` through the declaration's `progress(scope)`, and its roster is\nread from the profile when a look needs it, as before.",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],
@@ -10801,6 +10988,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-skill-example-mounts",
+        "title": "The declaration the `amy-workflow` skill shows declares `policy.maxAttempts` in its `configSchema`, with the same default its policy reads. Before, it left the schema empty, and the mount refuses a policy key the schema does not declare, so a workflow copied from the skill did not boot.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "waiting-is-not-trying",
