@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { WORKSPACE_PORT, ConfigOf, PluginCommand, PluginContext, Worktree, Workspace, definePlugin } from "@amykit/core";
+import { WORKSPACE_PORT, ConfigOf, PluginCommand, PluginContext, Worktree, Workspace, baseBranchesOf, definePlugin } from "@amykit/core";
 import { configSchema } from "./config.js";
 
 type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
@@ -35,7 +35,7 @@ function settingsFor(ctx: TypedContext): WorktreeManagerConfig {
     root: expandHome(root),
     workflow,
     defaultBranch: ctx.config.defaultBranch,
-    baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
+    baseBranch: baseBranchesOf(ctx.config),
     workspaceRoot: workspace.workspaceRoot,
     checkouts: workspace.checkouts,
     retentionDays: ctx.config.retentionDays,

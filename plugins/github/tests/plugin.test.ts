@@ -51,4 +51,21 @@ describe("the github plugin", () => {
       expect(outcome.problems.join("\n")).toContain("`defaultBranch` is not a setting this plugin has");
     }
   });
+
+  it("refuses a base map whose value is not a branch name at boot, without a workspace", async () => {
+    const outcome = await mount(
+      [plugin],
+      { "@amykit/plugin-github": { baseBranch: { "acme/widgets": 7 } } },
+      {
+        runner: RUNNER,
+        now: () => new Date(),
+        paths: { state:  "/state" },
+      },
+    );
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.problems.join("\n")).toContain("`baseBranch` names 7 for `acme/widgets`, which is not a branch name");
+    }
+  });
 });

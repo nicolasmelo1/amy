@@ -565,9 +565,12 @@ function callSite(
     ...(ctx.workflowPort ? { workflowPort: (kind: string) => ctx.workflowPort!(bound(kind)) } : {}),
     // A callee's checkouts answer through the same workplace, and a refusal
     // there names the call's workflow — the one whose work stopped — rather
-    // than the caller this context was spread from. A lane leases the same
-    // workplace, lent its caller's commit.
-    checkouts: held ? () => leasedCheckouts(ctx.checkouts(name), held) : () => ctx.checkouts(name),
+    // than the caller this context was spread from. A deeper call's name is
+    // passed through, so the refusal names the innermost one. A lane leases
+    // the same workplace, lent its caller's commit.
+    checkouts: held
+      ? (who) => leasedCheckouts(ctx.checkouts(who ?? name), held)
+      : (who) => ctx.checkouts(who ?? name),
   };
   const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, declaration]);
   if (ctx) claimsFit(caller, ctx.config, policy, declaration, settings.config, assembled.policy, at);

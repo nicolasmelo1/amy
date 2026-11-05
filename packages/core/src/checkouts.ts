@@ -106,8 +106,12 @@ function defaultBranchOf(config: Readonly<Record<string, unknown>>): string {
   return value;
 }
 
-/** The one place `baseBranch`, validated only as a record, is narrowed to names. */
-function baseBranchesOf(config: Readonly<Record<string, unknown>>): Readonly<Record<string, string>> | undefined {
+/**
+ * The one place `baseBranch`, validated only as a record, is narrowed to
+ * names. A plugin that takes the map in its own slice reads it through this,
+ * so a value that is not a branch name is refused at boot rather than sent.
+ */
+export function baseBranchesOf(config: Readonly<Record<string, unknown>>): Readonly<Record<string, string>> | undefined {
   const value = config.baseBranch;
   if (value === undefined) return undefined;
   if (value === null || typeof value !== "object" || Array.isArray(value)) {

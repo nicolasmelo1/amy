@@ -1,4 +1,4 @@
-import { definePlugin } from "@amykit/core";
+import { baseBranchesOf, definePlugin } from "@amykit/core";
 import { GitHubCodeHost } from "./GitHubCodeHost.js";
 import { configSchema } from "./config.js";
 
@@ -7,7 +7,7 @@ export const plugin = definePlugin<typeof configSchema>({
   configSchema,
   register(registry, ctx) {
     registry.port("code-host", new GitHubCodeHost(ctx.runner, {
-      baseBranch: (ctx.config.baseBranch ?? undefined) as Record<string, string> | undefined,
+      baseBranch: baseBranchesOf(ctx.config),
     }));
   },
 });

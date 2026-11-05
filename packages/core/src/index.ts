@@ -172,7 +172,7 @@ export { validateConfig } from "./config-schema.js";
 export { definePlugin } from "./plugin.js";
 export type { ConfigField, ConfigFieldType, ConfigOf, ConfigResult, ConfigSchema, ValueFor } from "./config-schema.js";
 export { checkoutFor, baseBranchFor, Git } from "./git.js";
-export { BRANCH_SETTINGS, checkoutsFromWorkspace, lentWhenRead, lendCheckouts } from "./checkouts.js";
+export { BRANCH_SETTINGS, baseBranchesOf, checkoutsFromWorkspace, lentWhenRead, lendCheckouts } from "./checkouts.js";
 export type { Checkouts } from "./checkouts.js";
 export { WORKSPACE_PORT } from "./ports/Workspace.js";
 export type { Workspace } from "./ports/Workspace.js";
