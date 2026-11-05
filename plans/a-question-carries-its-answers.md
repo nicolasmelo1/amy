@@ -21,7 +21,11 @@ sources:
   - { id: S18, kind: reference, ref: "docs/design/no-port-method-ships-unproven.md", said: "a port member no shipped workflow calls has nothing proving it works" }
   - { id: S19, kind: decision, said: "ticket-to-qa is the first caller: triage may give a question its closed answers, ask-question posts each such question as an ask, and the chosen answer goes back to triage beside the question, as a typed reply does today" }
   - { id: S20, kind: decision, said: "the window's half lands with the window: the transcript carries asks and answers, addThreadTurn takes an answer, the thread panel shows buttons; written into those two plans, not built here. Decided 2026-11-05" }
+  - { id: S21, kind: reference, ref: "plans/next-steps.md", said: "every row is proven in the end-to-end scenario of a workflow this repository ships, through the installed executable, with the assertion that workflow's gate requires" }
+  - { id: S22, kind: decision, said: "an answer is what one look reads: a Slack approval showing both ✅ and ❌, or a choice showing two keycaps, is no answer; amy says once which marks it saw and waits. Decided 2026-11-05" }
 touches:
+  - .software-factory/evidence/ticket-to-qa/**
+  - .software-factory/policy.yaml
   - packages/core/src/ports/Conversation.ts
   - packages/core/src/index.ts
   - packages/core/tests/ports.test.ts
@@ -55,12 +59,13 @@ criteria:
   - { id: A3, statement: "a choices ask in Slack returns the keycaps the operator put on it only once they add ✅, and a reaction by anybody else is never an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S12] }
   - { id: A4, statement: "a choice ask with eleven answers in Slack without Socket Mode is posted as a numbered list with no reactions", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S8, S13] }
   - { id: A5, statement: "an approval, a choice and a choices ask in Telegram are inline keyboards; each press is acknowledged, a choices press toggles its ✓, and Send returns the chosen answers once", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.asks.test.ts", sources: [S15, S16] }
-  - { id: A6, statement: "for any sequence of presses and reactions on one ask, replies returns at most one answer for it, and it is the first complete one", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_later_answer_replaces_the_first", sources: [S9] }
+  - { id: A6, statement: "for any sequence of looks over presses and reactions on one ask, replies returns at most one answer, the first complete one a look read, and none from a look showing competing marks", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_later_answer_replaces_the_first", sources: [S9, S22] }
   - { id: A7, statement: "an answer reads as a decision under answer, discuss and read alike, and an unmarked typed reply to the same ask reads as it does today", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#an_answer_reads_as_policy_says", sources: [S4, S7] }
   - { id: A8, statement: "an adapter without asks: true is posted the prompt and numbered answers as text, and the walkthrough passes on it unchanged", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S8] }
   - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S1, S2, S17, S18, S19] }
   - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17] }
   - { id: A11, statement: "the three plans the window and Socket Mode land in carry the ask: getThread's transcript and addThreadTurn in every-endpoint, the panel in a-conversation-before-the-work, Block Kit buttons in an-event-is-a-reason-to-look", proof: "deferred:test:npm run check:plans", sources: [S11, S14, S20] }
+  - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "deferred:assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "Conversation.ts gains an optional ask on post and an optional answer on Reply; with no conversation mounted, ask-question comments the numbered list on the tracker exactly as it comments the questions today" }
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A2, A3, A4" }
@@ -69,9 +74,10 @@ crosses:
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:A8, the testkit world's conversation answers an ask as scripted" }
 guarantee:
   - { holds: "only the configured operator's press or reaction is an answer, as only their reply is one today", not_against: "a person holding the operator's own Slack or Telegram account" }
-  - { holds: "one ask has one answer, the first complete one; a change of mind after it is a new reply in the thread, read by policy", not_against: "a reaction removed and re-added before the first look that reads the ask" }
+  - { holds: "one ask has one answer, the first complete one a look read; a change of mind after it is a new reply in the thread, read by policy", not_against: "the order of reactions made between two looks, which polling cannot see" }
   - { holds: "a form never stops the typed reply: the person can always answer in words, and it reads as it reads today", not_against: "a workflow whose own code ignores text replies to a question it asked as a form" }
 failures:
+  - { step: replies, when: "one look sees competing marks on an ask: ✅ and ❌, or two keycaps on a choice", goes_to: "no answer; amy says once in the thread which marks it saw, and the next look reads again" }
   - { step: post, when: "the adapter has no asks, or Slack without Socket Mode is given more than ten answers", goes_to: "the prompt and its answers as a numbered list; the reply reads as typed text" }
   - { step: post, when: "Slack refuses a reaction amy adds to its own message", goes_to: "the message stands as posted with its numbered list, and the operator may react by hand or type" }
   - { step: replies, when: "a press or reaction arrives after the ask was answered", goes_to: "not returned; the adapter says once in the thread which answer was taken" }
