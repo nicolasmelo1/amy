@@ -15,6 +15,7 @@ sources:
   - { id: S12, kind: decision, said: "lessons are one file per profile under the state directory, readable and editable by hand; the file is the truth and the relay reads it on every ask" }
   - { id: S13, kind: decision, said: "a lesson counts its signature over the next M runs of its step and agent, ten by default; if it recurred as often as before, removal is proposed the same way" }
   - { id: S14, kind: decision, said: "a signature whose fix is code, not a prompt, is proposed as an amy note instead, which becomes a plan in the repository it is about" }
+  - { id: S15, kind: decision, said: "a distilling run is asked only after the budget check the worker applies passes; refused, both the automatic and the manual trigger defer and call no agent. Decided 2026-11-05" }
 touches:
   - packages/core/src/ports/Lessons.ts
   - packages/core/src/index.ts
@@ -38,11 +39,12 @@ criteria:
   - { id: A5, statement: "a lesson edited or deleted in the file changes the next ask without a restart", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S12] }
   - { id: A6, statement: "a lesson whose signature recurred as often in the next ten runs as before it is proposed for removal; one that dropped is kept", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S13] }
   - { id: A7, statement: "a signature the distilling run marks as a code fix becomes a proposed amy note, never a lesson", proof: "deferred:test:packages/cli/tests/lessons.test.ts", sources: [S14] }
+  - { id: A8, statement: "with the budget refusing, the tenth settled record and amy lessons distil both defer the distilling run and no agent is called", proof: "deferred:test:packages/cli/tests/lessons.test.ts", sources: [S15] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A2; an empty or malformed distilling reply writes no lesson" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "distilling is a read-only run outside any record; it charges no attempt and gives none back" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "Lessons.ts is a new port that writes only the profile's lessons file; no tracker or code-host write is added" }
-  - { mechanism: budget-and-evidence, answer: n/a, why: "evidence is read, never written; the distilling run is logged against the budget like any run" }
+  - { mechanism: budget-and-evidence, answer: works, proof: "deferred:A8; evidence is read, never written, and a distilling run passes the budget check before it is asked" }
 guarantee:
   - { holds: "no lesson reaches a prompt without the operator's approval", not_against: "a person writing a lesson into the file by hand" }
   - { holds: "learning never changes decide(), the diagram, a ladder or a policy", not_against: "a recommendation the operator turns into code through an amy note" }

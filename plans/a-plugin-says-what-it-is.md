@@ -10,7 +10,7 @@ sources:
   - { id: S7, kind: decision, said: "ui-extension and decider join the set with the row that ships the first package of that kind, not before: a kind nothing has is a promise" }
   - { id: S8, kind: decision, said: "a list, because a package can be two things (linear mounts tracker and feature, file-worktree workspace and worktree); its first entry is the primary, the one it is grouped under" }
   - { id: S9, kind: decision, said: "tracker covers every source of work: linear, next-steps, file-tasks, file-notes and feature-grooming's grooming source" }
-  - { id: S10, kind: decision, said: "each kind names what the probe must see: harness contributes harness, conversation mounts conversation, runtime mounts a queue, store, engine or brief, tool registers an action" }
+  - { id: S10, kind: decision, said: "each kind names what the probe must see: harness contributes harness, conversation mounts conversation, runtime mounts a queue, store, engine, brief or lessons, tool registers an action" }
   - { id: S11, kind: decision, said: "the loader refuses a package whose amy.kinds names a value outside the set, at mount, naming the package and the value" }
   - { id: S12, kind: decision, said: "the docs reference groups plugins by primary kind, and the docs check fails when a declared kind has none of the registrations S10 names for it" }
   - { id: S13, kind: decision, said: "every plugin and workflow package this repository ships declares its kinds; libraries (core, cli, agent-kit, ui, file-log, the testkit) declare none" }
