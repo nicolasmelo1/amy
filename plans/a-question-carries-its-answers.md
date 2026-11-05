@@ -25,6 +25,7 @@ sources:
   - { id: S22, kind: decision, said: "an answer is what one look reads: a Slack approval showing both ✅ and ❌, or a choice showing two keycaps, is no answer; amy says once which marks it saw and waits. Decided 2026-11-05" }
   - { id: S23, kind: reference, ref: "plugins/serial-engine/src/Worker.ts", said: "a look reads replies before the budget check, the triage run and the save; a look that fails or is parked is retried from the same since" }
   - { id: S24, kind: decision, said: "replies is a function of the thread and since: a retry from the same since gets the accepted answer again, and only a different later answer is dropped. Decided 2026-11-05" }
+  - { id: S25, kind: decision, said: "an adapter keeps no accepted answer in memory: it recomputes it from the thread on every call, and Telegram writes each press to its state directory when it arrives, since getUpdates keeps updates 24 hours. Decided 2026-11-05" }
 touches:
   - .software-factory/evidence/ticket-to-qa/**
   - .software-factory/policy.yaml
@@ -67,7 +68,7 @@ criteria:
   - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S1, S2, S17, S18, S19] }
   - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17] }
   - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "deferred:assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21] }
-  - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, in Slack and Telegram alike", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24] }
+  - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, after an adapter restart too, in Slack and Telegram alike", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "Conversation.ts gains an optional ask on post and an optional answer on Reply; with no conversation mounted, ask-question comments the numbered list on the tracker exactly as it comments the questions today" }
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A2, A3, A4" }
