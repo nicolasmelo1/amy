@@ -31,6 +31,7 @@ sources:
   - { id: S29, kind: decision, said: "a discussion turn is answered by an agent, so one from a paired device is refused; its decisions still move the work, since a decision runs no agent" }
   - { id: S30, kind: decision, said: "with the repository here but the record's branch not yet pushed, the ask runs in this checkout at the base branch, is handed the record's diff from its server, and says the code it reads is the base's" }
   - { id: S31, kind: reference, ref: "plans/a-question-carries-its-answers.md", said: "an ask shows its answers as buttons in the thread panel, choices with a send; a press submits the answer through the port as a decision; an answered ask shows the answer taken, no buttons. Decided 2026-11-05" }
+  - { id: S32, kind: decision, said: "for that round trip submit's turn gains answer?: { ask, chosen }, taking the place of text, and each transcript entry gains ask? and answer?, so the panel draws a form and an answered one. Decided 2026-11-05" }
 touches:
   - packages/core/src/ports/Conversation.ts
   - plugins/slack/src/SlackConversation.ts
@@ -55,7 +56,7 @@ criteria:
   - { id: A15, statement: "with no checkout of the record's repository here, the ask is given that record's history, evidence and diff from its server's API, and says it has no code", proof: "deferred:assertion:window.an_ask_without_the_code_reads_the_record", sources: [S27] }
   - { id: A16, statement: "a discussion turn from a paired device is refused and no agent runs on the host, while its decision moves the waiting record", proof: "deferred:assertion:window.a_remote_discussion_runs_no_agent", sources: [S28, S29] }
   - { id: A17, statement: "an ask about another server's record before its first push runs here at the base branch, is given the record's diff from its server, and says so", proof: "deferred:assertion:window.an_ask_before_the_push_reads_the_base", sources: [S26, S27, S30] }
-  - { id: A18, statement: "an ask in the work thread is buttons in the thread panel in every renderer, a press moves the waiting record as a decision, and the same ask answered in Slack first shows as answered with no buttons", proof: "deferred:assertion:window.an_ask_is_answered_by_a_press", sources: [S31] }
+  - { id: A18, statement: "an ask in the work thread is buttons in the thread panel in every renderer, a press moves the waiting record as a decision, and the same ask answered in Slack first shows as answered with no buttons", proof: "deferred:assertion:window.an_ask_is_answered_by_a_press", sources: [S31, S32] }
   - { id: A10, statement: "a turn sent from the panel is in the Slack thread, and one the operator writes in Slack is in the panel, both through the installed Slack adapter", proof: "deferred:assertion:window.the_thread_is_one_thread", sources: [S13, S14, S15] }
   - { id: A11, statement: "with only plugin-file-conversation mounted, a decision pressed in the panel resumes the record in the running daemon, and a discussion turn does not", proof: "deferred:assertion:window.a_decision_without_slack_resumes_the_record", sources: [S18, S19, S20] }
   - { id: A12, statement: "a loop started before its conversation plugin was mounted makes the panel say it must restart, and offer no decision", proof: "deferred:assertion:window.a_stale_loop_is_named_not_answered", sources: [S21] }
