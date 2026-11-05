@@ -64,21 +64,21 @@
       "DONE"
     ],
     "in_flight_at_the_brake": {
-      "pid": 43573,
+      "pid": 34259,
       "ended": true,
       "pidFileGone": true
     },
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at c0e303e and left one comment",
-      "the automated reviewer looked at adeb4c7 and had nothing to say",
+      "the automated reviewer looked at 682c93c and left one comment",
+      "the automated reviewer looked at 5234fd3 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on adeb4c7",
+      "ada asked for changes on 5234fd3",
       "the owner settled the disagreement on the ticket",
-      "ada approved d5dc15c",
-      "the automated reviewer looked at d5dc15c and had nothing to say",
-      "the automated reviewer looked at c1af917 and had nothing to say",
-      "ada approved c1af917"
+      "ada approved 61748c1",
+      "the automated reviewer looked at 61748c1 and had nothing to say",
+      "the automated reviewer looked at 37feb4b and had nothing to say",
+      "ada approved 37feb4b"
     ],
     "agent_calls": [
       "triage",
@@ -106,7 +106,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-05T04:16:33.953Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-05T04:16:33.668Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-05T11:13:37.430Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-05T11:13:37.136Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
     "second_run_transitions": 22,
@@ -114,12 +114,12 @@
     "concurrent_looks_that_moved_lanes_side_by_side": 4,
     "gate_runs": [
       {
-        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-FMArQn/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
-        "head": "f3eb424e9028afdcdeacf02f8893084decd0ae87"
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-637atv/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "55b75f77bd814705e29254fe6745a39c24871903"
       },
       {
-        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-FMArQn/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
-        "head": "c0e303ec6678ba2ef52b42aecccebd02515f9352"
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-637atv/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "682c93c676d1af356db70cb40053e8fce77137bc"
       }
     ]
   },

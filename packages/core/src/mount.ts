@@ -158,13 +158,14 @@ async function judgeReady(registered: readonly { plugin: Plugin; ctx: PluginCont
 /**
  * What a plugin or workflow is told when the machine carries no workplace.
  *
- * A context whose plugin registered a workflow has that workflow here, so
- * the two shapes split on it: its own name when a workflow asked, and the
- * caller's when a plugin did — the mount already prefixes that with the
- * plugin's name, so the refusal names whichever thing wants a workspace.
+ * The workflow a call site names comes first: a called workflow's checkouts
+ * are asked for through its caller's context, and it is the callee whose
+ * work stopped. Otherwise the workflow the context registered, and with
+ * neither, the plugin — the mount already prefixes that with the plugin's
+ * name, so the refusal names whichever thing wants a workspace.
  */
 function askedWithoutAWorkspace(workflow: string | undefined, who: string | undefined): string {
-  const asked = workflow ?? who;
+  const asked = who ?? workflow;
   return asked
     ? `the ${asked} workflow asked for the machine's checkouts, and nothing mounted a workspace — add @amykit/plugin-file-worktree to the profile's plugins`
     : "this plugin asks for the machine's checkouts, and nothing mounted a workspace — add @amykit/plugin-file-worktree to the plugins that mount first";

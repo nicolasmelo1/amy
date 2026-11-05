@@ -1507,6 +1507,59 @@ describe("the workspace's keys, as the update folds them", () => {
     expect(fs.readFileSync(config(), "utf-8")).toBe(after);
   });
 
+  /** A command-gate slice an older install wrote, with no top-level gate to move into it. */
+  const gateSliceOnly = (checkouts: string[]) => [
+    "plugins:",
+    '  "@amykit/plugin-file-worktree":',
+    "    repos: [acme/widgets]",
+    "    checkouts:",
+    "      acme/widgets: ~/mine/widgets",
+    '  "@amykit/plugin-command-gate":',
+    ...checkouts,
+    "    commands:",
+    "      default: [npm test]",
+    "",
+    "workflows:",
+    "  tickets:",
+    '    workflow: "@amykit/workflow-ticket-to-qa"',
+    "    settings:",
+    "      qaStatusName: In QA",
+    "",
+  ].join("\n");
+
+  it("renames a command-gate slice's commands to gate when no top-level gate moves into it, and keeps the original", () => {
+    write(gateSliceOnly([]));
+    const original = fs.readFileSync(config(), "utf-8");
+    const said = migrateSettingsFile(home);
+
+    const moved = yaml.parse(fs.readFileSync(config(), "utf-8")) as { plugins: Record<string, Record<string, unknown>> };
+    expect(moved.plugins["@amykit/plugin-command-gate"]).toEqual({ gate: { default: ["npm test"] } });
+    expect(said.said.some((line) => line.includes("commands") && line.includes("gate"))).toBe(true);
+    expect(fs.readFileSync(`${config()}.moved`, "utf-8")).toBe(original);
+    expect(migrateSettingsFile(home).said).toEqual([]);
+  });
+
+  it("moves a command-gate slice's checkouts into the file-worktree slice, whose own entries win", () => {
+    write(gateSliceOnly(["    checkouts:", "      acme/widgets: ~/old/widgets", "      acme/front: ~/old/front"]));
+    const said = migrateSettingsFile(home);
+
+    const moved = yaml.parse(fs.readFileSync(config(), "utf-8")) as { plugins: Record<string, Record<string, unknown>> };
+    expect(moved.plugins["@amykit/plugin-command-gate"]).not.toHaveProperty("checkouts");
+    expect(moved.plugins["@amykit/plugin-file-worktree"]!.checkouts).toEqual({ "acme/widgets": "~/mine/widgets", "acme/front": "~/old/front" });
+    expect(said.said.some((line) => line.includes("checkouts") && line.includes("file-worktree"))).toBe(true);
+    expect(migrateSettingsFile(home).said).toEqual([]);
+  });
+
+  it("drops an empty command-gate checkouts, and the machine it leaves boots", async () => {
+    write(gateSliceOnly(["    checkouts: {}"]));
+    migrateSettingsFile(home);
+
+    const moved = yaml.parse(fs.readFileSync(config(), "utf-8")) as { plugins: Record<string, Record<string, unknown>> };
+    expect(moved.plugins["@amykit/plugin-command-gate"]).toEqual({ gate: { default: ["npm test"] } });
+    const { loadConfig } = await import("../src/config.js");
+    expect(() => loadConfig(home)).not.toThrow();
+  });
+
   it("refuses a workspace key put back, naming the plugin whose slice carries it", async () => {
     write(machine);
     migrateSettingsFile(home);

@@ -66,11 +66,13 @@ describe("the machine's keys never leak into a slice", () => {
           },
         };
 
-        // The stale file is not part of the config the machine reads — it is
-        // what an old install had written, and nothing reads it. When the
-        // falsifier is planted, this derivation reads it the way the host
-        // once did, and the property refutes.
-        const derived = leaks ? leaky(config, stale) : pluginSlices(config, TICKETS);
+        // The stale keys are handed to the real derivation, at the top level
+        // where an old install wrote them: a host that forwarded any of them
+        // into a slice is what this property exists to catch. When the
+        // falsifier is planted, the derivation reads them the way the old
+        // host did, and the property refutes.
+        const fed = { ...config, ...stale } as unknown as AmyConfig;
+        const derived = leaks ? leaky(fed, stale) : pluginSlices(fed, TICKETS);
         const dumped = JSON.stringify(derived);
         const tokens = [
           ...stale.repos,

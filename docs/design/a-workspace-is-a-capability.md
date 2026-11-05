@@ -79,6 +79,7 @@ cut:
   - "a shipped support workflow: the inbox is the proof's fixture, not a package anybody installs"
   - "renaming the worktree plugin: it keeps its name and gains the workspace keys"
 deviations:
+  - "feature-grooming builds its grooming source once every plugin has registered: it mounts before the workspace's provider, and a repository with no checkout is still refused at boot"
   - "the next-steps tracker reads its workplace when the table is read, not while it registers: it mounts before the workflow and the workspace after, so a machine driving ticket-to-qa from a table stopped booting"
   - "A6's gate also requires workspace.the_config_names_no_workspace, workspace.the_doctor_asks_nothing_of_a_repository_and_says_ready and workspace.nothing_is_sent_before_the_operator_approves: the three facts the walk rests on, each failing on its own"
   - "A5's assertion is the amy-update gate's; the new gate re-runs that scenario and carries update.the_workspace_moves_into_its_plugin over, so the gate this note names requires every check its criteria cite"

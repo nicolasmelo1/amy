@@ -715,8 +715,12 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   // file even when nothing moved from place to place, so it is answered
   // before deciding that no migration is needed at all.
   const materialized = materializeTicketStatus(document, top, said);
+  // A command-gate slice an older install wrote is put right whether or not
+  // a top-level key moved into it: its `commands` and `checkouts` were valid
+  // there, and the slice's schema now refuses both by name at boot.
+  const normalized = normalizeCommandGateSlice(document, top, said);
 
-  if (dropped.length === 0 && !materialized && !converged) return { ok: true, said: [] };
+  if (dropped.length === 0 && !materialized && !converged && !normalized) return { ok: true, said: [] };
 
   const movedTo = `${place}.moved`;
   // The kept file is the machine's config before its first move, a byte the
@@ -961,6 +965,68 @@ function renameRetiredCommands(plugin: string, slice: yaml.YAMLMap): void {
     slice.delete("commands");
     slice.add(new yaml.Pair("gate", commands));
   }
+}
+
+/**
+ * The command-gate slice as an older install wrote it, put into the shape
+ * its schema reads now.
+ *
+ * `commands` is the gate under its retired name: it becomes `gate`, and
+ * where the slice already names a gate the two merge with the gate's own
+ * leaves winning. `checkouts` is the workspace's answer now: it moves into
+ * the file-worktree plugin's slice, whose own entries win, and an empty one
+ * is simply dropped. Says each change; a slice already in shape is left
+ * untouched, so a second update moves nothing.
+ */
+function normalizeCommandGateSlice(document: yaml.Document, top: yaml.YAMLMap, said: string[]): boolean {
+  const mounted = entryOf(top, "plugins");
+  if (mounted === undefined || !yaml.isMap(mounted.value)) return false;
+  const slice = mounted.value.get(COMMAND_GATE);
+  if (!yaml.isMap(slice)) return false;
+  const renamed = renameSliceCommands(document, slice, said);
+  const moved = moveSliceCheckouts(document, mounted.value, slice, said);
+  return renamed || moved;
+}
+
+const COMMAND_GATE = "@amykit/plugin-command-gate";
+const FILE_WORKTREE = "@amykit/plugin-file-worktree";
+
+/** `commands` onto `gate`, the gate's own leaves winning where the slice names both. */
+function renameSliceCommands(document: yaml.Document, slice: yaml.YAMLMap, said: string[]): boolean {
+  const commands = slice.get("commands");
+  if (commands === undefined) return false;
+  const gate = slice.get("gate");
+  slice.delete("commands");
+  if (gate === undefined) {
+    slice.add(new yaml.Pair("gate", commands));
+  } else {
+    const merged = mergeLeaves(unwrap(commands), unwrap(gate));
+    if (merged !== undefined) slice.set("gate", document.createNode(merged));
+  }
+  said.push(`${COMMAND_GATE} commands: renamed to gate`);
+  return true;
+}
+
+/** `checkouts` into the file-worktree slice, whose own entries win; an empty one is dropped. */
+function moveSliceCheckouts(document: yaml.Document, plugins: yaml.YAMLMap, slice: yaml.YAMLMap, said: string[]): boolean {
+  const checkouts = slice.get("checkouts");
+  if (checkouts === undefined) return false;
+  slice.delete("checkouts");
+  const carried = unwrap(checkouts);
+  if (!isPlain(carried) || Object.keys(carried).length === 0) {
+    said.push(`${COMMAND_GATE} checkouts: empty, and the workspace answers it now; dropped`);
+    return true;
+  }
+  const workspace = plugins.get(FILE_WORKTREE);
+  if (yaml.isMap(workspace)) {
+    const existing = workspace.get("checkouts");
+    const merged = existing === undefined ? carried : mergeLeaves(carried, unwrap(existing));
+    if (merged !== undefined) workspace.set("checkouts", document.createNode(merged));
+  } else {
+    plugins.add(new yaml.Pair(FILE_WORKTREE, toMap({ checkouts: carried })));
+  }
+  said.push(`${COMMAND_GATE} checkouts: moved to the plugin-file-worktree plugin's slice`);
+  return true;
 }
 
 /** The top-level entry one key names, whether or not it has a value. */
