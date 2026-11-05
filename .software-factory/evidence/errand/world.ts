@@ -171,18 +171,19 @@ workflows:
     workflow: "@amykit/workflow-errand"
 defaultWorkflow: errand
 
-repos:
-  - ${REPO}
-workspaceRoot: ${path.join(root, "checkouts")}
-defaultBranch: main
-
-# Outside the state directory on purpose: the run asserts the agent worked in
-# a checkout of the repository and not in the directory the machine keeps its
-# own files in, and a tree under \`~/.amy\` would make that sentence false for
-# a reason that has nothing to do with the errand.
-worktrees:
-  root: ${path.join(root, "trees")}
-  retentionDays: 7
+plugins:
+  "@amykit/plugin-file-worktree":
+    repos:
+      - ${REPO}
+    workspaceRoot: ${path.join(root, "checkouts")}
+    defaultBranch: main
+    # Outside the state directory on purpose: the run asserts the agent
+    # worked in a checkout of the repository and not in the directory the
+    # machine keeps its own files in, and a tree under \`~/.amy\` would make
+    # that sentence false for a reason that has nothing to do with the
+    # errand.
+    root: ${path.join(root, "trees")}
+    retentionDays: 7
 
 # One, because no look in this run should throw: a defect that made one
 # throw fails the run at once rather than hiding behind a retry. In

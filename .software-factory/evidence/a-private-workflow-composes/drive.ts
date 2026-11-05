@@ -182,7 +182,7 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
     },
   };
   const hostPlugin: Plugin = { name: "@amykit/plugin-github-under-test", register: (registry) => registry.port("code-host", host) };
-  const mounted = await core.mount([hostPlugin, workflowPlugin], {}, { runner: new core.NodeCommandRunner(), now: () => new Date(), paths: { workspace: root, checkouts: {}, state: path.join(root, ".amy") } });
+  const mounted = await core.mount([hostPlugin, workflowPlugin], {}, { runner: new core.NodeCommandRunner(), now: () => new Date(), paths: { state:  path.join(root, ".amy") } });
   const view = ctx.port?.("code-host") as (Partial<CodeHost> & Record<string, unknown>) | undefined;
   const ancestry = await view?.pullRequestAncestry?.(REPO, 80).catch((error: unknown) => String(error));
   record("compose.a_workflow_that_claims_no_writes_reads_ancestry", mounted.ok === true && typeof view?.pullRequestAncestry === "function" && typeof ancestry === "object" && ancestry?.state === "merged", ancestry);

@@ -1,6 +1,6 @@
 {
   "scenario": "ticket-to-qa",
-  "status": "passed",
+  "status": "failed",
   "goal": "One of my tickets is in progress with a question hanging over it. I want to find it in QA, owned by whoever is on QA today, with a pull request that a person who was not already buried reviewed and approved, the automated reviewer's comments answered, and the one comment I had to settle brought to me instead of guessed at. I want to be told once when it needs me, and I do not want to watch it.",
   "artifact": {
     "package": "@amykit/cli",
@@ -9,7 +9,7 @@
   },
   "observed": {
     "assertions_run": 61,
-    "assertions_failed": 0,
+    "assertions_failed": 3,
     "version": "dev (running from source, not an installed build)",
     "looks": 47,
     "transitions": [
@@ -64,21 +64,21 @@
       "DONE"
     ],
     "in_flight_at_the_brake": {
-      "pid": 37435,
+      "pid": 20322,
       "ended": true,
       "pidFileGone": true
     },
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at 4b6b753 and left one comment",
-      "the automated reviewer looked at a6a8d9f and had nothing to say",
+      "the automated reviewer looked at babd467 and left one comment",
+      "the automated reviewer looked at 283b90c and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on a6a8d9f",
+      "ada asked for changes on 283b90c",
       "the owner settled the disagreement on the ticket",
-      "ada approved caf7e3b",
-      "the automated reviewer looked at caf7e3b and had nothing to say",
-      "the automated reviewer looked at 7ebe693 and had nothing to say",
-      "ada approved 7ebe693"
+      "ada approved 51fd3b3",
+      "the automated reviewer looked at 51fd3b3 and had nothing to say",
+      "the automated reviewer looked at 9597d29 and had nothing to say",
+      "ada approved 9597d29"
     ],
     "agent_calls": [
       "triage",
@@ -106,7 +106,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-04T19:26:51.420Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-04T19:26:51.050Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"uuid-BILL-brief-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-05T03:37:13.325Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-05T03:37:12.956Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "new work: allowed",
     "second_run_transitions": 22,
@@ -114,12 +114,12 @@
     "concurrent_looks_that_moved_lanes_side_by_side": 4,
     "gate_runs": [
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-0wFYvC/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
-        "head": "f7a27c1f4db52f752ba7e79fed30ff703205b84b"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-2tLWaM/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "6b01f65d6a574e30a5bf203ebc38a4cf7a0d5c8b"
       },
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-0wFYvC/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
-        "head": "4b6b753457db93d7f3178b2e80bb88d28f3b5851"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-2tLWaM/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "babd4673ad3ebc70f5ae9ef2ce8ab5d0bd296ff7"
       }
     ]
   },
@@ -274,7 +274,7 @@
     },
     {
       "type": "lifecycle.the_run_leaves_nothing_behind",
-      "status": "passed"
+      "status": "failed"
     },
     {
       "type": "lifecycle.the_same_run_twice_leaves_the_same_trail",
@@ -318,11 +318,11 @@
     },
     {
       "type": "checkout.the_root_still_answers_for_the_rest",
-      "status": "passed"
+      "status": "failed"
     },
     {
       "type": "checkout.a_missing_checkout_names_which_root_was_asked",
-      "status": "passed"
+      "status": "failed"
     },
     {
       "type": "lifecycle.init_writes_the_config_and_the_roster",

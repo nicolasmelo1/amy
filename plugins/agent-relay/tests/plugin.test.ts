@@ -10,7 +10,7 @@ import { plugin as relay } from "../src/plugin.js";
 const host: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-09-03T12:00:00.000Z"),
-  paths: { workspace: "/w", checkouts: {}, state: "/w/.amy" },
+  paths: { state:  "/w/.amy" },
 };
 
 /** Every prompt the stand-in harnesses were asked, with who answered it. */

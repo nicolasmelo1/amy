@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { CommandRunner, HostServices, Plugin, WORKFLOW_RUNTIME, WorkRecord, Workflow, WorkflowRuntime, actionsOf, applyPlan, implementationOf, mount, movedBy, runAction } from "@amykit/core";
-import { fakeAgent, fakeGate, fakeHost, fakeTracker } from "@amykit/test-fixtures";
+import { fakeAgent, fakeGate, fakeHost, fakeTracker, fakeWorkspace } from "@amykit/test-fixtures";
 import { TicketRecord } from "../src/record.js";
 import { plugin } from "./drawn.js";
 
@@ -30,9 +30,9 @@ export async function mountedTicket(
   const host: HostServices = {
     runner,
     now,
-    paths: { workspace: "/w", checkouts: {}, state: "/w/.amy", profile: rosterDirectory() },
+    paths: { state:  "/w/.amy", profile: rosterDirectory() },
   };
-  const outcome = await mount([plugin, world], { "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" } }, host);
+  const outcome = await mount([fakeWorkspace(), plugin, world], { "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" } }, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   const workflow = outcome.mounted.workflow as unknown as Workflow;
   return { workflow, runtime: outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(workflow.name) as WorkflowRuntime };

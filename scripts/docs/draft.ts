@@ -182,7 +182,7 @@ async function harness(): Promise<Ask | null> {
     runner: new core.NodeCommandRunner(),
     now: () => new Date(),
     log: undefined,
-    paths: { workspace: ROOT, checkouts: {}, state: home },
+    paths: { state: home },
   });
 
   if (!outcome.ok) {

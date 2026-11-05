@@ -101,6 +101,20 @@ function addTickets(): void {
     [/^workingStatusName:/m, "workingStatusName: In Progress"],
     [/^repoByTeam:/m, "repoByTeam:\n  BILL: example.test/gadgets"],
     [/^repos:/m, "repos:\n  - example.test/gadgets"],
+    [/^workspaceRoot:/m, "workspaceRoot: /workspaces/gadgets"],
+    [/^gate:/m, [
+      "# The deterministic gate, kept at the top level the way an older",
+      "# release carried it.",
+      "gate:",
+      "  default:",
+      '    - echo "the gate"',
+    ].join("\n")],
+    [/^worktrees:/m, [
+      "# The worktrees, kept at the top level the way an older release",
+      "# carried them.",
+      "worktrees:",
+      "  retentionDays: 9",
+    ].join("\n")],
     [/^policy:/m, [
       "# The ceilings the ticket workflow's decisions read, kept at the top",
       "# level the way an older release carried them.",

@@ -234,7 +234,7 @@ async function host({ channels = [channelPlugin("recorder")], extra = [], log, o
       runner: new NodeCommandRunner(),
       now: () => clock,
       log: log ?? new FileEventLog(logDir, () => clock, "e2e"),
-      paths: { workspace: path.join(work, "checkouts"), checkouts: {}, state },
+      paths: { state },
     },
   );
 

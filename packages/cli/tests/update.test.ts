@@ -1410,3 +1410,101 @@ describe("one project's phase profiles, as the update folds them", () => {
     expect(rewritten.workflows.execution?.settings?.policy).toEqual({ maxAttempts: 0, pollBackoffMs: 200 });
   });
 });
+
+
+describe("the workspace's keys, as the update folds them", () => {
+  let home: string;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-workspace-"));
+  });
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+  const config = () => path.join(home, "config.yaml");
+
+  const write = (text: string) => fs.writeFileSync(config(), text, "utf-8");
+
+  /** A machine an older release made: the workspace's seven keys at the top. */
+  const machine = [
+    "repos:",
+    "  - acme/widgets",
+    "workspaceRoot: ~/work",
+    "checkouts:",
+    "  acme/widgets: ~/work/widgets",
+    "defaultBranch: dev",
+    "baseBranch:",
+    "  acme/front: trunk",
+    "gate:",
+    "  acme/widgets: [npm test]",
+    "worktrees:",
+    "  root: ~/trees",
+    "  retentionDays: 9",
+    "",
+    "plugins:",
+    '  "@amykit/plugin-command-gate":',
+    "    commands:",
+    "      default: [echo gated]",
+    "",
+    "workflows:",
+    "  tickets:",
+    '    workflow: "@amykit/workflow-ticket-to-qa"',
+    "    settings:",
+    "      qaStatusName: In QA",
+    "",
+  ].join("\n");
+
+  it("moves the seven keys under the plugin whose slice reads each, one said, and keeps the original", async () => {
+    write(machine);
+    const original = fs.readFileSync(config(), "utf-8");
+    const said = migrateSettingsFile(home);
+
+    expect(said.ok).toBe(true);
+    const moved = yaml.parse(fs.readFileSync(config(), "utf-8")) as { plugins: Record<string, Record<string, unknown>> };
+    // The workspace's vocabulary, whole: repositories, the checkout root and
+    // map, the two branch settings, and the worktrees split into the answers
+    // the slice spells.
+    expect(moved.plugins!["@amykit/plugin-file-worktree"]).toEqual({
+      repos: ["acme/widgets"],
+      workspaceRoot: "~/work",
+      checkouts: { "acme/widgets": "~/work/widgets" },
+      defaultBranch: "dev",
+      baseBranch: { "acme/front": "trunk" },
+      root: "~/trees",
+      retentionDays: 9,
+    });
+    // The gate moved under the command-gate's slice, and the slice an older
+    // install wrote as `commands:` is carried onto `gate:`, left whole.
+    expect(moved.plugins!["@amykit/plugin-command-gate"]).toEqual({
+      gate: { "acme/widgets": ["npm test"], default: ["echo gated"] },
+    });
+    expect(said.said.some((line) => line.includes("repos") && line.includes("file-worktree"))).toBe(true);
+    expect(said.said.some((line) => line.includes("gate") && line.includes("command-gate"))).toBe(true);
+    // The file as it was is kept, for the person reading and the rollback.
+    expect(fs.existsSync(`${config()}.moved`)).toBe(true);
+    expect(fs.readFileSync(`${config()}.moved`, "utf-8")).toBe(original);
+    // Nothing is left at the top level for a second update to move.
+    const top = yaml.parse(fs.readFileSync(config(), "utf-8")) as Record<string, unknown>;
+    for (const key of ["repos", "workspaceRoot", "checkouts", "defaultBranch", "baseBranch", "gate", "worktrees"]) {
+      expect(top, key).not.toHaveProperty(key);
+    }
+  });
+
+  it("moves nothing the second time", async () => {
+    write(machine);
+    migrateSettingsFile(home);
+    const after = fs.readFileSync(config(), "utf-8");
+
+    expect(migrateSettingsFile(home).said).toEqual([]);
+    expect(fs.readFileSync(config(), "utf-8")).toBe(after);
+  });
+
+  it("refuses a workspace key put back, naming the plugin whose slice carries it", async () => {
+    write(machine);
+    migrateSettingsFile(home);
+    fs.appendFileSync(config(), "\nrepos:\n  - acme/again\n");
+
+    // Import the loader fresh so the update's own module graph is not used.
+    const { loadConfig } = await import("../src/config.js");
+    expect(() => loadConfig(home)).toThrow(/@amykit\/plugin-file-worktree/);
+  });
+});

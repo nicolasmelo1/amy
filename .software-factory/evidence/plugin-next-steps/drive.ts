@@ -203,24 +203,6 @@ defaultWorkflow: tickets
 autoUpdate:
   enabled: false
 
-repos:
-  - ${WIDGETS}
-  - ${GADGETS}
-
-workspaceRoot: ${path.join(root, "checkouts")}
-defaultBranch: main
-worktrees:
-  root: ${path.join(root, "worktrees")}
-  retentionDays: 0
-
-gate:
-  ${WIDGETS}:
-    - test -f invoice.md
-    - grep -q "currency:" invoice.md
-  ${GADGETS}:
-    - test -f credit-note.md
-    - grep -q "currency:" credit-note.md
-
 agent:
   model: sonnet
   budget:
@@ -233,6 +215,22 @@ notify:
   inbox: true
 
 plugins:
+  "@amykit/plugin-file-worktree":
+    repos:
+      - ${WIDGETS}
+      - ${GADGETS}
+    workspaceRoot: ${path.join(root, "checkouts")}
+    defaultBranch: main
+    root: ${path.join(root, "worktrees")}
+    retentionDays: 0
+  "@amykit/plugin-command-gate":
+    gate:
+      ${WIDGETS}:
+        - test -f invoice.md
+        - grep -q "currency:" invoice.md
+      ${GADGETS}:
+        - test -f credit-note.md
+        - grep -q "currency:" credit-note.md
   "@amykit/plugin-next-steps":
     repo: ${WIDGETS}
     rows: 2

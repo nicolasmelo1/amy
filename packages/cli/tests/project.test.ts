@@ -381,7 +381,7 @@ describe("a project is brief, work and proof", () => {
     expect(pluginSlices(config, place, "/amy")["@amykit/plugin-file-brief-store"]).toEqual({ directory: "briefs" });
     expect(JSON.stringify(config.workflows.invoices)).not.toContain("briefs");
     // The artifact root is where the store keeps it, and it is the project's.
-    expect(hostPaths(config, "/amy", place).artifacts).toBe(hostPaths(config, "/amy", place).artifacts);
+    expect(hostPaths("/amy", place).artifacts).toBe(hostPaths("/amy", place).artifacts);
   });
 
   it("refuses a config that names one project as two profiles", () => {
@@ -404,7 +404,7 @@ describe("a project is brief, work and proof", () => {
     expect([place.records, place.queue, place.pid, place.log, place.tasks]).toEqual(
       ["/amy/tickets/records", "/amy/tickets/queue", "/amy/daemon.pid", "/amy/log", "/amy/tasks"],
     );
-    expect(hostPaths(DEFAULT_CONFIG, "/amy", packaged.tickets!).artifacts).toBeUndefined();
+    expect(hostPaths("/amy", packaged.tickets!).artifacts).toBeUndefined();
     // The shipped workflows declare brief and prove absent, each with its
     // reason, and the walks their gates prove are unchanged by saying so.
     for (const shipped of [errand, noteToPlan, ticketToQa] as const) {

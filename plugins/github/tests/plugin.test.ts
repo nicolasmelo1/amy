@@ -21,7 +21,7 @@ describe("the github plugin", () => {
       {
         runner: RUNNER,
         now: () => new Date(),
-        paths: { workspace: "/w", checkouts: {}, state: "/state" },
+        paths: { state:  "/state" },
       },
     );
 
@@ -42,7 +42,7 @@ describe("the github plugin", () => {
       {
         runner: RUNNER,
         now: () => new Date(),
-        paths: { workspace: "/w", checkouts: {}, state: "/state" },
+        paths: { state:  "/state" },
       },
     );
 

@@ -215,6 +215,15 @@ credential.
 - [x] The refusal names the destination the way the operator would write it,
       as `settings.qaStatusName` under the profile that drives
       (proof: assertion:update.a_moved_key_names_its_destination)
+- [x] The workspace a machine before this move carried at the top level —
+      the repositories, the checkout root and map, the branches, the
+      worktrees and the gate — is folded under the plugins whose slices read
+      it, in the same update that moved the settings: each key placed, said,
+      the original kept beside the config, and a key put back refused at
+      boot naming the plugin whose slice carries it now. From this gate's
+      story of the move the machine's keys took, one layer down
+      (proof: assertion:update.the_workspace_moves_into_its_plugin)
+      (proof: test:packages/cli/tests/update.test.ts)
 - [x] A project the config named as three phase profiles turns into the
       project's one profile in the same update — the walk's own folder named
       where the profiles were, every fold said, the original file kept beside

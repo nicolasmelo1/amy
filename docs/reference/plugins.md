@@ -29,7 +29,7 @@ maintains.
 | `@amykit/plugin-file-queue` | A queue kept as one file per item, claimed by rename. | `queue` |  |
 | `@amykit/plugin-file-store` | Work records kept as one file per item. | `store` |  |
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
-| `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `worktree` |  |
+| `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `workspace`<br>`worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
 | `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes` |
 | `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `feature`<br>`tracker` |  |
@@ -177,18 +177,16 @@ A gate that runs the target repository's own commands.
 plugins:
   "@amykit/plugin-command-gate":
     baseBranch: {}
-    checkouts: {}
-    commands: {}
     defaultBranch: main
+    gate: {}
     timeoutMs: 1800000
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
-| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run |
-| `commands` | `record` | **yes** |  | the check commands per repository, with a `default` fallback |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
+| `gate` | `record` | no | `{}` | the deterministic gate commands per repository, with a `default` fallback; a repository with no entry and no `default` is refused rather than waved through |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |
 
 ### `@amykit/plugin-concurrent-engine`
@@ -350,7 +348,7 @@ One isolated checkout per piece of work, created or reused, pruned by retention.
 |  |  |
 | :-- | :-- |
 | Source | `plugins/file-worktree` |
-| Mounts | `worktree` |
+| Mounts | `workspace`<br>`worktree` |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
 | Depends on | `@amykit/core` |
@@ -362,9 +360,11 @@ plugins:
     checkouts: {}
     defaultBranch: main
     recordsDirectory: ""
+    repos: []
     retentionDays: 7
     root: ""
     workflow: ""
+    workspaceRoot: .
 ```
 
 | Setting | Type | Required | Default | What it is |
@@ -373,9 +373,11 @@ plugins:
 | `checkouts` | `record` | no | `{}` | where one repository's standing checkout is, instead of under the workspace root. A repository named here is never looked for under `root` at all |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `recordsDirectory` | `string` | no | `""` | where this profile stores workflow records. The host derives it so phase-local worktrees consult the same records as the mounted file store |
+| `repos` | `string[]` | no | `[]` | the repositories this workspace's work happens in, from review load to where an errand may be done |
 | `retentionDays` | `number` | no | `7` | how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's |
 | `root` | `string` | no | `""` | where the worktrees live, outside every repository. `~` is expanded. The default is beside the state directory, which keeps one install's trees together |
 | `workflow` | `string` | no | `""` | the first path segment of every tree this mount creates, so two workflows under one install never share a tree |
+| `workspaceRoot` | `string` | no | `.` | where one checkout per repository lives; `~` is expanded. The default is where this command was typed |
 
 ### `@amykit/plugin-github`
 

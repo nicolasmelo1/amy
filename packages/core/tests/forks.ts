@@ -4,6 +4,7 @@ import {
   HostServices,
   Plugin,
   WORKFLOW_RUNTIME,
+  WORKSPACE_PORT,
   WorkRecord,
   Workflow,
   WorkflowRuntime,
@@ -174,8 +175,17 @@ export function planner(options: {
   }), options.diagram ?? PLANNER(lanes));
 }
 
+/**
+ * The workplace, mounted so a lane's first read of its checkouts finds one.
+ *
+ * `workplace.root` is the mutable a world sets to where its real checkout
+ * lives; the default answers a place no test runs in.
+ */
+export const workplace = { root: "/checkouts" };
+const workspace: Plugin = { name: "workspace", register: (registry) => registry.port(WORKSPACE_PORT, { workspaceRoot: workplace.root, checkouts: {} }) };
+
 export async function mounted(plugins: readonly Plugin[], host: HostServices): Promise<{ workflow: Workflow; runtime: WorkflowRuntime }> {
-  const outcome = await mount(plugins, {}, host);
+  const outcome = await mount([workspace, ...plugins], {}, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   const workflow = outcome.mounted.workflow as unknown as Workflow;
   return { workflow, runtime: outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(workflow.name) as WorkflowRuntime };

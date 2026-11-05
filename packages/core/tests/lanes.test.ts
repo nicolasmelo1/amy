@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FileLeases, HostServices, LEASE_WAIT, NodeCommandRunner, Plugin, WorkRecord, Worktree, WorktreeInfo, advance, call, defineWorkflow, mount, settled, withDiagram } from "../src/index.js";
-import { PlannerRecord, TaskRecord, Work, mounted, planner, task, walk } from "./forks.js";
+import { PlannerRecord, TaskRecord, Work, mounted, planner, task, walk, workplace } from "./forks.js";
+
+
+
 
 /**
  * Real repositories, because every claim here is about what git does to a
@@ -24,6 +27,7 @@ describe("lanes hold what they use", () => {
     saved = { ...process.env };
     for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-"));
+    workplace.root = path.join(root, "checkouts");
     bare = path.join(root, "widgets.git");
     checkout = path.join(root, "checkouts", "widgets");
     run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
@@ -36,7 +40,7 @@ describe("lanes hold what they use", () => {
     host = {
       runner: new NodeCommandRunner(),
       now: () => new Date("2026-10-31T12:00:00.000Z"),
-      paths: { workspace: path.join(root, "checkouts"), checkouts: {}, state: path.join(root, "state") },
+      paths: { state: path.join(root, "state") },
     };
   });
 
@@ -277,6 +281,7 @@ describe("a lane that waits on a branch, on its way out", () => {
     saved = { ...process.env };
     for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-out-"));
+    workplace.root = path.join(root, "checkouts");
     bare = path.join(root, "widgets.git");
     checkout = path.join(root, "checkouts", "widgets");
     run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
@@ -289,7 +294,7 @@ describe("a lane that waits on a branch, on its way out", () => {
     host = {
       runner: new NodeCommandRunner(),
       now: () => new Date("2026-10-31T12:00:00.000Z"),
-      paths: { workspace: path.join(root, "checkouts"), checkouts: {}, state: path.join(root, "state") },
+      paths: { state: path.join(root, "state") },
     };
   });
 
@@ -329,6 +334,7 @@ describe("lanes that share one checkout", () => {
     saved = { ...process.env };
     for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-shared-"));
+    workplace.root = path.join(root, "checkouts");
     bare = path.join(root, "widgets.git");
     checkout = path.join(root, "checkouts", "widgets");
     run(root, "init", "-q", "--bare", "--initial-branch=main", bare);
@@ -341,7 +347,7 @@ describe("lanes that share one checkout", () => {
     host = {
       runner: new NodeCommandRunner(),
       now: () => new Date("2026-10-31T12:00:00.000Z"),
-      paths: { workspace: path.join(root, "checkouts"), checkouts: {}, state: path.join(root, "state") },
+      paths: { state: path.join(root, "state") },
     };
   });
 

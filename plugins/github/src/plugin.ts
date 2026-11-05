@@ -7,7 +7,7 @@ export const plugin = definePlugin<typeof configSchema>({
   configSchema,
   register(registry, ctx) {
     registry.port("code-host", new GitHubCodeHost(ctx.runner, {
-      baseBranch: ctx.checkouts().layout.baseBranch,
+      baseBranch: (ctx.config.baseBranch ?? undefined) as Record<string, string> | undefined,
     }));
   },
 });

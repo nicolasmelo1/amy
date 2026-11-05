@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { Check, checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConfig } from "@amykit/core";
 import { AmyConfig, configuredAutoUpdateProblems } from "./config.js";
@@ -40,6 +41,12 @@ export interface DoctorDeps {
    * work gets vouched for.
    */
   gatePort?: object;
+  /**
+   * The workspace port, if this install mounted one; absent means the
+   * machine drives no code, and it is asked nothing about repositories,
+   * checkouts or worktrees at all.
+   */
+  workspacePort?: object;
   /**
    * What each mounted plugin reads from the process's environment, by package
    * name. The doctor asks exactly these, one variable at a time; a machine
@@ -88,13 +95,8 @@ function configFile({ home }: DoctorDeps): Check {
   return { label: "config file", ok: fs.existsSync(file), detail: file };
 }
 
-function configContents({ config, gatePort }: DoctorDeps): Check[] {
+function configContents({ config, gatePort, workspacePort }: DoctorDeps): Check[] {
   const checks: Check[] = [
-    {
-      label: "repos configured",
-      ok: config.repos.length > 0,
-      detail: config.repos.join(", "),
-    },
     {
       label: "a notification channel is on",
       ok: config.notify.inbox || Boolean(config.notify.hermes),
@@ -106,7 +108,19 @@ function configContents({ config, gatePort }: DoctorDeps): Check[] {
   // either way, and a checklist it can never satisfy is a red dot the
   // operator learns to scroll past.
   if (gatePort) {
-    checks.push({ label: "gate configured", ok: Object.keys(config.gate).length > 0 });
+    checks.push({ label: "gate configured", ok: Object.keys(gateCommands(config)).length > 0 });
+  }
+
+  // The same word the workspace is asked with: a machine that drives no code
+  // mounts no workspace, and a repositories check it can never pass is a red
+  // dot the operator learns to scroll past.
+  if (workspacePort) {
+    const repos = workspaceRepos(config);
+    checks.push({
+      label: "repos configured",
+      ok: repos.length > 0,
+      detail: repos.join(", "),
+    });
   }
 
   return checks;
@@ -298,15 +312,14 @@ async function conversation({ conversationPort }: DoctorDeps): Promise<Check[]> 
   }
 }
 
-function checkouts({ config }: DoctorDeps): Check[] {
+function checkouts({ config, workspacePort }: DoctorDeps): Check[] {
+  if (!workspacePort) return [];
+  const { repos, workspaceRoot, checkouts: perRepo } = workspacePaths(config);
   // The same function the machine resolves through, so what the doctor names
   // is the root that was actually asked rather than a second derivation.
-  return config.repos.map((repo) => {
-    const checkout = checkoutFor(
-      { workspaceRoot: config.workspaceRoot, checkouts: config.checkouts, defaultBranch: config.defaultBranch },
-      repo,
-    );
-    const asked = repo in config.checkouts ? `its own root (${checkout})` : `the workspace root (${config.workspaceRoot})`;
+  return repos.map((repo) => {
+    const checkout = checkoutFor({ workspaceRoot, checkouts: perRepo, defaultBranch: "main" }, repo);
+    const asked = repo in perRepo ? `its own root (${checkout})` : `the workspace root (${workspaceRoot})`;
     return {
       label: `checkout ${repo}`,
       ok: fs.existsSync(path.join(checkout, ".git")),
@@ -315,21 +328,66 @@ function checkouts({ config }: DoctorDeps): Check[] {
   });
 }
 
-/**
- * Both roots, named together: where the standing checkouts live, and where
- * the isolated trees do.
- *
- * An install migrating to worktrees keeps its existing checkouts exactly as
- * they are — the worktree manager never touches one — so `amy doctor`
- * reporting both is how an operator sees that nothing moved under them.
- */
-function worktrees({ config, home }: DoctorDeps): Check[] {
-  const root = config.worktrees.root || path.join(home, "worktrees");
+function worktrees({ config, workspacePort, home }: DoctorDeps): Check[] {
+  if (!workspacePort) return [];
+  const root = workspaceSlice(config).root || path.join(home, "worktrees");
   return [
     {
       label: "worktrees root",
       ok: true,
-      detail: `${root} (checkouts stay in ${config.workspaceRoot})`,
+      detail: `${root} (checkouts stay in ${workspacePaths(config).workspaceRoot})`,
     },
   ];
+}
+
+/** The workspace slice, read the way the provider's schema spells it. */
+function workspaceSlice(config: AmyConfig): { root: string; workspaceRoot: string; repos: string[]; checkouts: Record<string, string> } {
+  const given = config.plugins["@amykit/plugin-file-worktree"];
+  const slice = typeof given === "object" && given !== null && !Array.isArray(given)
+    ? (given as Record<string, unknown>)
+    : {};
+  const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((one): one is string => typeof one === "string") : []);
+  const map = (value: unknown): Record<string, string> => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).filter(([, one]) => typeof one === "string") as [string, string][],
+    );
+  };
+  const repos = strings(slice.repos);
+  const checkouts = map(slice.checkouts);
+  return {
+    root: typeof slice.root === "string" ? slice.root : "",
+    workspaceRoot: expandHome(typeof slice.workspaceRoot === "string" && slice.workspaceRoot !== "" ? slice.workspaceRoot : "."),
+    repos,
+    checkouts: Object.fromEntries(Object.entries(checkouts).map(([repo, one]) => [repo, expandHome(one)])),
+  };
+}
+
+/** The workspace's repositories, as the doctor prints them. */
+function workspaceRepos(config: AmyConfig): string[] {
+  return workspaceSlice(config).repos;
+}
+
+/** The workspace's paths, expanded the way the provider expands them. */
+function workspacePaths(config: AmyConfig): { workspaceRoot: string; checkouts: Record<string, string>; repos: string[] } {
+  const { workspaceRoot, checkouts, repos } = workspaceSlice(config);
+  return { workspaceRoot, checkouts, repos };
+}
+
+/** The gate commands, read from the plugin whose slice carries them. */
+function gateCommands(config: AmyConfig): Record<string, string[]> {
+  const given = config.plugins["@amykit/plugin-command-gate"];
+  const slice = typeof given === "object" && given !== null && !Array.isArray(given)
+    ? (given as Record<string, unknown>)
+    : {};
+  const gate = slice.gate;
+  if (typeof gate !== "object" || gate === null || Array.isArray(gate)) return {};
+  return gate as Record<string, string[]>;
+}
+
+/** `~/workspaces/northwind` becomes an absolute path. */
+function expandHome(value: string): string {
+  if (value === "~") return os.homedir();
+  if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
+  return value;
 }

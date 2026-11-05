@@ -83,7 +83,7 @@ async function assembleTemplate(text: string): Promise<{ ok: boolean; problems: 
         runner: new NodeCommandRunner(),
         now: () => new Date(),
         log: new FileEventLog(path.join(state, "events"), () => new Date()),
-        paths: hostPaths(config, state),
+        paths: hostPaths(state),
       },
     );
 

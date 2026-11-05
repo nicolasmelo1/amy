@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { baseBranchFor } from "../src/git.js";
 import { Plugin, PluginContext } from "../src/plugin.js";
+import { WORKSPACE_PORT } from "../src/ports/Workspace.js";
 import { HostServices, mount } from "../src/mount.js";
 import { BRANCH_SETTINGS } from "../src/checkouts.js";
 
@@ -8,8 +9,14 @@ import { BRANCH_SETTINGS } from "../src/checkouts.js";
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-10-28T12:00:00.000Z"),
-  paths: { workspace: "/w", checkouts: { "acme/api": "/elsewhere/api" }, state: "/w/.amy" },
+  paths: { state: "/w/.amy" },
 };
+
+/** A workplace the mount carries, where the standing checkouts live. */
+const workplace = (workspaceRoot = "/w", checkouts: Record<string, string> = {}): Plugin => ({
+  name: "@amykit/plugin-workspace",
+  register: (registry) => registry.port(WORKSPACE_PORT, { workspaceRoot, checkouts }),
+});
 
 /** A plugin that keeps the context it was lent, declaring the shared branch settings. */
 function borrower(name: string, into: { ctx?: PluginContext }, register?: Plugin["register"]): Plugin {
@@ -25,12 +32,20 @@ function borrower(name: string, into: { ctx?: PluginContext }, register?: Plugin
 
 async function lent(settings: Record<string, unknown>): Promise<PluginContext> {
   const held: { ctx?: PluginContext } = {};
-  const outcome = await mount([borrower("@amykit/plugin-a", held)], settings, HOST);
+  const outcome = await mount([workplace("/w", { "acme/api": "/elsewhere/api" }), borrower("@amykit/plugin-a", held)], settings, HOST);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   return held.ctx!;
 }
 
 describe("the checkouts a plugin is lent", () => {
+  it("answers the workplace's root and checkout map, wherever they were told to live", async () => {
+    const ctx = await lent({});
+
+    expect(ctx.checkouts().layout.workspaceRoot).toBe("/w");
+    expect(ctx.checkouts().git.pathFor("acme/api")).toBe("/elsewhere/api");
+    expect(ctx.checkouts().git.pathFor("acme/web")).toBe("/w/web");
+  });
+
   it("answers a repository its own baseBranch named with that branch", async () => {
     const ctx = await lent({ "@amykit/plugin-a": { defaultBranch: "develop", baseBranch: { "acme/api": "trunk" } } });
 
@@ -47,7 +62,7 @@ describe("the checkouts a plugin is lent", () => {
     const first: { ctx?: PluginContext } = {};
     const second: { ctx?: PluginContext } = {};
     const outcome = await mount(
-      [borrower("@amykit/plugin-a", first), borrower("@amykit/plugin-b", second)],
+      [workplace(), borrower("@amykit/plugin-a", first), borrower("@amykit/plugin-b", second)],
       { "@amykit/plugin-a": { baseBranch: { "acme/api": "trunk" } }, "@amykit/plugin-b": { defaultBranch: "develop" } },
       HOST,
     );
@@ -63,17 +78,49 @@ describe("the checkouts a plugin is lent", () => {
     expect(baseBranchFor(ctx.checkouts().layout, "acme/api")).toBe("main");
   });
 
-  it("finds a checkout where the host's paths put it", async () => {
-    const ctx = await lent({});
-
-    expect(ctx.checkouts().git.pathFor("acme/api")).toBe("/elsewhere/api");
-    expect(ctx.checkouts().git.pathFor("acme/web")).toBe("/w/web");
-  });
-
   it("refuses a base branch that is not a branch name, naming the repository", async () => {
     const ctx = await lent({ "@amykit/plugin-a": { baseBranch: { "acme/api": 7 } } });
 
-    expect(() => ctx.checkouts()).toThrow("`acme/api`");
+    expect(() => ctx.checkouts().layout).toThrow("`acme/api`");
+  });
+});
+
+describe("the workplace the checkouts answer through", () => {
+  const refusal = (of: { ok: boolean; problems?: string[] }): string => (of.ok ? "" : (of.problems ?? []).join("; "));
+
+  it("refuses a plugin that asks while registering, naming the plugin and the workspace it needs", async () => {
+    const asks: Plugin = {
+      name: "@amykit/plugin-a",
+      configSchema: { ...BRANCH_SETTINGS },
+      register: (_registry, ctx) => {
+        void ctx.checkouts().git;
+      },
+    };
+
+    const outcome = await mount([asks], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    const said = refusal(outcome);
+    expect(said).toMatch(/@amykit\/plugin-a: failed to mount/);
+    expect(said).toContain("@amykit/plugin-file-worktree");
+  });
+
+  it("holds the answer once taken, so every read sees the same workplace", async () => {
+    const held: { ctx?: PluginContext } = {};
+    const reader = borrower("@amykit/plugin-a", held, (_registry, ctx) => {
+      void ctx.checkouts().layout;
+    });
+    const outcome = await mount([workplace(), reader], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(baseBranchFor(held.ctx!.checkouts().layout, "acme/api")).toBe("main");
+  });
+
+  it("is refused the same way after the mount, while the plugins are running", async () => {
+    const held: { ctx?: PluginContext } = {};
+    await mount([borrower("@amykit/plugin-a", held)], {}, HOST);
+
+    expect(() => held.ctx!.checkouts().git).toThrow(/nothing mounted a workspace/);
   });
 });
 
@@ -87,7 +134,7 @@ describe("the worktree behind a lent checkout", () => {
     });
     const worktree: Plugin = { name: "@amykit/plugin-trees", register: (registry) => registry.port("worktree", tree) };
 
-    const outcome = await mount([caller, worktree], {}, HOST);
+    const outcome = await mount([workplace(), caller, worktree], {}, HOST);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     expect(held.git!.pathFor("acme/api", "W-1")).toBe("/trees/W-1/api");

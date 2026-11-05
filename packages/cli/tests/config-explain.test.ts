@@ -14,7 +14,7 @@ const PROFILE: Profile = {
 };
 
 /** The machine the report is read off, with every default the loader merges. */
-const CONFIG = { ...DEFAULT_CONFIG, repos: ["acme/widgets"] };
+const CONFIG = { ...DEFAULT_CONFIG, plugins: { "@amykit/plugin-file-worktree": { repos: ["acme/widgets"] } } };
 
 describe("describeEntries", () => {
   it("says the type, the default and the reason on one line per setting", () => {
@@ -46,10 +46,13 @@ describe("explainReport", () => {
   it("lists the machine's settings first, then the plugins that mount, with defaults and descriptions", async () => {
     const report = await explainReport(CONFIG, PROFILE, undefined);
 
-    // The machine's list comes first, and names a setting the machine keeps.
+    // The machine's list comes first, and names a setting the machine keeps —
+    // the workspace's vocabulary is a plugin slice's, and the machine's list
+    // carries none of it.
     const machine = report.lines.slice(0, report.lines.indexOf(""));
     expect(machine[0]).toBe("machine:");
-    expect(machine.join("\n")).toContain("repos");
+    expect(machine.join("\n")).toContain("retentionDays");
+    expect(machine.join("\n")).not.toContain("repos");
 
     // The mounted plugin follows, and the ceiling that once hid behind a
     // `policy: record` is on the list with its default, because a default an

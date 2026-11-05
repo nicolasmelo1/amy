@@ -59,6 +59,33 @@ export function pluginSlices(
   return derived;
 }
 
+/**
+ * The workspace's vocabulary, read from the plugin whose slice carries it.
+ *
+ * The machine keeps none of the seven keys: the repositories, the checkout
+ * root and map, the two branch settings and the worktree answers live in
+ * `@amykit/plugin-file-worktree`'s slice, and the gate commands in the
+ * command-gate plugin's. The host hands a plugin one of these only by
+ * reading that slice — never a machine level, which no longer has one.
+ */
+function workspaceSettings(config: AmyConfig): {
+  readonly repos: readonly string[];
+  readonly defaultBranch: string;
+  readonly baseBranch: Readonly<Record<string, string>>;
+} {
+  const slice = config.plugins["@amykit/plugin-file-worktree"];
+  const repos = isRecord(slice) && Array.isArray(slice.repos)
+    ? slice.repos.filter((one): one is string => typeof one === "string")
+    : [];
+  const baseBranch = isRecord(slice) && isRecord(slice.baseBranch)
+    ? (Object.fromEntries(Object.entries(slice.baseBranch).filter(([, branch]) => typeof branch === "string")) as Readonly<Record<string, string>>)
+    : {};
+  const defaultBranch = isRecord(slice) && typeof slice.defaultBranch === "string" && slice.defaultBranch !== ""
+    ? slice.defaultBranch
+    : "main";
+  return { repos, defaultBranch, baseBranch };
+}
+
 /** Whether a state directory was given in, or the machine's own. */
 /**
  * The slices every install derives from the machine's shape, before a hand
@@ -72,9 +99,10 @@ function derivedSlices(
   agent: { ladder?: unknown; ladderByStep?: unknown; budget?: unknown },
   stateDir?: string,
 ): Record<string, unknown> {
+  const workspace = workspaceSettings(config);
   return {
     "@amykit/plugin-linear": {
-      defaultRepo: config.repos[0] ?? "",
+      defaultRepo: workspace.repos[0] ?? "",
     },
     "@amykit/plugin-claude": harnessSlice(config, profile, "claude"),
     "@amykit/plugin-codex": harnessSlice(config, profile, "codex"),
@@ -86,10 +114,8 @@ function derivedSlices(
       skills: config.skills,
     },
     "@amykit/plugin-command-gate": {
-      defaultBranch: config.defaultBranch,
-      baseBranch: config.baseBranch,
-      checkouts: config.checkouts,
-      commands: config.gate,
+      defaultBranch: workspace.defaultBranch,
+      baseBranch: workspace.baseBranch,
     },
     "@amykit/plugin-file-queue": {
       directory: dirs.queue,
@@ -106,62 +132,60 @@ function derivedSlices(
     // The second workflow's own vocabulary — which repositories it may write
     // a plan into — is the profile's, not the machine's top level's.
     "@amykit/workflow-note-to-plan": {
-      defaultBranch: config.defaultBranch,
-      baseBranch: config.baseBranch,
+      defaultBranch: workspace.defaultBranch,
+      baseBranch: workspace.baseBranch,
     },
     // The third workflow's vocabulary: where an errand may be done, and the
     // ceilings its decision function reads.
     "@amykit/workflow-errand": {
-      repos: config.repos,
+      repos: workspace.repos,
       // Where `amy btw` writes: the directory the file-tasks adapter reads.
       tasksDirectory: own.tasks,
-      defaultBranch: config.defaultBranch,
-      baseBranch: config.baseBranch,
+      defaultBranch: workspace.defaultBranch,
+      baseBranch: workspace.baseBranch,
     },
     "@amykit/workflow-feature-grooming": {
-      repos: config.repos,
-      defaultBranch: config.defaultBranch,
-      baseBranch: config.baseBranch,
+      repos: workspace.repos,
+      defaultBranch: workspace.defaultBranch,
+      baseBranch: workspace.baseBranch,
     },
     // Phase-local, like the queue the tasks are put on: two phases of one
     // project mounting it must not drain each other's errands.
     "@amykit/plugin-file-tasks": {
       directory: own.tasks,
-      repo: config.repos[0] ?? "",
+      repo: workspace.repos[0] ?? "",
     },
     "@amykit/plugin-plan-check": {
-      defaultBranch: config.defaultBranch,
-      baseBranch: config.baseBranch,
+      defaultBranch: workspace.defaultBranch,
+      baseBranch: workspace.baseBranch,
       ...(commandsFromCheck(profile) === undefined ? {} : { commands: commandsFromCheck(profile) }),
     },
     // The workflow's own vocabulary: which repositories it counts review
     // load across, and who a review is answered for. The ceilings its
     // decisions read and the status a ticket moves to are the profile's.
     "@amykit/workflow-ticket-to-qa": {
-      repos: config.repos,
+      repos: workspace.repos,
       ...ticketBudgetSlice(config, profile),
       // Both halves of the layout, named the way the workflow's own schema
       // does: the branch a repository without a mapping is cut from, and the
       // map that names one. Derived here so no workflow package carries a
       // branch mapping of its own.
-      defaultBranch: config.defaultBranch,
-      baseBranch: config.baseBranch,
+      defaultBranch: workspace.defaultBranch,
+      baseBranch: workspace.baseBranch,
       // Written under `agent:` in config.yaml, because it is how a reviewer
       // is answered, and read by the workflow whose review prompt it is.
       reviewerHints: reviewerHintsFor(config, profile),
     },
-    // The workplace: where the trees live and how long finished ones stay.
-    // `workflow` names the mount itself, because the tree paths carry it —
-    // the profile's name is what the config calls this workflow, and two
-    // profiles must never share a tree.
+    // The workplace: where the trees live and how long finished ones stay,
+    // read from the plugin's own slice — the workspace is its, and the
+    // derived half adds only the paths this host owns. `workflow` names the
+    // mount itself, because the tree paths carry it — the profile's name is
+    // what the config calls this workflow, and two profiles must never share
+    // a tree.
     "@amykit/plugin-file-worktree": {
-      root: config.worktrees.root,
+      ...workspaceSlice(config),
       workflow: worktreeNamespace(profile),
       recordsDirectory: worktreeRecordsDirectory(stateDir, dirs.records),
-      defaultBranch: config.defaultBranch,
-      baseBranch: config.baseBranch,
-      checkouts: config.checkouts,
-      retentionDays: config.worktrees.retentionDays,
     },
     // The engine's, and none of it names a domain. The concurrent engine is
     // the serial one with its lanes moved at once, and takes the same.
@@ -511,15 +535,36 @@ function withBriefStore(profile: Profile, plugins: readonly string[]): string[] 
   return replaced.includes(chosen) ? replaced : [...replaced, chosen];
 }
 
-/** Where the host keeps its own state, and where the checkouts live. */
-export function hostPaths(config: AmyConfig, stateDir: string, profile?: Profile) {
+/** Where the host keeps its own state; the workspace answers where code lives. */
+export function hostPaths(stateDir: string, profile?: Profile) {
   const place = profile ? profilePaths(stateDir, profile) : undefined;
   return {
-    workspace: path.resolve(config.workspaceRoot),
-    checkouts: config.checkouts,
     state: stateDir,
     ...(place ? { profile: path.dirname(place.records) } : {}),
     ...(place?.artifacts ? { artifacts: place.artifacts } : {}),
+  };
+}
+
+/**
+ * The file-worktree plugin's own slice, as the mount reads it.
+ *
+ * The operator's slice wins every field it wrote; what is left keeps the
+ * default the machine's key carried. The branch answers are not repeated
+ * here — the plugin's schema carries them, and `workspaceSettings` reads
+ * them for every plugin that asks — so a slice hand-written for this plugin
+ * is handed on exactly as it was.
+ */
+function workspaceSlice(config: AmyConfig): Record<string, unknown> {
+  const slice = config.plugins["@amykit/plugin-file-worktree"];
+  const given = isRecord(slice) ? slice : {};
+  return {
+    repos: workspaceSettings(config).repos,
+    workspaceRoot: typeof given.workspaceRoot === "string" ? given.workspaceRoot : ".",
+    checkouts: isRecord(given.checkouts) ? given.checkouts : {},
+    root: typeof given.root === "string" ? given.root : "",
+    retentionDays: typeof given.retentionDays === "number" ? given.retentionDays : 7,
+    defaultBranch: workspaceSettings(config).defaultBranch,
+    baseBranch: workspaceSettings(config).baseBranch,
   };
 }
 

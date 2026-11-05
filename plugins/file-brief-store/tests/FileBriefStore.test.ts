@@ -385,7 +385,7 @@ describe("FileBriefStore", () => {
       {
         runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
         now: () => NOW,
-        paths: { workspace: root, checkouts: {}, state: path.join(root, "brief-phase"), artifacts },
+        paths: { state:  path.join(root, "brief-phase"), artifacts },
       },
     );
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
@@ -405,7 +405,7 @@ describe("FileBriefStore", () => {
       {
         runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
         now: () => NOW,
-        paths: { workspace: root, checkouts: {}, state: root },
+        paths: { state:  root },
       },
     );
 

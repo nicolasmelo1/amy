@@ -24,19 +24,12 @@ For what the two halves mean and why, see
 | `extraPlugins` | `string[]` | `[]` | Plugins mounted under every profile, named here or added with `amy add`. A workflow's own plugins stay in its profile; this is the list for what somebody mounted on top, and it is kept apart so a profile left on the recommended set stays on it. |
 | `autoUpdate` | `AutoUpdateConfig` | `DEFAULT_AUTO_UPDATE` | One machine-wide cadence, persisted separately for every profile. |
 | `autoUpdateSource` | `unknown` |  | A scalar/null source value retained so malformed YAML cannot become valid. |
-| `repos` | `string[]` | `[]` | Repositories this machine's work happens in, handoffs and reviews alike. |
 | `retentionDays` | `number` | `7` |  |
 | `staleClaimMs` | `number` | `30 * 60 * 1000` |  |
 | `maxItemAttempts` | `number` | `5` |  |
-| `workspaceRoot` | `string` | `"."` | Directory holding one checkout per repository. `~` is expanded. |
-| `checkouts` | `Record<string, string>` | `{}` | Where one repository's checkout is, instead of under the root. |
-| `defaultBranch` | `string` | `"main"` | Branch new work is cut from. |
-| `baseBranch` | `Record<string, string>` | `{}` | Where one repository's base branch is, instead of the fallback. |
-| `gate` | `Record<string, string[]>` | `{}` | Gate commands per repository, with a `default` fallback. |
 | `agent` | `{ model?: string; /** Model tiers offered to the relay, cheapest first. */ models?: string[]; /** * Which contributed agents to try, in order, such as * `[claude:sonnet, claude:opus, codex:gpt-5]`. Empty means every agent * that was contributed, in mounting order. * * Naming a harness here is also what mounts it, so a ladder is the one * place an operator says which harnesses they have. */ ladder?: string[]; /** * A ladder for one step, keyed by the workflow's action name, overriding * the one above. * * Reading a ticket to decide whether it is clear enough to start is not * the same job as writing the change, and one list for both means paying * the expensive model to do the cheap step. A name here mounts its * harness exactly as a name in `ladder` does. */ ladderByStep?: Record<string, string[]>; reviewerHints?: Record<string, string>; timeoutMs?: number; /** * What the agents may spend, per window. Read by the relay, which is the * only thing here that spends one. Shape checked at boot, not here. */ budget?: Record<string, unknown>; }` | `{}` |  |
 | `skills` | `Record<string, string[]>` | `{}` | Which skills answer for a step, in the order they are tried, keyed by the workflow's action name. A skill named here has to be installed. |
 | `notify` | `NotifyConfig` | `{ hermes: null, inbox: true }` |  |
-| `worktrees` | `WorktreesConfig` | `{ root: "", retentionDays: 7 }` | Where isolated worktrees live, and how long finished ones stay. |
 | `plugins` | `Record<string, unknown>` | `{}` | One slice per plugin, keyed by package name. |
 
 <!-- amy:end config-fields -->
@@ -119,14 +112,6 @@ autoUpdate:
   timing: before
   everyRuns: 20
 
-# Repositories the team reviews in. Review load is counted across all of
-# them, because counting one would send every review to whoever happens to be
-# quiet in that one. They are also where an errand may be done, and the first
-# is where this machine's own failures are filed.
-repos:
-  - Northwind/northwind-backend
-  - Northwind/northwind-frontend
-
 # Finished queue items are only useful for reading the log afterwards.
 retentionDays: 7
 
@@ -136,17 +121,6 @@ retentionDays: 7
 # dropped and you are told, rather than retried forever in silence.
 staleClaimMs: 1800000
 maxItemAttempts: 5
-
-# Where isolated worktrees live, and how long finished ones stay. Every tree
-# is one work item's own checkout under this root, so two tickets on one
-# repository run at the same time without contending for a shared tree. A
-# dirty or in-flight tree is never pruned: retention only ever takes a
-# terminal, clean one.
-#
-# Leave "root" out and the trees live beside the state directory, under .amy.
-worktrees:
-  root: ~/workspaces/northwind-worktrees
-  retentionDays: 7
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it, so leaving codex and hermes out means they are never required to be
@@ -180,33 +154,6 @@ agent:
       Delete anything that is not needed. No variable that aliases an existing
       value, no check the types already guarantee, no comment stating the
       obvious, no non-null assertions.
-
-# Where the checkouts live. One directory per repository, named after the
-# repository without its owner.
-workspaceRoot: ~/workspaces/northwind
-# Where one repository's checkout is, instead of under the root. A repository
-# named here is not looked for under workspaceRoot at all, so work can span
-# repositories two unrelated parents hold — with no symlink standing in for
-# the map. Every value expands ~ the way workspaceRoot does.
-# checkouts:
-#   Northwind/northwind-backend: ~/work/backend
-#   acme/amy: ~/code/amy
-defaultBranch: main
-# Where one repository's base branch is, instead of the fallback above.
-# Repositories on one install do not agree on the name — a fork of this one
-# keeps master — and one string for all of them was a workaround a private
-# workflow had to carry its own mapping for. A repository named here is cut
-# from, and opened against, its own branch; every other keeps defaultBranch.
-# baseBranch:
-#   Northwind/northwind-frontend: trunk
-
-# The deterministic gate. Nothing reaches a pull request until this is green.
-# A repository with no entry here, and no "default", is refused rather than
-# waved through.
-gate:
-  Northwind/northwind-backend:
-    - npm run --workspace @northwind/api lint
-    - npm run --workspace @northwind/api typecheck
 
 # Who does each step. A step with no entry is done by the agent in amy's own
 # words, which is every step until you say otherwise. A skill named here must
@@ -244,12 +191,28 @@ notify:
 #       datadog: pup monitors list --json
 #       notion: ntn page get
 #
-# The tracker's settings and every workflow's own live with what mounts them —
-# an install carries only the vocabulary of what it drives. The status names a
-# ticket moves between belong to the tracker plugin; a team map belongs beside
-# it; the ceilings each workflow's decisions read belong to that workflow's
-# profile. `amy add` writes the block; `amy config explain` lists them.
+# The machine carries none of the vocabulary of a particular plugin: what the
+# agents spend is the only top-level block left here, and the workspace — the
+# repositories, where their checkouts live, their branches and their worktrees —
+# is the file-worktree plugin's slice, the gate commands the command-gate
+# plugin's. `amy update` moves an old install, `amy config explain`
+# lists every slice's settings, and an install that drives no code mounts no
+# workspace and is asked for none of it.
 #
+#   plugins:
+#     "@amykit/plugin-file-worktree":
+#       repos:
+#         - Northwind/northwind-backend
+#         - Northwind/northwind-frontend
+#       workspaceRoot: ~/workspaces/northwind
+#       defaultBranch: main
+#     "@amykit/plugin-command-gate":
+#       gate:
+#         Northwind/northwind-backend:
+#           - npm run --workspace @northwind/api lint
+#           - npm run --workspace @northwind/api typecheck
+#
+# The tracker's settings and every workflow's own live with what mounts them.
 # plugins:
 #   "@amykit/plugin-notify-hermes":
 #     target: slack:my-channel

@@ -46,11 +46,16 @@ describe("diagnose", () => {
   /** Where the repositories would be, which is not where amy keeps state. */
   const checkouts = () => path.dirname(home);
 
+  /** The workspace, mounted, and the slice an install that mounts one carries. */
+  const workspaceSlice = (over: Record<string, unknown> = {}) => ({
+    plugins: { "@amykit/plugin-file-worktree": { repos: ["acme/widgets"], workspaceRoot: checkouts(), ...over } },
+  });
+
   function deps(overrides: Partial<DoctorDeps> = {}): DoctorDeps {
     return {
       home,
       cwd: path.dirname(home),
-      config: { ...DEFAULT_CONFIG, repos: ["acme/widgets"], gate: { default: ["npm test"] } },
+      config: { ...DEFAULT_CONFIG },
       runner: new ScriptedRunner([
         { match: whenArgsInclude("--list"), result: { stdout: HERMES_LISTING } },
       ]),
@@ -91,27 +96,42 @@ describe("diagnose", () => {
   });
 
   it("passes once the config file exists", async () => {
-    fs.writeFileSync(paths(home).config, "repos: [acme/widgets]\n");
+    fs.writeFileSync(paths(home).config, "retentionDays: 7\n");
 
     const checks = await diagnose(deps());
 
     expect(labelled(checks, "config file")?.ok).toBe(true);
   });
 
-  it("fails when no repository is configured", async () => {
-    const checks = await diagnose(deps({ config: { ...DEFAULT_CONFIG, repos: [] } }));
+  it("fails a workspace install when no repository is configured", async () => {
+    const config = { ...DEFAULT_CONFIG, ...workspaceSlice({ repos: [] }) };
+
+    const checks = await diagnose(deps({ config, workspacePort: {} }));
 
     expect(labelled(checks, "repos configured")?.ok).toBe(false);
   });
 
+  it("asks nothing about repositories on an install that mounts no workspace", async () => {
+    const checks = await diagnose(deps());
+
+    expect(labelled(checks, "repos configured")).toBeUndefined();
+    expect(labelled(checks, "checkout ")).toBeUndefined();
+    expect(labelled(checks, "worktrees root")).toBeUndefined();
+  });
+
   it("fails when nothing would vouch for a change", async () => {
-    const checks = await diagnose(deps({ config: { ...DEFAULT_CONFIG, gate: {} }, gatePort: {} }));
+    const config = {
+      ...DEFAULT_CONFIG,
+      plugins: { "@amykit/plugin-command-gate": { defaultBranch: "main" } },
+    };
+
+    const checks = await diagnose(deps({ config, gatePort: {} }));
 
     expect(labelled(checks, "gate configured")?.ok).toBe(false);
   });
 
   it("asks nothing about vouching when the machine mounted no gate", async () => {
-    const checks = await diagnose(deps({ config: { ...DEFAULT_CONFIG, gate: {} } }));
+    const checks = await diagnose(deps());
 
     expect(labelled(checks, "gate configured")).toBeUndefined();
   });
@@ -228,18 +248,18 @@ describe("diagnose", () => {
   });
 
   it("fails a repository that is not checked out", async () => {
-    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: checkouts() };
+    const config = { ...DEFAULT_CONFIG, ...workspaceSlice() };
 
-    const checks = await diagnose(deps({ config }));
+    const checks = await diagnose(deps({ config, workspacePort: {} }));
 
     expect(labelled(checks, "checkout acme/widgets")?.ok).toBe(false);
   });
 
   it("passes a repository that is", async () => {
     fs.mkdirSync(path.join(checkouts(), "widgets", ".git"), { recursive: true });
-    const config = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], workspaceRoot: checkouts() };
+    const config = { ...DEFAULT_CONFIG, ...workspaceSlice() };
 
-    const checks = await diagnose(deps({ config }));
+    const checks = await diagnose(deps({ config, workspacePort: {} }));
 
     expect(labelled(checks, "checkout acme/widgets")?.ok).toBe(true);
   });
@@ -248,14 +268,9 @@ describe("diagnose", () => {
     const own = path.join(os.tmpdir(), "amy-doctor-own-root-");
     fs.mkdirSync(path.join(own, ".git"), { recursive: true });
     try {
-      const config = {
-        ...DEFAULT_CONFIG,
-        repos: ["acme/widgets"],
-        workspaceRoot: checkouts(),
-        checkouts: { "acme/widgets": own },
-      };
+      const config = { ...DEFAULT_CONFIG, ...workspaceSlice({ checkouts: { "acme/widgets": own } }) };
 
-      const checks = await diagnose(deps({ config }));
+      const checks = await diagnose(deps({ config, workspacePort: {} }));
 
       const named = labelled(checks, "checkout acme/widgets");
       expect(named?.ok).toBe(true);
@@ -269,16 +284,25 @@ describe("diagnose", () => {
   it("names the workspace root it asked for a missing checkout", async () => {
     const config = {
       ...DEFAULT_CONFIG,
-      repos: ["acme/widgets"],
-      workspaceRoot: checkouts(),
-      checkouts: { "acme/other": "/somewhere/else" },
+      ...workspaceSlice({ checkouts: { "acme/other": "/somewhere/else" } }),
     };
 
-    const checks = await diagnose(deps({ config }));
+    const checks = await diagnose(deps({ config, workspacePort: {} }));
 
     const named = labelled(checks, "checkout acme/widgets");
     expect(named?.ok).toBe(false);
     expect(named?.detail).toContain(`the workspace root (${checkouts()})`);
+  });
+
+  it("expands `~` in a named checkout the way the workspace does", async () => {
+    const config = {
+      ...DEFAULT_CONFIG,
+      ...workspaceSlice({ checkouts: { "acme/widgets": "~/code/widgets" } }),
+    };
+
+    const checks = await diagnose(deps({ config, workspacePort: {} }));
+
+    expect(labelled(checks, "checkout acme/widgets")?.detail).toContain(path.join(os.homedir(), "code", "widgets"));
   });
 
   it("says nothing about plugin settings when none are configured", async () => {

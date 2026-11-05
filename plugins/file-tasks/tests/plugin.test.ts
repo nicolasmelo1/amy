@@ -19,7 +19,7 @@ describe("mounting the tasks directory", () => {
   const host = (): HostServices => ({
     runner: new ScriptedRunner([]),
     now: () => new Date("2026-09-05T10:00:00.000Z"),
-    paths: { workspace: "/checkouts", checkouts: {}, state },
+    paths: { state },
   });
 
   it("mounts the port the errand workflow reads its work from", async () => {

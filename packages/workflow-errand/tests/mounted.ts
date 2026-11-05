@@ -18,7 +18,7 @@ import {
   movedBy,
   runAction,
 } from "@amykit/core";
-import { ScriptedRunner, fakeHost, fakeRun, pullRequest, whenArgsInclude } from "@amykit/test-fixtures";
+import { ScriptedRunner, fakeHost, fakeRun, pullRequest, whenArgsInclude, fakeWorkspace } from "@amykit/test-fixtures";
 import { Task } from "../src/ports/Tasks.js";
 import { ErrandRecord } from "../src/record.js";
 import { plugin as errand } from "./drawn.js";
@@ -63,7 +63,7 @@ export class ErrandWorld {
       { match: whenArgsInclude("rev-list", "--count"), result: { stdout: "0\n" } },
       { match: whenArgsInclude("push"), result: { stdout: "Done\n" } },
     ]);
-    return { runner, now: this.now, paths: { workspace: "/checkouts", checkouts: {}, state: "/state" } };
+    return { runner, now: this.now, paths: { state: "/state" } };
   }
 
   private ports(): Plugin[] {
@@ -92,7 +92,8 @@ export class ErrandWorld {
       notifier: { announce: async ({ text }: { text: string }) => { this.said.push(text); } },
       store: records,
     };
-    return Object.entries(ports).map(([kind, impl]) => ({ name: `fake-${kind}`, register: (registry) => registry.port(kind, impl) }));
+    const providers: Plugin[] = Object.entries(ports).map(([kind, impl]) => ({ name: `fake-${kind}`, register: (registry) => registry.port(kind, impl) }));
+    return [fakeWorkspace(), ...providers];
   }
 }
 

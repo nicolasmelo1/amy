@@ -103,7 +103,7 @@ async function hostWith(
       runner: new NodeCommandRunner(),
       now: () => new Date("2026-09-03T12:00:00.000Z"),
       log: { append: (event) => events.push(event), read: () => [...events] },
-      paths: { workspace: path.join(work, "checkouts"), checkouts: {}, state: path.join(work, ".amy") },
+      paths: { state:  path.join(work, ".amy") },
     },
   );
 
@@ -183,7 +183,7 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   }, {
     runner: new NodeCommandRunner(),
     now: () => new Date(),
-    paths: { workspace: path.join(work, "checkouts"), checkouts: {}, state: path.join(work, ".amy") },
+    paths: { state:  path.join(work, ".amy") },
   });
 
   record(

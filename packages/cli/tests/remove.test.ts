@@ -173,8 +173,10 @@ describe("removing a workflow profile", () => {
     fs.writeFileSync(
       path.join(home, "config.yaml"),
       [
-        "repos:",
-        "  - acme/widgets",
+        "plugins:",
+        '  "@amykit/plugin-file-worktree":',
+        "    repos:",
+        "      - acme/widgets",
         "workflows:",
         "  tickets:",
         '    workflow: "@amykit/workflow-ticket-to-qa"',
@@ -230,9 +232,10 @@ describe("removing a workflow profile", () => {
     fs.writeFileSync(
       path.join(home, "config.yaml"),
       [
-        "repos:",
-        "  - acme/widgets",
         "plugins:",
+        '  "@amykit/plugin-file-worktree":',
+        "    repos:",
+        "      - acme/widgets",
         "  \"@amykit/plugin-file-store\":",
         "    directory: shared-records",
         "workflows:",
@@ -260,9 +263,10 @@ describe("removing a workflow profile", () => {
     fs.writeFileSync(
       path.join(home, "config.yaml"),
       [
-        "repos:",
-        "  - acme/widgets",
         "plugins:",
+        '  "@amykit/plugin-file-worktree":',
+        "    repos:",
+        "      - acme/widgets",
         "  \"@amykit/plugin-telegram\":",
         "    directory: tickets/records",
         "workflows:",
@@ -285,7 +289,7 @@ describe("removing a workflow profile", () => {
     const profile = aMachine();
     fs.writeFileSync(
       path.join(home, "config.yaml"),
-      ["repos:", "  - acme/widgets", "plugins:", "  \"@amykit/plugin-telegram\":", "    directory: telegram-left-behind", "workflows:", "  tickets:", '    workflow: "@amykit/workflow-ticket-to-qa"', ""].join("\n"),
+      ["plugins:", '  "@amykit/plugin-file-worktree":', "    repos:", "      - acme/widgets", "  \"@amykit/plugin-telegram\":", "    directory: telegram-left-behind", "workflows:", "  tickets:", '    workflow: "@amykit/workflow-ticket-to-qa"', ""].join("\n"),
       "utf-8",
     );
     const left = path.join(home, "telegram-left-behind");
@@ -301,7 +305,7 @@ describe("removing a workflow profile", () => {
     const profile = aMachine();
     fs.writeFileSync(
       path.join(home, "config.yaml"),
-      ["repos:", "  - acme/widgets", "plugins:", "  \"@amykit/plugin-telegram\":", "    directory: tickets/records/telegram", "workflows:", "  tickets:", '    workflow: "@amykit/workflow-ticket-to-qa"', "  plans:", '    workflow: "@amykit/workflow-note-to-plan"', ""].join("\n"),
+      ["plugins:", '  "@amykit/plugin-file-worktree":', "    repos:", "      - acme/widgets", "  \"@amykit/plugin-telegram\":", "    directory: tickets/records/telegram", "workflows:", "  tickets:", '    workflow: "@amykit/workflow-ticket-to-qa"', "  plans:", '    workflow: "@amykit/workflow-note-to-plan"', ""].join("\n"),
       "utf-8",
     );
     const nested = path.join(home, "tickets", "records", "telegram");

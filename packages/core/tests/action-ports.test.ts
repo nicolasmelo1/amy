@@ -92,7 +92,7 @@ async function runtimeWith(agent: Harness, notifier: Notifier, log: EventLog): P
   const host: HostServices = {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: () => NOW,
-    paths: { workspace: "/work", checkouts: {}, state: "/state" },
+    paths: { state:  "/state" },
     log,
   };
   const outcome = await mount([declared, ports], {}, host);

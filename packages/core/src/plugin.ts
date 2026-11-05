@@ -111,16 +111,6 @@ export interface Engine {
 
 
 export interface HostPaths {
-  /** Where the checkouts a workflow works in live. */
-  readonly workspace: string;
-  /**
-   * Where one repository's checkout is, instead of under the workspace root.
-   *
-   * The host answers with the map it read, and a repository absent from it
-   * resolves through `workspace` exactly as before; the workflows hand it to
-   * the `Git` layout and never join a path of their own.
-   */
-  readonly checkouts: Readonly<Record<string, string>>;
   /** Where the host keeps its own state. */
   readonly state: string;
   /**
@@ -160,15 +150,23 @@ export interface PluginContext<Config extends Record<string, unknown> = Record<s
   port(kind: PortKind): object | undefined;
   /**
    * The checkouts this plugin works in: a `Git` and the layout behind it,
-   * built from the host's paths and this plugin's own `defaultBranch` and
-   * `baseBranch`.
+   * answered through the mounted workspace, with this plugin's own
+   * `defaultBranch` and `baseBranch` for the branches.
    *
    * The `worktree` port is read whenever a path is asked for, not when this
    * is called, so a worktree plugin listed after this one is still the one
-   * used. Nothing outside the core constructs a `Git`; this is how a plugin
-   * gets one.
+   * used. The workspace itself is read when the checkouts are: a plugin
+   * asking for them before the workspace's provider has registered is
+   * refused by name, and the machine's own plugin order puts the workplace
+   * before everything that captures one. Nothing outside the core
+   * constructs a `Git`; this is how a plugin gets one.
+   *
+   * `who` is what the refusal names — what asked for the checkouts when the
+   * machine has no workspace to answer with. A plugin's own context needs
+   * no argument; a call site passes the workflow it calls, so the refusal
+   * can say whose work stopped.
    */
-  checkouts(): Checkouts;
+  checkouts(who?: string): Checkouts;
   /**
    * A mounted port as the selected workflow may use it.
    *

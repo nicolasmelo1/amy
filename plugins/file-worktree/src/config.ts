@@ -1,7 +1,24 @@
 import { BRANCH_SETTINGS, ConfigSchema } from "@amykit/core";
 
-/** What this plugin needs told to it, and nothing more. */
+/**
+ * What this plugin needs told to it, and nothing more.
+ *
+ * The workspace is this plugin's: the repositories the machine's work happens
+ * in, where their standing checkouts live, the branches new work is cut from
+ * and the worktrees themselves all moved here out of the machine's top level,
+ * so an install that drives no code carries none of it.
+ */
 export const configSchema = {
+  repos: {
+    type: "string[]",
+    description: "the repositories this workspace's work happens in, from review load to where an errand may be done",
+    default: [],
+  },
+  workspaceRoot: {
+    type: "string",
+    description: "where one checkout per repository lives; `~` is expanded. The default is where this command was typed",
+    default: ".",
+  },
   root: {
     type: "string",
     description:

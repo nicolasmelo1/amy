@@ -20,6 +20,8 @@ function mount(recordsDirectory: string, root: string): WorktreeManager {
       recordsDirectory,
       defaultBranch: "main",
       retentionDays: 7,
+      workspaceRoot: root,
+      checkouts: {},
     },
     paths: { state: path.join(root, "shared-state") },
     runner: { run: async () => ({ ok: true, stdout: "", stderr: "" }) },

@@ -28,7 +28,7 @@ describe("diagnose, with a conversation mounted", () => {
     return {
       home,
       cwd: path.dirname(home),
-      config: { ...DEFAULT_CONFIG, repos: [], gate: {} },
+      config: { ...DEFAULT_CONFIG },
       runner: new ScriptedRunner([]),
       env: {},
       now: new Date("2026-09-05T12:00:00.000Z"),

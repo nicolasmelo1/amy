@@ -465,7 +465,7 @@ describe("the config the two commands write", () => {
     home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-add-config-"));
     fs.writeFileSync(
       path.join(home, "config.yaml"),
-      `repos:\n  - acme/widgets\n\nworkflows:\n  oncall:\n    workflow: "@acme/workflow-oncall"\n`,
+      `plugins:\n  "@amykit/plugin-file-worktree":\n    repos:\n      - acme/widgets\n\nworkflows:\n  oncall:\n    workflow: "@acme/workflow-oncall"\n`,
       "utf-8",
     );
   });

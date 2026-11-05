@@ -624,6 +624,11 @@ gates:
       - "update.a_second_update_moves_nothing"
       - "update.a_moved_key_named_at_its_new_place"
       - "update.a_moved_key_names_its_destination"
+      # The workspace is a capability now, and an old machine keeps its seven
+      # keys at the top level: the update moves them under the plugins whose
+      # slices read them, the original kept, a second update a no-op, and a
+      # key put back refused at boot naming the plugin whose slice reads it.
+      - "update.the_workspace_moves_into_its_plugin"
 
   feature-grooming:
     activation:

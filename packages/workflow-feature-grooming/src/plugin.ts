@@ -10,8 +10,9 @@ export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/workflow-feature-grooming",
   configSchema,
   register(registry, ctx) {
+    const named = ctx.checkouts().layout.checkouts ?? {};
     for (const repo of ctx.config.repos) {
-      if (ctx.paths.checkouts[repo] === undefined) {
+      if (named[repo] === undefined) {
         throw new Error(`the feature-grooming workflow needs a configured checkout for \`${repo}\``);
       }
     }
