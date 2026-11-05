@@ -14,6 +14,7 @@ sources:
   - { id: S11, kind: reference, ref: "plugins/serial-engine/src/Worker.ts", symbol: "recordFailure", said: "at the ceiling the record is saved gaveUp and the item completed before announce runs, so an exit between them leaves no notice and nothing retries it" }
   - { id: S12, kind: decision, said: "the ceiling notice is announced before gaveUp is saved and the item completed, so an exit between them never leaves the work given up with no notice. Decided 2026-11-05" }
   - { id: S13, kind: decision, said: "after such an exit the next look either fails again and announces again, or succeeds and announces the recovery that corrects the notice; nothing durable replays it. Decided 2026-11-05" }
+  - { id: S14, kind: decision, said: "no durable failure state is added: an exit between a notice and the queue save is outside this plan. Decided 2026-11-05" }
 touches:
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/src/config.ts
@@ -28,7 +29,7 @@ criteria:
   - { id: A2, statement: "under failureNotice: ceiling, failures below the ceiling announce nothing and the ceiling announces once", proof: "deferred:test:plugins/serial-engine/tests/Worker.announcements.test.ts", sources: [S6] }
   - { id: A3, statement: "the given-up message names amy look <id>, and running it puts the work back on the queue", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S7, S8] }
   - { id: A4, statement: "a gh read failing twice with a transient error then succeeding returns the answer; a write or a 4xx is tried once", proof: "deferred:property:plugins/github/tests/gh-retry.property.test.ts#a_write_is_retried", sources: [S9, S10] }
-  - { id: A5, statement: "a process stopped between the ceiling notice and the save announces the ceiling again if the next look fails, and the recovery if the dependency came back between processes", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S11, S12, S13] }
+  - { id: A5, statement: "a process stopped between the ceiling notice and the save announces the ceiling again if the next look fails, and the recovery if the dependency came back between processes", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S11, S12, S13, S14] }
 crosses:
   - { mechanism: budget-and-evidence, answer: n/a, why: "only the wording and timing of the failure notice change; no budget check or evidence count is touched" }
   - { mechanism: engines, answer: works, proof: "deferred:A1, A2; the concurrent engine is the serial engine's Worker" }
@@ -37,6 +38,7 @@ crosses:
   - { mechanism: config, answer: works, proof: "deferred:A2; failureNotice is a typed key of serial-engine's slice" }
 guarantee:
   - { holds: "a failure below the ceiling is announced at most once per fall, and the ceiling at least once, attempted before the work is given up", not_against: "a channel that rejects the message, logged as notify.failed and not resent; or two engines sharing a queue" }
+  - { holds: "the attempt count and gaveUp hold across looks in one running process", not_against: "a process exit between a failure notice and the queue save: the count may restart, a notice may repeat, and discovery may resume the work without amy look" }
   - { holds: "no gh write is ever sent twice by the retry", not_against: "a write gh itself retried before returning" }
 failures:
   - { step: ceiling, when: "the process exits after the notice and before gaveUp is saved", goes_to: "the next look fails and announces again, or succeeds and announces moving again after N failed attempts" }
