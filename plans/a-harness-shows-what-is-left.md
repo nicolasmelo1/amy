@@ -5,12 +5,13 @@ sources:
   - { id: S2, kind: reference, ref: "https://github.com/eduwxyz/tucano", said: "tucano shows Claude's five-hour and seven-day windows, utilization and reset, read from the rate_limit_event of a stream-json run" }
   - { id: S3, kind: code, ref: "packages/cli/src/budget.ts", said: "amy budget counts only amy's own ledger: runs, tokens and dollars per window; nothing reads a subscription's limits" }
   - { id: S4, kind: decision, said: "each harness plugin brings its own usage reader, as it brings its doctor ping; the host only lists what the readers return. Decided 2026-11-05" }
-  - { id: S5, kind: decision, said: "a reader returns windows { label, usedPercent, resetsAt? } or unavailable with a reason, and is read on demand, never on a look" }
+  - { id: S5, kind: decision, said: "a reader returns windows { label, usedPercent, startsAt?, resetsAt? } or unavailable with a reason, and is read on demand, never on a look" }
   - { id: S6, kind: reference, ref: "https://github.com/openai/codex", said: "codex app-server answers account/rateLimits/read with primary and secondary windows, used percent and reset" }
   - { id: S7, kind: reference, ref: "https://hermes-agent.nousresearch.com/docs/reference/cli-commands", said: "hermes usage --provider --json returns windows with used_percent and resets_at for openai-codex, anthropic and openrouter; ollama-cloud is not offered" }
   - { id: S8, kind: reference, ref: "https://docs.ollama.com/cloud", said: "Ollama Cloud documents usage only at ollama.com/settings/usage; an undocumented ollama.com/api/usage returns session, weekly and monthly fractions with no reset" }
   - { id: S9, kind: decision, said: "for ollama-cloud the hermes plugin reads the undocumented endpoint and labels it unofficial; Claude reads Claude Code's own OAuth usage endpoint. Decided 2026-11-05" }
-  - { id: S10, kind: decision, said: "amy status shows one line per subscription in use, and amy budget shows the windows beside amy's own spend" }
+  - { id: S10, kind: decision, said: "amy status shows one line per subscription in use, and amy budget shows each provider window under its own label beside amy's own periods, never as one comparison" }
+  - { id: S11, kind: decision, said: "a window carries its start and reset when the provider gives them; with neither, it shows its label and percent with period unknown. Decided 2026-11-05" }
 touches:
   - packages/agent-kit/src/usage.ts
   - packages/agent-kit/src/index.ts
@@ -35,7 +36,7 @@ criteria:
   - { id: A2, statement: "recorded Claude, Codex and hermes usage answers become windows with label, percent used and reset", proof: "deferred:test:plugins/hermes-agent/tests/usage.test.ts", sources: [S1, S2, S6, S7] }
   - { id: A3, statement: "on an ollama-cloud profile the hermes reader returns the fractions as windows without a reset, marked unofficial", proof: "deferred:test:plugins/hermes-agent/tests/usage.test.ts", sources: [S8, S9] }
   - { id: A4, statement: "amy status shows one line per subscription a ladder uses, and a reader that fails shows unavailable with its reason", proof: "deferred:test:packages/cli/tests/status.test.ts", sources: [S5, S10] }
-  - { id: A5, statement: "amy budget shows each subscription's windows beside amy's own spend for the same period", proof: "deferred:test:packages/cli/tests/budget.test.ts", sources: [S10] }
+  - { id: A5, statement: "amy budget lists each provider window under its label with its start and reset or period unknown, separate from amy's own rolling totals", proof: "deferred:test:packages/cli/tests/budget.test.ts", sources: [S10, S11] }
 crosses:
   - { mechanism: status, answer: works, proof: "deferred:A4" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "agent-kit only gains the usage collection; a reading is no agent run and charges nothing" }
