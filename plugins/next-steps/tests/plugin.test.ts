@@ -17,6 +17,23 @@ describe("mounting the next-steps tracker", () => {
     expect(outcome.mounted.ports.get("tracker")).toBeInstanceOf(NextStepsTracker);
   });
 
+  it("mounts before the workspace's provider, and reads the workplace when the table is read", async () => {
+    const cwds: (string | undefined)[] = [];
+    const runner: HostServices["runner"] = {
+      run: async (_command, _args, options) => {
+        cwds.push(options?.cwd);
+        return { ok: false, exitCode: 1, stdout: "", stderr: "not a repository" };
+      },
+    };
+    const outcome = await mount([plugin, fakeWorkspace("/checkouts")], { "@amykit/plugin-next-steps": { repo: "acme/widgets" } }, { ...host(), runner });
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    await (outcome.mounted.ports.get("tracker") as NextStepsTracker).inProgress().catch(() => undefined);
+
+    expect(cwds.length).toBeGreaterThan(0);
+    expect(cwds.every((cwd) => cwd?.startsWith("/checkouts"))).toBe(true);
+  });
+
   it("refuses to mount without the repository the table is in", async () => {
     const outcome = await mount([plugin], {}, host());
 
