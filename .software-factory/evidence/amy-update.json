@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "amy-update",
-  "implementation_sha256": "a81bf711fa65c5587f27b6ded03e5773c01d22b28163261ee06068a191ec7435",
+  "implementation_sha256": "346bf191a730d26948cc6a1d44d4a483002cfd66b57df36a5a925d8b0c4da62c",
   "runs": [
     {
       "scenario": "amy-update",
       "status": "passed",
       "actor": "Claude (agent), updating a scratch machine two versions behind with .software-factory/evidence/amy-update-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/amy-update-run.json",
-      "report_sha256": "7ce7a16c10c444b2ff773a2b122253dbbfd8365a98d4360704dc042f8132d379",
+      "report_sha256": "9a58f325475f1b93bb7ff8b492832b7d7647ba35397cecb67baf692b15f9f1db",
       "required_assertions": [
         "update.added_the_first_version",
         "update.v1_moves_the_page",

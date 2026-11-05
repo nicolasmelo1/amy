@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "files": {
+    ".software-factory/evidence/a-workspace-is-a-capability/workflow-support-inbox/package.json": "1ee09a150610bf5e25fb255441829a103bf2806a3bfa4bd74fdaa165f8311d1c",
     ".software-factory/evidence/amy-add-remove/plugin-extra/package.json": "fdf46ddf207e8cd09cf998cc6b9f41268b0e5485efd7e95db94438f9a04e7724",
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "6f3a4601268c34c70c795211852c518b8797623c08ce44cebffccc4fea858a7b",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "b024593c5ca92eec192c4b292c4a1b0c35b95cfdf9253eb297fe7d9ba3c8c270",

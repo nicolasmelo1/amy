@@ -551,10 +551,10 @@ says update.a_moved_key_names_its_destination "$refused" 'settings.qaStatusName'
 # original kept beside the config, and a second update a no-op the way the
 # settings are.
 moved_workspace=0
-if ! grep -q '^repos:' .amy/config.yaml ||
-   ! grep -q '^workspaceRoot:' .amy/config.yaml ||
-   ! grep -q '^gate:' .amy/config.yaml ||
-   ! grep -q '^worktrees:' .amy/config.yaml ||
+if grep -q '^repos:' .amy/config.yaml ||
+   grep -q '^workspaceRoot:' .amy/config.yaml ||
+   grep -q '^gate:' .amy/config.yaml ||
+   grep -q '^worktrees:' .amy/config.yaml ||
    ! grep -q '"@amykit/plugin-file-worktree":' .amy/config.yaml ||
    ! grep -q 'workspaceRoot: /workspaces/gadgets' .amy/config.yaml ||
    ! grep -q '"@amykit/plugin-command-gate":' .amy/config.yaml ||
@@ -564,6 +564,10 @@ if ! grep -q '^repos:' .amy/config.yaml ||
 fi
 # A workspace key put back where it lived is refused at boot, naming the
 # plugin whose slice carries it now — the same refusal the settings name.
+# The settings key put back above comes out first: the boot names the first
+# moved key it meets, and this one is about the workspace's.
+grep -v '^qaStatusName: In QA$' .amy/config.yaml > "$work/config-without-the-setting"
+cp "$work/config-without-the-setting" .amy/config.yaml
 printf '\nrepos:\n  - example.test/again\n' >> .amy/config.yaml
 workspace_refused=$("$amy" doctor 2>&1 || echo "")
 if ! printf '%s\n' "$workspace_refused" | grep -q '`repos` at the top level' ||

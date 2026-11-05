@@ -1,0 +1,18 @@
+{
+  "name": "@acme/workflow-support-inbox",
+  "version": "1.0.0",
+  "description": "A workflow that touches no code, for proving an install needs no workspace to drive one.",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "workflow.mmd"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.6.0"
+  }
+}

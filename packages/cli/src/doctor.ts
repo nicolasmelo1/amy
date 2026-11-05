@@ -227,15 +227,23 @@ function environment({ environments, env }: DoctorDeps): Check[] {
 }
 
 const REQUIRED_TOOLS: readonly [string, readonly string[]][] = [
-  ["gh", ["auth", "status"]],
   ["claude", ["--version"]],
+];
+
+/**
+ * The tools only work in a repository needs: asked of an install that mounts
+ * a workspace, so a machine that drives no code is not told it is broken for
+ * want of a GitHub login.
+ */
+const WORKSPACE_TOOLS: readonly [string, readonly string[]][] = [
+  ["gh", ["auth", "status"]],
   ["git", ["--version"]],
 ];
 
-async function tools({ runner }: DoctorDeps): Promise<Check[]> {
+async function tools({ runner, workspacePort }: DoctorDeps): Promise<Check[]> {
   const checks: Check[] = [];
 
-  for (const [tool, args] of REQUIRED_TOOLS) {
+  for (const [tool, args] of [...(workspacePort ? WORKSPACE_TOOLS : []), ...REQUIRED_TOOLS]) {
     const result = await runner.run(tool, args, { timeoutMs: 30_000 });
     checks.push({
       label: `${tool} available`,

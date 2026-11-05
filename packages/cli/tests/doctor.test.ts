@@ -117,6 +117,9 @@ describe("diagnose", () => {
     expect(labelled(checks, "repos configured")).toBeUndefined();
     expect(labelled(checks, "checkout ")).toBeUndefined();
     expect(labelled(checks, "worktrees root")).toBeUndefined();
+    expect(labelled(checks, "gh available")).toBeUndefined();
+    expect(labelled(checks, "git available")).toBeUndefined();
+    expect(labelled(checks, "claude available")?.ok).toBe(true);
   });
 
   it("fails when nothing would vouch for a change", async () => {
@@ -163,7 +166,7 @@ describe("diagnose", () => {
   });
 
   it("checks the tools it shells out to", async () => {
-    const checks = await diagnose(deps());
+    const checks = await diagnose(deps({ workspacePort: {} }));
 
     for (const tool of ["gh", "claude", "git"]) {
       expect(labelled(checks, `${tool} available`)?.ok).toBe(true);
@@ -179,7 +182,7 @@ describe("diagnose", () => {
       { match: whenArgsInclude("--list"), result: { stdout: HERMES_LISTING } },
     ]);
 
-    const checks = await diagnose(deps({ runner }));
+    const checks = await diagnose(deps({ runner, workspacePort: {} }));
 
     expect(labelled(checks, "gh available")).toMatchObject({
       ok: false,

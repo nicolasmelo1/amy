@@ -900,6 +900,35 @@ gates:
       - "frame.a_surface_is_drawn_only_where_declared"
       - "frame.a_projection_is_deterministic"
 
+  # A workspace is a capability a plugin provides. Proven by a support inbox
+  # walked to a sent answer on an install with none of the seven repository
+  # keys and no workspace; by the three code workflows still walking with
+  # their workspace in its plugin; and by amy update moving the keys there.
+  # The activation is everywhere the workspace used to be assumed.
+  a-workspace-is-a-capability:
+    activation:
+      - "packages/core/src/checkouts.ts"
+      - "packages/core/src/mount.ts"
+      - "packages/core/src/plugin.ts"
+      - "packages/core/src/ports/Workspace.ts"
+      - "packages/core/src/define-workflow.ts"
+      - "packages/cli/src/config.ts"
+      - "packages/cli/src/slices.ts"
+      - "packages/cli/src/doctor.ts"
+      - "plugins/file-worktree/src/**"
+      - "plugins/command-gate/src/**"
+      - ".software-factory/evidence/a-workspace-is-a-capability/**"
+      - ".software-factory/evidence/a-workspace-is-a-capability-scenario.sh"
+    evidence: ".software-factory/evidence/a-workspace-is-a-capability.json"
+    plan: "docs/design/a-workspace-is-a-capability.md"
+    required_assertions:
+      - "workspace.the_config_names_no_workspace"
+      - "workspace.the_doctor_asks_nothing_of_a_repository_and_says_ready"
+      - "workspace.nothing_is_sent_before_the_operator_approves"
+      - "workspace.a_workflow_without_code_needs_no_workspace"
+      - "workspace.the_code_workflows_walk_with_their_workspace_in_its_plugin"
+      - "update.the_workspace_moves_into_its_plugin"
+
 rules:
   # L0 — The host's source names no vocabulary a workflow owns; its one
   # carried ceiling (`rosterBackoffMs`) is the config plan's to remove
