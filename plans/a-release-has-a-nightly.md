@@ -20,6 +20,7 @@ touches:
   - scripts/check-release-config.ts
   - scripts/release/tests/nightly-due.test.ts
   - packages/cli/src/update.ts
+  - packages/cli/src/index.ts
   - packages/cli/src/config.ts
   - packages/cli/src/auto-update.ts
   - packages/cli/tests/update.test.ts
@@ -45,7 +46,7 @@ failures:
 cut:
   - "unpublishing old nightlies: npm allows it for 72 hours only; they stay"
   - "a nightly on every push: refused (S3)"
-exit: "within six hours of a merge to main, a machine on channel nightly updates itself to a 0.7.0-nightly build of every package, and switching it to stable keeps it there until 0.7.0 ships"
+exit: "within six hours of a merge to main a nightly of every package is published, a machine on channel nightly installs it at its next due update, and switching it to stable keeps it there until 0.7.0 ships"
 ---
 # A release has a nightly
 
