@@ -9931,7 +9931,8 @@
               "plans/next-steps.md",
               ".changeset/*.md",
               "docs/changelog/index.md",
-              "docs/manifest.json"
+              "docs/manifest.json",
+              "packages/test-fixtures/contracts/**"
             ]
           }
         },
