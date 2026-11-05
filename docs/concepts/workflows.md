@@ -1,6 +1,6 @@
 ---
 title: Workflows
-description: Two halves — a pure decision and a runtime — and the seven things a workflow declares.
+description: Three pieces — a diagram, a pure decision per state, and the actions — joined by one declaration.
 group: How it works
 order: 2
 ---
@@ -8,26 +8,41 @@ order: 2
 # Workflows
 
 A workflow is **the order in which actions happen, plus how each one runs**. It
-comes in two halves, and keeping them apart is the single most important thing
-about this codebase.
+is three pieces, always in the same place, and keeping the decision apart from
+the world is the single most important thing about this codebase.
 
 ```text
-   plan()                              the runtime
-   ────────                            ───────────
-   pure, synchronous                   async, touches the world
-   says WHAT should happen             says HOW it is done
-   (record, observation, policy)       observe(), actions, apply()
-        → Plan
+   workflow.mmd          decide                         actions
+   ────────────          ──────                         ───────
+   where work can go     where this work goes next      what happens in the world
+   a Mermaid diagram     pure, synchronous, per state   async, through the ports
+                         (record, observation, policy)  discover, observe, remember
+                              → Plan
 ```
 
+## The diagram
+
+The states, where work starts, where it waits and where it ends are read from
+the `workflow.mmd` beside the workflow's entry, or at its package root, and from
+nowhere else. A workflow declares no list of states. One whose host finds no
+diagram beside it is refused when it mounts, naming the workflow and the file it
+needs; so is a declaration that still passes `states`, `waiting` or `terminal`.
+See [a workflow is a Mermaid diagram](../design/a-workflow-is-a-mermaid-diagram.md)
+for the subset amy reads.
+
 ## The decision half
+
+`decide` has one key per state the diagram draws, each a pure function of the
+record, a snapshot of the outside world and the policy. A state the diagram
+draws with no key, or a key for a state it does not draw, is refused at boot by
+name. `before` answers ahead of every state's decision and `after` sees every
+decision; the three compose into the one pure function the engine calls:
 
 ```ts
 plan(record, observation, policy): Plan
 ```
 
-It reads a persisted record and a snapshot of the outside world, and returns one
-of four things:
+It returns one of four things:
 
 <!-- amy:generated plan-kinds -->
 
@@ -41,35 +56,39 @@ of four things:
 <!-- amy:end plan-kinds -->
 
 It touches no tracker, no code host, no repository and no agent. If you find
-yourself wanting to `await` something inside `plan()`, the thing you want
-belongs in the runtime.
+yourself wanting to `await` something inside a decision, the thing you want
+belongs in an action.
 
 **What purity buys.** A sixteen-state lifecycle, including the paths where a
 review requests changes and where the agent disagrees with a reviewer, is walked
 end to end in a test in milliseconds with no I/O. That test is the one that
 finds the bugs, and it only exists because the function is pure.
 
-## The runtime half
+## The world half
 
-The runtime is `WorkflowRuntime`, and it says four things the engine cannot
-know:
+The rest of the declaration says what the engine cannot know. Each piece
+receives the ports `needs` asked for, the config, the policy and the checkouts,
+and the core builds them into the workflow's runtime after every plugin has
+registered:
 
 | Member | What it answers |
 | :-- | :-- |
-| `found()` | What work exists that is not on the queue yet |
-| `observe(record)` | What the outside world looks like, for this record, right now |
+| `discover` | What work exists that is not on the queue yet |
+| `observe(scope, record)` | What the outside world looks like, for this record, right now |
 | `actions` | Every action this workflow can emit, each beside what runs it |
-| `apply(record, plan, outcomes, observation, now, moved)` | How what happened folds back into the record |
-| `policy` | The numbers `plan()` is given — attempt ceilings, backoffs, how many open reviews one person may carry |
+| `remember(scope, record, outcomes, observation, moved, decision, now)` | How what happened folds back into the record |
+| `policy` | The numbers the decisions are given — attempt ceilings, backoffs, how many open reviews one person may carry |
 
-`apply` is the subtle one. The engine has already folded the state, the attempt
-count and the history through `applyPlan`; it cannot fold the rest, because it
-does not know what a triage result or a gate result is. The **observation** is
-passed to it too, because not everything a record learns comes from an action —
-an answer somebody left on a ticket arrives as an observation, and a fold that
-could not see one would leave the record waiting on it forever.
+`remember` is the subtle one. The engine has already folded the state, the
+attempt count and the history through `applyPlan`; it cannot fold the rest,
+because it does not know what a triage result or a gate result is. The
+**observation** is passed to it too, because not everything a record learns
+comes from an action — an answer somebody left on a ticket arrives as an
+observation, and a fold that could not see one would leave the record waiting
+on it forever. A workflow that keeps nothing beyond the core's fields leaves it
+out.
 
-The **record** `apply` is handed has already moved: its `state` is where the
+The **record** `remember` is handed has already moved: its `state` is where the
 work is going, not where the look started. Where it came from is `moved.from`,
 and `moved` is `null` when the plan did not advance. A fold that remembers where
 an escalation interrupted the work reads `moved`, never `record.state` — a guard
@@ -81,7 +100,7 @@ emits, the value is what runs it.
 
 ```ts
 actions: {
-  "hand-off-to-qa": async (action, ctx) => { /* ... */ },
+  "hand-off-to-qa": async (scope, work, effect) => { /* scope.ports, scope.announce */ },
   "merge": { port: "forge", method: "merge" },
 }
 ```
@@ -98,11 +117,10 @@ value is neither, a port nothing mounted, or a method the port does not have.
 The engine refuses a plan that carries a name the map does not, before any of
 that plan's actions run.
 
-An action written in a three-piece declaration receives its ports from the
-host, bound to the work. Every reply from `agent` writes an `agent.run` line
-against the work and its state, which is what the budget adds up, so an action
-never writes one itself. The agent's own failures are not swallowed, and still
-fail the action.
+A handler receives its ports from the host, bound to the work. Every reply from
+`agent` writes an `agent.run` line against the work and its state, which is
+what the budget adds up, so an action never writes one itself. The agent's own
+failures are not swallowed, and still fail the action.
 
 Beside the ports, an action gets `announce(text)`: a word to the operator that
 is only worth saying. A channel that fails becomes a `notify.failed` line
@@ -111,24 +129,21 @@ never cost a move. `ports.notifier` stays strict, for a message the work
 depends on: a write handed to the operator that nobody heard has to fail the
 action, so the look is tried again rather than recorded as said.
 
-## One declaration mounts both halves
+## One declaration joins the pieces
 
 ```ts
 export const plugin = defineWorkflow({
   name: "errand",
-  states: ERRAND_STATES,
-  waiting: WAITING_STATES,
-  terminal: ["DONE", "DECLINED"],
   configSchema,
   policy: DEFAULT_POLICY,
   needs: { tasks: port<Tasks>(), notifier: port<Notifier>() },
-  plan,
   record: () => ({}),
-  runtime: ({ ports, policy }) => errandRuntime({
-    tasks: ports.tasks,
-    notifier: ports.notifier,
-    policy,
-  }),
+  decide,                       // one key per state workflow.mmd draws
+  discover: ({ ports }) => ports.tasks.pending(),
+  observe: ({ ports }, work) => ports.tasks.read(work.id),
+  actions: {
+    announce: (scope, _work, effect) => scope.announce(effect.text),
+  },
 });
 ```
 
@@ -137,35 +152,25 @@ the same name. The runtime is built after every plugin has registered, so a
 required port nobody mounted is refused at boot and an `optional<T>()` port is
 handed to it as `T | undefined`.
 
-The first state is the initial state. The core constructs each new record with
-`id`, `state`, `updatedAt`, `attempts` and `history`; `record(workId)` returns
-only the workflow's own fields. Policy defaults are merged with the configured
-`policy` mapping at boot, and an override whose key is not in the defaults is
-refused by name.
+The diagram's `[*]` arrow names the initial state. The core constructs each new
+record with `id`, `state`, `updatedAt`, `attempts` and `history`;
+`record(workId)` returns only the workflow's own fields. Policy defaults are
+merged with the configured `policy` mapping at boot, and an override whose key
+is not in the defaults is refused by name.
 
-**`states`** — the strings this lifecycle can be in. The core treats each one as
-a label.
+The keys of **`actions`** declare the workflow's *reach*, which the host checks
+at boot: an action with nothing behind it refuses the mount by name.
 
-**`waiting`** — where the machine has nothing to do until somebody else
-moves. Kept explicit so the engine backs off instead of spinning, and so a new
-state cannot silently become a busy loop.
-
-**`terminal`** — where work stops being queued.
-
-The keys of the runtime's **`actions`** declare the workflow's *reach*,
-which the host checks at boot: an action with nothing behind it refuses the
-mount by name.
-The actions are declared on the runtime rather than here because the
-declaration and the implementation are one entry; two lists of one fact is how
-an action once passed the mount with nothing behind it.
-
-**`plan`** — the pure function. The cast from the core's generic `WorkRecord` to
-the workflow's own type happens here and nowhere else: one boundary per
-workflow.
+Only this form mounts. A declaration that still passes a single `plan()` or a
+`runtime()` factory is refused at boot, naming each and where it moved: `plan`
+onto `decide`, `runtime` onto `discover`, `observe`, `actions` and `remember`.
+A plugin that registers a workflow by hand, with `registry.workflow(...)`, is
+the core's own contract for its unit tests; amy never mounts one from an
+install or from `~/.amy/workflows`, and refuses it naming the plugin.
 
 ## Effects are described, never performed
 
-The machine emits an effect; what the runtime declared for it performs it. Nothing about
+The machine emits an effect; what the workflow's `actions` declared for it performs it. Nothing about
 that is a formality — it is what keeps "what was decided" and "what the world
 did" separable, and therefore separately testable.
 
@@ -340,8 +345,9 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 ## Writing one
 
 A workflow of yours is a directory under `~/.amy/workflows`, and it is a package
-only if you decide to share it later. `amy workflow new <name>` writes one that
-already declares the seven things above and already moves a piece of work;
+only if you decide to share it later. `amy workflow new <name>` writes its three
+pieces — `workflow.mmd`, `decide.ts` and `actions.ts`, joined by the one call in
+`index.ts` — and it already moves a piece of work;
 `amy workflow check <name>` drives it against a stub world and reports what it
 got wrong.
 

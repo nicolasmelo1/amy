@@ -26,6 +26,15 @@ function shellQuote(value: string, platform: string): string {
   return /^[A-Za-z0-9_./:@=-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
+/**
+ * What every install into amy's own root says: no audit or funding noise,
+ * and a package given as a path installed as a copy with its dependencies
+ * rather than a link. Every workflow imports the core it is declared with,
+ * and a link resolves that import from wherever the path lies, where there
+ * is none.
+ */
+export const PLUGINS_ROOT_FLAGS = ["--no-audit", "--no-fund", "--install-links"] as const;
+
 export interface InstallOutcome {
   ok: boolean;
   /** What was run, so a failure can be retried by hand. */
@@ -52,7 +61,7 @@ export async function installIntoPluginsRoot(
   root: string,
   packages: readonly string[],
 ): Promise<InstallOutcome> {
-  const args = ["install", "--prefix", root, "--no-audit", "--no-fund", "--", ...packages];
+  const args = ["install", "--prefix", root, ...PLUGINS_ROOT_FLAGS, "--", ...packages];
   const command = shellCommand(packageManager(), args);
 
   const result = await runner.run(packageManager(), args, { timeoutMs: 10 * 60 * 1000 });

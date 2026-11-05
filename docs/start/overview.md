@@ -57,7 +57,7 @@ Everything hard in this repository is downstream of keeping that function pure.
 | Piece | What it owns | Documented in |
 | :-- | :-- | :-- |
 | **The core** | The catalogue of actions, the port contracts, the generic work record, the plan, and the registry that mounts everything. It owns no domain. | [Architecture](../concepts/architecture.md) |
-| **A workflow** | The order actions happen in, and how each one runs. Two halves: a pure `plan()` and a runtime. | [Workflows](../concepts/workflows.md) |
+| **A workflow** | The order actions happen in, and how each one runs. Three pieces: a `workflow.mmd` diagram, a pure decision per state, and its actions. | [Workflows](../concepts/workflows.md) |
 | **An engine** | Claiming from the queue, counting attempts, asking the budget, obeying the handbrake. Knows nothing about tickets. | [The engine](../concepts/the-engine.md) |
 | **A plugin** | Everything else: the tracker, the forge, the agents, the queue on disk, the notification channels. | [Plugins](../concepts/plugins.md) |
 

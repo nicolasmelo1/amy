@@ -40,8 +40,8 @@ Show that text rather than drawing your own from the code or the JSON: a
 drawing inferred each time is a drawing nothing checks. It is ordinary
 Mermaid, so it renders as it is in a GitHub comment, an issue or Obsidian, and
 the `--work` form pasted into a pull request shows where the work stands. A
-workflow written by hand without one says so — `export` names it — and only
-then is a drawing from its states the right answer, labelled as yours.
+workflow without one does not mount, and `export` says so naming the file it
+needs; say that, rather than drawing its states yourself.
 
 **Pick the smallest view that makes the point.** Skip the preamble. Most
 questions about a workflow are answered by twenty lines of text, and a page

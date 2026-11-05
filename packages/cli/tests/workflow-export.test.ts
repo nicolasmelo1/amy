@@ -36,9 +36,8 @@ describe("amy workflow export", () => {
     fs.rmSync(path.join(bare, "workflow.mmd"));
     fs.writeFileSync(path.join(bare, "index.ts"), `import { defineWorkflow } from "@amykit/core";
 export const plugin = defineWorkflow({
-  name: "bare", states: ["done"], terminal: ["done"], configSchema: {}, policy: {}, needs: {},
-  plan: () => ({ kind: "settled", why: "done" }), record: () => ({}),
-  runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
+  name: "bare", configSchema: {}, policy: {}, needs: {}, record: () => ({}),
+  decide: { done: () => ({ kind: "settled", why: "done" }) }, observe: async () => ({}), actions: {},
 });
 `);
   });
@@ -60,7 +59,7 @@ export const plugin = defineWorkflow({
   it("reads the diagram without building a runtime whose ports only a mount has", async () => {
     const index = path.join(home, "workflows", "oncall", "index.ts");
     fs.writeFileSync(index, fs.readFileSync(index, "utf-8")
-      .replace("import { defineWorkflow, notWritten,", "import { defineWorkflow, notWritten, port,")
+      .replace("import { defineWorkflow, type ConfigSchema }", "import { defineWorkflow, port, type ConfigSchema }")
       .replace("  needs: {},", "  needs: { tracker: port() },"));
 
     await expect(exportWorkflow(home, "oncall", loadConfig(home), { state: "PAGED" })).resolves.toContain("class PAGED current");
@@ -88,7 +87,7 @@ export const plugin = defineWorkflow({
 
   it("refuses a state the diagram does not draw, and a workflow that has no diagram", async () => {
     await expect(exportWorkflow(home, "oncall", loadConfig(home), { state: "LOST" })).rejects.toThrow(/draws no `LOST`/);
-    await expect(exportWorkflow(home, "bare", loadConfig(home))).rejects.toThrow(/bare has no workflow\.mmd: its states are declared in its code/);
+    await expect(exportWorkflow(home, "bare", loadConfig(home))).rejects.toThrow(/the bare workflow has no workflow\.mmd: draw one beside its entry or at its package root/);
     await expect(exportWorkflow(home, "nobody", loadConfig(home))).rejects.toThrow(/there is no `nobody` workflow/);
   });
 

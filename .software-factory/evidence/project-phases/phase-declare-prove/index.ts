@@ -5,8 +5,6 @@ import { defineWorkflow } from "@amykit/core";
 export const plugin = defineWorkflow({
   name: "staff-work",
   pluginName: "workflow-staff-work",
-  states: ["OPENED"],
-  terminal: ["OPENED"],
   configSchema: {},
   policy: {},
   needs: {},

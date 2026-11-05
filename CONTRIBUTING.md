@@ -138,10 +138,14 @@ When one of these rules fires, its message says why the rule exists. Read it
 before changing the code, and never loosen the rule to get past it: the rule
 files are hash-locked, so loosening one shows up in the diff.
 
-A **workflow** is two halves: `plan()`, which is pure and says *what* should
-happen, and a runtime, which says *how*. If you find yourself wanting to
-`await` something inside `plan()`, the thing you want belongs in the runtime —
-purity is what lets a whole lifecycle be driven in a test in milliseconds.
+A **workflow** is three pieces: `workflow.mmd`, the Mermaid diagram that says
+*where* work can go and is the only place its states are written; `decide`, one
+pure decision per drawn state that says *where it goes next*; and `actions`,
+which say *how* it is done in the world. One `defineWorkflow` call joins them,
+and a workflow with no diagram beside it does not mount. If you find yourself
+wanting to `await` something inside a decision, the thing you want belongs in
+an action — purity is what lets a whole lifecycle be driven in a test in
+milliseconds.
 
 Writing one is `/amy-workflow`, and you do not need to be in this repository
 to do it: a workflow is a package, and yours can live anywhere.
