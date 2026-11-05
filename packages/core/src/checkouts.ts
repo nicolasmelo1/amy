@@ -1,4 +1,5 @@
 import { ConfigSchema } from "./config-schema.js";
+import { Workspace } from "./ports/Workspace.js";
 import { Git, RepoLayout } from "./git.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { Worktree } from "./ports/Worktree.js";
@@ -43,18 +44,43 @@ export interface Checkouts {
  * A plugin that declared no `defaultBranch` gets the shared setting's default,
  * which is what it would have been handed had it spread `BRANCH_SETTINGS`.
  */
-export function checkoutsFromSettings(
+export function checkoutsFromWorkspace(
   runner: CommandRunner,
-  paths: { readonly workspace: string; readonly checkouts: Readonly<Record<string, string>> },
+  workspace: Workspace,
   config: Readonly<Record<string, unknown>>,
   worktree: () => Worktree | undefined,
 ): Checkouts {
   return lendCheckouts(runner, {
-    workspaceRoot: paths.workspace,
-    checkouts: paths.checkouts,
+    workspaceRoot: workspace.workspaceRoot,
+    checkouts: workspace.checkouts,
     defaultBranch: defaultBranchOf(config),
     baseBranch: baseBranchesOf(config),
   }, worktree);
+}
+
+/**
+ * The checkouts a plugin or workflow asks for, answered when they are read.
+ *
+ * The workspace is looked up on the first read, so building a runtime never
+ * asks for the workplace by itself: a workflow that never reads its
+ * checkouts mounts on an install that carries none, and one that reads is
+ * refused by `refuse`, which says who asked and what to add. The answer is
+ * held once taken, so every read after the first sees the same workplace.
+ */
+export function lentWhenRead(resolve: () => Checkouts): Checkouts {
+  let taken: Checkouts | undefined;
+  const once = (): Checkouts => {
+    if (!taken) taken = resolve();
+    return taken;
+  };
+  return {
+    get git() {
+      return once().git;
+    },
+    get layout() {
+      return once().layout;
+    },
+  };
 }
 
 /**
@@ -80,8 +106,12 @@ function defaultBranchOf(config: Readonly<Record<string, unknown>>): string {
   return value;
 }
 
-/** The one place `baseBranch`, validated only as a record, is narrowed to names. */
-function baseBranchesOf(config: Readonly<Record<string, unknown>>): Readonly<Record<string, string>> | undefined {
+/**
+ * The one place `baseBranch`, validated only as a record, is narrowed to
+ * names. A plugin that takes the map in its own slice reads it through this,
+ * so a value that is not a branch name is refused at boot rather than sent.
+ */
+export function baseBranchesOf(config: Readonly<Record<string, unknown>>): Readonly<Record<string, string>> | undefined {
   const value = config.baseBranch;
   if (value === undefined) return undefined;
   if (value === null || typeof value !== "object" || Array.isArray(value)) {

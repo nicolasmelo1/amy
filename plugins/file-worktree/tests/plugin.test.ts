@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { mount as mountPlugins } from "@amykit/core";
 import { WorktreeManager } from "../src/manager.js";
 import { plugin } from "../src/plugin.js";
 
@@ -20,6 +21,8 @@ function mount(recordsDirectory: string, root: string): WorktreeManager {
       recordsDirectory,
       defaultBranch: "main",
       retentionDays: 7,
+      workspaceRoot: root,
+      checkouts: {},
     },
     paths: { state: path.join(root, "shared-state") },
     runner: { run: async () => ({ ok: true, stdout: "", stderr: "" }) },
@@ -60,5 +63,30 @@ describe("the file worktree plugin", () => {
     const states = await mount(records, path.join(root, "trees")).states();
 
     expect(states).toMatchObject([{ workId, state: "terminal" }]);
+  });
+
+  it("refuses a base map whose value is not a branch name when it mounts", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-worktree-plugin-"));
+    roots.push(root);
+    const outcome = await mountPlugins(
+      [plugin],
+      {
+        "@amykit/plugin-file-worktree": {
+          workflow: "phase",
+          workspaceRoot: root,
+          baseBranch: { "acme/widgets": 7 },
+        },
+      },
+      {
+        runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+        now: () => new Date(),
+        paths: { state: root },
+      },
+    );
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.problems.join("\n")).toContain("`baseBranch` names 7 for `acme/widgets`, which is not a branch name");
+    }
   });
 });

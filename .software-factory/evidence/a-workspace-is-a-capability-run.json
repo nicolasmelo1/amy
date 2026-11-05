@@ -1,0 +1,129 @@
+{
+  "scenario": "a-workspace-is-a-capability",
+  "goal": "Prove an install whose config names none of repos, workspaceRoot, checkouts, defaultBranch, baseBranch, gate and worktrees, and mounts no workspace, is told it is ready by amy doctor and walks an installed support inbox from a request to an answer sent only after the operator approved it in the conversation; and that ticket-to-qa, errand and note-to-plan walk as their scenarios prove with their workspace said in the file-worktree plugin's slice.",
+  "status": "passed",
+  "assertions": [
+    {
+      "type": "workspace.the_config_names_no_workspace",
+      "status": "passed",
+      "detail": {
+        "named": [],
+        "mounted": [
+          "@amykit/plugin-file-queue",
+          "@amykit/plugin-file-store",
+          "@amykit/plugin-telegram",
+          "@acme/workflow-support-inbox",
+          "@amykit/plugin-claude",
+          "@amykit/plugin-agent-relay",
+          "@amykit/plugin-notify-fanout",
+          "@amykit/plugin-notify-inbox",
+          "@amykit/plugin-serial-engine"
+        ],
+        "added": "installing /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.sXaWCIioeC/workflow-support-inbox into /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.sXaWCIioeC/home/.amy/plugins…\nadded @acme/workflow-support-inbox as the workflow `support-inbox`\nthe machine boots: run `amy doctor`, then `amy tick`."
+      }
+    },
+    {
+      "type": "workspace.the_doctor_asks_nothing_of_a_repository_and_says_ready",
+      "status": "passed",
+      "detail": {
+        "code": 0,
+        "asked": [],
+        "out": "ok   config file  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.sXaWCIioeC/home/.amy/config.yaml\nok   a notification channel is on\nok   auto update settings\nok   settings for @amykit/plugin-telegram\nok   workflow write surface  read-only: it cannot write the tracker or code host\nok   TELEGRAM_BOT_TOKEN\nok   claude available\nok   telegram bot  @amy_work_bot, with topics in private chats\nok   telegram chat  private chat with 4021\nok   telegram updates  read by amy alone\nok   10 plugin(s) assembled\n\nready"
+      }
+    },
+    {
+      "type": "workspace.nothing_is_sent_before_the_operator_approves",
+      "status": "passed",
+      "detail": {
+        "state": "AWAITING_APPROVAL",
+        "sentEarly": false,
+        "topics": {
+          "11": "Support request REQ-1"
+        },
+        "sent": [
+          {
+            "topic": 11,
+            "text": "A request filed under billing. The answer I would send:\n\nHi Grace, you were charged twice for the same order, and the second charge is refunded today. It reaches your card in three to five working days.\n\nSay \"approve\" to send it."
+          }
+        ]
+      }
+    },
+    {
+      "type": "workspace.a_workflow_without_code_needs_no_workspace",
+      "status": "passed",
+      "detail": {
+        "state": "SENT",
+        "discovered": "queued REQ-1",
+        "ticks": [
+          "REQ-1  ARRIVED  the agent triages the request and drafts the answer",
+          "REQ-1  ARRIVED -> AWAITING_APPROVAL  the agent drafted an answer, and the operator is asked",
+          "REQ-1  AWAITING_APPROVAL -> SENT  the operator approved the draft"
+        ],
+        "drafted": [
+          {
+            "queue": "billing",
+            "cwd": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.sXaWCIioeC/home/.amy"
+          }
+        ],
+        "sent": "Hi Grace, you were charged twice for the same order, and the second charge is refunded today. It reaches your card in three to five working days.\n",
+        "violations": [],
+        "trees": []
+      }
+    },
+    {
+      "type": "workspace.the_code_workflows_walk_with_their_workspace_in_its_plugin",
+      "status": "passed",
+      "detail": {
+        "ticket-to-qa": {
+          "status": "passed",
+          "assertions": 61,
+          "failed": [],
+          "machineKeys": [],
+          "workspaceSlice": [
+            "repos",
+            "workspaceRoot",
+            "checkouts",
+            "defaultBranch",
+            "root",
+            "retentionDays"
+          ]
+        },
+        "errand": {
+          "status": "passed",
+          "assertions": 21,
+          "failed": [],
+          "machineKeys": [],
+          "workspaceSlice": [
+            "repos",
+            "workspaceRoot",
+            "defaultBranch",
+            "root",
+            "retentionDays"
+          ]
+        },
+        "note-to-plan": {
+          "status": "passed",
+          "assertions": 23,
+          "failed": [],
+          "machineKeys": [],
+          "workspaceSlice": [
+            "repos",
+            "workspaceRoot",
+            "defaultBranch"
+          ]
+        }
+      }
+    },
+    {
+      "type": "update.the_workspace_moves_into_its_plugin",
+      "status": "passed",
+      "detail": {
+        "exit": 0,
+        "moved": {
+          "type": "update.the_workspace_moves_into_its_plugin",
+          "status": "passed"
+        }
+      }
+    }
+  ]
+}

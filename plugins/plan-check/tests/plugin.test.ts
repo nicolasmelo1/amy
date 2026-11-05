@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { HostServices, mount } from "@amykit/core";
-import { ScriptedRunner } from "@amykit/test-fixtures";
+import { ScriptedRunner, fakeWorkspace } from "@amykit/test-fixtures";
 import { PlanCheck } from "@amykit/workflow-note-to-plan";
 import { plugin } from "../src/plugin.js";
 
@@ -8,13 +8,13 @@ function hostWith(runner: ScriptedRunner): HostServices {
   return {
     runner,
     now: () => new Date("2026-09-04T20:00:00.000Z"),
-    paths: { workspace: "/checkouts", checkouts: {}, state: "/state" },
+    paths: { state:  "/state" },
   };
 }
 
 async function mounted(settings: Record<string, unknown> = {}) {
   const runner = new ScriptedRunner([]);
-  const outcome = await mount([plugin], settings, hostWith(runner));
+  const outcome = await mount([fakeWorkspace(), plugin], settings, hostWith(runner));
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
   return { runner, mounted: outcome.mounted };

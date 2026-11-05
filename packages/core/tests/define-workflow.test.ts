@@ -27,7 +27,7 @@ import {
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-10-29T12:00:00.000Z"),
-  paths: { workspace: "/work", checkouts: {}, state: "/state" },
+  paths: { state:  "/state" },
 };
 
 interface TestRecord extends WorkRecord {
@@ -91,12 +91,56 @@ describe("defineWorkflow", () => {
     expect(outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.has("example")).toBe(true);
   });
 
+  it("mounts and walks a workflow that never reads its checkouts, on an install that mounts no workspace", async () => {
+    // The machine's workspace is a capability now: nothing hands a runtime
+    // checkouts by itself, so a workflow that works nowhere in particular
+    // needs none — the support inbox this machine drives on a bare install
+    // is the shape this proves.
+    const outcome = await mount([workflow(), source], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const mounted = outcome.mounted.workflow as Workflow;
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("example") as WorkflowRuntime;
+
+    const record = runtime.newRecord("EX-1", HOST.now());
+    const observation = await runtime.observe(record);
+    const plan = mounted.plan(record, observation, runtime.policy);
+
+    expect(plan.kind).toBe("settled");
+  });
+
   it("refuses a missing required port by workflow and port, after registration", async () => {
     const outcome = await mount([workflow()], {}, HOST);
 
     expect(outcome.ok).toBe(false);
     expect(outcome.ok === false && outcome.problems).toContain(
       "workflow-example: failed to mount — the example workflow needs the `source` port, and nothing mounted it",
+    );
+  });
+
+  it("refuses, naming the workflow, when its work first reads checkouts where no workspace is mounted", async () => {
+    const reader = withDiagram(defineWorkflow({
+      name: "workplace-reader",
+      configSchema: schema,
+      policy: { attempts: 3, backoffMs: 1000 } satisfies Policy,
+      needs: {},
+      decide: {
+        NEW: () => settled("done"),
+        DONE: () => settled("done"),
+      },
+      observe: async (scope) => {
+        void scope.checkouts.git;
+        return {};
+      },
+      actions: {},
+      record: (workId) => ({ customer: workId }),
+    }), NEW_DONE);
+
+    const outcome = await mount([reader], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("workplace-reader") as WorkflowRuntime;
+
+    await expect(runtime.observe(runtime.newRecord("R-1", HOST.now()))).rejects.toThrow(
+      /the workplace-reader workflow asked for the machine's checkouts.*@amykit\/plugin-file-worktree/,
     );
   });
 

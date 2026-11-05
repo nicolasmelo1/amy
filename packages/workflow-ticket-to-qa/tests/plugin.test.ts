@@ -3,13 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { ActionHandler, Event, HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, deferred, dispatchesTo, mount, mountedActions } from "@amykit/core";
-import { fakeAgent, fakeGate, fakeHost, fakeTracker, ticket } from "@amykit/test-fixtures";
+import { fakeAgent, fakeGate, fakeHost, fakeTracker, ticket, fakeWorkspace } from "@amykit/test-fixtures";
 import { plugin } from "./drawn.js";
 
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-09-03T12:00:00.000Z"),
-  paths: { workspace: "/w", checkouts: {}, state: "/w/.amy", profile: rosterDirectory() },
+  paths: { state:  "/w/.amy", profile: rosterDirectory() },
 };
 
 const SETTINGS = {
@@ -29,7 +29,7 @@ const world: Plugin = {
   },
 };
 
-const mountWith = (plugins: Plugin[]) => mount(plugins, SETTINGS, HOST);
+const mountWith = (plugins: Plugin[]) => mount([fakeWorkspace(), ...plugins], SETTINGS, HOST);
 
 describe("the ticket-to-qa workflow, as a plugin", () => {
   it("registers the workflow and contributes a runtime under its name", async () => {
@@ -79,7 +79,7 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
 
   it("writes one agent.run per agent run when mounted, so the budget never counts a run twice", async () => {
     const lines: Event[] = [];
-    const outcome = await mount([plugin, world], SETTINGS, { ...HOST, log: { append: (event) => void lines.push(event), read: () => lines } });
+    const outcome = await mount([fakeWorkspace(), plugin, world], SETTINGS, { ...HOST, log: { append: (event) => void lines.push(event), read: () => lines } });
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("ticket-to-qa") as WorkflowRuntime;
     const record = runtime.newRecord("PROJ-1", HOST.now());
@@ -105,9 +105,9 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
   it("refuses to look when the profile has no roster, and names the command that writes one", async () => {
     const HOST_WITHOUT_ROSTER: HostServices = {
       ...HOST,
-      paths: { workspace: "/w", checkouts: {}, state: "/w/.amy", profile: emptyDirectory() },
+      paths: { state:  "/w/.amy", profile: emptyDirectory() },
     };
-    const outcome = await mount([plugin, world], SETTINGS, HOST_WITHOUT_ROSTER);
+    const outcome = await mount([fakeWorkspace(), plugin, world], SETTINGS, HOST_WITHOUT_ROSTER);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     const runtime = outcome.mounted.contributions
@@ -155,7 +155,7 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
       })),
     };
     const outcome = await mount(
-      [plugin, world, probe],
+      [fakeWorkspace(), plugin, world, probe],
       { "@amykit/workflow-ticket-to-qa": {
         ...SETTINGS["@amykit/workflow-ticket-to-qa"],
         policy: { writes: "operator" },
@@ -172,7 +172,7 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
 
   it("refuses an unknown policy.conversation at boot, naming the setting and the value", async () => {
     const outcome = await mount(
-      [plugin, world],
+      [fakeWorkspace(), plugin, world],
       { "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], policy: { conversation: "chat" } } },
       HOST,
     );
@@ -185,7 +185,7 @@ describe("the ticket-to-qa workflow, as a plugin", () => {
   it("keeps discuss where a thread is mounted, and reads a reply as the decision where none is", async () => {
     const policyOf = async (plugins: Plugin[]) => {
       const outcome = await mount(
-        plugins,
+        [fakeWorkspace(), ...plugins],
         { "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], policy: { conversation: "discuss" } } },
         HOST,
       );

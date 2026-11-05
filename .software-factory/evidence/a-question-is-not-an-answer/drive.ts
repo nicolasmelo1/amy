@@ -200,7 +200,7 @@ async function world(conversationPolicy: Policy["conversation"]) {
   const mounted = await mount(
     [lent, standIns],
     { [drawn.name]: { repos: ["acme/widgets"], qaStatusName: "In QA", policy: { ...DEFAULT_POLICY, conversation: conversationPolicy } } },
-    { runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now, paths: { workspace: dir, checkouts: {}, state: dir, profile } },
+    { runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now, paths: { state: dir, profile } },
   );
   if (!mounted.ok) throw new Error(mounted.problems.join("; "));
 

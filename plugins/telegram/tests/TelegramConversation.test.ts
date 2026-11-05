@@ -911,15 +911,26 @@ describe("the ninth review", () => {
     const { amy } = amyWith(telegram);
     const thread = await amy.open("BILL-7", "Total");
     const earlier = telegram.say("/decide BRL", { topic: Number(thread.id) });
-    await amy.post(thread, { text: "- And the tax line?" });
-    // Asked within the second the earlier reply carries, after it was written.
-    const asked = new Date(Number(earlier.date) * 1000 + 1).toISOString();
-    const later = telegram.say("the tax line too", { topic: Number(thread.id) });
-    // All three in one Telegram second.
-    later.date = earlier.date;
+    // The machine's clock inside the second Telegram dated the earlier reply,
+    // which is where the question is posted and asked: amy records each post
+    // by that clock, and asks afterwards, as a workflow does once its question
+    // is sent. Pinned, so the run never straddles a second.
+    const second = Number(earlier.date) * 1000;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(second + 100);
+      await amy.post(thread, { text: "- And the tax line?" });
+      vi.setSystemTime(second + 200);
+      const asked = new Date().toISOString();
+      const later = telegram.say("the tax line too", { topic: Number(thread.id) });
+      // All three in one Telegram second; only the message ids still order them.
+      later.date = earlier.date;
 
-    const replies = await amy.replies(thread, asked);
+      const replies = await amy.replies(thread, asked);
 
-    expect(replies.map((reply) => reply.text)).toEqual(["the tax line too"]);
+      expect(replies.map((reply) => reply.text)).toEqual(["the tax line too"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

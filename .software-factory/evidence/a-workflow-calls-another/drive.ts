@@ -120,9 +120,11 @@ workflows:
     workflow: pager
 defaultWorkflow: pager
 
-repos: []
-workspaceRoot: ${path.join(root, "checkouts")}
-defaultBranch: main
+plugins:
+  "@amykit/plugin-file-worktree":
+    repos: []
+    workspaceRoot: ${path.join(root, "checkouts")}
+    defaultBranch: main
 maxItemAttempts: 1
 
 autoUpdate:

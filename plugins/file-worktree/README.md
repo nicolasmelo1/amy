@@ -4,7 +4,7 @@
 
 One isolated checkout per piece of work, created or reused, pruned by retention.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `worktree` port.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `workspace` port and the `worktree` port.
 
 ## Install
 
@@ -31,9 +31,11 @@ plugins:
     checkouts: {}
     defaultBranch: "main"
     recordsDirectory: ""
+    repos: []
     retentionDays: 7
     root: ""
     workflow: ""
+    workspaceRoot: "."
 ```
 
 | Setting | Type | Required | Default | What it is |
@@ -42,9 +44,11 @@ plugins:
 | `checkouts` | `record` | no | `{}` | where one repository's standing checkout is, instead of under the workspace root. A repository named here is never looked for under `root` at all |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `recordsDirectory` | `string` | no | `""` | where this profile stores workflow records. The host derives it so phase-local worktrees consult the same records as the mounted file store |
+| `repos` | `string[]` | no | `[]` | the repositories this workspace's work happens in, from review load to where an errand may be done |
 | `retentionDays` | `number` | no | `7` | how many days a terminal, clean tree stays before a prune may remove it. A dirty, failed or in-flight tree is never a prune's |
 | `root` | `string` | no | `""` | where the worktrees live, outside every repository. `~` is expanded. The default is beside the state directory, which keeps one install's trees together |
 | `workflow` | `string` | no | `""` | the first path segment of every tree this mount creates, so two workflows under one install never share a tree |
+| `workspaceRoot` | `string` | no | `.` | where one checkout per repository lives; `~` is expanded. The default is where this command was typed |
 
 Every field is checked at boot against the schema this package declares. A key that is
 not one of the above is a refusal naming the plugin and the key, not a setting that

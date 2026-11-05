@@ -165,7 +165,7 @@ describe("a fork of lanes", () => {
   const HOST: HostServices = {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: () => new Date("2026-10-31T12:00:00.000Z"),
-    paths: { workspace: "/work", checkouts: {}, state: "/state" },
+    paths: { state:  "/state" },
   };
   const refusal = (text: string): string => {
     try {

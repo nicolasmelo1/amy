@@ -61,7 +61,7 @@ describe("load", () => {
     const HOST: HostServices = {
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date(0),
-      paths: { workspace: os.tmpdir(), checkouts: {}, state: os.tmpdir() },
+      paths: { state: os.tmpdir() },
     };
 
     async function mounted(source: string): Promise<string> {

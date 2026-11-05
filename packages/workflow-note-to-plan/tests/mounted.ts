@@ -19,7 +19,7 @@ import {
   movedBy,
   runAction,
 } from "@amykit/core";
-import { ScriptedRunner, fakeHost, fakeRun, pullRequest, whenArgsInclude } from "@amykit/test-fixtures";
+import { ScriptedRunner, fakeHost, fakeRun, pullRequest, whenArgsInclude, fakeWorkspace } from "@amykit/test-fixtures";
 import { Note } from "../src/ports/Notes.js";
 import { PlanRecord } from "../src/record.js";
 import { plugin as noteToPlan } from "./drawn.js";
@@ -60,7 +60,7 @@ export class NoteWorld {
   private host(now: () => Date): HostServices {
     // The agent writes a file, so there is always something to commit.
     const runner = new ScriptedRunner([{ match: whenArgsInclude("status", "--porcelain"), result: { stdout: " M plans/x.md\n" } }]);
-    return { runner, now, paths: { workspace: "/checkouts", checkouts: {}, state: "/state" } };
+    return { runner, now, paths: { state:  "/state" } };
   }
 
   private ports(): Plugin[] {
@@ -87,7 +87,8 @@ export class NoteWorld {
       notifier: { announce: async ({ text }: { text: string }) => { this.said.push(text); } },
       store: records,
     };
-    return Object.entries(ports).map(([kind, impl]) => ({ name: `fake-${kind}`, register: (registry) => registry.port(kind, impl) }));
+    const providers: Plugin[] = Object.entries(ports).map(([kind, impl]) => ({ name: `fake-${kind}`, register: (registry) => registry.port(kind, impl) }));
+    return [fakeWorkspace(), ...providers];
   }
 
   private check(): AttemptOutcome {

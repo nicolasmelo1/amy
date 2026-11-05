@@ -9,7 +9,7 @@ import { EffectOutcomes } from "../src/outcomes.js";
 import { ErrandRecord } from "../src/record.js";
 import { Task } from "../src/ports/Tasks.js";
 import { branchFor, slugFor } from "../src/task-file.js";
-import { fakeHost } from "@amykit/test-fixtures";
+import { fakeHost, fakeWorkspace } from "@amykit/test-fixtures";
 import { plugin as errand } from "./drawn.js";
 
 const TASK: Task = {
@@ -81,10 +81,10 @@ describe("run-errand", () => {
       name: "@amykit/plugin-world",
       register: (registry) => Object.entries(ports).forEach(([kind, port]) => registry.port(kind, port)),
     };
-    const outcome = await mount([errand, world], { [errand.name]: { repos: [task.repo] } }, {
+    const outcome = await mount([errand, world, fakeWorkspace(layout.workspaceRoot)], { [errand.name]: { repos: [task.repo] } }, {
       runner: new NodeCommandRunner(),
       now: () => new Date("2026-09-05T10:00:00.000Z"),
-      paths: { workspace: layout.workspaceRoot, checkouts: {}, state: path.join(root, "state") },
+      paths: { state: path.join(root, "state") },
     });
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get("errand") as WorkflowRuntime<ErrandRecord, Observation>;

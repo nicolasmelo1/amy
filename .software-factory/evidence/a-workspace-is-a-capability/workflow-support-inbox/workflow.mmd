@@ -1,0 +1,12 @@
+stateDiagram-v2
+    %% A support request, answered: the agent triages it and drafts the
+    %% answer, the operator approves it in the conversation, and it is sent.
+    %% Nothing here is a repository, a branch or a gate.
+    classDef waiting stroke-dasharray: 4 4
+
+    [*] --> ARRIVED
+    ARRIVED --> AWAITING_APPROVAL: drafted, and the operator is asked
+    AWAITING_APPROVAL --> SENT: the operator approved the draft
+    SENT --> [*]
+
+    class AWAITING_APPROVAL waiting

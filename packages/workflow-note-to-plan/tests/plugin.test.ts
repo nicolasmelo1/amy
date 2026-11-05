@@ -5,7 +5,7 @@ import { plugin as noteToPlan } from "./drawn.js";
 const host: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-09-04T20:00:00.000Z"),
-  paths: { workspace: "/checkouts", checkouts: {}, state: "/state" },
+  paths: { state:  "/state" },
 };
 
 /** A plugin that mounts one port, so a test can leave exactly one out. */

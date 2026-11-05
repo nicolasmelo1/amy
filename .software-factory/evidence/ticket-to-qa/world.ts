@@ -398,32 +398,42 @@ defaultWorkflow: tickets
 autoUpdate:
   enabled: false
 
-repos:
-  - ${REPO}
-  - ${OTHER_REPO}
-
-workspaceRoot: ${path.join(root, "checkouts")}
-# One repository names its own root: the checkout is under a parent nothing
-# else in this config shares, which is the claim — no symlink, and nothing
-# under the root that is not state.
-checkouts:
-  ${OTHER_REPO}: ${path.join(root, "elsewhere", "gadgets")}
-defaultBranch: main
-worktrees:
-  root: ${path.join(root, "worktrees")}
-  retentionDays: 0
-
-# A real gate: two shell commands, run in the checkout, and the second one
-# fails until the work is actually right. The first writes down which tree
-# it ran in and at which commit, which is what the lanes are held to.
-gate:
-  ${REPO}:
-    - echo "$(pwd) $(git rev-parse HEAD)" >> "$AMY_E2E_WORLD/gate-heads.log"
-    - test -f invoice.md
-    - grep -q "currency:" invoice.md
-  ${OTHER_REPO}:
-    - test -f credit-note.md
-    - grep -q "currency:" credit-note.md
+plugins:
+  "@amykit/plugin-file-worktree":
+    repos:
+      - ${REPO}
+      - ${OTHER_REPO}
+    workspaceRoot: ${path.join(root, "checkouts")}
+    # One repository names its own root: the checkout is under a parent
+    # nothing else in this config shares, which is the claim — no symlink,
+    # and nothing under the root that is not state.
+    checkouts:
+      ${OTHER_REPO}: ${path.join(root, "elsewhere", "gadgets")}
+    defaultBranch: main
+    root: ${path.join(root, "worktrees")}
+    retentionDays: 0
+  # A real gate: two shell commands, run in the checkout, and the second one
+  # fails until the work is actually right. The first writes down which tree
+  # it ran in and at which commit, which is what the lanes are held to.
+  "@amykit/plugin-command-gate":
+    gate:
+      ${REPO}:
+        - echo "$(pwd) $(git rev-parse HEAD)" >> "$AMY_E2E_WORLD/gate-heads.log"
+        - test -f invoice.md
+        - grep -q "currency:" invoice.md
+      ${OTHER_REPO}:
+        - test -f credit-note.md
+        - grep -q "currency:" credit-note.md
+  # The tracker's slice. A hand-written slice is merged over the derived
+  # one, so only the settings somebody meant to change need to be named — and
+  # the tracker's vocabulary lives nowhere but here, which is the point.
+  "@amykit/plugin-linear":
+    workingStatusName: In Progress
+    repoByTeam:
+      BILL: ${REPO}
+      OPS: ${OTHER_REPO}
+    defaultRepo: ${REPO}
+    endpoint: ${endpoint}
 
 agent:
   model: sonnet
@@ -439,17 +449,6 @@ notify:
   hermes: null
   inbox: true
 
-# The tracker's own slice. A hand-written slice is merged over the derived
-# one, so only the settings somebody meant to change need to be named — and
-# the tracker's vocabulary lives nowhere but here, which is the point.
-plugins:
-  "@amykit/plugin-linear":
-    workingStatusName: In Progress
-    repoByTeam:
-      BILL: ${REPO}
-      OPS: ${OTHER_REPO}
-    defaultRepo: ${REPO}
-    endpoint: ${endpoint}
 `;
 }
 

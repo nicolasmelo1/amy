@@ -28,18 +28,16 @@ workflows:
 plugins:
   "@amykit/plugin-command-gate":
     baseBranch: {}
-    checkouts: {}
-    commands: <record>
     defaultBranch: "main"
+    gate: {}
     timeoutMs: 1800000
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
-| `checkouts` | `record` | no | `{}` | where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run |
-| `commands` | `record` | **yes** |  | the check commands per repository, with a `default` fallback |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
+| `gate` | `record` | no | `{}` | the deterministic gate commands per repository, with a `default` fallback; a repository with no entry and no `default` is refused rather than waved through |
 | `timeoutMs` | `number` | no | `1800000` | how long one check may run before it is given up on |
 
 Every field is checked at boot against the schema this package declares. A key that is

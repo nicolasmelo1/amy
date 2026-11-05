@@ -358,6 +358,11 @@
           "description": ""
         },
         {
+          "title": "A workspace is a capability",
+          "path": "/design/a-workspace-is-a-capability",
+          "description": ""
+        },
+        {
           "title": "Amy add and amy remove",
           "path": "/design/amy-add-and-amy-remove",
           "description": ""
@@ -1051,6 +1056,11 @@
           "depth": 3,
           "title": "**A workflow runs on lanes.** A diagram may draw state X <<fork>> and state Y <<join>>: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.",
           "slug": "a-workflow-runs-on-lanes-a-diagram-may-draw-state-x-fork-and-state-y-join-every-line-out-of-the-fork-is-a-lane-every-lane-is-a-call-so-a-record-of-its-own-and-the-caller-moves-to-the-join-once-every-lane-has-ended-holding-where-each-ended-and-what-it-returned-keyed-by-lane-there-is-no-setting-for-how-many-the-number-of-lanes-is-the-number-of-lines-drawn-before-this-work-that-could-run-side-by-side-ran-one-piece-after-the-other-or-was-written-by-hand-in-a-runtime-the-diagram-never-showed"
+        },
+        {
+          "depth": 3,
+          "title": "**A workspace is a capability.** Nothing is handed a workspace without asking: plugins borrow their checkouts through a workspace port the file-worktree plugin mounts, and workflows inherit them from their support, so a machine that works nowhere in particular needs none. The seven machine keys — repos, workspaceRoot, checkouts, defaultBranch, baseBranch, gate and worktrees — are read from the plugins whose slices carry them (plugins: \"@amykit/plugin-file-worktree\" for the six workspace keys, plugins: \"@amykit/plugin-command-gate\" for the gate). The doctor asks about checkouts, worktrees, gh and git only where a workspace was mounted, so a machine that drives no code — a support inbox, say — is told it is ready, and amy update moves an old install's keys under those slices, saying each move, keeping the original beside the config, and refusing a key put back at the top level by name. The provenance of every derived slice, now a property with its own falsifier (machine_key_leaks_into_a_slice).",
+          "slug": "a-workspace-is-a-capability-nothing-is-handed-a-workspace-without-asking-plugins-borrow-their-checkouts-through-a-workspace-port-the-file-worktree-plugin-mounts-and-workflows-inherit-them-from-their-support-so-a-machine-that-works-nowhere-in-particular-needs-none-the-seven-machine-keys-repos-workspaceroot-checkouts-defaultbranch-basebranch-gate-and-worktrees-are-read-from-the-plugins-whose-slices-carry-them-plugins-amykitplugin-file-worktree-for-the-six-workspace-keys-plugins-amykitplugin-command-gate-for-the-gate-the-doctor-asks-about-checkouts-worktrees-gh-and-git-only-where-a-workspace-was-mounted-so-a-machine-that-drives-no-code-a-support-inbox-say-is-told-it-is-ready-and-amy-update-moves-an-old-installs-keys-under-those-slices-saying-each-move-keeping-the-original-beside-the-config-and-refusing-a-key-put-back-at-the-top-level-by-name-the-provenance-of-every-derived-slice-now-a-property-with-its-own-falsifier-machinekeyleaksintoaslice"
         },
         {
           "depth": 3,
@@ -2622,6 +2632,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-workspace-is-a-capability",
+      "file": "docs/design/a-workspace-is-a-capability.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-workspace-is-a-capability.md",
+      "title": "A workspace is a capability",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/amy-add-and-amy-remove",
@@ -7186,6 +7207,13 @@
         ]
       },
       {
+        "kind": "workspace",
+        "actions": [],
+        "mountedBy": [
+          "@amykit/plugin-file-worktree"
+        ]
+      },
+      {
         "kind": "worktree",
         "actions": [
           "acquire-worktree"
@@ -7519,24 +7547,18 @@
             "description": "where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch"
           },
           {
-            "name": "checkouts",
-            "type": "record",
-            "required": false,
-            "default": {},
-            "description": "where one repository's checkout is, instead of under the workspace root, which is where the gate's commands run"
-          },
-          {
-            "name": "commands",
-            "type": "record",
-            "required": true,
-            "description": "the check commands per repository, with a `default` fallback"
-          },
-          {
             "name": "defaultBranch",
             "type": "string",
             "required": false,
             "default": "main",
             "description": "the branch new work is cut from, for a repository that named none, which is not always `main`"
+          },
+          {
+            "name": "gate",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "the deterministic gate commands per repository, with a `default` fallback; a repository with no entry and no `default` is refused rather than waved through"
           },
           {
             "name": "timeoutMs",
@@ -7783,6 +7805,7 @@
         "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/file-worktree",
         "readme": "plugins/file-worktree/README.md",
         "mounts": [
+          "workspace",
           "worktree"
         ],
         "contributes": [],
@@ -7816,6 +7839,13 @@
             "description": "where this profile stores workflow records. The host derives it so phase-local worktrees consult the same records as the mounted file store"
           },
           {
+            "name": "repos",
+            "type": "string[]",
+            "required": false,
+            "default": [],
+            "description": "the repositories this workspace's work happens in, from review load to where an errand may be done"
+          },
+          {
             "name": "retentionDays",
             "type": "number",
             "required": false,
@@ -7835,6 +7865,13 @@
             "required": false,
             "default": "",
             "description": "the first path segment of every tree this mount creates, so two workflows under one install never share a tree"
+          },
+          {
+            "name": "workspaceRoot",
+            "type": "string",
+            "required": false,
+            "default": ".",
+            "description": "where one checkout per repository lives; `~` is expanded. The default is where this command was typed"
           }
         ],
         "environment": []
@@ -8988,6 +9025,34 @@
         "scenario": ".software-factory/evidence/workflow-new-scenario.sh"
       },
       {
+        "name": "a-workspace-is-a-capability",
+        "activation": [
+          "packages/core/src/checkouts.ts",
+          "packages/core/src/mount.ts",
+          "packages/core/src/plugin.ts",
+          "packages/core/src/ports/Workspace.ts",
+          "packages/core/src/define-workflow.ts",
+          "packages/cli/src/config.ts",
+          "packages/cli/src/slices.ts",
+          "packages/cli/src/doctor.ts",
+          "plugins/file-worktree/src/**",
+          "plugins/command-gate/src/**",
+          ".software-factory/evidence/a-workspace-is-a-capability/**",
+          ".software-factory/evidence/a-workspace-is-a-capability-scenario.sh"
+        ],
+        "evidence": ".software-factory/evidence/a-workspace-is-a-capability.json",
+        "plan": "docs/design/a-workspace-is-a-capability.md",
+        "assertions": [
+          "workspace.the_config_names_no_workspace",
+          "workspace.the_doctor_asks_nothing_of_a_repository_and_says_ready",
+          "workspace.nothing_is_sent_before_the_operator_approves",
+          "workspace.a_workflow_without_code_needs_no_workspace",
+          "workspace.the_code_workflows_walk_with_their_workspace_in_its_plugin",
+          "update.the_workspace_moves_into_its_plugin"
+        ],
+        "scenario": ".software-factory/evidence/a-workspace-is-a-capability-scenario.sh"
+      },
+      {
         "name": "amy-add-remove",
         "activation": [
           "packages/cli/src/index.ts",
@@ -9073,7 +9138,8 @@
           "update.the_settings_move_under_their_workflow",
           "update.a_second_update_moves_nothing",
           "update.a_moved_key_named_at_its_new_place",
-          "update.a_moved_key_names_its_destination"
+          "update.a_moved_key_names_its_destination",
+          "update.the_workspace_moves_into_its_plugin"
         ],
         "scenario": ".software-factory/evidence/amy-update-scenario.sh"
       },
@@ -10586,6 +10652,42 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-workspace-is-a-capability",
+        "title": "**A workspace is a capability.** Nothing is handed a workspace without asking: plugins borrow their checkouts through a `workspace` port the file-worktree plugin mounts, and workflows inherit them from their support, so a machine that works nowhere in particular needs none. The seven machine keys — `repos`, `workspaceRoot`, `checkouts`, `defaultBranch`, `baseBranch`, `gate` and `worktrees` — are read from the plugins whose slices carry them (`plugins: \"@amykit/plugin-file-worktree\"` for the six workspace keys, `plugins: \"@amykit/plugin-command-gate\"` for the gate). The doctor asks about checkouts, worktrees, `gh` and `git` only where a workspace was mounted, so a machine that drives no code — a support inbox, say — is told it is ready, and `amy update` moves an old install's keys under those slices, saying each move, keeping the original beside the config, and refusing a key put back at the top level by name. The provenance of every derived slice, now a property with its own falsifier (`machine_key_leaks_into_a_slice`).",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-next-steps",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
             "level": "minor"
           }
         ],

@@ -25,6 +25,7 @@ import {
   renderBrief,
   stampId,
   unmetNeeds,
+  WORKSPACE_PORT,
 } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
 // Inspection builds these directly: `amy status` has to work even when a
@@ -450,6 +451,10 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     // own answer to report.
     notifyPort: mounted?.ports.get("notify"),
     gatePort: mounted?.ports.get("gate"),
+    // The workspace is a capability like the gate: a machine that mounted
+    // one is asked whether its checkouts can be reached, and one that
+    // mounted none is asked nothing.
+    workspacePort: mounted?.ports.get(WORKSPACE_PORT),
     // What the machine's own plugins read from the environment, named by
     // them: a machine that mounted no credential-reading plugin is asked
     // for no credential.
@@ -1383,7 +1388,7 @@ async function mountingWithout(
         runner,
         now: () => new Date(),
         log: new FileEventLog(profilePaths(home, trialProfile).log, undefined, build),
-        paths: hostPaths(trialConfig, profilePaths(home, trialProfile).base, trialProfile),
+        paths: hostPaths(profilePaths(home, trialProfile).base, trialProfile),
       },
     );
     if (!outcome.ok) return { ok: false, problems: outcome.problems };

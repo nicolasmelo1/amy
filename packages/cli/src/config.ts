@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import yaml from "yaml";
-import os from "node:os";
 import path from "node:path";
 import { ConfigSchema } from "@amykit/core";
 import { paths } from "./paths.js";
@@ -110,37 +109,9 @@ export interface AmyConfig {
   /** A scalar/null source value retained so malformed YAML cannot become valid. */
   autoUpdateSource?: unknown;
 
-  /** Repositories this machine's work happens in, handoffs and reviews alike. */
-  repos: string[];
   retentionDays: number;
   staleClaimMs: number;
   maxItemAttempts: number;
-
-  /** Directory holding one checkout per repository. `~` is expanded. */
-  workspaceRoot: string;
-  /**
-   * Where one repository's checkout is, instead of under the root.
-   *
-   * A repository named here is not looked for under `workspaceRoot` at all,
-   * so work can span repositories two unrelated parents hold, with no
-   * symlink standing in for the map and nothing in the state directory
-   * holding configuration. Values expand `~` the way `workspaceRoot` does.
-   */
-  checkouts: Record<string, string>;
-  /** Branch new work is cut from. */
-  defaultBranch: string;
-  /**
-   * Where one repository's base branch is, instead of the fallback.
-   *
-   * Repositories on one install do not agree on the name, and the answer
-   * before this was one string for all of them. A repository named here is
-   * cut from, and opened against, its own branch; every other keeps
-   * `defaultBranch`, which is why it keeps its name — most installs never
-   * write the map.
-   */
-  baseBranch: Record<string, string>;
-  /** Gate commands per repository, with a `default` fallback. */
-  gate: Record<string, string[]>;
   agent: {
     model?: string;
     /** Model tiers offered to the relay, cheapest first. */
@@ -179,13 +150,6 @@ export interface AmyConfig {
   skills: Record<string, string[]>;
   notify: NotifyConfig;
   /**
-   * Where isolated worktrees live, and how long finished ones stay.
-   *
-   * The machine's own state, not a workflow's: the paths carry the workflow
-   * name, the retention is the same word the queue's retention is.
-   */
-  worktrees: WorktreesConfig;
-  /**
    * One slice per plugin, keyed by package name.
    *
    * The host never reads inside a slice. Each plugin declares what its own
@@ -194,33 +158,19 @@ export interface AmyConfig {
   plugins: Record<string, unknown>;
 }
 
-interface WorktreesConfig {
-  /** Where the trees live. `~` is expanded. Empty means beside the state. */
-  root: string;
-  /** How many days a terminal, clean tree stays before a prune takes it. */
-  retentionDays: number;
-}
-
 export const DEFAULT_CONFIG: AmyConfig = {
   workflows: {},
   defaultWorkflow: "",
   extraPlugins: [],
   autoUpdate: DEFAULT_AUTO_UPDATE,
-  repos: [],
   retentionDays: 7,
   staleClaimMs: 30 * 60 * 1000,
   maxItemAttempts: 5,
-  workspaceRoot: ".",
-  checkouts: {},
-  defaultBranch: "main",
-  baseBranch: {},
-  gate: {},
   agent: {},
   skills: {},
   // A tracker comment is for a question that needs a person, and the workflow
   // posts those itself — announcements are the operator's channels' job.
   notify: { hermes: null, inbox: true },
-  worktrees: { root: "", retentionDays: 7 },
   plugins: {},
 };
 
@@ -271,11 +221,6 @@ export const machineSchema: ConfigSchema = {
     description: "how many workflow runs sit between two refreshes; the count is kept per profile",
     default: 20,
   },
-  repos: {
-    type: "string[]",
-    description: "repositories this machine's work happens in, from review load to where an errand may be done",
-    default: [],
-  },
   retentionDays: {
     type: "number",
     description: "how long a finished queue item is kept before it is pruned",
@@ -290,31 +235,6 @@ export const machineSchema: ConfigSchema = {
     type: "number",
     description: "how many times one item may fail before the operator is told and it is dropped",
     default: 5,
-  },
-  workspaceRoot: {
-    type: "string",
-    description: "where one checkout per repository lives; `~` is expanded",
-    default: ".",
-  },
-  checkouts: {
-    type: "record",
-    description: "where one repository's checkout is, instead of under workspaceRoot, so work can span parents",
-    default: {},
-  },
-  defaultBranch: {
-    type: "string",
-    description: "the branch new work is cut from by every repository that names no other",
-    default: "main",
-  },
-  baseBranch: {
-    type: "record",
-    description: "where one repository's base branch is, instead of defaultBranch, by repository",
-    default: {},
-  },
-  gate: {
-    type: "record",
-    description: "the deterministic gate commands per repository, with a `default` fallback",
-    default: {},
   },
   "agent.model": {
     type: "string",
@@ -358,44 +278,12 @@ export const machineSchema: ConfigSchema = {
     description: "a file under .amy/needs-input plus a desktop notification, for what needs a person",
     default: true,
   },
-  "worktrees.root": {
-    type: "string",
-    description: "where isolated worktrees live; left out, they live beside the state directory",
-    default: "",
-  },
-  "worktrees.retentionDays": {
-    type: "number",
-    description: "how long a terminal, clean tree stays before a prune takes it",
-    default: 7,
-  },
   plugins: {
     type: "record",
     description: "one slice per plugin, keyed by package name; each plugin declares what its own looks like",
     default: {},
   },
 };
-
-/** `~/workspaces/northwind` becomes an absolute path. */
-function expandHome(value: string): string {
-  if (value === "~") return os.homedir();
-  if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
-  return value;
-}
-
-/** Every value in the map, expanded the way `workspaceRoot` is. */
-function expandHomeIn(checkouts: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(checkouts).map(([repo, value]) => [repo, expandHome(value)]),
-  );
-}
-
-/** The checkout layout is one merge unit, so every reader resolves it alike. */
-function checkoutLayoutFrom(parsed: Partial<AmyConfig>): Pick<AmyConfig, "workspaceRoot" | "checkouts"> {
-  return {
-    workspaceRoot: expandHome(parsed.workspaceRoot ?? DEFAULT_CONFIG.workspaceRoot),
-    checkouts: expandHomeIn(parsed.checkouts ?? DEFAULT_CONFIG.checkouts),
-  };
-}
 
 /**
  * Parses one config document through the loader's own merge.
@@ -448,11 +336,11 @@ function autoUpdateFrom(parsed: Partial<AmyConfig>): Pick<AmyConfig, "autoUpdate
 }
 
 /**
- * The top-level keys a workflow's vocabulary used to live under, and where
- * each one went.
+ * The top-level keys the machine no longer carries, and where each went —
+ * a workflow's own vocabulary, and the workspace with its gate.
  *
- * A config that was written for the old shape boots nowhere useful — the
- * workflow it tuned reads a block it no longer finds — so the loader refuses
+ * A config written for the old shape boots nowhere useful — the workflow or
+ * plugin it tuned reads a block it no longer finds — so the loader refuses
  * the file by name, saying where the setting lives now, and `amy update` is
  * the move that rewrites it.
  */
@@ -463,6 +351,17 @@ const MOVED_KEYS: ReadonlyMap<string, string> = new Map([
   ["errands", "under the profile mounting @amykit/workflow-errand, as settings.policy"],
   ["workingStatusName", "under plugins: \"@amykit/plugin-linear\", as workingStatusName"],
   ["repoByTeam", "under plugins: \"@amykit/plugin-linear\", as repoByTeam"],
+  // The workspace is a capability now: the repositories, where their
+  // checkouts live, their branches and their worktrees are the file-worktree
+  // plugin's slice, and the gate commands are the command-gate plugin's. The
+  // machine reads none of the seven.
+  ["repos", "under plugins: \"@amykit/plugin-file-worktree\", as repos"],
+  ["workspaceRoot", "under plugins: \"@amykit/plugin-file-worktree\", as workspaceRoot"],
+  ["checkouts", "under plugins: \"@amykit/plugin-file-worktree\", as checkouts"],
+  ["defaultBranch", "under plugins: \"@amykit/plugin-file-worktree\", as defaultBranch"],
+  ["baseBranch", "under plugins: \"@amykit/plugin-file-worktree\", as baseBranch"],
+  ["worktrees", "under plugins: \"@amykit/plugin-file-worktree\", as root and retentionDays"],
+  ["gate", "under plugins: \"@amykit/plugin-command-gate\", as gate"],
 ]);
 
 function refusedMovedKeys(parsed: Partial<AmyConfig>): void {
@@ -483,13 +382,6 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
     skills: parsed.skills ?? {},
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
-    worktrees: {
-      root: expandHome(parsed.worktrees?.root ?? DEFAULT_CONFIG.worktrees.root),
-      retentionDays:
-        parsed.worktrees?.retentionDays ?? DEFAULT_CONFIG.worktrees.retentionDays,
-    },
-    baseBranch: parsed.baseBranch ?? DEFAULT_CONFIG.baseBranch,
-    ...checkoutLayoutFrom(parsed),
   };
 }
 
@@ -560,14 +452,6 @@ autoUpdate:
   timing: before
   everyRuns: 20
 
-# Repositories the team reviews in. Review load is counted across all of
-# them, because counting one would send every review to whoever happens to be
-# quiet in that one. They are also where an errand may be done, and the first
-# is where this machine's own failures are filed.
-repos:
-  - Northwind/northwind-backend
-  - Northwind/northwind-frontend
-
 # Finished queue items are only useful for reading the log afterwards.
 retentionDays: 7
 
@@ -577,17 +461,6 @@ retentionDays: 7
 # dropped and you are told, rather than retried forever in silence.
 staleClaimMs: 1800000
 maxItemAttempts: 5
-
-# Where isolated worktrees live, and how long finished ones stay. Every tree
-# is one work item's own checkout under this root, so two tickets on one
-# repository run at the same time without contending for a shared tree. A
-# dirty or in-flight tree is never pruned: retention only ever takes a
-# terminal, clean one.
-#
-# Leave "root" out and the trees live beside the state directory, under .amy.
-worktrees:
-  root: ~/workspaces/northwind-worktrees
-  retentionDays: 7
 
 # Which agents to try, cheapest first. Naming a harness here is what mounts
 # it, so leaving codex and hermes out means they are never required to be
@@ -621,33 +494,6 @@ agent:
       Delete anything that is not needed. No variable that aliases an existing
       value, no check the types already guarantee, no comment stating the
       obvious, no non-null assertions.
-
-# Where the checkouts live. One directory per repository, named after the
-# repository without its owner.
-workspaceRoot: ~/workspaces/northwind
-# Where one repository's checkout is, instead of under the root. A repository
-# named here is not looked for under workspaceRoot at all, so work can span
-# repositories two unrelated parents hold — with no symlink standing in for
-# the map. Every value expands ~ the way workspaceRoot does.
-# checkouts:
-#   Northwind/northwind-backend: ~/work/backend
-#   acme/amy: ~/code/amy
-defaultBranch: main
-# Where one repository's base branch is, instead of the fallback above.
-# Repositories on one install do not agree on the name — a fork of this one
-# keeps master — and one string for all of them was a workaround a private
-# workflow had to carry its own mapping for. A repository named here is cut
-# from, and opened against, its own branch; every other keeps defaultBranch.
-# baseBranch:
-#   Northwind/northwind-frontend: trunk
-
-# The deterministic gate. Nothing reaches a pull request until this is green.
-# A repository with no entry here, and no "default", is refused rather than
-# waved through.
-gate:
-  Northwind/northwind-backend:
-    - npm run --workspace @northwind/api lint
-    - npm run --workspace @northwind/api typecheck
 
 # Who does each step. A step with no entry is done by the agent in amy's own
 # words, which is every step until you say otherwise. A skill named here must
@@ -685,12 +531,28 @@ notify:
 #       datadog: pup monitors list --json
 #       notion: ntn page get
 #
-# The tracker's settings and every workflow's own live with what mounts them —
-# an install carries only the vocabulary of what it drives. The status names a
-# ticket moves between belong to the tracker plugin; a team map belongs beside
-# it; the ceilings each workflow's decisions read belong to that workflow's
-# profile. \`amy add\` writes the block; \`amy config explain\` lists them.
+# The machine carries none of the vocabulary of a particular plugin: what the
+# agents spend is the only top-level block left here, and the workspace — the
+# repositories, where their checkouts live, their branches and their worktrees —
+# is the file-worktree plugin's slice, the gate commands the command-gate
+# plugin's. \`amy update\` moves an old install, \`amy config explain\`
+# lists every slice's settings, and an install that drives no code mounts no
+# workspace and is asked for none of it.
 #
+#   plugins:
+#     "@amykit/plugin-file-worktree":
+#       repos:
+#         - Northwind/northwind-backend
+#         - Northwind/northwind-frontend
+#       workspaceRoot: ~/workspaces/northwind
+#       defaultBranch: main
+#     "@amykit/plugin-command-gate":
+#       gate:
+#         Northwind/northwind-backend:
+#           - npm run --workspace @northwind/api lint
+#           - npm run --workspace @northwind/api typecheck
+#
+# The tracker's settings and every workflow's own live with what mounts them.
 # plugins:
 #   "@amykit/plugin-notify-hermes":
 #     target: slack:my-channel

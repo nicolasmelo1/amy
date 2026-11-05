@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ConfigSchema, Engine, HostServices, Plugin, WorkRecord, acceptsAction, act, advance, call, defineWorkflow, mount, settled, withDiagram } from "@amykit/core";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { plugin as serial } from "@amykit/plugin-serial-engine";
-import { InMemoryStore } from "@amykit/test-fixtures";
+import { InMemoryStore, fakeWorkspace } from "@amykit/test-fixtures";
 import { plugin as concurrent } from "../src/plugin.js";
 
 const NO_SETTINGS = {} satisfies ConfigSchema;
@@ -129,10 +129,10 @@ describe("the concurrent engine", () => {
     const host: HostServices = {
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date("2026-10-31T12:00:00.000Z"),
-      paths: { workspace: root, checkouts: {}, state: root },
+      paths: { state: root },
     };
     // Retried at once, so a failed look is looked at again within the run.
-    const outcome = await mount([ports, planner(moves, shape), engine], { [engine.name]: { retryDelayMs: 0 } }, host);
+    const outcome = await mount([fakeWorkspace(), ports, planner(moves, shape), engine], { [engine.name]: { retryDelayMs: 0 } }, host);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const driven = outcome.mounted.engine as Engine;
     await driven.discover();

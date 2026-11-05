@@ -1,20 +1,37 @@
 import { describe, it, expect } from "vitest";
 import { HostServices, mount } from "@amykit/core";
-import { ScriptedRunner } from "@amykit/test-fixtures";
+import { ScriptedRunner, fakeWorkspace } from "@amykit/test-fixtures";
 import { NextStepsTracker, plugin } from "../src/index.js";
 
 describe("mounting the next-steps tracker", () => {
   const host = (): HostServices => ({
     runner: new ScriptedRunner([]),
     now: () => new Date("2026-11-02T10:00:00.000Z"),
-    paths: { workspace: "/checkouts", checkouts: {}, state: "/state" },
+    paths: { state:  "/state" },
   });
 
   it("mounts the tracker port, reading the table it was pointed at", async () => {
-    const outcome = await mount([plugin], { "@amykit/plugin-next-steps": { repo: "acme/widgets" } }, host());
+    const outcome = await mount([fakeWorkspace(), plugin], { "@amykit/plugin-next-steps": { repo: "acme/widgets" } }, host());
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     expect(outcome.mounted.ports.get("tracker")).toBeInstanceOf(NextStepsTracker);
+  });
+
+  it("mounts before the workspace's provider, and reads the workplace when the table is read", async () => {
+    const cwds: (string | undefined)[] = [];
+    const runner: HostServices["runner"] = {
+      run: async (_command, _args, options) => {
+        cwds.push(options?.cwd);
+        return { ok: false, exitCode: 1, stdout: "", stderr: "not a repository" };
+      },
+    };
+    const outcome = await mount([plugin, fakeWorkspace("/checkouts")], { "@amykit/plugin-next-steps": { repo: "acme/widgets" } }, { ...host(), runner });
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    await (outcome.mounted.ports.get("tracker") as NextStepsTracker).inProgress().catch(() => undefined);
+
+    expect(cwds.length).toBeGreaterThan(0);
+    expect(cwds.every((cwd) => cwd?.startsWith("/checkouts"))).toBe(true);
   });
 
   it("refuses to mount without the repository the table is in", async () => {
@@ -25,7 +42,7 @@ describe("mounting the next-steps tracker", () => {
   });
 
   it("refuses a number of rows that is not one or more", async () => {
-    const outcome = await mount([plugin], { "@amykit/plugin-next-steps": { repo: "acme/widgets", rows: 0 } }, host());
+    const outcome = await mount([fakeWorkspace(), plugin], { "@amykit/plugin-next-steps": { repo: "acme/widgets", rows: 0 } }, host());
 
     expect(outcome.ok).toBe(false);
     expect(outcome.ok === false && outcome.problems.join(" ")).toContain("rows");

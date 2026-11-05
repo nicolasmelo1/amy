@@ -99,13 +99,18 @@ async function mountedTicketToQa(
       for (const [kind, port] of Object.entries(ports)) if (port) registry.port(kind, port);
     },
   };
+  // The workplace is a capability: this world works in a repository, so it mounts one.
+  const workspace: Plugin = {
+    name: "@amykit/plugin-workspace",
+    register: (registry) => registry.port(core.WORKSPACE_PORT, { workspaceRoot: scratch, checkouts: {} }),
+  };
   const outcome = await core.mount(
-    [drawnTicketToQa, world],
+    [drawnTicketToQa, world, workspace],
     { [drawnTicketToQa.name]: { repos: [REPO], qaStatusName: "In QA", ...(options.policy ? { policy: options.policy } : {}) } },
     {
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date(),
-      paths: { workspace: scratch, checkouts: {}, state: path.join(scratch, ".amy"), profile },
+      paths: { state: path.join(scratch, ".amy"), profile },
     },
   );
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
@@ -212,7 +217,7 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
     },
   };
   const hostPlugin: Plugin = { name: "@amykit/plugin-github-under-test", register: (registry) => registry.port("code-host", host) };
-  const mounted = await core.mount([hostPlugin, workflowPlugin], {}, { runner: new core.NodeCommandRunner(), now: () => new Date(), paths: { workspace: root, checkouts: {}, state: path.join(root, ".amy") } });
+  const mounted = await core.mount([hostPlugin, workflowPlugin], {}, { runner: new core.NodeCommandRunner(), now: () => new Date(), paths: { state:  path.join(root, ".amy") } });
   const view = ctx.port?.("code-host") as (Partial<CodeHost> & Record<string, unknown>) | undefined;
   const ancestry = await view?.pullRequestAncestry?.(REPO, 80).catch((error: unknown) => String(error));
   record("compose.a_workflow_that_claims_no_writes_reads_ancestry", mounted.ok === true && typeof view?.pullRequestAncestry === "function" && typeof ancestry === "object" && ancestry?.state === "merged", ancestry);

@@ -31,7 +31,7 @@ import {
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-10-30T12:00:00.000Z"),
-  paths: { workspace: "/work", checkouts: {}, state: "/state" },
+  paths: { state:  "/state" },
 };
 
 const NO_SETTINGS = {} satisfies ConfigSchema;
@@ -374,6 +374,77 @@ describe("the smallest call", () => {
     expect(Object.keys(record.calls ?? {})).toEqual(["W-1/THINK#1"]);
     expect(record.calls!["W-1/THINK#1"]!.state).toBe("THOUGHT");
     expect(record.calling).toBeUndefined();
+  });
+
+  it("names the callee, not its caller, when the callee first reads checkouts where no workspace is mounted", async () => {
+    const reader = withDiagram(defineWorkflow({
+      name: "reader",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { READING: () => advance("READ", "read"), READ: () => settled("read") },
+      record: () => ({}),
+      observe: async (scope) => {
+        void scope.checkouts.git;
+        return {};
+      },
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> READING\nREADING --> READ\nREAD --> [*]\n");
+    const root = withDiagram(defineWorkflow({
+      name: "root",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { READ_IT: call(reader) },
+      decide: { START: () => advance("READ_IT", "go"), DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> START\nSTART --> READ_IT\nREAD_IT --> DONE: READ\nDONE --> [*]\nclass READ_IT call\n");
+    const { workflow, runtime } = await mounted([root]);
+
+    await expect(walk(workflow, runtime)).rejects.toThrow(/the reader workflow asked for the machine's checkouts/);
+  });
+
+  it("names the innermost callee when it is called through another call", async () => {
+    const reader = withDiagram(defineWorkflow({
+      name: "reader",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { READING: () => advance("READ", "read"), READ: () => settled("read") },
+      record: () => ({}),
+      observe: async (scope) => {
+        void scope.checkouts.git;
+        return {};
+      },
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> READING\nREADING --> READ\nREAD --> [*]\n");
+    const middle = withDiagram(defineWorkflow({
+      name: "middle",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { READ_IT: call(reader) },
+      decide: { PASSING: () => advance("READ_IT", "pass"), PASSED: () => settled("passed") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> PASSING\nPASSING --> READ_IT\nREAD_IT --> PASSED: READ\nPASSED --> [*]\nclass READ_IT call\n");
+    const root = withDiagram(defineWorkflow({
+      name: "root",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { PASS_IT: call(middle) },
+      decide: { START: () => advance("PASS_IT", "go"), DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> START\nSTART --> PASS_IT\nPASS_IT --> DONE: PASSED\nDONE --> [*]\nclass PASS_IT call\n");
+    const { workflow, runtime } = await mounted([root]);
+
+    await expect(walk(workflow, runtime)).rejects.toThrow(/the reader workflow asked for the machine's checkouts/);
   });
 
   it("starts the call at once when the workflow's first state is a call", async () => {

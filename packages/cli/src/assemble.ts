@@ -75,7 +75,7 @@ async function assemble(
     runner: services.runner,
     now: () => new Date(),
     log: services.log(place.log),
-    paths: hostPaths(config, place.base, profile),
+    paths: hostPaths(place.base, profile),
   }, requirements);
 
   if (!outcome.ok) return { ok: false, problems: outcome.problems };

@@ -536,7 +536,6 @@ if cmp -s "$work/config-after-first-update" .amy/config.yaml; then
 else
   record update.a_second_update_moves_nothing 1
 fi
-
 # A key put back where it lived is refused at boot, naming the place it moved
 # to rather than dropping it. The refusal is why nothing is silently read
 # from the old place, and the wording is what an operator acts on.
@@ -544,6 +543,38 @@ printf '\nqaStatusName: In QA\n' >> .amy/config.yaml
 refused=$("$amy" doctor 2>&1 || echo "")
 says update.a_moved_key_named_at_its_new_place "$refused" '`qaStatusName`'
 says update.a_moved_key_names_its_destination "$refused" 'settings.qaStatusName'
+
+# The workspace a v1 machine kept at the top level moves under the plugins
+# that read it, in the same update that moved the settings: the repositories,
+# the checkout root and map, the branches and the worktrees under the
+# file-worktree plugin's slice, the gate under the command-gate's — the
+# original kept beside the config, and a second update a no-op the way the
+# settings are.
+moved_workspace=0
+if grep -q '^repos:' .amy/config.yaml ||
+   grep -q '^workspaceRoot:' .amy/config.yaml ||
+   grep -q '^gate:' .amy/config.yaml ||
+   grep -q '^worktrees:' .amy/config.yaml ||
+   ! grep -q '"@amykit/plugin-file-worktree":' .amy/config.yaml ||
+   ! grep -q 'workspaceRoot: /workspaces/gadgets' .amy/config.yaml ||
+   ! grep -q '"@amykit/plugin-command-gate":' .amy/config.yaml ||
+   ! grep -q 'echo "the gate"' .amy/config.yaml ||
+   ! cmp -s "$work/config-before-the-move" .amy/config.yaml.moved; then
+  moved_workspace=1
+fi
+# A workspace key put back where it lived is refused at boot, naming the
+# plugin whose slice carries it now — the same refusal the settings name.
+# The settings key put back above comes out first: the boot names the first
+# moved key it meets, and this one is about the workspace's.
+grep -v '^qaStatusName: In QA$' .amy/config.yaml > "$work/config-without-the-setting"
+cp "$work/config-without-the-setting" .amy/config.yaml
+printf '\nrepos:\n  - example.test/again\n' >> .amy/config.yaml
+workspace_refused=$("$amy" doctor 2>&1 || echo "")
+if ! printf '%s\n' "$workspace_refused" | grep -q '`repos` at the top level' ||
+   ! printf '%s\n' "$workspace_refused" | grep -q '@amykit/plugin-file-worktree'; then
+  moved_workspace=1
+fi
+record update.the_workspace_moves_into_its_plugin "$moved_workspace"
 
 # 12. A project a machine before the walk named as three profiles, one per
 # phase folder: the same update folds them into the one profile the project

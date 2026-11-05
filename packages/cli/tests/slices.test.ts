@@ -23,9 +23,11 @@ const PLANS: Profile = {
 
 const CONFIG = {
   ...DEFAULT_CONFIG,
-  repos: ["acme/widgets"],
-  defaultBranch: "dev",
-  gate: { "acme/widgets": ["npm test"] },
+  plugins: {
+    // The workspace is the file-worktree plugin's slice now: the repositories,
+    // the branches and the checkout map the machine used to carry.
+    "@amykit/plugin-file-worktree": { repos: ["acme/widgets"], defaultBranch: "dev" },
+  },
 };
 
 describe("pluginSlices", () => {
@@ -77,7 +79,10 @@ describe("pluginSlices", () => {
     const slices = pluginSlices(
       {
         ...CONFIG,
-        plugins: { "@amykit/plugin-linear": { workingStatusName: "In Progress", repoByTeam: { ACME: "acme/widgets" } } },
+        plugins: {
+          "@amykit/plugin-file-worktree": { repos: ["acme/widgets"], defaultBranch: "dev" },
+          "@amykit/plugin-linear": { workingStatusName: "In Progress", repoByTeam: { ACME: "acme/widgets" } },
+        },
       },
       TICKETS,
     ) as Record<string, Record<string, unknown>>;
@@ -112,7 +117,7 @@ describe("pluginSlices", () => {
     // The agent only answers, in the directory its caller hands it: a branch
     // or a checkout map in a harness's slice would be a git it should not have.
     const slices = pluginSlices(
-      { ...CONFIG, baseBranch: { "acme/widgets": "trunk" }, checkouts: { "acme/widgets": "/work/widgets" } },
+      { ...CONFIG, plugins: { "@amykit/plugin-file-worktree": { repos: ["acme/widgets"], defaultBranch: "dev", baseBranch: { "acme/widgets": "trunk" }, checkouts: { "acme/widgets": "/work/widgets" } } } },
       TICKETS,
     ) as Record<string, Record<string, unknown>>;
 
@@ -152,7 +157,9 @@ describe("pluginSlices", () => {
     // of its own is a workaround this shim exists to retire.
     const mapped = {
       ...CONFIG,
-      baseBranch: { "acme/widgets": "trunk" },
+      plugins: {
+        "@amykit/plugin-file-worktree": { repos: ["acme/widgets"], defaultBranch: "dev", baseBranch: { "acme/widgets": "trunk" } },
+      },
     };
     const slices = pluginSlices(mapped, TICKETS) as Record<string, Record<string, unknown>>;
 
@@ -164,29 +171,41 @@ describe("pluginSlices", () => {
     expect(slices["@amykit/workflow-feature-grooming"]?.baseBranch).toEqual({ "acme/widgets": "trunk" });
   });
 
-  it("gives the gate the commands, per repository", () => {
-    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
-
-    expect(slices["@amykit/plugin-command-gate"]?.commands).toEqual({ "acme/widgets": ["npm test"] });
-  });
-
-  it("hands no checkout map when the config named none, so nothing resolves differently", () => {
-    // A config with no `checkouts:` block behaves exactly as before: the map
-    // the slices hand out is empty, and a `Git` given it resolves every
-    // repository under the root it already joined.
-    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
-
-    expect(slices["@amykit/plugin-command-gate"]?.checkouts).toEqual({});
-    expect(slices["@amykit/plugin-file-worktree"]?.checkouts).toEqual({});
-  });
-
-  it("carries the per-repository map the config wrote, beside the root", () => {
+  it("carries the gate in the command-gate plugin's own slice, beside the branches the workspace hands it", () => {
     const slices = pluginSlices(
-      { ...CONFIG, checkouts: { "acme/widgets": "/work/widgets" } },
+      {
+        ...CONFIG,
+        plugins: {
+          "@amykit/plugin-file-worktree": { repos: ["acme/widgets"], defaultBranch: "dev" },
+          "@amykit/plugin-command-gate": { gate: { "acme/widgets": ["npm test"] } },
+        },
+      },
       TICKETS,
     ) as Record<string, Record<string, unknown>>;
 
-    expect(slices["@amykit/plugin-command-gate"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
+    expect(slices["@amykit/plugin-command-gate"]).toMatchObject({
+      gate: { "acme/widgets": ["npm test"] },
+      defaultBranch: "dev",
+    });
+  });
+
+  it("hands the gate no checkout map: where the checkouts live is the workspace's answer", () => {
+    const slices = pluginSlices(CONFIG, TICKETS) as Record<string, Record<string, unknown>>;
+
+    expect("checkouts" in (slices["@amykit/plugin-command-gate"] ?? {})).toBe(false);
+  });
+
+  it("carries the map the workspace's slice wrote, to the plugin that owns the workplace", () => {
+    const slices = pluginSlices(
+      {
+        ...CONFIG,
+        plugins: {
+          "@amykit/plugin-file-worktree": { repos: ["acme/widgets"], defaultBranch: "dev", checkouts: { "acme/widgets": "/work/widgets" } },
+        },
+      },
+      TICKETS,
+    ) as Record<string, Record<string, unknown>>;
+
     expect(slices["@amykit/plugin-file-worktree"]?.checkouts).toEqual({ "acme/widgets": "/work/widgets" });
   });
 

@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { ConfigOf, PluginCommand, PluginContext, Worktree, definePlugin } from "@amykit/core";
+import { WORKSPACE_PORT, ConfigOf, PluginCommand, PluginContext, Worktree, Workspace, baseBranchesOf, definePlugin } from "@amykit/core";
 import { configSchema } from "./config.js";
 
 type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
@@ -30,13 +30,14 @@ function settingsFor(ctx: TypedContext): WorktreeManagerConfig {
   const root = (ctx.config.root) || path.join(ctx.paths.state, "worktrees");
   const recordsDirectory = (ctx.config.recordsDirectory) || path.join(ctx.paths.state, "records");
 
+  const workspace = workspaceFor(ctx);
   return {
     root: expandHome(root),
     workflow,
     defaultBranch: ctx.config.defaultBranch,
-    baseBranch: ctx.config.baseBranch as Record<string, string> | undefined,
-    workspaceRoot: ctx.paths.workspace,
-    checkouts: ctx.paths.checkouts,
+    baseBranch: baseBranchesOf(ctx.config),
+    workspaceRoot: workspace.workspaceRoot,
+    checkouts: workspace.checkouts,
     retentionDays: ctx.config.retentionDays,
     // Read on every look, never folded in at mount: a record deleted under a
     // running install turns its tree orphaned at the next list, which is the
@@ -61,6 +62,23 @@ function rootRecordId(workId: string): string {
 }
 
 type Settings = ConfigOf<typeof configSchema>;
+
+/**
+ * The workplace this slice carries, expanded the way the machine expanded it.
+ *
+ * The workspace is the plugin's own vocabulary now, so its paths are read off
+ * the slice and made absolute here — the one expansion, in the one place that
+ * mounts the port every `checkouts()` answer goes through.
+ */
+function workspaceFor(ctx: TypedContext): Workspace {
+  const checkouts = ctx.config.checkouts ?? {};
+  return {
+    workspaceRoot: expandHome(ctx.config.workspaceRoot),
+    checkouts: Object.fromEntries(
+      Object.entries(checkouts as Record<string, unknown>).map(([repo, value]) => [repo, expandHome(String(value))]),
+    ),
+  };
+}
 
 /** The port this plugin mounted, or the refusal that says why there is none. */
 function managed(ports: ReadonlyMap<string, object> | undefined): Worktree | undefined {
@@ -168,6 +186,7 @@ export const plugin = definePlugin<typeof configSchema>({
   configSchema,
   commands: [worktrees],
   register(registry, ctx) {
+    registry.port(WORKSPACE_PORT, workspaceFor(ctx));
     registry.port("worktree", new WorktreeManager(ctx.runner, settingsFor(ctx)));
   },
 });

@@ -10,9 +10,11 @@ import {
   Event,
   EventLog,
   Notifier,
+  Plugin,
   PullRequestView,
   StopSwitch,
   Store,
+  WORKSPACE_PORT,
   checkEvent,
 } from "@amykit/core";
 import { WorkerConfig } from "@amykit/plugin-serial-engine";
@@ -169,6 +171,19 @@ export function fakeGit(changed = true): TicketGit & {
     prepareBranch: vi.fn<TicketGit["prepareBranch"]>().mockResolvedValue(undefined),
     commitAndPush: vi.fn<TicketGit["commitAndPush"]>().mockResolvedValue(changed),
     headSha: async () => "0".repeat(40),
+  };
+}
+
+/**
+ * A workspace whose vocabulary a test names, mounted the way the host mounts it.
+ *
+ * The workplace is a capability now: a test world that works in repositories
+ * mounts one, and every `checkouts()` answer resolves through it.
+ */
+export function fakeWorkspace(workspaceRoot = "/checkouts", checkouts: Readonly<Record<string, string>> = {}): Plugin {
+  return {
+    name: "@amykit/plugin-workspace",
+    register: (registry) => registry.port(WORKSPACE_PORT, { workspaceRoot, checkouts }),
   };
 }
 

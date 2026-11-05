@@ -262,7 +262,7 @@ async function mountedRuntime(built: string): Promise<WorkflowRuntime> {
   const outcome = await mount([withDiagramBeside(plugin, built)], {}, {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: () => new Date(0),
-    paths: { workspace: os.tmpdir(), checkouts: {}, state: os.tmpdir() },
+    paths: { state: os.tmpdir() },
   });
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   const runtime = [...(outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.values() ?? [])][0];

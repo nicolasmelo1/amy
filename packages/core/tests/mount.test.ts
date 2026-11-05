@@ -15,7 +15,7 @@ import { deferred } from "../src/deferred.js";
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-09-03T12:00:00.000Z"),
-  paths: { workspace: "/w", checkouts: {}, state: "/w/.amy" },
+  paths: { state: "/w/.amy" },
 };
 
 function plugin(name: string, overrides: Partial<Plugin> = {}): Plugin {
@@ -180,16 +180,16 @@ describe("contributions", () => {
   });
 
   it("hands a plugin the services the host lends, not its own", async () => {
-    let seen: { workspace: string; hasRunner: boolean } | null = null;
+    let seen: { state: string; hasRunner: boolean } | null = null;
     const p = plugin("@amykit/plugin-a", {
       register: (_r, ctx) => {
-        seen = { workspace: ctx.paths.workspace, hasRunner: typeof ctx.runner.run === "function" };
+        seen = { state: ctx.paths.state, hasRunner: typeof ctx.runner.run === "function" };
       },
     });
 
     await mount([p], {}, HOST);
 
-    expect(seen).toEqual({ workspace: "/w", hasRunner: true });
+    expect(seen).toEqual({ state: "/w/.amy", hasRunner: true });
   });
 
   it("lets a plugin reach a port another plugin mounted", async () => {

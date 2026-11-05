@@ -306,7 +306,7 @@ function context(
   const runner: CommandRunner = { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) };
   return {
     config: {}, runner, now,
-    paths: { workspace: home, checkouts: {}, state: home },
+    paths: { state: home },
     contributions: (collection) => builds.collection(contributions.get(collection)),
     port: () => undefined,
     checkouts: () => lendCheckouts(runner, { workspaceRoot: home, defaultBranch: BRANCH_SETTINGS.defaultBranch.default }),

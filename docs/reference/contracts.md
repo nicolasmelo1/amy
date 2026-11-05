@@ -38,6 +38,7 @@ explains why for each.
 | `store` | `@amykit/plugin-file-store` | _reached directly_ |
 | `tasks` | `@amykit/plugin-file-tasks` | _reached directly_ |
 | `tracker` | `@amykit/plugin-linear`<br>`@amykit/plugin-next-steps` | `ask-question`, `escalate`, `hand-off-to-qa` |
+| `workspace` | `@amykit/plugin-file-worktree` | _reached directly_ |
 | `worktree` | `@amykit/plugin-file-worktree` | `acquire-worktree` |
 
 <!-- amy:end port-kinds -->

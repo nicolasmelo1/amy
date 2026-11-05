@@ -13,7 +13,7 @@ export const plugin = definePlugin<typeof configSchema>({
     registry.port(
       "gate",
       new CommandGate(ctx.runner, git, {
-        commands: ctx.config.commands as Record<string, string[]>,
+        commands: ctx.config.gate as Record<string, string[]>,
         timeoutMs: ctx.config.timeoutMs,
       }),
     );

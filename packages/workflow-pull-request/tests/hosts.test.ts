@@ -29,7 +29,7 @@ import { plugin as pullRequest } from "../src/index.js";
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   now: () => new Date("2026-10-30T12:00:00.000Z"),
-  paths: { workspace: "/work", checkouts: {}, state: "/state" },
+  paths: { state:  "/state" },
 };
 
 interface MergeRequest {

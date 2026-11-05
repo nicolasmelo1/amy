@@ -92,7 +92,7 @@ export async function mountTicketToQa(options: TicketMount = {}): Promise<Workfl
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: options.now ?? ((): Date => new Date()),
     ...(options.log ? { log: options.log } : {}),
-    paths: { workspace: "/tmp/amy-fixture", checkouts: {}, state: "/tmp/amy-fixture/.amy", profile: rosterDirectory(options.roster ?? defaultRoster()) },
+    paths: { state: "/tmp/amy-fixture/.amy", profile: rosterDirectory(options.roster ?? defaultRoster()) },
   });
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   return outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(ticketToQa.name) as WorkflowRuntime;

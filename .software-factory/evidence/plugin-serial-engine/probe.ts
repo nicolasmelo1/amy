@@ -24,7 +24,7 @@ if (work === "" || repo === "" || report === "") {
 }
 const dist = (...where: string[]) => path.join(repo, ...where, "dist", "index.js");
 
-const { mount, NodeCommandRunner, checkEvent, withDiagramBeside }: typeof import("@amykit/core") = await import(dist("packages", "core"));
+const { mount, NodeCommandRunner, checkEvent, withDiagramBeside, WORKSPACE_PORT }: typeof import("@amykit/core") = await import(dist("packages", "core"));
 const { plugin: queue }: typeof import("@amykit/plugin-file-queue") = await import(dist("plugins", "file-queue"));
 const { plugin: store }: typeof import("@amykit/plugin-file-store") = await import(dist("plugins", "file-store"));
 const { FileEventLog }: typeof import("@amykit/plugin-file-log") = await import(dist("plugins", "file-log"));
@@ -219,9 +219,20 @@ interface HostOptions {
   overrides?: Record<string, Record<string, unknown>>;
 }
 
+/**
+ * The workplace the ticket works in, mounted the way a plugin mounts it: a
+ * workspace is a capability now, not a path every host is handed.
+ */
+const workspace: Plugin = {
+  name: "@amykit/plugin-e2e-workspace",
+  register(registry: Registry) {
+    registry.port(WORKSPACE_PORT, { workspaceRoot: path.join(work, "checkouts"), checkouts: {} });
+  },
+};
+
 async function host({ channels = [channelPlugin("recorder")], extra = [], log, overrides = {} }: HostOptions = {}): Promise<Host> {
   const outcome = await mount(
-    [queue, store, github, fanout, ...channels, worldPlugin(), workflow, ...extra, engine],
+    [queue, store, github, fanout, ...channels, worldPlugin(), workspace, workflow, ...extra, engine],
     {
       "@amykit/plugin-serial-engine": { maxItemAttempts: 5 },
       "@amykit/workflow-ticket-to-qa": {
@@ -234,7 +245,7 @@ async function host({ channels = [channelPlugin("recorder")], extra = [], log, o
       runner: new NodeCommandRunner(),
       now: () => clock,
       log: log ?? new FileEventLog(logDir, () => clock, "e2e"),
-      paths: { workspace: path.join(work, "checkouts"), checkouts: {}, state },
+      paths: { state },
     },
   );
 

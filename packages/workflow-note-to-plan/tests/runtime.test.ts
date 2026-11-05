@@ -13,7 +13,7 @@ import {
   WorkflowRuntime,
   mount,
 } from "@amykit/core";
-import { ScriptedRunner, fakeHost } from "@amykit/test-fixtures";
+import { ScriptedRunner, fakeHost, fakeWorkspace } from "@amykit/test-fixtures";
 import { Observation } from "../src/observation.js";
 import { PlanRecord } from "../src/record.js";
 import { newRecord, plugin } from "./drawn.js";
@@ -103,10 +103,10 @@ async function build(options: {
     name: "@amykit/plugin-world",
     register: (registry) => Object.entries(ports).forEach(([kind, port]) => registry.port(kind, port)),
   };
-  const outcome = await mount([plugin, world], { [plugin.name]: { repos: options.repos ?? ["acme/widgets"] } }, {
+  const outcome = await mount([plugin, world, fakeWorkspace("/checkouts")], { [plugin.name]: { repos: options.repos ?? ["acme/widgets"] } }, {
     runner: options.runner ?? new ScriptedRunner([]),
     now: () => NOW,
-    paths: { workspace: "/checkouts", checkouts: {}, state: "/state" },
+    paths: { state: "/state" },
   });
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   return outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get("note-to-plan") as Runtime;

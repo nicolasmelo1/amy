@@ -31,9 +31,6 @@ const ROSTER = {
 
 const CONFIG = {
   ...DEFAULT_CONFIG,
-  repos: ["acme/widgets"],
-  gate: { "acme/widgets": ["npm test"] },
-  workspaceRoot: "/checkouts",
   notify: { hermes: null, inbox: false },
   // The note workflow's profile, said the way the config file would say it:
   // the plan repositories and the check that judges a plan are its settings,
@@ -48,6 +45,14 @@ const CONFIG = {
   // only in the sense that trying takes no time. No test here should touch
   // the network, and the one that needs a broken tick needs it to break fast.
   plugins: {
+    // The workspace, the gate and the tracker are what their plugins carry.
+    "@amykit/plugin-file-worktree": {
+      repos: ["acme/widgets"],
+      workspaceRoot: "/checkouts",
+    },
+    "@amykit/plugin-command-gate": {
+      gate: { "acme/widgets": ["npm test"] },
+    },
     "@amykit/plugin-linear": {
       workingStatusName: "In Progress",
       repoByTeam: {},
@@ -206,7 +211,7 @@ describe("two workflows, one machine", () => {
       // One log for both profiles, which is what makes "the same budget" a
       // fact rather than a claim: the ceiling is measured off the log.
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
+      paths: { state:  path.join(root, ".amy") },
     };
   });
 
@@ -304,7 +309,7 @@ describe("a note reaching a pull request", () => {
       runner: { run: world.run },
       now: () => new Date("2026-09-04T20:00:00.000Z"),
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
+      paths: { state:  path.join(root, ".amy") },
     };
   });
 
@@ -531,7 +536,7 @@ describe("a tick that gives up", () => {
       },
       now: () => new Date("2026-09-04T20:00:00.000Z"),
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
+      paths: { state:  path.join(root, ".amy") },
     };
   });
 
@@ -631,7 +636,7 @@ describe("a task said in passing", () => {
       runner: { run: world.run },
       now: () => new Date("2026-09-05T10:00:00.000Z"),
       log: new FileEventLog(path.join(root, ".amy", "log")),
-      paths: { workspace: "/checkouts", checkouts: {}, state: path.join(root, ".amy") },
+      paths: { state:  path.join(root, ".amy") },
     };
   });
 

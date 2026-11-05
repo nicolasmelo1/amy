@@ -213,7 +213,7 @@ export async function whatMountingSays(
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date(),
       log: undefined,
-      paths: { workspace: throwaway, checkouts: {}, state: throwaway },
+      paths: { state: throwaway },
       contributions: () => new Map<string, object>(),
       port: () => portStub,
       workflow: () => undefined,

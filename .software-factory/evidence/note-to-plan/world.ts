@@ -172,9 +172,11 @@ workflows:
         maxDraftAttempts: 3
 defaultWorkflow: plans
 
-repos: []
-workspaceRoot: ${path.join(root, "checkouts")}
-defaultBranch: main
+plugins:
+  "@amykit/plugin-file-worktree":
+    repos: []
+    workspaceRoot: ${path.join(root, "checkouts")}
+    defaultBranch: main
 
 # One attempt, so a code host that is not answering costs one look rather
 # than five. In production this is five.

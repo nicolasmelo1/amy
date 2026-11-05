@@ -12,7 +12,7 @@ describe("forgetting a workflow", () => {
     home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-rm-"));
     fs.writeFileSync(
       path.join(home, "config.yaml"),
-      `# what the team reviews in\nrepos:\n  - acme/widgets\n\nworkflows:\n` +
+      `# what the team reviews in\nplugins:\n  "@amykit/plugin-file-worktree":\n    repos:\n      - acme/widgets\n\nworkflows:\n` +
         `  oncall:\n    workflow: "@acme/workflow-oncall"\n` +
         `  weekly:\n    workflow: "@acme/workflow-weekly"\n`,
       "utf-8",

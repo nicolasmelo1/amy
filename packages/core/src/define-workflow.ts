@@ -563,8 +563,14 @@ function callSite(
     config: settings.config,
     port: (kind) => ctx.port(bound(kind)),
     ...(ctx.workflowPort ? { workflowPort: (kind: string) => ctx.workflowPort!(bound(kind)) } : {}),
-    // A lane takes a branch before it moves it, so two lanes never write one.
-    ...(held ? { checkouts: () => leasedCheckouts(ctx.checkouts(), held) } : {}),
+    // A callee's checkouts answer through the same workplace, and a refusal
+    // there names the call's workflow — the one whose work stopped — rather
+    // than the caller this context was spread from. A deeper call's name is
+    // passed through, so the refusal names the innermost one. A lane leases
+    // the same workplace, lent its caller's commit.
+    checkouts: held
+      ? (who) => leasedCheckouts(ctx.checkouts(who ?? name), held)
+      : (who) => ctx.checkouts(who ?? name),
   };
   const assembled = assemble(declaration, callee.shape, calleeCtx ?? undefined, [...path, state], [...trail, declaration]);
   if (ctx) claimsFit(caller, ctx.config, policy, declaration, settings.config, assembled.policy, at);
@@ -592,13 +598,30 @@ interface LaneHolds {
 /**
  * A lane's checkouts: leased, and lent its caller's commit when bound with
  * one — read for the lane's record and every call under it.
+ *
+ * The lease is composed on the first read, not when the runtime is built: a
+ * workflow whose lanes never read their checkouts is still handed nothing,
+ * and one that does is lent the branch by the same answer every other read
+ * takes.
  */
 function leasedCheckouts(checkouts: Checkouts, held: LaneHolds): Checkouts {
   const lent = (workId: string): string | undefined => {
     for (const [id, revision] of held.lent) if (workId === id || workId.startsWith(`${id}/`)) return revision;
     return undefined;
   };
-  return { ...checkouts, git: checkouts.git.leasedTo(held.leases, lent) };
+  let leased: Checkouts | undefined;
+  const once = (): Checkouts => {
+    if (!leased) leased = { git: checkouts.git.leasedTo(held.leases, lent), layout: checkouts.layout };
+    return leased;
+  };
+  return {
+    get git() {
+      return once().git;
+    },
+    get layout() {
+      return once().layout;
+    },
+  };
 }
 
 function calleeOf(binding: Call, at: string): Callable {

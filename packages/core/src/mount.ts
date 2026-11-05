@@ -11,7 +11,7 @@ import {
 } from "./plugin.js";
 import { declaredActions, declaredBinding, unrunnable } from "./dispatch.js";
 import { Builds } from "./builds.js";
-import { checkoutsFromSettings } from "./checkouts.js";
+import { checkoutsFromWorkspace, lentWhenRead } from "./checkouts.js";
 import { isDeferred } from "./deferred.js";
 import { WORKFLOW_RUNTIME, WorkflowRuntime } from "./runtime.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
@@ -19,6 +19,7 @@ import { EventLog } from "./ports/EventLog.js";
 import { Queue } from "./ports/Queue.js";
 import { Store } from "./ports/Store.js";
 import { Worktree } from "./ports/Worktree.js";
+import { WORKSPACE_PORT, Workspace } from "./ports/Workspace.js";
 import {
   CODE_HOST_WRITE_CAPABILITIES,
   CODE_HOST_WRITE_FOR_METHOD,
@@ -154,6 +155,22 @@ async function judgeReady(registered: readonly { plugin: Plugin; ctx: PluginCont
   }
 }
 
+/**
+ * What a plugin or workflow is told when the machine carries no workplace.
+ *
+ * The workflow a call site names comes first: a called workflow's checkouts
+ * are asked for through its caller's context, and it is the callee whose
+ * work stopped. Otherwise the workflow the context registered, and with
+ * neither, the plugin — the mount already prefixes that with the plugin's
+ * name, so the refusal names whichever thing wants a workspace.
+ */
+function askedWithoutAWorkspace(workflow: string | undefined, who: string | undefined): string {
+  const asked = who ?? workflow;
+  return asked
+    ? `the ${asked} workflow asked for the machine's checkouts, and nothing mounted a workspace — add @amykit/plugin-file-worktree to the profile's plugins`
+    : "this plugin asks for the machine's checkouts, and nothing mounted a workspace — add @amykit/plugin-file-worktree to the plugins that mount first";
+}
+
 function requiresWorkflow(requirements: MountRequirements, mounted: Mounted, workflowOwners: ReadonlySet<Plugin>): boolean {
   return Boolean(requirements.workflowLabel && (!mounted.workflow ||
     (requirements.workflowPlugin && !workflowOwners.has(requirements.workflowPlugin))));
@@ -212,7 +229,13 @@ function contextFor(
     port: (kind) => narrowedPort(
       builds.resolve(mounted.ports.get(kind)), kind, () => workflowFor.get(ctx), mutablePortKinds, registrationComplete,
     ),
-    checkouts: () => checkoutsFromSettings(host.runner, host.paths, config, () => ctx.port("worktree") as Worktree | undefined),
+    checkouts: (who) => lentWhenRead(() => {
+      const workspace = builds.resolve(mounted.ports.get(WORKSPACE_PORT)) as Workspace | undefined;
+      if (!workspace) {
+        throw new Error(askedWithoutAWorkspace(workflowFor.get(ctx)?.name, who));
+      }
+      return checkoutsFromWorkspace(host.runner, workspace, config, () => ctx.port("worktree") as Worktree | undefined);
+    }),
     workflowPort: (kind) => narrowedPort(
       builds.resolve(mounted.ports.get(kind)), kind, () => mounted.workflow, mutablePortKinds, registrationComplete,
     ),

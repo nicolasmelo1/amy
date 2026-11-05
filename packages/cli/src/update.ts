@@ -672,6 +672,24 @@ function isPlain(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * The workspace's moved keys, each under the plugin whose slice carries it.
+ *
+ * The machine keeps none of the seven: the repositories, the checkout root
+ * and map, the two branch settings and the worktrees are the file-worktree
+ * plugin's slice, and the gate commands the command-gate plugin's — the same
+ * move the workflows' vocabulary took, one layer down.
+ */
+const READ_BY_PLUGIN: ReadonlyMap<string, readonly string[]> = new Map([
+  ["repos", ["@amykit/plugin-file-worktree"]],
+  ["workspaceRoot", ["@amykit/plugin-file-worktree"]],
+  ["checkouts", ["@amykit/plugin-file-worktree"]],
+  ["defaultBranch", ["@amykit/plugin-file-worktree"]],
+  ["baseBranch", ["@amykit/plugin-file-worktree"]],
+  ["worktrees", ["@amykit/plugin-file-worktree"]],
+  ["gate", ["@amykit/plugin-command-gate"]],
+]);
+
 export function migrateSettingsFile(home: string): SettingsMoved {
   const place = paths(home).config;
   if (!fs.existsSync(place)) return { ok: true, said: [] };
@@ -697,8 +715,12 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   // file even when nothing moved from place to place, so it is answered
   // before deciding that no migration is needed at all.
   const materialized = materializeTicketStatus(document, top, said);
+  // A command-gate slice an older install wrote is put right whether or not
+  // a top-level key moved into it: its `commands` and `checkouts` were valid
+  // there, and the slice's schema now refuses both by name at boot.
+  const normalized = normalizeCommandGateSlice(document, top, said);
 
-  if (dropped.length === 0 && !materialized && !converged) return { ok: true, said: [] };
+  if (dropped.length === 0 && !materialized && !converged && !normalized) return { ok: true, said: [] };
 
   const movedTo = `${place}.moved`;
   // The kept file is the machine's config before its first move, a byte the
@@ -724,13 +746,14 @@ function moveRetiredKeys(
   said: string[],
 ): string[] {
   const dropped: string[] = [];
-  for (const [key, readers] of READ_BY_WORKFLOW) {
+  for (const [key, readers] of [...READ_BY_WORKFLOW, ...READ_BY_PLUGIN]) {
     const entry = entryOf(top, key);
     if (entry === undefined) continue;
     const value = unwrap(entry.value);
 
-    const moved =
-      moveIntoWorkflows(workflows, key, value, readers) || moveToTrackerSlice(document, top, key, entry);
+    const moved = (readers !== undefined ? moveIntoWorkflows(workflows, key, value, readers) : false) ||
+      moveToTrackerSlice(document, top, key, entry) ||
+      moveIntoPluginSlice(document, top, key, entry);
 
     if (!moved) {
       // An init-era block nobody mounted still names itself at the top
@@ -747,7 +770,9 @@ function moveRetiredKeys(
     dropped.push(key);
     const where = key === "workingStatusName" || key === "repoByTeam"
       ? "the linear plugin's slice"
-      : `the ${readers.map((one) => one.replace("@amykit/", "")).join(", ")} workflow's profile settings`;
+      : READ_BY_PLUGIN.has(key)
+        ? `the ${READ_BY_PLUGIN.get(key)![0]!.replace("@amykit/", "")} plugin's slice`
+        : `the ${readers.map((one) => one.replace("@amykit/", "")).join(", ")} workflow's profile settings`;
     said.push(`${key}: moved to ${where}`);
   }
   return dropped;
@@ -854,6 +879,153 @@ function moveToTrackerSlice(
     const added = new yaml.Pair(document.createNode("plugins"), block);
     top.set?.(added.key as never, added.value as never);
   }
+  return true;
+}
+
+/**
+ * Puts one moved workspace key in the plugin slice that reads it now, and
+ * when the machine never named a plugins block, writes one the way `amy add`
+ * would — the owner's slice beside whatever else lands there later.
+ *
+ * A block moves whole: the worktrees block splits into the root and the
+ * retention the slice spells, and the gate's slice takes the gate key. The
+ * walk reads the plugins block fresh each time, the way the tracker's move
+ * does, because the first key may have created it.
+ */
+function moveIntoPluginSlice(
+  document: yaml.Document,
+  top: yaml.YAMLMap,
+  key: string,
+  entry: yaml.Pair,
+): boolean {
+  const owner = READ_BY_PLUGIN.get(key);
+  if (!owner) return false;
+  const plugin = owner[0]!;
+
+  // The value moves under its owner's slice, spelled the way that slice
+  // does: the worktrees block splits into the root and the retention, and
+  // every other key keeps its name.
+  const value = unwrap(entry.value);
+  const carried: Record<string, unknown> =
+    key === "worktrees" && isPlain(value)
+      ? Object.fromEntries(Object.entries(value).filter(([name]) => name === "root" || name === "retentionDays"))
+      : { [key]: value };
+
+  const mounted = entryOf(top, "plugins");
+  if (mounted !== undefined && yaml.isMap(mounted.value)) {
+    const slice = mounted.value.get(plugin);
+    if (yaml.isMap(slice)) {
+      // The retired name goes first, so a value the machine carries beside
+      // it lands on the name it now answers to.
+      renameRetiredCommands(plugin, slice);
+      for (const [name, moved] of Object.entries(carried)) {
+        const existing = slice.get(name);
+        if (existing === undefined) {
+          slice.add(new yaml.Pair(name, moved));
+          continue;
+        }
+        // A leaf the slice already names is the operator's own; what the
+        // machine carried merges in beside it, the slice winning where both
+        // name the same thing.
+        const merged = mergeLeaves(unwrap(moved), unwrap(existing));
+        if (merged !== undefined) {
+          // The map's own setter keeps the pair in place; a raw key is what
+          // `add` wrote before it, which `set` matches the same way.
+          slice.set(name, document.createNode(merged));
+        }
+      }
+    } else {
+      mounted.value.add(new yaml.Pair(plugin, toMap(carried)));
+      renameRetiredCommands(plugin, mounted.value.get(plugin) as yaml.YAMLMap);
+    }
+  } else {
+    const block = document.createNode({ [plugin]: carried });
+    const added = new yaml.Pair(document.createNode("plugins"), block);
+    top.set?.(added.key as never, added.value as never);
+  }
+  return true;
+}
+
+/** What the two records carry together, the slice's own leaves winning over the machine's. */
+function mergeLeaves(moved: unknown, existing: unknown): Record<string, unknown> | undefined {
+  if (!isPlain(moved) || !isPlain(existing)) return undefined;
+  return { ...moved, ...existing };
+}
+
+/**
+ * The gate's commands were the slice's only name for the gate, and the top
+ * level `gate:` was the machine's; both names now are one. A slice an older
+ * install wrote as `commands:` is carried onto `gate:` with nothing left
+ * behind, so a machine the move touches keeps running its checks.
+ */
+function renameRetiredCommands(plugin: string, slice: yaml.YAMLMap): void {
+  if (plugin !== "@amykit/plugin-command-gate") return;
+  const commands = slice.get("commands");
+  if (commands !== undefined && slice.get("gate") === undefined) {
+    slice.delete("commands");
+    slice.add(new yaml.Pair("gate", commands));
+  }
+}
+
+/**
+ * The command-gate slice as an older install wrote it, put into the shape
+ * its schema reads now.
+ *
+ * `commands` is the gate under its retired name: it becomes `gate`, and
+ * where the slice already names a gate the two merge with the gate's own
+ * leaves winning. `checkouts` is the workspace's answer now: it moves into
+ * the file-worktree plugin's slice, whose own entries win, and an empty one
+ * is simply dropped. Says each change; a slice already in shape is left
+ * untouched, so a second update moves nothing.
+ */
+function normalizeCommandGateSlice(document: yaml.Document, top: yaml.YAMLMap, said: string[]): boolean {
+  const mounted = entryOf(top, "plugins");
+  if (mounted === undefined || !yaml.isMap(mounted.value)) return false;
+  const slice = mounted.value.get(COMMAND_GATE);
+  if (!yaml.isMap(slice)) return false;
+  const renamed = renameSliceCommands(document, slice, said);
+  const moved = moveSliceCheckouts(document, mounted.value, slice, said);
+  return renamed || moved;
+}
+
+const COMMAND_GATE = "@amykit/plugin-command-gate";
+const FILE_WORKTREE = "@amykit/plugin-file-worktree";
+
+/** `commands` onto `gate`, the gate's own leaves winning where the slice names both. */
+function renameSliceCommands(document: yaml.Document, slice: yaml.YAMLMap, said: string[]): boolean {
+  const commands = slice.get("commands");
+  if (commands === undefined) return false;
+  const gate = slice.get("gate");
+  slice.delete("commands");
+  if (gate === undefined) {
+    slice.add(new yaml.Pair("gate", commands));
+  } else {
+    const merged = mergeLeaves(unwrap(commands), unwrap(gate));
+    if (merged !== undefined) slice.set("gate", document.createNode(merged));
+  }
+  said.push(`${COMMAND_GATE} commands: renamed to gate`);
+  return true;
+}
+
+/** `checkouts` into the file-worktree slice, whose own entries win; an empty one is dropped. */
+function moveSliceCheckouts(document: yaml.Document, plugins: yaml.YAMLMap, slice: yaml.YAMLMap, said: string[]): boolean {
+  const checkouts = slice.get("checkouts");
+  if (checkouts === undefined) return false;
+  slice.delete("checkouts");
+  const carried = unwrap(checkouts);
+  if (!isPlain(carried) || Object.keys(carried).length === 0) {
+    said.push(`${COMMAND_GATE} checkouts: empty, and the workspace answers it now; dropped`);
+    return true;
+  }
+  const workspace = plugins.get(FILE_WORKTREE);
+  if (yaml.isMap(workspace)) {
+    const existing = workspace.get("checkouts");
+    const merged = existing === undefined ? carried : mergeLeaves(carried, unwrap(existing));
+    if (merged !== undefined) workspace.set("checkouts", document.createNode(merged));
+  } else {
+    plugins.add(new yaml.Pair(FILE_WORKTREE, toMap({ checkouts: carried })));
+  }
+  said.push(`${COMMAND_GATE} checkouts: moved to the plugin-file-worktree plugin's slice`);
   return true;
 }
 

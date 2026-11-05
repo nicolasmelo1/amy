@@ -237,7 +237,7 @@ export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
         // The budget is read off a log at boot; an empty one is what a fresh
         // install has.
         log: new FileEventLog(path.join(state, "events"), () => new Date()),
-        paths: hostPaths(config, state),
+        paths: hostPaths(state),
       },
     );
 

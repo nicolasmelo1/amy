@@ -51,7 +51,7 @@ describe("assembling the built-in set", () => {
     host = {
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date("2026-09-03T12:00:00.000Z"),
-      paths: { workspace: path.join(root, "checkouts"), checkouts: {}, state: path.join(root, ".amy") },
+      paths: { state:  path.join(root, ".amy") },
     };
   });
 
@@ -106,9 +106,10 @@ describe("assembling the built-in set", () => {
       "queue",
       "store",
       "tracker",
-      // The workplace, mounted unconditionally by the worktree plugin: two
-      // tickets on one repository are the ordinary case, and the port costs
+      // The workspace the checkouts answer through, and the worktrees beside
+      // it: the workplace is the file-worktree plugin's, and both ports cost
       // one empty directory.
+      "workspace",
       "worktree",
     ]);
   });
