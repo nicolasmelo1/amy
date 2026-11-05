@@ -1109,6 +1109,11 @@
         },
         {
           "depth": 3,
+          "title": "The declaration the amy-workflow skill shows declares policy.maxAttempts in its configSchema, with the same default its policy reads. Before, it left the schema empty, and the mount refuses a policy key the schema does not declare, so a workflow copied from the skill did not boot.",
+          "slug": "the-declaration-the-amy-workflow-skill-shows-declares-policymaxattempts-in-its-configschema-with-the-same-default-its-policy-reads-before-it-left-the-schema-empty-and-the-mount-refuses-a-policy-key-the-schema-does-not-declare-so-a-workflow-copied-from-the-skill-did-not-boot"
+        },
+        {
+          "depth": 3,
           "title": "**Waiting is not trying.**",
           "slug": "waiting-is-not-trying"
         },
@@ -10908,6 +10913,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-skill-example-mounts",
+        "title": "The declaration the `amy-workflow` skill shows declares `policy.maxAttempts` in its `configSchema`, with the same default its policy reads. Before, it left the schema empty, and the mount refuses a policy key the schema does not declare, so a workflow copied from the skill did not boot.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "waiting-is-not-trying",

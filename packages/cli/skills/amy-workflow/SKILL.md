@@ -200,7 +200,11 @@ import type { Pager } from "./ports/Pager.js";
 
 export const plugin = defineWorkflow({
   name: "oncall",
-  configSchema: {},
+  configSchema: {
+    // Every policy number is a setting too, with the same default: the mount
+    // refuses a policy key the schema does not declare.
+    "policy.maxAttempts": { type: "number", default: 3, description: "how many tries before it comes to you" },
+  },
   policy: { maxAttempts: 3 },
   needs: { pager: port<Pager>(), agent: port<Harness>(), notifier: port<Notifier>(), worktree: optional<Worktree>() },
   record: () => ({}),
