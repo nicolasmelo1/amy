@@ -8,7 +8,8 @@ sources:
   - { id: S7, kind: decision, said: "the Codex harness runs codex app-server as a child over stdio JSON-RPC instead of codex exec --json, so a limit arrives typed; no port or daemon, so it runs wherever exec ran. Decided 2026-11-05" }
   - { id: S8, kind: decision, said: "the protocol's types are generated from the installed codex with generate-json-schema and kept as a fixture, so a release that moves a field fails a test, not a run" }
   - { id: S9, kind: reference, ref: "plugins/hermes-agent/src/HermesHarness.ts", symbol: "classify", said: "Hermes reads usage.failed only; on a provider 429 Hermes knows failure_reason rate_limit and failure_resets_at, but its usage file drops both" }
-  - { id: S10, kind: decision, said: "amy proposes upstream adding failure_reason and failure_resets_at to the usage file, reads them when present, and a Hermes without them stays failed. Decided 2026-11-05" }
+  - { id: S10, kind: decision, said: "amy reads failure_reason and failure_resets_at from the usage file when present, waiting on upstream rather than proposing it; a Hermes without them stays failed. Decided 2026-11-05" }
+  - { id: S12, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/pull/104211", said: "an open upstream pull request adds failure_reason and failure_retryable to the usage file; failure_resets_at is not in it" }
   - { id: S11, kind: decision, said: "Codex and Hermes both, the harnesses one operator runs on subscriptions. Decided 2026-11-05" }
   - { id: S6, kind: decision, said: "no-retry-is-free does not count a rate-limited wait: a wait adds no evidence and spends nothing" }
 touches:
@@ -27,7 +28,7 @@ touches:
 criteria:
   - { id: A1, statement: "a recorded app-server turn error carrying usageLimitExceeded classifies as rate-limited with its reset; any other turn error still as failed", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S1, S2, S5, S7, S11] }
   - { id: A6, statement: "a run on the app-server harness gives the same reply, cost and outcome as on exec for a recorded completed and a recorded failed turn", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S7, S8] }
-  - { id: A7, statement: "a Hermes usage file with failure_reason rate_limit and failure_resets_at classifies as rate-limited with that reset; one without the keys, failed as today", proof: "deferred:test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S9, S10, S11] }
+  - { id: A7, statement: "a Hermes usage file with failure_reason rate_limit classifies as rate-limited, waiting until failure_resets_at or the policy backoff without it; one without failure_reason, failed as today", proof: "deferred:test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S9, S10, S11, S12] }
   - { id: A2, statement: "a ladder ending on rate-limited records no attempt, and attemptsIn is unchanged", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/attempts.property.test.ts#limit_charged_as_attempt", sources: [S3, S4] }
   - { id: A3, statement: "the step waits until the reported reset time, or the policy's backoff when none, then runs again on the tree it left", proof: "deferred:walkthrough in the testkit", sources: [S3, S4] }
   - { id: A4, statement: "with two attempts allowed, limited twice then failed twice escalates after the second failure, not the second limit", proof: "deferred:walkthrough in the testkit", sources: [S3] }
