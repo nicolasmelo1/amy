@@ -1,4 +1,5 @@
 ---
+base: 2ada639e99779a3cb8d04b054f9da66c3f7108a9
 sources:
   - { id: S1, kind: code, ref: "plugins/codex/src/CodexHarness.ts", said: "classify reads exit code and turn completion; its comment says a rate limit reads as failed. Hermes says the same" }
   - { id: S2, kind: decision, said: "do not invent the rate-limit distinction from stderr text; with no structured signal, a harness stays failed" }
