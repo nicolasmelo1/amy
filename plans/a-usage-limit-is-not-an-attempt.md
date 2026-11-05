@@ -4,7 +4,7 @@ sources:
   - { id: S2, kind: decision, said: "do not invent the rate-limit distinction from stderr text; with no structured signal, a harness stays failed" }
   - { id: S3, kind: code, ref: "packages/agent-kit/src/ladder.ts", said: "a rate-limited rung hands the half-done tree to the next harness; a one-harness ladder has none, so the run ends as an attempt" }
   - { id: S4, kind: reference, ref: "docs/design/waiting-is-not-trying.md", said: "an action returning { notATry: true, retryAfterMs } moves the charged attempt to looks in the same save" }
-  - { id: S5, kind: reference, ref: "https://github.com/openai/codex", said: "codex exec --json reduces a turn error to a message; the app-server protocol types it as codexErrorInfo usageLimitExceeded, and reads limits with account/rateLimits/read" }
+  - { id: S5, kind: reference, ref: "https://github.com/openai/codex", said: "codex exec --json reduces a turn error to a message; the app-server protocol types it as codexErrorInfo usageLimitExceeded or rateLimitExceeded, and reads limits with account/rateLimits/read" }
   - { id: S7, kind: decision, said: "the Codex harness runs codex app-server as a child over stdio JSON-RPC instead of codex exec --json, so a limit arrives typed; no port or daemon, so it runs wherever exec ran. Decided 2026-11-05" }
   - { id: S8, kind: decision, said: "the protocol's types are generated from the installed codex with generate-json-schema and kept as a fixture, so a release that moves a field fails a test, not a run" }
   - { id: S9, kind: reference, ref: "plugins/hermes-agent/src/HermesHarness.ts", symbol: "classify", said: "Hermes reads usage.failed only; on a provider 429 Hermes knows failure_reason rate_limit and failure_resets_at, but its usage file drops both" }
@@ -26,7 +26,7 @@ touches:
   - packages/workflow-ticket-to-qa/tests/retry.property.test.ts
   - packages/workflow-testkit/src/**
 criteria:
-  - { id: A1, statement: "a recorded app-server turn error carrying usageLimitExceeded classifies as rate-limited with its reset; any other turn error still as failed", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S1, S2, S5, S7, S11] }
+  - { id: A1, statement: "recorded app-server turn errors carrying usageLimitExceeded or rateLimitExceeded classify as rate-limited with their reset; any other turn error still as failed", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S1, S2, S5, S7, S11] }
   - { id: A6, statement: "a run on the app-server harness gives the same reply, cost and outcome as on exec for a recorded completed and a recorded failed turn", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S7, S8] }
   - { id: A7, statement: "a Hermes usage file with failure_reason rate_limit classifies as rate-limited, waiting until failure_resets_at or the policy backoff without it; one without failure_reason, failed as today", proof: "deferred:test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S9, S10, S11, S12] }
   - { id: A2, statement: "a ladder ending on rate-limited records no attempt, and attemptsIn is unchanged", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/attempts.property.test.ts#limit_charged_as_attempt", sources: [S3, S4] }

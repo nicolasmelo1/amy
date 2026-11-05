@@ -26,6 +26,8 @@ touches:
   - plugins/hermes-agent/tests/usage.test.ts
   - packages/cli/src/status-view.ts
   - packages/cli/src/budget.ts
+  - packages/cli/src/index.ts
+  - packages/cli/src/status-page.tsx
   - packages/cli/tests/status.test.ts
   - packages/cli/tests/budget.test.ts
 criteria:

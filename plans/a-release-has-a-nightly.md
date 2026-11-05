@@ -19,6 +19,7 @@ touches:
   - scripts/release/nightly-due.ts
   - scripts/check-release-config.ts
   - scripts/release/tests/nightly-due.test.ts
+  - vitest.config.ts
   - packages/cli/src/update.ts
   - packages/cli/src/index.ts
   - packages/cli/src/config.ts
