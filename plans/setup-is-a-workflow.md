@@ -1,4 +1,5 @@
 ---
+base: a331344e74fd280aa4653811e50149d772f549c8
 sources:
   - { id: S1, kind: decision, said: "amy init becomes amy setup, an onboarding like hermes setup; init stays as an alias. Decided 2026-11-05" }
   - { id: S2, kind: decision, said: "setup is itself an amy workflow, raw, drawn in workflow.mmd, running on the person's machine: amy set up by amy. Decided 2026-11-05" }
