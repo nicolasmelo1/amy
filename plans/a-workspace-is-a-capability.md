@@ -1,4 +1,5 @@
 ---
+base: 1ff8a2f0c0ee18b243cc5178d1b11a1c342295f1
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/config.ts", symbol: "machineSchema", said: "seven of the machine's own top-level keys only mean something with repositories: repos, workspaceRoot, checkouts, defaultBranch, baseBranch, gate and worktrees" }
   - { id: S2, kind: code, ref: "packages/core/src/plugin.ts", symbol: "HostPaths", said: "every plugin's context carries a workspace and a checkouts map, and checkouts() hands it a Git built from them, whether or not anything mounted works in a repository" }
