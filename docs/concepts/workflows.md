@@ -121,14 +121,18 @@ export const plugin = defineWorkflow({
   terminal: ["DONE", "DECLINED"],
   configSchema,
   policy: DEFAULT_POLICY,
-  needs: { tasks: port<Tasks>(), notifier: port<Notifier>() },
-  plan,
+  needs: { tasks: port<Tasks>(), agent: port<Harness>(), notifier: port<Notifier>() },
+  decide,
   record: () => ({}),
-  runtime: ({ ports, policy }) => errandRuntime({
-    tasks: ports.tasks,
-    notifier: ports.notifier,
-    policy,
-  }),
+  // Each piece is a function of the scope the host hands it: the ports
+  // `needs` asked for, the settings, the policy and the checkouts.
+  discover: ({ ports }) => Promise.resolve(ports.tasks.all().map((task) => task.id)),
+  observe,
+  actions: {
+    "run-errand": runErrand,
+    announce: (scope, _work, effect) => scope.announce(effect.text),
+  },
+  remember,
 });
 ```
 

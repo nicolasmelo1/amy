@@ -47,15 +47,15 @@ describe("Worker, against a budget", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  function build(overrides: TicketWorkerOverrides = {}): Worker {
+  async function build(overrides: TicketWorkerOverrides = {}): Promise<Worker> {
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         now: () => clock,
         log,
         ...overrides,
-      }),
+      })),
     });
   }
 
@@ -63,7 +63,7 @@ describe("Worker, against a budget", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
     const agent = fakeAgent();
 
-    const result = await build({ agent, budget: refusing }).tick();
+    const result = await (await build({ agent, budget: refusing })).tick();
 
     expect(result).toMatchObject({
       kind: "parked",
@@ -77,7 +77,7 @@ describe("Worker, against a budget", () => {
   it("parks the ticket instead of losing it", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ budget: refusing }).tick();
+    await (await build({ budget: refusing })).tick();
 
     // Still on the queue, held back until the window has room, and the
     // record was never touched: the ticket did not move, it waited.
@@ -89,7 +89,7 @@ describe("Worker, against a budget", () => {
   it("keeps the attempt count when it parks", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "retrying", attempt: 3 }, clock);
 
-    await build({ budget: refusing }).tick();
+    await (await build({ budget: refusing })).tick();
 
     // A park is not a success, so it must not refill the retry budget the
     // failures already spent. It also must not read as a recovery later.
@@ -98,10 +98,10 @@ describe("Worker, against a budget", () => {
 
   it("picks the same ticket up once the window has room again", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
-    await build({ budget: refusing }).tick();
+    await (await build({ budget: refusing })).tick();
 
     clock = new Date(clock.getTime() + 61_000);
-    const result = await build().tick();
+    const result = await (await build()).tick();
 
     expect(result).toMatchObject({ kind: "worked", workId: "PROJ-1239", from: "DISCOVERED" });
   });
@@ -109,7 +109,7 @@ describe("Worker, against a budget", () => {
   it("writes down which ceiling stopped it", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ budget: refusing }).tick();
+    await (await build({ budget: refusing })).tick();
 
     expect(log.of("budget.parked")[0]).toMatchObject({
       workId: "PROJ-1239",
@@ -121,7 +121,7 @@ describe("Worker, against a budget", () => {
     records.save(recordIn("READY"));
     queue.enqueue({ workId: "PROJ-1239", reason: "cleared" }, clock);
 
-    const result = await build({ budget: refusing }).tick();
+    const result = await (await build({ budget: refusing })).tick();
 
     // READY only moves the ticket along. A ceiling on agent spending has no
     // business stopping the moves that do not spend one.
@@ -151,7 +151,7 @@ describe("Worker, against a budget", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
     const budget = new LogBudget(log, { stopAt: 0.9, perFiveHours: { costUsd: 20 } });
-    const result = await build({ budget }).tick();
+    const result = await (await build({ budget })).tick();
 
     expect(result).toMatchObject({ kind: "parked", state: "DISCOVERED" });
   });

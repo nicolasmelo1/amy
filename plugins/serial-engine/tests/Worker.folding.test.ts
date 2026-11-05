@@ -31,11 +31,11 @@ describe("folding a plan into the record", () => {
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  function worker(): Worker {
+  async function worker(): Promise<Worker> {
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({ now: () => clock }),
+      ...(await ticketWorkerDeps({ now: () => clock })),
     });
   }
 
@@ -43,15 +43,15 @@ describe("folding a plan into the record", () => {
     // DISCOVERED acts: it asks the agent to triage. One look, one attempt.
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await worker().tick();
+    await (await worker()).tick();
 
     expect(records.records.get("PROJ-1239")?.attempts).toEqual({ DISCOVERED: 1 });
   });
 
   it("writes one transition per move, and none from a state to itself", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
-    await worker().tick();
-    await worker().tick();
+    await (await worker()).tick();
+    await (await worker()).tick();
 
     const history = records.records.get("PROJ-1239")?.history ?? [];
 
@@ -65,7 +65,7 @@ describe("folding a plan into the record", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
     for (let look = 0; look < 4; look += 1) {
-      await new Worker({ queue, records, ...ticketWorkerDeps({ now: () => clock }) }).tick();
+      await new Worker({ queue, records, ...(await ticketWorkerDeps({ now: () => clock })) }).tick();
     }
 
     expect(records.records.get("PROJ-1239")?.lastImplementation).toBeDefined();

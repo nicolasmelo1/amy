@@ -4,23 +4,27 @@ import {
   ActionHandler,
   AgentRun,
   AskContext,
-  lendCheckouts,
   Harness,
   HarnessReply,
   Notifier,
+  Plugin,
   Store,
+  WORKFLOW_RUNTIME,
+  WorkflowRuntime,
+  mount,
 } from "@amykit/core";
-import { ScriptedRunner } from "@amykit/test-fixtures";
-import { DEFAULT_POLICY, Observation } from "../src/observation.js";
+import { ScriptedRunner, fakeHost } from "@amykit/test-fixtures";
+import { Observation } from "../src/observation.js";
 import { PlanRecord } from "../src/record.js";
-import { newRecord } from "./drawn.js";
+import { newRecord, plugin } from "./drawn.js";
 import { PlanState } from "../src/decide.js";
 import { Note, Notes } from "../src/ports/Notes.js";
 import { PlanCheck } from "../src/ports/PlanCheck.js";
-import { planRuntime } from "../src/actions.js";
+
+type Runtime = WorkflowRuntime<PlanRecord, Observation>;
 
 /** The handler this runtime declared for one action, as the handler it is. */
-function handler(runtime: ReturnType<typeof planRuntime>, name: string): ActionHandler<PlanRecord, Observation> {
+function handler(runtime: Runtime, name: string): ActionHandler<PlanRecord, Observation> {
   return runtime.actions[name] as ActionHandler<PlanRecord, Observation>;
 }
 
@@ -77,7 +81,8 @@ function fakeAgent(reply: Partial<HarnessReply> = {}) {
   return { agent, asked };
 }
 
-function build(options: {
+/** The workflow as the host mounts it, over stand-in ports. */
+async function build(options: {
   notes?: Notes;
   store?: Store<PlanRecord>;
   agent?: Harness;
@@ -85,21 +90,26 @@ function build(options: {
   notifier?: Notifier;
   runner?: ScriptedRunner;
   repos?: string[];
-} = {}) {
-  const runner = options.runner ?? new ScriptedRunner([]);
-
-  return planRuntime({
+} = {}): Promise<Runtime> {
+  const ports: Record<string, object> = {
     notes: options.notes ?? fakeNotes(),
     agent: options.agent ?? fakeAgent().agent,
-    check: options.check ?? { check: async () => ({ ok: true, output: "ok", at: "now" }) },
+    "plan-check": options.check ?? { check: async () => ({ ok: true, output: "ok", at: "now" }) },
     notifier: options.notifier ?? { announce: async () => undefined },
-    records: options.store ?? fakeStore(),
-    git: lendCheckouts(runner, { workspaceRoot: "/checkouts", defaultBranch: "main" }).git,
-    layout: { workspaceRoot: "/checkouts", defaultBranch: "main" },
+    store: options.store ?? fakeStore(),
+    "code-host": fakeHost(null, { findPullRequestMentioning: async () => null }),
+  };
+  const world: Plugin = {
+    name: "@amykit/plugin-world",
+    register: (registry) => Object.entries(ports).forEach(([kind, port]) => registry.port(kind, port)),
+  };
+  const outcome = await mount([plugin, world], { [plugin.name]: { repos: options.repos ?? ["acme/widgets"] } }, {
+    runner: options.runner ?? new ScriptedRunner([]),
     now: () => NOW,
-    config: { repos: options.repos ?? ["acme/widgets"] },
-    policy: DEFAULT_POLICY,
+    paths: { workspace: "/checkouts", checkouts: {}, state: "/state" },
   });
+  if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+  return outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get("note-to-plan") as Runtime;
 }
 
 function record(state: PlanState, overrides: Partial<PlanRecord> = {}): PlanRecord {
@@ -113,26 +123,26 @@ function context(
   return { record: current, observation, outcomes: {} };
 }
 
-async function observed(runtime: ReturnType<typeof build>, current = record("NOTED")) {
+async function observed(runtime: Runtime, current = record("NOTED")) {
   return runtime.observe(current);
 }
 
 describe("finding work", () => {
   it("finds every note that has been written down", async () => {
     const handwritten = { ...NOTE, source: "somebody at a keyboard" };
-    const runtime = build({ notes: fakeNotes([handwritten, { ...handwritten, id: "note-2" }]) });
+    const runtime = await build({ notes: fakeNotes([handwritten, { ...handwritten, id: "note-2" }]) });
 
     expect(await runtime.found()).toEqual(["note-1", "note-2"]);
   });
 
   it("leaves the note it wrote about its own failure for a person to read", async () => {
-    const runtime = build({ notes: fakeNotes([NOTE]) });
+    const runtime = await build({ notes: fakeNotes([NOTE]) });
 
     expect(await runtime.found()).toEqual([]);
   });
 
   it("finds nothing when nobody has written anything down", async () => {
-    expect(await build({ notes: fakeNotes([]) }).found()).toEqual([]);
+    expect(await (await build({ notes: fakeNotes([]) })).found()).toEqual([]);
   });
 });
 
@@ -140,11 +150,11 @@ describe("looking at the world", () => {
   it("resolves the work against the notes, and against nothing else", async () => {
     // The whole point of this workflow: no tracker is consulted, so a piece of
     // work exists because somebody wrote it down and for no other reason.
-    expect((await observed(build())).note).toEqual(NOTE);
+    expect((await observed(await build())).note).toEqual(NOTE);
   });
 
   it("fails by name when the note has been taken away", async () => {
-    const runtime = build({ notes: fakeNotes([]) });
+    const runtime = await build({ notes: fakeNotes([]) });
 
     await expect(observed(runtime)).rejects.toThrow(
       "the note note-1 is not in the notes directory any more",
@@ -152,11 +162,11 @@ describe("looking at the world", () => {
   });
 
   it("says a note is writable when it names a repository this install writes into", async () => {
-    expect((await observed(build())).writable).toBe(true);
+    expect((await observed(await build())).writable).toBe(true);
   });
 
   it("says it is not when the note is about a fourth repository", async () => {
-    const runtime = build({ repos: ["acme/other"] });
+    const runtime = await build({ repos: ["acme/other"] });
 
     expect((await observed(runtime)).writable).toBe(false);
   });
@@ -169,13 +179,13 @@ describe("looking at the world", () => {
       record("DRAFTED", { id: "note-5", repo: "acme/other" }),
     ]);
 
-    expect((await observed(build({ store }))).plansInFlight).toBe(2);
+    expect((await observed(await build({ store }))).plansInFlight).toBe(2);
   });
 
   it("does not count the note it is looking at", async () => {
     const store = fakeStore([record("DRAFTED", { id: "note-1", repo: "acme/widgets" })]);
 
-    expect((await observed(build({ store }))).plansInFlight).toBe(0);
+    expect((await observed(await build({ store }))).plansInFlight).toBe(0);
   });
 
 });
@@ -183,7 +193,7 @@ describe("looking at the world", () => {
 describe("drafting", () => {
   it("asks the agent through the port the ticket workflow asks for an implementation", async () => {
     const { agent, asked } = fakeAgent();
-    const runtime = build({ agent });
+    const runtime = await build({ agent });
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -194,7 +204,7 @@ describe("drafting", () => {
 
   it("asks in its own words, and names the step so a skill can answer for it", async () => {
     const { agent, asked } = fakeAgent();
-    const runtime = build({ agent });
+    const runtime = await build({ agent });
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -207,7 +217,7 @@ describe("drafting", () => {
 
   it("works in the checkout of the repository the note is about", async () => {
     const { agent, asked } = fakeAgent();
-    const runtime = build({ agent });
+    const runtime = await build({ agent });
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -218,7 +228,7 @@ describe("drafting", () => {
 
   it("hands the finding to the agent when the check refused the last draft", async () => {
     const { agent, asked } = fakeAgent();
-    const runtime = build({ agent });
+    const runtime = await build({ agent });
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -236,7 +246,7 @@ describe("drafting", () => {
     const runner = new ScriptedRunner([
       { match: (_c, args) => args.includes("--verify"), result: { ok: false, exitCode: 1 } },
     ]);
-    const runtime = build({ runner });
+    const runtime = await build({ runner });
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -254,7 +264,7 @@ describe("drafting", () => {
     const runner = new ScriptedRunner([
       { match: (_c, args) => args.includes("--porcelain"), result: { stdout: "" } },
     ]);
-    const runtime = build({ runner });
+    const runtime = await build({ runner });
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -266,7 +276,7 @@ describe("drafting", () => {
   it("counts a run that did not complete as a failure, without pushing", async () => {
     const { agent } = fakeAgent({ run: { ...COMPLETED, outcome: "rate-limited" } });
     const runner = new ScriptedRunner([]);
-    const runtime = build({ agent, runner });
+    const runtime = await build({ agent, runner });
     const current = record("DRAFTED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -280,7 +290,7 @@ describe("drafting", () => {
 describe("checking", () => {
   it("runs the check in the repository the note is about", async () => {
     const check: PlanCheck = { check: vi.fn().mockResolvedValue({ ok: true, output: "", at: "" }) };
-    const runtime = build({ check });
+    const runtime = await build({ check });
     const current = record("CHECKED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -293,7 +303,7 @@ describe("checking", () => {
     const check: PlanCheck = {
       check: async () => ({ ok: false, output: "L4.PLAN_DECLARES_EXIT_CONDITION", at: "now" }),
     };
-    const runtime = build({ check });
+    const runtime = await build({ check });
     const current = record("CHECKED");
     const ctx = context(current, await observed(runtime, current));
 
@@ -311,10 +321,13 @@ describe("checking", () => {
 // still owns is what it is opened with, worked out on the move that calls it.
 describe("what the pull request is opened with", () => {
   async function opening(moved: { from: PlanState; to: PlanState } | null) {
-    const runtime = build();
+    const runtime = await build();
     const current = record(moved?.to ?? "CHECKED");
     const plan = moved ? { kind: "advance" as const, to: moved.to, effects: [], why: "" } : { kind: "act" as const, effects: [], why: "" };
-    return runtime.apply(current, plan, {}, await observed(runtime, current), NOW, moved).opening;
+    // Looked at where it stood, as the engine looks before the move: once in
+    // `PR_OPEN` it is the called workflow that observes it.
+    const observation = await observed(runtime, record(moved?.from ?? "CHECKED"));
+    return runtime.apply(current, plan, {}, observation, NOW, moved).opening;
   }
 
   it("is the repository the note is about, the plan's branch and the base it opens against", async () => {
@@ -339,7 +352,7 @@ describe("what the pull request is opened with", () => {
 
 describe("folding what happened back in", () => {
   it("copies the repository off the note, so the ceiling can be counted", async () => {
-    const runtime = build();
+    const runtime = await build();
     const current = record("NOTED");
     const observation = await observed(runtime, current);
 
@@ -357,7 +370,7 @@ describe("folding what happened back in", () => {
   });
 
   it("keeps what an action produced", async () => {
-    const runtime = build();
+    const runtime = await build();
     const current = record("CHECKED");
     const observation = await observed(runtime, current);
 

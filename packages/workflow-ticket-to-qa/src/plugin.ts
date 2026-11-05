@@ -1,8 +1,5 @@
 import {
   Agent,
-  Action,
-  ActionContext,
-  ActionHandler,
   AskContext,
   BRANCH_SETTINGS,
   BriefStore,
@@ -16,22 +13,18 @@ import {
   PluginCheck,
   PluginCommand,
   Tracker,
-  WorkflowPieceContext,
   Worktree,
   call,
   defineWorkflow,
   optional,
-  parseBudget,
   port,
 } from "@amykit/core";
 import { after, before, decide } from "./machine.js";
-import { DEFAULT_POLICY, Observation, Policy } from "./observation.js";
+import { DEFAULT_POLICY, Policy } from "./observation.js";
 import { TicketRecord } from "./record.js";
 import { EXAMPLE_ROSTER, ROSTER_FILE, Roster, confirmRoster, isConfirmedFor, loadRoster } from "./roster.js";
-import { ticketRuntime } from "./runtime.js";
-import { WRITE_EFFECTS } from "./effects.js";
+import { actionsFor, discover, observe, progress, remember, splitWorkId } from "./actions.js";
 import { Finding, gateLane, selfReviewLane } from "./lanes.js";
-import { splitWorkId } from "./runtime.js";
 
 type Settings = ConfigOf<typeof configSchema>;
 
@@ -161,7 +154,7 @@ export const configSchema = {
   },
 } satisfies ConfigSchema;
 
-const needs = {
+export const needs = {
   tracker: port<Tracker>(),
   conversation: optional<Conversation>(),
   "code-host": port<CodeHost>(),
@@ -171,51 +164,6 @@ const needs = {
   brief: optional<BriefStore>(),
   worktree: optional<Worktree>(),
 };
-
-type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
-const built = new WeakMap<Scope, ReturnType<typeof ticketRuntime>>();
-
-function runtimeFor(scope: Scope): ReturnType<typeof ticketRuntime> {
-  const existing = built.get(scope);
-  if (existing) return existing;
-  const runtime = ticketRuntime({
-    tracker: scope.ports.tracker,
-    conversation: scope.ports.conversation,
-    host: scope.ports["code-host"],
-    agent: scope.ports.agent,
-    gate: scope.ports.gate,
-    notifier: scope.ports.notifier,
-    // With the recovery root named: the runtime's paths.state is the
-    // machine's own state directory, and a phase's profile-own directory is
-    // not its parent, so the fallback must not guess from dirname.
-    roster: () => loadRoster(scope.ctx.paths.profile ?? scope.ctx.paths.state, scope.ctx.paths.state),
-    ...scope.checkouts,
-    briefs: scope.ports.brief,
-    now: scope.ctx.now,
-    log: scope.ctx.log,
-    accountsAgentRuns: false,
-    config: {
-      repos: scope.config.repos,
-      qaStatusName: scope.config.qaStatusName,
-      reviewerHints: scope.config.reviewerHints as Record<string, string>,
-    },
-    progress: progressPolicy(scope.config.budget),
-    policy: scope.policy,
-  });
-  built.set(scope, runtime);
-  return runtime;
-}
-
-async function run(scope: Scope, work: ActionContext<TicketRecord, Observation>, effect: Action): Promise<void> {
-  const handler = runtimeFor(scope).actions[effect.type] as ActionHandler<TicketRecord, Observation>;
-  await handler(effect, work);
-}
-
-const actionNames = [
-  "triage", "ask-question", "implement", "open-pull-request",
-  "resolve-review-thread", "address-threads", "discuss", "assign-reviewer", "request-rereview",
-  "escalate", "hand-off-to-qa", "announce", "hand-over",
-] as const;
 
 export const plugin = defineWorkflow({
   name: "ticket-to-qa",
@@ -270,16 +218,11 @@ export const plugin = defineWorkflow({
   checks: [rosterCheck],
   files: [{ path: ROSTER_FILE, content: EXAMPLE_ROSTER }],
   record: () => ({ judged: [] }),
-  progress: (scope) => runtimeFor(scope).progress,
-  discover: (scope) => runtimeFor(scope).found(),
-  observe: (scope, record) => runtimeFor(scope).observe(record),
-  actions: (scope) => Object.fromEntries(actionNames
-    .filter((name) => scope.policy.writes === "operator"
-      ? !(WRITE_EFFECTS as readonly string[]).includes(name)
-      : name !== "hand-over")
-    .map((name) => [name, run])),
-  remember: (scope, record, outcomes, observation, moved, decision, now) =>
-    runtimeFor(scope).apply(record, decision, outcomes, observation, now, moved),
+  progress,
+  discover,
+  observe,
+  actions: (scope) => actionsFor(scope.policy),
+  remember,
 });
 
 
@@ -302,10 +245,4 @@ function conversationOf(policy: Policy, conversation: Conversation | undefined):
     throw new Error(`ticket-to-qa policy.conversation must be "answer" or "discuss", not ${JSON.stringify(policy.conversation)}`);
   }
   return conversation ? policy.conversation : "answer";
-}
-
-function progressPolicy(budget: Record<string, unknown>) {
-  const parsed = parseBudget(budget);
-  if (!parsed.ok) throw new Error(parsed.problems.join("; "));
-  return parsed.limits.progress;
 }

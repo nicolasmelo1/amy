@@ -53,7 +53,7 @@ describe("a runtime whose tracker supplies no body", () => {
     const worker = new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({ tracker, now: () => clock }),
+      ...(await ticketWorkerDeps({ tracker, now: () => clock })),
     });
     for (let look = 0; look < times; look += 1) await worker.tick();
 

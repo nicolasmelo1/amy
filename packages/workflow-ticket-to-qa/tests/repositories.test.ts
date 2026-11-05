@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { actionsOf, Conversation } from "@amykit/core";
+import { actionsOf, Conversation, WorkflowRuntime } from "@amykit/core";
 import {
   RecordingNotifier,
   WORKDAY,
+  TicketMount,
   fakeAgent,
-  fakeGate,
   fakeGit,
   fakeHost,
   fakeTracker,
@@ -12,15 +12,15 @@ import {
   policy,
   pullRequest,
   record,
+  mountTicketToQa,
   roster,
-  runtimeConfig,
   ticket,
 } from "@amykit/test-fixtures";
 import { plan } from "../src/machine.js";
 import { workflow as ticketToQa } from "./drawn.js";
-import { DEFAULT_POLICY } from "../src/observation.js";
+import { DEFAULT_POLICY, Observation } from "../src/observation.js";
 import { TicketRecord } from "../src/record.js";
-import { ticketRuntime, TicketRuntimeDeps, workIdFor } from "../src/runtime.js";
+import { workIdFor } from "../src/actions.js";
 import { plugin } from "./drawn.js";
 
 const BACKEND = "Northwind/northwind-backend";
@@ -28,21 +28,9 @@ const FRONTEND = "Northwind/northwind-frontend";
 const both = (merged: Record<string, boolean>) =>
   [BACKEND, FRONTEND].map((repo) => ({ repo, merged: merged[repo] ?? false }));
 
-function runtime(overrides: Partial<TicketRuntimeDeps> = {}) {
-  return ticketRuntime({
-    tracker: fakeTracker(),
-    host: fakeHost(),
-    agent: fakeAgent(),
-    gate: fakeGate(),
-    notifier: new RecordingNotifier(),
-    roster: () => roster(),
-    now: () => WORKDAY,
-    git: fakeGit(),
-    layout: { workspaceRoot: "/tmp/amy-fixture", defaultBranch: "main" },
-    config: runtimeConfig,
-    policy: DEFAULT_POLICY,
-    ...overrides,
-  });
+/** ticket-to-qa as the host mounts it, over the fixtures' stand-ins. */
+function runtime(overrides: TicketMount = {}): Promise<WorkflowRuntime<TicketRecord, Observation>> {
+  return mountTicketToQa({ now: () => WORKDAY, notifier: new RecordingNotifier(), ...overrides }) as unknown as Promise<WorkflowRuntime<TicketRecord, Observation>>;
 }
 
 describe("a ticket in two repositories", () => {
@@ -51,10 +39,10 @@ describe("a ticket in two repositories", () => {
   const lookup = { findPullRequestMentioning: vi.fn().mockResolvedValue(null) };
 
   it("is discovered as one work item per repository, the ticket's own keeping its id, each with its urgency", async () => {
-    const found = await runtime({
+    const found = await (await runtime({
       tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([spanning, ticket({ id: "PROJ-1" })]) }),
       host: fakeHost(null, lookup),
-    }).found();
+    })).found();
 
     expect(found).toEqual([
       { workId: "PROJ-1239", priority: 2 },
@@ -64,11 +52,11 @@ describe("a ticket in two repositories", () => {
   });
 
   it("keeps a running ticket's work item when it is labelled into more repositories", async () => {
-    const before = await runtime({ tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([ticket()]) }) }).found();
-    const after = await runtime({
+    const before = await (await runtime({ tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([ticket()]) }) })).found();
+    const after = await (await runtime({
       tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([ticket({ repos: [FRONTEND, BACKEND] })]) }),
       host: fakeHost(null, lookup),
-    }).found();
+    })).found();
 
     expect(before).toEqual([{ workId: "PROJ-1239" }]);
     expect(after.map((found) => (typeof found === "string" ? found : found.workId))).toEqual([workIdFor("PROJ-1239", FRONTEND), "PROJ-1239"]);
@@ -78,7 +66,7 @@ describe("a ticket in two repositories", () => {
     const host = fakeHost();
     delete (host as { findPullRequestMentioning?: unknown }).findPullRequestMentioning;
 
-    await expect(runtime({ tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([spanning]) }), host }).found()).rejects.toThrow(
+    await expect((await runtime({ tracker: fakeTracker({ inProgress: vi.fn().mockResolvedValue([spanning]) }), host })).found()).rejects.toThrow(
       /cannot find a pull request by a ticket's id/,
     );
   });
@@ -92,7 +80,7 @@ describe("a ticket in two repositories", () => {
     const get = vi.fn().mockResolvedValue(spanning);
     const findPullRequest = vi.fn().mockResolvedValue(null);
 
-    const seen = await runtime({ tracker: fakeTracker({ get }), host: fakeHost(null, { findPullRequest }) }).observe(
+    const seen = await (await runtime({ tracker: fakeTracker({ get }), host: fakeHost(null, { findPullRequest }) })).observe(
       { ...record("READY"), id: workIdFor("PROJ-1239", FRONTEND) } as TicketRecord,
     );
 
@@ -103,7 +91,7 @@ describe("a ticket in two repositories", () => {
 
   it("runs each repository's work in its own tree", async () => {
     const git = fakeGit();
-    const built = runtime({ git });
+    const built = (await runtime({ git }));
     const ctx = (repo: string) => ({
       record: { ...record("IMPLEMENTING"), id: workIdFor("PROJ-1239", repo) },
       observation: observation({ ticket: { ...spanning, repo } }),
@@ -122,7 +110,7 @@ describe("a ticket in two repositories", () => {
   it("pushes review fixes to the pull request's own branch, wherever it was found", async () => {
     const git = fakeGit();
     const agent = fakeAgent();
-    await (runtime({ git, agent }).actions["address-threads"] as (e: unknown, c: unknown) => Promise<void>)(
+    await ((await runtime({ git, agent })).actions["address-threads"] as (e: unknown, c: unknown) => Promise<void>)(
       { type: "address-threads", threadIds: [], from: "human" },
       { record: record("HUMAN_FIX"), observation: observation({ pullRequest: pullRequest({ headBranch: "ops/opened-by-hand" }) }), outcomes: {} },
     );
@@ -133,7 +121,7 @@ describe("a ticket in two repositories", () => {
 
   it("reads whether every repository merged, at the QA handoff only", async () => {
     const findPullRequestMentioning = vi.fn(async (repo: string) => pullRequest({ merged: repo === BACKEND }));
-    const built = runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(spanning) }), host: fakeHost(null, { findPullRequestMentioning }) });
+    const built = (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(spanning) }), host: fakeHost(null, { findPullRequestMentioning }) }));
     const id = workIdFor("PROJ-1239", BACKEND);
 
     const atQa = await built.observe({ ...record("QA_HANDOFF"), id } as TicketRecord);
@@ -213,17 +201,17 @@ describe("a ticket in two repositories", () => {
 describe("the runtime with its writes handed to the operator", () => {
   const operator = { ...DEFAULT_POLICY, writes: "operator" as const };
 
-  it("declares no action that writes on the tracker or the code host", () => {
-    const declared = Object.keys(runtime({ policy: operator }).actions);
+  it("declares no action that writes on the tracker or the code host", async () => {
+    const declared = Object.keys((await runtime({ policy: operator })).actions);
 
     for (const write of ["ask-question", "escalate", "open-pull-request", "resolve-review-thread", "assign-reviewer", "request-rereview", "hand-off-to-qa"]) {
       expect(declared).not.toContain(write);
     }
     expect(declared).toContain("hand-over");
-    expect(Object.keys(runtime().actions)).not.toContain("hand-over");
+    expect(Object.keys((await runtime()).actions)).not.toContain("hand-over");
   });
 
-  const handOver = (built: ReturnType<typeof runtime>, outcomes: Record<string, unknown> = {}) =>
+  const handOver = (built: Awaited<ReturnType<typeof runtime>>, outcomes: Record<string, unknown> = {}) =>
     (built.actions["hand-over"] as (e: unknown, c: unknown) => Promise<void>)(
       { type: "hand-over", turns: [{ key: "open-pull-request@x", write: { type: "open-pull-request" } }] },
       { record: record("PR_OPEN"), observation: observation(), outcomes },
@@ -239,7 +227,7 @@ describe("the runtime with its writes handed to the operator", () => {
     };
     const outcomes: Record<string, unknown> = {};
 
-    await handOver(runtime({ policy: operator, notifier, conversation }), outcomes);
+    await handOver((await runtime({ policy: operator, notifier, conversation })), outcomes);
 
     expect(posted).toHaveLength(1);
     expect(posted[0]).toContain("Open a pull request for PROJ-1239");
@@ -250,7 +238,7 @@ describe("the runtime with its writes handed to the operator", () => {
   it("says it through the notifier when there is no thread", async () => {
     const notifier = new RecordingNotifier();
 
-    await handOver(runtime({ policy: operator, notifier }));
+    await handOver((await runtime({ policy: operator, notifier })));
 
     expect(notifier.sent).toHaveLength(1);
     expect(notifier.sent[0]).toContain("Open a pull request for PROJ-1239");
@@ -270,27 +258,27 @@ describe("the runtime with its writes handed to the operator", () => {
 
 
 describe("finding the pull request by the ticket's id", () => {
-  const ask = (state: TicketRecord["state"], policy = DEFAULT_POLICY) => {
+  const ask = async (state: TicketRecord["state"], policy = DEFAULT_POLICY) => {
     const findPullRequestMentioning = vi.fn().mockResolvedValue(pullRequest({ number: 77 }));
-    const built = runtime({ policy, host: fakeHost(null, { findPullRequestMentioning }) });
+    const built = (await runtime({ policy, host: fakeHost(null, { findPullRequestMentioning }) }));
     return { findPullRequestMentioning, seen: built.observe(record(state)) };
   };
 
   it("finds a renamed ticket's pull request once one exists", async () => {
-    const { seen } = ask("HUMAN_REVIEW");
+    const { seen } = await ask("HUMAN_REVIEW");
     expect((await seen).pullRequest?.number).toBe(77);
   });
 
   it("does not search before the machine has opened one itself", async () => {
     for (const state of ["IMPLEMENTING", "PR_OPEN"] as const) {
-      const { findPullRequestMentioning, seen } = ask(state);
+      const { findPullRequestMentioning, seen } = await ask(state);
       expect((await seen).pullRequest).toBeNull();
       expect(findPullRequestMentioning).not.toHaveBeenCalled();
     }
   });
 
   it("searches at PR_OPEN when the operator opens it, from whatever branch they chose", async () => {
-    const { seen } = ask("PR_OPEN", { ...DEFAULT_POLICY, writes: "operator" });
+    const { seen } = await ask("PR_OPEN", { ...DEFAULT_POLICY, writes: "operator" });
     expect((await seen).pullRequest?.number).toBe(77);
   });
 });
@@ -299,7 +287,7 @@ describe("a repository that leaves the ticket", () => {
   it("retires the work item started there, where it stands", async () => {
     // A backend ticket under way, then labelled into the frontend only.
     const relabelled = ticket({ repo: BACKEND, repos: [FRONTEND] });
-    const seen = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(relabelled) }) }).observe(record("HUMAN_REVIEW"));
+    const seen = await (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(relabelled) }) })).observe(record("HUMAN_REVIEW"));
 
     const decision = plan(record("HUMAN_REVIEW"), seen, policy);
 
@@ -310,10 +298,10 @@ describe("a repository that leaves the ticket", () => {
 
   it("resumes from where it stopped when the repository's label comes back", async () => {
     const stopped = record("HUMAN_FIX", { reviewer: "edsger" });
-    const removed = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND] })) }) }).observe(stopped);
+    const removed = await (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND] })) }) })).observe(stopped);
     expect(plan(stopped, removed, policy).kind).toBe("settled");
 
-    const restored = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND, BACKEND] })) }) }).observe(stopped);
+    const restored = await (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND, BACKEND] })) }) })).observe(stopped);
     const decision = plan(stopped, restored, policy);
 
     expect(restored.retired).toBe(false);
@@ -323,7 +311,7 @@ describe("a repository that leaves the ticket", () => {
   });
 
   it("keeps the ones still named", async () => {
-    const seen = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND, BACKEND] })) }) }).observe(record("HUMAN_REVIEW"));
+    const seen = await (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND, BACKEND] })) }) })).observe(record("HUMAN_REVIEW"));
 
     expect(seen.retired).toBe(false);
   });
@@ -336,7 +324,7 @@ describe("the operator answering on the ticket with their own account", () => {
   it("answers a question asked in operator mode", async () => {
     const triage = { clear: false, questions: ["which currency?"], askedQuestions: [], at: "2026-09-03T12:00:00.000Z" };
     const comments = vi.fn().mockResolvedValue([own]);
-    const built = runtime({ policy: operator, tracker: fakeTracker({ comments }) });
+    const built = (await runtime({ policy: operator, tracker: fakeTracker({ comments }) }));
 
     const seen = await built.observe(record("CLARIFYING", { triage }));
 
@@ -346,7 +334,7 @@ describe("the operator answering on the ticket with their own account", () => {
 
   it("settles an escalation in operator mode", async () => {
     const hasReplyAfter = vi.fn().mockResolvedValue(false);
-    const built = runtime({ policy: operator, tracker: fakeTracker({ comments: vi.fn().mockResolvedValue([own]), hasReplyAfter }) });
+    const built = (await runtime({ policy: operator, tracker: fakeTracker({ comments: vi.fn().mockResolvedValue([own]), hasReplyAfter }) }));
 
     const seen = await built.observe(record("ESCALATED", { escalation: { reason: "r", askedAt: "2026-09-03T12:00:00.000Z" } }));
 
@@ -356,7 +344,7 @@ describe("the operator answering on the ticket with their own account", () => {
 
   it("still reads its own comments as its own when the machine makes the writes", async () => {
     const triage = { clear: false, questions: ["which currency?"], askedQuestions: [], at: "2026-09-03T12:00:00.000Z" };
-    const seen = await runtime({ tracker: fakeTracker({ comments: vi.fn().mockResolvedValue([own]) }) }).observe(record("CLARIFYING", { triage }));
+    const seen = await (await runtime({ tracker: fakeTracker({ comments: vi.fn().mockResolvedValue([own]) }) })).observe(record("CLARIFYING", { triage }));
 
     expect(seen.conversation).toEqual([own]);
   });
@@ -366,7 +354,7 @@ describe("a ticket whose last repository label is taken off", () => {
   it("retires the work item for the repository it named", async () => {
     // Labelled into the frontend once; the tracker now names its team's alone.
     const unlabelled = ticket({ repo: BACKEND });
-    const seen = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(unlabelled) }) }).observe(
+    const seen = await (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(unlabelled) }) })).observe(
       { ...record("IMPLEMENTING"), id: workIdFor("PROJ-1239", FRONTEND) } as TicketRecord,
     );
 

@@ -1019,6 +1019,11 @@
         },
         {
           "depth": 3,
+          "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write discover, observe, remember and every action as a function of the scope defineWorkflow hands it: scope.ports, scope.config, scope.policy, scope.checkouts, scope.ctx and scope.announce. errandRuntime, planRuntime and ticketRuntime are gone, with their …RuntimeDeps and …RuntimeConfig types; a test that built one mounts the declaration instead.",
+          "slug": "the-actions-use-the-ports-the-errand-note-to-plan-and-ticket-to-qa-write-discover-observe-remember-and-every-action-as-a-function-of-the-scope-defineworkflow-hands-it-scopeports-scopeconfig-scopepolicy-scopecheckouts-scopectx-and-scopeannounce-errandruntime-planruntime-and-ticketruntime-are-gone-with-their-runtimedeps-and-runtimeconfig-types-a-test-that-built-one-mounts-the-declaration-instead"
+        },
+        {
+          "depth": 3,
           "title": "amy update reaches the release. It said nothing to move with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):",
           "slug": "amy-update-reaches-the-release-it-said-nothing-to-move-with-060-published-to-a-machine-on-050-for-two-reasons-110httpsgithubcomnicolasmelo1amyissues110"
         },
@@ -10415,6 +10420,26 @@
           },
           {
             "package": "@amykit/workflow-testkit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "actions-use-the-ports",
+        "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write `discover`, `observe`, `remember` and every action as a function of the scope `defineWorkflow` hands it: `scope.ports`, `scope.config`, `scope.policy`, `scope.checkouts`, `scope.ctx` and `scope.announce`. `errandRuntime`, `planRuntime` and `ticketRuntime` are gone, with their `…RuntimeDeps` and `…RuntimeConfig` types; a test that built one mounts the declaration instead.",
+        "body": "Before, each workflow kept the factory it had before `defineWorkflow`, and a\n`WeakMap` adapter that assembled a deps object out of the scope to build it:\nthree copies of the same adapter. It cached nothing for an action, whose scope\nis a new object every time, so every action rebuilt the whole runtime; and\nticket-to-qa carried its own `agent.run` and `notify.failed` lines behind an\n`accountsAgentRuns: false` switch, beside the host's, when the framework\nalready hands every action an agent that accounts for each reply and an\n`announce` that cannot cost a move. ticket-to-qa's progress policy is read\nfrom `budget` through the declaration's `progress(scope)`, and its roster is\nread from the profile when a look needs it, as before.",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
             "level": "minor"
           },
           {
