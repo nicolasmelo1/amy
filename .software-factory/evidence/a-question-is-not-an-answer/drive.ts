@@ -12,9 +12,9 @@
 // The owner only ever writes into the thread, the way a person would, and
 // every assertion is read off the thread, the agent's prompts and the record
 // on disk — never off the machine's own account of itself.
-import type { AskContext, WorkflowRuntime } from "@amykit/core";
+import type { Agent, AskContext, Checkouts, CodeHost, Conversation, Gate, Notifier, Plugin, Tracker, WorkflowRuntime } from "@amykit/core";
 import type { HttpTransport } from "@amykit/plugin-slack";
-import type { Policy, Ticket, TicketRecord, TicketRuntimeDeps } from "@amykit/workflow-ticket-to-qa";
+import type { Policy, Ticket, TicketGit, TicketRecord } from "@amykit/workflow-ticket-to-qa";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -27,14 +27,14 @@ if (repo === "" || reportPath === "") {
   process.exit(2);
 }
 const dist = (relative: string): Promise<unknown> => import(pathToFileURL(path.join(repo, relative)).href);
-const { dispatchesTo, withDiagramBeside } = (await dist("packages/core/dist/index.js")) as typeof import("@amykit/core");
+const { WORKFLOW_RUNTIME, dispatchesTo, mount, withDiagramBeside } = (await dist("packages/core/dist/index.js")) as typeof import("@amykit/core");
 const { SlackApi, SlackConversation } = (await dist("plugins/slack/dist/index.js")) as typeof import("@amykit/plugin-slack");
 const { FileQueue } = (await dist("plugins/file-queue/dist/index.js")) as typeof import("@amykit/plugin-file-queue");
 const { Worker } = (await dist("plugins/serial-engine/dist/index.js")) as typeof import("@amykit/plugin-serial-engine");
-const { DEFAULT_POLICY, plugin, ticketRuntime } = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
+const { DEFAULT_POLICY, plugin } = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
 // The workflow as the host mounts it, shaped by the diagram at its package root.
 const drawn = withDiagramBeside(plugin, pathToFileURL(path.join(repo, "packages/workflow-ticket-to-qa/dist/index.js")));
-const { newRecord, workflow: ticketToQa } = drawn;
+const { workflow: ticketToQa } = drawn;
 
 const CHANNEL = "C0WORK";
 const OWNER = "U0ADA";
@@ -101,7 +101,7 @@ function slackWorld() {
   };
 }
 
-function world(conversationPolicy: Policy["conversation"]) {
+async function world(conversationPolicy: Policy["conversation"]) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "amy-discussion-"));
   const slack = slackWorld();
   let clock = new Date("2026-10-27T10:01:00.000Z");
@@ -124,7 +124,8 @@ function world(conversationPolicy: Policy["conversation"]) {
   };
   const asks: { step: string | undefined; prompt: string; readOnly: boolean }[] = [];
   const commits: unknown[][] = [];
-  const deps: TicketRuntimeDeps = {
+  const notifier: Notifier = { announce: async () => {} };
+  const ports: { tracker: Tracker; conversation: Conversation; "code-host": CodeHost; agent: Agent; gate: Gate; notifier: Notifier } = {
     tracker: {
       inProgress: async () => [],
       get: async () => ticket,
@@ -136,7 +137,7 @@ function world(conversationPolicy: Policy["conversation"]) {
       createFollowUp: async () => "BILL-8",
     },
     conversation,
-    host: {
+    "code-host": {
       findPullRequest: async () => null,
       reviewLoad: async () => ({}),
       openPullRequest: unreached,
@@ -161,23 +162,47 @@ function world(conversationPolicy: Policy["conversation"]) {
       },
     },
     gate: { run: async () => ({ ok: true, output: "", at: clock.toISOString() }) },
-    notifier: { announce: async () => {} },
-    roster: () => ({ confirmedOn: "2026-10-27", qa: { tracker: "qa@example.test", host: "qa", available: true }, reviewers: [] }),
-    now,
-    config: { repos: ["acme/widgets"], qaStatusName: "In QA" },
-    policy: { ...DEFAULT_POLICY, conversation: conversationPolicy },
-    git: {
-      pathFor: () => dir,
-      acquire: async () => dir,
-      prepareBranch: async () => {},
-      commitAndPush: async (...args) => {
-        commits.push(args);
-        return true;
-      },
-      headSha: async () => "0".repeat(40),
-    },
-    layout: { workspaceRoot: dir, defaultBranch: "main" },
+    notifier,
   };
+  const git: TicketGit = {
+    pathFor: () => dir,
+    acquire: async () => dir,
+    prepareBranch: async () => {},
+    commitAndPush: async (...args) => {
+      commits.push(args);
+      return true;
+    },
+    headSha: async () => "0".repeat(40),
+  };
+
+  // The declaration as the host mounts it, over these stand-ins. Only the
+  // checkouts are lent rather than built from a runner, so a commit is a
+  // line in `commits`; a lane takes them leased, and they lend themselves.
+  const leased = Object.assign(Object.create(git) as TicketGit, { leasedTo: () => leased });
+  const checkouts = { git: leased, layout: { workspaceRoot: dir, defaultBranch: "main" } } as unknown as Checkouts;
+  const lent: Plugin = {
+    name: drawn.name,
+    configSchema: drawn.configSchema,
+    register: (registry, ctx) => drawn.register(registry, { ...ctx, checkouts: () => checkouts }),
+  };
+  const standIns: Plugin = {
+    name: "@amykit/plugin-stand-ins",
+    register: (registry) => {
+      for (const [kind, port] of Object.entries(ports)) registry.port(kind, port);
+    },
+  };
+  const profile = path.join(dir, "profile");
+  fs.mkdirSync(profile, { recursive: true });
+  fs.writeFileSync(
+    path.join(profile, "roster.yaml"),
+    JSON.stringify({ confirmedOn: "2026-10-27", qa: { tracker: "qa@example.test", host: "qa", available: true }, reviewers: [{ tracker: "ada@example.test", host: "ada", available: true }] }),
+  );
+  const mounted = await mount(
+    [lent, standIns],
+    { [drawn.name]: { repos: ["acme/widgets"], qaStatusName: "In QA", policy: { ...DEFAULT_POLICY, conversation: conversationPolicy } } },
+    { runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now, paths: { workspace: dir, checkouts: {}, state: dir, profile } },
+  );
+  if (!mounted.ok) throw new Error(mounted.problems.join("; "));
 
   const records = new Map<string, TicketRecord>();
   records.set(TICKET, {
@@ -201,8 +226,8 @@ function world(conversationPolicy: Policy["conversation"]) {
     workflow: ticketToQa,
     // The boundary the engine meets every workflow at: the record and the
     // observation are typed on this side, not on the engine's.
-    runtime: { ...ticketRuntime(deps), policy: deps.policy, newRecord } as unknown as WorkflowRuntime,
-    notifier: deps.notifier,
+    runtime: mounted.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(ticketToQa.name) as WorkflowRuntime,
+    notifier,
     now,
     config: { staleClaimMs: 60000, retentionDays: 7, maxItemAttempts: 1, retryDelayMs: 0 },
   });
@@ -233,7 +258,7 @@ function world(conversationPolicy: Policy["conversation"]) {
 }
 
 // Under `discuss`: three questions, three answers, no move; then a decision.
-const discuss = world("discuss");
+const discuss = await world("discuss");
 await discuss.open();
 const questions = ["why did the agent fail three times?", "is the test wrong, or the code?", "what would you change?"];
 let stayed = true;
@@ -291,7 +316,7 @@ discuss.cleanup();
 
 // Under `answer`: a marked discussion is answered and moves nothing; the
 // first unmarked reply is the decision, as it always was.
-const answer = world("answer");
+const answer = await world("answer");
 await answer.open();
 answer.slack.say("before you go on — why the test?", "speech_balloon");
 await answer.look();

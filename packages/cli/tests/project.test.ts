@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ConfigField, ConfigSchema, Plan, WorkRecord } from "@amykit/core";
-import { CALLED, defineWorkflow, settled } from "@amykit/core";
+import { CALLED, defineWorkflow, settled, withDiagram } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
@@ -41,10 +41,9 @@ function declaredPhase(
     readonly decisions?: Readonly<Record<string, (record: WorkRecord) => Plan>>;
   },
 ) {
-    return defineWorkflow({
+  const ends = spec.terminal.filter((end) => !spec.states.includes(end));
+  return withDiagram(defineWorkflow({
     name,
-    states: spec.states,
-    terminal: spec.terminal,
     configSchema: spec.schema ?? {},
     policy: {},
     ...(spec.takes ? { input: spec.takes } : {}),
@@ -61,9 +60,25 @@ function declaredPhase(
         (record: WorkRecord): Plan =>
           spec.decisions?.[state]?.(record) ??
           (at < spec.states.length - 1 ? { kind: "advance", to: spec.states[at + 1]!, effects: [], why: "the phase moves on" } : settled(`${state} settles`)),
-      ]),
+      ]).concat(ends.map((end) => [end, () => settled(`${end} settles`)])),
     ),
+  }), diagramFor(spec.states, spec.terminal));
+}
+
+/**
+ * The diagram a phase's states and ends draw: each state on to the next, the
+ * last one on to every end not already among them, and every end out.
+ */
+function diagramFor(states: readonly string[], terminal: readonly string[]): string {
+  const lines = ["stateDiagram-v2", `    [*] --> ${states[0]}`];
+  states.forEach((state, at) => {
+    if (terminal.includes(state)) return;
+    const next = states[at + 1];
+    if (next !== undefined) lines.push(`    ${state} --> ${next}`);
+    else for (const end of terminal.filter((one) => !states.includes(one))) lines.push(`    ${state} --> ${end}`);
   });
+  for (const end of terminal) lines.push(`    ${end} --> [*]`);
+  return `${lines.join("\n")}\n`;
 }
 
 /** The problems an assembly refused with, in a shape assertions read. */
@@ -611,9 +626,10 @@ async function assembledFor(
 }
 
 /** Writes one phase folder's module: an index importing the built core it declares with. */
-function writePluginFile(directory: string, text: string): string {
+function writePluginFile(directory: string, module: { readonly source: string; readonly diagram: string }): string {
   fs.mkdirSync(directory, { recursive: true });
-  fs.writeFileSync(path.join(directory, "index.js"), text, "utf-8");
+  fs.writeFileSync(path.join(directory, "index.js"), module.source, "utf-8");
+  fs.writeFileSync(path.join(directory, "workflow.mmd"), module.diagram, "utf-8");
   return directory;
 }
 
@@ -634,7 +650,7 @@ function fixturePhaseModule(
     readonly schema?: Record<string, ConfigField>;
     readonly phases?: Readonly<Record<string, string>>;
   },
-): string {
+): { readonly source: string; readonly diagram: string } {
   const decisions: string[] = [];
   spec.states.forEach((state, at) => {
     if (spec.decide === "settled") {
@@ -646,14 +662,15 @@ function fixturePhaseModule(
       decisions.push(`${state}: () => { drove += 1; return { kind: "advance", to: drove === 1 ? "refused" : "SATISFIED", effects: [], why: drove === 1 ? "the criteria are not shown yet" : "every criterion holds" }; }`);
     }
   });
+  for (const end of spec.terminal.filter((one) => !spec.states.includes(one))) {
+    decisions.push(`${end}: () => ({ kind: "settled", why: "fixture" })`);
+  }
   const counter = spec.decide === "refuse-then-hold" ? "let drove = 0;\n" : "";
-  return `import { defineWorkflow } from ${JSON.stringify(CORE_ENTRY)};
+  const source = `import { defineWorkflow } from ${JSON.stringify(CORE_ENTRY)};
 ${counter}
 export const plugin = defineWorkflow({
   name: ${JSON.stringify(name)},
   pluginName: "workflow-${name}",
-  states: ${JSON.stringify(spec.states)},
-  terminal: ${JSON.stringify(spec.terminal)},
   configSchema: ${JSON.stringify(spec.schema ?? {})},
   ${spec.takes ? `input: ${JSON.stringify(spec.takes)},\n  ` : ""}${spec.phases ? `phases: ${JSON.stringify(spec.phases)},\n  ` : ""}policy: {},
   needs: {},
@@ -664,4 +681,5 @@ export const plugin = defineWorkflow({
   ${spec.output ? `output: { ${Object.entries(spec.output).map(([end, returns]) => `${JSON.stringify(end)}: () => (${JSON.stringify(returns)})`).join(", ")} },\n  ` : ""}decide: { ${decisions.join(", ")} },
 });
 `;
+  return { source, diagram: diagramFor(spec.states, spec.terminal) };
 }

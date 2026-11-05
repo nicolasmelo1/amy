@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { mount, withDiagramBeside, WORKFLOW_RUNTIME, type Plugin, type WorkflowRuntime } from "@amykit/core";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { localWorkflow, checkWorkflow, workflowSpecifier, workflowsDirectory, writeWorkflow } from "../src/workflow.js";
 
@@ -38,7 +39,7 @@ describe("a workflow of your own", () => {
 
   it("refuses a lifecycle that never settles", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
+    const entry = path.join(directory, "decide.ts");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
       'advance("done", "the work was received")',
       'act("it keeps trying")',
@@ -64,7 +65,7 @@ describe("a workflow of your own", () => {
 
   it("refuses an action the plan emits and the runtime never declared", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
+    const entry = path.join(directory, "decide.ts");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace(
       'advance("done", "the work was received")',
       'advance("done", "the work was received", { type: "page" })',
@@ -77,7 +78,7 @@ describe("a workflow of your own", () => {
 
   it("refuses an action declared with nothing behind it, before driving anything", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
+    const entry = path.join(directory, "actions.ts");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace("export const actions = {};", "export const actions = { page: undefined };"));
 
     await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([
@@ -85,23 +86,37 @@ describe("a workflow of your own", () => {
     ]);
   });
 
-  it("writes one declaration for the workflow and runtime", () => {
-    const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
-    const source = fs.readFileSync(entry, "utf-8");
+  it("writes the three pieces each in its file, and one declaration that joins them", () => {
+    for (const [name, from] of [["plain", undefined], ["imported", diagramFile(home)]] as const) {
+      const directory = writeWorkflow(home, name, DEFAULT_CONFIG, from);
+      const source = (file: string) => fs.readFileSync(path.join(directory, file), "utf-8");
 
-    expect(source.match(/defineWorkflow\(/g)).toHaveLength(1);
-    expect(source).not.toContain("registry.workflow(");
-    expect(source).not.toContain('registry.contribute("workflow-runtime"');
+      expect(fs.readdirSync(directory).filter((file) => /\.(ts|mmd)$/.test(file)).sort()).toEqual(["actions.ts", "decide.ts", "index.test.ts", "index.ts", "workflow.mmd"]);
+      expect(source("index.ts").match(/defineWorkflow\(/g)).toHaveLength(1);
+      expect(source("index.ts")).toContain('import { decide } from "./decide.ts";');
+      expect(source("index.ts")).toContain('import { actions, remember } from "./actions.ts";');
+      expect(source("decide.ts")).toMatch(/export const decide/);
+      expect(source("actions.ts")).toMatch(/export const actions/);
+      for (const file of ["index.ts", "decide.ts", "actions.ts", "index.test.ts"]) {
+        expect(source(file)).not.toContain("registry.workflow(");
+        expect(source(file)).not.toMatch(/function runtime\(|states:/);
+      }
+    }
   });
 
-  // The declaration is the shipped way to write one, not the only one: a
-  // workflow that still registers both halves by hand is checked too, and
-  // told what to change.
-  it("tells a workflow still declaring usesActions what to change", async () => {
+  it("writes one stub per drawn state into decide.ts for a workflow imported from a diagram", () => {
+    const directory = writeWorkflow(home, "imported", DEFAULT_CONFIG, diagramFile(home));
+
+    expect(fs.readFileSync(path.join(directory, "decide.ts"), "utf-8")).toContain('"PAGED": notWritten(),');
+  });
+
+  // Every workflow amy mounts from ~/.amy/workflows is a declaration with a
+  // diagram: one that registers its workflow by hand is refused by name and
+  // told what to move onto, rather than checked.
+  it("refuses a workflow that registers itself by hand, naming what to move onto", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const entry = path.join(directory, "index.ts");
-    fs.writeFileSync(entry, RAW_PLUGIN.replace("USES_ACTIONS", "usesActions: [],"));
+    fs.writeFileSync(entry, RAW_PLUGIN);
     fs.rmSync(path.join(directory, "workflow.mmd"));
     fs.mkdirSync(path.join(directory, "node_modules", "@amykit"), { recursive: true });
     const mountedCore = path.join(directory, "node_modules", "@amykit", "core");
@@ -109,9 +124,9 @@ describe("a workflow of your own", () => {
       fs.symlinkSync(path.resolve(here, "../../core"), mountedCore, "dir");
     }
 
-    await expect(checkWorkflow(home, "oncall", loadConfig(home))).resolves.toEqual([
-      "legacy: still declares `usesActions`; delete it and key each action in its runtime's `actions`",
-    ]);
+    expect((await checkWorkflow(home, "oncall", loadConfig(home))).join("\n")).toContain(
+      "failed to register — workflow-legacy registers a workflow by hand; amy mounts a workflow declared with `defineWorkflow` and a workflow.mmd beside it",
+    );
   });
 
   it("writes a suite that passes on its first run", () => {
@@ -124,7 +139,7 @@ describe("a workflow of your own", () => {
     expect(run.status, run.stdout + run.stderr).toBe(0);
   });
 
-  it("writes a suite that goes red, naming the state, when a state cannot be reached", () => {
+  it("writes a suite that goes red, naming the state, when a drawn state has no decision", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
     const diagram = path.join(directory, "workflow.mmd");
     fs.writeFileSync(diagram, fs.readFileSync(diagram, "utf-8").replace(
@@ -135,7 +150,7 @@ describe("a workflow of your own", () => {
     const run = suiteOf(directory);
 
     expect(run.status).not.toBe(0);
-    expect(run.stdout + run.stderr).toContain("`stranded` is declared, and no world reaches it");
+    expect(run.stdout + run.stderr).toContain("the oncall workflow's `decide` does not match its states: missing `stranded`");
   });
 
   it("names the testkit it runs at this command's own version", () => {
@@ -167,53 +182,46 @@ describe("a workflow of your own", () => {
 
   it("goes red at the type check when the plan returns something the core does not take", () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
+    const entry = path.join(directory, "decide.ts");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replace('settled("the workflow is complete")', '{ kind: "finished" }'));
 
     const run = tscIn(directory, "--noEmit");
 
     expect(run.status).not.toBe(0);
-    expect(run.stdout).toContain("index.ts");
+    expect(run.stdout).toContain("decide.ts");
   });
 
-  it("adapts a keyed three-piece action with the suite's supplied scope", async () => {
+  it("hands an action written in actions.ts the scope the mount builds", async () => {
     const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
-    const entry = path.join(directory, "index.ts");
+    const entry = path.join(directory, "actions.ts");
     fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8")
-      .replace("act, advance, defineWorkflow, settled", "act, advance, defineWorkflow, settled, workflowActions")
+      .replace('import type { WorkRecord } from "@amykit/core";', 'import { workflowActions, type WorkRecord } from "@amykit/core";')
       .replace("export const actions = {};", `export const actions = workflowActions<{ type: "announce"; text: string }>()({
   announce: async (scope, _work, effect) => {
-    if ((scope.config as { marker?: string }).marker !== "test" || effect.text !== "hello") throw new Error("wrong test action context");
+    if (typeof scope.announce !== "function" || typeof scope.ports !== "object" || effect.text !== "hello") throw new Error("wrong action scope");
   },
 });`));
 
     const run = tscIn(directory);
     expect(run.status, run.stdout + run.stderr).toBe(0);
 
-    const built = (await import(pathToFileURL(path.join(directory, "dist", "index.js")).href)) as {
-      runtime(newRecord?: import("@amykit/core").WorkflowRuntime["newRecord"], scope?: unknown): import("@amykit/core").WorkflowRuntime;
-    };
-    const handler = built.runtime(undefined, { config: { marker: "test" } }).actions.announce;
-    if (typeof handler !== "function") throw new Error("the scaffold did not adapt its action");
+    const runtime = await mountedRuntime(path.join(directory, "dist", "index.js"));
+    const handler = runtime.actions.announce;
+    if (typeof handler !== "function") throw new Error("the mount did not build the action");
     await expect(handler(
       { type: "announce", text: "hello" },
-      { record: {} as import("@amykit/core").WorkRecord, observation: {}, outcomes: {} },
+      { record: runtime.newRecord("w-1", new Date(0)), observation: {}, outcomes: {} },
     )).resolves.toBeUndefined();
   });
 
-  it("starts a record from its runtime's default, read from the diagram beside it", async () => {
-    const drawn = path.join(home, "oncall.mmd");
-    fs.writeFileSync(drawn, "stateDiagram-v2\n    [*] --> PAGED\n    PAGED --> [*]\n");
-
-    for (const [name, from] of [["plain", undefined], ["imported", drawn]] as const) {
+  it("starts a record in the state the diagram beside it starts in", async () => {
+    for (const [name, from] of [["plain", undefined], ["imported", diagramFile(home)]] as const) {
       const directory = writeWorkflow(home, name, DEFAULT_CONFIG, from);
       const run = tscIn(directory);
       expect(run.status, run.stdout + run.stderr).toBe(0);
 
-      const built = (await import(pathToFileURL(path.join(directory, "dist", "index.js")).href)) as {
-        runtime(): import("@amykit/core").WorkflowRuntime;
-      };
-      const record = built.runtime().newRecord("w-1", new Date("2026-10-30T00:00:00Z"));
+      const runtime = await mountedRuntime(path.join(directory, "dist", "index.js"));
+      const record = runtime.newRecord("w-1", new Date("2026-10-30T00:00:00Z"));
       expect(record.state).toBe(from ? "PAGED" : "received");
     }
   });
@@ -241,10 +249,29 @@ describe("a workflow of your own", () => {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+/** A diagram drawn in another tool, for `amy workflow new --from`. */
+function diagramFile(home: string): string {
+  const file = path.join(home, "oncall.mmd");
+  fs.writeFileSync(file, "stateDiagram-v2\n    [*] --> PAGED\n    PAGED --> [*]\n");
+  return file;
+}
+
+/** The built workflow, mounted the way amy mounts it: bound to the diagram at its package root. */
+async function mountedRuntime(built: string): Promise<WorkflowRuntime> {
+  const { plugin } = (await import(pathToFileURL(built).href)) as { plugin: Plugin };
+  const outcome = await mount([withDiagramBeside(plugin, built)], {}, {
+    runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+    now: () => new Date(0),
+    paths: { workspace: os.tmpdir(), checkouts: {}, state: os.tmpdir() },
+  });
+  if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+  const runtime = [...(outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.values() ?? [])][0];
+  return runtime as WorkflowRuntime;
+}
+
 /**
  * A workflow written the way every one of them was before the declaration:
- * both halves registered by hand. USES_ACTIONS is where a test puts the field
- * a workflow no longer declares.
+ * both halves registered by hand, which amy no longer mounts.
  */
 const RAW_PLUGIN = `import type { Plugin, WorkRecord, Workflow, WorkflowRuntime } from "@amykit/core";
 
@@ -254,7 +281,6 @@ export const workflow: Workflow = {
   waitingStates: [],
   initialState: "done",
   terminalStates: ["done"],
-  USES_ACTIONS
   plan: () => ({ kind: "settled", why: "the work is over" }),
 };
 

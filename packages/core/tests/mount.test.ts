@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
 import { DIAGRAM_FILE } from "../src/diagram.js";
-import { defineWorkflow, diagramBeside, withDiagramBeside } from "../src/define-workflow.js";
+import { declaredWorkflowsOnly, defineWorkflow, diagramBeside, notWritten, withDiagramBeside } from "../src/define-workflow.js";
 import { Plugin, PluginContext, Workflow } from "../src/plugin.js";
 import { HostServices, mount, mountedActions, unmetNeeds } from "../src/mount.js";
 import { ActionContext, WORKFLOW_RUNTIME, WorkflowRuntime } from "../src/runtime.js";
@@ -1450,10 +1450,11 @@ describe("a workflow drawn as a diagram", () => {
       configSchema: {},
       policy: {},
       needs: {},
-      plan: () => ({ kind: "settled", why: "drawn" }),
+      decide: { QUEUED: notWritten(), WORKING: notWritten(), ASKED: notWritten(), DONE: notWritten() },
       record: () => ({}),
-      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
-    });
+      observe: async () => ({}),
+      actions: {},
+    } as Parameters<typeof defineWorkflow>[0]);
   }
 
   it("mounts with the states the file beside it draws, and declares none", async () => {
@@ -1474,11 +1475,11 @@ describe("a workflow drawn as a diagram", () => {
     expect(drawn.newRecord("w-1", new Date(0)).state).toBe("QUEUED");
   });
 
-  it("refuses one that declares its states as well as drawing them, naming the workflow and the fields", async () => {
+  it("refuses one that still declares its states, naming the workflow and the fields", async () => {
     const outcome = await mount([withDiagramBeside(declaring({ states: ["QUEUED", "DONE"], terminal: ["DONE"] }), directory(DRAWN))], {}, HOST);
 
     expect(outcome.ok).toBe(false);
-    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/the drawn workflow draws its states in workflow\.mmd and declares `states`, `terminal` as well/);
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/the drawn workflow declares `states`, `terminal`; delete them, a workflow's states come only from its workflow\.mmd/);
   });
 
   it("refuses a diagram it cannot read with the file and the line", async () => {
@@ -1488,12 +1489,20 @@ describe("a workflow drawn as a diagram", () => {
     expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/workflow\.mmd line 3: `<<choice>>` is not read/);
   });
 
-  it("refuses a declaration with neither a diagram nor states, and says so when it is read", async () => {
+  it("refuses a declaration whose host found no diagram at mount, naming the workflow and the file it needs", async () => {
     const bare = withDiagramBeside(declaring(), directory());
     const outcome = await mount([bare], {}, HOST);
 
-    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/has no workflow\.mmd beside it and declares no `states`/);
-    expect(() => bare.workflow).toThrow(/has no workflow\.mmd beside it/);
+    expect(outcome.ok === false && outcome.problems.join("\n")).toContain(
+      "the drawn workflow has no workflow.mmd: draw one beside its entry or at its package root",
+    );
+    expect(() => bare.workflow).toThrow(/the drawn workflow has no workflow\.mmd/);
+  });
+
+  it("refuses a declaration that declares its states and draws no diagram, rather than mounting the lists", async () => {
+    const outcome = await mount([declaring({ states: ["QUEUED", "DONE"], terminal: ["DONE"] })], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/the drawn workflow declares `states`, `terminal`/);
   });
 
   it("refuses a workflow registered by hand with a diagram beside it", async () => {
@@ -1503,6 +1512,58 @@ describe("a workflow drawn as a diagram", () => {
     expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/workflow-by-hand registers its workflow by hand and has .*workflow\.mmd beside it/);
   });
 
+  it("refuses a workflow registered by hand where the host mounts only declarations, naming the plugin", async () => {
+    const byHand = plugin("workflow-by-hand", { register: (registry) => registry.workflow(WORKFLOW) });
+    const outcome = await mount([declaredWorkflowsOnly(byHand)], {}, HOST);
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toContain(
+      "workflow-by-hand registers a workflow by hand; amy mounts a workflow declared with `defineWorkflow` and a workflow.mmd beside it",
+    );
+  });
+
+  it("lets a declaration, and a plugin that registers no workflow, through the declarations-only host unchanged", async () => {
+    const adapter = plugin("plugin-adapter", { register: (registry) => registry.port("source", { read: () => "value" }) });
+    const declared = withDiagramBeside(declaring(), directory(DRAWN));
+    const outcome = await mount([declaredWorkflowsOnly(declared), declaredWorkflowsOnly(adapter)], {}, HOST);
+
+    expect(declaredWorkflowsOnly(declared)).toBe(declared);
+    expect(outcome.ok === true && outcome.mounted.ports.has("source")).toBe(true);
+    expect(outcome.ok === true && outcome.mounted.workflow?.name).toBe("drawn");
+  });
+
+  it("keeps a class plugin's private getters and methods working through the declarations-only host", async () => {
+    class Adapter {
+      readonly #name = "plugin-private";
+      readonly #value = "value";
+      get name(): string {
+        return this.#name;
+      }
+      read(): string {
+        return this.#value;
+      }
+      register(registry: Parameters<Plugin["register"]>[0]): void {
+        registry.port("source", { read: () => this.read() });
+      }
+    }
+    const outcome = await mount([declaredWorkflowsOnly(new Adapter() as Plugin)], {}, HOST);
+
+    expect(outcome.ok === true && outcome.mounted.ports.has("source")).toBe(true);
+    expect(declaredWorkflowsOnly(new Adapter() as Plugin).name).toBe("plugin-private");
+  });
+
+  it("mounts a frozen adapter through the declarations-only host, and still refuses a frozen one that registers a workflow", async () => {
+    const adapter = Object.freeze(plugin("plugin-frozen", { register: (registry) => registry.port("source", { read: () => "value" }) }));
+    const byHand = Object.freeze(plugin("workflow-frozen", { register: (registry) => registry.workflow(WORKFLOW) }));
+
+    const mounted = await mount([declaredWorkflowsOnly(adapter)], {}, HOST);
+    const refused = await mount([declaredWorkflowsOnly(byHand)], {}, HOST);
+
+    expect(mounted.ok === true && mounted.mounted.ports.has("source")).toBe(true);
+    expect(refused.ok === false && refused.problems.join("\n")).toContain("workflow-frozen registers a workflow by hand");
+  });
+
+  // The core's own contract underneath: a raw registration stays what core
+  // and engine tests mount. A host that mounts installs never takes one.
   it("keeps a workflow without a diagram exactly as it declared itself", async () => {
     const byHand = plugin("workflow-by-hand", { register: (registry) => registry.workflow(WORKFLOW) });
     const kept = withDiagramBeside(byHand, directory());

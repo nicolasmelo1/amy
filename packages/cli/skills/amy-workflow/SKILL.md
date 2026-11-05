@@ -6,9 +6,10 @@ description: >-
   package. Use when somebody describes a routine they want amy to drive (an
   on-call week, a review rotation, a private process at work), asks to add or
   edit a workflow, or when an existing workflow keeps doing the wrong thing at
-  one step. Covers the interrogation, the two halves every workflow has, the
-  seven things it declares, and the walkthrough test that is the only proof.
-version: 2.0.0
+  one step. Covers the interrogation, the three pieces every workflow is
+  (MAD: Mermaid, Act, Decide), what it declares, and the walkthrough test that
+  is the only proof.
+version: 3.0.0
 platforms: [macos, linux]
 metadata:
   hermes:
@@ -28,8 +29,8 @@ amy workflow check oncall
 ```
 
 The new command writes `~/.amy/workflows/oncall`: a complete npm package in
-TypeScript with its states, pure `plan()`, runtime, and the runtime contribution
-amy needs. Node runs `index.ts` from there unbuilt (22.18 or later), and
+TypeScript holding the three pieces — `workflow.mmd`, `decide.ts`, `actions.ts`
+— and an `index.ts` that puts them into one `defineWorkflow` call. Node runs `index.ts` from there unbuilt (22.18 or later), and
 `npm run build` compiles `dist/` for anything that installs it into
 `node_modules`, where Node will not run TypeScript.
 `check` drives that lifecycle against its stub world before it touches real
@@ -38,9 +39,10 @@ work.
 **The shape is a diagram the person owns.** `workflow.mmd` beside the
 workflow is an ordinary Mermaid `stateDiagram-v2` — it renders on GitHub and
 in Obsidian with nothing installed — and amy reads the states, where work
-starts, waits and ends from it when the workflow mounts. A workflow with one
-declares no `states`, `waiting` or `terminal`; declaring them as well is
-refused at boot. One drawn somewhere else becomes a workflow that mounts:
+starts, waits and ends from it when the workflow mounts. It is not optional:
+a workflow with no `workflow.mmd` beside it is refused at mount, and no
+workflow declares its states in code. One drawn somewhere else becomes a
+workflow that mounts:
 
 ```sh
 amy workflow new oncall --from oncall.mmd
@@ -118,9 +120,9 @@ the frontier, not a checklist.
    state that makes no move until the world moves. These get `class S waiting`
    in the diagram (`attention` when it is the owner being waited on), and they
    are why the loop can be cheap.
-5. **What does each step actually do?** One entry per action in the runtime's
-   `actions`: a handler, or `{ port, method }` when a mounted port already does
-   it. "An agent does it" is one call to the `agent` port and four lines.
+5. **What does each step actually do?** One entry per action in `actions`:
+   a handler written against `scope.ports`, or `{ port, method }` when a
+   mounted port already does it. "An agent does it" is one call to the `agent` port and four lines.
 6. **What happens when a step fails, and how many times?** The ceiling.
 7. **Who gets told, and when?** Silence is a real answer for a workflow that
    only runs on your own machine.
@@ -137,7 +139,7 @@ amy --workflow oncall status               # where its work stands right now
 
 Then find its directory — `workflows.<name>.workflow` in `.amy/config.yaml`
 names it — and read its `workflow.mmd` (`amy workflow export <name>` prints
-it) and `plan()` before asking anything. Two rules for an edit:
+it), `decide` and `actions` before asking anything. Two rules for an edit:
 
 - **A state that has records in it cannot simply disappear.** Ask what happens
   to the work sitting in it: migrate it to the nearest state, or drain it
@@ -148,83 +150,87 @@ it) and `plan()` before asking anything. Two rules for an edit:
 Re-run the walkthrough test and `amy workflow check` after every edit. They
 catch the state you forgot to connect, and the move the diagram does not draw.
 
-## The two halves
+## The three pieces: MAD
 
-**`plan()` is pure.** It takes the record, a snapshot of the world and the
-policy, and returns what should happen. No I/O, no clock, no randomness —
-that is what lets a whole lifecycle be driven in a test in milliseconds.
+amy holds every workflow to one anatomy, **Mermaid, Act, Decide**
+(`docs/concepts/mad-and-bep.md`):
 
-```ts
-plan(record, observation, policy): Plan
-```
+| Piece | File | What it says |
+| --- | --- | --- |
+| Mermaid | `workflow.mmd` | where work can go |
+| Decide | `decide.ts` | where this piece of work goes next — pure |
+| Act | `actions.ts` | what happens in the world, through the ports |
 
-A `Plan` is one of four: `act` (do these, stay here, look again straight
-away), `advance` (move to that state, doing these on the way), `wait`
-(nothing until the world moves), `settled` (terminal, queue nothing).
+**`decide` is pure, and has one key per drawn state.** Each decision takes the
+record, a snapshot of the world and the policy, and returns what should
+happen. No I/O, no clock, no randomness — that is what lets a whole lifecycle
+be driven in a test in milliseconds. A drawn state with no key, or a key for a
+state the diagram does not draw, is refused at boot by name. A decision not
+written yet is the core's `notWritten()`, which settles the record saying so.
 
-**The runtime is everything impure.** What the world looks like before
-deciding, what each action does, and how what the actions produced folds back
-into the record.
+A decision returns one of four: `act` (do these, stay here, look again
+straight away), `advance` (move to that state, doing these on the way; the
+diagram must draw the arrow), `wait` (nothing until the world moves),
+`settled` (terminal, queue nothing). `before` and `after` are the rules for
+every state, wrapped around the state's own decision.
 
-The engine folds the state, the attempt count and the history through
-`applyPlan`. Your `apply()` folds the rest — it cannot fold what it does not
-understand, which is why it is yours.
+**Everything impure takes the `scope`.** `discover` (what work exists),
+`observe` (the world, before deciding), each entry of `actions`, and
+`remember` (folding what the actions produced into the record) all receive the
+scope: `scope.ports` (exactly what `needs` asked for, typed), `scope.config`,
+`scope.policy`, `scope.checkouts`, `scope.ctx`, and `scope.announce(text)` for
+a word to the operator that must not fail the action. Write them against the
+scope directly. Do not build a runtime object from the ports and route the
+pieces through it — the framework already hands every piece what it needs.
 
-`apply(record, plan, outcomes, observation, now, moved)` is handed a record
-that has **already moved**: `record.state` is where the work is going. Where it
-came from is `moved.from`, and `moved` is `null` when the plan did not advance.
-Anything remembered about a transition — the state an escalation interrupted,
-say — is folded from `moved`, never from `record.state`.
+`remember(scope, record, outcomes, observation, moved, decision, now)` is
+handed a record that has **already moved**: `record.state` is where the work
+is going. Where it came from is `moved.from`, and `moved` is `null` when the
+decision did not advance. Anything remembered about a transition is folded
+from `moved`, never from `record.state`.
 
 ## What a workflow declares
 
-A workflow drawn as a diagram declares no states at all: `defineWorkflow`
-takes them from `workflow.mmd`, and every decision may start as the core's
-`notWritten()` stub, which settles the record saying so instead of guessing a
-move. One written by hand without a diagram declares them, as below.
+```ts
+// index.ts
+import { defineWorkflow, port, optional, type Harness, type Notifier, type Worktree } from "@amykit/core";
+import { decide } from "./decide.js";
+import { actions } from "./actions.js";
+import type { Pager } from "./ports/Pager.js";
 
-```js
-const workflow = {
+export const plugin = defineWorkflow({
   name: "oncall",
-  states: ["paged", "acknowledged"],
-  waitingStates: [],
-  initialState: "paged",
-  terminalStates: ["acknowledged"],
-  plan: (record, observation, policy) => ({ ... }),
-};
-
-export const plugin = {
-  name: "@acme/workflow-oncall",
-  version: "1.0.0",
-  register(registry, ctx) {
-    registry.workflow(workflow);
-    registry.contribute("workflow-runtime", "oncall", runtime(ctx));
+  configSchema: {
+    // Every policy number is a setting too, with the same default: the mount
+    // refuses a policy key the schema does not declare.
+    "policy.maxAttempts": { type: "number", default: 3, description: "how many tries before it comes to you" },
   },
-};
+  policy: { maxAttempts: 3 },
+  needs: { pager: port<Pager>(), agent: port<Harness>(), notifier: port<Notifier>(), worktree: optional<Worktree>() },
+  record: () => ({}),
+  discover: ({ ports }) => ports.pager.open(),
+  observe: ({ ports }, work) => ports.pager.read(work.id),
+  decide,       // { paged: (work, world) => ..., acknowledged: ... } — one key per drawn state
+  actions,      // { page: ({ ports }, work, effect) => ports.pager.page(effect.text) }
+});
 ```
 
-The actions are not listed on the workflow. They are the keys of the
-runtime's `actions`, each beside what runs it:
+No `states`, `waiting`, `terminal`, `plan` or `runtime`: the first three are
+the diagram's, and a single `plan()` with a runtime beside it is no longer
+accepted. Nor is a raw plugin calling `registry.workflow` by hand — amy mounts
+a workflow only through `defineWorkflow` with its diagram beside it.
 
-```js
-actions: {
-  "announce": async (action, ctx) => { /* a handler you wrote */ },
-  "page": { port: "pager", method: "page" },   // pager.page(action, ctx), if marked acceptsAction
-}
-```
+`needs` is the workflow's own: it names exactly the ports it uses, so a mount
+missing one is refused at boot by name and `amy doctor` can say what is
+absent. An action may also be `{ port, method }` when a mounted port already
+does it; its answer lands in `outcomes` under the action's name. The mount
+refuses a key with nothing behind it, a port nothing mounted, a method the
+port lacks, or one its port did not mark with `acceptsAction` — at boot, by
+name. A decision that emits a name `actions` lacks is refused before any of
+its actions run.
 
-A port-and-method's answer lands in `outcomes` under the action's name. The
-mount refuses a key with nothing behind it, a port nothing mounted, a method
-the port lacks, or one its port did not mark with `acceptsAction` — at boot, by name, rather than at the first tick that needs it.
-A plan that emits a name the map lacks is refused before any of its actions run.
-
-The runtime contributes to `workflow-runtime` under the workflow's own name.
-A workflow that registers itself and contributes no runtime mounts and then
-refuses: *"contributed no runtime, so nothing here knows how to run its
-actions"*. That message is the one you will see if you forget this line.
-
-There is a working example of the whole shape, in about forty lines, at
-`.software-factory/evidence/installed-plugins/workflow-oncall/index.ts`.
+`extend` registers what is not a workflow — a queue, a port of its own, a
+harness switched on by config — in the same call.
 
 ## Making it drivable
 
@@ -292,13 +298,15 @@ directory enforces, each a defect that reached a real board from a workflow —
 a record the engine already moved, and a `.every(` that never said what empty
 means. They are ordinary repo-local rules, and `sf verify` proves each fires.
 
-Unit-test `plan()` directly for the branches: it is pure, so a table of
+Unit-test each decision directly for the branches: it is pure, so a table of
 `(record, observation) -> Plan` is the cheapest test you will write.
 
 ## What not to do
 
-- **Do not put I/O in `plan()`.** The moment it awaits anything, the lifecycle
+- **Do not put I/O in `decide`.** The moment it awaits anything, the lifecycle
   stops being testable in milliseconds.
+- **Do not wrap the ports in a runtime of your own.** Every piece is handed
+  the scope; a factory that rebuilds it per scope is a copy of the framework.
 - **Do not add a state for a failure that is a retry.** `attempts` is on the
   record and bounds every loop already.
 - **Do not reach for a tracker, a code host or a shell from a handler.** Ask

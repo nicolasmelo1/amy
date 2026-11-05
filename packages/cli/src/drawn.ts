@@ -1,16 +1,18 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Plugin, withDiagramBeside } from "@amykit/core";
+import { Plugin, declaredWorkflowsOnly, withDiagramBeside } from "@amykit/core";
 
 /**
  * The plugin, shaped by the `workflow.mmd` beside the entry it was imported
  * from, the way the entry itself was found: beside a workflow of your own,
- * or at the root of the package. Nothing names the file, and a plugin with
- * none beside it is returned as it is.
+ * or at the root of the package. Nothing names the file. A workflow with
+ * none beside it is refused when it mounts, naming the file it needs, and a
+ * plugin that registers a workflow by hand is refused: every workflow amy
+ * mounts from an install is a `defineWorkflow` with a diagram.
  */
 export function drawn(plugin: Plugin, specifier: string): Plugin {
   const entry = entryOf(specifier);
-  return entry ? withDiagramBeside(plugin, entry) : plugin;
+  return declaredWorkflowsOnly(entry ? withDiagramBeside(plugin, entry) : plugin);
 }
 
 /** The file an import specifier names, or nothing when it cannot be told. */

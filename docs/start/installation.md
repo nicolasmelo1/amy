@@ -180,6 +180,7 @@ Which variables matter depends on which plugins you mount:
 | :-- | :-- |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 | `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
+| `VITEST` | `@amykit/test-fixtures` |
 
 <!-- amy:end environment -->
 

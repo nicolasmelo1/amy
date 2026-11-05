@@ -38,18 +38,18 @@ describe("Worker.discover, with urgency", () => {
     apply: (record) => record,
   };
 
-  const build = () =>
+  const build = async () =>
     new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({ now: () => WORKDAY, plan: (() => ({ kind: "wait", why: "nothing yet", retryAfterMs: 1000 })) as never }),
+      ...(await ticketWorkerDeps({ now: () => WORKDAY, plan: (() => ({ kind: "wait", why: "nothing yet", retryAfterMs: 1000 })) as never })),
       runtime,
     });
 
   it("queues what it found with the urgency the source reported", async () => {
     found = [{ workId: "LOW", priority: 4 }, { workId: "URGENT", priority: 1 }, "PLAIN"];
 
-    await build().discover();
+    await (await build()).discover();
 
     expect(Object.fromEntries(queue.pending().map((item) => [item.workId, item.priority]))).toEqual({
       LOW: 4,
@@ -61,7 +61,7 @@ describe("Worker.discover, with urgency", () => {
 
   it("refreshes the urgency of work already waiting rather than queueing it twice", async () => {
     found = [{ workId: "A", priority: 3 }];
-    const worker = build();
+    const worker = (await build());
     await worker.discover();
 
     found = [{ workId: "A", priority: 1 }];
@@ -73,7 +73,7 @@ describe("Worker.discover, with urgency", () => {
 
   it("keeps the urgency on the look it chains", async () => {
     found = [{ workId: "A", priority: 2 }];
-    const worker = build();
+    const worker = (await build());
     await worker.discover();
 
     await worker.tick();

@@ -178,14 +178,13 @@ function addProjectPhases(): void {
       `export const plugin = defineWorkflow({`,
       `  name: ${JSON.stringify(name)},`,
       `  pluginName: ${JSON.stringify(`workflow-${name}`)},`,
-      `  states: ["SETTLED"],`,
-      `  terminal: ["SETTLED"],`,
       `  configSchema: {}, policy: {}, needs: {}, record: () => ({}),`,
       `  discover: async () => [], observe: async () => ({}), actions: {},`,
       `  decide: { SETTLED: () => ({ kind: "settled", why: "fixture" }) },`,
       `});`,
       ``,
     ].join("\n"), "utf-8");
+    fs.writeFileSync(path.join(directory, "workflow.mmd"), "stateDiagram-v2\n    [*] --> SETTLED\n    SETTLED --> [*]\n", "utf-8");
   }
   const lines = fs.readFileSync(config, "utf8").split("\n");
   // The selector rides at the top level: the machine's own selector is

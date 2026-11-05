@@ -43,15 +43,15 @@ describe("a broken notifier and a broken log", () => {
     vi.restoreAllMocks();
   });
 
-  function build(overrides: TicketWorkerOverrides = {}): Worker {
+  async function build(overrides: TicketWorkerOverrides = {}): Promise<Worker> {
     return new Worker({
       queue,
       records,
-      ...ticketWorkerDeps({
+      ...(await ticketWorkerDeps({
         now: () => clock,
         log,
         ...overrides,
-      }),
+      })),
     });
   }
 
@@ -65,10 +65,10 @@ describe("a broken notifier and a broken log", () => {
   it("finishes the tick when the only channel throws", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    const result = await build({
+    const result = await (await build({
       notifier: new ThrowingNotifier(),
       plan: announcing,
-    }).tick();
+    })).tick();
 
     expect(result).toMatchObject({ kind: "worked" });
   });
@@ -76,7 +76,7 @@ describe("a broken notifier and a broken log", () => {
   it("records the notification it could not send", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ notifier: new ThrowingNotifier(), plan: announcing }).tick();
+    await (await build({ notifier: new ThrowingNotifier(), plan: announcing })).tick();
 
     const [failed] = log.of("notify.failed");
     expect(failed?.workId).toBe("PROJ-1239");
@@ -87,7 +87,7 @@ describe("a broken notifier and a broken log", () => {
   it("still saves the move the announcement was about", async () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
 
-    await build({ notifier: new ThrowingNotifier(), plan: announcing }).tick();
+    await (await build({ notifier: new ThrowingNotifier(), plan: announcing })).tick();
 
     expect(records.load("PROJ-1239")).not.toBeNull();
   });
@@ -103,7 +103,7 @@ describe("a broken notifier and a broken log", () => {
     // The item is completed before the ceiling is announced, so an
     // announcement that threw past `tick()` used to take the ticket off the
     // queue with nothing saying why.
-    const result = await build({ agent, notifier }).tick();
+    const result = await (await build({ agent, notifier })).tick();
 
     expect(result).toMatchObject({ kind: "failed" });
     expect(log.of("notify.failed")).toHaveLength(1);
@@ -113,7 +113,7 @@ describe("a broken notifier and a broken log", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const result = await build({ log: new ThrowingEventLog() }).tick();
+    const result = await (await build({ log: new ThrowingEventLog() })).tick();
 
     expect(result).toMatchObject({ kind: "worked" });
   });
@@ -123,7 +123,7 @@ describe("a broken notifier and a broken log", () => {
     const said = vi.spyOn(console, "error").mockImplementation(() => {});
     const broken = new ThrowingEventLog();
 
-    await build({ log: broken }).tick();
+    await (await build({ log: broken })).tick();
 
     // Many attempts, one complaint: a log that throws on every call would
     // otherwise flood stderr, which is an outage of its own.
@@ -137,7 +137,7 @@ describe("a broken notifier and a broken log", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const notifier = new RecordingNotifier();
 
-    await build({ log: new ThrowingEventLog(), notifier }).tick();
+    await (await build({ log: new ThrowingEventLog(), notifier })).tick();
 
     // `announce` writes under `.amy/` too, so on a machine whose log just
     // broke it is the wrong thing to reach for.

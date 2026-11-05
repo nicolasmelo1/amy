@@ -18,8 +18,9 @@ const STATES = ["DISCOVERED", "IMPLEMENTING", "ESCALATED", "IN_REVIEW", "DONE"];
 /**
  * Each profile's workflow, as the server would hand it to a view: the work
  * profile's is drawn as a diagram, whose states and arrows the server read
- * out of the text; the personal one declares its states in code, and has
- * neither a diagram nor an arrow to draw.
+ * out of the text. The personal one reaches the view as its states alone,
+ * with neither a diagram nor an arrow: no workflow mounts that way any more,
+ * and the primitive still has to draw what it is handed.
  */
 const WORKFLOWS: Readonly<Record<string, { readonly states: readonly string[]; readonly transitions?: readonly { from: string; to: string }[]; readonly diagram?: string }>> = {
   work: {

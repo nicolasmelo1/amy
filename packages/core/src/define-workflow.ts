@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
 import { ActionSpec } from "./actions.js";
 import { ActionDuties, actionPorts } from "./action-ports.js";
-import { PluginCheck, PluginCommand, PluginFile } from "./commands.js";
+import { PluginCheck, PluginCommand, PluginFile, PluginSetup } from "./commands.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema, ValueFor, validateConfig } from "./config-schema.js";
 import { Call, CallSite, ForkSite, Signature, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
@@ -198,7 +198,6 @@ type Outputs<R extends WorkRecord> = { readonly [end: string]: { returned(record
 
 interface DeclarationBase<
   S extends ConfigSchema,
-  States extends readonly [string, ...string[]],
   P extends object,
   N extends Needs,
   R extends WorkRecord,
@@ -212,14 +211,8 @@ interface DeclarationBase<
    * phase it names is absent. See `ProjectPhases`.
    */
   readonly phases?: ProjectPhases;
-  /**
-   * Required only when no diagram lies beside the workflow. A workflow with a
-   * `workflow.mmd` declares none of these: the host reads them from the file,
-   * and declaring them as well is refused at boot.
-   */
-  readonly states?: States;
-  readonly waiting?: readonly States[number][];
-  readonly terminal?: readonly States[number][];
+  // No `states`, `waiting` or `terminal`: the states come only from the
+  // `workflow.mmd` the host reads beside the workflow.
   readonly configSchema: S;
   readonly policy: P;
   readonly needs: N;
@@ -239,28 +232,18 @@ interface DeclarationBase<
   readonly commands?: readonly PluginCommand<ConfigOf<S>>[];
   readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
   readonly files?: readonly PluginFile<ConfigOf<S>>[];
+  /** What `amy init` prepares for this workflow, and the environment variables it reads: a plugin's own, carried as they are. */
+  readonly setup?: readonly PluginSetup<ConfigOf<S>>[];
+  readonly environment?: readonly string[];
   runtimePolicy?(args: { readonly ports: PortsOf<N>; readonly config: ConfigOf<S>; readonly policy: P }): P;
   record(workId: string): Omit<R, keyof WorkRecord>;
   /** Registers the supporting half of a workflow: ports, queues, actions or harnesses. */
   extend?(registry: Registry, ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
 }
 
-interface LegacyDeclaration<S extends ConfigSchema, States extends readonly [string, ...string[]], P extends object, N extends Needs, R extends WorkRecord, O,
-  In extends ConfigSchema = ConfigSchema, Out extends Outputs<R> = Outputs<R>>
-  extends DeclarationBase<S, States, P, N, R, In, Out> {
-  plan(record: R, observation: O, policy: P): Plan;
-  runtime(args: {
-    readonly ports: PortsOf<N>;
-    readonly config: ConfigOf<S>;
-    readonly policy: P;
-    readonly checkouts: Checkouts;
-    readonly ctx: PluginContext<ConfigOf<S>>;
-  }): WorkflowRuntimeParts<R, O>;
-}
-
 interface PiecesDeclaration<S extends ConfigSchema, States extends readonly [string, ...string[]], P extends object, N extends Needs, R extends WorkRecord, O,
   In extends ConfigSchema = ConfigSchema, Out extends Outputs<R> = Outputs<R>>
-  extends DeclarationBase<S, States, P, N, R, In, Out> {
+  extends DeclarationBase<S, P, N, R, In, Out> {
   readonly decide: Readonly<Record<string, WorkflowDecision<R, O, P, States[number]>>>;
   before?(record: R, observation: O, policy: P): Plan<States[number]> | undefined;
   after?(decision: Plan<States[number]>, record: R, observation: O, policy: P): Plan<States[number]>;
@@ -277,14 +260,14 @@ interface PiecesDeclaration<S extends ConfigSchema, States extends readonly [str
     scope: WorkflowPieceContext<S, P, N>, record: R, outcomes: Record<string, unknown>, observation: O,
     moved: Moved | null, decision: Plan, now: Date,
   ): R;
+  /** Gone: a single `plan()` is refused at mount; its `switch` is `decide`, one key per drawn state. */
   readonly plan?: never;
+  /** Gone: a `runtime()` is refused at mount; its parts are `discover`, `observe`, `actions` and `remember`. */
   readonly runtime?: never;
 }
 
 type WorkflowDeclaration<S extends ConfigSchema, States extends readonly [string, ...string[]], P extends object, N extends Needs, R extends WorkRecord, O,
-  In extends ConfigSchema = ConfigSchema, Out extends Outputs<R> = Outputs<R>> =
-  | LegacyDeclaration<S, States, P, N, R, O, In, Out>
-  | PiecesDeclaration<S, States, P, N, R, O, In, Out>;
+  In extends ConfigSchema = ConfigSchema, Out extends Outputs<R> = Outputs<R>> = PiecesDeclaration<S, States, P, N, R, O, In, Out>;
 
 /**
  * What a caller passes, as the callee's schema promises it: a required field
@@ -338,12 +321,14 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
     ...(declaration.commands ? { commands: declaration.commands as unknown as readonly PluginCommand[] } : {}),
     ...(declaration.checks ? { checks: declaration.checks as unknown as readonly PluginCheck[] } : {}),
     ...(declaration.files ? { files: declaration.files as unknown as readonly PluginFile[] } : {}),
+    ...(declaration.setup ? { setup: declaration.setup as unknown as readonly PluginSetup[] } : {}),
+    ...(declaration.environment ? { environment: declaration.environment } : {}),
     ...(declaration.phases ? { phases: declaration.phases } : {}),
     newRecord: (workId: string, now: Date): R => assembled().newRecord(workId, now) as R,
     [DRAW]: (diagram: Diagram | Error) => drawnWith(declaration, diagram),
     register(registry: Registry, untyped: PluginContext) {
-      if (typeof shape === "string") refused();
       declarationMode(declaration);
+      if (typeof shape === "string") refused();
       const mounted = assemble(declaration as unknown as AnyDeclaration, shape as Shape, untyped, [declaration.name], [declaration as unknown as AnyDeclaration]);
       const registerWorkflow = () => {
         registry.workflow(mounted.workflow as Workflow<never, never>);
@@ -444,7 +429,7 @@ function assemble(
   const forks = forkSites(shape, sites, path, leases && { leases, lent });
   // Judged at mount, as it always was: a module's exported declaration is
   // read by suites that walk it to find exactly this kind of mistake.
-  if (ctx && "decide" in declaration && declaration.decide) decisionsFit(declaration.name, shape.states, declaration.decide, [...sites.keys()], [...forks.keys()]);
+  if (ctx) decisionsFit(declaration.name, shape.states, declaration.decide, [...sites.keys()], [...forks.keys()]);
   const own = (workId: string, now: Date, input?: unknown): WorkRecord => ({
     ...declaration.record(workId),
     ...(input === undefined ? {} : { input: input as Record<string, unknown> }),
@@ -468,9 +453,7 @@ function assemble(
     const settings = ctx.config as ConfigOf<ConfigSchema>;
     const runtimePolicy = declaration.runtimePolicy?.({ ports, config: settings, policy }) ?? policy;
     const args = { ports, config: settings, policy: runtimePolicy, checkouts: ctx.checkouts(), ctx: ctx as PluginContext<ConfigOf<ConfigSchema>> };
-    const parts = "runtime" in declaration && declaration.runtime
-      ? declaration.runtime(args)
-      : runtimeFromPieces(declaration as PiecesDeclaration<ConfigSchema, readonly [string, ...string[]], object, Needs, WorkRecord, unknown>, args);
+    const parts = runtimeFromPieces(declaration, args);
     for (const site of sites.values()) site.runtime = (site as PendingSite).build();
     const lookup: PortLookup = (kind) => (ctx.workflowPort ?? ctx.port)(kind);
     return composedRuntime(completeRuntime(parts, runtimePolicy, (workId, now) => own(workId, now)), sites, lookup, forks);
@@ -707,30 +690,25 @@ function claimsOf(value: Claims<ConfigSchema, object> | undefined, config: Recor
 /**
  * Where the states come from, or why there are none.
  *
- * The diagram is the shape when one lies beside the workflow. Declaring the
- * states as well is the same fact said twice, and a diagram amy cannot read
- * is refused with the line it stopped at.
+ * The diagram is the only shape: a workflow says its states once, in the
+ * file beside it. One whose host found no diagram cannot mount, and a
+ * diagram amy cannot read is refused with the line it stopped at. A
+ * declaration still carrying the lists it used to declare is refused by
+ * name, so the fact is not said twice.
  */
-function shapeOf(
-  declaration: { readonly name: string; readonly states?: readonly string[]; readonly waiting?: readonly string[]; readonly terminal?: readonly string[] },
-  drawn: Diagram | Error | undefined,
-): Shape | string {
+function shapeOf(declaration: { readonly name: string }, drawn: Diagram | Error | undefined): Shape | string {
   const workflow = `the ${declaration.name} workflow`;
   if (drawn instanceof Error) return `${workflow} has a diagram amy cannot read — ${drawn.message}`;
-  const declared = (["states", "waiting", "terminal"] as const).filter((field) => declaration[field] !== undefined);
-  if (drawn) {
-    if (declared.length > 0) {
-      return `${workflow} draws its states in ${DIAGRAM_FILE} and declares ${declared.map((field) => `\`${field}\``).join(", ")} as well; delete them, the diagram already says it`;
-    }
-    // Waiting on the owner is still waiting, as far as the engine is concerned.
-    const waiting = drawn.states.filter((state) => drawn.waiting.includes(state) || drawn.attention.includes(state));
-    return { states: drawn.states, initial: drawn.initial, waiting, terminal: drawn.terminal, diagram: drawn };
+  const declared = (["states", "waiting", "terminal"] as const).filter((field) => field in declaration);
+  if (declared.length > 0) {
+    return `${workflow} declares ${declared.map((field) => `\`${field}\``).join(", ")}; delete them, a workflow's states come only from its ${DIAGRAM_FILE}`;
   }
-  const [initial] = declaration.states ?? [];
-  if (initial === undefined || declaration.terminal === undefined) {
-    return `${workflow} has no ${DIAGRAM_FILE} beside it and declares no \`states\` and \`terminal\`: draw the diagram, or declare them`;
+  if (!drawn) {
+    return `${workflow} has no ${DIAGRAM_FILE}: draw one beside its entry or at its package root — a workflow's states come only from its diagram`;
   }
-  return { states: declaration.states!, initial, waiting: declaration.waiting ?? [], terminal: declaration.terminal };
+  // Waiting on the owner is still waiting, as far as the engine is concerned.
+  const waiting = drawn.states.filter((state) => drawn.waiting.includes(state) || drawn.attention.includes(state));
+  return { states: drawn.states, initial: drawn.initial, waiting, terminal: drawn.terminal, diagram: drawn };
 }
 
 /**
@@ -776,7 +754,7 @@ export function withDiagram<T extends Plugin>(plugin: T, text: string, source: s
     name: plugin.name,
     ...(plugin.configSchema ? { configSchema: plugin.configSchema } : {}),
     register() {
-      throw new Error(`${plugin.name} registers its workflow by hand and has ${source} beside it; a workflow says its states once — move it onto \`defineWorkflow\`, or delete the diagram`);
+      throw new Error(`${plugin.name} registers its workflow by hand and has ${source} beside it; a workflow says its states once — move it onto \`defineWorkflow\``);
     },
   } as unknown as T;
 }
@@ -785,6 +763,51 @@ export function withDiagram<T extends Plugin>(plugin: T, text: string, source: s
 export function withDiagramBeside<T extends Plugin>(plugin: T, entry: string | URL): T {
   const found = diagramBeside(entry);
   return found ? withDiagram(plugin, found.text, found.path) : plugin;
+}
+
+/**
+ * The plugin, refused at mount if it registers a workflow by hand.
+ *
+ * A host that mounts what somebody installed calls this on every plugin it
+ * loads: every workflow it mounts is a `defineWorkflow` with a diagram, so a
+ * raw `registry.workflow(...)` is refused naming the plugin. A declaration,
+ * and a plugin that registers no workflow, pass through unchanged.
+ */
+export function declaredWorkflowsOnly<T extends Plugin>(plugin: T): T {
+  if (DRAW in plugin) return plugin;
+  const refuse = (): never => {
+    throw new Error(`${plugin.name} registers a workflow by hand; amy mounts a workflow declared with \`defineWorkflow\` and a ${DIAGRAM_FILE} beside it — move it onto them`);
+  };
+  const register: Plugin["register"] = (registry, ctx) =>
+    plugin.register(receiverKept(registry, { workflow: refuse }), ctx);
+  return receiverKept(plugin, { register });
+}
+
+/**
+ * The object with some members replaced, every other one read and called on
+ * the object itself. A class whose getters or methods read `#private`
+ * fields throws on any other receiver, so a prototype wrapper cannot do this.
+ */
+function receiverKept<T extends object>(target: T, replaced: Readonly<Record<string, unknown>>): T {
+  const own = (key: string | symbol): boolean => typeof key === "string" && Object.hasOwn(replaced, key);
+  // The proxy stands on an empty object of its own, never on the target: a
+  // frozen target would make every replaced member break a Proxy invariant.
+  const stand = Object.create(Object.getPrototypeOf(target) as object | null) as T;
+  return new Proxy(stand, {
+    get(_stand, key) {
+      if (own(key)) return replaced[key as string];
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
+    },
+    has: (_stand, key) => own(key) || Reflect.has(target, key),
+    ownKeys: () => [...new Set([...Reflect.ownKeys(target), ...Object.keys(replaced)])],
+    getOwnPropertyDescriptor(_stand, key) {
+      const descriptor = own(key)
+        ? { value: replaced[key as string], writable: false, enumerable: true }
+        : Reflect.getOwnPropertyDescriptor(target, key);
+      return descriptor && { ...descriptor, configurable: true };
+    },
+  });
 }
 
 /**
@@ -816,8 +839,7 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     readonly phases?: ProjectPhases;
     readonly trackerWrites?: Claims<S, P>;
     readonly codeHostWrites?: Claims<S, P>;
-    plan?(record: R, observation: O, policy: P): Plan;
-    readonly decide?: Readonly<Record<string, WorkflowDecision<R, O, P>>>;
+    readonly decide: Readonly<Record<string, WorkflowDecision<R, O, P>>>;
     before?(record: R, observation: O, policy: P): Plan | undefined;
     after?(decision: Plan, record: R, observation: O, policy: P): Plan;
   },
@@ -855,31 +877,30 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     } : {}),
     plan: (record, observation, chosen) => {
       const current = record as R;
-      if (declaration.plan) return declaration.plan(current, observation, chosen);
       const early = declaration.before?.(current, observation, chosen);
-      const decision = early ?? declaration.decide?.[current.state]?.(current, observation, chosen);
+      const decision = early ?? declaration.decide[current.state]?.(current, observation, chosen);
       if (!decision) throw new Error(`${declaration.name} has no decision for state \`${current.state}\``);
       return declaration.after?.(decision, current, observation, chosen) ?? decision;
     },
   };
 }
 
-const LEGACY_MEMBERS = ["plan", "runtime"] as const;
-const PIECE_MEMBERS = ["decide", "before", "after", "discover", "progress", "observe", "actions", "remember"] as const;
+const GONE = { plan: "`decide`, one key per drawn state", runtime: "`discover`, `observe`, `actions` and `remember`" } as const;
 
-function declarationMode(declaration: object): void {
-  const legacy = LEGACY_MEMBERS.filter((key) => key in declaration);
-  const pieces = PIECE_MEMBERS.filter((key) => key in declaration);
-  if (legacy.length > 0 && pieces.length > 0) {
-    throw new Error(`a workflow declaration cannot mix legacy ${legacy.map((key) => `\`${key}\``).join(", ")} with ${pieces.map((key) => `\`${key}\``).join(", ")}`);
+/**
+ * Only the pieces form mounts. A declaration still passing the old `plan`
+ * or `runtime` is refused naming each and where it went, rather than read as
+ * a workflow whose decisions are all missing.
+ */
+function declarationMode(declaration: { readonly name: string }): void {
+  const gone = (Object.keys(GONE) as (keyof typeof GONE)[]).filter((key) => key in declaration);
+  if (gone.length > 0) {
+    const moves = gone.map((key) => `\`${key}\` moves onto ${GONE[key]}`).join("; ");
+    throw new Error(`the ${declaration.name} workflow declares ${gone.map((key) => `\`${key}\``).join(" and ")}, which no longer mount: ${moves}`);
   }
-  if (pieces.length > 0) {
-    for (const required of ["decide", "observe", "actions"] as const) {
-      if (!(required in declaration)) throw new Error(`a three-piece workflow declaration must provide \`${required}\``);
-    }
-    return;
+  for (const required of ["decide", "observe", "actions"] as const) {
+    if (!(required in declaration)) throw new Error(`the ${declaration.name} workflow declares no \`${required}\`; a workflow is its diagram, \`decide\` and \`actions\``);
   }
-  if (legacy.length !== LEGACY_MEMBERS.length) throw new Error("a legacy workflow declaration must provide both `plan` and `runtime`");
 }
 
 function decisionsFit(workflow: string, states: readonly string[], decide: Readonly<Record<string, unknown>>, calls: readonly string[], forks: readonly string[]): void {
@@ -903,7 +924,7 @@ function decisionsFit(workflow: string, states: readonly string[], decide: Reado
 }
 
 function runtimeFromPieces<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O>(
-  declaration: PiecesDeclaration<S, readonly [string, ...string[]], P, N, R, O>,
+  declaration: Declaration<S, P, N, R, O>,
   scope: WorkflowPieceContext<S, P, N>,
 ): WorkflowRuntimeParts<R, O> {
   const actions = Object.create(null) as Record<string, ActionImplementation<R, O>>;

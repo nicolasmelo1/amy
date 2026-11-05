@@ -3,7 +3,7 @@ import yaml from "yaml";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CommandRunner } from "@amykit/core";
-import { packageManager, shellCommand } from "./install.js";
+import { PLUGINS_ROOT_FLAGS, packageManager, shellCommand } from "./install.js";
 import { paths } from "./paths.js";
 import { type AmyConfig, DEFAULT_CONFIG } from "./config.js";
 import { type Profile } from "./profiles.js";
@@ -547,8 +547,10 @@ async function installExact(
     ...(global ? ["--global"] : []),
     "--prefix",
     root.dir,
-    "--no-audit",
-    "--no-fund",
+    // The plugins root takes every install with the same flags, a restore
+    // too: an install without `--install-links` turns a workflow copied in
+    // from a path back into a link, whose core import then does not resolve.
+    ...(global ? ["--no-audit", "--no-fund"] : PLUGINS_ROOT_FLAGS),
     "--",
     `${name}@${to}`,
   ]);

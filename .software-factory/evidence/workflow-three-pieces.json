@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "workflow-three-pieces",
-  "implementation_sha256": "ad6198786a60be732d8fe881bd8e3422e0c722197a4dfd9ce80c85345d6bb3bc",
+  "implementation_sha256": "a5c773da6e44588bd44f28d8d52d59cb77f35690304be0cb4fae47781b8af438",
   "runs": [
     {
       "scenario": "workflow-three-pieces",
       "status": "passed",
       "actor": "Codex, installing the scaffold and shipped workflow and driving both against stand-in services on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/workflow-three-pieces-run.json",
-      "report_sha256": "137ae1f7c48b40d27ec791904a2de6bb687b55a7c494a6cc14c0d99e05ce0b0c",
+      "report_sha256": "7c899166765e719c6b9bfb0595f7d1b5350867ad8dd9549a551a899d3197251b",
       "required_assertions": [
         "mine.the_scaffold_runs_before_it_is_edited",
         "plan.a_refused_draft_goes_back_to_the_agent"

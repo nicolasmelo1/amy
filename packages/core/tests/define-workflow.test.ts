@@ -7,7 +7,6 @@ import {
   Plan,
   WorkRecord,
   WorkflowRuntime,
-  WorkflowRuntimeParts,
   Workflow,
   defineWorkflow,
   mount,
@@ -21,7 +20,6 @@ import {
   withDiagram,
   workflowActions,
   act,
-  advance,
   settled,
   wait,
 } from "../src/index.js";
@@ -50,28 +48,33 @@ const schema = {
   "policy.backoffMs": { type: "number", default: 1000, description: "how long a held look waits before it is taken again" },
 } satisfies ConfigSchema;
 
+const NEW_DONE = `stateDiagram-v2
+    [*] --> NEW
+    NEW --> DONE
+    DONE --> [*]
+`;
+
+const ONLY_NEW = `stateDiagram-v2
+    [*] --> NEW
+    NEW --> [*]
+`;
+
 function workflow(seen: { optional?: OptionalPort; policy?: Policy } = {}) {
-  return defineWorkflow({
+  return withDiagram(defineWorkflow({
     name: "example",
     configSchema: schema,
-    states: ["NEW", "DONE"],
-    waiting: [],
-    terminal: ["DONE"],
     policy: { attempts: 3, backoffMs: 1000 } satisfies Policy,
     needs: { source: port<RequiredPort>(), notifier: optional<OptionalPort>() },
-    plan: () => ({ kind: "settled", why: "done" }),
+    decide: { NEW: () => settled("done"), DONE: () => settled("done") },
     record: (workId) => ({ customer: workId }),
-    runtime: ({ ports, policy }) => {
+    discover: ({ ports, policy }) => {
       seen.optional = ports.notifier;
       seen.policy = policy;
-      return {
-        found: async () => [],
-        observe: async () => ({}),
-        actions: {},
-        apply: (record) => record,
-      };
+      return Promise.resolve([]);
     },
-  });
+    observe: async () => ({}),
+    actions: {},
+  }), NEW_DONE);
 }
 
 const source: Plugin = {
@@ -100,8 +103,9 @@ describe("defineWorkflow", () => {
   it("hands an absent optional port to the runtime as undefined", async () => {
     const seen: { optional?: OptionalPort } = {};
     const outcome = await mount([workflow(seen), source], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    await (outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("example") as WorkflowRuntime).found();
 
-    expect(outcome.ok).toBe(true);
     expect(seen).toHaveProperty("optional", undefined);
   });
 
@@ -113,8 +117,9 @@ describe("defineWorkflow", () => {
       { [plugin.name]: { policy: { attempts: 7 } } },
       HOST,
     );
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    await (outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("example") as WorkflowRuntime).found();
 
-    expect(outcome.ok).toBe(true);
     expect(seen.policy).toEqual({ attempts: 7, backoffMs: 1000 });
   });
 
@@ -214,20 +219,18 @@ describe("defineWorkflow", () => {
   });
 
   it("refuses a decision default its schema does not declare, naming the key", async () => {
-    const plugin = defineWorkflow({
+    const plugin = withDiagram(defineWorkflow({
       name: "unproven",
       configSchema: {
         repos: { type: "string[]", required: true, description: "the repositories this workflow works in" },
       } satisfies ConfigSchema,
-      states: ["NEW"],
-      waiting: [],
-      terminal: ["NEW"],
       policy: { ceiling: 5 },
       needs: { source: port<RequiredPort>() },
-      plan: () => ({ kind: "settled", why: "done" }),
+      decide: { NEW: () => settled("done") },
       record: () => ({}),
-      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
-    });
+      observe: async () => ({}),
+      actions: {},
+    }), ONLY_NEW);
     const outcome = await mount([plugin, source], { [plugin.name]: { repos: ["acme/widgets"] } }, HOST);
 
     expect(outcome.ok).toBe(false);
@@ -237,20 +240,18 @@ describe("defineWorkflow", () => {
   });
 
   it("refuses a schema default that differs from the one the decision reads", async () => {
-    const plugin = defineWorkflow({
+    const plugin = withDiagram(defineWorkflow({
       name: "twoanswers",
       configSchema: {
         "policy.attempts": { type: "number", default: 5, description: "how many times one piece of work may be tried" },
       } satisfies ConfigSchema,
-      states: ["NEW"],
-      waiting: [],
-      terminal: ["NEW"],
       policy: { attempts: 3 },
       needs: { source: port<RequiredPort>() },
-      plan: () => ({ kind: "settled", why: "done" }),
+      decide: { NEW: () => settled("done") },
       record: () => ({}),
-      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record) => record }),
-    });
+      observe: async () => ({}),
+      actions: {},
+    }), ONLY_NEW);
     const outcome = await mount([plugin, source], {}, HOST);
 
     expect(outcome.ok).toBe(false);
@@ -280,27 +281,20 @@ describe("defineWorkflow", () => {
   // whose config is valid; the mount rebuilds the declaration with its own
   // config, and that is the workflow it registers.
   it("evaluates a configuration-dependent claim only where a configuration exists", async () => {
-    const declared = defineWorkflow({
+    const declared = withDiagram(defineWorkflow({
       name: "claimed",
       configSchema: {
         repos: { type: "string[]", required: true, description: "the repositories this workflow works in" },
         "policy.attempts": { type: "number", default: 3, description: "how many times one piece of work may be tried" },
       } satisfies ConfigSchema,
-      states: ["NEW"],
-      waiting: [],
-      terminal: ["NEW"],
       policy: { attempts: 3 },
       needs: { source: port<RequiredPort>() },
       trackerWrites: ({ config }) => (config.repos.includes("acme/widgets") ? ["comment"] : []),
-      plan: () => ({ kind: "settled", why: "done" }),
+      decide: { NEW: () => settled("done") },
       record: () => ({}),
-      runtime: () => ({
-        found: async () => [],
-        observe: async () => ({}),
-        actions: {},
-        apply: (record) => record,
-      }),
-    });
+      observe: async () => ({}),
+      actions: {},
+    }), ONLY_NEW);
 
     expect(declared.workflow.trackerWrites).toEqual([]);
 
@@ -309,44 +303,46 @@ describe("defineWorkflow", () => {
 
     expect(outcome.mounted.workflow?.trackerWrites).toEqual(["comment"]);
   });
-  // Members are delegated to the object the factory returned, so a runtime
-  // built as a class keeps its prototype methods — and `this` — after mount.
-  it("keeps the methods of a runtime built as a class", async () => {
-    class ClassRuntime implements WorkflowRuntimeParts<TestRecord, unknown> {
-      readonly actions = {};
-      #looks: string[] = [];
 
-      async found(): Promise<readonly string[]> {
-        this.#looks.push("found");
-        return ["C-1"];
-      }
+  // Only the pieces mount: a declaration still written as one `plan` and a
+  // `runtime` factory is refused by name, saying where each moved, rather
+  // than read as a workflow whose decisions are all missing.
+  it("refuses a declaration that still passes plan and runtime, naming where each moved", async () => {
+    const legacy = withDiagram(defineWorkflow({
+      name: "legacy", configSchema: schema, policy: { attempts: 3, backoffMs: 1000 }, needs: {},
+      record: () => ({}), plan: () => ({ kind: "settled", why: "done" }),
+      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record: WorkRecord) => record }),
+    } as never), ONLY_NEW);
+    const outcome = await mount([legacy], {}, HOST);
 
-      async observe(): Promise<unknown> {
-        return {};
-      }
+    expect(!outcome.ok && outcome.problems.join("; ")).toContain(
+      "the legacy workflow declares `plan` and `runtime`, which no longer mount: `plan` moves onto `decide`, one key per drawn state; `runtime` moves onto `discover`, `observe`, `actions` and `remember`",
+    );
+  });
 
-      apply(record: TestRecord): TestRecord {
-        return record;
-      }
-    }
-
+  // A workflow installed from outside is a declaration, so what a plugin
+  // prepares and the environment it reads have to travel on it too.
+  it("carries the setup and the environment a plugin declares", () => {
+    const setup = [{ name: "pager", run: () => ({ label: "pager", ok: true }) }];
     const declared = defineWorkflow({
-      name: "classy",
-      configSchema: schema,
-      states: ["NEW"],
-      waiting: [],
-      terminal: ["NEW"],
-      policy: { attempts: 3 },
-      needs: { source: port<RequiredPort>() },
-      plan: () => ({ kind: "settled", why: "done" }),
-      record: (workId) => ({ customer: workId }),
-      runtime: () => new ClassRuntime(),
+      name: "prepared", configSchema: {}, policy: {}, needs: {}, record: () => ({}),
+      setup, environment: ["PAGER_TOKEN"],
+      decide: { NEW: () => settled("done") }, observe: async () => ({}), actions: {},
     });
-    const outcome = await mount([declared, source], {}, HOST);
-    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
-    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("classy") as WorkflowRuntime<TestRecord>;
 
-    await expect(runtime.found()).resolves.toEqual(["C-1"]);
+    expect(declared.setup).toBe(setup);
+    expect(declared.environment).toEqual(["PAGER_TOKEN"]);
+  });
+
+  it("refuses a declaration that mixes a leftover plan with the pieces", async () => {
+    const mixed = withDiagram(defineWorkflow({
+      name: "mixed", configSchema: schema, policy: { attempts: 3, backoffMs: 1000 }, needs: {},
+      record: () => ({}), plan: () => ({ kind: "settled", why: "done" }),
+      decide: { NEW: () => settled("done") }, observe: async () => ({}), actions: {},
+    } as never), ONLY_NEW);
+    const outcome = await mount([mixed], {}, HOST);
+
+    expect(!outcome.ok && outcome.problems.join("; ")).toContain("the mixed workflow declares `plan`, which no longer mount");
   });
 });
 
@@ -463,27 +459,6 @@ describe("a workflow in three pieces", () => {
     expect(outcome.mounted.contributions.get("harnesses")?.has("fixture")).toBe(true);
   });
 
-  it("refuses declarations that silently mix legacy and piece members", async () => {
-    const mixed = defineWorkflow({
-      name: "mixed", configSchema: schema, states: ["DONE"], terminal: ["DONE"], policy: {}, needs: {},
-      record: () => ({}), plan: () => ({ kind: "settled", why: "done" }),
-      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record: WorkRecord) => record }),
-      decide: { DONE: () => ({ kind: "settled", why: "done" }) }, observe: async () => ({}), actions: {},
-    } as never);
-    const outcome = await mount([mixed], {}, HOST);
-    expect(!outcome.ok && outcome.problems.join("; ")).toContain("cannot mix legacy");
-  });
-
-  it("refuses a legacy declaration with piece-only progress", async () => {
-    const mixed = defineWorkflow({
-      name: "mixed-progress", configSchema: schema, states: ["DONE"], terminal: ["DONE"], policy: {}, needs: {},
-      record: () => ({}), plan: () => ({ kind: "settled", why: "done" }),
-      runtime: () => ({ found: async () => [], observe: async () => ({}), actions: {}, apply: (record: WorkRecord) => record }),
-      progress: { port: "tracker", method: "update" },
-    } as never);
-    const outcome = await mount([mixed], {}, HOST);
-    expect(!outcome.ok && outcome.problems.join("; ")).toContain("cannot mix legacy `plan`, `runtime` with `progress`");
-  });
 });
 
 it("types all four planning helpers against the workflow's states and effects", () => {
@@ -521,7 +496,7 @@ it("types an action handler by the payload named in its key", () => {
 
   void defineWorkflow({
     name: "typed-action-declaration",
-    configSchema: {}, policy: {}, needs: {}, states: ["NEW"], terminal: ["NEW"],
+    configSchema: {}, policy: {}, needs: {},
     record: () => ({}),
     decide: { NEW: () => settled("done") },
     observe: async () => ({}),
@@ -530,7 +505,7 @@ it("types an action handler by the payload named in its key", () => {
 
   void defineWorkflow({
     name: "inline-action-declaration",
-    configSchema: {}, policy: {}, needs: {}, states: ["NEW"], terminal: ["NEW"],
+    configSchema: {}, policy: {}, needs: {},
     record: () => ({}),
     decide: { NEW: () => settled("done") },
     observe: async () => ({}),
@@ -542,48 +517,23 @@ it("types an action handler by the payload named in its key", () => {
   });
 });
 
-// This is a compile-time contract: the declaration gives direct constructors
-// its own state vocabulary through the decision return type.
-void defineWorkflow({
-  name: "typed-direct-helper",
-  configSchema: {}, policy: {}, needs: {}, states: ["NEW", "DONE"], terminal: ["DONE"],
-  record: () => ({}),
-  decide: {
-    // @ts-expect-error a decision cannot advance to a state it did not declare
-    NEW: () => advance("LOST", "typo"),
-    DONE: () => ({ kind: "settled", why: "done" }),
-  },
-  observe: async () => ({}),
-  actions: {},
-});
-
 // The state-independent constructors carry only their own variant. A decision
 // using one cannot be rejected for a hypothetical advance it never returns.
 void defineWorkflow({
   name: "typed-direct-act",
-  configSchema: {}, policy: {}, needs: {}, states: ["NEW"], terminal: ["NEW"],
+  configSchema: {}, policy: {}, needs: {},
   record: () => ({}), decide: { NEW: () => act("working", { type: "run" }) }, observe: async () => ({}), actions: {},
 });
 void defineWorkflow({
   name: "typed-direct-wait",
-  configSchema: {}, policy: {}, needs: {}, states: ["NEW"], terminal: ["NEW"],
+  configSchema: {}, policy: {}, needs: {},
   record: () => ({}), decide: { NEW: () => wait(1_000, "waiting") }, observe: async () => ({}), actions: {},
 });
 void defineWorkflow({
   name: "typed-direct-settled",
-  configSchema: {}, policy: {}, needs: {}, states: ["NEW"], terminal: ["NEW"],
+  configSchema: {}, policy: {}, needs: {},
   record: () => ({}), decide: { NEW: () => settled("done") }, observe: async () => ({}), actions: {},
 });
-void defineWorkflow({
-  name: "typed-hook-state",
-  configSchema: {}, policy: {}, needs: {}, states: ["NEW", "DONE"], terminal: ["DONE"],
-  record: () => ({}),
-  // @ts-expect-error a hook cannot advance to a state the workflow does not declare
-  before: () => advance("LOST", "typo"),
-  decide: { NEW: () => advance("DONE", "done"), DONE: () => settled("done") },
-  observe: async () => ({}), actions: {},
-});
-
 describe("a decision nobody has written yet", () => {
   it("settles the record, naming its state, rather than guessing a move", () => {
     const stub = notWritten();

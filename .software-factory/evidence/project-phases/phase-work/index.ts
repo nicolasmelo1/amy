@@ -5,8 +5,6 @@ import { defineWorkflow } from "@amykit/core";
 export const plugin = defineWorkflow({
   name: "invoices-work",
   pluginName: "workflow-invoices-work",
-  states: ["OPENED"],
-  terminal: ["OPENED"],
   configSchema: {},
   policy: {},
   needs: {},

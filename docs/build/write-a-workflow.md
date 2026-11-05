@@ -1,6 +1,6 @@
 ---
 title: Write a workflow
-description: Your process, as a directory of yours — the pure decision, the runtime, and the walkthrough test that is the only real proof.
+description: Your process, as a directory of yours — the diagram, the pure decisions, the actions, and the walkthrough test that is the only real proof.
 group: Build your own
 order: 2
 ---
@@ -27,15 +27,16 @@ amy workflow check review    # drives its lifecycle against a stub world
 cd ~/.amy/workflows/review && npm install && npm test   # the machine's own suite
 ```
 
-`new` writes a workflow that already moves a piece of work — the states, a pure
-`plan()`, a runtime, and one `defineWorkflow` declaration that mounts both
-halves. It is a valid
+`new` writes a workflow that already moves a piece of work — its three pieces,
+each in its file: `workflow.mmd`, the diagram its states are read from;
+`decide.ts`, one pure decision per drawn state; `actions.ts`, what happens in
+the world; and an `index.ts` holding the one `defineWorkflow` call that joins
+them. A workflow with no `workflow.mmd` beside it does not mount. It is a valid
 npm package from the moment it is written — it is written `private`, so sharing
 it later is a scoped name, dropping that flag and `npm publish` in the same
 directory, rather than a restructuring.
 
-What it writes is one `index.ts` holding both halves, typed against
-`@amykit/core`. Node strips the types and runs it from that directory as it is.
+What it writes is TypeScript typed against `@amykit/core`. Node strips the types and runs it from that directory as it is.
 <!-- amy:generated readme-node-version -->
 
 Node 22.18 or later runs the command.
@@ -66,29 +67,34 @@ settled first.
 
 ## 1. The states
 
-```ts
-// src/state.ts
-export const REVIEW_STATES = [
-  /** A customer wrote in. Nothing has read it yet. */
-  "RECEIVED",
-  /** An agent is drafting a reply, or its last attempt needs looking at. */
-  "DRAFTING",
-  /** A draft exists and a human has to approve it before it goes out. */
-  "AWAITING_APPROVAL",
-  /** Terminal: it was sent. */
-  "SENT",
-  /** Terminal: nothing was sent, and the machine said why. */
-  "DECLINED",
-] as const;
+```mermaid
+%% workflow.mmd
+stateDiagram-v2
+    classDef waiting stroke-dasharray: 4 4
 
-export type ReviewState = (typeof REVIEW_STATES)[number];
+    [*] --> RECEIVED
+    RECEIVED --> DRAFTING: there is room to draft this one
+    DRAFTING --> AWAITING_APPROVAL: a draft exists
+    DRAFTING --> DECLINED: no draft in the attempts allowed
+    AWAITING_APPROVAL --> SENT: a human approved it
+    SENT --> [*]
+    DECLINED --> [*]
 
-/** Where the machine has nothing to do until somebody else moves. */
-export const WAITING_STATES: readonly ReviewState[] = ["AWAITING_APPROVAL"];
+    class AWAITING_APPROVAL waiting
 ```
 
-Comment each state with *what is true when work is in it*. Six months later that
-comment is the specification.
+The diagram is the only place the states are written: the initial one is the
+`[*]` arrow, the terminal ones point at `[*]`, and `class … waiting` marks where
+the machine has nothing to do until somebody else moves. A union of the names
+types your decisions; it is never read when the workflow mounts.
+
+```ts
+// src/state.ts
+export type ReviewState = "RECEIVED" | "DRAFTING" | "AWAITING_APPROVAL" | "SENT" | "DECLINED";
+```
+
+Write beside each state, in a `note`, *what is true when work is in it*. Six
+months later that note is the specification.
 
 ## 2. The record
 
@@ -111,8 +117,8 @@ export function attemptsIn(record: ReviewRecord, state: ReviewState): number {
 
 The core owns `id`, `state`, `updatedAt`, `attempts` and `history`. The
 declaration's `record(workId)` callback adds only fields such as `customer`;
-the runtime never constructs these five fields itself. Everything else is
-yours, and your `apply` is what folds it.
+nothing else constructs these five fields. Everything else is yours, and your
+`remember` is what folds it.
 
 ## 3. The typed effects
 
@@ -133,8 +139,8 @@ dispatch to a generic `agent.ask()`, which is almost always what a new workflow
 wants. If nothing fits, register the action *and its port* from a plugin of
 yours.
 
-There is no list of the actions a workflow uses. They are the keys of the
-runtime's `actions` (step 6), each beside what runs it, so the host can refuse a
+There is no list of the actions a workflow uses. They are the keys of
+`actions` (step 6), each beside what runs it, so the host can refuse a
 mount where one of them has nothing behind it — at boot, naming the action.
 
 ## 4. The observation and the policy
@@ -167,54 +173,50 @@ can change it.
 ## 5. The decision — and it must stay pure
 
 ```ts
-// src/machine.ts
-import type { Plan, Workflow } from "@amykit/core";
+// src/decide.ts
+import type { Plan } from "@amykit/core";
 
-export function plan(record: ReviewRecord, obs: Observation, policy: Policy): Plan {
-  switch (record.state) {
-    case "RECEIVED":
-      if (obs.inFlight >= policy.maxInFlight) {
-        return wait(policy.approvalBackoffMs, `${obs.inFlight} replies are already waiting`);
-      }
-      return advance("DRAFTING", "there is room to draft this one");
+type Decision = (record: ReviewRecord, obs: Observation, policy: Policy) => Plan;
 
-    case "DRAFTING": {
-      if (record.lastAttempt?.ok) {
-        return advance("AWAITING_APPROVAL", "a draft exists", {
-          type: "announce",
-          text: `A reply to ${obs.message.customer} is ready:\n\n${record.draft}`,
-        });
-      }
+// One key per state workflow.mmd draws: a missing or extra key is refused at boot.
+export const decide = {
+  RECEIVED: (_record, obs, policy) => obs.inFlight >= policy.maxInFlight
+    ? wait(policy.approvalBackoffMs, `${obs.inFlight} replies are already waiting`)
+    : advance("DRAFTING", "there is room to draft this one"),
 
-      const attempts = attemptsIn(record, "DRAFTING");
-      if (attempts >= policy.maxAttempts) {
-        return advance("DECLINED", `${attempts} attempt(s) produced nothing usable`, {
-          type: "announce",
-          text: `I could not draft a reply to ${obs.message.customer}. It is yours.`,
-        });
-      }
-
-      return act(`attempt ${attempts + 1}`, {
-        type: "draft-plan",
-        prompt: `Draft a reply to:\n\n${obs.message.body}`,
+  DRAFTING: (record, obs, policy) => {
+    if (record.lastAttempt?.ok) {
+      return advance("AWAITING_APPROVAL", "a draft exists", {
+        type: "announce",
+        text: `A reply to ${obs.message.customer} is ready:\n\n${record.draft}`,
       });
     }
 
-    case "AWAITING_APPROVAL":
-      return obs.approved
-        ? advance("SENT", "a human approved it")
-        : wait(policy.approvalBackoffMs, "nobody has approved it yet");
+    const attempts = attemptsIn(record, "DRAFTING");
+    if (attempts >= policy.maxAttempts) {
+      return advance("DECLINED", `${attempts} attempt(s) produced nothing usable`, {
+        type: "announce",
+        text: `I could not draft a reply to ${obs.message.customer}. It is yours.`,
+      });
+    }
 
-    case "SENT":
-      return settled("the reply went out");
-    case "DECLINED":
-      return settled("nothing was sent, and the operator was told why");
-  }
-}
+    return act(`attempt ${attempts + 1}`, {
+      type: "draft-plan",
+      prompt: `Draft a reply to:\n\n${obs.message.body}`,
+    });
+  },
+
+  AWAITING_APPROVAL: (_record, obs, policy) => obs.approved
+    ? advance("SENT", "a human approved it")
+    : wait(policy.approvalBackoffMs, "nobody has approved it yet"),
+
+  SENT: () => settled("the reply went out"),
+  DECLINED: () => settled("nothing was sent, and the operator was told why"),
+} satisfies Record<ReviewState, Decision>;
 ```
 
 **No `await`. No `fs`. No `fetch`. No `new Date()`.** If you want one of those,
-what you want is in the runtime.
+what you want is in an action.
 
 Three habits worth copying from the shipped workflows:
 
@@ -224,56 +226,52 @@ Three habits worth copying from the shipped workflows:
 - **"The answer is no" is a terminal state, not a failure.** `DECLINED` exists so
   that giving up looks different from landing.
 
-## 6. The runtime — the half that touches the world
+## 6. The actions — the half that touches the world
 
 ```ts
-// src/runtime.ts
-import type { ActionHandler, Plan, WorkflowRuntimeParts } from "@amykit/core";
+// src/actions.ts
+import type { Moved, Plan } from "@amykit/core";
 
-export function reviewRuntime(deps: Deps): WorkflowRuntimeParts<ReviewRecord, Observation> {
-  return {
-    found: async () => (await deps.inbox.unanswered()).map((m) => m.id),
+// Each piece is handed `scope`: the ports `needs` asked for, the config, the
+// policy and the checkouts.
+export const discover = async ({ ports }: Scope) => (await ports.inbox.unanswered()).map((m) => m.id);
 
-    observe: async (record) => ({
-      message: await deps.inbox.get(record.id),
-      approved: await deps.inbox.isApproved(record.id),
-      inFlight: (await deps.inbox.awaitingApproval()).length,
-    }),
+export const observe = async ({ ports }: Scope, record: ReviewRecord): Promise<Observation> => ({
+  message: await ports.inbox.get(record.id),
+  approved: await ports.inbox.isApproved(record.id),
+  inFlight: (await ports.inbox.awaitingApproval()).length,
+});
 
-    // The key is the declaration, the value what runs it. A value may also be
-    // `{ port, method }` for a method its port marked with `acceptsAction`: the
-    // host calls it with the action and its context, and its answer lands in
-    // `outcomes` under the action's name.
-    actions: {
-      "draft-plan": (async (action, { outcomes }) => {
-        const reply = await deps.agent.ask(action.prompt as string, deps.workspace);
-        outcomes.draft = reply.text;
-      }) as ActionHandler<ReviewRecord, Observation>,
+// The key is the declaration, the value what runs it. A value may also be
+// `{ port, method }` for a method its port marked with `acceptsAction`: the
+// host calls it with the action and its context, and its answer lands in
+// `outcomes` under the action's name.
+export const actions = workflowActions<Effect>()({
+  "draft-plan": async ({ ports }, { outcomes }, effect) => {
+    const reply = await ports.agent.ask(effect.prompt, ports.workspace);
+    outcomes.draft = reply.text;
+  },
 
-      "announce": (async (action, { record }) => {
-        await deps.notifier.announce({
-          text: action.text as string,
-          workId: record.id,
-          state: record.state,
-        });
-      }) as ActionHandler<ReviewRecord, Observation>,
-    },
+  // A word to the operator: a channel that fails is a `notify.failed` line, not a failed action.
+  "announce": async ({ announce }, _work, effect) => announce(effect.text),
+});
 
-    apply: (record, plan, outcomes, observation, now, moved) => {
-      const next = { ...record, customer: observation.message.customer };
+export function remember(
+  _scope: Scope, record: ReviewRecord, outcomes: Record<string, unknown>, observation: Observation,
+  _moved: Moved | null, _decision: Plan, now: Date,
+): ReviewRecord {
+  const next = { ...record, customer: observation.message.customer };
 
-      if (typeof outcomes.draft === "string") {
-        next.draft = outcomes.draft;
-        next.lastAttempt = { ok: true, output: outcomes.draft, at: now.toISOString() };
-      }
+  if (typeof outcomes.draft === "string") {
+    next.draft = outcomes.draft;
+    next.lastAttempt = { ok: true, output: outcomes.draft, at: now.toISOString() };
+  }
 
-      return next;
-    },
-  };
+  return next;
 }
 ```
 
-Four things about `apply` that catch everybody:
+Four things about `remember` that catch everybody:
 
 **Do not fold the state, the attempt count or the history.** The engine already
 did that through `applyPlan`. Doing it again is the defect the third workflow
@@ -285,7 +283,7 @@ comes from an action. `approved` arrives as an observation, and a fold that
 could not see one would leave the record waiting on it forever.
 
 **`outcomes` is a bag you own at both ends.** Your handlers fill it and your
-`apply` reads it. The engine only carries it between the two.
+`remember` reads it. The engine only carries it between the two.
 
 **`record` has already moved.** Its `state` is where the work is going. Where
 it came from is `moved.from` — `moved` is `null` when the plan did not advance.
@@ -298,6 +296,8 @@ on every move into it; `moved.from` is the state the escalation interrupted.
 ```ts
 // src/plugin.ts
 import { defineWorkflow, optional, port } from "@amykit/core";
+import { actions, discover, observe, remember } from "./actions.js";
+import { decide } from "./decide.js";
 
 export const configSchema: ConfigSchema = {
   policy: {
@@ -310,52 +310,50 @@ export const configSchema: ConfigSchema = {
 export const plugin = defineWorkflow({
   name: "review",
   pluginName: "@acme/workflow-review",
-  states: REVIEW_STATES,
-  waiting: WAITING_STATES,
-  terminal: ["SENT", "DECLINED"],
   configSchema,
   policy: DEFAULT_POLICY,
   needs: {
-    approvals: port<Approvals>(),
-    notifier: port<Notifier>(),
+    inbox: port<Inbox>(),
+    agent: port<Harness>(),
     conversation: optional<Conversation>(),
   },
-  plan,
   record: (workId) => ({ customer: workId }),
-  runtime: ({ ports, policy }) => reviewRuntime({
-    approvals: ports.approvals,
-    notifier: ports.notifier,
-    conversation: ports.conversation,
-    policy,
-  }),
+  decide,
+  discover,
+  observe,
+  actions,
+  remember,
 });
-
-export const newRecord = plugin.newRecord;
 ```
 
-The declaration registers both halves under `review`. Its runtime is deferred
-until every plugin has registered, built once per mount, and handed typed ports.
-An absent required port is a boot refusal naming `review` and the port; the
-optional conversation arrives as `undefined`. The `policy` argument is the
-declared defaults with configured values overlaid, after unknown keys have been
-refused.
+The declaration takes its states from the `workflow.mmd` the host finds beside
+it, and registers the workflow and its runtime under `review`. Its runtime is
+deferred until every plugin has registered, built once per mount, and handed
+typed ports. An absent required port is a boot refusal naming `review` and the
+port; the optional conversation arrives as `undefined`. The `policy` argument is
+the declared defaults with configured values overlaid, after unknown keys have
+been refused. A declaration still passing `states`, a single `plan` or a
+`runtime` factory is refused at boot, naming where each moved.
 
 ## 8. The walkthrough test — the only real proof
 
 Every workflow gets one. It is the test that finds the bugs, and it only exists
-because `plan()` is pure.
+because the decisions are pure.
 
 ```ts
+// The workflow as amy mounts it: its states read from workflow.mmd beside it.
+const review = withDiagramBeside(plugin, import.meta.url);
+
 it("walks a message from received to sent", () => {
-  let record = newRecord("MSG-1", at(0));
+  let record = review.newRecord("MSG-1", at(0));
   const seen: string[] = [record.state];
 
   for (let look = 0; look < 20; look += 1) {
-    const decision = plan(record, world(record), DEFAULT_POLICY);
+    const decision = review.workflow.plan(record, world(record), DEFAULT_POLICY);
     if (decision.kind === "settled") break;
 
     record = applyPlan(record, decision, at(look));
-    record = fold(record, decision);            // what the runtime would have folded
+    record = fold(record, decision);            // what `remember` would have folded
     if (record.state !== seen.at(-1)) seen.push(record.state);
   }
 
@@ -383,8 +381,8 @@ in a terminal state. It needs no test runner, which is the point — it is what 
 run while editing. The tests above are what survives the editing.
 
 The scaffold's `index.test.ts` is the rest: `conforms` from
-`@amykit/workflow-testkit`, which walks your runtime through the worlds you
-give it and fails a state nothing leaves, an action with nothing behind it, a
+`@amykit/workflow-testkit`, which mounts the workflow the way amy does and walks
+its runtime through the worlds you give it and fails a state nothing leaves, an action with nothing behind it, a
 wait counted as a try, a decision made by an empty `every`, and a giving-up
 state with no honest way out — none of which is about your domain, and all of
 which reached a real board before there was a test for them. Add a world each
@@ -434,8 +432,8 @@ same handbrake as everything else. Its records and queue live under
 
 | Mistake | What it costs |
 | :-- | :-- |
-| `await` inside `plan()` | The walkthrough test needs I/O, so nobody writes it, so the lifecycle is never proven |
-| Folding state or attempts in `apply` | Every retry counts twice; ceilings fire at half their value |
+| `await` inside a decision | The walkthrough test needs I/O, so nobody writes it, so the lifecycle is never proven |
+| Folding state or attempts in `remember` | Every retry counts twice; ceilings fire at half their value |
 | No waiting state | A busy loop that burns quota politely |
 | No terminal "no" state | Giving up looks exactly like landing |
 | A ceiling checked after the agent call | A report, not a brake |

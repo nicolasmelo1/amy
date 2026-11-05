@@ -72,8 +72,8 @@ export function writeWorkflow(home: string, name: string, config: AmyConfig, fro
   }, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, "tsconfig.json"), JSON.stringify(SCAFFOLD_TSCONFIG, null, 2) + "\n", "utf-8");
   fs.writeFileSync(path.join(directory, DIAGRAM_FILE), drawn.text, "utf-8");
-  fs.writeFileSync(path.join(directory, "index.ts"), from === undefined ? scaffold(name) : scaffoldFromDiagram(name, drawn.states), "utf-8");
-  fs.writeFileSync(path.join(directory, "index.test.ts"), scaffoldSuiteFromDiagram(), "utf-8");
+  const pieces = from === undefined ? scaffold(name) : scaffoldFromDiagram(name, drawn.states);
+  for (const [file, text] of Object.entries(pieces)) fs.writeFileSync(path.join(directory, file), text, "utf-8");
   linkCore(directory);
   writeGuardrails(directory);
   writeWorkflowProfile(home, name, name, config);
@@ -185,7 +185,7 @@ export async function exportWorkflow(
   if (!profile) throw new Error(`there is no \`${name}\` workflow in the config`);
   const workflow = await shapeOf(home, homeRelative(home, profile.workflow), options.resolve ?? ((spec) => workflowSpecifier(home, spec)));
   const diagram = workflow.diagram;
-  if (!diagram) throw new Error(`${name} has no ${DIAGRAM_FILE}: its states are declared in its code, so there is no diagram to export`);
+  if (!diagram) throw new Error(`${name} has no ${DIAGRAM_FILE}, so there is no diagram to export`);
   if (options.expand) return expandDiagram(workflow, options.record ?? (options.state === undefined ? undefined : { id: name, state: options.state, updatedAt: "", attempts: {}, history: [] }));
   const state = options.state ?? options.record?.state;
   return state === undefined ? diagram.text : markState(diagram, state);
@@ -194,8 +194,9 @@ export async function exportWorkflow(
 /**
  * The workflow a configured spec was bound to, read the cheapest way that
  * says it: a declaration carries its workflow unregistered, so nothing reads
- * a configuration only the mount validates. A plugin that registers its
- * workflow by hand is registered to ask.
+ * a configuration only the mount validates. A declaration with no diagram
+ * says so when it is read, and a plugin that registers its workflow by hand
+ * is registered to be refused.
  */
 async function shapeOf(home: string, spec: string, resolve: (spec: string) => string): Promise<Workflow> {
   const plugin = await importedPlugin(spec, resolve);
@@ -410,9 +411,6 @@ async function stubsIn(workflow: Workflow, runtime: WorkflowRuntime, first: Work
 
 /** Declared actions with nothing behind them, which the mount would refuse at boot. */
 function unimplementedActions(workflow: Workflow, runtime: WorkflowRuntime): string[] {
-  if (Object.hasOwn(workflow, "usesActions")) {
-    return [`${workflow.name}: still declares \`usesActions\`; delete it and key each action in its runtime's \`actions\``];
-  }
   if (runtime.actions === null || typeof runtime.actions !== "object") {
     return [`${workflow.name}: its runtime declares no \`actions\` — one map from each action it emits to what runs it`];
   }
@@ -483,10 +481,14 @@ function message(error: unknown): string {
 /** The kit the scaffold's own suite runs, which moves in the same version group as this command. */
 const TESTKIT = "@amykit/workflow-testkit";
 
-/** The first TypeScript with `erasableSyntaxOnly`, which holds the scaffold to what Node can strip. */
+/** The first TypeScript with `erasableSyntaxOnly`, which holds the scaffold to what Node can strip; it also rewrites `.ts` imports. */
 const TYPESCRIPT = "^5.8.0";
 
-/** Compiles `index.ts` alone for publishing; the suite imports it by its `.ts` name and is never built. */
+/**
+ * Compiles `index.ts` and the pieces it imports for publishing; the suite
+ * imports it by its `.ts` name and is never built. Each piece is imported by
+ * its `.ts` name too, which Node runs as it is and the build rewrites.
+ */
 const SCAFFOLD_TSCONFIG = {
   compilerOptions: {
     target: "ES2022",
@@ -495,6 +497,7 @@ const SCAFFOLD_TSCONFIG = {
     strict: true,
     erasableSyntaxOnly: true,
     verbatimModuleSyntax: true,
+    rewriteRelativeImportExtensions: true,
     declaration: true,
     outDir: "dist",
     skipLibCheck: true,
@@ -512,58 +515,37 @@ function groupVersion(): string {
   return manifest.version;
 }
 
-function scaffold(name: string): string {
-  return `// This workflow belongs to this machine. Edit workflow.mmd and the pieces below.
-// \`amy workflow check ${name}\` drives this file before it drives real work,
-// and \`npm test\` runs the machine's own suite over it. Node runs it as it is;
-// \`npm run build\` compiles it for publishing.
-import { act, advance, defineWorkflow, settled, withDiagramBeside, type ConfigSchema, type Plan, type WorkflowActionScope, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
+/**
+ * The three pieces a workflow is, each in the file that says it: where work
+ * can go in `workflow.mmd`, where it goes next in `decide.ts`, what happens
+ * in the world in `actions.ts`, and the one `defineWorkflow` call that joins
+ * them in `index.ts`.
+ */
+interface Scaffold {
+  readonly "decide.ts": string;
+  readonly "actions.ts": string;
+  readonly "index.ts": string;
+  readonly "index.test.ts": string;
+}
+
+function scaffold(name: string): Scaffold {
+  return {
+    "decide.ts": `// One decision per state workflow.mmd draws: where this piece of work goes
+// next, given what the world says. Pure: nothing here awaits anything.
+import { act, advance, settled, type Plan, type WorkRecord } from "@amykit/core";
 
 export const decide: Record<string, (record: WorkRecord) => Plan> = {
   received: () => advance("done", "the work was received"),
   done: () => settled("the workflow is complete"),
 };
-export const discover = async () => ["example"];
-export const observe = async (_record: WorkRecord) => ({});
-export const actions = {};
-const defaultTestScope: WorkflowActionScope<ConfigSchema, object, {}> = {
-  ports: {}, config: {}, policy: {}, checkouts: {} as never, ctx: {} as never,
-  announce: async () => undefined,
-};
-function testActions(scope: WorkflowActionScope<ConfigSchema, object, {}>): WorkflowRuntime["actions"] {
-  return Object.fromEntries(
-    Object.entries(actions).map(([name, implementation]) => [
-      name,
-      typeof implementation === "function"
-        ? (effect, work) => implementation(scope as never, work, effect as never)
-        : implementation,
-    ]),
-  ) as WorkflowRuntime["actions"];
-}
-export function remember(record: WorkRecord): WorkRecord { return record; }
-
-export const plugin = defineWorkflow({
-  name: ${JSON.stringify(name)},
-  configSchema: {} satisfies ConfigSchema,
-  policy: {},
-  needs: {},
-  decide,
-  record: () => ({}),
-  discover,
-  observe: (_scope, record) => observe(record),
-  actions,
-  remember: (_scope, record) => remember(record),
-});
-
-// The suite builds a fresh runtime and uses the core-owned record constructor,
-// bound to workflow.mmd the way amy mounts it: unbound, it has no states.
-export function runtime(
-  newRecord = withDiagramBeside(plugin, import.meta.url).newRecord,
-  scope: WorkflowActionScope<ConfigSchema, object, {}> = defaultTestScope,
-): WorkflowRuntime {
-  return { found: discover, observe, actions: testActions(scope), apply: remember, policy: {}, newRecord };
-}
-`;
+`,
+    "actions.ts": actionsFile(),
+    "index.ts": indexFile(name, `// This workflow belongs to this machine. Edit workflow.mmd, decide.ts and
+// actions.ts; this file only joins them. \`amy workflow check ${name}\` drives
+// it before it drives real work, and \`npm test\` runs the machine's own suite
+// over it. Node runs it as it is; \`npm run build\` compiles it for publishing.`),
+    "index.test.ts": suite(),
+  };
 }
 
 function scaffoldDiagram(): string {
@@ -575,91 +557,101 @@ function scaffoldDiagram(): string {
 }
 
 /**
- * The suite every workflow needs and nobody writes, from its first commit.
- *
- * `node:test` because it is the runner a machine with node already has; the
- * kit takes whichever runner it is handed. A world is one situation the
- * workflow can be in, and adding one is how a new state gets proven.
- */
-/**
  * A workflow whose shape is somebody's diagram, copied in beside it.
  *
  * It declares no states: the host reads them from `workflow.mmd`. Every
  * decision is a `notWritten()` stub, so it mounts as it is, settles rather
  * than guesses a move, and `amy workflow check` lists what is left to write.
  */
-function scaffoldFromDiagram(name: string, states: readonly string[]): string {
+function scaffoldFromDiagram(name: string, states: readonly string[]): Scaffold {
   const decisions = states.map((state) => `  ${JSON.stringify(state)}: notWritten(),`).join("\n");
-  return `// This workflow's shape is workflow.mmd beside this file: the states, where
-// work starts, waits and ends. Write one decision per state below; each is a
-// stub until then. \`amy workflow check ${name}\` lists what is left to write.
-import { defineWorkflow, notWritten, withDiagramBeside, type ConfigSchema, type Plan, type WorkflowActionScope, type WorkRecord, type WorkflowRuntime } from "@amykit/core";
+  return {
+    "decide.ts": `// One decision per state workflow.mmd draws: where this piece of work goes
+// next, given what the world says. Each is a stub until it is written;
+// \`amy workflow check ${name}\` lists what is left to write.
+import { notWritten, type Plan, type WorkRecord } from "@amykit/core";
 
-// One decision per state the diagram draws: where this piece of work goes next.
-const decide: Record<string, (record: WorkRecord) => Plan> = {
+export const decide: Record<string, (record: WorkRecord) => Plan> = {
 ${decisions}
 };
-
-export const discover = async () => ["example"];
-export const observe = async (_record: WorkRecord) => ({});
-export const actions = {};
-const defaultTestScope: WorkflowActionScope<ConfigSchema, object, {}> = {
-  ports: {}, config: {}, policy: {}, checkouts: {} as never, ctx: {} as never,
-  announce: async () => undefined,
-};
-function testActions(scope: WorkflowActionScope<ConfigSchema, object, {}>): WorkflowRuntime["actions"] {
-  return Object.fromEntries(
-    Object.entries(actions).map(([name, implementation]) => [
-      name,
-      typeof implementation === "function"
-        ? (effect, work) => implementation(scope as never, work, effect as never)
-        : implementation,
-    ]),
-  ) as WorkflowRuntime["actions"];
+`,
+    "actions.ts": actionsFile(),
+    "index.ts": indexFile(name, `// This workflow's shape is workflow.mmd beside this file: the states, where
+// work starts, waits and ends. Its decisions are decide.ts and what they do
+// in the world is actions.ts; this file only joins them.`),
+    "index.test.ts": suite(),
+  };
 }
+
+function actionsFile(): string {
+  return `// What happens in the world. Every action a decision may emit, keyed by
+// name: a handler given (scope, work, effect), whose \`scope.ports\` are the
+// ports index.ts \`needs\`, bound to this piece of work, and whose
+// \`scope.announce\` says a word to the operator; or { port, method } for a
+// mounted port the host calls.
+import type { WorkRecord } from "@amykit/core";
+
+export const actions = {};
+
+// What the actions produced, folded into the record. \`record\` has already
+// moved: read where it came from in \`moved.from\`, never in \`record.state\`.
 export function remember(record: WorkRecord): WorkRecord { return record; }
+`;
+}
+
+function indexFile(name: string, header: string): string {
+  return `${header}
+import { defineWorkflow, type ConfigSchema } from "@amykit/core";
+import { actions, remember } from "./actions.ts";
+import { decide } from "./decide.ts";
 
 export const plugin = defineWorkflow({
   name: ${JSON.stringify(name)},
   configSchema: {} satisfies ConfigSchema,
   policy: {},
+  // The ports the actions use, each \`port<T>()\` or \`optional<T>()\`.
   needs: {},
-  decide,
   record: () => ({}),
-  discover,
-  observe: (_scope, record) => observe(record),
-  // Every action a decision may emit, keyed by name, and what runs it: a
-  // handler, or { port, method } for a mounted port the host calls.
+  decide,
+  discover: async () => ["example"],
+  observe: async () => ({}),
   actions,
-  // Called as (scope, record, outcomes, observation, moved, decision, now).
-  // \`record\` has already moved: read where it came from in \`moved.from\`.
   remember: (_scope, record) => remember(record),
 });
-
-// Bound to workflow.mmd the way amy mounts it: unbound, it has no states.
-export function runtime(
-  newRecord = withDiagramBeside(plugin, import.meta.url).newRecord,
-  scope: WorkflowActionScope<ConfigSchema, object, {}> = defaultTestScope,
-): WorkflowRuntime {
-  return { found: discover, observe, actions: testActions(scope), apply: remember, policy: {}, newRecord };
-}
 `;
 }
 
-/** The suite for a workflow drawn as a diagram, bound to it the way amy mounts it. */
-function scaffoldSuiteFromDiagram(): string {
+/**
+ * The suite every workflow needs and nobody writes, from its first commit.
+ *
+ * `node:test` because it is the runner a machine with node already has; the
+ * kit takes whichever runner it is handed. A world is one situation the
+ * workflow can be in, and adding one is how a new state gets proven. The
+ * workflow is mounted the way amy mounts it, so its runtime is the one the
+ * pieces build, and a state with no decision is refused by name here too.
+ */
+function suite(): string {
   return `import { describe, it } from "node:test";
-import { withDiagramBeside } from "@amykit/core";
+import os from "node:os";
+import { mount, withDiagramBeside, WORKFLOW_RUNTIME, type WorkflowRuntime } from "@amykit/core";
 import { conforms } from "${TESTKIT}";
-import { plugin, runtime } from "./index.ts";
+import { plugin } from "./index.ts";
 
-// The workflow as amy mounts it: its states read from workflow.mmd beside it.
-// Red until every decision is written; each finding is one left to write.
+// The workflow as amy mounts it: its states read from workflow.mmd beside it,
+// its runtime built from decide.ts and actions.ts. Red until every decision
+// is written; each finding is one left to write.
 const drawn = withDiagramBeside(plugin, import.meta.url);
+const mounted = await mount([drawn], {}, {
+  runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+  now: () => new Date(),
+  paths: { workspace: os.tmpdir(), checkouts: {}, state: os.tmpdir() },
+});
+if (!mounted.ok) throw new Error(mounted.problems.join("; "));
+const runtime = mounted.mounted.contributions.get(WORKFLOW_RUNTIME)?.get(drawn.workflow.name) as WorkflowRuntime;
 
 conforms(drawn.workflow, {
   runner: { describe, it },
-  runtime: () => runtime(drawn.newRecord),
+  runtime: () => runtime,
   worlds: [{ name: "a piece of work arrives" }],
 });
 `;
