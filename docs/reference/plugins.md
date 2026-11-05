@@ -118,7 +118,7 @@ The codex CLI as the agent, over its JSONL event stream.
 | Source | `plugins/codex` |
 | Mounts | _nothing_ |
 | Contributes | `harness:codex` |
-| Needs in the environment | _nothing_ |
+| Needs in the environment | `CODEX_HOME` |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml

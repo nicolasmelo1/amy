@@ -42,6 +42,14 @@ Every field is checked at boot against the schema this package declares. A key t
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
 
+## Environment
+
+This package reads the following, which `amy doctor` checks for you:
+
+| Variable |  |
+| :-- | :-- |
+| `CODEX_HOME` | required at mount |
+
 ## Where the reasoning is
 
 - [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)

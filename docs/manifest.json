@@ -7305,6 +7305,10 @@
     ],
     "environment": [
       {
+        "variable": "CODEX_HOME",
+        "package": "@amykit/plugin-codex"
+      },
+      {
         "variable": "LINEAR_API_KEY",
         "package": "@amykit/plugin-linear"
       },
@@ -7513,7 +7517,9 @@
             "description": "how long one agent call may run before it is given up on"
           }
         ],
-        "environment": []
+        "environment": [
+          "CODEX_HOME"
+        ]
       },
       {
         "name": "@amykit/plugin-command",
