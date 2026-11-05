@@ -24,6 +24,7 @@ sources:
   - { id: S22, kind: decision, said: "every command on the page runs in the docs check against a recorded payload from the tool's docs, kept as a fixture beside the adapter's tests, so a misread signature or field fails the build" }
   - { id: S23, kind: reference, ref: "plans/amy-speaks-in-domains.md", said: "webhooks arrive at routes the server generates from the events domain's operations, POST /v1/events/github and POST /v1/events/linear" }
   - { id: S24, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "a label is prose, with one exception this plan adds: a label naming a published event is read" }
+  - { id: S25, kind: reference, ref: "plans/a-question-carries-its-answers.md", said: "with Socket Mode on, plugin-slack posts an ask as Block Kit buttons (checkboxes and a Send button for choices) and reads the block_actions payload into the same answer the reactions give; with it off, reactions stay. Decided 2026-11-05" }
 touches:
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/tests/Worker.test.ts
@@ -37,6 +38,8 @@ touches:
   - plugins/linear/src/**
   - plugins/linear/tests/**
   - plugins/slack/src/config.ts
+  - plugins/slack/src/SlackConversation.ts
+  - plugins/slack/tests/SlackConversation.asks.test.ts
   - packages/server/src/**
   - packages/cli/src/doctor.ts
   - .software-factory/evidence/ticket-to-qa/**
@@ -51,6 +54,7 @@ criteria:
   - { id: A5, statement: "with no events arriving, discovery and backoffs still find and move every piece of work, and amy doctor says the source is polling only", proof: "deferred:assertion:mine.polling_is_the_net_under_events", sources: [S12, S16, S17] }
   - { id: A6, statement: "in the ticket-to-qa scenario a signed review webhook moves its record before the backoff, a signed Linear webhook gets a new ticket picked up, a badly signed payload is refused and moves nothing", proof: "deferred:assertion:lifecycle.an_event_moves_its_record_before_the_backoff", sources: [S18, S19, S20] }
   - { id: A7, statement: "Receive events sets up each source with only what the page says, and every command on it runs in the docs check", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S14, S21, S22] }
+  - { id: A8, statement: "with Socket Mode on, an ask is posted as Block Kit buttons and a recorded block_actions payload from the operator comes back from replies as the same answer the reactions give; one from anybody else is not an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S25] }
 crosses:
   - { mechanism: engines, answer: works, proof: "deferred:test:plugins/serial-engine/tests/Worker.test.ts; the concurrent engine is the serial engine's Worker" }
   - { mechanism: budget-and-evidence, answer: works, proof: "deferred:A2; one chain of looks per work, so an event never makes a second chain spend an agent" }
@@ -58,7 +62,7 @@ crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "adapters only receive and translate webhooks; no write to the tracker or code host is added" }
   - { mechanism: diagram, answer: works, proof: "deferred:test:packages/core/tests/diagram.test.ts" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:test:packages/core/tests/diagram.test.ts" }
-  - { mechanism: events-and-notifications, answer: n/a, why: "slack keeps the Web API and only gains a Socket Mode setting, off by default; nothing logged or told changes" }
+  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A8; with Socket Mode off slack keeps the Web API and the reactions, and nothing logged or told changes" }
 guarantee:
   - { holds: "one chain of looks per piece of work", not_against: "however many events arrive for it" }
   - { holds: "a record acts on the world observe reads", not_against: "an event payload delivered twice, out of order or late" }
