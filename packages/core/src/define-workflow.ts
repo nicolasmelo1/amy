@@ -775,14 +775,28 @@ export function withDiagramBeside<T extends Plugin>(plugin: T, entry: string | U
  */
 export function declaredWorkflowsOnly<T extends Plugin>(plugin: T): T {
   if (DRAW in plugin) return plugin;
-  const register: Plugin["register"] = (registry, ctx) => plugin.register(Object.create(registry, {
-    workflow: {
-      value: () => {
-        throw new Error(`${plugin.name} registers a workflow by hand; amy mounts a workflow declared with \`defineWorkflow\` and a ${DIAGRAM_FILE} beside it — move it onto them`);
-      },
+  const refuse = (): never => {
+    throw new Error(`${plugin.name} registers a workflow by hand; amy mounts a workflow declared with \`defineWorkflow\` and a ${DIAGRAM_FILE} beside it — move it onto them`);
+  };
+  const register: Plugin["register"] = (registry, ctx) =>
+    plugin.register(receiverKept(registry, { workflow: refuse }), ctx);
+  return receiverKept(plugin, { register });
+}
+
+/**
+ * The object with some members replaced, every other one read and called on
+ * the object itself. A class whose getters or methods read `#private`
+ * fields throws on any other receiver, so a prototype wrapper cannot do this.
+ */
+function receiverKept<T extends object>(target: T, replaced: Readonly<Record<string, unknown>>): T {
+  return new Proxy(target, {
+    get(object, key) {
+      if (typeof key === "string" && Object.hasOwn(replaced, key)) return replaced[key];
+      const value: unknown = Reflect.get(object, key, object);
+      return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(object) : value;
     },
-  }) as Registry, ctx);
-  return Object.create(plugin, { register: { value: register, enumerable: true } }) as T;
+    has: (object, key) => (typeof key === "string" && Object.hasOwn(replaced, key)) || Reflect.has(object, key),
+  });
 }
 
 /**

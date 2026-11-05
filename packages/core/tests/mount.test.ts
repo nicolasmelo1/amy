@@ -1531,6 +1531,26 @@ describe("a workflow drawn as a diagram", () => {
     expect(outcome.ok === true && outcome.mounted.workflow?.name).toBe("drawn");
   });
 
+  it("keeps a class plugin's private getters and methods working through the declarations-only host", async () => {
+    class Adapter {
+      readonly #name = "plugin-private";
+      readonly #value = "value";
+      get name(): string {
+        return this.#name;
+      }
+      read(): string {
+        return this.#value;
+      }
+      register(registry: Parameters<Plugin["register"]>[0]): void {
+        registry.port("source", { read: () => this.read() });
+      }
+    }
+    const outcome = await mount([declaredWorkflowsOnly(new Adapter() as Plugin)], {}, HOST);
+
+    expect(outcome.ok === true && outcome.mounted.ports.has("source")).toBe(true);
+    expect(declaredWorkflowsOnly(new Adapter() as Plugin).name).toBe("plugin-private");
+  });
+
   // The core's own contract underneath: a raw registration stays what core
   // and engine tests mount. A host that mounts installs never takes one.
   it("keeps a workflow without a diagram exactly as it declared itself", async () => {

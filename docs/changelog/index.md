@@ -70,6 +70,12 @@ keeps a file beside its records — the roster — reads what its own command
 writes. The roster moved there, which is why `amy init` no longer writes it on
 a machine that mounts nothing that assigns reviewers.
 
+### `declaredWorkflowsOnly` keeps every member of the plugin and of the registry on its own object. It used to wrap both in a prototype copy, so a class plugin whose getter or method reads a `#private` field threw a `TypeError` on its own name, and boot stopped before mount could report it.
+
+`patch` · `@amykit/core`
+
+
+
 ### **A project is brief, work and proof.** The `brief/`, `workflow/` and `prove/` folders of a project compose the one workflow its config entry drives: each phase a `call()` to the `defineWorkflow` declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named `refused` carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for `amy status` to show; a `test/` folder is told the phase is named `prove/`.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`
