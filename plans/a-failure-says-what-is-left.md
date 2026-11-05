@@ -11,6 +11,8 @@ sources:
   - { id: S8, kind: decision, said: "the given-up message names amy look <id> as the way to put the work back" }
   - { id: S9, kind: code, ref: "plugins/github/src/GitHubCodeHost.ts", symbol: "gh", said: "any non-ok gh call throws; nothing retries a read that failed upstream" }
   - { id: S10, kind: decision, said: "a gh read that fails with an empty or cut JSON body, an HTTP 5xx or a network error is tried twice more at once before it throws; writes are never retried here. Decided 2026-11-05" }
+  - { id: S11, kind: reference, ref: "plugins/serial-engine/src/Worker.ts", symbol: "recordFailure", said: "at the ceiling the record is saved gaveUp and the item completed before announce runs, so an exit between them leaves no notice and nothing retries it" }
+  - { id: S12, kind: decision, said: "the ceiling notice is announced before gaveUp is saved and the item completed; an exit before the save fails the next look again, which announces again: at least once, never zero. Decided 2026-11-05" }
 touches:
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/src/config.ts
@@ -25,6 +27,7 @@ criteria:
   - { id: A2, statement: "under failureNotice: ceiling, failures below the ceiling announce nothing and the ceiling announces once", proof: "deferred:test:plugins/serial-engine/tests/Worker.announcements.test.ts", sources: [S6] }
   - { id: A3, statement: "the given-up message names amy look <id>, and running it puts the work back on the queue", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S7, S8] }
   - { id: A4, statement: "a gh read failing twice with a transient error then succeeding returns the answer; a write or a 4xx is tried once", proof: "deferred:property:plugins/github/tests/gh-retry.property.test.ts#a_write_is_retried", sources: [S9, S10] }
+  - { id: A5, statement: "a process stopped after the ceiling notice and before the save announces again on the next look, and a run that reaches the save announced exactly once", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S11, S12] }
 crosses:
   - { mechanism: budget-and-evidence, answer: n/a, why: "only the wording and timing of the failure notice change; no budget check or evidence count is touched" }
   - { mechanism: engines, answer: works, proof: "deferred:A1, A2; the concurrent engine is the serial engine's Worker" }
@@ -32,9 +35,10 @@ crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A4; writes are never retried by the wrapper" }
   - { mechanism: config, answer: works, proof: "deferred:A2; failureNotice is a typed key of serial-engine's slice" }
 guarantee:
-  - { holds: "a failure below the ceiling is announced at most once per fall, and the ceiling is announced exactly once, as an attempt on the notification channel", not_against: "a channel that rejects the message, which is logged as notify.failed and not resent; or two engines sharing a queue" }
+  - { holds: "a failure below the ceiling is announced at most once per fall, and the ceiling at least once, attempted before the work is given up", not_against: "a channel that rejects the message, logged as notify.failed and not resent; or two engines sharing a queue" }
   - { holds: "no gh write is ever sent twice by the retry", not_against: "a write gh itself retried before returning" }
 failures:
+  - { step: ceiling, when: "the process exits after the notice and before gaveUp is saved", goes_to: "the next look fails again and announces again; the operator may read it twice" }
   - { step: gh, when: "the third transient failure in a row", goes_to: "throws as today, and the look is retried after retryDelayMs" }
 cut:
   - "backoff or jitter on retryDelayMs: refused (S4)"
