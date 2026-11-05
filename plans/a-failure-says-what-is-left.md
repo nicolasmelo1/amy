@@ -14,6 +14,7 @@ sources:
 touches:
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/src/config.ts
+  - plugins/serial-engine/src/plugin.ts
   - plugins/serial-engine/tests/Worker.announcements.test.ts
   - plugins/serial-engine/tests/Worker.failures.test.ts
   - plugins/github/src/GitHubCodeHost.ts
@@ -31,7 +32,7 @@ crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A4; writes are never retried by the wrapper" }
   - { mechanism: config, answer: works, proof: "deferred:A2; failureNotice is a typed key of serial-engine's slice" }
 guarantee:
-  - { holds: "a failure below the ceiling is told at most once per fall, and the ceiling exactly once", not_against: "two engines on two machines sharing a queue" }
+  - { holds: "a failure below the ceiling is announced at most once per fall, and the ceiling is announced exactly once, as an attempt on the notification channel", not_against: "a channel that rejects the message, which is logged as notify.failed and not resent; or two engines sharing a queue" }
   - { holds: "no gh write is ever sent twice by the retry", not_against: "a write gh itself retried before returning" }
 failures:
   - { step: gh, when: "the third transient failure in a row", goes_to: "throws as today, and the look is retried after retryDelayMs" }
