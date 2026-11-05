@@ -28,6 +28,8 @@ export interface HermesUsage {
   provider?: string;
   completed?: boolean;
   failed?: boolean;
+  failure_reason?: string;
+  failure_resets_at?: string;
 }
 
 /**
@@ -86,6 +88,7 @@ export class HermesHarness implements Harness {
         tokens,
         ...cost(usage, tokens, model),
         durationMs: Date.now() - started,
+        ...(retryAfterMs(usage) === undefined ? {} : { retryAfterMs: retryAfterMs(usage) }),
         output: [result.stdout, result.stderr].filter(Boolean).join("\n").trim(),
       } satisfies AgentRun,
     };
@@ -161,7 +164,15 @@ export function cost(
  */
 export function classify(usage: HermesUsage | undefined, exitOk: boolean): AgentOutcome {
   if (!usage) return exitOk ? "completed" : "abandoned";
+  if (usage.failure_reason === "rate_limit") return "rate-limited";
   if (usage.failed === true) return "failed";
   if (usage.completed === true) return "completed";
   return exitOk ? "completed" : "failed";
+}
+
+/** Provider reset timestamps are optional; absent keeps the workflow fallback. */
+export function retryAfterMs(usage: HermesUsage | undefined, now = Date.now()): number | undefined {
+  if (usage?.failure_reason !== "rate_limit" || !usage.failure_resets_at) return undefined;
+  const at = Date.parse(usage.failure_resets_at);
+  return Number.isNaN(at) ? undefined : Math.max(0, at - now);
 }

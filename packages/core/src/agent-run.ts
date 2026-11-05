@@ -64,6 +64,8 @@ export interface AgentRun {
   costUsd?: number;
   costSource: CostSource;
   durationMs: number;
+  /** How long the provider says a quota wait lasts, when it says. */
+  retryAfterMs?: number;
   /** Whatever the harness said, verbatim, because it is the next prompt. */
   output: string;
 }

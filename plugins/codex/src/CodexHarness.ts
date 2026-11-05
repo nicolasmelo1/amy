@@ -1,177 +1,89 @@
-import { AgentOutcome, AgentRun, AskContext, CommandRunner, Harness, HarnessReply, TokenUsage } from "@amykit/core";
+import { spawn } from "node:child_process";
+import { AgentOutcome, AskContext, CommandRunner, Harness, HarnessReply } from "@amykit/core";
 import { costOf, specFor } from "@amykit/model-specs";
 
-export interface CodexHarnessConfig {
-  model?: string;
-  timeoutMs?: number;
+export interface CodexHarnessConfig { model?: string; timeoutMs?: number; }
+
+export interface CodexTurn {
+  status: string;
+  items: readonly { type?: string; text?: string }[];
+  error?: { message: string; codexErrorInfo?: unknown } | null;
+  durationMs?: number | null;
+}
+export interface CodexRateLimits { rateLimits?: { primary?: { resetsAt?: number | null }; secondary?: { resetsAt?: number | null } }; }
+export interface CodexAppServer {
+  run(input: { prompt: string; cwd: string; model?: string; readOnly: boolean }): Promise<{ turn: CodexTurn; limits?: CodexRateLimits }>;
 }
 
-interface CodexEvent {
-  type?: string;
-  item?: { type?: string; text?: string };
-  usage?: {
-    input_tokens?: number;
-    cached_input_tokens?: number;
-    cache_write_input_tokens?: number;
-    output_tokens?: number;
-    reasoning_output_tokens?: number;
-  };
-}
+/** Runs a short-lived `codex app-server` JSON-RPC child over stdio. */
+export class StdioCodexAppServer implements CodexAppServer {
+  constructor(private readonly timeoutMs = 30 * 60 * 1000) {}
 
-/**
- * What keeps a run apart from the operator's own Codex.
- *
- * `--ignore-user-config` alone still left the operator's plugins and apps —
- * MCP servers for their GitHub and their mail — and their hooks in the run,
- * so each is switched off by name. The login still comes from `CODEX_HOME`.
- * Their `~/.codex/AGENTS.md` and skills are not something Codex can be told
- * to skip short of a second `CODEX_HOME`, which would take the login too.
- */
-export const ISOLATED = [
-  "--ignore-user-config",
-  "--ephemeral",
-  "--disable",
-  "hooks",
-  "--disable",
-  "plugins",
-  "--disable",
-  "apps",
-  "--disable",
-  "memories",
-] as const;
-
-/**
- * The `codex` CLI, over the JSONL event stream `exec --json` prints.
- *
- * The stream ends with a `turn.completed` carrying the usage, and the answer
- * arrives as an `agent_message` item along the way.
- */
-export class CodexHarness implements Harness {
-  readonly name = "codex";
-
-  constructor(
-    private readonly runner: CommandRunner,
-    private readonly config: CodexHarnessConfig = {},
-  ) {}
-
-  async ask(prompt: string, cwd: string, context: AskContext = {}): Promise<HarnessReply> {
-    const args = ["exec", "--json", "--sandbox", context.readOnly ? "read-only" : "workspace-write"];
-    if (this.config.model) {
-      args.push("--model", this.config.model);
-    }
-    args.push(...ISOLATED);
-    // amy always runs in a checkout it prepared itself, so the repository
-    // check is redundant here, and without skipping it an untrusted-directory
-    // prompt would hang a run nobody is watching.
-    args.push("--skip-git-repo-check", "-");
-
-    const started = Date.now();
-    const result = await this.runner.run("codex", args, {
-      cwd,
-      stdin: prompt,
-      timeoutMs: this.config.timeoutMs,
+  async run(input: { prompt: string; cwd: string; model?: string; readOnly: boolean }): Promise<{ turn: CodexTurn; limits?: CodexRateLimits }> {
+    const child = spawn("codex", ["app-server"], { cwd: input.cwd, stdio: ["pipe", "pipe", "pipe"] });
+    let id = 0;
+    const pending = new Map<number, (value: unknown) => void>();
+    let completed: ((value: CodexTurn) => void) | undefined;
+    let stderr = "";
+    let buffer = "";
+    const request = (method: string, params: object): Promise<unknown> => new Promise((resolve) => {
+      const requestId = ++id;
+      pending.set(requestId, resolve);
+      child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: requestId, method, params })}\n`);
     });
-
-    const events = parseEvents(result.stdout);
-    const text = messageOf(events);
-    const tokens = tokensOf(events);
-    const outcome = classify(events, result.ok, Boolean(text));
-
-    let costUsd: number | undefined;
-    let costSource: AgentRun["costSource"] = "unknown";
-    const model = this.config.model ?? "";
-
-    // Codex reports tokens and never a price, so a cost here is always
-    // computed or absent.
-    if (tokens) {
-      const spec = specFor(model);
-      if (spec) {
-        costUsd = costOf(spec, tokens);
-        costSource = "computed";
+    const turn = new Promise<CodexTurn>((resolve) => { completed = resolve; });
+    child.stdout.on("data", (chunk: Buffer) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n"); buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        try {
+          const message = JSON.parse(line) as { id?: number; result?: unknown; method?: string; params?: { turn?: CodexTurn } };
+          if (typeof message.id === "number") pending.get(message.id)?.(message.result);
+          if (message.method === "turn/completed" && message.params?.turn) completed?.(message.params.turn);
+        } catch { /* protocol lines only */ }
       }
-    }
-
-    return {
-      text,
-      run: {
-        outcome,
-        harness: this.name,
-        // The events do not echo the model, so this is what was asked for.
-        // A fallback inside codex would not be visible here.
-        model,
-        tokens,
-        costUsd,
-        costSource,
-        durationMs: Date.now() - started,
-        output: [text, result.stderr].filter(Boolean).join("\n").trim(),
-      },
-    };
+    });
+    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk; });
+    const timer = setTimeout(() => { child.kill(); completed?.({ status: "failed", items: [], error: { message: `codex app-server timed out after ${this.timeoutMs}ms` } }); }, this.timeoutMs);
+    try {
+      await request("initialize", { clientInfo: { name: "amy", version: "0" }, capabilities: {} });
+      const started = await request("thread/start", { cwd: input.cwd, model: input.model ?? null, sandbox: input.readOnly ? "read-only" : "workspace-write", ephemeral: true }) as { thread?: { id?: string } };
+      const threadId = started.thread?.id;
+      if (!threadId) throw new Error("codex app-server did not return a thread id");
+      await request("turn/start", { threadId, input: [{ type: "text", text: input.prompt }] });
+      const done = await turn;
+      const limited = isLimited(done.error?.codexErrorInfo);
+      const limits = limited ? await request("account/rateLimits/read", {}) as CodexRateLimits : undefined;
+      return { turn: done, limits };
+    } catch (error) {
+      return { turn: { status: "failed", items: [], error: { message: `${error}${stderr ? `\n${stderr}` : ""}` } } };
+    } finally { clearTimeout(timer); child.kill(); }
   }
 }
 
-/** One JSON object per line, and a line that does not parse is skipped. */
-export function parseEvents(stdout: string): CodexEvent[] {
-  return stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("{"))
-    .flatMap((line) => {
-      try {
-        return [JSON.parse(line) as CodexEvent];
-      } catch {
-        return [];
-      }
-    });
+export class CodexHarness implements Harness {
+  readonly name = "codex";
+  private readonly app: CodexAppServer;
+  constructor(_runner: CommandRunner, private readonly config: CodexHarnessConfig = {}, app?: CodexAppServer) {
+    this.app = app ?? new StdioCodexAppServer(config.timeoutMs);
+  }
+  async ask(prompt: string, cwd: string, context: AskContext = {}): Promise<HarnessReply> {
+    const started = Date.now();
+    const result = await this.app.run({ prompt, cwd, model: this.config.model, readOnly: Boolean(context.readOnly) });
+    const text = messageOfTurn(result.turn);
+    const outcome = classify(result.turn);
+    const tokens = undefined;
+    const model = this.config.model ?? "";
+    const spec = tokens && specFor(model);
+    const reset = outcome === "rate-limited" ? resetAt(result.limits) : undefined;
+    return { text, run: { outcome, harness: this.name, model, tokens, ...(spec ? { costUsd: costOf(spec, tokens), costSource: "computed" as const } : { costSource: "unknown" as const }), durationMs: result.turn.durationMs ?? Date.now() - started, output: [text, result.turn.error?.message].filter(Boolean).join("\n"), ...(reset === undefined ? {} : { retryAfterMs: Math.max(0, reset - Date.now()) }) } };
+  }
 }
 
-/** The last thing the agent said, which is its answer. */
-export function messageOf(events: readonly CodexEvent[]): string {
-  const messages = events
-    .filter((event) => event.type === "item.completed" && event.item?.type === "agent_message")
-    .map((event) => event.item?.text ?? "");
-
-  return messages.at(-1) ?? "";
+export function messageOfTurn(turn: CodexTurn): string { return turn.items.filter((item) => item.type === "agentMessage" || item.type === "agent_message").map((item) => item.text ?? "").at(-1) ?? ""; }
+export function isLimited(error: unknown): boolean { return error === "usageLimitExceeded" || error === "rateLimitExceeded"; }
+export function resetAt(limits: CodexRateLimits | undefined): number | undefined {
+  const resets = [limits?.rateLimits?.primary?.resetsAt, limits?.rateLimits?.secondary?.resetsAt].filter((at): at is number => typeof at === "number");
+  return resets.length ? Math.min(...resets) * 1000 : undefined;
 }
-
-/**
- * The token counts, from the `turn.completed` event.
- *
- * `input_tokens` is the **total** input including what was served from cache,
- * so the cached part is subtracted out. Mapping both straight across would
- * count those tokens twice, which inflates every cost and every budget.
- * Hermes uses the opposite convention for the same field name, which is why
- * this is spelled out rather than shared.
- */
-export function tokensOf(events: readonly CodexEvent[]): TokenUsage | undefined {
-  const usage = events.filter((event) => event.usage).at(-1)?.usage;
-  if (!usage) return undefined;
-
-  const cacheRead = usage.cached_input_tokens ?? 0;
-  const total = usage.input_tokens ?? 0;
-
-  return {
-    input: Math.max(total - cacheRead, 0),
-    output: usage.output_tokens ?? 0,
-    cacheRead,
-    cacheWrite: usage.cache_write_input_tokens ?? 0,
-  };
-}
-
-/**
- * Which outcome this was.
- *
- * Codex publishes no error status in the stream, so this is the exit code and
- * whether a turn finished. A rate limit therefore reads as `failed` here
- * rather than `rate-limited`, which is honest: inventing the distinction from
- * stderr text is what this design set out to avoid.
- */
-export function classify(
-  events: readonly CodexEvent[],
-  exitOk: boolean,
-  gotMessage: boolean,
-): AgentOutcome {
-  if (events.length === 0) return "abandoned";
-  if (events.some((event) => event.type === "turn.failed")) return "failed";
-  if (!exitOk) return "failed";
-  return gotMessage ? "completed" : "failed";
-}
+export function classify(turn: CodexTurn): AgentOutcome { if (isLimited(turn.error?.codexErrorInfo)) return "rate-limited"; return turn.status === "completed" && Boolean(messageOfTurn(turn)) ? "completed" : "failed"; }

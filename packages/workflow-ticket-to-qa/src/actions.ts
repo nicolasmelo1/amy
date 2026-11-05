@@ -210,13 +210,17 @@ const ACTIONS: TicketActions = {
     const ticket = work.observation.ticket;
     const branch = branchOf(ticket);
     await git.prepareBranch(ticket.repo, branch, work.record.id);
-    const { value } = await implementStep(scope.ports.agent, {
+    const { value, run } = await implementStep(scope.ports.agent, {
       prompt: implementPrompt(ticket, effect.retryContext, effect.conversation, effect.discussion),
       cwd: await git.acquire(ticket.repo, work.record.id),
       context: { workId: work.record.id, step: "implement" },
       commit: () => git.commitAndPush(ticket.repo, branch, `${ticket.id}: ${ticket.title}`, work.record.id),
       now: scope.ctx.now,
     });
+    if (run.outcome === "rate-limited") {
+      outcomesOf(work).waited = { notATry: true, retryAfterMs: run.retryAfterMs ?? scope.policy.pollBackoffMs };
+      return;
+    }
     outcomesOf(work).implementation = value;
     // The commit both checks are lent: what this attempt left on the branch.
     outcomesOf(work).implemented = { repo: ticket.repo, revision: await git.headSha(ticket.repo, work.record.id) };

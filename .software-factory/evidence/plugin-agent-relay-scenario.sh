@@ -89,15 +89,21 @@ esac
 FAKE
 
 cat > "$work/bin/codex" <<'FAKE'
-#!/bin/sh
-cat > /dev/null
-model=""
-while [ $# -gt 0 ]; do
-  case $1 in --model) model=$2; shift 2 ;; *) shift ;; esac
-done
-echo "codex:$model" >> "$AMY_E2E_CALLS"
-printf '{"type":"item.completed","item":{"type":"agent_message","text":"{\\"clear\\": true}"}}\n'
-printf '{"type":"turn.completed","usage":{"input_tokens":17571,"cached_input_tokens":11008,"cache_write_input_tokens":0,"output_tokens":5}}\n'
+#!/usr/bin/env node
+const readline = require("node:readline");
+const calls = process.env.AMY_E2E_CALLS;
+readline.createInterface({ input: process.stdin }).on("line", (line) => {
+  const message = JSON.parse(line);
+  const reply = (result) => process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: message.id, result })}\n`);
+  if (message.method === "initialize") return reply({});
+  if (message.method === "thread/start") return reply({ thread: { id: "fake-thread" } });
+  if (message.method === "turn/start") {
+    require("node:fs").appendFileSync(calls, `codex:${message.params.model ?? "gpt-5"}\n`);
+    reply({ turn: { id: "fake-turn" } });
+    return process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", method: "turn/completed", params: { threadId: "fake-thread", turn: { id: "fake-turn", status: "completed", items: [{ type: "agentMessage", text: "{\"clear\": true}" }] } } })}\n`);
+  }
+  if (message.method === "account/rateLimits/read") return reply({ rateLimits: { primary: { usedPercent: 0 } } });
+});
 FAKE
 
 chmod +x "$work/bin/claude" "$work/bin/codex"

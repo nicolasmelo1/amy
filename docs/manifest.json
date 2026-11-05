@@ -313,6 +313,11 @@
           "description": ""
         },
         {
+          "title": "A usage limit is not an attempt",
+          "path": "/design/a-usage-limit-is-not-an-attempt",
+          "description": ""
+        },
+        {
           "title": "A view is data",
           "path": "/design/a-view-is-data",
           "description": ""
@@ -1071,6 +1076,11 @@
           "depth": 3,
           "title": "amy update reaches the release. It said nothing to move with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):",
           "slug": "amy-update-reaches-the-release-it-said-nothing-to-move-with-060-published-to-a-machine-on-050-for-two-reasons-110httpsgithubcomnicolasmelo1amyissues110"
+        },
+        {
+          "depth": 3,
+          "title": "Treat structured provider usage limits as waits rather than attempts.",
+          "slug": "treat-structured-provider-usage-limits-as-waits-rather-than-attempts"
         },
         {
           "depth": 3,
@@ -2372,6 +2382,23 @@
           "depth": 2,
           "title": "Acceptance criteria",
           "slug": "acceptance-criteria"
+        }
+      ]
+    },
+    {
+      "path": "/design/a-usage-limit-is-not-an-attempt",
+      "file": "docs/design/a-usage-limit-is-not-an-attempt.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-usage-limit-is-not-an-attempt.md",
+      "title": "A usage limit is not an attempt",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Delivered criteria",
+          "slug": "delivered-criteria"
         }
       ]
     },
@@ -10720,6 +10747,30 @@
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "calm-limits-wait",
+        "title": "Treat structured provider usage limits as waits rather than attempts.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "patch"
           }
         ],

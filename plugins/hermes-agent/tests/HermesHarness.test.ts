@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ScriptedRunner } from "@amykit/test-fixtures";
-import { HermesHarness, HermesUsage, classify, cost, readUsage, tokensOf } from "../src/index.js";
+import { HermesHarness, HermesUsage, classify, cost, readUsage, retryAfterMs, tokensOf } from "../src/index.js";
 
 /**
  * A real `--usage-file` report, copied verbatim from a run.
@@ -188,6 +188,17 @@ describe("which outcome it was", () => {
 
   it("trusts a clean exit that wrote no report", () => {
     expect(classify(undefined, true)).toBe("completed");
+  });
+
+  it("reads the structured rate-limit fields and falls back when reset is absent", () => {
+    const limited = { ...REAL_USAGE, failed: true, completed: false, failure_reason: "rate_limit", failure_resets_at: "2026-10-03T13:00:00.000Z" };
+    expect(classify(limited, false)).toBe("rate-limited");
+    expect(retryAfterMs(limited, Date.parse("2026-10-03T12:00:00.000Z"))).toBe(3_600_000);
+    expect(retryAfterMs({ ...limited, failure_resets_at: undefined })).toBeUndefined();
+  });
+
+  it("keeps a failed usage file without the new keys failed", () => {
+    expect(classify({ ...REAL_USAGE, failed: true, completed: false }, false)).toBe("failed");
   });
 
   it("cannot tell a rate limit from a failure, and does not pretend to", async () => {

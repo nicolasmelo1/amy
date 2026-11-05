@@ -20,6 +20,7 @@ export interface EffectOutcomes {
   /** The conversation a triage read, when it was reading an answer. */
   clarification?: string[];
   implementation?: AttemptOutcome;
+  waited?: { notATry: true; retryAfterMs: number };
   /** The repository and commit the implementation left the work at. */
   implemented?: { repo: string; revision?: string };
   pullRequestNumber?: number;

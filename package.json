@@ -67,7 +67,8 @@
       "scripts/write-install-manifest.ts"
     ],
     "ignoreBinaries": [
-      "sf"
+      "sf",
+      "codex"
     ],
     "ignoreDependencies": [
       "@amykit/workflow-ticket-to-qa",

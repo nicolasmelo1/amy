@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable through six errands — a change, a committed change, a question, a refusal, a repository it does not work in and a change the code host refuses — against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/errand-run.json",
-      "report_sha256": "2941786e381c3abd8db72398b5a56a2d0919db806d6ecab7dce7d4e490469d23",
+      "report_sha256": "f0678aec262528f1dd09ba6878db454b02da28d53fe8bdab51f5414696e72df1",
       "required_assertions": []
     }
   ]
