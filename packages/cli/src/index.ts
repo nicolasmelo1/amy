@@ -56,7 +56,7 @@ import { phasesOf } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
-import { ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
+import { PLUGINS_ROOT_FLAGS, ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
 import {
   BootCheck,
   Picked,
@@ -350,7 +350,7 @@ async function supply(absent: readonly string[], chosen?: boolean): Promise<bool
   const wanted = chosen ?? (process.stdin.isTTY ? confirm() : false);
 
   if (!wanted) {
-    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, "--", ...absent])}`);
+    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, ...PLUGINS_ROOT_FLAGS, "--", ...absent])}`);
     return false;
   }
 

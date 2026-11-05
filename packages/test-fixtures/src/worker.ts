@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { afterAll } from "vitest";
 import {
   Budget,
   BriefStore,
@@ -120,9 +121,24 @@ function lentCheckouts(git: TicketGit, layout: RepoLayout): Checkouts {
   return { git: lent as unknown as Checkouts["git"], layout };
 }
 
+/**
+ * Every roster directory a mount wrote, removed once the test file that
+ * imported this is done: a mount that throws, or a worker nobody drives,
+ * leaves nothing behind. A vitest worker is a thread, so `exit` never fires.
+ */
+const rosterDirectories = new Set<string>();
+// Only inside a run: the docs generator loads this package outside vitest.
+if (process.env.VITEST) {
+  afterAll(() => {
+    for (const directory of rosterDirectories) fs.rmSync(directory, { recursive: true, force: true });
+    rosterDirectories.clear();
+  });
+}
+
 /** A profile directory holding one roster, which is where the workflow reads it. */
 function rosterDirectory(roster: Roster): string {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-"));
+  rosterDirectories.add(directory);
   // JSON is YAML, and says exactly what the builder built.
   fs.writeFileSync(path.join(directory, "roster.yaml"), JSON.stringify(roster), "utf-8");
   return directory;

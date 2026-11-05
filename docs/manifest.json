@@ -989,6 +989,11 @@
         },
         {
           "depth": 3,
+          "title": "amy update, and the rollback it runs when a move fails, install into the plugins root with --install-links, the way amy add does. Before, they installed without it, so updating any other package could turn a workflow copied in from a path back into a link. A linked workflow's @amykit/core import resolves from outside the plugins root, and the workflow failed to load.",
+          "slug": "amy-update-and-the-rollback-it-runs-when-a-move-fails-install-into-the-plugins-root-with---install-links-the-way-amy-add-does-before-they-installed-without-it-so-updating-any-other-package-could-turn-a-workflow-copied-in-from-a-path-back-into-a-link-a-linked-workflows-amykitcore-import-resolves-from-outside-the-plugins-root-and-the-workflow-failed-to-load"
+        },
+        {
+          "depth": 3,
           "title": "A row of next steps is a ticket. @amykit/plugin-next-steps mounts the tracker port over an execution-order table — plans/next-steps.md by default — read from the base branch, never from the standing checkout: a row is a work item, its linked plan the body, its place in the table the priority. A relative link is a plan in the table's repository, its id the slug; an owner/name:plans/<slug>.md link is one in another, its id owner+name+<slug>, so one table can order the work of several. Only the top rows (one by default) are work at once, a row gone from the table with its plan in docs/design/ reads as delivered, and the branch is branchPrefix (plan/ by default) and the plan's slug.",
           "slug": "a-row-of-next-steps-is-a-ticket-amykitplugin-next-steps-mounts-the-tracker-port-over-an-execution-order-table-plansnext-stepsmd-by-default-read-from-the-base-branch-never-from-the-standing-checkout-a-row-is-a-work-item-its-linked-plan-the-body-its-place-in-the-table-the-priority-a-relative-link-is-a-plan-in-the-tables-repository-its-id-the-slug-an-ownernameplansslugmd-link-is-one-in-another-its-id-ownernameslug-so-one-table-can-order-the-work-of-several-only-the-top-rows-one-by-default-are-work-at-once-a-row-gone-from-the-table-with-its-plan-in-docsdesign-reads-as-delivered-and-the-branch-is-branchprefix-plan-by-default-and-the-plans-slug"
         },
@@ -7236,6 +7241,10 @@
       {
         "variable": "TELEGRAM_BOT_TOKEN",
         "package": "@amykit/plugin-telegram"
+      },
+      {
+        "variable": "VITEST",
+        "package": "@amykit/test-fixtures"
       }
     ]
   },
@@ -10274,6 +10283,18 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "a-restore-keeps-the-copy",
+        "title": "`amy update`, and the rollback it runs when a move fails, install into the plugins root with `--install-links`, the way `amy add` does. Before, they installed without it, so updating any other package could turn a workflow copied in from a path back into a link. A linked workflow's `@amykit/core` import resolves from outside the plugins root, and the workflow failed to load.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "a-row-of-next-steps-is-a-ticket",
