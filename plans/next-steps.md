@@ -293,9 +293,9 @@ runs on amy itself start there and a lesson needs mistakes to be drawn from.
 *A plugin says what it is* and *setup is a workflow* come before *the command
 line holds no rule*, which refuses renaming a command while it moves: `init`
 becomes `setup` first, asks the harness before anything is installed, and
-groups plugins by the kinds the first row declares. *A diagram reads as YAML*
-comes before *amy has a window*, whose canvas saves a diagram through the
-same writer.
+groups plugins by the kinds the first row declares. *A diagram is written as
+it is read* comes before *amy has a window*, whose canvas saves a diagram
+through the writer it adds.
 
 **Delivered:** *The roster belongs to its workflow* now lives at `docs/design/the-roster-belongs-to-its-workflow.md`, where the roster is every profile mounting the workflow's own file, `amy update` copies an old install's copy in and retires the root name, and the doctor asks the machine what it mounted.
 
@@ -319,7 +319,7 @@ same writer.
 | 12 | [A workflow starts on an event](a-workflow-starts-on-an-event.md) | In the `ticket-to-qa` scenario, a ticket's work runs as three event-started workflows — build to pull request, a review round per review, merge to QA — two reviews a minute apart make one round, and `amy show` tells the ticket's story across all three |
 | 13 | [A component is reviewed on its own](a-component-is-reviewed-on-its-own.md) | A person runs `npm run design -- terminal`, steps through every primitive's examples in the terminal one by one, and `npm run design` does the same while saying that web and desktop arrive with *amy has a window* |
 | 14 | [A renderer is chosen by name](a-renderer-is-chosen-by-name.md) | On the bare install, `amy ui` opens the text renderer against the local server; a packaged fixture renderer installed by name from outside this repository opens with `amy ui fixture` and as `ui.default`, `amy ui text` still opens the text one, and the fixture is driven by the frame's script with neither the script nor the frame edited |
-| 15 | [A diagram reads as YAML](a-diagram-reads-as-yaml.md) | A person asks an agent to add a state to their workflow; the agent edits the output of `amy workflow export --yaml`, `amy workflow import` redraws `workflow.mmd`, and `amy workflow check` names the one decision left to write |
+| 15 | [A diagram is written as it is read](a-diagram-is-written-as-it-is-read.md) | An agent adds a state by editing `workflow.mmd` and `amy workflow check` names the decision left to write; `amy workflow export --yaml` prints the shape beside its ports, and the writer round-trips every accepted diagram |
 | 16 | [amy has a window](amy-has-a-window.md) | On a Mac, with the daemon running, a person runs `amy plugin add @amykit/ui-desktop`, opens `amy ui desktop`, watches a ticket go from `DISCOVERED` to `IMPLEMENTING` without touching anything, pokes another from its `⋯`, adds an edge to one of their own workflows' diagram in its canvas and sees it listed as drawn, not walked, and breaks `config.yaml` in Settings without breaking the install — and `sf check` is green on `ui-frame` and `ui-window` |
 | 17 | [amy lives in the menu bar](amy-lives-in-the-menu-bar.md) | On a Mac, with the window closed, a ticket escalates; the menu bar's count goes from 0 to 1 and a notification arrives; choosing it opens the window on that ticket — and the menu bar's projection on every step equals the locked golden |
 | 18 | [The window takes plugins](the-window-takes-plugins.md) | A plugin written outside this repository adds a nav 1 section, a canvas tab, a `⋯` action and a rail entry with a home and a record view, installed with `amy plugin add`, and none of the four appears until it is mounted — each lands in the same place in the desktop app and the text renderer, and the rail entry's record view changes when another record opens |
