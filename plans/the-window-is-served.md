@@ -46,6 +46,8 @@ sources:
   - { id: S44, kind: decision, said: "a plugin changes the contract: once mounted, its operations are routes on the server, entries in GET /v1/contract and methods of the SDK, with no file in packages/server or packages/sdk edited" }
   - { id: S45, kind: decision, said: "amy sdk generate <dir> writes an SDK typed for this install's contract, mounted plugins included, so a product built on amy gets types for the plugins it runs" }
   - { id: S47, kind: decision, said: "a plugin's operations extend the contract without changing its hash: getCompatibility lists each mounted plugin with its own digest, and a client lacking its types reaches it through the SDK's untyped invoke(id, input)" }
+  - { id: S48, kind: decision, said: "every response about work names the instance holding it, from config.yaml, defaulting to the host name; an instance with no server, whose state another machine reads through ports, is one more name, not a new shape. Decided 2026-11-05" }
+  - { id: S49, kind: decision, said: "with no name configured an instance is <host>:<amy home path>, so two homes on one host differ; a client gathering two instances of one name refuses the second, naming both. Decided 2026-11-05" }
   - { id: S46, kind: decision, said: "the-doors-are-generated (layer 0, command) refuses, under packages/server and packages/sdk, a route registered or a method written outside the generator, and a literal equal to an operation id" }
 touches:
   - packages/server/**
@@ -104,6 +106,8 @@ criteria:
   - { id: A30, statement: "a fixture plugin installed with amy add answers on its generated route, is listed by GET /v1/contract and is called through the SDK; removed, all three are gone, and no file under packages/server or packages/sdk changed", proof: "deferred:assertion:server.a_plugin_changes_the_contract", sources: [S44] }
   - { id: A31, statement: "amy sdk generate on an install mounting the fixture plugin writes an SDK whose fixture method typechecks, and one without it does not offer the method", proof: "deferred:test:packages/sdk/tests/generate.test.ts", sources: [S45] }
   - { id: A33, statement: "a renderer built before a plugin was installed opens a session after it is installed and after it is removed, without being rebuilt, and calls its operation untyped while it is mounted", proof: "deferred:assertion:server.a_plugin_never_breaks_a_session", sources: [S13, S44, S47] }
+  - { id: A34, statement: "every work response and event names its instance, and two servers' TBO-1 are told apart by it in every renderer", proof: "deferred:assertion:server.every_record_names_its_instance", sources: [S48] }
+  - { id: A35, statement: "two homes on one host with no name configured get different instance names, and two servers configured with the same name are refused by the client naming both", proof: "deferred:assertion:server.two_instances_are_never_one_name", sources: [S49] }
   - { id: A32, statement: "a route registered by hand in packages/server, or an SDK method written by hand, fails the build naming the file", proof: "deferred:test:mutation fixture for the-doors-are-generated", sources: [S6, S9, S46] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server" }

@@ -15,7 +15,7 @@ sources:
   - { id: S13, kind: decision, said: "a service is one use case: a class with execute taking plain values, returning a domain object or throwing its domain's error; it never sees a transport or a port" }
   - { id: S14, kind: decision, said: "a repository is the only door to a port, wrapping what the domain needs of store, queue, event log, conversation or tracker; nothing else in the domain imports a port" }
   - { id: S15, kind: decision, said: "a domain imports @amykit/core and @amykit/ui and nothing of another domain; two domains needing one record each read it through their own repository, the price of changing one without reading the other" }
-  - { id: S16, kind: decision, said: "no database: services read records, queue, briefs and config.yaml through their ports, history from the event log's JSON Lines, and write through the same ports onto the same files" }
+  - { id: S16, kind: decision, said: "no database ships: services read records, queue, briefs, config.yaml and the event log through their ports and write through them; state kept elsewhere is an adapter behind the same port, never a driver here. Amended 2026-11-05" }
   - { id: S17, kind: reference, ref: "docs/design/the-event-log-can-be-watched.md", said: "the daemon writes the files any moment; a repository reads them when asked, the event log says when to ask again, and nothing in memory is treated as more current than the disk" }
   - { id: S18, kind: decision, said: "the ports write by rename, so no reader sees half a record; a repository writes only through them, never with a path of its own" }
   - { id: S19, kind: decision, said: "every operation has an id, a one-line summary, a description of what it does and never does, and its domain; every schema property a description; every input and output an example" }
@@ -31,6 +31,9 @@ sources:
   - { id: S29, kind: decision, said: "the-services-keep-no-database (layer 0, text_pattern) refuses better-sqlite3, sqlite3, pg, mysql2, prisma, drizzle-orm, typeorm, knex, level, lmdb under packages/services, and any node:fs call outside repositories/" }
   - { id: S31, kind: decision, said: "no door is written by hand: the command line, the server's routes and the SDK are generated from the contract, so an operation is written once, in its domain, and nowhere else. Decided 2026-11-04" }
   - { id: S32, kind: decision, said: "a plugin changes the contract: installing one adds its operations to every door, removing one takes them away, with no door edited and nothing rebuilt by hand. Decided 2026-11-04" }
+  - { id: S33, kind: decision, said: "what a port persists is the truth, files by default and wherever an adapter keeps it otherwise: nothing in memory is more current than it, and memory holds a value only when reading it is impossible. Decided 2026-11-05" }
+  - { id: S34, kind: decision, said: "a repository awaits every port call, synchronous or not, so a store, queue or log answering over a network changes the port's signature and its adapters, never a domain. Decided 2026-11-05" }
+  - { id: S35, kind: decision, said: "a domain names no file adapter: FileStore, FileQueue, FileEventLog and the PAUSED path are reached only through the interface a repository is handed, so amy running on several machines or in CI is a matter of adapters. Decided 2026-11-05" }
   - { id: S30, kind: code, ref: ".software-factory/policy.yaml", said: "existing L2.GENERATED_FILES_ARE_LOCKED refuses openapi.json edited without sf lock" }
 touches:
   - packages/core/src/operation.ts
@@ -55,6 +58,7 @@ criteria:
   - { id: A10, statement: "an operation declared with a Zod schema and one declared with an ArkType schema both run through invoke and both appear in the document, and @amykit/core still has no runtime dependency", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S3, S5, S6, S7] }
   - { id: A11, statement: "invoke refuses an input its schema rejects and an output its schema rejects, naming the operation, before and after the handler", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S22] }
   - { id: A14, statement: "a workflow call state and a call(callee, binding) in errand still run as before, beside invoke, with both exported from @amykit/core", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S22] }
+  - { id: A15, statement: "a repository that calls a port without awaiting it, or a domain that imports a file adapter by name, fails the build", proof: "deferred:test:mutation fixture for the-services-keep-no-database", sources: [S33, S34, S35] }
   - { id: A12, statement: "a streaming operation yields its named events through invoke in order, and each event schema is in the document", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S8] }
   - { id: A13, statement: "services with no domain build a valid OpenAPI 3.1 document, and one example domain adds exactly its operations to it", proof: "deferred:test:packages/services/tests/contract.test.ts", sources: [S9, S21, S31, S32] }
 crosses:
@@ -64,9 +68,10 @@ crosses:
   - { mechanism: mount-and-capabilities, answer: n/a, why: "invoke is handed the mounted ports by its caller; how a door mounts them is a-plugin-brings-operations-not-commands's and the-window-is-served's" }
   - { mechanism: rendering, answer: n/a, why: "@amykit/ui is imported for its types; packages/ui is untouched" }
 guarantee:
-  - { holds: "nothing the services hold in memory is ever more current than the files on disk", not_against: "the daemon writing those files from another process at any moment" }
+  - { holds: "nothing the services hold in memory is ever more current than what the ports persist, the files on disk by default", not_against: "the daemon writing that state from another process, or another machine, at any moment" }
 cut:
-  - "a database: refused, a second copy of the machine's state shows an untrue window the first time they disagree; if ever needed, a plugin behind a port, argued here"
+  - "a database shipped with amy, or a second copy of the state beside the ports': refused, it shows an untrue window the first time they disagree; state kept in one is a plugin behind its port (S16, S33)"
+  - "Store, Queue and EventLog made asynchronous in the core: the row that brings the first adapter kept off this machine; repositories already await them (S34)"
   - "oRPC, tRPC or ts-rest underneath: refused (S3); a plugin's operations would depend on a third party's API"
   - "a transport in this row: the command line, the server and the SDK each read the contract in their own row"
 exit: "with one example domain in a mutation fixture, sf verify shows each of five rules tripping on its fixture; the clean tree builds a document every rule accepts, and invoke runs a Zod and an ArkType operation alike"
