@@ -12,6 +12,7 @@ sources:
   - { id: S7, kind: decision, said: "it also refuses a string literal under packages/cli equal to an operation id the contract declares: a door that names one operation is a door written for it by hand" }
   - { id: S8, kind: reference, ref: "plans/an-escalation-brings-its-evidence.md", said: "amy show and amy ask arrive before this row as hand-written commands; they move here with the rest" }
   - { id: S13, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "the registry lands before this row and lists every built-in it moves as planned; this row flips them to delivered" }
+  - { id: S14, kind: decision, said: "the handbrake is read and set through the StopSwitch the host hands invoke, never PAUSED by path, so a loop elsewhere pauses by the same operation once its switch is an adapter; pid and signal stay the host's. Decided 2026-11-05" }
   - { id: S9, kind: decision, said: "each command's gate assertions keep passing on the installed executable with no change to their scripts, so the move is proven to change nothing a person or agent types" }
 touches:
   - packages/cli/src/**
@@ -29,6 +30,7 @@ criteria:
   - { id: A3, statement: "an operation id written as a literal under packages/cli fails the build, naming the id and the file", proof: "deferred:test:mutation fixture for the-command-line-holds-no-rule", sources: [S2, S7] }
   - { id: A4, statement: "every built-in in the list is an operation in packages/services/openapi.json, with its words in its cli binding", proof: "deferred:test:packages/services/tests/contract.test.ts", sources: [S3, S8, S10] }
   - { id: A8, statement: "every operation this row moves is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S3, S13] }
+  - { id: A9, statement: "getHandbrake and setHandbrake reach the stop switch only through the StopSwitch they are handed, and a path to PAUSED under packages/services fails the build", proof: "deferred:test:mutation fixture for the-command-line-holds-no-rule", sources: [S14] }
   - { id: A7, statement: "init, update, serve, ui, start and stop are local-only in the contract, and init run with every answer as a flag writes the same install the questions did", proof: "deferred:test:packages/services/tests/contract.test.ts", sources: [S5, S10, S11, S12] }
   - { id: A5, statement: "amy stop --all ends the running daemon and holds the next amy run, and amy start releases it and starts the daemon, both through their operations", proof: "deferred:assertion:lifecycle.stop_all_holds_until_start", sources: [S5] }
   - { id: A6, statement: "the ticket-to-qa and errand gates pass on the installed executable with their scripts unchanged", proof: "deferred:assertion:errand.help_lists_only_the_machines_commands", sources: [S9] }
