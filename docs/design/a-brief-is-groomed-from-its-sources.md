@@ -1,5 +1,5 @@
 ---
-base: 26de19c8574aed6e08c5576742c142cb2ffb3efd
+base: 55b0c9a1b96e583991e0f96d54a7fe1acc58ee4c
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/skills.ts", said: "amy ships every packages/cli/skills/<name>/SKILL.md beside the code, and `amy skills` writes them into the harnesses" }
   - { id: S2, kind: friction, said: "a private workflow holds tickets on a brief, and the skill that grooms one lived only in that workflow, tied to its company and its format; grooming had no skill in amy" }
@@ -10,8 +10,8 @@ touches:
   - packages/cli/tests/harnesses.test.ts
   - docs/concepts/harnesses.md
 criteria:
-  - { id: A1, statement: "amy-groom ships with amy, read off disk like every other skill", proof: "test:packages/cli/tests/harnesses.test.ts", sources: [S1, S2] }
-  - { id: A2, statement: "the skill carries the method and takes the format from the workflow that judges the brief, whose parser wins", proof: "test:packages/cli/tests/harnesses.test.ts", sources: [S3, S4] }
+  - { id: A1, statement: "amy-groom ships with amy, read off disk like every other skill", proof: "test:packages/cli/tests/harnesses.test.ts", sources: [S1, S2], done: true }
+  - { id: A2, statement: "the skill carries the method and takes the format from the workflow that judges the brief, whose parser wins", proof: "test:packages/cli/tests/harnesses.test.ts", sources: [S3, S4], done: true }
 crosses:
   - { mechanism: briefs, answer: n/a, why: "the skill writes a declaration file a workflow reads; the brief store, and when it is written, are unchanged" }
 guarantee:
@@ -25,4 +25,9 @@ exit: "/amy-groom on a machine with amy installed grooms a brief against whichev
 ---
 # A brief is groomed from its sources
 
-Grooming had no skill in amy; the one that existed lived inside a private workflow, tied to its format. amy ships the method and leaves the format to the workflow that reads the brief.
+Grooming lived only inside a private workflow, tied to its format. `amy-groom`
+ships with amy now, read off disk like every other skill: the method — one
+question at a time, a requirement names its source or it is cut, the base
+pinned — while the format is read from the workflow that judges the brief,
+whose parser wins. It writes a local file and nothing where the team reads;
+`packages/cli/tests/harnesses.test.ts` holds both halves.

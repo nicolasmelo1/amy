@@ -228,6 +228,11 @@
           "description": ""
         },
         {
+          "title": "A brief is groomed from its sources",
+          "path": "/design/a-brief-is-groomed-from-its-sources",
+          "description": ""
+        },
+        {
           "title": "A brief is named the way its feature is",
           "path": "/design/a-brief-is-named-the-way-its-feature-is",
           "description": ""
@@ -1847,6 +1852,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-brief-is-groomed-from-its-sources",
+      "file": "docs/design/a-brief-is-groomed-from-its-sources.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-brief-is-groomed-from-its-sources.md",
+      "title": "A brief is groomed from its sources",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-brief-is-named-the-way-its-feature-is",
