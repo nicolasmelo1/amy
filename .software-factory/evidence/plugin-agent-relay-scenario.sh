@@ -90,6 +90,10 @@ FAKE
 
 cat > "$work/bin/codex" <<'FAKE'
 #!/usr/bin/env node
+if (process.argv[2] === "--version") {
+  process.stdout.write("codex-cli 0.166.4\n");
+  process.exit(0);
+}
 const readline = require("node:readline");
 const calls = process.env.AMY_E2E_CALLS;
 readline.createInterface({ input: process.stdin }).on("line", (line) => {
