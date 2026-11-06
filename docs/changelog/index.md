@@ -327,6 +327,12 @@ read from the profile when a look needs it, as before.
 
 The `amy-update` gate stubbed out both of these with a stand-in npm that answered whatever it held. It now runs real npm against a registry on a loopback port, with the CLI installed globally.
 
+### 
+
+`` · 
+
+
+
 ### Treat structured provider usage limits as waits rather than attempts.
 
 `patch` · `@amykit/core`, `@amykit/plugin-codex`, `@amykit/plugin-hermes-agent`, `@amykit/workflow-ticket-to-qa`
