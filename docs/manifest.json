@@ -228,6 +228,11 @@
           "description": ""
         },
         {
+          "title": "A brief is named the way its feature is",
+          "path": "/design/a-brief-is-named-the-way-its-feature-is",
+          "description": ""
+        },
+        {
           "title": "A brief reaches every ticket it explains",
           "path": "/design/a-brief-reaches-every-ticket-it-explains",
           "description": ""
@@ -1842,6 +1847,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-brief-is-named-the-way-its-feature-is",
+      "file": "docs/design/a-brief-is-named-the-way-its-feature-is.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-brief-is-named-the-way-its-feature-is.md",
+      "title": "A brief is named the way its feature is",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-brief-reaches-every-ticket-it-explains",

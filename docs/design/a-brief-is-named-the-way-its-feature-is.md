@@ -11,9 +11,9 @@ touches:
   - plugins/linear/tests/LinearTracker.test.ts
   - plugins/linear/tests/LinearTracker.features.test.ts
 criteria:
-  - { id: A1, statement: "a child ticket's briefId is its parent's identifier, and the query selects it", proof: "test:plugins/linear/tests/LinearTracker.test.ts", sources: [S1, S4, S5] }
-  - { id: A2, statement: "a child's briefId equals the id its parent is read by as a feature", proof: "test:plugins/linear/tests/LinearTracker.features.test.ts", sources: [S1, S2, S3, S5] }
-  - { id: A3, statement: "updated groomed work names its feature by the parent's identifier", proof: "test:plugins/linear/tests/LinearTracker.features.test.ts", sources: [S1, S2, S5] }
+  - { id: A1, statement: "a child ticket's briefId is its parent's identifier, and the query selects it", proof: "test:plugins/linear/tests/LinearTracker.test.ts", sources: [S1, S4, S5], done: true }
+  - { id: A2, statement: "a child's briefId equals the id its parent is read by as a feature", proof: "test:plugins/linear/tests/LinearTracker.features.test.ts", sources: [S1, S2, S3, S5], done: true }
+  - { id: A3, statement: "updated groomed work names its feature by the parent's identifier", proof: "test:plugins/linear/tests/LinearTracker.features.test.ts", sources: [S1, S2, S5], done: true }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "test:plugins/linear/tests/LinearTracker.features.test.ts" }
 guarantee:
@@ -27,4 +27,9 @@ exit: "a ticket under a groomed feature reaches that feature's brief by its brie
 ---
 # A brief is named the way its feature is
 
-The adapter named one Linear issue two ways — the uuid as a ticket's parent, the identifier as a feature — so every lookup of a brief by `ticket.briefId` missed, and missed quietly.
+The adapter named one Linear issue two ways — the uuid as a ticket's parent, the
+identifier as a feature — so every lookup of a brief by `ticket.briefId` missed,
+and missed quietly. `briefId`, and `featureId` on updated groomed work, are the
+parent's identifier now: the name `getFeature` and `features` answer by, the one
+feature-grooming writes the brief under, held to one name by a test that fails
+when they drift.
