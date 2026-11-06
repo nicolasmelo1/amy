@@ -1,4 +1,5 @@
 ---
+base: 50f636cd5c6ebab5b127b65b22f5d8194d63ffb6
 sources:
   - { id: S1, kind: reference, ref: "docs/design/a-project-is-three-phases.md", said: "gave a project a brief/ phase; the brief port keeps the sections the workflow declared, in order (BriefRecord.sections, packages/core/src/ports/Brief.ts); amy brief <id> shows one" }
   - { id: S2, kind: friction, said: "nothing checks a brief: readiness — required sections present, every criterion naming its proof — is judged in each workflow's code, with no command to ask it" }
