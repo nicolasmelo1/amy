@@ -73,15 +73,18 @@ describe("LinearTracker.inProgress", () => {
     );
   });
 
-  it("carries a parent id as the shared brief id", async () => {
+  it("names the shared brief by the parent's identifier, never its uuid", async () => {
     const client = new ScriptedGraphQL([
-      { contains: "query Working", data: { issues: { nodes: [{ ...issue, parent: { id: "uuid-BRIEF-12" } }] } } },
+      {
+        contains: "query Working",
+        data: { issues: { nodes: [{ ...issue, parent: { id: "uuid-BRIEF-12", identifier: "PROJ-12" } }] } },
+      },
     ]);
 
     const [ticket] = await new LinearTracker(client, config).inProgress();
 
-    expect(client.calls[0]!.query).toContain("parent { id }");
-    expect(ticket?.briefId).toBe("uuid-BRIEF-12");
+    expect(client.calls[0]!.query).toContain("parent { id identifier }");
+    expect(ticket?.briefId).toBe("PROJ-12");
   });
 
   it("asks for the labels alongside the fields a prompt is built from", async () => {

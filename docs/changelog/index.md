@@ -22,6 +22,19 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
+### **A brief is named the way its feature is.**
+
+`patch` · `@amykit/plugin-linear`
+
+A child ticket's `briefId` was its Linear parent's uuid, while the same parent
+read as a feature (`getFeature`, `features`) was named by its identifier, and
+the brief store keys a brief by that feature id. Every reader that asked the
+store for `ticket.briefId` — ticket-to-qa's brief lane, a workflow looking for
+a declaration file named `PROJ-1200.yaml` — found nothing, and read "no brief"
+rather than failing: a ticket under a groomed feature was driven as if nobody
+had groomed it. `briefId`, and `featureId` on updated groomed work, are now the
+parent's identifier, and a test holds a child and its feature to one name.
+
 ### **A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-command`, `@amykit/plugin-command-gate`, `@amykit/plugin-file-brief-store`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-file-worktree`, `@amykit/plugin-github`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-linear`, `@amykit/plugin-notify-hermes`, `@amykit/plugin-notify-inbox`, `@amykit/plugin-plan-check`, `@amykit/plugin-serial-engine`, `@amykit/plugin-slack`, `@amykit/workflow-errand`, `@amykit/workflow-feature-grooming`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`

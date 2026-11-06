@@ -19,6 +19,7 @@ import {
   BOT,
   BRANCH,
   BRIEF,
+  BRIEF_UUID,
   OTHER_REPO,
   PAST_IMPLEMENTATION,
   REPO,
@@ -1079,8 +1080,8 @@ function briefChecks(first: World): Check[] {
     // it again rather than trusting a record snapshot from the first look.
     [
       "brief.parent_is_the_tracker_supplied_shared_id",
-      issueIn(first, TICKET)?.parentId === BRIEF &&
-        first.trackerCalls.some((call) => call.query.includes("parent { id }")) &&
+      issueIn(first, TICKET)?.parentId === BRIEF_UUID &&
+        first.trackerCalls.some((call) => call.query.includes("parent { id identifier }")) &&
         Boolean(firstTriage?.prompt.includes("Keep the currency beside the total")),
     ],
     [

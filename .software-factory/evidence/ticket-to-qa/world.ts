@@ -18,8 +18,12 @@ export const TICKET = "BILL-4021";
 export const TICKET_TWO = "BILL-4024";
 export const PAST_IMPLEMENTATION = "BILL-4022";
 export const SOMEBODY_ELSES = "BILL-4023";
-/** The shared Linear parent that anchors this ticket's operator-authored brief. */
-export const BRIEF = "uuid-BILL-brief-4020";
+/**
+ * The shared Linear parent that anchors this ticket's operator-authored brief:
+ * named by its identifier, the way a feature is, and linked by its uuid.
+ */
+export const BRIEF = "BILL-4020";
+export const BRIEF_UUID = "uuid-BILL-4020";
 
 export const BRANCH = "amy/bill-4021-show-the-currency-on-the-invoice-total";
 export const SECOND_BRANCH = "amy/bill-4024-show-the-currency-on-the-refund-total";
@@ -57,6 +61,8 @@ export interface Issue {
   url: string;
   branchName: string;
   parentId?: string;
+  /** The parent's identifier when the parent is not an issue this world holds. */
+  parentIdentifier?: string;
   stateId: string;
   teamId: string;
   assigneeId: string;
@@ -243,7 +249,8 @@ const TRACKER_STATE: TrackerState = {
       title: "Show the currency on the invoice total",
       url: `https://tracker.test/issue/${TICKET}`,
       branchName: BRANCH,
-      parentId: BRIEF,
+      parentId: BRIEF_UUID,
+      parentIdentifier: BRIEF,
       stateId: "s-progress",
       teamId: TEAM.id,
       assigneeId: VIEWER.id,

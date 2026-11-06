@@ -34,7 +34,7 @@ const child = (identifier: string, description: string | null) => ({
   title: `child ${identifier}`,
   description,
   labels: { nodes: [] },
-  parent: { id: feature.id },
+  parent: { id: feature.id, identifier: feature.identifier },
 });
 
 describe("LinearTracker.features", () => {
@@ -195,7 +195,7 @@ describe("LinearTracker.updateGroomedWork", () => {
       id: "PROJ-1201",
       input: { title: "new title", description: "new body" },
     });
-    expect(updated).toMatchObject({ id: "PROJ-1201", title: "new title", body: "new body", retired: false });
+    expect(updated).toMatchObject({ id: "PROJ-1201", featureId: "PROJ-1200", title: "new title", body: "new body", retired: false });
   });
 
   it("fails loudly when the tracker refuses", async () => {
@@ -230,5 +230,22 @@ describe("LinearTracker.retireGroomedWork", () => {
     await expect(new LinearTracker(client, config).retireGroomedWork("PROJ-1201")).rejects.toThrow(
       /Linear refused retirement of groomed work PROJ-1201/,
     );
+  });
+});
+
+describe("a child and its feature", () => {
+  // The brief store keys a brief by the feature's id, and every reader asks for
+  // it by the ticket's briefId: the two drifting apart reads as "no brief".
+  it("are named the same way on both sides of the parent link", async () => {
+    const client = new ScriptedGraphQL([
+      { contains: "query Feature(", data: { issue: feature } },
+      { contains: "query Working", data: { issues: { nodes: [{ ...child("PROJ-1201", "body"), state: { name: "In Progress" } }] } } },
+    ]);
+    const tracker = new LinearTracker(client, config);
+
+    const parent = await tracker.getFeature("PROJ-1200");
+    const [ticket] = await tracker.inProgress();
+
+    expect(ticket?.briefId).toBe(parent?.id);
   });
 });
