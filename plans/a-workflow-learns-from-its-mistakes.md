@@ -1,5 +1,5 @@
 ---
-base: 330ec3de00869241d24025edbd3b6a6eb5184f53
+base: 74afab335475eb68924358c6b440f0bf2dfa2a61
 sources:
   - { id: S1, kind: friction, said: "2026-11-05: amy already keeps what went wrong, but nothing helps a workflow improve itself; a cheap model makes the same mistakes almost every run, so even a minimal self-improvement, or recommendations along the way, is wanted" }
   - { id: S2, kind: reference, ref: "https://factory.com/news/frontier-harness", said: "Factory's Agent Factory loop tests each proposed harness change as a controlled experiment before an engineer merges it" }

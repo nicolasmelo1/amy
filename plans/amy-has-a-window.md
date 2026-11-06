@@ -1,4 +1,5 @@
 ---
+base: 74afab335475eb68924358c6b440f0bf2dfa2a61
 sources:
   - { id: S1, kind: decision, said: "the window an install ships is small on purpose: amy is a workflow builder, so it shows the work and lets a person talk to it; everything beyond is a plugin" }
   - { id: S2, kind: decision, said: "layout: nav 1 sections on top; nav 2 search and list at left (profile, + groom); canvas with header, state strip and tabs (Timeline, Diff, plugin tabs); a right panel that opens and closes; ⌘K ask anything" }
