@@ -62,6 +62,14 @@ describe("the skills that travel with this build", () => {
     expect(body).toContain("name: amy");
   });
 
+  it("include the groomer, which carries the method and takes the format from the workflow that judges the brief", () => {
+    const [, body] = shipped().find(([name]) => name === "amy-groom")!;
+
+    expect(body).toContain("name: amy-groom");
+    expect(body).toContain("a requirement names its source, or it is cut");
+    expect(body).toContain("the parser wins");
+  });
+
   it("are none when there is no directory to read", () => {
     expect(shipped(new URL("file:///no/such/place/"))).toEqual([]);
   });

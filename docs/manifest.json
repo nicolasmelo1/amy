@@ -969,6 +969,11 @@
         },
         {
           "depth": 3,
+          "title": "**A brief is groomed from its sources.**",
+          "slug": "a-brief-is-groomed-from-its-sources"
+        },
+        {
+          "depth": 3,
           "title": "**A brief is named the way its feature is.**",
           "slug": "a-brief-is-named-the-way-its-feature-is"
         },
@@ -7065,6 +7070,12 @@
         "directory": "packages/cli/skills/amy-btw"
       },
       {
+        "name": "amy-groom",
+        "version": "1.0.0",
+        "description": "Groom a feature into the brief a workflow reads before it builds — by reading the ticket and the code at its base, then interrogating one question at a time until every requirement names its source.",
+        "directory": "packages/cli/skills/amy-groom"
+      },
+      {
         "name": "amy-init",
         "version": "1.0.0",
         "description": "Set amy up on this machine end to end — the state directory, the config, the roster, the plugins it needs installed, the credentials, the notification channel — by reading what is already here and asking only what the machine cannot answer.",
@@ -10139,6 +10150,18 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-brief-is-groomed-from-its-sources",
+        "title": "**A brief is groomed from its sources.**",
+        "body": "amy ships an `amy-groom` skill: it reads the ticket and the code at a pinned\nbase commit, then asks one question at a time until every requirement in the\nbrief names its source — the ticket, a design actually opened, a decision\nsomebody made — and cuts the rest, with the reason. It learns the brief's\nformat and check from the workflow that judges it rather than carrying one,\nwrites a local file, and writes nothing to the tracker, the code host or chat.\nBefore, grooming a brief that a workflow holds tickets on had no skill in amy\nat all, and requirements nobody asked for were the defect it exists to stop.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
       {
         "id": "a-brief-is-named-the-way-its-feature-is",
         "title": "**A brief is named the way its feature is.**",
