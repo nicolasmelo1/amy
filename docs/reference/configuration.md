@@ -56,6 +56,7 @@ For what the two halves mean and why, see
 
 | Variable | Read by |
 | :-- | :-- |
+| `CODEX_HOME` | `@amykit/plugin-codex` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 | `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
 | `VITEST` | `@amykit/test-fixtures` |

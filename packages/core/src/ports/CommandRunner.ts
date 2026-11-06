@@ -1,3 +1,5 @@
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
+
 export interface CommandResult {
   ok: boolean;
   exitCode: number | null;
@@ -25,4 +27,6 @@ export interface RunOptions {
  */
 export interface CommandRunner {
   run(command: string, args: readonly string[], options?: RunOptions): Promise<CommandResult>;
+  /** So protocol children stop through the same handbrake as ordinary commands. */
+  spawn?(command: string, args: readonly string[], options?: Pick<RunOptions, "cwd" | "env">): ChildProcessWithoutNullStreams;
 }

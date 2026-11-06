@@ -20,6 +20,8 @@ export interface EffectOutcomes {
   /** The conversation a triage read, when it was reading an answer. */
   clarification?: string[];
   implementation?: AttemptOutcome;
+  continuationContext?: string | null;
+  waited?: { notATry: true; retryAfterMs: number };
   /** The repository and commit the implementation left the work at. */
   implemented?: { repo: string; revision?: string };
   pullRequestNumber?: number;
@@ -52,6 +54,7 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   if (outcomes.triage) next.triage = outcomes.triage;
   if (outcomes.clarification?.length) next.clarification = outcomes.clarification;
   if (outcomes.implementation) next.lastImplementation = outcomes.implementation;
+  applyContinuation(next, outcomes.continuationContext);
   if (outcomes.implemented) next.implemented = outcomes.implemented;
   if (outcomes.pullRequestNumber !== undefined) {
     next.pullRequestNumber = outcomes.pullRequestNumber;
@@ -80,6 +83,14 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
   }
 
   return next;
+}
+
+function applyContinuation(
+  record: TicketRecord,
+  continuation: string | null | undefined,
+): void {
+  if (continuation === null) delete record.continuationContext;
+  else if (continuation) record.continuationContext = continuation;
 }
 
 /**

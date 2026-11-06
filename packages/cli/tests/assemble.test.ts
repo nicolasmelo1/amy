@@ -49,7 +49,14 @@ describe("assembling the built-in set", () => {
     previousKey = process.env.LINEAR_API_KEY;
     process.env.LINEAR_API_KEY = "lin_api_test";
     host = {
-      runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      runner: {
+        run: async (command, args) => ({
+          ok: true,
+          exitCode: 0,
+          stdout: command === "codex" && args[0] === "--version" ? "codex-cli 0.166.4" : "",
+          stderr: "",
+        }),
+      },
       now: () => new Date("2026-09-03T12:00:00.000Z"),
       paths: { state:  path.join(root, ".amy") },
     };

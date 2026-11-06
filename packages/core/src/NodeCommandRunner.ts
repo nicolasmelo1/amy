@@ -1,4 +1,8 @@
-import { ChildProcess, spawn } from "node:child_process";
+import {
+  ChildProcess,
+  ChildProcessWithoutNullStreams,
+  spawn,
+} from "node:child_process";
 import { CommandResult, CommandRunner, RunOptions } from "./ports/CommandRunner.js";
 
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
@@ -22,6 +26,21 @@ export class NodeCommandRunner implements CommandRunner {
     return running.length;
   }
 
+  spawn(
+    command: string,
+    args: readonly string[],
+    options: Pick<RunOptions, "cwd" | "env"> = {},
+  ): ChildProcessWithoutNullStreams {
+    const child = spawn(command, [...args], {
+      cwd: options.cwd,
+      env: options.env ? { ...process.env, ...options.env } : process.env,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    this.live.add(child);
+    child.once("close", () => this.live.delete(child));
+    return child;
+  }
+
   run(
     command: string,
     args: readonly string[],
@@ -30,13 +49,7 @@ export class NodeCommandRunner implements CommandRunner {
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
     return new Promise((resolve) => {
-      const child = spawn(command, [...args], {
-        cwd: options.cwd,
-        env: options.env ? { ...process.env, ...options.env } : process.env,
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-
-      this.live.add(child);
+      const child = this.spawn(command, args, options);
 
       let stdout = "";
       let stderr = "";
@@ -46,7 +59,6 @@ export class NodeCommandRunner implements CommandRunner {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        this.live.delete(child);
         resolve({
           ok: exitCode === 0,
           exitCode,

@@ -92,6 +92,7 @@ export function unreadTriage(at: string): TriageOutcome {
 export function implementPrompt(
   ticket: Ticket,
   retryContext?: string,
+  continuationContext?: string,
   conversation?: readonly string[],
   discussion?: readonly string[],
 ): string {
@@ -105,6 +106,14 @@ export function implementPrompt(
     ...labelLines(ticket),
     ...conversationLines(conversation),
     ...decisionLines(discussion),
+    ...(continuationContext
+      ? [
+          ``,
+          `Continue the half-finished implementation already in this working tree.`,
+          continuationContext,
+          `Inspect the tree before changing it; keep work that is already correct.`,
+        ]
+      : []),
     ...(retryContext
       ? [
           ``,
