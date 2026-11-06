@@ -273,6 +273,26 @@ export const plugin = defineWorkflow({
     expect(probe).toEqual({ ok: true, workflow: false });
   });
 
+  it("lets an add probe inspect a Codex compatibility registration without pretending its executable is absent", async () => {
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");
+    packageAt(
+      root,
+      "@acme/plugin-codex-shaped",
+      `export const plugin = {
+  name: "@acme/plugin-codex-shaped",
+  async register(_registry, ctx) {
+    const version = await ctx.runner.run("codex", ["--version"]);
+    if (!version.stdout.startsWith("codex-cli 0.166.")) throw new Error("Codex was not compatible");
+  },
+};
+`,
+    );
+    const loaded = await importPluginBySpec("@acme/plugin-codex-shaped", pluginsRootResolver(home, root));
+
+    await expect(whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home)).resolves.toEqual({ ok: true, workflow: false });
+  });
+
   it("refuses a package whose register throws, naming the problem", async () => {
     fs.mkdirSync(root, { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");

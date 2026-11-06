@@ -210,7 +210,16 @@ export async function whatMountingSays(
       // — a notifier that counts `ctx.config.models.length` during
       // registration dies on an empty map, not on a real missing setting.
       config: standInConfig(plugin.configSchema),
-      runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      // Registration is inspected, not booted.  Give executable probes a
+      // compatible shape so a plugin can describe its contributions here;
+      // the real post-install boot still executes its actual compatibility
+      // check against the operator's executable.
+      runner: { run: async (command: string) => ({
+        ok: true,
+        exitCode: 0,
+        stdout: command === "codex" ? "codex-cli 0.166.0" : "",
+        stderr: "",
+      }) },
       now: () => new Date(),
       log: undefined,
       paths: { state: throwaway },

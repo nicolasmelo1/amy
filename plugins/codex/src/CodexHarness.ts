@@ -186,7 +186,10 @@ async function readLimits(
       "account/rateLimits/read",
       {},
     )) as CodexRateLimits;
-  } catch {
+  } catch (error) {
+    // A handbrake can arrive while this auxiliary request is in flight.  The
+    // lookup is optional, but cancellation is terminal for this run.
+    if (error instanceof CodexRunAbandoned) throw error;
     return undefined;
   }
 }

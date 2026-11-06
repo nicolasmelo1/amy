@@ -49,15 +49,16 @@ function fakeServer(
 const fs = require("node:fs");
 let requests = [];
 const reply = (id, result) => process.stdout.write(JSON.stringify({jsonrpc:"2.0",id,result})+"\\n");
+const hasOnly = (value, keys) => Object.keys(value).sort().join(",") === keys.sort().join(",");
 const send = value => { const line = Buffer.from(JSON.stringify(value)+"\\n"); const marker = Buffer.from("é"); const at = line.indexOf(marker); if (${JSON.stringify(mode)} === "split-utf8" && at >= 0) { process.stdout.write(line.subarray(0, at + 1)); setTimeout(() => process.stdout.write(line.subarray(at + 1)), 2); } else process.stdout.write(line); };
 const complete = (limited = false) => { send({jsonrpc:"2.0",method:"thread/tokenUsage/updated",params:{threadId:"thread-1",turnId:"turn-1",tokenUsage:{total:{input_tokens:17571,cached_input_tokens:11008,output_tokens:5},last:{input_tokens:2,cached_input_tokens:1,output_tokens:1}}}}); if (${JSON.stringify(mode)} === "streamed-limit") send({jsonrpc:"2.0",method:"item/completed",params:{item:{type:"agentMessage",text:"half-done é"}}}); send({jsonrpc:"2.0",method:"turn/completed",params:{turn:{status:limited?"failed":"completed",items:${JSON.stringify(mode)} === "streamed-limit"?[]:[{type:"agentMessage",text:${JSON.stringify(mode)} === "split-utf8"?"café":(fs.existsSync(process.env.CODEX_HOME + "/config.toml") ? "contaminated" : (fs.existsSync(process.env.CODEX_HOME + "/auth.json") ? "authenticated" : "unauthenticated"))}],error: limited ? {message:"limited",codexErrorInfo:"usageLimitExceeded"} : null}}}); };
 if (${JSON.stringify(mode)} === "ignore-term") process.on("SIGTERM", () => {});
 if (${JSON.stringify(mode)} === "split-stderr") { const bytes=Buffer.from("café"); process.stderr.write(bytes.subarray(0,4)); setTimeout(() => process.stderr.write(bytes.subarray(4)), 2); }
-process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (!line) continue; const r=JSON.parse(line); requests.push(r); if (["initialize-timeout","ignore-term","cancellable","split-stderr"].includes(${JSON.stringify(mode)})) continue; if (${JSON.stringify(mode)} === "premature-exit") process.exit(9); if (r.method === "initialize") reply(r.id, {}); else if (r.method === "thread/start") { const f=r.params.config?.features; if (${JSON.stringify(mode)} === "protocol-config" && !(r.params.approvalPolicy === "never" && f?.hooks === false && f?.plugins === false && f?.apps === false && f?.memories === false)) reply(r.id, {thread:{}}); else reply(r.id, {thread:{id:"thread-1"}}); } else if (r.method === "turn/start") { reply(r.id, {}); complete(${JSON.stringify(mode)} === "rate-exit" || ${JSON.stringify(mode)} === "streamed-limit"); } else if (r.method === "account/rateLimits/read") { if (${JSON.stringify(mode)} === "rate-exit") process.exit(8); else reply(r.id, {rateLimits:{primary:{resetsAt:1800000000}}}); } } });
+process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (!line) continue; const r=JSON.parse(line); requests.push(r); if (["initialize-timeout","ignore-term","cancellable","split-stderr"].includes(${JSON.stringify(mode)})) continue; if (${JSON.stringify(mode)} === "premature-exit") process.exit(9); if (r.method === "initialize") reply(r.id, {}); else if (r.method === "thread/start") { const f=r.params.config?.features; const valid = r.params.approvalPolicy === "never" && r.params.sandbox === "read-only" && r.params.ephemeral === true && hasOnly(r.params, ["cwd","model","sandbox","ephemeral","config","approvalPolicy"]) && f?.hooks === false && f?.plugins === false && f?.apps === false && f?.memories === false && hasOnly(f, ["hooks","plugins","apps","memories"]); if (${JSON.stringify(mode)} === "protocol-config" && !valid) reply(r.id, {thread:{}}); else reply(r.id, {thread:{id:"thread-1"}}); } else if (r.method === "turn/start") { if (${JSON.stringify(mode)} === "protocol-config" && (!hasOnly(r.params, ["threadId","input"]) || !Array.isArray(r.params.input) || r.params.input.length !== 1 || r.params.input[0]?.type !== "text" || r.params.input[0]?.text !== "read it" || requests.map(request => request.method).join(",") !== "initialize,thread/start,turn/start")) process.exit(9); reply(r.id, {}); complete(${JSON.stringify(mode)} === "rate-exit" || ${JSON.stringify(mode)} === "streamed-limit" || ${JSON.stringify(mode)} === "rate-cancellable"); } else if (r.method === "account/rateLimits/read") { if (${JSON.stringify(mode)} === "rate-exit") process.exit(8); else if (${JSON.stringify(mode)} !== "rate-cancellable") reply(r.id, {rateLimits:{primary:{resetsAt:1800000000}}}); } } });
 `,
   );
   return new StdioCodexAppServer({
-    timeoutMs: ["normal", "split-utf8", "split-stderr", "streamed-limit", "protocol-config"].includes(mode) ? 500 : (mode === "cancellable" ? 5_000 : 40),
+    timeoutMs: ["normal", "split-utf8", "split-stderr", "streamed-limit", "protocol-config"].includes(mode) ? 500 : (["cancellable", "rate-cancellable"].includes(mode) ? 5_000 : 40),
     command: process.execPath,
     args: [script],
     env,
@@ -152,7 +153,7 @@ describe("the app-server harness", () => {
     expect(reply.run.costUsd).toBeCloseTo(0.00962975, 10);
   });
 
-  it("sends the 0.166 feature map with approvals disabled", async () => {
+  it("sends complete 0.166 requests with the expected methods and parameters", async () => {
     const result = await fakeServer("protocol-config").run({
       prompt: "read it",
       cwd: process.cwd(),
@@ -220,6 +221,18 @@ describe("the app-server harness", () => {
     await expect(running).resolves.toMatchObject({ turn: { status: "abandoned" } });
   });
 
+  it("keeps a handbrake terminal while the limited-turn reset lookup is pending", async () => {
+    const runner = new NodeCommandRunner();
+    const running = fakeServer("rate-cancellable", {}, runner).run({
+      prompt: "read it",
+      cwd: process.cwd(),
+      readOnly: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(runner.killAll()).toBe(1);
+    await expect(running).resolves.toMatchObject({ turn: { status: "abandoned" } });
+  });
+
   it.each([
     [
       "missing executable",
@@ -248,7 +261,7 @@ describe("the app-server harness", () => {
 });
 
 describe("the captured protocol schema", () => {
-  it("parses the captured 0.166.0 schema and retains fields the client sends", () => {
+  it("parses the captured 0.166.0 schema and retains every field the client sends", () => {
     // The capture has a literal trailing `\\n` from the app-server transport.
     const schema = JSON.parse(
       fs.readFileSync(fixture, "utf8").replace(/\\n\s*$/, ""),
@@ -260,16 +273,12 @@ describe("the captured protocol schema", () => {
       >;
     };
     expect(schema.generatedBy).toBe("codex-cli 0.166.0");
-    expect(schema.definitions.ThreadStartParams!.properties).toMatchObject({
-      cwd: expect.anything(),
-      model: expect.anything(),
-      config: expect.anything(),
-      approvalPolicy: expect.anything(),
-    });
-    expect(schema.definitions.Turn!.properties).not.toHaveProperty("usage");
-    expect(schema.definitions.TurnStartParams!.required).toEqual(
-      expect.arrayContaining(["input", "threadId"]),
+    expect(Object.keys(schema.definitions.ThreadStartParams!.properties ?? {})).toEqual(
+      expect.arrayContaining(["cwd", "model", "sandbox", "ephemeral", "config", "approvalPolicy"]),
     );
+    expect(schema.definitions.Turn!.properties).not.toHaveProperty("usage");
+    expect(Object.keys(schema.definitions.TurnStartParams!.properties ?? {})).toEqual(expect.arrayContaining(["input", "threadId"]));
+    expect(schema.definitions.TurnStartParams!.required).toEqual(expect.arrayContaining(["input", "threadId"]));
     expect(schema.definitions.GetAccountRateLimitsResponse!.required).toContain(
       "rateLimits",
     );

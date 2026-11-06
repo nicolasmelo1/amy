@@ -20,8 +20,11 @@ touches:
   - plugins/hermes-agent/tests/HermesHarness.test.ts
   - packages/core/src/ports/CommandRunner.ts
   - packages/core/src/NodeCommandRunner.ts
+  - packages/cli/src/add.ts
   - packages/cli/tests/assemble.test.ts
+  - packages/cli/tests/add.test.ts
   - packages/agent-kit/src/ladder.ts
+  - plugins/serial-engine/tests/Worker.test.ts
   - packages/workflow-ticket-to-qa/src/**
   - packages/workflow-ticket-to-qa/tests/**
   - packages/workflow-testkit/src/**
@@ -36,13 +39,14 @@ criteria:
   - { id: A2, statement: "a ladder ending on rate-limited records no attempt, and attemptsIn is unchanged", proof: "property:packages/workflow-ticket-to-qa/tests/attempts.property.test.ts#limit_charged_as_attempt", sources: [S3, S4], done: true }
   - { id: A3, statement: "the step waits until the reported reset time, or the policy's backoff when none, then runs again on the tree it left", proof: "test:packages/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts", sources: [S3, S4], done: true }
   - { id: A4, statement: "with two attempts allowed, limited twice then failed twice escalates after the second failure, not the second limit", proof: "test:packages/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts", sources: [S3], done: true }
-  - { id: A5, statement: "a limited run spends nothing against no-retry-is-free's no-evidence count", proof: "property:packages/workflow-ticket-to-qa/tests/retry.property.test.ts#limit_counted_as_unchanged", sources: [S4, S6], done: true }
+  - { id: A5, statement: "a limited run preserves the no-evidence streak; genuine unchanged runs still park at budget.progress.maxUnchanged", proof: "test:plugins/serial-engine/tests/Worker.test.ts", sources: [S4, S6], done: true }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "A1, A6, A7" }
   - { mechanism: attempts-and-waits, answer: works, proof: "A2, A3" }
   - { mechanism: budget-and-evidence, answer: works, proof: "A5" }
   - { mechanism: record-migration, answer: works, proof: "test:packages/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts" }
   - { mechanism: workflow-tooling, answer: n/a, why: "the testkit only gains a walkthrough; its walking is unchanged" }
+  - { mechanism: install-and-update, answer: works, proof: "test:packages/cli/tests/add.test.ts" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "managed spawn changes only how a host cancels children; no tracker or code-host capability changes" }
 guarantee:
   - { holds: "a run Codex or Hermes reports limited through a structured field charges no attempt and waits", not_against: "a Hermes release without the keys, or a provider reporting its limit only in prose: it reads as failed, as today" }

@@ -489,7 +489,7 @@ export function build(root: string, { source }: { source: string }): void {
   write(path.join(world, "agent-gadgets.json"), AGENT_GADGETS_SCRIPT);
 
   // Each stand-in is a wrapper and the TypeScript it runs, side by side.
-  for (const tool of ["gh", "claude"]) {
+  for (const tool of ["gh", "claude", "codex"]) {
     const installed = path.join(root, "bin", tool);
     fs.copyFileSync(path.join(source, "bin", tool), installed);
     fs.copyFileSync(path.join(source, "bin", `${tool}.ts`), `${installed}.ts`);
