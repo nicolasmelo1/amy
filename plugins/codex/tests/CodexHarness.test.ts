@@ -58,7 +58,7 @@ process.stdin.on("data", chunk => { for (const line of String(chunk).trim().spli
 `,
   );
   return new StdioCodexAppServer({
-    timeoutMs: ["normal", "split-utf8", "split-stderr", "streamed-limit", "protocol-config"].includes(mode) ? 500 : (["cancellable", "rate-cancellable"].includes(mode) ? 5_000 : 40),
+    timeoutMs: ["normal", "split-utf8", "split-stderr", "streamed-limit", "protocol-config", "rate-exit"].includes(mode) ? 500 : (["cancellable", "rate-cancellable"].includes(mode) ? 5_000 : 40),
     command: process.execPath,
     args: [script],
     env,

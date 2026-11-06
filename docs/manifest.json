@@ -11159,6 +11159,13 @@
         "level": "patch"
       },
       {
+        "id": "tough-crews-sink",
+        "title": "",
+        "body": "",
+        "bumps": [],
+        "level": ""
+      },
+      {
         "id": "waiting-is-not-trying",
         "title": "**Waiting is not trying.**",
         "body": "The core now records `looks` separately from `attempts`: waits and logistical\nacts are visible without consuming an attempt ceiling. `looksIn` and\n`attemptsIn` make the distinction explicit, an `act` may be marked\n`{ attempt: false }`, and an action result can return `notATry` to refund a\npre-charged attempt and delay the next look.",
