@@ -1088,6 +1088,7 @@ rules:
         - ".changeset/*.md"
         - "docs/changelog/index.md"
         - "docs/manifest.json"
+        - "packages/test-fixtures/contracts/**"
   # L4 — New top-level files are declared before they appear
   L4.ROOT_FILES_ARE_DECLARED:
     enabled: true

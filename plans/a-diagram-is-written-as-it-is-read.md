@@ -11,20 +11,23 @@ sources:
   - { id: S8, kind: reference, ref: "plans/an-event-is-a-reason-to-look.md", said: "a label naming a published event is read; every other label stays prose" }
   - { id: S9, kind: decision, said: "the writer lives in the core with no dependency, and keeps the lines amy does not read (comments, classDef, other classes, front matter) in place" }
   - { id: S10, kind: decision, said: "amy workflow export <name> --yaml prints states with label and classes, initial, terminal, transitions with label or event:, calls, forks, and an about: block of name, ports, phases and brief sections" }
+  - { id: S11, kind: reference, ref: "plans/the-command-line-holds-no-rule.md", said: "every built-in but daemon and after-daemon is an operation in the services contract, and the command line is generated from it" }
+  - { id: S12, kind: decision, said: "export --yaml is a format of the workflow export operation in the services, its schema in the contract, so the generated command, route and SDK method carry it alike" }
 touches:
   - packages/core/src/diagram.ts
   - packages/core/src/index.ts
   - packages/core/tests/diagram-writer.test.ts
   - packages/core/tests/diagram-writer.property.test.ts
-  - packages/cli/src/diagram-yaml.ts
-  - packages/cli/src/workflow.ts
-  - packages/cli/src/index.ts
-  - packages/cli/tests/workflow-export.test.ts
+  - packages/services/src/**
+  - packages/services/surface.yaml
+  - packages/services/openapi.json
+  - packages/services/tests/**
+  - packages/services/tests/workflow-export.test.ts
   - docs/reference/cli.md
 criteria:
   - { id: A1, statement: "for every diagram the reader accepts, writing it and reading it back gives the same states, classes, calls, forks, labels and transitions", proof: "deferred:property:packages/core/tests/diagram-writer.property.test.ts#a_label_is_dropped", sources: [S1, S5, S6, S7, S9] }
   - { id: A2, statement: "for every accepted diagram, writing it keeps every line amy does not read, in its place", proof: "deferred:property:packages/core/tests/diagram-writer.property.test.ts#an_unread_line_is_lost", sources: [S9] }
-  - { id: A3, statement: "export --yaml on the shipped workflows prints states, classes, transitions, events and about, writes no file, and its help says the shape is edited in workflow.mmd", proof: "deferred:test:packages/cli/tests/workflow-export.test.ts", sources: [S2, S3, S4, S8, S10] }
+  - { id: A3, statement: "export --yaml on the shipped workflows prints states, classes, transitions, events and about, writes no file, and its help says the shape is edited in workflow.mmd", proof: "deferred:test:packages/services/tests/workflow-export.test.ts", sources: [S2, S3, S4, S8, S10, S11, S12] }
 crosses:
   - { mechanism: diagram, answer: works, proof: "deferred:A1, A2; the reader is unchanged and the writer is proven against it" }
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:A3; export gains a format, check is unchanged" }
