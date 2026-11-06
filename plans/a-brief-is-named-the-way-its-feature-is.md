@@ -1,5 +1,5 @@
 ---
-base: 26de19c8574aed6e08c5576742c142cb2ffb3efd
+base: 6c0e327ba0077ddfbccdadd38a5827026255674b
 sources:
   - { id: S1, kind: code, ref: "plugins/linear/src/LinearTracker.ts", said: "a child ticket's briefId is node.parent.id, the Linear uuid; the same parent read as a feature (toFeature) is named node.identifier" }
   - { id: S2, kind: code, ref: "packages/workflow-feature-grooming/src/groom.ts", said: "feature-grooming writes a brief under feature.id, the identifier" }
