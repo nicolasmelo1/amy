@@ -1,4 +1,5 @@
 ---
+base: 2074c2a5172d17e61d3c22c62297dc9a00efd3c9
 sources:
   - { id: S1, kind: friction, said: "a private workflow needs Linear to answer an outage with nothing and read labels in one request; today that means a second Linear reader inside the workflow, which then ships with it" }
   - { id: S2, kind: friction, said: "two workflows on one machine each need the tracker answered their own way: one the published plugin, the other a changed copy of it; the install holds one npm root, so one name resolves to one place for every profile" }
