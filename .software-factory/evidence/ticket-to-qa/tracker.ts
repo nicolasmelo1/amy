@@ -59,6 +59,12 @@ const teamOf = (state: TrackerState, issue: Issue): Team =>
 const stateName = (state: TrackerState, issue: Issue): string =>
   found(teamOf(state, issue).states.find((s) => s.id === issue.stateId), `state ${issue.stateId}`).name;
 
+/** What Linear answers for `parent { identifier }`: the parent issue's own name. */
+function parentIdentifier(state: TrackerState, issue: Issue): string {
+  const parent = state.issues.find((candidate) => candidate.id === issue.parentId);
+  return found(parent?.identifier ?? issue.parentIdentifier, `the identifier of parent ${issue.parentId}`);
+}
+
 /** An issue as the fields amy asks for, which is what `ISSUE_FIELDS` names. */
 function issueNode(state: TrackerState, issue: Issue): unknown {
   const team = teamOf(state, issue);
@@ -71,7 +77,7 @@ function issueNode(state: TrackerState, issue: Issue): unknown {
     branchName: issue.branchName,
     priority: issue.priority ?? 0,
     assignee: issue.assigneeId ? { email: state.users.find((user) => user.id === issue.assigneeId)?.email ?? "" } : null,
-    parent: issue.parentId ? { id: issue.parentId } : null,
+    parent: issue.parentId ? { id: issue.parentId, identifier: parentIdentifier(state, issue) } : null,
     labels: { nodes: (issue.labels ?? []).map((name) => ({ name })) },
     state: { name: stateName(state, issue) },
     team: { id: team.id, key: team.key, name: team.name },

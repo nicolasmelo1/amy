@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "a-private-workflow-composes",
-  "implementation_sha256": "cfda76161509014617ae60690c723a91708c23d80a2405ce9b07f7bf6b7b95af",
+  "implementation_sha256": "4e7f0ac9aa7af6e07a223fad7d51aaa55de7b94fae85360ba5440ea00ed7c058",
   "runs": [
     {
       "scenario": "a-private-workflow-composes",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable with its writes handed to an operator across two repositories, and the built adapters against real git and a stand-in gh, on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/a-private-workflow-composes-run.json",
-      "report_sha256": "9ab504de0279c87b4b95f8c1616e2f9d24779a0ff8ca87c8d3fcaf39f31613a4",
+      "report_sha256": "70264054d2bef727bb52c68f4cdfe7c6f0fd60c74f74817e8e9991afd19d8a75",
       "required_assertions": []
     }
   ]

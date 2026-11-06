@@ -969,6 +969,11 @@
         },
         {
           "depth": 3,
+          "title": "**A brief is named the way its feature is.**",
+          "slug": "a-brief-is-named-the-way-its-feature-is"
+        },
+        {
+          "depth": 3,
           "title": "**A config is typed by its schema.** definePlugin gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and string[] settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.",
           "slug": "a-config-is-typed-by-its-schema-defineplugin-gives-a-plugins-register-and-ready-hooks-the-post-validation-type-derived-from-its-schema-rejects-mismatched-defaults-and-moves-every-shipped-schema-onto-that-declaration-scalar-and-string-settings-no-longer-cast-away-the-hosts-validation-record-settings-remain-explicitly-narrowed-where-a-plugin-needs-a-stronger-value-shape"
         },
@@ -10134,6 +10139,18 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-brief-is-named-the-way-its-feature-is",
+        "title": "**A brief is named the way its feature is.**",
+        "body": "A child ticket's `briefId` was its Linear parent's uuid, while the same parent\nread as a feature (`getFeature`, `features`) was named by its identifier, and\nthe brief store keys a brief by that feature id. Every reader that asked the\nstore for `ticket.briefId` — ticket-to-qa's brief lane, a workflow looking for\na declaration file named `PROJ-1200.yaml` — found nothing, and read \"no brief\"\nrather than failing: a ticket under a groomed feature was driven as if nobody\nhad groomed it. `briefId`, and `featureId` on updated groomed work, are now the\nparent's identifier, and a test holds a child and its feature to one name.",
+        "bumps": [
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
       {
         "id": "a-config-is-typed-by-its-schema",
         "title": "**A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.",
