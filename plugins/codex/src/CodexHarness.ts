@@ -78,9 +78,9 @@ export class StdioCodexAppServer implements CodexAppServer {
       typeof options === "number"
         ? { timeoutMs: options, command: "codex" }
         : {
+            ...options,
             timeoutMs: options.timeoutMs ?? 30 * 60 * 1000,
             command: options.command ?? "codex",
-            ...options,
           };
     this.options.runner ??= new NodeCommandRunner();
   }
@@ -233,9 +233,11 @@ class RpcSession {
     child.on("exit", (code, signal) => {
       if (!this.closed)
         this.fail(
-          new Error(
+          signal === "SIGTERM"
+            ? new CodexRunAbandoned("codex app-server was stopped")
+            : new Error(
             `codex app-server exited before completion (${signal ?? code ?? "unknown"})`,
-          ),
+              ),
         );
     });
     child.on("close", () => {
@@ -354,9 +356,11 @@ function tokenUsageOf(params: unknown): CodexUsage | undefined {
   return total && typeof total === "object" ? (total as CodexUsage) : undefined;
 }
 
+class CodexRunAbandoned extends Error {}
+
 function failedTurn(error: unknown, stderr = ""): CodexTurn {
   return {
-    status: "failed",
+    status: error instanceof CodexRunAbandoned ? "abandoned" : "failed",
     items: [],
     error: { message: `${error}${stderr ? `\n${stderr}` : ""}` },
   };
@@ -458,6 +462,7 @@ export function resetAt(
 }
 export function classify(turn: CodexTurn): AgentOutcome {
   if (isLimited(turn.error?.codexErrorInfo)) return "rate-limited";
+  if (turn.status === "abandoned") return "abandoned";
   return turn.status === "completed" && Boolean(messageOfTurn(turn))
     ? "completed"
     : "failed";

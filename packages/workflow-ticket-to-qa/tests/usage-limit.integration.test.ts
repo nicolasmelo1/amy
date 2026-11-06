@@ -12,8 +12,8 @@ describe("usage limits through the ticket worker", () => {
   it("keeps one tree, refunds two limits, then escalates after two failures", async () => {
     let clock = new Date("2026-09-03T10:00:00.000Z");
     const replies: HarnessReply[] = [
-      { text: "half a change", run: { outcome: "rate-limited", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "half a change", retryAfterMs: 1 } },
-      { text: "", run: { outcome: "rate-limited", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "limited", retryAfterMs: 1 } },
+      { text: "half a change", run: { outcome: "rate-limited", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "half a change", retryAfterMs: 60_000 } },
+      { text: "", run: { outcome: "rate-limited", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "limited" } },
       { text: "broken", run: { outcome: "failed", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "broken" } },
       { text: "still broken", run: { outcome: "failed", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "still broken" } },
     ];
@@ -23,15 +23,16 @@ describe("usage limits through the ticket worker", () => {
     const queue = new FileQueue(path.join(root, "queue"));
     const records = new InMemoryStore();
     records.save(record("IMPLEMENTING"));
-    const worker = new Worker({ queue, records, ...(await ticketWorkerDeps({ agent, git, policy: { ...policy, maxImplementAttempts: 2 }, now: () => clock })) });
+    const worker = new Worker({ queue, records, ...(await ticketWorkerDeps({ agent, git, policy: { ...policy, maxImplementAttempts: 2, pollBackoffMs: 90_000 }, now: () => clock })) });
 
-    const look = async () => {
-      queue.enqueue({ workId: "PROJ-1239", reason: "prove usage limit" }, clock);
+    const look = async (enqueue = false) => {
+      if (enqueue)
+        queue.enqueue({ workId: "PROJ-1239", reason: "prove usage limit" }, clock);
       await worker.tick();
       clock = new Date(clock.getTime() + 60_000);
     };
     try {
-      await look();
+      await look(true);
       expect(records.load("PROJ-1239")?.state).toBe("IMPLEMENTING");
       expect(records.load("PROJ-1239")?.attempts.IMPLEMENTING ?? 0).toBe(0);
       expect(git.commitAndPush).not.toHaveBeenCalled();
@@ -39,6 +40,11 @@ describe("usage limits through the ticket worker", () => {
       expect(records.load("PROJ-1239")?.lastImplementation).toBeUndefined();
       expect(records.load("PROJ-1239")?.implemented).toBeUndefined();
       expect(records.load("PROJ-1239")?.continuationContext).toContain("half a change");
+
+      clock = new Date(clock.getTime() - 1);
+      await worker.tick();
+      expect(vi.mocked(agent.ask)).toHaveBeenCalledTimes(1);
+      clock = new Date(clock.getTime() + 1);
 
       await look();
       expect(records.load("PROJ-1239")?.state).toBe("IMPLEMENTING");
@@ -52,6 +58,11 @@ describe("usage limits through the ticket worker", () => {
       expect(records.load("PROJ-1239")?.continuationContext).toContain(
         "half a change",
       );
+
+      clock = new Date(clock.getTime() + 30_000 - 1);
+      await worker.tick();
+      expect(vi.mocked(agent.ask)).toHaveBeenCalledTimes(2);
+      clock = new Date(clock.getTime() + 1);
 
       await look();
       expect(records.load("PROJ-1239")).toMatchObject({ state: "IMPLEMENTING", attempts: { IMPLEMENTING: 1 } });

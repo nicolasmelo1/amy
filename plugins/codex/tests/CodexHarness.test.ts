@@ -161,6 +161,13 @@ describe("the app-server harness", () => {
     expect(result.turn.status).toBe("completed");
   });
 
+  it("keeps its thirty-minute default when an optional timeout is undefined", () => {
+    const app = new StdioCodexAppServer({ timeoutMs: undefined });
+    expect((app as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(
+      30 * 60 * 1000,
+    );
+  });
+
   it("preserves split multibyte stdout and stderr", async () => {
     const result = await fakeServer("split-utf8").run({
       prompt: "read it",
@@ -210,7 +217,7 @@ describe("the app-server harness", () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(runner.killAll()).toBe(1);
-    await expect(running).resolves.toMatchObject({ turn: { status: "failed" } });
+    await expect(running).resolves.toMatchObject({ turn: { status: "abandoned" } });
   });
 
   it.each([
