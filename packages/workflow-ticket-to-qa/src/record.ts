@@ -51,6 +51,8 @@ export interface TicketRecord extends WorkRecord {
    */
   clarification?: string[];
   lastImplementation?: AttemptOutcome;
+  /** Kept separately so a limit cannot masquerade as failed-attempt evidence. */
+  continuationContext?: string;
   /**
    * Where the last implementation left the work: its repository and the
    * commit, which both checks are lent read-only rather than the base. A

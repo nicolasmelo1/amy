@@ -83,6 +83,14 @@ describe("ticket-to-qa's prompts", () => {
     expect(implementPrompt(ticket(), "lint: 3 problems")).toContain("lint: 3 problems");
   });
 
+  it("keeps a usage-limit continuation separate from a failed retry", () => {
+    const prompt = implementPrompt(ticket(), undefined, "the parser is half done");
+
+    expect(prompt).toContain("Continue the half-finished implementation");
+    expect(prompt).toContain("the parser is half done");
+    expect(prompt).not.toContain("A previous attempt did not hold");
+  });
+
   it("shows the whole conversation inside a thread, attributed", () => {
     const prompt = threadPrompt(
       ticket(),

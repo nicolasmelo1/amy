@@ -1,4 +1,4 @@
-import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { ChildProcessWithoutNullStreams } from "node:child_process";
 import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -8,6 +8,7 @@ import {
   CommandRunner,
   Harness,
   HarnessReply,
+  NodeCommandRunner,
   TokenUsage,
 } from "@amykit/core";
 import { costOf, specFor } from "@amykit/model-specs";
@@ -52,9 +53,18 @@ export interface CodexAppServerOptions {
   command?: string;
   args?: readonly string[];
   env?: NodeJS.ProcessEnv;
+  shutdownGraceMs?: number;
+  runner?: CommandRunner;
 }
 
 type Pending = { resolve(value: unknown): void; reject(reason: Error): void };
+type RpcMessage = {
+  id?: number;
+  result?: unknown;
+  error?: { message?: string };
+  method?: string;
+  params?: { turn?: CodexTurn; item?: { type?: string; text?: string } };
+};
 
 /** Runs one isolated `codex app-server` JSON-RPC child over stdio. */
 export class StdioCodexAppServer implements CodexAppServer {
@@ -72,6 +82,7 @@ export class StdioCodexAppServer implements CodexAppServer {
             command: options.command ?? "codex",
             ...options,
           };
+    this.options.runner ??= new NodeCommandRunner();
   }
 
   async run(input: {
@@ -87,16 +98,24 @@ export class StdioCodexAppServer implements CodexAppServer {
     let child: ChildProcessWithoutNullStreams | undefined;
     let stderr = "";
     try {
-      child = spawn(
+      if (!this.options.runner?.spawn) {
+        throw new Error(
+          "codex app-server requires a command runner with managed spawn support",
+        );
+      }
+      child = this.options.runner.spawn(
         this.options.command,
         [...(this.options.args ?? []), "app-server"],
         {
           cwd: input.cwd,
-          stdio: ["pipe", "pipe", "pipe"],
           env: { ...process.env, ...this.options.env, CODEX_HOME: home },
         },
       );
-      const session = new RpcSession(child, this.options.timeoutMs);
+      const session = new RpcSession(
+        child,
+        this.options.timeoutMs,
+        this.options.shutdownGraceMs ?? 250,
+      );
       try {
         await session.request("initialize", {
           clientInfo: { name: "amy", version: "0" },
@@ -108,11 +127,14 @@ export class StdioCodexAppServer implements CodexAppServer {
           sandbox: input.readOnly ? "read-only" : "workspace-write",
           ephemeral: true,
           config: {
-            hooks: { enabled: false },
-            plugins: { enabled: false },
-            apps: { enabled: false },
-            memories: { enabled: false },
+            features: {
+              hooks: false,
+              plugins: false,
+              apps: false,
+              memories: false,
+            },
           },
+          approvalPolicy: "never",
         })) as { thread?: { id?: string } };
         const threadId = started.thread?.id;
         if (!threadId)
@@ -178,6 +200,7 @@ class RpcSession {
   private didClose = false;
   private finishTurn!: (turn: CodexTurn) => void;
   private failTurn!: (error: Error) => void;
+  private streamedText = "";
   readonly turn: Promise<CodexTurn>;
   usage: CodexUsage | undefined;
   stderr = "";
@@ -185,6 +208,7 @@ class RpcSession {
   constructor(
     private readonly child: ChildProcessWithoutNullStreams,
     timeoutMs: number,
+    private readonly shutdownGraceMs: number,
   ) {
     this.turn = new Promise<CodexTurn>((resolve, reject) => {
       this.finishTurn = resolve;
@@ -198,9 +222,11 @@ class RpcSession {
         this.fail(new Error(`codex app-server timed out after ${timeoutMs}ms`)),
       timeoutMs,
     );
-    child.stdout.on("data", (chunk: Buffer) => this.read(chunk.toString()));
-    child.stderr.on("data", (chunk: Buffer) => {
-      this.stderr += chunk.toString();
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => this.read(chunk));
+    child.stderr.on("data", (chunk: string) => {
+      this.stderr += chunk;
     });
     child.on("error", (error) => this.fail(error));
     child.stdin.on("error", (error) => this.fail(error));
@@ -236,35 +262,49 @@ class RpcSession {
     this.buffer += chunk;
     const lines = this.buffer.split("\n");
     this.buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      try {
-        const message = JSON.parse(line) as {
-          id?: number;
-          result?: unknown;
-          error?: { message?: string };
-          method?: string;
-          params?: { turn?: CodexTurn };
-        };
-        if (typeof message.id === "number") {
-          const pending = this.pending.get(message.id);
-          if (!pending) continue;
-          this.pending.delete(message.id);
-          if (message.error)
-            pending.reject(
-              new Error(
-                message.error.message ?? "codex app-server JSON-RPC error",
-              ),
-            );
-          else pending.resolve(message.result);
-        }
-        if (message.method === "thread/tokenUsage/updated")
-          this.usage = tokenUsageOf(message.params);
-        if (message.method === "turn/completed" && message.params?.turn)
-          this.finishTurn(message.params.turn);
-      } catch {
-        /* non-protocol stdout cannot block a run */
-      }
+    for (const line of lines) this.readLine(line);
+  }
+
+  private readLine(line: string): void {
+    try {
+      const message = JSON.parse(line) as RpcMessage;
+      this.acceptResponse(message);
+      this.acceptNotification(message);
+    } catch {
+      /* non-protocol stdout cannot block a run */
     }
+  }
+
+  private acceptResponse(message: RpcMessage): void {
+    if (typeof message.id !== "number") return;
+    const pending = this.pending.get(message.id);
+    if (!pending) return;
+    this.pending.delete(message.id);
+    if (message.error) {
+      pending.reject(
+        new Error(message.error.message ?? "codex app-server JSON-RPC error"),
+      );
+    } else pending.resolve(message.result);
+  }
+
+  private acceptNotification(message: RpcMessage): void {
+    if (message.method === "thread/tokenUsage/updated")
+      this.usage = tokenUsageOf(message.params);
+    if (message.method === "item/completed") {
+      const item = message.params?.item;
+      if (isAgentMessage(item) && item.text) this.streamedText += item.text;
+    }
+    if (message.method === "turn/completed" && message.params?.turn) {
+      this.finishTurn(this.completedTurn(message.params.turn));
+    }
+  }
+
+  private completedTurn(turn: CodexTurn): CodexTurn {
+    if (messageOfTurn(turn) || !this.streamedText) return turn;
+    return {
+      ...turn,
+      items: [{ type: "agentMessage", text: this.streamedText }],
+    };
   }
 
   private fail(error: Error): void {
@@ -288,21 +328,30 @@ class RpcSession {
       this.child.signalCode !== null
     )
       return;
-    const closed = new Promise<void>((resolve) =>
-      this.child.once("close", () => resolve()),
-    );
-    if (this.child.exitCode === null && !this.child.killed) this.child.kill();
+    const closed = new Promise<void>((resolve) => {
+      const force = setTimeout(() => {
+        if (this.child.exitCode === null && this.child.signalCode === null) {
+          this.child.kill("SIGKILL");
+        }
+      }, this.shutdownGraceMs);
+      this.child.once("close", () => {
+        clearTimeout(force);
+        resolve();
+      });
+    });
+    if (this.child.exitCode === null && this.child.signalCode === null)
+      this.child.kill("SIGTERM");
     await closed;
   }
 }
 
-/** The app-server streams the per-turn increment separately from Turn. */
+/** The app-server streams the authoritative thread total separately from Turn. */
 function tokenUsageOf(params: unknown): CodexUsage | undefined {
   if (!params || typeof params !== "object") return undefined;
   const tokenUsage = (params as { tokenUsage?: unknown }).tokenUsage;
   if (!tokenUsage || typeof tokenUsage !== "object") return undefined;
-  const last = (tokenUsage as { last?: unknown }).last;
-  return last && typeof last === "object" ? (last as CodexUsage) : undefined;
+  const total = (tokenUsage as { total?: unknown }).total;
+  return total && typeof total === "object" ? (total as CodexUsage) : undefined;
 }
 
 function failedTurn(error: unknown, stderr = ""): CodexTurn {
@@ -321,7 +370,9 @@ export class CodexHarness implements Harness {
     private readonly config: CodexHarnessConfig = {},
     app?: CodexAppServer,
   ) {
-    this.app = app ?? new StdioCodexAppServer(config.timeoutMs);
+    this.app =
+      app ??
+      new StdioCodexAppServer({ timeoutMs: config.timeoutMs, runner: _runner });
   }
   async ask(
     prompt: string,
@@ -383,6 +434,14 @@ export function messageOfTurn(turn: CodexTurn): string {
       )
       .map((item) => item.text ?? "")
       .at(-1) ?? ""
+  );
+}
+
+function isAgentMessage(
+  item: { type?: string; text?: string } | undefined,
+): item is { type: string; text?: string } {
+  return Boolean(
+    item && (item.type === "agentMessage" || item.type === "agent_message"),
   );
 }
 export function isLimited(error: unknown): boolean {

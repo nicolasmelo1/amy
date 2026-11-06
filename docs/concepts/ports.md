@@ -153,6 +153,7 @@ Declared in `packages/core/src/ports/CommandRunner.ts`.
 | Method | What it does |
 | :-- | :-- |
 | `run(command: string, args: readonly string[], options?: RunOptions): Promise<CommandResult>` |  |
+| `spawn(command: string, args: readonly string[], options?: Pick<RunOptions, "cwd" \| "env">): ChildProcessWithoutNullStreams` | So protocol children stop through the same handbrake as ordinary commands. |
 
 ### `Commands`
 

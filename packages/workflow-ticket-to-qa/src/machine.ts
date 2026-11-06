@@ -240,6 +240,9 @@ function planImplementing(record: TicketRecord, policy: Policy): Plan {
   return act(`implementation attempt ${attempts + 1}`, {
     type: "implement",
     retryContext: retryContextFor(record),
+    ...(record.continuationContext
+      ? { continuationContext: record.continuationContext }
+      : {}),
     ...(record.clarification?.length ? { conversation: record.clarification } : {}),
     ...settledDiscussion(record),
   });

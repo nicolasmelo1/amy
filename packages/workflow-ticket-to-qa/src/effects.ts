@@ -13,7 +13,7 @@ export type Effect =
   /** Read the ticket and decide whether it can be implemented as written. */
   | { type: "triage"; conversation?: string[] }
   | { type: "ask-question"; questions: string[] }
-  | { type: "implement"; retryContext?: string; conversation?: string[]; discussion?: string[] }
+  | { type: "implement"; retryContext?: string; continuationContext?: string; conversation?: string[]; discussion?: string[] }
   | { type: "open-pull-request" }
   | { type: "resolve-review-thread"; threadId: string }
   | { type: "address-threads"; threadIds: string[]; from: "automated" | "human"; discussion?: string[] }

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { NodeCommandRunner } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 import {
   CodexAppServer,
@@ -38,6 +39,7 @@ function harnessFor(result: Awaited<ReturnType<CodexAppServer["run"]>>) {
 function fakeServer(
   mode: string,
   env: NodeJS.ProcessEnv = {},
+  runner = new NodeCommandRunner(),
 ): StdioCodexAppServer {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-codex-server-"));
   const script = path.join(root, "server.cjs");
@@ -47,15 +49,20 @@ function fakeServer(
 const fs = require("node:fs");
 let requests = [];
 const reply = (id, result) => process.stdout.write(JSON.stringify({jsonrpc:"2.0",id,result})+"\\n");
-const complete = (limited = false) => { process.stdout.write(JSON.stringify({jsonrpc:"2.0",method:"thread/tokenUsage/updated",params:{threadId:"thread-1",turnId:"turn-1",tokenUsage:{total:{input_tokens:17571,cached_input_tokens:11008,output_tokens:5},last:{input_tokens:17571,cached_input_tokens:11008,output_tokens:5}}}})+"\\n"); process.stdout.write(JSON.stringify({jsonrpc:"2.0",method:"turn/completed",params:{turn:{status:limited?"failed":"completed",items:[{type:"agentMessage",text: fs.existsSync(process.env.CODEX_HOME + "/config.toml") ? "contaminated" : (fs.existsSync(process.env.CODEX_HOME + "/auth.json") ? "authenticated" : "unauthenticated")}],error: limited ? {message:"limited",codexErrorInfo:"usageLimitExceeded"} : null}}})+"\\n"); };
-process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (!line) continue; const r=JSON.parse(line); requests.push(r); if (${JSON.stringify(mode)} === "initialize-timeout") continue; if (${JSON.stringify(mode)} === "premature-exit") process.exit(9); if (r.method === "initialize") reply(r.id, {}); else if (r.method === "thread/start") reply(r.id, {thread:{id:"thread-1"}}); else if (r.method === "turn/start") { reply(r.id, {}); complete(${JSON.stringify(mode)} === "rate-exit"); } else if (r.method === "account/rateLimits/read") { if (${JSON.stringify(mode)} === "rate-exit") process.exit(8); else reply(r.id, {rateLimits:{primary:{resetsAt:1800000000}}}); } } });
+const send = value => { const line = Buffer.from(JSON.stringify(value)+"\\n"); const marker = Buffer.from("é"); const at = line.indexOf(marker); if (${JSON.stringify(mode)} === "split-utf8" && at >= 0) { process.stdout.write(line.subarray(0, at + 1)); setTimeout(() => process.stdout.write(line.subarray(at + 1)), 2); } else process.stdout.write(line); };
+const complete = (limited = false) => { send({jsonrpc:"2.0",method:"thread/tokenUsage/updated",params:{threadId:"thread-1",turnId:"turn-1",tokenUsage:{total:{input_tokens:17571,cached_input_tokens:11008,output_tokens:5},last:{input_tokens:2,cached_input_tokens:1,output_tokens:1}}}}); if (${JSON.stringify(mode)} === "streamed-limit") send({jsonrpc:"2.0",method:"item/completed",params:{item:{type:"agentMessage",text:"half-done é"}}}); send({jsonrpc:"2.0",method:"turn/completed",params:{turn:{status:limited?"failed":"completed",items:${JSON.stringify(mode)} === "streamed-limit"?[]:[{type:"agentMessage",text:${JSON.stringify(mode)} === "split-utf8"?"café":(fs.existsSync(process.env.CODEX_HOME + "/config.toml") ? "contaminated" : (fs.existsSync(process.env.CODEX_HOME + "/auth.json") ? "authenticated" : "unauthenticated"))}],error: limited ? {message:"limited",codexErrorInfo:"usageLimitExceeded"} : null}}}); };
+if (${JSON.stringify(mode)} === "ignore-term") process.on("SIGTERM", () => {});
+if (${JSON.stringify(mode)} === "split-stderr") { const bytes=Buffer.from("café"); process.stderr.write(bytes.subarray(0,4)); setTimeout(() => process.stderr.write(bytes.subarray(4)), 2); }
+process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (!line) continue; const r=JSON.parse(line); requests.push(r); if (["initialize-timeout","ignore-term","cancellable","split-stderr"].includes(${JSON.stringify(mode)})) continue; if (${JSON.stringify(mode)} === "premature-exit") process.exit(9); if (r.method === "initialize") reply(r.id, {}); else if (r.method === "thread/start") { const f=r.params.config?.features; if (${JSON.stringify(mode)} === "protocol-config" && !(r.params.approvalPolicy === "never" && f?.hooks === false && f?.plugins === false && f?.apps === false && f?.memories === false)) reply(r.id, {thread:{}}); else reply(r.id, {thread:{id:"thread-1"}}); } else if (r.method === "turn/start") { reply(r.id, {}); complete(${JSON.stringify(mode)} === "rate-exit" || ${JSON.stringify(mode)} === "streamed-limit"); } else if (r.method === "account/rateLimits/read") { if (${JSON.stringify(mode)} === "rate-exit") process.exit(8); else reply(r.id, {rateLimits:{primary:{resetsAt:1800000000}}}); } } });
 `,
   );
   return new StdioCodexAppServer({
-    timeoutMs: mode === "normal" ? 500 : 40,
+    timeoutMs: ["normal", "split-utf8", "split-stderr", "streamed-limit", "protocol-config"].includes(mode) ? 500 : (mode === "cancellable" ? 5_000 : 40),
     command: process.execPath,
     args: [script],
     env,
+    runner,
+    shutdownGraceMs: 30,
   });
 }
 
@@ -130,14 +137,80 @@ describe("the app-server harness", () => {
       "[hooks]\nenabled=true\n",
     );
     fs.writeFileSync(path.join(userHome, "auth.json"), "credential");
-    const result = await fakeServer("normal", { CODEX_HOME: userHome }).run({
+    const reply = await new CodexHarness(
+      new ScriptedRunner(),
+      { model: "gpt-5" },
+      fakeServer("normal", { CODEX_HOME: userHome }),
+    ).ask("read it", process.cwd(), { readOnly: true });
+    expect(reply.text).toBe("authenticated");
+    expect(reply.run.tokens).toEqual({
+      input: 6563,
+      output: 5,
+      cacheRead: 11008,
+      cacheWrite: 0,
+    });
+    expect(reply.run.costUsd).toBeCloseTo(0.00962975, 10);
+  });
+
+  it("sends the 0.166 feature map with approvals disabled", async () => {
+    const result = await fakeServer("protocol-config").run({
       prompt: "read it",
       cwd: process.cwd(),
-      model: "gpt-5",
       readOnly: true,
     });
-    expect(result.turn.items[0]?.text).toBe("authenticated");
-    expect(result.turn.usage).toMatchObject({ input_tokens: 17_571 });
+    expect(result.turn.status).toBe("completed");
+  });
+
+  it("preserves split multibyte stdout and stderr", async () => {
+    const result = await fakeServer("split-utf8").run({
+      prompt: "read it",
+      cwd: process.cwd(),
+      readOnly: true,
+    });
+    expect(result.turn.items[0]?.text).toBe("café");
+
+    const stderr = await fakeServer("split-stderr").run({
+      prompt: "read it",
+      cwd: process.cwd(),
+      readOnly: true,
+    });
+    expect(stderr.turn.error?.message).toContain("café");
+  });
+
+  it("keeps a streamed partial reply when a limited turn has no items", async () => {
+    const reply = await new CodexHarness(
+      new ScriptedRunner(),
+      { model: "gpt-5" },
+      fakeServer("streamed-limit"),
+    ).ask("read it", process.cwd());
+    expect(reply).toMatchObject({
+      text: "half-done é",
+      run: {
+        outcome: "rate-limited",
+        tokens: { input: 6563, output: 5, cacheRead: 11008 },
+      },
+    });
+  });
+
+  it("settles when a child ignores SIGTERM", async () => {
+    const result = await fakeServer("ignore-term").run({
+      prompt: "read it",
+      cwd: process.cwd(),
+      readOnly: true,
+    });
+    expect(result.turn.status).toBe("failed");
+  });
+
+  it("keeps the app-server child on the runner cancellation lifecycle", async () => {
+    const runner = new NodeCommandRunner();
+    const running = fakeServer("cancellable", {}, runner).run({
+      prompt: "read it",
+      cwd: process.cwd(),
+      readOnly: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(runner.killAll()).toBe(1);
+    await expect(running).resolves.toMatchObject({ turn: { status: "failed" } });
   });
 
   it.each([
@@ -184,6 +257,7 @@ describe("the captured protocol schema", () => {
       cwd: expect.anything(),
       model: expect.anything(),
       config: expect.anything(),
+      approvalPolicy: expect.anything(),
     });
     expect(schema.definitions.Turn!.properties).not.toHaveProperty("usage");
     expect(schema.definitions.TurnStartParams!.required).toEqual(

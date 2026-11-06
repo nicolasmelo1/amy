@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "plugin-github",
-  "implementation_sha256": "1d8e2fdab732c86456b3c37645c2ba71a55d6d07b6810ae7600d10ed8f7c4be3",
+  "implementation_sha256": "9cc189de4c719fe5690fd77beba1908673dbecfad4efff43d7a89215d8fc0007",
   "runs": [
     {
       "scenario": "plugin-github",
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/plugin-github-scenario.sh against built dist on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-github-run.json",
-      "report_sha256": "f70f434bd616ee76f0a1b964e516142a160e7760f051bdcecc23dc7e163c9675",
+      "report_sha256": "c84ee64c4058fb6a1b5d3ab2f78aa68184c990f6cde2085aa4882e1bf603dc9d",
       "required_assertions": []
     }
   ]

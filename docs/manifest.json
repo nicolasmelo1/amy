@@ -2394,13 +2394,7 @@
       "group": "",
       "order": 999,
       "generated": false,
-      "headings": [
-        {
-          "depth": 2,
-          "title": "Delivered criteria",
-          "slug": "delivered-criteria"
-        }
-      ]
+      "headings": []
     },
     {
       "path": "/design/a-view-is-data",
@@ -5733,6 +5727,11 @@
             "name": "run",
             "signature": "run(command: string, args: readonly string[], options?: RunOptions): Promise<CommandResult>",
             "doc": ""
+          },
+          {
+            "name": "spawn",
+            "signature": "spawn(command: string, args: readonly string[], options?: Pick<RunOptions, \"cwd\" | \"env\">): ChildProcessWithoutNullStreams",
+            "doc": "So protocol children stop through the same handbrake as ordinary commands."
           }
         ]
       },

@@ -6,7 +6,14 @@ import { configSchema } from "./config.js";
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-codex",
   configSchema,
-  register(registry, ctx) {
+  async register(registry, ctx) {
+    const version = await ctx.runner.run("codex", ["--version"]);
+    const reported = version.stdout.trim() || version.stderr.trim() || "unknown";
+    if (!version.ok || !isCompatibleVersion(reported)) {
+      throw new Error(
+        `codex app-server protocol ${reported} is incompatible; expected codex-cli 0.166.x`,
+      );
+    }
     const tiers = ctx.config.models;
 
     contributeTiers(registry, {
@@ -25,3 +32,7 @@ export const plugin = definePlugin<typeof configSchema>({
     });
   },
 });
+
+function isCompatibleVersion(reported: string): boolean {
+  return /^codex-cli 0\.166\.\d+(?:\s|$)/.test(reported);
+}

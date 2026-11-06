@@ -53,7 +53,12 @@ interface NoteRegistry {
 
 interface StandInContext {
   config: Record<string, unknown>;
-  runner: { run(): Promise<{ ok: boolean; exitCode: number; stdout: string; stderr: string }> };
+  runner: {
+    run(
+      command: string,
+      args: readonly string[],
+    ): Promise<{ ok: boolean; exitCode: number; stdout: string; stderr: string }>;
+  };
   now(): Date;
   log: { append(): void; read(): never[] };
   paths: { workspace: string; state: string };
@@ -426,7 +431,17 @@ function contextFor(plugin: IntrospectedPlugin): StandInContext {
 
   return {
     config,
-    runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+    runner: {
+      run: async (command, args) => ({
+        ok: true,
+        exitCode: 0,
+        stdout:
+          command === "codex" && args.join(" ") === "--version"
+            ? "codex-cli 0.166.0"
+            : "",
+        stderr: "",
+      }),
+    },
     now: () => new Date(0),
     log: { append() {}, read: () => [] },
     paths: { workspace: SCRATCH, state: SCRATCH },
