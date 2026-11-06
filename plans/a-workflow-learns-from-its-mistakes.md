@@ -16,6 +16,10 @@ sources:
   - { id: S13, kind: decision, said: "a lesson counts its signature over the next M runs of its step and agent, ten by default; if it recurred as often as before, removal is proposed the same way" }
   - { id: S14, kind: decision, said: "a signature whose fix is code, not a prompt, is proposed as an amy note instead, which becomes a plan in the repository it is about" }
   - { id: S15, kind: decision, said: "a distilling run is asked only after the budget check the worker applies passes; refused, both the automatic and the manual trigger defer and call no agent. Decided 2026-11-05" }
+  - { id: S16, kind: friction, said: "one install's 715 agent.run events: SELF_REVIEW on Opus was 73% of the spend, 0.71 US$ a run against 0.21 for IMPLEMENTING on Sonnet, and 524 triage runs were abandoned in about 2 ms; nothing showed either" }
+  - { id: S17, kind: decision, said: "amy records spend per step and per model and shows it: runs, cost, duration, output tokens and runs not completed, read from the agent.run events it already writes. Decided 2026-11-06" }
+  - { id: S18, kind: reference, ref: "plans/an-escalation-brings-its-evidence.md", said: "each agent run keeps its trace beside the record: turns, messages, and every tool call with its arguments, result and timing" }
+  - { id: S19, kind: reference, ref: "https://www.deepseek.com/en/harness/", said: "a run's trajectory shows its duration, turn and tool-call counts, its input, model and tools, each turn's messages, and each tool call's payload, result, schema and timing" }
 touches:
   - packages/core/src/ports/Lessons.ts
   - packages/core/src/index.ts
@@ -31,6 +35,8 @@ touches:
   - packages/cli/src/index.ts
   - packages/cli/tests/lessons.test.ts
   - docs/concepts/harnesses.md
+  - packages/cli/src/budget.ts
+  - packages/cli/tests/budget.test.ts
 criteria:
   - { id: A1, statement: "the same gate finding at implement on hermes:glm in three of ten settled records yields one signature with count three; two different steps never share one", proof: "deferred:property:packages/agent-kit/tests/lessons.property.test.ts#signatures_merge_across_steps", sources: [S4, S5, S8] }
   - { id: A2, statement: "after the tenth settled record, or on amy lessons distil, a signature seen three times gets one lesson written by a read-only run, and none below three", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S1, S2, S3, S9] }
@@ -40,6 +46,9 @@ criteria:
   - { id: A6, statement: "a lesson whose signature recurred as often in the next ten runs as before it is proposed for removal; one that dropped is kept", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S13] }
   - { id: A7, statement: "a signature the distilling run marks as a code fix becomes a proposed amy note, never a lesson", proof: "deferred:test:packages/cli/tests/lessons.test.ts", sources: [S14] }
   - { id: A8, statement: "with the budget refusing, the tenth settled record and amy lessons distil both defer the distilling run and no agent is called", proof: "deferred:test:packages/cli/tests/lessons.test.ts", sources: [S15] }
+  - { id: A9, statement: "amy budget breaks spend down by step and model, with runs, cost, duration, output tokens and runs not completed, from the agent.run events alone", proof: "deferred:test:packages/cli/tests/budget.test.ts", sources: [S16, S17] }
+  - { id: A10, statement: "runs of one step and agent that end not completed are a signature, so a step abandoned in hundreds of runs is one proposal, not none", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S8, S16] }
+  - { id: A11, statement: "the same tool call failing in the same step across the window's settled records is a signature, read from the runs' traces", proof: "deferred:property:packages/agent-kit/tests/lessons.property.test.ts#tool_failures_merge_across_steps", sources: [S18, S19] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A2; an empty or malformed distilling reply writes no lesson" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "distilling is a read-only run outside any record; it charges no attempt and gives none back" }

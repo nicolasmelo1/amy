@@ -11,7 +11,7 @@ sources:
   - { id: S9, kind: decision, ref: "packages/core/src/work.ts", said: "the core keeps evidence on the history entry the move appends, beside ids of runs made since the record last entered the state it leaves; it stores evidence and words none of it" }
   - { id: S10, kind: decision, ref: "packages/workflow-ticket-to-qa/src/machine.ts", said: "ticket-to-qa ceilings attach what tripped them: gate's last output for a red gate, reviewer's last findings for an unconverged self-review, the threads for an unsettled review" }
   - { id: S11, kind: decision, said: "announcements quote the first lines of the evidence and name the command that shows the rest" }
-  - { id: S12, kind: decision, ref: "packages/workflow-ticket-to-qa/src/runtime.ts", said: "one file per agent run next to the record: step, harness, model, directory, outcome, cost, verbatim output, harness session id when reported; the agent.run event carries the run's id" }
+  - { id: S12, kind: decision, ref: "packages/core/src/action-ports.ts", said: "one file per agent run next to the record: step, harness, model, directory, outcome, cost, verbatim output, harness session id when reported; the agent.run event carries the run's id" }
   - { id: S13, kind: code, ref: "plugins/claude/src/ClaudeHarness.ts", said: "Claude reports session_id under --output-format json" }
   - { id: S14, kind: decision, ref: "plugins/codex/src/CodexHarness.ts", said: "Codex resumes with codex exec resume <id>; the --json field carrying the id is captured from a real run and recorded as a fixture before anything relies on it" }
   - { id: S15, kind: decision, ref: "packages/cli/src/index.ts", said: "amy show <workId> finds the record in any profile and project; prints state and history with each move's why and evidence, attempts and looks per state, each run's outcome, cost, session, and every file's location" }
@@ -23,6 +23,11 @@ sources:
   - { id: S21, kind: reference, ref: "docs/design/waiting-is-not-trying.md", said: "amy show prints attempts and looks per state as separate counts" }
   - { id: S22, kind: reference, ref: "plans/an-escalation-can-be-withdrawn.md", said: "amy withdraw is one of the ways the person acts after asking" }
   - { id: S23, kind: reference, ref: "plans/amy-has-a-window.md", said: "the window draws this once amy has a window lands; this row only gives it something to draw" }
+  - { id: S24, kind: friction, said: "one install's 715 agent.run events: SELF_REVIEW on Opus was 73% of the spend, 0.71 US$ a run against 0.21 for IMPLEMENTING on Sonnet, and 524 triage runs were abandoned in about 2 ms; nothing showed either" }
+  - { id: S25, kind: reference, ref: "https://www.deepseek.com/en/harness/", said: "a run's trajectory shows its duration, turn and tool-call counts, its input, model and tools, each turn's messages, and each tool call's payload, result, schema and timing" }
+  - { id: S26, kind: reference, ref: "https://code.claude.com/docs/en/headless", said: "--output-format json returns the result, cost and usage; stream-json with --verbose emits every message with its tool_use and tool_result, api_retry and permission_denied events, and a system/init naming the model and tools" }
+  - { id: S27, kind: code, ref: "packages/core/src/agent-run.ts", symbol: "AgentRun", said: "a run keeps its outcome, harness, model, tokens, cost, duration and final output; nothing about the turns, tool calls or timing inside it" }
+  - { id: S28, kind: decision, said: "each run keeps its trace: its turns, the assistant's messages, and every tool call with its arguments, result and timing, read from what the harness streams. Decided 2026-11-06" }
 touches:
   - packages/core/src/define-workflow.ts
   - packages/core/src/work.ts
@@ -34,33 +39,39 @@ touches:
   - packages/core/tests/history.property.test.ts
   - packages/workflow-ticket-to-qa/src/machine.ts
   - packages/workflow-ticket-to-qa/src/record.ts
-  - packages/workflow-ticket-to-qa/src/runtime.ts
+  - packages/core/src/action-ports.ts
   - packages/workflow-ticket-to-qa/src/discussion.ts
   - packages/workflow-ticket-to-qa/tests/machine.test.ts
-  - packages/workflow-ticket-to-qa/tests/runtime.test.ts
+  - packages/core/tests/action-ports.test.ts
   - plugins/claude/src/ClaudeHarness.ts
   - plugins/codex/src/CodexHarness.ts
   - plugins/codex/tests/CodexHarness.test.ts
   - packages/cli/src/index.ts
   - packages/cli/tests/show.test.ts
+  - plugins/claude/tests/ClaudeHarness.test.ts
 criteria:
   - { id: A1, statement: "an advance that carries evidence stores it on the history entry it appends, and a second escalation of the same work shows only its own", proof: "deferred:property:packages/core/tests/history.property.test.ts#first_evidence_never_overwritten", sources: [S4, S8, S9] }
   - { id: A2, statement: "ticket-to-qa's red-gate, unconverged-review and unsettled-thread escalations carry the output that tripped them, and their announcement quotes it and names amy show", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S2, S3, S10, S11] }
-  - { id: A3, statement: "every agent run leaves a file with its output and, for Claude, its session id, and the agent.run event names that file", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/runtime.test.ts", sources: [S5, S12, S13] }
+  - { id: A3, statement: "every agent run leaves a file with its output and, for Claude, its session id, and the agent.run event names that file", proof: "deferred:test:packages/core/tests/action-ports.test.ts", sources: [S5, S12, S13] }
   - { id: A4, statement: "a recorded Codex run yields its session id from a structured field, or the plan records that Codex reports none", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S14] }
   - { id: A5, statement: "amy show <workId> finds a record in any profile and project without a path, and prints its history with each move's evidence and every run", proof: "deferred:test:packages/cli/tests/show.test.ts", sources: [S1, S6, S15, S16, S21, S23] }
   - { id: A6, statement: "amy ask <workId> answers from the record's evidence and runs, writes nothing outside its own file, and --run resumes the run's own session", proof: "deferred:assertion:mine.an_escalation_can_be_asked_about", sources: [S17, S18, S19, S22] }
   - { id: A7, statement: "a discussion turn in an escalated record's work thread is answered with the escalating move's evidence and the output of the runs that move names, which ran before it", proof: "deferred:assertion:plan.a_discussion_reads_the_evidence", sources: [S7, S20] }
+  - { id: A8, statement: "a Claude run's file holds its turns and every tool call with its arguments, result and duration, read from stream-json, and the run answers what the json format answered", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S25, S26, S27, S28] }
+  - { id: A9, statement: "a Codex run's file holds its turns and every tool call, read from the items its app-server emits", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S25, S27, S28] }
+  - { id: A10, statement: "amy show prints each run's turn and tool-call counts beside its model and cost, and amy show <id> --run <runId> prints that run's trace turn by turn", proof: "deferred:test:packages/cli/tests/show.test.ts", sources: [S24, S25, S28] }
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A1; evidence is optional on an advance, so an older history entry without it still reads" }
   - { mechanism: calls, answer: n/a, why: "advance only gains an optional evidence list; nothing about one workflow calling another changes" }
   - { mechanism: hooks, answer: n/a, why: "advance only gains an optional evidence list; before, after and interrupt are unchanged" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "a run gains an id, a file and a session id; when attempts are charged or given back is unchanged" }
-  - { mechanism: agent-replies, answer: works, proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts" }
+  - { mechanism: agent-replies, answer: works, proof: "deferred:A8, A9; the reply is read from the stream's result as it was from the json envelope" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A3; the port that logs agent.run gains the run's file and id, and what an action may reach is unchanged" }
   - { mechanism: tracker-and-host-writes, answer: refused, by: "amy ask is read-only: it never commits, pushes or reaches a mutating port (S18)" }
 guarantee:
   - { holds: "each escalation shows only its own evidence", not_against: "a second escalation of the same work" }
   - { holds: "amy ask writes nothing outside its own file", not_against: "--run resuming the failed run's session" }
+  - { holds: "keeping a run's trace never changes what the run answered", not_against: "a stream that ends before its result, recorded as the outcome it reached with the trace up to there" }
 cut:
   - "a viewer: not this row; the window draws this once amy has a window lands"
   - "changing when work escalates: refused; the ceilings stay where they are, only what an escalation says changes"

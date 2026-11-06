@@ -28,6 +28,11 @@ sources:
   - { id: S26, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers domains machine, workflows, settings (getHandbrake, setHandbrake, removeWorkflow, getConfig, saveConfig) and views workflows.list, workflows.handbrake, work.log, local-only settings.config, flipped to delivered in surface.yaml in the same PR" }
   - { id: S27, kind: decision, said: "the window is measured as a terminal is: launch to the first frame showing the work list, app CPU over a 30 s idle, resident memory, and a 60 Hz stream of patches all drawn. Decided 2026-11-03" }
   - { id: S28, kind: reference, ref: "plans/the-performance-guard-can-fail.md", said: "each measure is held to a threshold in the policy against a baseline naming its environment, over alternating trials, and the guard proves every run that it can go red" }
+  - { id: S29, kind: decision, said: "in a workflow's canvas each state is a card, not a box: the records in that state, its last log entries summarised, and its runs by model with their cost; the diagram's edges join the cards. Decided 2026-11-06" }
+  - { id: S30, kind: decision, said: "a plugin contributes the card for a state, choosing what it reads (the last entry, the last ten summarised, a record's ticket), so a person composes the view that makes sense to them. Decided 2026-11-06" }
+  - { id: S31, kind: reference, said: "a product page draws a process as cards joined by lines, each card showing that step's own live data: a booking, a message thread, a payout" }
+  - { id: S32, kind: reference, ref: "plans/a-workflow-learns-from-its-mistakes.md", said: "amy budget breaks spend down by step and model, from the agent.run events alone" }
+  - { id: S33, kind: friction, said: "one install's 715 agent.run events: SELF_REVIEW on Opus was 73% of the spend, 0.71 US$ a run against 0.21 for IMPLEMENTING on Sonnet, and 524 triage runs were abandoned in about 2 ms; nothing showed either" }
 touches:
   - plugins/ui-desktop/**
   - packages/server/surface.yaml
@@ -40,6 +45,7 @@ touches:
   - packages/ui/**
   - packages/ui-conformance/src/**
   - .software-factory/policy.yaml
+
 criteria:
   - { id: A1, statement: "what this row delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S26] }
   - { id: A2, statement: "the desktop renderer holds the frame on every step of the script", proof: "deferred:assertion:frame.every_region_sits_where_declared", sources: [S2, S11, S14, S23] }
@@ -59,9 +65,12 @@ criteria:
   - { id: A16, statement: "no row's ⋯ offers an action wider than its row: no record row pauses the machine or removes a plugin", proof: "deferred:test:packages/cli/tests/ui-actions.test.ts", sources: [S5, S6, S7] }
   - { id: A17, statement: "the fake tracker's and forge's call logs hold no write the window made", proof: "deferred:assertion:window.the_window_writes_nothing_the_cli_cannot", sources: [S22] }
   - { id: A18, statement: "the ui-window scenario records launch to first matching frame, idle CPU, resident memory and patches drawn at 60 Hz, and one past its threshold turns the gate red naming it", proof: "deferred:assertion:window.the_window_is_within_its_budget", sources: [S27, S28] }
+  - { id: A19, statement: "a workflow's canvas draws one card per state its diagram declares, placed by the diagram's layout and joined by its edges, each showing the records in that state and its last log entry", proof: "deferred:assertion:window.every_state_is_a_card", sources: [S8, S29, S31] }
+  - { id: A20, statement: "a state's card counts runs and cost by model exactly as amy budget does for that step", proof: "deferred:assertion:window.a_card_counts_what_budget_counts", sources: [S29, S32, S33] }
+  - { id: A21, statement: "a plugin written outside this repository draws the card of one state, only that card changes, and removing the plugin brings the default card back", proof: "deferred:assertion:window.a_plugin_draws_a_state", sources: [S30] }
 crosses:
   - { mechanism: config, answer: works, proof: "deferred:A6, A7, A13" }
-  - { mechanism: rendering, answer: works, proof: "deferred:A2, A3, A9" }
+  - { mechanism: rendering, answer: works, proof: "deferred:A2, A3, A9, A19, A21" }
   - { mechanism: diagram, answer: works, proof: "deferred:A8" }
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:A8" }
   - { mechanism: queue-and-store, answer: works, proof: "deferred:A15" }
