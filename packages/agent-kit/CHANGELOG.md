@@ -1,5 +1,44 @@
 # @amykit/agent-kit
 
+## 0.7.0
+
+### Minor Changes
+
+- 2b4deec: **A run carries only what amy hands it.** The three agent CLIs amy drives used to carry the operator's own setup into a ticket run and write back into it. Now each run is kept apart:
+  
+  - **Claude** runs with `--setting-sources project,local --strict-mcp-config --no-session-persistence`. The operator's `CLAUDE.md`, hooks, plugins, MCP servers and skills stay out, and no session or auto-memory is written under `~/.claude/projects`. The repository's own settings still load. A step whose skill ladder names a skill is lent that one skill through `--add-dir`, and nothing else of the operator's.
+  - **Codex** runs with `--ignore-user-config --ephemeral --disable hooks --disable plugins --disable apps --disable memories`. The login still comes from `CODEX_HOME`, and `~/.codex/AGENTS.md` and user skills still load, since Codex has no switch for them.
+  - **Hermes** runs in its own profile, `hermes -p amy`, set by the new `profile` setting. `amy init` and `amy add` create that profile from the active one when it is missing, with memory, unasked skill writes and the curator turned off. `amy doctor` goes red, naming the fix, when the profile is missing or has any of those turned back on.
+  
+  **A plugin can prepare something outside amy's state.** `Plugin.setup` is run by `amy init` and `amy add` after a plugin's files. A setup gets the plugin's settings and a command runner, answers the way a check does, and one that throws is reported without stopping the next. `AskContext.skill` carries the skill a relay addressed the prompt to, with the directory it is installed in.
+
+### Patch Changes
+
+- Updated dependencies [b761f29]
+- Updated dependencies [3b540fa]
+- Updated dependencies [2c7324c]
+- Updated dependencies [1ad01d3]
+- Updated dependencies [91f6caf]
+- Updated dependencies [ac4faca]
+- Updated dependencies [ebae48c]
+- Updated dependencies [2b4deec]
+- Updated dependencies [989f399]
+- Updated dependencies [7d2dd00]
+- Updated dependencies [da95fc7]
+- Updated dependencies [b83a214]
+- Updated dependencies [65ebf9f]
+- Updated dependencies [8b21570]
+- Updated dependencies [d85dacd]
+- Updated dependencies [ec32d67]
+- Updated dependencies [3649573]
+- Updated dependencies [f4069bb]
+- Updated dependencies [f9b65f6]
+- Updated dependencies [37504c1]
+- Updated dependencies [2363da5]
+- Updated dependencies [0ef3ae3]
+- Updated dependencies [0815efb]
+  - @amykit/core@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

@@ -1,5 +1,41 @@
 # @amykit/plugin-command-gate
 
+## 0.7.0
+
+### Minor Changes
+
+- b761f29: **A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.
+- d85dacd: **A workspace is a capability.** Nothing is handed a workspace without asking: plugins borrow their checkouts through a `workspace` port the file-worktree plugin mounts, and workflows inherit them from their support, so a machine that works nowhere in particular needs none. The seven machine keys — `repos`, `workspaceRoot`, `checkouts`, `defaultBranch`, `baseBranch`, `gate` and `worktrees` — are read from the plugins whose slices carry them (`plugins: "@amykit/plugin-file-worktree"` for the six workspace keys, `plugins: "@amykit/plugin-command-gate"` for the gate). The doctor asks about checkouts, worktrees, `gh` and `git` only where a workspace was mounted, so a machine that drives no code — a support inbox, say — is told it is ready, and `amy update` moves an old install's keys under those slices, saying each move, keeping the original beside the config, and refusing a key put back at the top level by name. The provenance of every derived slice, now a property with its own falsifier (`machine_key_leaks_into_a_slice`).
+- 3649573: Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.
+- 2363da5: **The host lends the checkout.** `PluginContext` gains `checkouts()`, which answers with the `Git` and the layout for the calling plugin — the host's paths, the plugin's own `defaultBranch` and `baseBranch`, and the `worktree` port read whenever a path is asked for, so a worktree plugin listed after the caller is still the one used. The core exports `BRANCH_SETTINGS`, the two branch settings with one description, and every shipped schema that declares them spreads it in place of its own wording. The command gate, the plan check and the three workflows that opened pull requests ask their context instead of building a `Git` and a second copy of its layout. The settings stay per plugin, so no `config.yaml` changes; the plan check's `baseBranch` now defaults to `{}` like every other's.
+
+### Patch Changes
+
+- Updated dependencies [b761f29]
+- Updated dependencies [3b540fa]
+- Updated dependencies [2c7324c]
+- Updated dependencies [1ad01d3]
+- Updated dependencies [91f6caf]
+- Updated dependencies [ac4faca]
+- Updated dependencies [ebae48c]
+- Updated dependencies [2b4deec]
+- Updated dependencies [989f399]
+- Updated dependencies [7d2dd00]
+- Updated dependencies [da95fc7]
+- Updated dependencies [b83a214]
+- Updated dependencies [65ebf9f]
+- Updated dependencies [8b21570]
+- Updated dependencies [d85dacd]
+- Updated dependencies [ec32d67]
+- Updated dependencies [3649573]
+- Updated dependencies [f4069bb]
+- Updated dependencies [f9b65f6]
+- Updated dependencies [37504c1]
+- Updated dependencies [2363da5]
+- Updated dependencies [0ef3ae3]
+- Updated dependencies [0815efb]
+  - @amykit/core@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

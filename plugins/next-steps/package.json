@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-next-steps",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
   "type": "module",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

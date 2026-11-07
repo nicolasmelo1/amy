@@ -5,23 +5,23 @@
   "title": "@amykit/cli",
   "description": "The amy command line: one install per machine, reached from any harness.",
   "dependencies": [
-    "@amykit/core@^0.6.0",
-    "@amykit/plugin-file-log@^0.6.0",
-    "@amykit/plugin-file-notes@^0.6.0",
-    "@amykit/plugin-file-queue@^0.6.0",
-    "@amykit/plugin-file-store@^0.6.0",
-    "@amykit/plugin-file-tasks@^0.6.0",
-    "@amykit/ui@^0.6.0",
+    "@amykit/core@^0.7.0",
+    "@amykit/plugin-file-log@^0.7.0",
+    "@amykit/plugin-file-notes@^0.7.0",
+    "@amykit/plugin-file-queue@^0.7.0",
+    "@amykit/plugin-file-store@^0.7.0",
+    "@amykit/plugin-file-tasks@^0.7.0",
+    "@amykit/ui@^0.7.0",
     "commander@^14.0.0",
     "yaml@^2.9.0"
   ],
   "devDependencies": [
-    "@amykit/plugin-agent-relay@^0.6.0",
-    "@amykit/plugin-command-gate@^0.6.0",
-    "@amykit/plugin-file-worktree@^0.6.0",
-    "@amykit/plugin-serial-engine@^0.6.0",
-    "@amykit/workflow-errand@^0.6.0",
-    "@amykit/workflow-note-to-plan@^0.6.0",
+    "@amykit/plugin-agent-relay@^0.7.0",
+    "@amykit/plugin-command-gate@^0.7.0",
+    "@amykit/plugin-file-worktree@^0.7.0",
+    "@amykit/plugin-serial-engine@^0.7.0",
+    "@amykit/workflow-errand@^0.7.0",
+    "@amykit/workflow-note-to-plan@^0.7.0",
     "pele@^1.12.0"
   ],
   "files": [
@@ -77,7 +77,7 @@
       "path": "packages/cli/package.json",
       "type": "registry:file",
       "target": "forks/cli/package.json",
-      "content": "{\n  \"name\": \"@amykit/cli\",\n  \"version\": \"0.6.0\",\n  \"description\": \"The amy command line: one install per machine, reached from any harness.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"engines\": {\n    \"node\": \">=22.18.0\"\n  },\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"packages/cli\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"scripts\": {\n    \"prepack\": \"tsx ../../scripts/write-stamp.ts\",\n    \"postpack\": \"node -e \\\"require('node:fs').rmSync('dist/stamp.json', {force: true})\\\"\"\n  },\n  \"bin\": {\n    \"amy\": \"./dist/index.js\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\",\n    \"skills\",\n    \"guardrails\"\n  ],\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.6.0\",\n    \"@amykit/plugin-file-log\": \"^0.6.0\",\n    \"@amykit/plugin-file-notes\": \"^0.6.0\",\n    \"@amykit/plugin-file-queue\": \"^0.6.0\",\n    \"@amykit/plugin-file-store\": \"^0.6.0\",\n    \"@amykit/plugin-file-tasks\": \"^0.6.0\",\n    \"@amykit/ui\": \"^0.6.0\",\n    \"commander\": \"^14.0.0\",\n    \"yaml\": \"^2.9.0\"\n  },\n  \"devDependencies\": {\n    \"@amykit/plugin-agent-relay\": \"^0.6.0\",\n    \"@amykit/plugin-command-gate\": \"^0.6.0\",\n    \"@amykit/plugin-file-worktree\": \"^0.6.0\",\n    \"@amykit/plugin-serial-engine\": \"^0.6.0\",\n    \"@amykit/test-fixtures\": \"^0.1.0\",\n    \"@amykit/workflow-errand\": \"^0.6.0\",\n    \"@amykit/workflow-note-to-plan\": \"^0.6.0\",\n    \"pele\": \"^1.12.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/cli\",\n  \"version\": \"0.7.0\",\n  \"description\": \"The amy command line: one install per machine, reached from any harness.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"engines\": {\n    \"node\": \">=22.18.0\"\n  },\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"packages/cli\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"scripts\": {\n    \"prepack\": \"tsx ../../scripts/write-stamp.ts\",\n    \"postpack\": \"node -e \\\"require('node:fs').rmSync('dist/stamp.json', {force: true})\\\"\"\n  },\n  \"bin\": {\n    \"amy\": \"./dist/index.js\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\",\n    \"skills\",\n    \"guardrails\"\n  ],\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.0\",\n    \"@amykit/plugin-file-log\": \"^0.7.0\",\n    \"@amykit/plugin-file-notes\": \"^0.7.0\",\n    \"@amykit/plugin-file-queue\": \"^0.7.0\",\n    \"@amykit/plugin-file-store\": \"^0.7.0\",\n    \"@amykit/plugin-file-tasks\": \"^0.7.0\",\n    \"@amykit/ui\": \"^0.7.0\",\n    \"commander\": \"^14.0.0\",\n    \"yaml\": \"^2.9.0\"\n  },\n  \"devDependencies\": {\n    \"@amykit/plugin-agent-relay\": \"^0.7.0\",\n    \"@amykit/plugin-command-gate\": \"^0.7.0\",\n    \"@amykit/plugin-file-worktree\": \"^0.7.0\",\n    \"@amykit/plugin-serial-engine\": \"^0.7.0\",\n    \"@amykit/test-fixtures\": \"^0.1.0\",\n    \"@amykit/workflow-errand\": \"^0.7.0\",\n    \"@amykit/workflow-note-to-plan\": \"^0.7.0\",\n    \"pele\": \"^1.12.0\"\n  }\n}\n"
     },
     {
       "path": "packages/cli/skills/amy-btw/SKILL.md",
@@ -358,9 +358,9 @@
   ],
   "meta": {
     "package": "@amykit/cli",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "packages/cli",
-    "tag": "@amykit/cli@0.6.0"
+    "tag": "@amykit/cli@0.7.0"
   }
 }

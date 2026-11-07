@@ -983,196 +983,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "**A brief is groomed from its sources.**",
-          "slug": "a-brief-is-groomed-from-its-sources"
-        },
-        {
-          "depth": 3,
-          "title": "**A brief is named the way its feature is.**",
-          "slug": "a-brief-is-named-the-way-its-feature-is"
-        },
-        {
-          "depth": 3,
-          "title": "**A config is typed by its schema.** definePlugin gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and string[] settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.",
-          "slug": "a-config-is-typed-by-its-schema-defineplugin-gives-a-plugins-register-and-ready-hooks-the-post-validation-type-derived-from-its-schema-rejects-mismatched-defaults-and-moves-every-shipped-schema-onto-that-declaration-scalar-and-string-settings-no-longer-cast-away-the-hosts-validation-record-settings-remain-explicitly-narrowed-where-a-plugin-needs-a-stronger-value-shape"
-        },
-        {
-          "depth": 3,
-          "title": "A frozen adapter, such as Object.freeze({ name, register }), mounts again through the host that only takes declarations. The proxy that keeps a plugin's own receiver stood on the plugin itself. Replacing register on a frozen object breaks a Proxy invariant, so it threw a TypeError before registration ran. It now stands on an empty object of its own and still reads and calls every member on the plugin.",
-          "slug": "a-frozen-adapter-such-as-objectfreeze-name-register-mounts-again-through-the-host-that-only-takes-declarations-the-proxy-that-keeps-a-plugins-own-receiver-stood-on-the-plugin-itself-replacing-register-on-a-frozen-object-breaks-a-proxy-invariant-so-it-threw-a-typeerror-before-registration-ran-it-now-stands-on-an-empty-object-of-its-own-and-still-reads-and-calls-every-member-on-the-plugin"
-        },
-        {
-          "depth": 3,
-          "title": "**A mount builds once.** port, engine and contribute accept deferred(() => impl): the host builds it once every plugin has registered, once per mount and before any ready, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own WeakMap<PluginContext, …>, getter proxies and build-early ready. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.",
-          "slug": "a-mount-builds-once-port-engine-and-contribute-accept-deferred-impl-the-host-builds-it-once-every-plugin-has-registered-once-per-mount-and-before-any-ready-building-on-demand-when-one-reads-another-so-the-order-plugins-are-listed-in-does-not-matter-a-build-that-throws-is-a-boot-refusal-naming-its-plugin-and-two-builds-that-read-each-other-are-refused-naming-both-the-agent-relay-the-serial-engine-and-the-three-shipped-workflows-use-it-in-place-of-their-own-weakmapplugincontext-getter-proxies-and-build-early-ready-one-behaviour-change-the-serial-engine-is-now-built-at-boot-so-an-engine-with-no-workflow-no-runtime-or-no-queue-store-or-notifier-is-refused-when-the-host-mounts-rather-than-on-its-first-tick"
-        },
-        {
-          "depth": 3,
-          "title": "A plan is a declaration. The plan a note becomes is asked for as a YAML declaration between --- fences, its title and a few lines of why, because every plan in the repository is one now and L4.PLAN_IS_A_LINKED_DECLARATION refuses prose. Before, the prompt only said to follow the plans already there, which taught the old shape to a draft written against the new rule.",
-          "slug": "a-plan-is-a-declaration-the-plan-a-note-becomes-is-asked-for-as-a-yaml-declaration-between-----fences-its-title-and-a-few-lines-of-why-because-every-plan-in-the-repository-is-one-now-and-l4planisalinkeddeclaration-refuses-prose-before-the-prompt-only-said-to-follow-the-plans-already-there-which-taught-the-old-shape-to-a-draft-written-against-the-new-rule"
-        },
-        {
-          "depth": 3,
-          "title": "**A command belongs to the package that means it.** A plugin declares commands, checks and files beside register, read after the module is imported and before anything mounts: amy --help lists amy roster beside the workflow that brought it, amy doctor runs the checks it brought, and amy init/amy add write the files it brought into the profile's state, once. A command that declares mount: true receives the mounted ports or a refusal naming why the machine did not come up; every other command answers on the machine that will not boot, which is when it matters.",
-          "slug": "a-command-belongs-to-the-package-that-means-it-a-plugin-declares-commands-checks-and-files-beside-register-read-after-the-module-is-imported-and-before-anything-mounts-amy---help-lists-amy-roster-beside-the-workflow-that-brought-it-amy-doctor-runs-the-checks-it-brought-and-amy-initamy-add-write-the-files-it-brought-into-the-profiles-state-once-a-command-that-declares-mount-true-receives-the-mounted-ports-or-a-refusal-naming-why-the-machine-did-not-come-up-every-other-command-answers-on-the-machine-that-will-not-boot-which-is-when-it-matters"
-        },
-        {
-          "depth": 3,
-          "title": "A plugin is installed into a workflow, as a package or as a fork of its source.",
-          "slug": "a-plugin-is-installed-into-a-workflow-as-a-package-or-as-a-fork-of-its-source"
-        },
-        {
-          "depth": 3,
-          "title": "declaredWorkflowsOnly keeps every member of the plugin and of the registry on its own object. It used to wrap both in a prototype copy, so a class plugin whose getter or method reads a #private field threw a TypeError on its own name, and boot stopped before mount could report it.",
-          "slug": "declaredworkflowsonly-keeps-every-member-of-the-plugin-and-of-the-registry-on-its-own-object-it-used-to-wrap-both-in-a-prototype-copy-so-a-class-plugin-whose-getter-or-method-reads-a-private-field-threw-a-typeerror-on-its-own-name-and-boot-stopped-before-mount-could-report-it"
-        },
-        {
-          "depth": 3,
-          "title": "**A project is brief, work and proof.** The brief/, workflow/ and prove/ folders of a project compose the one workflow its config entry drives: each phase a call() to the defineWorkflow declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named refused carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for amy status to show; a test/ folder is told the phase is named prove/.",
-          "slug": "a-project-is-brief-work-and-proof-the-brief-workflow-and-prove-folders-of-a-project-compose-the-one-workflow-its-config-entry-drives-each-phase-a-call-to-the-defineworkflow-declaration-its-folder-exports-walked-as-child-records-of-one-record-one-profile-and-one-daemon-for-the-whole-walk-the-briefs-own-declared-sections-give-the-walk-its-vocabulary-what-the-brief-workflow-returned-is-what-the-proving-workflow-is-handed-as-its-input-exactly-and-an-end-named-refused-carries-the-row-back-to-work-saying-what-did-not-hold-a-phase-neither-present-nor-declared-absent-is-refused-at-the-walks-mount-naming-it-a-phase-declared-absent-carries-its-reason-on-the-workflow-for-amy-status-to-show-a-test-folder-is-told-the-phase-is-named-prove"
-        },
-        {
-          "depth": 3,
-          "title": "**A reply in a work's thread can be a question, not only an answer.**",
-          "slug": "a-reply-in-a-works-thread-can-be-a-question-not-only-an-answer"
-        },
-        {
-          "depth": 3,
-          "title": "amy update, and the rollback it runs when a move fails, install into the plugins root with --install-links, the way amy add does. Before, they installed without it, so updating any other package could turn a workflow copied in from a path back into a link. A linked workflow's @amykit/core import resolves from outside the plugins root, and the workflow failed to load.",
-          "slug": "amy-update-and-the-rollback-it-runs-when-a-move-fails-install-into-the-plugins-root-with---install-links-the-way-amy-add-does-before-they-installed-without-it-so-updating-any-other-package-could-turn-a-workflow-copied-in-from-a-path-back-into-a-link-a-linked-workflows-amykitcore-import-resolves-from-outside-the-plugins-root-and-the-workflow-failed-to-load"
-        },
-        {
-          "depth": 3,
-          "title": "A row of next steps is a ticket. @amykit/plugin-next-steps mounts the tracker port over an execution-order table — plans/next-steps.md by default — read from the base branch, never from the standing checkout: a row is a work item, its linked plan the body, its place in the table the priority. A relative link is a plan in the table's repository, its id the slug; an owner/name:plans/<slug>.md link is one in another, its id owner+name+<slug>, so one table can order the work of several. Only the top rows (one by default) are work at once, a row gone from the table with its plan in docs/design/ reads as delivered, and the branch is branchPrefix (plan/ by default) and the plan's slug.",
-          "slug": "a-row-of-next-steps-is-a-ticket-amykitplugin-next-steps-mounts-the-tracker-port-over-an-execution-order-table-plansnext-stepsmd-by-default-read-from-the-base-branch-never-from-the-standing-checkout-a-row-is-a-work-item-its-linked-plan-the-body-its-place-in-the-table-the-priority-a-relative-link-is-a-plan-in-the-tables-repository-its-id-the-slug-an-ownernameplansslugmd-link-is-one-in-another-its-id-ownernameslug-so-one-table-can-order-the-work-of-several-only-the-top-rows-one-by-default-are-work-at-once-a-row-gone-from-the-table-with-its-plan-in-docsdesign-reads-as-delivered-and-the-branch-is-branchprefix-plan-by-default-and-the-plans-slug"
-        },
-        {
-          "depth": 3,
-          "title": "**A run carries only what amy hands it.** The three agent CLIs amy drives used to carry the operator's own setup into a ticket run and write back into it. Now each run is kept apart:",
-          "slug": "a-run-carries-only-what-amy-hands-it-the-three-agent-clis-amy-drives-used-to-carry-the-operators-own-setup-into-a-ticket-run-and-write-back-into-it-now-each-run-is-kept-apart"
-        },
-        {
-          "depth": 3,
-          "title": "**A view is data.**",
-          "slug": "a-view-is-data"
-        },
-        {
-          "depth": 3,
-          "title": "**A workflow can call another, the way code calls a function.** A diagram marks a state class X call, and calls binds it to the workflow it calls: call(review, { input, config, ports, output, effects }), every member optional. The callee runs as a child record kept inside its caller's (TBO-1/REVIEW#1), with its own history and attempts, and only the deepest record in a call is observed. When the child ends, the caller takes the edge named for that end, folding what it returned. Before this, composing workflows meant importing another's states and record fields in TypeScript, and nothing showed or checked where one ended and the other began.",
-          "slug": "a-workflow-can-call-another-the-way-code-calls-a-function-a-diagram-marks-a-state-class-x-call-and-calls-binds-it-to-the-workflow-it-calls-callreview-input-config-ports-output-effects-every-member-optional-the-callee-runs-as-a-child-record-kept-inside-its-callers-tbo-1review1-with-its-own-history-and-attempts-and-only-the-deepest-record-in-a-call-is-observed-when-the-child-ends-the-caller-takes-the-edge-named-for-that-end-folding-what-it-returned-before-this-composing-workflows-meant-importing-anothers-states-and-record-fields-in-typescript-and-nothing-showed-or-checked-where-one-ended-and-the-other-began"
-        },
-        {
-          "depth": 3,
-          "title": "**A workflow is a Mermaid diagram.** A workflow's shape is the workflow.mmd beside it — an ordinary stateDiagram-v2 that GitHub and Obsidian render — and the host reads its states, start, waits and ends from it when the workflow mounts; defineWorkflow's states, waiting and terminal are required only without one, and declaring both is refused at boot. readDiagram, connects, markState, withDiagramBeside and the notWritten() stub are in the core, Mermaid-checked against Pele in its tests. The engine logs a move the diagram does not draw as workflow.undrawn_transition and makes it anyway; the testkit fails one, and with everyEdge an arrow no world walks. amy workflow new --from <file.mmd> turns a diagram into a workflow that mounts with every decision a stub, amy workflow check lists the stubs and the arrows not walked, and amy workflow export [--work <id>] prints the diagram with a record's state marked. StateMachine takes an optional diagram. The three shipped workflows are each drawn as one and lose their state lists and their exported unmounted errand, noteToPlan, ticketToQa and newRecord; bind a plugin with withDiagramBeside(plugin, entry) instead. ticket-to-qa no longer asks a reviewer again on every look when nothing was pushed since they requested changes.",
-          "slug": "a-workflow-is-a-mermaid-diagram-a-workflows-shape-is-the-workflowmmd-beside-it-an-ordinary-statediagram-v2-that-github-and-obsidian-render-and-the-host-reads-its-states-start-waits-and-ends-from-it-when-the-workflow-mounts-defineworkflows-states-waiting-and-terminal-are-required-only-without-one-and-declaring-both-is-refused-at-boot-readdiagram-connects-markstate-withdiagrambeside-and-the-notwritten-stub-are-in-the-core-mermaid-checked-against-pele-in-its-tests-the-engine-logs-a-move-the-diagram-does-not-draw-as-workflowundrawntransition-and-makes-it-anyway-the-testkit-fails-one-and-with-everyedge-an-arrow-no-world-walks-amy-workflow-new---from-filemmd-turns-a-diagram-into-a-workflow-that-mounts-with-every-decision-a-stub-amy-workflow-check-lists-the-stubs-and-the-arrows-not-walked-and-amy-workflow-export---work-id-prints-the-diagram-with-a-records-state-marked-statemachine-takes-an-optional-diagram-the-three-shipped-workflows-are-each-drawn-as-one-and-lose-their-state-lists-and-their-exported-unmounted-errand-notetoplan-tickettoqa-and-newrecord-bind-a-plugin-with-withdiagrambesideplugin-entry-instead-ticket-to-qa-no-longer-asks-a-reviewer-again-on-every-look-when-nothing-was-pushed-since-they-requested-changes"
-        },
-        {
-          "depth": 3,
-          "title": "The amy-workflow skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a workflow.mmd, a decide map with one pure decision per drawn state, and actions written against the scope they are handed. Before, it taught a plan() with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.",
-          "slug": "the-amy-workflow-skill-teaches-the-three-pieces-a-workflow-is-mermaid-act-and-decide-a-workflowmmd-a-decide-map-with-one-pure-decision-per-drawn-state-and-actions-written-against-the-scope-they-are-handed-before-it-taught-a-plan-with-a-runtime-beside-it-and-a-raw-plugin-registering-states-by-hand-neither-of-those-mounts-any-more-so-a-person-following-the-skill-wrote-a-workflow-amy-refuses-the-two-opinions-amy-holds-every-workflow-to-mad-and-bep-brief-execute-prove-are-written-down-in-mad-and-bep-under-how-it-works"
-        },
-        {
-          "depth": 3,
-          "title": "**A workflow is one declaration.** defineWorkflow registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. planning supplies the four typed plan constructors, and amy workflow new writes the new declaration.",
-          "slug": "a-workflow-is-one-declaration-defineworkflow-registers-the-pure-machine-and-its-deferred-runtime-together-resolves-typed-required-and-optional-ports-validates-and-merges-policy-defaults-and-constructs-the-core-record-fields-planning-supplies-the-four-typed-plan-constructors-and-amy-workflow-new-writes-the-new-declaration"
-        },
-        {
-          "depth": 3,
-          "title": "Workflows can now declare one decision per diagram state, compose pure before and after filters around those decisions, and provide discover, observe, actions, and remember as individual runtime pieces. extend mounts supporting infrastructure from the same declaration. Legacy plan/runtime declarations and raw plugins remain supported, while mixing the legacy and new declaration members is refused at boot.",
-          "slug": "workflows-can-now-declare-one-decision-per-diagram-state-compose-pure-before-and-after-filters-around-those-decisions-and-provide-discover-observe-actions-and-remember-as-individual-runtime-pieces-extend-mounts-supporting-infrastructure-from-the-same-declaration-legacy-planruntime-declarations-and-raw-plugins-remain-supported-while-mixing-the-legacy-and-new-declaration-members-is-refused-at-boot"
-        },
-        {
-          "depth": 3,
-          "title": "**A workflow is its diagram, its decisions and its actions, and nothing else mounts.** defineWorkflow takes only the three pieces: decide, one pure decision per state the workflow.mmd beside it draws, with before, after, discover, observe, actions, remember and progress. A declaration that still passes a single plan() or a runtime() factory is refused at boot, naming each and where it moved, and states, waiting and terminal are gone: a declaration still passing them is refused by name, and one whose host found no workflow.mmd beside its entry or at its package root is refused at mount, naming the workflow and the file. Before, both forms and both sources of states mounted side by side, so the boot check of one decision per drawn state applied to some workflows and not others, and the same fact could live in a list in code that nothing held to the drawing. The CLI now mounts only declarations: a plugin it loads from an install or from ~/.amy/workflows that registers a workflow by hand with registry.workflow(...) is refused naming the plugin (declaredWorkflowsOnly in the core). Because every installed workflow now imports the core it is declared with, a package added by path is installed into amy's root as a copy with its dependencies (--install-links) and probed from there, rather than linked to a directory where its imports do not resolve. amy workflow new writes the three pieces each in its own file — workflow.mmd, decide.ts, actions.ts — joined by the one call in index.ts, with no runtime factory, and its suite mounts the workflow the way amy does. defineWorkflow also carries a plugin's setup and environment.",
-          "slug": "a-workflow-is-its-diagram-its-decisions-and-its-actions-and-nothing-else-mounts-defineworkflow-takes-only-the-three-pieces-decide-one-pure-decision-per-state-the-workflowmmd-beside-it-draws-with-before-after-discover-observe-actions-remember-and-progress-a-declaration-that-still-passes-a-single-plan-or-a-runtime-factory-is-refused-at-boot-naming-each-and-where-it-moved-and-states-waiting-and-terminal-are-gone-a-declaration-still-passing-them-is-refused-by-name-and-one-whose-host-found-no-workflowmmd-beside-its-entry-or-at-its-package-root-is-refused-at-mount-naming-the-workflow-and-the-file-before-both-forms-and-both-sources-of-states-mounted-side-by-side-so-the-boot-check-of-one-decision-per-drawn-state-applied-to-some-workflows-and-not-others-and-the-same-fact-could-live-in-a-list-in-code-that-nothing-held-to-the-drawing-the-cli-now-mounts-only-declarations-a-plugin-it-loads-from-an-install-or-from-amyworkflows-that-registers-a-workflow-by-hand-with-registryworkflow-is-refused-naming-the-plugin-declaredworkflowsonly-in-the-core-because-every-installed-workflow-now-imports-the-core-it-is-declared-with-a-package-added-by-path-is-installed-into-amys-root-as-a-copy-with-its-dependencies---install-links-and-probed-from-there-rather-than-linked-to-a-directory-where-its-imports-do-not-resolve-amy-workflow-new-writes-the-three-pieces-each-in-its-own-file-workflowmmd-decidets-actionsts-joined-by-the-one-call-in-indexts-with-no-runtime-factory-and-its-suite-mounts-the-workflow-the-way-amy-does-defineworkflow-also-carries-a-plugins-setup-and-environment"
-        },
-        {
-          "depth": 3,
-          "title": "**A workflow runs on lanes.** A diagram may draw state X <<fork>> and state Y <<join>>: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.",
-          "slug": "a-workflow-runs-on-lanes-a-diagram-may-draw-state-x-fork-and-state-y-join-every-line-out-of-the-fork-is-a-lane-every-lane-is-a-call-so-a-record-of-its-own-and-the-caller-moves-to-the-join-once-every-lane-has-ended-holding-where-each-ended-and-what-it-returned-keyed-by-lane-there-is-no-setting-for-how-many-the-number-of-lanes-is-the-number-of-lines-drawn-before-this-work-that-could-run-side-by-side-ran-one-piece-after-the-other-or-was-written-by-hand-in-a-runtime-the-diagram-never-showed"
-        },
-        {
-          "depth": 3,
-          "title": "**A workspace is a capability.** Nothing is handed a workspace without asking: plugins borrow their checkouts through a workspace port the file-worktree plugin mounts, and workflows inherit them from their support, so a machine that works nowhere in particular needs none. The seven machine keys — repos, workspaceRoot, checkouts, defaultBranch, baseBranch, gate and worktrees — are read from the plugins whose slices carry them (plugins: \"@amykit/plugin-file-worktree\" for the six workspace keys, plugins: \"@amykit/plugin-command-gate\" for the gate). The doctor asks about checkouts, worktrees, gh and git only where a workspace was mounted, so a machine that drives no code — a support inbox, say — is told it is ready, and amy update moves an old install's keys under those slices, saying each move, keeping the original beside the config, and refusing a key put back at the top level by name. The provenance of every derived slice, now a property with its own falsifier (machine_key_leaks_into_a_slice).",
-          "slug": "a-workspace-is-a-capability-nothing-is-handed-a-workspace-without-asking-plugins-borrow-their-checkouts-through-a-workspace-port-the-file-worktree-plugin-mounts-and-workflows-inherit-them-from-their-support-so-a-machine-that-works-nowhere-in-particular-needs-none-the-seven-machine-keys-repos-workspaceroot-checkouts-defaultbranch-basebranch-gate-and-worktrees-are-read-from-the-plugins-whose-slices-carry-them-plugins-amykitplugin-file-worktree-for-the-six-workspace-keys-plugins-amykitplugin-command-gate-for-the-gate-the-doctor-asks-about-checkouts-worktrees-gh-and-git-only-where-a-workspace-was-mounted-so-a-machine-that-drives-no-code-a-support-inbox-say-is-told-it-is-ready-and-amy-update-moves-an-old-installs-keys-under-those-slices-saying-each-move-keeping-the-original-beside-the-config-and-refusing-a-key-put-back-at-the-top-level-by-name-the-provenance-of-every-derived-slice-now-a-property-with-its-own-falsifier-machinekeyleaksintoaslice"
-        },
-        {
-          "depth": 3,
-          "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write discover, observe, remember and every action as a function of the scope defineWorkflow hands it: scope.ports, scope.config, scope.policy, scope.checkouts, scope.ctx and scope.announce. errandRuntime, planRuntime and ticketRuntime are gone, with their …RuntimeDeps and …RuntimeConfig types; a test that built one mounts the declaration instead.",
-          "slug": "the-actions-use-the-ports-the-errand-note-to-plan-and-ticket-to-qa-write-discover-observe-remember-and-every-action-as-a-function-of-the-scope-defineworkflow-hands-it-scopeports-scopeconfig-scopepolicy-scopecheckouts-scopectx-and-scopeannounce-errandruntime-planruntime-and-ticketruntime-are-gone-with-their-runtimedeps-and-runtimeconfig-types-a-test-that-built-one-mounts-the-declaration-instead"
-        },
-        {
-          "depth": 3,
-          "title": "amy update reaches the release. It said nothing to move with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):",
-          "slug": "amy-update-reaches-the-release-it-said-nothing-to-move-with-060-published-to-a-machine-on-050-for-two-reasons-110httpsgithubcomnicolasmelo1amyissues110"
-        },
-        {
-          "depth": 3,
-          "title": "Treat structured provider usage limits as waits rather than attempts.",
-          "slug": "treat-structured-provider-usage-limits-as-waits-rather-than-attempts"
-        },
-        {
-          "depth": 3,
-          "title": "The mutation fixtures amy workflow new writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still index.js, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so sf verify in an existing workflow is unaffected.",
-          "slug": "the-mutation-fixtures-amy-workflow-new-writes-beside-a-workflow-are-typescript-now-the-same-as-the-scaffold-they-guard-two-of-the-three-were-still-indexjs-so-a-workflow-written-in-typescript-proved-its-guardrails-against-a-file-in-a-language-it-does-not-use-the-rules-read-both-so-sf-verify-in-an-existing-workflow-is-unaffected"
-        },
-        {
-          "depth": 3,
-          "title": "Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.",
-          "slug": "plugin-versions-and-unused-workflow-observer-declarations-were-removed-package-manifests-supply-displayed-versions"
-        },
-        {
-          "depth": 3,
-          "title": "**A Telegram topic is a work item's thread.** @amykit/plugin-telegram is the conversation port over the Bot API: each piece of work gets its own topic in the operator's private chat with a bot (topics in private chats, Bot API 9.4), opened once and found again after a restart. Only the operator's replies in that topic are answers; anybody else's, and anything outside every topic, are ignored. Replies are filed on disk before Telegram's update offset moves, so no restart and no second process loses one. A file in a reply arrives as a local path, and one past the Bot API's 20 MB is named instead. The token is TELEGRAM_BOT_TOKEN in amy's environment and is written nowhere. amy doctor refuses, by name, a bot with topic mode off, an operator who never started a chat with it, and a token whose updates something else reads (409 Conflict).",
-          "slug": "a-telegram-topic-is-a-work-items-thread-amykitplugin-telegram-is-the-conversation-port-over-the-bot-api-each-piece-of-work-gets-its-own-topic-in-the-operators-private-chat-with-a-bot-topics-in-private-chats-bot-api-94-opened-once-and-found-again-after-a-restart-only-the-operators-replies-in-that-topic-are-answers-anybody-elses-and-anything-outside-every-topic-are-ignored-replies-are-filed-on-disk-before-telegrams-update-offset-moves-so-no-restart-and-no-second-process-loses-one-a-file-in-a-reply-arrives-as-a-local-path-and-one-past-the-bot-apis-20-mb-is-named-instead-the-token-is-telegrambottoken-in-amys-environment-and-is-written-nowhere-amy-doctor-refuses-by-name-a-bot-with-topic-mode-off-an-operator-who-never-started-a-chat-with-it-and-a-token-whose-updates-something-else-reads-409-conflict"
-        },
-        {
-          "depth": 3,
-          "title": "**The config is written by what is mounted.** Every workflow's own vocabulary — the attempt ceilings its decisions read, the status a ticket moves to, where plans go and what judges them — moved out of the config's top level and into the profile that drives the workflow, checked at mount against the workflow's own configSchema. amy init writes a config that carries only the machine, and a commented example that teaches the shape; amy add <workflow> writes the profile block from what the workflow's schema asks for, with the settings that need an answer written as placeholders and the rest taken from defaults. amy config explain lists every setting the machine and each mounted thing carries, with its type, its default and the reason it is there; amy config explain <plugin> narrows to one.",
-          "slug": "the-config-is-written-by-what-is-mounted-every-workflows-own-vocabulary-the-attempt-ceilings-its-decisions-read-the-status-a-ticket-moves-to-where-plans-go-and-what-judges-them-moved-out-of-the-configs-top-level-and-into-the-profile-that-drives-the-workflow-checked-at-mount-against-the-workflows-own-configschema-amy-init-writes-a-config-that-carries-only-the-machine-and-a-commented-example-that-teaches-the-shape-amy-add-workflow-writes-the-profile-block-from-what-the-workflows-schema-asks-for-with-the-settings-that-need-an-answer-written-as-placeholders-and-the-rest-taken-from-defaults-amy-config-explain-lists-every-setting-the-machine-and-each-mounted-thing-carries-with-its-type-its-default-and-the-reason-it-is-there-amy-config-explain-plugin-narrows-to-one"
-        },
-        {
-          "depth": 3,
-          "title": "**An errand that answered a question is not delivered as an empty pull request.**",
-          "slug": "an-errand-that-answered-a-question-is-not-delivered-as-an-empty-pull-request"
-        },
-        {
-          "depth": 3,
-          "title": "**The event log can be watched, from any process.**",
-          "slug": "the-event-log-can-be-watched-from-any-process"
-        },
-        {
-          "depth": 3,
-          "title": "**The frame is closed.**",
-          "slug": "the-frame-is-closed"
-        },
-        {
-          "depth": 3,
-          "title": "**The host lends the checkout.** PluginContext gains checkouts(), which answers with the Git and the layout for the calling plugin — the host's paths, the plugin's own defaultBranch and baseBranch, and the worktree port read whenever a path is asked for, so a worktree plugin listed after the caller is still the one used. The core exports BRANCH_SETTINGS, the two branch settings with one description, and every shipped schema that declares them spreads it in place of its own wording. The command gate, the plan check and the three workflows that opened pull requests ask their context instead of building a Git and a second copy of its layout. The settings stay per plugin, so no config.yaml changes; the plan check's baseBranch now defaults to {} like every other's.",
-          "slug": "the-host-lends-the-checkout-plugincontext-gains-checkouts-which-answers-with-the-git-and-the-layout-for-the-calling-plugin-the-hosts-paths-the-plugins-own-defaultbranch-and-basebranch-and-the-worktree-port-read-whenever-a-path-is-asked-for-so-a-worktree-plugin-listed-after-the-caller-is-still-the-one-used-the-core-exports-branchsettings-the-two-branch-settings-with-one-description-and-every-shipped-schema-that-declares-them-spreads-it-in-place-of-its-own-wording-the-command-gate-the-plan-check-and-the-three-workflows-that-opened-pull-requests-ask-their-context-instead-of-building-a-git-and-a-second-copy-of-its-layout-the-settings-stay-per-plugin-so-no-configyaml-changes-the-plan-checks-basebranch-now-defaults-to-like-every-others"
-        },
-        {
-          "depth": 3,
-          "title": "**The README now derives its mutable facts from the code and policy that own them.**",
-          "slug": "the-readme-now-derives-its-mutable-facts-from-the-code-and-policy-that-own-them"
-        },
-        {
-          "depth": 3,
-          "title": "**The roster belongs to its workflow.** The team list that names who reviews and who owns QA is one ticket-to-qa profile's file, written by init and add beside the profile's records and confirmed by amy roster confirm — the workflow brought its command and its check with it, and none of the host's source names the file any more. Where a profile has no roster of its own, the workflow's red check names the file the machine kept where the roster used to live, so the error is a way back and not a dead end.",
-          "slug": "the-roster-belongs-to-its-workflow-the-team-list-that-names-who-reviews-and-who-owns-qa-is-one-ticket-to-qa-profiles-file-written-by-init-and-add-beside-the-profiles-records-and-confirmed-by-amy-roster-confirm-the-workflow-brought-its-command-and-its-check-with-it-and-none-of-the-hosts-source-names-the-file-any-more-where-a-profile-has-no-roster-of-its-own-the-workflows-red-check-names-the-file-the-machine-kept-where-the-roster-used-to-live-so-the-error-is-a-way-back-and-not-a-dead-end"
-        },
-        {
-          "depth": 3,
-          "title": "The declaration the amy-workflow skill shows declares policy.maxAttempts in its configSchema, with the same default its policy reads. Before, it left the schema empty, and the mount refuses a policy key the schema does not declare, so a workflow copied from the skill did not boot.",
-          "slug": "the-declaration-the-amy-workflow-skill-shows-declares-policymaxattempts-in-its-configschema-with-the-same-default-its-policy-reads-before-it-left-the-schema-empty-and-the-mount-refuses-a-policy-key-the-schema-does-not-declare-so-a-workflow-copied-from-the-skill-did-not-boot"
-        },
-        {
-          "depth": 3,
-          "title": "**Waiting is not trying.**",
-          "slug": "waiting-is-not-trying"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -7427,7 +7237,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "library",
         "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
         "directory": "packages/agent-kit",
@@ -7441,7 +7251,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -7455,7 +7265,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -7469,7 +7279,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -7483,7 +7293,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -7535,7 +7345,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "The claude CLI as the agent, over its JSON envelope.",
         "directory": "plugins/claude",
@@ -7576,7 +7386,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -7619,7 +7429,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -7656,7 +7466,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -7701,7 +7511,7 @@
       },
       {
         "name": "@amykit/plugin-concurrent-engine",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Advances one work item per tick, moving every lane of a fork at once.",
         "directory": "plugins/concurrent-engine",
@@ -7744,7 +7554,7 @@
       },
       {
         "name": "@amykit/plugin-file-brief-store",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Briefs kept as one file per item.",
         "directory": "plugins/file-brief-store",
@@ -7768,7 +7578,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -7782,7 +7592,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -7820,7 +7630,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -7865,7 +7675,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -7895,7 +7705,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -7926,7 +7736,7 @@
       },
       {
         "name": "@amykit/plugin-file-worktree",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
         "directory": "plugins/file-worktree",
@@ -8007,7 +7817,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -8031,7 +7841,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -8079,7 +7889,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -8134,7 +7944,7 @@
       },
       {
         "name": "@amykit/plugin-next-steps",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
         "directory": "plugins/next-steps",
@@ -8192,7 +8002,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
         "directory": "plugins/notify-fanout",
@@ -8208,7 +8018,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -8236,7 +8046,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -8263,7 +8073,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -8312,7 +8122,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -8355,7 +8165,7 @@
       },
       {
         "name": "@amykit/plugin-slack",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "A Slack thread per piece of work, over the Web API, as the conversation port.",
         "directory": "plugins/slack",
@@ -8432,7 +8242,7 @@
       },
       {
         "name": "@amykit/plugin-telegram",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.",
         "directory": "plugins/telegram",
@@ -8471,7 +8281,7 @@
       },
       {
         "name": "@amykit/ui",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "library",
         "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.",
         "directory": "packages/ui",
@@ -8485,7 +8295,7 @@
       },
       {
         "name": "@amykit/ui-conformance",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "library",
         "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
         "directory": "packages/ui-conformance",
@@ -8499,7 +8309,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "packages/workflow-errand",
@@ -8575,7 +8385,7 @@
       },
       {
         "name": "@amykit/workflow-feature-grooming",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "plugin",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "packages/workflow-feature-grooming",
@@ -8613,7 +8423,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "packages/workflow-note-to-plan",
@@ -8699,7 +8509,7 @@
       },
       {
         "name": "@amykit/workflow-pull-request",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "workflow",
         "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
         "directory": "packages/workflow-pull-request",
@@ -8733,7 +8543,7 @@
       },
       {
         "name": "@amykit/workflow-testkit",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "library",
         "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
         "directory": "packages/workflow-testkit",
@@ -8747,7 +8557,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "packages/workflow-ticket-to-qa",
@@ -10249,1038 +10059,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "a-brief-is-groomed-from-its-sources",
-        "title": "**A brief is groomed from its sources.**",
-        "body": "amy ships an `amy-groom` skill: it reads the ticket and the code at a pinned\nbase commit, then asks one question at a time until every requirement in the\nbrief names its source — the ticket, a design actually opened, a decision\nsomebody made — and cuts the rest, with the reason. It learns the brief's\nformat and check from the workflow that judges it rather than carrying one,\nwrites a local file, and writes nothing to the tracker, the code host or chat.\nBefore, grooming a brief that a workflow holds tickets on had no skill in amy\nat all, and requirements nobody asked for were the defect it exists to stop.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-brief-is-named-the-way-its-feature-is",
-        "title": "**A brief is named the way its feature is.**",
-        "body": "A child ticket's `briefId` was its Linear parent's uuid, while the same parent\nread as a feature (`getFeature`, `features`) was named by its identifier, and\nthe brief store keys a brief by that feature id. Every reader that asked the\nstore for `ticket.briefId` — ticket-to-qa's brief lane, a workflow looking for\na declaration file named `PROJ-1200.yaml` — found nothing, and read \"no brief\"\nrather than failing: a ticket under a groomed feature was driven as if nobody\nhad groomed it. `briefId`, and `featureId` on updated groomed work, are now the\nparent's identifier, and a test holds a child and its feature to one name.",
-        "bumps": [
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-config-is-typed-by-its-schema",
-        "title": "**A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-command",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-brief-store",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-notes",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-queue",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-store",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-tasks",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-notify-hermes",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-notify-inbox",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-plan-check",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-slack",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-feature-grooming",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-frozen-adapter-mounts",
-        "title": "A frozen adapter, such as `Object.freeze({ name, register })`, mounts again through the host that only takes declarations. The proxy that keeps a plugin's own receiver stood on the plugin itself. Replacing `register` on a frozen object breaks a Proxy invariant, so it threw a `TypeError` before registration ran. It now stands on an empty object of its own and still reads and calls every member on the plugin.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-mount-builds-once",
-        "title": "**A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-plan-is-a-declaration",
-        "title": "A plan is a declaration. The plan a note becomes is asked for as a YAML declaration between `---` fences, its title and a few lines of why, because every plan in the repository is one now and `L4.PLAN_IS_A_LINKED_DECLARATION` refuses prose. Before, the prompt only said to follow the plans already there, which taught the old shape to a draft written against the new rule.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-plugin-brings-its-own-commands",
-        "title": "**A command belongs to the package that means it.** A plugin declares `commands`, `checks` and `files` beside `register`, read after the module is imported and before anything mounts: `amy --help` lists `amy roster` beside the workflow that brought it, `amy doctor` runs the checks it brought, and `amy init`/`amy add` write the files it brought into the profile's state, once. A command that declares `mount: true` receives the mounted ports or a refusal naming why the machine did not come up; every other command answers on the machine that will not boot, which is when it matters.",
-        "body": "The host keeps the entry point and the ownership rules. A name belongs to one\npackage, reusing a built-in or another package's command is refused at load\nnaming both owners, and a command run against a profile that does not mount\nits owner names the profiles that do.\n\n`amy btw` moved to the errand, `amy note` to note-to-plan, `amy roster` to\nticket-to-qa, `amy worktrees` to the worktree adapter and `amy models` to the\nrelay; the CLI imports none of them. `pause` and `resume` became\n`amy stop --all` and `amy start`, `discover` became the first act of `amy\ntick` and is hidden rather than listed, `poke` became `look`, `workflow rm` merged into\n`amy remove <profile>` with `--keep-state`, the two `plugin add`/`plugin\nremove` verbs are gone, and `daemon`/`after-daemon` are hidden and still\ncallable. A price table older than seven days is refreshed by `amy update`\nand `amy start` through the relay's own command, and a refresh that fails\nleaves the table as it was.\n\nBecause `tick` now looks before it moves, two loops it exposed are closed: a\nnote the machine wrote about its own failure is not itself planned, and\ndiscovery does not bring back work that reached its attempt ceiling: the\nrecord says `gaveUp`, and `amy look <id>` is the only thing that clears it.\n\n`HostPaths` gains `profile`, the directory a profile owns, so a workflow that\nkeeps a file beside its records — the roster — reads what its own command\nwrites. The roster moved there, which is why `amy init` no longer writes it on\na machine that mounts nothing that assigns reviewers.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-notes",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-tasks",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-plugin-is-installed-into-a-workflow",
-        "title": "A plugin is installed into a workflow, as a package or as a fork of its source.",
-        "body": "`amy add <package> --fork` takes the package's source from the repository its\n`package.json` names, at the tag its installed version was released under, into\na place the selected profile owns: under `forks/` in the project of a workflow of\nyour own, or under `~/.amy/profiles/<profile>/forks/` for one somebody else\npublished. A git URL naming a directory (`<url>#path:<dir>`) forks the same way\nwithout the registry. The fork keeps the package's name, and a profile root of\nits own, `~/.amy/plugins/profiles/<profile>`, maps that name to it — so two\nprofiles on one machine can answer one plugin two ways, an installed workflow\nthat imports the name reaches the fork, and no config or code names a path.\n\nBefore, one machine had one npm root, so a name resolved to one place for every\nprofile, and the only way to change how a port was answered for one workflow was\na second plugin shipped inside that workflow.\n\nAn edited fork is built by its own build script on the next boot, and a running\nloop remounts it between ticks. `amy update` merges the plugin's next release\ninto the fork three ways and keeps every edit; a line both sides changed stops\nthe whole update before anything moves, with the marked merge written beside the\nfork. `amy remove` of a forked name goes back to the published package and keeps\nthe fork's directory. `config.yaml` gains `add: fork | package` and `forks:`;\n`--fork`, `--package` and `--to <dir>` override them for one command.\n\n`amy workflow add --into` now copies a callee's source from its repository at the\ninstalled version, rather than the compiled `dist` it was installed as. Every\npublished package also ships a shadcn registry item under `registry/`.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-private-field-survives-the-host",
-        "title": "`declaredWorkflowsOnly` keeps every member of the plugin and of the registry on its own object. It used to wrap both in a prototype copy, so a class plugin whose getter or method reads a `#private` field threw a `TypeError` on its own name, and boot stopped before mount could report it.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-project-is-brief-work-and-proof",
-        "title": "**A project is brief, work and proof.** The `brief/`, `workflow/` and `prove/` folders of a project compose the one workflow its config entry drives: each phase a `call()` to the `defineWorkflow` declaration its folder exports, walked as child records of one record, one profile and one daemon for the whole walk. The brief's own declared sections give the walk its vocabulary, what the brief workflow returned is what the proving workflow is handed as its input exactly, and an end named `refused` carries the row back to WORK, saying what did not hold. A phase neither present nor declared absent is refused at the walk's mount, naming it; a phase declared absent carries its reason on the workflow for `amy status` to show; a `test/` folder is told the phase is named `prove/`.",
-        "body": "`defineWorkflow` gains the optional `phases` member — one reason per\ndeclared-absent phase — which the plugin carries beside its workflow; the\nshipped `errand`, `note-to-plan` and `ticket-to-qa` declare brief and prove\nout with their reasons, and every other package is unchanged. A project's\nqueue, records, tasks, threads and log live under\n`projects/<project>/<profile>` with its briefs under the project's shared\nartifact root; the per-phase layout of an older machine stays on disk,\nunread, and `amy update` folds a config that named one project as three\nphase profiles into its single project profile, saying every fold and\nmoving nothing the second time.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-question-is-not-an-answer",
-        "title": "**A reply in a work's thread can be a question, not only an answer.**",
-        "body": "When `ticket-to-qa` escalated, or asked a question before starting, the owner's\nfirst message in the thread ended the wait and the work resumed on it. A person\nwho replied \"why do you think that comment is wrong?\" had not decided anything,\nand watched their question turn into work.\n\n- `Reply` gains an optional `kind`, `discussion` or `decision`, set only when\n  the person marked the reply. The catalogue gains `discuss`, on the `agent`\n  port, so it is charged to the budget like every other run.\n- `policy.conversation` on `ticket-to-qa`: `answer`, the default, reads a reply\n  nobody marked as the decision, exactly as before. `discuss` reads it as a turn\n  in a discussion: answered in the thread, read-only, with no state change, no\n  commit and no attempt counted, while the work waits for a reply marked as the\n  decision. A marked reply reads as marked under either. An unknown value is\n  refused at boot by name.\n- `AskContext` gains `readOnly`, and a discussion is asked with it. The\n  harness enforces it rather than the prompt: Claude runs with\n  `--permission-mode plan`, Codex with `--sandbox read-only`, and Hermes, whose\n  one-shot mode cannot keep its tools off the checkout, refuses the run so a\n  relay hands it to a harness that can.\n- On the decision, the step the work resumes is prompted with the whole\n  discussion, attributed, with the decision last.\n- The Slack plugin marks a reply by the operator's own reaction on it: ✅\n  (`white_check_mark`) decides, 💬 (`speech_balloon`) discusses. Both names are\n  settings, `decisionReaction` and `discussionReaction`. A reaction Slack lists\n  only in part is read again in full with `reactions.get`, which needs the\n  `reactions:read` scope; without it, that one read fails and says so.\n- Without a conversation port, a comment on the ticket is still the decision,\n  whatever the policy says.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-slack",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-restore-keeps-the-copy",
-        "title": "`amy update`, and the rollback it runs when a move fails, install into the plugins root with `--install-links`, the way `amy add` does. Before, they installed without it, so updating any other package could turn a workflow copied in from a path back into a link. A linked workflow's `@amykit/core` import resolves from outside the plugins root, and the workflow failed to load.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-row-of-next-steps-is-a-ticket",
-        "title": "A row of next steps is a ticket. `@amykit/plugin-next-steps` mounts the `tracker` port over an execution-order table — `plans/next-steps.md` by default — read from the base branch, never from the standing checkout: a row is a work item, its linked plan the body, its place in the table the priority. A relative link is a plan in the table's repository, its id the slug; an `owner/name:plans/<slug>.md` link is one in another, its id `owner+name+<slug>`, so one table can order the work of several. Only the top `rows` (one by default) are work at once, a row gone from the table with its plan in `docs/design/` reads as `delivered`, and the branch is `branchPrefix` (`plan/` by default) and the plan's slug.",
-        "body": "It writes nothing: mount `ticket-to-qa` on it with `policy.writes: operator`\nand `qaStatusName: delivered`, and a row reaches delivered when you merge the\npull request that moves its plan.",
-        "bumps": [
-          {
-            "package": "@amykit/plugin-next-steps",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-run-carries-only-what-amy-hands-it",
-        "title": "**A run carries only what amy hands it.** The three agent CLIs amy drives used to carry the operator's own setup into a ticket run and write back into it. Now each run is kept apart:",
-        "body": "- **Claude** runs with `--setting-sources project,local --strict-mcp-config --no-session-persistence`. The operator's `CLAUDE.md`, hooks, plugins, MCP servers and skills stay out, and no session or auto-memory is written under `~/.claude/projects`. The repository's own settings still load. A step whose skill ladder names a skill is lent that one skill through `--add-dir`, and nothing else of the operator's.\n- **Codex** runs with `--ignore-user-config --ephemeral --disable hooks --disable plugins --disable apps --disable memories`. The login still comes from `CODEX_HOME`, and `~/.codex/AGENTS.md` and user skills still load, since Codex has no switch for them.\n- **Hermes** runs in its own profile, `hermes -p amy`, set by the new `profile` setting. `amy init` and `amy add` create that profile from the active one when it is missing, with memory, unasked skill writes and the curator turned off. `amy doctor` goes red, naming the fix, when the profile is missing or has any of those turned back on.\n\n**A plugin can prepare something outside amy's state.** `Plugin.setup` is run by `amy init` and `amy add` after a plugin's files. A setup gets the plugin's settings and a command runner, answers the way a check does, and one that throws is reported without stopping the next. `AskContext.skill` carries the skill a relay addressed the prompt to, with the directory it is installed in.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-view-is-data",
-        "title": "**A view is data.**",
-        "body": "amy is going to have a window — a terminal, a browser, eventually a phone —\nwith plugins changing what is in it. A plugin that exports React components\nrenders in one of those and none of the others, cannot reach a phone that\ninstalls no npm packages, and brings a second copy of React into somebody's\nwindow. So a plugin does not render: it describes, and the renderer draws.\n\n- A new package, `@amykit/ui`, with no dependencies: a closed vocabulary of\n  seventeen semantic primitives, checked so a name outside it — or any\n  property value that is not JSON — is refused by name; a JSX runtime\n  (`jsxImportSource: \"@amykit/ui\"`) that returns a tree of plain data with\n  no React anywhere; `diff` and `patch` between two trees; `validate` for a\n  tree that arrived as data; `catalogue()`, the vocabulary as JSON Schema\n  components; and `renderText`, a deterministic text renderer.\n- A button's `intent` is `{ action, args }`, never a closure, so it survives\n  a socket.\n- `amy status` is a view of the snapshot `amy status --json` prints, drawn by\n  the text renderer. Its output is what it printed before, byte for byte.\n- A new local rule, `L0.A_VIEW_DRAWS_NOTHING`: no package or plugin source\n  imports React, Ink, Preact, Vue, Solid or Svelte, or compiles its JSX\n  against one.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/ui",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-workflow-calls-another",
-        "title": "**A workflow can call another, the way code calls a function.** A diagram marks a state `class X call`, and `calls` binds it to the workflow it calls: `call(review, { input, config, ports, output, effects })`, every member optional. The callee runs as a child record kept inside its caller's (`TBO-1/REVIEW#1`), with its own history and attempts, and only the deepest record in a call is observed. When the child ends, the caller takes the edge named for that end, folding what it returned. Before this, composing workflows meant importing another's states and record fields in TypeScript, and nothing showed or checked where one ended and the other began.",
-        "body": "Everything that can be wrong with a call is refused at boot, naming the call\npath: a call state with no binding, an end with no edge, an `output` for an\nend that returns nothing, an `input` for a callee that takes none, a need no\nmounted port satisfies (`oncall → REVIEW → FIX: needs code-host`), a cycle at\nany depth, and a callee claiming a write its caller does not. `port()` takes\n`requires`, for a method a port only offers optionally.\n\n**The pull request is opened by one shipped workflow.** `note-to-plan` and the\nerrand both opened a pull request and waited for it, written twice. Both now\ncall `@amykit/workflow-pull-request`, which opens or finds one through the\n`CodeHost` port and returns `OPENED` with its number and link, or `REFUSED`\nwith the host's reason. A refused pull request hands the work back with that\nreason, where before it failed every look until the machine gave up. The\nport gains `CodeHostRefusal`, and the GitHub adapter throws it for a 422, so\nan answer is told apart from an outage, which is still retried.\n\n**A callee can be copied in and owned.** `amy workflow add <spec> --into\n<name>` copies a workflow, with every file its entry imports, into one of your\nown, installing what it depends on; a dependency that cannot be resolved\nrefuses the copy before anything is written. `amy workflow export --expand`\ndraws each call as the workflow it calls, and `amy status` shows where work\nstands through its calls, with a callee's escalation as the root's attention.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-pull-request",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-workflow-is-a-mermaid-diagram",
-        "title": "**A workflow is a Mermaid diagram.** A workflow's shape is the `workflow.mmd` beside it — an ordinary `stateDiagram-v2` that GitHub and Obsidian render — and the host reads its states, start, waits and ends from it when the workflow mounts; `defineWorkflow`'s `states`, `waiting` and `terminal` are required only without one, and declaring both is refused at boot. `readDiagram`, `connects`, `markState`, `withDiagramBeside` and the `notWritten()` stub are in the core, Mermaid-checked against Pele in its tests. The engine logs a move the diagram does not draw as `workflow.undrawn_transition` and makes it anyway; the testkit fails one, and with `everyEdge` an arrow no world walks. `amy workflow new --from <file.mmd>` turns a diagram into a workflow that mounts with every decision a stub, `amy workflow check` lists the stubs and the arrows not walked, and `amy workflow export [--work <id>]` prints the diagram with a record's state marked. `StateMachine` takes an optional `diagram`. The three shipped workflows are each drawn as one and lose their state lists and their exported unmounted `errand`, `noteToPlan`, `ticketToQa` and `newRecord`; bind a plugin with `withDiagramBeside(plugin, entry)` instead. `ticket-to-qa` no longer asks a reviewer again on every look when nothing was pushed since they requested changes.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/ui",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/ui-conformance",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-testkit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-workflow-is-mad-and-a-project-is-bep",
-        "title": "The `amy-workflow` skill teaches the three pieces a workflow is, Mermaid, Act and Decide: a `workflow.mmd`, a `decide` map with one pure decision per drawn state, and `actions` written against the `scope` they are handed. Before, it taught a `plan()` with a runtime beside it and a raw plugin registering states by hand. Neither of those mounts any more, so a person following the skill wrote a workflow amy refuses. The two opinions amy holds every workflow to, MAD and BEP (Brief, Execute, Prove), are written down in *MAD and BEP* under How it works.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "a-workflow-is-one-declaration",
-        "title": "**A workflow is one declaration.** `defineWorkflow` registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. `planning` supplies the four typed plan constructors, and `amy workflow new` writes the new declaration.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-workflow-is-three-pieces",
-        "title": "Workflows can now declare one decision per diagram state, compose pure `before` and `after` filters around those decisions, and provide `discover`, `observe`, `actions`, and `remember` as individual runtime pieces. `extend` mounts supporting infrastructure from the same declaration. Legacy `plan`/`runtime` declarations and raw plugins remain supported, while mixing the legacy and new declaration members is refused at boot.",
-        "body": "The `agent` port an action receives now records every run as `agent.run`, and\nan action's `announce(text)` turns a failed announcement into `notify.failed`,\nso no workflow writes either by hand. `ports.notifier` stays strict.\n\n`amy workflow new` now writes a runnable diagram-backed three-piece workflow.\nThe shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-workflow-requires-a-diagram",
-        "title": "**A workflow is its diagram, its decisions and its actions, and nothing else mounts.** `defineWorkflow` takes only the three pieces: `decide`, one pure decision per state the `workflow.mmd` beside it draws, with `before`, `after`, `discover`, `observe`, `actions`, `remember` and `progress`. A declaration that still passes a single `plan()` or a `runtime()` factory is refused at boot, naming each and where it moved, and `states`, `waiting` and `terminal` are gone: a declaration still passing them is refused by name, and one whose host found no `workflow.mmd` beside its entry or at its package root is refused at mount, naming the workflow and the file. Before, both forms and both sources of states mounted side by side, so the boot check of one decision per drawn state applied to some workflows and not others, and the same fact could live in a list in code that nothing held to the drawing. The CLI now mounts only declarations: a plugin it loads from an install or from `~/.amy/workflows` that registers a workflow by hand with `registry.workflow(...)` is refused naming the plugin (`declaredWorkflowsOnly` in the core). Because every installed workflow now imports the core it is declared with, a package added by path is installed into amy's root as a copy with its dependencies (`--install-links`) and probed from there, rather than linked to a directory where its imports do not resolve. `amy workflow new` writes the three pieces each in its own file — `workflow.mmd`, `decide.ts`, `actions.ts` — joined by the one call in `index.ts`, with no runtime factory, and its suite mounts the workflow the way amy does. `defineWorkflow` also carries a plugin's `setup` and `environment`.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-workflow-runs-on-lanes",
-        "title": "**A workflow runs on lanes.** A diagram may draw `state X <<fork>>` and `state Y <<join>>`: every line out of the fork is a lane, every lane is a call, so a record of its own, and the caller moves to the join once every lane has ended, holding where each ended and what it returned, keyed by lane. There is no setting for how many: the number of lanes is the number of lines drawn. Before this, work that could run side by side ran one piece after the other, or was written by hand in a runtime the diagram never showed.",
-        "body": "A lane that escalates leaves its siblings running, and the fork says which\nlane needs the person — in its wait, in `callStanding`, and in `amy status`,\nwhich draws the lanes side by side. A lane takes a lease on the branch it\nwrites before it checks it out, and a branch another lane holds is a wait that\ncosts no attempt. A binding's `revision` lends a lane a tree detached at the\ncaller's commit, read-only. Refused at boot, by name: a lane that is not a\ncall, a lane that never reaches its join, a join no fork meets at, a decision\nwritten for a fork, and two lanes bound to the same literal branch.\n\n`@amykit/plugin-concurrent-engine` is the serial engine with the lanes of a\nfork moved at once, each asked of the budget before its call. The serial\nengine stays the default, and moves them in turn.\n\n**`ticket-to-qa` runs its gate and its self-review as two lanes.** `CHECKED`\nand `SELF_REVIEW` are gone: a finished implementation goes to `checks`, where\nthe gate and the review both check the implementation's commit, and meet at\n`verdict`. A change either one refuses goes back to the implementation with\nwhat both said, in one round — before, a change the gate refused went back\nwithout what the review would have said, and the review never saw the rules\nthe gate holds. The review now ends on a verdict: a line saying\n`CHANGES_ASKED` sends the work back, anything else approves. The rounds count\ntoward `maxGateAttempts`. A record an older version saved in `CHECKED` or\n`SELF_REVIEW` goes straight to `checks` on its next look and is checked again\nin both lanes, without implementing again. A ticket that leaves its repository\nwhile it is being checked stops where it is, as it did in `CHECKED`.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-concurrent-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-testkit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-workspace-is-a-capability",
-        "title": "**A workspace is a capability.** Nothing is handed a workspace without asking: plugins borrow their checkouts through a `workspace` port the file-worktree plugin mounts, and workflows inherit them from their support, so a machine that works nowhere in particular needs none. The seven machine keys — `repos`, `workspaceRoot`, `checkouts`, `defaultBranch`, `baseBranch`, `gate` and `worktrees` — are read from the plugins whose slices carry them (`plugins: \"@amykit/plugin-file-worktree\"` for the six workspace keys, `plugins: \"@amykit/plugin-command-gate\"` for the gate). The doctor asks about checkouts, worktrees, `gh` and `git` only where a workspace was mounted, so a machine that drives no code — a support inbox, say — is told it is ready, and `amy update` moves an old install's keys under those slices, saying each move, keeping the original beside the config, and refusing a key put back at the top level by name. The provenance of every derived slice, now a property with its own falsifier (`machine_key_leaks_into_a_slice`).",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-next-steps",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-plan-check",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "actions-use-the-ports",
-        "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write `discover`, `observe`, `remember` and every action as a function of the scope `defineWorkflow` hands it: `scope.ports`, `scope.config`, `scope.policy`, `scope.checkouts`, `scope.ctx` and `scope.announce`. `errandRuntime`, `planRuntime` and `ticketRuntime` are gone, with their `…RuntimeDeps` and `…RuntimeConfig` types; a test that built one mounts the declaration instead.",
-        "body": "Before, each workflow kept the factory it had before `defineWorkflow`, and a\n`WeakMap` adapter that assembled a deps object out of the scope to build it:\nthree copies of the same adapter. It cached nothing for an action, whose scope\nis a new object every time, so every action rebuilt the whole runtime; and\nticket-to-qa carried its own `agent.run` and `notify.failed` lines behind an\n`accountsAgentRuns: false` switch, beside the host's, when the framework\nalready hands every action an agent that accounts for each reply and an\n`announce` that cannot cost a move. ticket-to-qa's progress policy is read\nfrom `budget` through the declaration's `progress(scope)`, and its roster is\nread from the profile when a look needs it, as before.",
-        "bumps": [
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "an-update-reaches-the-release",
-        "title": "`amy update` reaches the release. It said `nothing to move` with 0.6.0 published to a machine on 0.5.0, for two reasons ([#110](https://github.com/nicolasmelo1/amy/issues/110)):",
-        "body": "- **A 0.x caret never crossed a minor.** Every `@amykit/*` package now moves to one release, asked once of the CLI's registry intent (`latest` unless the operator wrote another), whatever caret npm saved, and each manifest entry then names it as `^<release>`. Third-party packages still move only within the range the operator wrote, so a 0.x workflow at `^0.1.0` stays on 0.1.0. To hold the machine below a release, set `amyUpdateRanges[\"@amykit/cli\"]` in `~/.amy/plugins/package.json`; `--check` names that pin and the release it holds you below, where it used to say `nothing to move`.\n- **A CLI installed with `npm install -g` read as a checkout.** The global prefix is now an install root, on Unix and on Windows. The CLI moves there with `npm install --global`, and when a plugin in the release refuses to import, every move rolls back, the CLI included.\n\nThe `amy-update` gate stubbed out both of these with a stand-in npm that answered whatever it held. It now runs real npm against a registry on a loopback port, with the CLI installed globally.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "blue-spies-search",
-        "title": "",
-        "body": "",
-        "bumps": [],
-        "level": ""
-      },
-      {
-        "id": "calm-limits-wait",
-        "title": "Treat structured provider usage limits as waits rather than attempts.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "no-javascript-left",
-        "title": "The mutation fixtures `amy workflow new` writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still `index.js`, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so `sf verify` in an existing workflow is unaffected.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "nothing-is-declared-twice",
-        "title": "Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-command",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-brief-store",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-notes",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-queue",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-store",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-tasks",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-hermes-agent",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-notify-fanout",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-notify-hermes",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-notify-inbox",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-plan-check",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-slack",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-feature-grooming",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "telegram-is-a-conversation",
-        "title": "**A Telegram topic is a work item's thread.** `@amykit/plugin-telegram` is the `conversation` port over the Bot API: each piece of work gets its own topic in the operator's private chat with a bot (topics in private chats, Bot API 9.4), opened once and found again after a restart. Only the operator's replies in that topic are answers; anybody else's, and anything outside every topic, are ignored. Replies are filed on disk before Telegram's update offset moves, so no restart and no second process loses one. A file in a reply arrives as a local path, and one past the Bot API's 20 MB is named instead. The token is `TELEGRAM_BOT_TOKEN` in amy's environment and is written nowhere. `amy doctor` refuses, by name, a bot with topic mode off, an operator who never started a chat with it, and a token whose updates something else reads (409 Conflict).",
-        "body": "```yaml\nextraPlugins:\n  - \"@amykit/plugin-telegram\"\nplugins:\n  \"@amykit/plugin-telegram\":\n    operator: \"123456789\"   # your Telegram user id\n```\n\n**Telegram's and Slack's contracts are vendored and kept fresh.** Telegram publishes its Bot API only as a reference page, so `npm run contracts:update` derives that page into its types and methods, and `check:contracts` fails when today's page derives to something else. Slack's served OpenAPI description joins GitHub's and Linear's. The test fixtures export `assertValidBotApiCall`, `assertValidBotApiResult`, `assertValidSlackCall` and `assertValidSlackAnswer`, and both plugins' stand-ins are held to them.",
-        "bumps": [
-          {
-            "package": "@amykit/plugin-telegram",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-config-is-written-by-what-is-mounted",
-        "title": "**The config is written by what is mounted.** Every workflow's own vocabulary — the attempt ceilings its decisions read, the status a ticket moves to, where plans go and what judges them — moved out of the config's top level and into the profile that drives the workflow, checked at mount against the workflow's own `configSchema`. `amy init` writes a config that carries only the machine, and a commented example that teaches the shape; `amy add <workflow>` writes the profile block from what the workflow's schema asks for, with the settings that need an answer written as placeholders and the rest taken from defaults. `amy config explain` lists every setting the machine and each mounted thing carries, with its type, its default and the reason it is there; `amy config explain <plugin>` narrows to one.",
-        "body": "A key of the old shape left at the top level is refused at boot by name, with\nthe place it moved to in the message, so nothing is silently read from where\nit lived. `amy update` moves a v1 config for you: each old key is rewritten\nunder the profile or the plugin that reads it, the original file is kept\nbeside the config as `config.yaml.moved`, and a second update changes\nnothing. The engine learns to tune itself at the same time — the serial\nengine's retry between failed items is its own setting now, no longer\nborrowed from whichever workflow's poll happened to be at the top of the\nconfig.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-serial-engine",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-pull-request",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-errand-is-proven",
-        "title": "**An errand that answered a question is not delivered as an empty pull request.**",
-        "body": "`run-errand` decided whether the errand had changed something by asking\nwhether the push had moved the remote. `prepareBranch` has already created\nthe branch, so publishing it for the first time is a new remote ref whether\nor not it carries a commit — a question reached `PR_OPEN` with no diff in it.\n`Git` grows `commitsAhead(repo, of, workId)`, and the errand commits, asks\nthat question and only pushes when there is something to review; the branch\nof an errand that changed nothing stays local.\n\n**An errand the agent refuses is declined at once, with its reason.** The\nprompt already asked the agent to say so plainly when a sentence could not be\ndone as asked, but nothing read it. A refusal that changed nothing landed in\n`DONE` as if it were an answer, and one that came back as an error was retried\nuntil the attempts ran out. A refusal now ends with one line,\n`{\"declined\": \"why\"}`. The errand reads that line and goes from `WORKING` to\n`DECLINED` without another attempt, telling the operator the reason.\nNothing the agent left in the tree is published. It is stashed under the\ntask's id, with no commit, no branch and no hook involved, so a shared checkout\nreaches the next errand clean. `Git` grows `setAside(repo, label, workId)` for\nthis.",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-event-log-can-be-watched",
-        "title": "**The event log can be watched, from any process.**",
-        "body": "Everything amy does is a line in the event log, and a reader in another\nprocess — `amy status`, a dashboard, the window planned next — could only read\nit again and guess how often. The log is the one place that knows something\nchanged, so it is now the place to ask.\n\n- `EventLog` gains an optional `watch(since, onEvent)`: every event at or\n  after `since`, oldest first, then every event any process appends, until the\n  returned function is called. Optional because a log may be a sink nobody\n  can watch.\n- `watchEvents(log, since, onEvent, { everyMs, onPolling })` in the core\n  watches any log: through its own `watch`, or by polling `read` when it has\n  none, calling `onPolling` once so the caller can say so.\n- `@amykit/plugin-file-log` implements `watch` by following each day file from\n  a byte offset. A line is delivered only once its newline is on disk, so a\n  line the daemon is halfway through writing is never read half, and a new\n  day's file is followed without resubscribing.",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-log",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-frame-is-closed",
-        "title": "**The frame is closed.**",
-        "body": "amy's window is about to be drawn by more than one renderer, and two renderers\ndrift apart without either being wrong. Before the first one exists, the\nwindow is a locked file and every renderer is measured against it.\n\n- `packages/ui/frame.yaml` is the closed wireframe as data: five regions and\n  where each sits relative to the others, what each holds, the sections, the\n  actions, a Neovim-style default keymap, the mouse, the surfaces a renderer\n  may declare, the slots plugins add to, the narrowest window and the one\n  rule by which a label may be abbreviated. It ships with `@amykit/ui`, which\n  still depends on nothing, and is hash-locked.\n- `@amykit/ui/frame` checks what it parses to (`checkFrame`), and reads keys in Neovim's\n  notation: `buildKeymap` lays a person's `ui.keys` over the frame's and\n  refuses, by name, a remap to an action the frame does not declare or two\n  bindings a keypress cannot tell apart; `KeyReader` reads sequences, counts\n  and the leader the way Neovim does. The renderer contract lives here too.\n- New package `@amykit/ui-conformance`, and its `amy-ui-conformance` command,\n  drive every\n  renderer through a fixed script over a fixed world — by default keys, by a\n  remapped keymap and by the mouse, and the default way twice — and read a\n  projection out of what it laid out: regions, what each holds, and how each\n  pair sits relative to each other, never a box. Eleven assertions hold it to\n  the frame, to the other renderers and to the approved golden, naming the\n  region, the relation or the first node that differs.\n- Three local rules: `L0.A_RENDERER_ONLY_TRANSLATES`,\n  `L0.A_RENDERER_NAMES_NO_COLOUR` and `L1.EVERY_RENDERER_HOLDS_THE_FRAME`.",
-        "bumps": [
-          {
-            "package": "@amykit/ui",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/ui-conformance",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-host-lends-the-checkout",
-        "title": "**The host lends the checkout.** `PluginContext` gains `checkouts()`, which answers with the `Git` and the layout for the calling plugin — the host's paths, the plugin's own `defaultBranch` and `baseBranch`, and the `worktree` port read whenever a path is asked for, so a worktree plugin listed after the caller is still the one used. The core exports `BRANCH_SETTINGS`, the two branch settings with one description, and every shipped schema that declares them spreads it in place of its own wording. The command gate, the plan check and the three workflows that opened pull requests ask their context instead of building a `Git` and a second copy of its layout. The settings stay per plugin, so no `config.yaml` changes; the plan check's `baseBranch` now defaults to `{}` like every other's.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-command-gate",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-plan-check",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-feature-grooming",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-readme-counts-nothing-by-hand",
-        "title": "**The README now derives its mutable facts from the code and policy that own them.**",
-        "body": "The published command declares its Node requirement to npm. The README's Node\nbadge, command table and factory counts are generated with the rest of the\ndocumentation, so `npm run docs:check` names the README when one falls behind.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "the-roster-belongs-to-its-workflow",
-        "title": "**The roster belongs to its workflow.** The team list that names who reviews and who owns QA is one ticket-to-qa profile's file, written by `init` and `add` beside the profile's records and confirmed by `amy roster confirm` — the workflow brought its command and its check with it, and none of the host's source names the file any more. Where a profile has no roster of its own, the workflow's red check names the file the machine kept where the roster used to live, so the error is a way back and not a dead end.",
-        "body": "`amy update` now gives an existing install its move: every team an older\nrelease kept at `~/.amy/roster.yaml` is copied into each profile that mounts\nthe workflow, the old name is retired as `roster.yaml.moved` rather than\ndeleted, and a second update changes nothing.\n\nThe doctor asks the machine, and only the machine: a gate's commands are\nasked of the machines that mounted a gate, and each mounted plugin names the\nenvironment variables it reads — `plugin.environment` — so the errand's\nmachine is green without the ticket workflow's tracker key, and no install\ncarries a credential checklist nothing on it asked for. The quickstart walks\nthe shape the machine has now: init, add a workflow, doctor, start.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-linear",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "the-skill-example-mounts",
-        "title": "The declaration the `amy-workflow` skill shows declares `policy.maxAttempts` in its `configSchema`, with the same default its policy reads. Before, it left the schema empty, and the mount refuses a policy key the schema does not declare, so a workflow copied from the skill did not boot.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "tough-crews-sink",
-        "title": "",
-        "body": "",
-        "bumps": [],
-        "level": ""
-      },
-      {
-        "id": "waiting-is-not-trying",
-        "title": "**Waiting is not trying.**",
-        "body": "The core now records `looks` separately from `attempts`: waits and logistical\nacts are visible without consuming an attempt ceiling. `looksIn` and\n`attemptsIn` make the distinction explicit, an `act` may be marked\n`{ attempt: false }`, and an action result can return `notATry` to refund a\npre-charged attempt and delay the next look.",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
@@ -11299,6 +10078,14 @@
         "file": "packages/model-specs/CHANGELOG.md"
       },
       {
+        "name": "@amykit/ui",
+        "file": "packages/ui/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/ui-conformance",
+        "file": "packages/ui-conformance/CHANGELOG.md"
+      },
+      {
         "name": "@amykit/workflow-errand",
         "file": "packages/workflow-errand/CHANGELOG.md"
       },
@@ -11309,6 +10096,10 @@
       {
         "name": "@amykit/workflow-note-to-plan",
         "file": "packages/workflow-note-to-plan/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/workflow-pull-request",
+        "file": "packages/workflow-pull-request/CHANGELOG.md"
       },
       {
         "name": "@amykit/workflow-testkit",
@@ -11337,6 +10128,10 @@
       {
         "name": "@amykit/plugin-command-gate",
         "file": "plugins/command-gate/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/plugin-concurrent-engine",
+        "file": "plugins/concurrent-engine/CHANGELOG.md"
       },
       {
         "name": "@amykit/plugin-file-brief-store",
@@ -11379,6 +10174,10 @@
         "file": "plugins/linear/CHANGELOG.md"
       },
       {
+        "name": "@amykit/plugin-next-steps",
+        "file": "plugins/next-steps/CHANGELOG.md"
+      },
+      {
         "name": "@amykit/plugin-notify-fanout",
         "file": "plugins/notify-fanout/CHANGELOG.md"
       },
@@ -11401,6 +10200,10 @@
       {
         "name": "@amykit/plugin-slack",
         "file": "plugins/slack/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/plugin-telegram",
+        "file": "plugins/telegram/CHANGELOG.md"
       }
     ]
   },
