@@ -1,9 +1,9 @@
-import { defineContract, type OperationContext } from "@amykit/core";
+import type { OperationContext } from "@amykit/core";
 import { describe, expect, it } from "vitest";
-import { notes } from "../src/domains/notes/index.js";
+import { services } from "../src/index.js";
 import { invoke } from "./support/invoke.js";
 
-const contract = defineContract(notes);
+const contract = services;
 const store = new Map([["n1", { id: "n1", state: "OPEN", text: "buy milk" }]]);
 const context: OperationContext = { port: () => ({ load: (id: string) => store.get(id) ?? null, save: () => undefined, all: () => [] }) };
 

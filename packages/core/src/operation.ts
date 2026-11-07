@@ -75,7 +75,10 @@ function isFailure(value: unknown): value is Failure {
 }
 
 type EventSchemas = Readonly<Record<string, OperationSchema>>;
+/** An event as its schema returns it, which is what a client reads and an example shows. */
 type EventOf<E extends EventSchemas> = { [K in keyof E & string]: StreamEvent<K, InferOutput<E[K]>> }[keyof E & string];
+/** An event as a handler yields it, before its schema validates it. */
+type EventIn<E extends EventSchemas> = { [K in keyof E & string]: StreamEvent<K, InferInput<E[K]>> }[keyof E & string];
 
 interface Declaration<I extends OperationSchema> {
   /** `<domain>.<verb-noun>`, unique in the contract. */
@@ -100,7 +103,8 @@ interface Declaration<I extends OperationSchema> {
 /** An operation that answers with one value. */
 export interface ValueOperation<I extends OperationSchema = OperationSchema, O extends OperationSchema = OperationSchema> extends Declaration<I> {
   readonly output: O;
-  readonly examples: readonly OperationExample<InferInput<I>, InferInput<O>>[];
+  /** Each input as a caller sends it, with the output as the caller reads it. */
+  readonly examples: readonly OperationExample<InferInput<I>, InferOutput<O>>[];
   handler(input: InferOutput<I>, context: OperationContext): Promise<InferInput<O> | Failure>;
 }
 
@@ -108,7 +112,7 @@ export interface ValueOperation<I extends OperationSchema = OperationSchema, O e
 export interface StreamOperation<I extends OperationSchema = OperationSchema, E extends EventSchemas = EventSchemas> extends Declaration<I> {
   readonly events: E;
   readonly examples: readonly OperationExample<InferInput<I>, readonly EventOf<E>[]>[];
-  handler(input: InferOutput<I>, context: OperationContext): AsyncIterable<EventOf<E> | Failure>;
+  handler(input: InferOutput<I>, context: OperationContext): AsyncIterable<EventIn<E> | Failure>;
 }
 
 export type Operation = ValueOperation | StreamOperation;
@@ -371,9 +375,19 @@ function parametersOf(operation: Operation, input: Json, taken: (name: string) =
         in: inPath ? "path" : "query",
         required: inPath || required.has(name),
         description: typeof schema.description === "string" ? schema.description : "",
-        schema,
+        schema: withDefinitions(input, name, schema),
       };
     });
+}
+
+/**
+ * A field lifted out of its input into a parameter keeps the definitions its
+ * references point at, as a resource of its own, or `#/$defs/...` would
+ * resolve against the root of the document.
+ */
+function withDefinitions(input: Json, name: string, schema: Json): Json {
+  if (!input.$defs || !JSON.stringify(schema).includes('"#/$defs/')) return schema;
+  return { $id: `${String(input.$id)}/parameters/${name}`, $defs: input.$defs, ...schema };
 }
 
 function inPathOf(operation: Operation, name: string): boolean {

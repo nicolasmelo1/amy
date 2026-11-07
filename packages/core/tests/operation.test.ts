@@ -257,4 +257,37 @@ describe("what review found the contract missing", () => {
     expect(schema.$id).toBe("urn:amy:operation:tree.read/input");
     expect(schema.$defs).toBeDefined();
   });
+
+  it("types a stream's events as its schemas take them, and hands them on as they return them", async () => {
+    const counted = defineOperation({
+      ...ticks,
+      id: "counting.parsed",
+      http: { method: "post", path: "/parsed" },
+      events: { tick: z.string().transform(Number).describe("a tick, sent as text") },
+      examples: [{ summary: "one", input: { steps: 1 }, output: [{ event: "tick", data: 1 }] }],
+      async *handler() {
+        yield { event: "tick" as const, data: "7" };
+      },
+    });
+    expect(await drain(await invoke(defineContract([counted]), "counting.parsed", { steps: 1 }, context))).toEqual([{ kind: "event", event: "tick", data: 7 }]);
+  });
+
+  it("keeps a recursive schema's $defs resolvable when a field becomes a query parameter", () => {
+    interface Node {
+      name: string;
+      children: Node[];
+    }
+    const node: z.ZodType<Node> = z.lazy(() => z.object({ name: z.string().describe("its name"), children: z.array(node).describe("what is under it") }));
+    const tree = defineOperation({
+      ...count,
+      id: "tree.find",
+      input: z.object({ root: node.describe("the tree") }),
+      http: { method: "get", path: "/tree" },
+      examples: [{ summary: "a leaf", input: { root: { name: "a", children: [] } }, output: { doubled: 0 } }],
+    } as never);
+    const parameter = (contractDocument(defineContract([tree]), INFO) as { paths: Record<string, Record<string, Record<string, any>>> }).paths["/tree"]?.get?.parameters[0];
+    expect(JSON.stringify(parameter.schema)).toContain('"#/$defs/');
+    expect(parameter.schema.$id).toBe("urn:amy:operation:tree.find/input/parameters/root");
+    expect(parameter.schema.$defs).toBeDefined();
+  });
 });

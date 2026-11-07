@@ -81,12 +81,18 @@ function checkDescribed(name: string, at: string, schema: Json): void {
     if (typeof inner.description !== "string" || inner.description === "") findings.push(`\`${name}\` ${at} property \`${property}\` has no description`);
     checkDescribed(name, `${at}.${property}`, inner);
   }
+  for (const [where, inner] of nested(at, schema)) checkDescribed(name, where, inner);
+}
+
+/** The schemas inside one that are not its properties: items, branches, and the $defs a $ref points at. */
+function nested(at: string, schema: Json): [string, Json][] {
+  const found: [string, Json][] = [];
   for (const key of ["items", "additionalProperties"]) {
-    if (schema[key] && typeof schema[key] === "object") checkDescribed(name, `${at}[]`, schema[key] as Json);
+    if (schema[key] && typeof schema[key] === "object") found.push([`${at}[]`, schema[key] as Json]);
   }
-  for (const key of ["anyOf", "oneOf", "allOf"]) {
-    for (const branch of (schema[key] ?? []) as Json[]) checkDescribed(name, at, branch);
-  }
+  for (const key of ["anyOf", "oneOf", "allOf"]) found.push(...((schema[key] ?? []) as Json[]).map((branch): [string, Json] => [at, branch]));
+  for (const [definition, inner] of Object.entries((schema.$defs ?? {}) as Record<string, Json>)) found.push([`${at}.$defs.${definition}`, inner]);
+  return found;
 }
 
 function checkErrors(name: string, operation: Json): void {

@@ -95,4 +95,45 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     expect(status).toBe(1);
     expect(said).toContain("removed the required property `text`");
   });
+
+  it("credits no declared error to a test that invoked another contract reusing the operation's id", () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-borrowed-"));
+    made.push(tree);
+    fs.cpSync(path.join(example, "packages"), path.join(tree, "packages"), { recursive: true });
+    fs.symlinkSync(path.join(repository, "node_modules"), path.join(tree, "node_modules"));
+    fs.writeFileSync(path.join(tree, "packages/services/tests/notes.test.ts"), [
+      'import { defineContract, type OperationContext } from "@amykit/core";',
+      'import { expect, it } from "vitest";',
+      'import { readNote } from "../src/domains/notes/operations/read-note.js";',
+      'import { invoke } from "./support/invoke.js";',
+      "",
+      "// A copy of the operation under the same id: not the one the document declares.",
+      "const borrowed = defineContract([{ ...readNote }]);",
+      "const empty: OperationContext = { port: () => ({ load: () => null, save: () => undefined, all: () => [] }) };",
+      "",
+      'it("answers not_found from a copy", async () => {',
+      '  expect(await invoke(borrowed, "notes.read-note", { id: "gone" }, empty)).toMatchObject({ kind: "error" });',
+      "});",
+      "",
+    ].join("\n"));
+    const { status, said } = gate("every-error-tested", tree);
+    expect(status).toBe(1);
+    expect(said).toContain("`notes.read-note` declares `notes.not_found`, and no test produced it through invoke");
+  });
+
+  it("refuses an undescribed property inside a schema's $defs", () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-defs-"));
+    made.push(tree);
+    fs.cpSync(path.join(example, "packages"), path.join(tree, "packages"), { recursive: true });
+    const file = path.join(tree, "packages/services/openapi.json");
+    const document = JSON.parse(fs.readFileSync(file, "utf8")) as { paths: Record<string, Record<string, any>> };
+    const answer = document.paths["/notes/{id}"]?.get?.responses["200"].content["application/json"].schema;
+    answer.$id = "urn:amy:operation:notes.read-note/output";
+    answer.$defs = { Node: { type: "object", properties: { name: { type: "string" } } } };
+    answer.properties.child = { $ref: "#/$defs/Node", description: "a node" };
+    fs.writeFileSync(file, JSON.stringify(document));
+    const { status, said } = gate("documents-itself", tree);
+    expect(status).toBe(1);
+    expect(said).toContain("output.$defs.Node property `name` has no description");
+  });
 });
