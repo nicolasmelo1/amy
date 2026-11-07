@@ -85,7 +85,25 @@ describe("Codex usage", () => {
         }),
       }).read(),
     ).resolves.toEqual({
-      windows: [{ label: "five-hour", usedPercent: 12 }],
+      windows: [{ label: "primary", usedPercent: 12 }],
+    });
+  });
+
+  it("labels a window from its reported duration, not its quota slot", async () => {
+    const reader = new CodexUsageReader({
+      readRateLimits: async () => ({
+        rateLimits: {
+          primary: { usedPercent: 24, windowDurationMins: 10_080 },
+          secondary: { usedPercent: 61, windowDurationMins: 300 },
+        },
+      }),
+    });
+
+    await expect(reader.read()).resolves.toEqual({
+      windows: [
+        { label: "weekly", usedPercent: 24 },
+        { label: "five-hour", usedPercent: 61 },
+      ],
     });
   });
 

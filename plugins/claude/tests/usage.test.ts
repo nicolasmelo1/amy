@@ -6,8 +6,8 @@ import { plugin } from "../src/plugin.js";
 import { ClaudeUsageReader, parseClaudeUsage } from "../src/usage.js";
 
 const ACCOUNT = JSON.stringify({
-  five_hour: { utilization: 0.42, resets_at: "2026-11-07T15:00:00.000Z" },
-  seven_day: { utilization: 0.18, resets_at: "2026-11-12T12:00:00.000Z" },
+  five_hour: { utilization: 42, resets_at: "2026-11-07T15:00:00.000Z" },
+  seven_day: { utilization: 18, resets_at: "2026-11-12T12:00:00.000Z" },
 });
 
 describe("Claude account usage", () => {

@@ -31,7 +31,10 @@ export const plugin = definePlugin<typeof configSchema>({
           timeoutMs: ctx.config.timeoutMs,
         }),
     });
-    contributeUsage(registry, new CodexUsageReader(new StdioCodexAppServer({ timeoutMs: ctx.config.timeoutMs })));
+    contributeUsage(registry, new CodexUsageReader(new StdioCodexAppServer({
+      runner: ctx.runner,
+      timeoutMs: ctx.config.timeoutMs,
+    })));
   },
 });
 

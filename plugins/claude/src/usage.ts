@@ -50,7 +50,7 @@ export class ClaudeUsageReader implements UsageReader {
   }
 }
 
-/** Normalizes the account endpoint's fractions into percentages. */
+/** Normalizes the account endpoint's percentage measurements. */
 export function parseClaudeUsage(json: string): UsageResult {
   let document: ClaudeUsageDocument;
   try {
@@ -72,7 +72,7 @@ function windowOf(label: string, period: ClaudeUsagePeriod | undefined) {
     : undefined;
   return {
     label,
-    usedPercent: Math.max(0, Math.min(100, period.utilization * 100)),
+    usedPercent: Math.max(0, Math.min(100, period.utilization)),
     ...(resetsAt ? { resetsAt } : {}),
   };
 }

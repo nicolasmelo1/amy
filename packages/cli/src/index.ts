@@ -145,6 +145,15 @@ async function assemble(profile: Profile): Promise<Assembled> {
   const config = loadConfig(home);
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) return prepared;
+  return assembleLoaded(profile, config);
+}
+
+/** Mounts a profile for a read-only inspection without preparing edited forks. */
+async function assembleForInspection(profile: Profile): Promise<Assembled> {
+  return assembleLoaded(profile, loadConfig(home));
+}
+
+function assembleLoaded(profile: Profile, config: AmyConfig): Promise<Assembled> {
   return assembleProfile(home, config, profile, {
     runner,
     load: (specs) => loadMountable(specs, profile.name),
@@ -1031,10 +1040,10 @@ program
     const queue = new FileQueue(place.queue);
     const now = new Date();
 
-    // Assembled only to ask the workflow which of its states are waiting
+    // Mounted only to ask the workflow which of its states are waiting
     // ones. A mount that will not come up is exactly when somebody wants to
     // look, so the records are still reported, without that column.
-    const assembled = await assemble(profile);
+    const assembled = await assembleForInspection(profile);
     const usage = await subscriptionUsage(assembled);
     const workflow = assembled.ok ? assembled.mounted.workflow : undefined;
     const waiting = workflow?.waitingStates;
@@ -1154,7 +1163,7 @@ program
     const profile = selected();
     const log = new FileEventLog(profilePaths(home, profile).log, undefined, build);
     const now = new Date();
-    const usage = await subscriptionUsage(await assemble(profile));
+    const usage = await subscriptionUsage(await assembleForInspection(profile));
 
     // Read once, over the longest window any ceiling could be set on, rather
     // than once per window: two reads of a growing file can disagree, and a

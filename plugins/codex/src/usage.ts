@@ -18,8 +18,8 @@ export class CodexUsageReader implements UsageReader {
     try {
       const limits = await this.source.readRateLimits();
       const windows = [
-        normalizeWindow("five-hour", limits.rateLimits?.primary),
-        normalizeWindow("weekly", limits.rateLimits?.secondary),
+        normalizeWindow("primary", limits.rateLimits?.primary),
+        normalizeWindow("secondary", limits.rateLimits?.secondary),
       ].filter((window): window is NonNullable<typeof window> => Boolean(window));
       return windows.length > 0
         ? { windows }
@@ -49,11 +49,17 @@ function normalizeWindow(
   const resetsAt = resetOf(source);
   const startsAt = resetsAt ? startOf(source, resetsAt) : undefined;
   return {
-    label,
+    label: labelOf(label, source.windowDurationMins),
     usedPercent: source.usedPercent,
     ...(startsAt ? { startsAt: startsAt.toISOString() } : {}),
     ...(resetsAt ? { resetsAt: resetsAt.toISOString() } : {}),
   };
+}
+
+function labelOf(slot: string, duration: number | null | undefined): string {
+  if (duration === 300) return "five-hour";
+  if (duration === 10_080) return "weekly";
+  return slot;
 }
 
 function resetOf(source: RateLimitWindow): Date | undefined {

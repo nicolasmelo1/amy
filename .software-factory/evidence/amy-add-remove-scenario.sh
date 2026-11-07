@@ -100,11 +100,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 const [manifest, tarballs] = process.argv.slice(2);
 const body = JSON.parse(fs.readFileSync(manifest, "utf8"));
-body.overrides = Object.fromEntries(fs.readdirSync(tarballs).filter((file) => file.endsWith(".tgz")).map((file) => {
+const packed = Object.fromEntries(fs.readdirSync(tarballs).filter((file) => file.endsWith(".tgz")).map((file) => {
   const name = file.replace(/-\d+\.\d+\.\d+.*\.tgz$/, "").replace(/^amykit-/, "@amykit/");
   return [name, "file:" + path.join(tarballs, file)];
 }));
-fs.writeFileSync(manifest, JSON.stringify(body, null, 2) + "\\n");
+// npm 11 accepts an override only when the same direct dependency names the
+// identical file spec. Installing a tarball positionally leaves the manifest
+// without that match and silently omits the fixed workspace graph.
+body.dependencies = { ...body.dependencies, ...packed };
+body.overrides = { ...body.overrides, ...packed };
+fs.writeFileSync(manifest, JSON.stringify(body, null, 2) + "\n");
 NODE
   rm -rf "\$prefix/node_modules/@amykit/agent-kit"
 fi
