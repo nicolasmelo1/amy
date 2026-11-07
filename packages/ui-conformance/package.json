@@ -1,6 +1,6 @@
 {
   "name": "@amykit/ui-conformance",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
   "type": "module",
   "license": "MIT",
@@ -31,11 +31,11 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/ui": "^0.6.0",
+    "@amykit/ui": "^0.7.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@amykit/core": "^0.6.0",
+    "@amykit/core": "^0.7.0",
     "@amykit/plugin-ui-stub": "^0.6.0"
   }
 }

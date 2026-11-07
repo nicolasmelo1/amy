@@ -1,5 +1,234 @@
 # @amykit/workflow-ticket-to-qa
 
+## 0.7.0
+
+### Minor Changes
+
+- b761f29: **A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.
+- 2c7324c: **A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.
+- 1ad01d3: **A command belongs to the package that means it.** A plugin declares
+  `commands`, `checks` and `files` beside `register`, read after the module is
+  imported and before anything mounts: `amy --help` lists `amy roster` beside
+  the workflow that brought it, `amy doctor` runs the checks it brought, and
+  `amy init`/`amy add` write the files it brought into the profile's state,
+  once. A command that declares `mount: true` receives the mounted ports or a
+  refusal naming why the machine did not come up; every other command answers on
+  the machine that will not boot, which is when it matters.
+  
+  The host keeps the entry point and the ownership rules. A name belongs to one
+  package, reusing a built-in or another package's command is refused at load
+  naming both owners, and a command run against a profile that does not mount
+  its owner names the profiles that do.
+  
+  `amy btw` moved to the errand, `amy note` to note-to-plan, `amy roster` to
+  ticket-to-qa, `amy worktrees` to the worktree adapter and `amy models` to the
+  relay; the CLI imports none of them. `pause` and `resume` became
+  `amy stop --all` and `amy start`, `discover` became the first act of `amy
+  tick` and is hidden rather than listed, `poke` became `look`, `workflow rm` merged into
+  `amy remove <profile>` with `--keep-state`, the two `plugin add`/`plugin
+  remove` verbs are gone, and `daemon`/`after-daemon` are hidden and still
+  callable. A price table older than seven days is refreshed by `amy update`
+  and `amy start` through the relay's own command, and a refresh that fails
+  leaves the table as it was.
+  
+  Because `tick` now looks before it moves, two loops it exposed are closed: a
+  note the machine wrote about its own failure is not itself planned, and
+  discovery does not bring back work that reached its attempt ceiling: the
+  record says `gaveUp`, and `amy look <id>` is the only thing that clears it.
+  
+  `HostPaths` gains `profile`, the directory a profile owns, so a workflow that
+  keeps a file beside its records — the roster — reads what its own command
+  writes. The roster moved there, which is why `amy init` no longer writes it on
+  a machine that mounts nothing that assigns reviewers.
+- ac4faca: **A project is brief, work and proof.** The `brief/`, `workflow/` and
+  `prove/` folders of a project compose the one workflow its config entry
+  drives: each phase a `call()` to the `defineWorkflow` declaration its folder
+  exports, walked as child records of one record, one profile and one daemon
+  for the whole walk. The brief's own declared sections give the walk its
+  vocabulary, what the brief workflow returned is what the proving workflow is
+  handed as its input exactly, and an end named `refused` carries the row back
+  to WORK, saying what did not hold. A phase neither present nor declared
+  absent is refused at the walk's mount, naming it; a phase declared absent
+  carries its reason on the workflow for `amy status` to show; a `test/`
+  folder is told the phase is named `prove/`.
+  
+  `defineWorkflow` gains the optional `phases` member — one reason per
+  declared-absent phase — which the plugin carries beside its workflow; the
+  shipped `errand`, `note-to-plan` and `ticket-to-qa` declare brief and prove
+  out with their reasons, and every other package is unchanged. A project's
+  queue, records, tasks, threads and log live under
+  `projects/<project>/<profile>` with its briefs under the project's shared
+  artifact root; the per-phase layout of an older machine stays on disk,
+  unread, and `amy update` folds a config that named one project as three
+  phase profiles into its single project profile, saying every fold and
+  moving nothing the second time.
+- ebae48c: **A reply in a work's thread can be a question, not only an answer.**
+  
+  When `ticket-to-qa` escalated, or asked a question before starting, the owner's
+  first message in the thread ended the wait and the work resumed on it. A person
+  who replied "why do you think that comment is wrong?" had not decided anything,
+  and watched their question turn into work.
+  
+  - `Reply` gains an optional `kind`, `discussion` or `decision`, set only when
+    the person marked the reply. The catalogue gains `discuss`, on the `agent`
+    port, so it is charged to the budget like every other run.
+  - `policy.conversation` on `ticket-to-qa`: `answer`, the default, reads a reply
+    nobody marked as the decision, exactly as before. `discuss` reads it as a turn
+    in a discussion: answered in the thread, read-only, with no state change, no
+    commit and no attempt counted, while the work waits for a reply marked as the
+    decision. A marked reply reads as marked under either. An unknown value is
+    refused at boot by name.
+  - `AskContext` gains `readOnly`, and a discussion is asked with it. The
+    harness enforces it rather than the prompt: Claude runs with
+    `--permission-mode plan`, Codex with `--sandbox read-only`, and Hermes, whose
+    one-shot mode cannot keep its tools off the checkout, refuses the run so a
+    relay hands it to a harness that can.
+  - On the decision, the step the work resumes is prompted with the whole
+    discussion, attributed, with the decision last.
+  - The Slack plugin marks a reply by the operator's own reaction on it: ✅
+    (`white_check_mark`) decides, 💬 (`speech_balloon`) discusses. Both names are
+    settings, `decisionReaction` and `discussionReaction`. A reaction Slack lists
+    only in part is read again in full with `reactions.get`, which needs the
+    `reactions:read` scope; without it, that one read fails and says so.
+  - Without a conversation port, a comment on the ticket is still the decision,
+    whatever the policy says.
+- 7d2dd00: **A workflow is a Mermaid diagram.** A workflow's shape is the `workflow.mmd` beside it — an ordinary `stateDiagram-v2` that GitHub and Obsidian render — and the host reads its states, start, waits and ends from it when the workflow mounts; `defineWorkflow`'s `states`, `waiting` and `terminal` are required only without one, and declaring both is refused at boot. `readDiagram`, `connects`, `markState`, `withDiagramBeside` and the `notWritten()` stub are in the core, Mermaid-checked against Pele in its tests. The engine logs a move the diagram does not draw as `workflow.undrawn_transition` and makes it anyway; the testkit fails one, and with `everyEdge` an arrow no world walks. `amy workflow new --from <file.mmd>` turns a diagram into a workflow that mounts with every decision a stub, `amy workflow check` lists the stubs and the arrows not walked, and `amy workflow export [--work <id>]` prints the diagram with a record's state marked. `StateMachine` takes an optional `diagram`. The three shipped workflows are each drawn as one and lose their state lists and their exported unmounted `errand`, `noteToPlan`, `ticketToQa` and `newRecord`; bind a plugin with `withDiagramBeside(plugin, entry)` instead. `ticket-to-qa` no longer asks a reviewer again on every look when nothing was pushed since they requested changes.
+- da95fc7: **A workflow is one declaration.** `defineWorkflow` registers the pure machine and its deferred runtime together, resolves typed required and optional ports, validates and merges policy defaults, and constructs the core record fields. `planning` supplies the four typed plan constructors, and `amy workflow new` writes the new declaration.
+- b83a214: Workflows can now declare one decision per diagram state, compose pure
+  `before` and `after` filters around those decisions, and provide `discover`,
+  `observe`, `actions`, and `remember` as individual runtime pieces. `extend`
+  mounts supporting infrastructure from the same declaration. Legacy
+  `plan`/`runtime` declarations and raw plugins remain supported, while mixing
+  the legacy and new declaration members is refused at boot.
+  
+  The `agent` port an action receives now records every run as `agent.run`, and
+  an action's `announce(text)` turns a failed announcement into `notify.failed`,
+  so no workflow writes either by hand. `ports.notifier` stays strict.
+  
+  `amy workflow new` now writes a runnable diagram-backed three-piece workflow.
+  The shipped errand, note-to-plan, and ticket-to-QA workflows use the new form.
+- 8b21570: **A workflow runs on lanes.** A diagram may draw `state X <<fork>>` and
+  `state Y <<join>>`: every line out of the fork is a lane, every lane is a
+  call, so a record of its own, and the caller moves to the join once every
+  lane has ended, holding where each ended and what it returned, keyed by lane.
+  There is no setting for how many: the number of lanes is the number of lines
+  drawn. Before this, work that could run side by side ran one piece after the
+  other, or was written by hand in a runtime the diagram never showed.
+  
+  A lane that escalates leaves its siblings running, and the fork says which
+  lane needs the person — in its wait, in `callStanding`, and in `amy status`,
+  which draws the lanes side by side. A lane takes a lease on the branch it
+  writes before it checks it out, and a branch another lane holds is a wait that
+  costs no attempt. A binding's `revision` lends a lane a tree detached at the
+  caller's commit, read-only. Refused at boot, by name: a lane that is not a
+  call, a lane that never reaches its join, a join no fork meets at, a decision
+  written for a fork, and two lanes bound to the same literal branch.
+  
+  `@amykit/plugin-concurrent-engine` is the serial engine with the lanes of a
+  fork moved at once, each asked of the budget before its call. The serial
+  engine stays the default, and moves them in turn.
+  
+  **`ticket-to-qa` runs its gate and its self-review as two lanes.** `CHECKED`
+  and `SELF_REVIEW` are gone: a finished implementation goes to `checks`, where
+  the gate and the review both check the implementation's commit, and meet at
+  `verdict`. A change either one refuses goes back to the implementation with
+  what both said, in one round — before, a change the gate refused went back
+  without what the review would have said, and the review never saw the rules
+  the gate holds. The review now ends on a verdict: a line saying
+  `CHANGES_ASKED` sends the work back, anything else approves. The rounds count
+  toward `maxGateAttempts`. A record an older version saved in `CHECKED` or
+  `SELF_REVIEW` goes straight to `checks` on its next look and is checked again
+  in both lanes, without implementing again. A ticket that leaves its repository
+  while it is being checked stops where it is, as it did in `CHECKED`.
+- cb92285: **The actions use the ports.** The errand, note-to-plan and ticket-to-qa write
+  `discover`, `observe`, `remember` and every action as a function of the scope
+  `defineWorkflow` hands it: `scope.ports`, `scope.config`, `scope.policy`,
+  `scope.checkouts`, `scope.ctx` and `scope.announce`. `errandRuntime`,
+  `planRuntime` and `ticketRuntime` are gone, with their `…RuntimeDeps` and
+  `…RuntimeConfig` types; a test that built one mounts the declaration instead.
+  
+  Before, each workflow kept the factory it had before `defineWorkflow`, and a
+  `WeakMap` adapter that assembled a deps object out of the scope to build it:
+  three copies of the same adapter. It cached nothing for an action, whose scope
+  is a new object every time, so every action rebuilt the whole runtime; and
+  ticket-to-qa carried its own `agent.run` and `notify.failed` lines behind an
+  `accountsAgentRuns: false` switch, beside the host's, when the framework
+  already hands every action an agent that accounts for each reply and an
+  `announce` that cannot cost a move. ticket-to-qa's progress policy is read
+  from `budget` through the declaration's `progress(scope)`, and its roster is
+  read from the profile when a look needs it, as before.
+- 3649573: Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.
+- f4069bb: **The config is written by what is mounted.** Every workflow's own
+  vocabulary — the attempt ceilings its decisions read, the status a ticket
+  moves to, where plans go and what judges them — moved out of the config's top
+  level and into the profile that drives the workflow, checked at mount against
+  the workflow's own `configSchema`. `amy init` writes a config that carries
+  only the machine, and a commented example that teaches the shape;
+  `amy add <workflow>` writes the profile block from what the workflow's schema
+  asks for, with the settings that need an answer written as placeholders and
+  the rest taken from defaults. `amy config explain` lists every setting the
+  machine and each mounted thing carries, with its type, its default and the
+  reason it is there; `amy config explain <plugin>` narrows to one.
+  
+  A key of the old shape left at the top level is refused at boot by name, with
+  the place it moved to in the message, so nothing is silently read from where
+  it lived. `amy update` moves a v1 config for you: each old key is rewritten
+  under the profile or the plugin that reads it, the original file is kept
+  beside the config as `config.yaml.moved`, and a second update changes
+  nothing. The engine learns to tune itself at the same time — the serial
+  engine's retry between failed items is its own setting now, no longer
+  borrowed from whichever workflow's poll happened to be at the top of the
+  config.
+- 2363da5: **The host lends the checkout.** `PluginContext` gains `checkouts()`, which answers with the `Git` and the layout for the calling plugin — the host's paths, the plugin's own `defaultBranch` and `baseBranch`, and the `worktree` port read whenever a path is asked for, so a worktree plugin listed after the caller is still the one used. The core exports `BRANCH_SETTINGS`, the two branch settings with one description, and every shipped schema that declares them spreads it in place of its own wording. The command gate, the plan check and the three workflows that opened pull requests ask their context instead of building a `Git` and a second copy of its layout. The settings stay per plugin, so no `config.yaml` changes; the plan check's `baseBranch` now defaults to `{}` like every other's.
+- 0ef3ae3: **The roster belongs to its workflow.** The team list that names who reviews
+  and who owns QA is one ticket-to-qa profile's file, written by `init` and
+  `add` beside the profile's records and confirmed by `amy roster confirm` —
+  the workflow brought its command and its check with it, and none of the
+  host's source names the file any more. Where a profile has no roster of its
+  own, the workflow's red check names the file the machine kept where the
+  roster used to live, so the error is a way back and not a dead end.
+  
+  `amy update` now gives an existing install its move: every team an older
+  release kept at `~/.amy/roster.yaml` is copied into each profile that mounts
+  the workflow, the old name is retired as `roster.yaml.moved` rather than
+  deleted, and a second update changes nothing.
+  
+  The doctor asks the machine, and only the machine: a gate's commands are
+  asked of the machines that mounted a gate, and each mounted plugin names the
+  environment variables it reads — `plugin.environment` — so the errand's
+  machine is green without the ticket workflow's tracker key, and no install
+  carries a credential checklist nothing on it asked for. The quickstart walks
+  the shape the machine has now: init, add a workflow, doctor, start.
+
+### Patch Changes
+
+- ec32d67: Treat structured provider usage limits as waits rather than attempts.
+- Updated dependencies [b761f29]
+- Updated dependencies [3b540fa]
+- Updated dependencies [2c7324c]
+- Updated dependencies [1ad01d3]
+- Updated dependencies [91f6caf]
+- Updated dependencies [ac4faca]
+- Updated dependencies [ebae48c]
+- Updated dependencies [2b4deec]
+- Updated dependencies [989f399]
+- Updated dependencies [7d2dd00]
+- Updated dependencies [da95fc7]
+- Updated dependencies [b83a214]
+- Updated dependencies [65ebf9f]
+- Updated dependencies [8b21570]
+- Updated dependencies [d85dacd]
+- Updated dependencies [ec32d67]
+- Updated dependencies [3649573]
+- Updated dependencies [f4069bb]
+- Updated dependencies [f9b65f6]
+- Updated dependencies [37504c1]
+- Updated dependencies [2363da5]
+- Updated dependencies [0ef3ae3]
+- Updated dependencies [0815efb]
+  - @amykit/core@0.7.0
+  - @amykit/agent-kit@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes

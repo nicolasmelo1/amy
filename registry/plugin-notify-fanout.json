@@ -5,7 +5,7 @@
   "title": "@amykit/plugin-notify-fanout",
   "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
   "dependencies": [
-    "@amykit/core@^0.6.0"
+    "@amykit/core@^0.7.0"
   ],
   "devDependencies": [],
   "files": [
@@ -19,7 +19,7 @@
       "path": "plugins/notify-fanout/package.json",
       "type": "registry:file",
       "target": "forks/plugin-notify-fanout/package.json",
-      "content": "{\n  \"name\": \"@amykit/plugin-notify-fanout\",\n  \"version\": \"0.6.0\",\n  \"description\": \"Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/notify-fanout\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.6.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/plugin-notify-fanout\",\n  \"version\": \"0.7.0\",\n  \"description\": \"Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/notify-fanout\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.0\"\n  }\n}\n"
     },
     {
       "path": "plugins/notify-fanout/src/FanOutNotifier.ts",
@@ -48,9 +48,9 @@
   ],
   "meta": {
     "package": "@amykit/plugin-notify-fanout",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "plugins/notify-fanout",
-    "tag": "@amykit/plugin-notify-fanout@0.6.0"
+    "tag": "@amykit/plugin-notify-fanout@0.7.0"
   }
 }

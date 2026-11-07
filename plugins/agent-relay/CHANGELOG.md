@@ -1,5 +1,83 @@
 # @amykit/plugin-agent-relay
 
+## 0.7.0
+
+### Minor Changes
+
+- b761f29: **A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.
+- 2c7324c: **A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.
+- 1ad01d3: **A command belongs to the package that means it.** A plugin declares
+  `commands`, `checks` and `files` beside `register`, read after the module is
+  imported and before anything mounts: `amy --help` lists `amy roster` beside
+  the workflow that brought it, `amy doctor` runs the checks it brought, and
+  `amy init`/`amy add` write the files it brought into the profile's state,
+  once. A command that declares `mount: true` receives the mounted ports or a
+  refusal naming why the machine did not come up; every other command answers on
+  the machine that will not boot, which is when it matters.
+  
+  The host keeps the entry point and the ownership rules. A name belongs to one
+  package, reusing a built-in or another package's command is refused at load
+  naming both owners, and a command run against a profile that does not mount
+  its owner names the profiles that do.
+  
+  `amy btw` moved to the errand, `amy note` to note-to-plan, `amy roster` to
+  ticket-to-qa, `amy worktrees` to the worktree adapter and `amy models` to the
+  relay; the CLI imports none of them. `pause` and `resume` became
+  `amy stop --all` and `amy start`, `discover` became the first act of `amy
+  tick` and is hidden rather than listed, `poke` became `look`, `workflow rm` merged into
+  `amy remove <profile>` with `--keep-state`, the two `plugin add`/`plugin
+  remove` verbs are gone, and `daemon`/`after-daemon` are hidden and still
+  callable. A price table older than seven days is refreshed by `amy update`
+  and `amy start` through the relay's own command, and a refresh that fails
+  leaves the table as it was.
+  
+  Because `tick` now looks before it moves, two loops it exposed are closed: a
+  note the machine wrote about its own failure is not itself planned, and
+  discovery does not bring back work that reached its attempt ceiling: the
+  record says `gaveUp`, and `amy look <id>` is the only thing that clears it.
+  
+  `HostPaths` gains `profile`, the directory a profile owns, so a workflow that
+  keeps a file beside its records — the roster — reads what its own command
+  writes. The roster moved there, which is why `amy init` no longer writes it on
+  a machine that mounts nothing that assigns reviewers.
+- 2b4deec: **A run carries only what amy hands it.** The three agent CLIs amy drives used to carry the operator's own setup into a ticket run and write back into it. Now each run is kept apart:
+  
+  - **Claude** runs with `--setting-sources project,local --strict-mcp-config --no-session-persistence`. The operator's `CLAUDE.md`, hooks, plugins, MCP servers and skills stay out, and no session or auto-memory is written under `~/.claude/projects`. The repository's own settings still load. A step whose skill ladder names a skill is lent that one skill through `--add-dir`, and nothing else of the operator's.
+  - **Codex** runs with `--ignore-user-config --ephemeral --disable hooks --disable plugins --disable apps --disable memories`. The login still comes from `CODEX_HOME`, and `~/.codex/AGENTS.md` and user skills still load, since Codex has no switch for them.
+  - **Hermes** runs in its own profile, `hermes -p amy`, set by the new `profile` setting. `amy init` and `amy add` create that profile from the active one when it is missing, with memory, unasked skill writes and the curator turned off. `amy doctor` goes red, naming the fix, when the profile is missing or has any of those turned back on.
+  
+  **A plugin can prepare something outside amy's state.** `Plugin.setup` is run by `amy init` and `amy add` after a plugin's files. A setup gets the plugin's settings and a command runner, answers the way a check does, and one that throws is reported without stopping the next. `AskContext.skill` carries the skill a relay addressed the prompt to, with the directory it is installed in.
+- 3649573: Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.
+
+### Patch Changes
+
+- Updated dependencies [b761f29]
+- Updated dependencies [3b540fa]
+- Updated dependencies [2c7324c]
+- Updated dependencies [1ad01d3]
+- Updated dependencies [91f6caf]
+- Updated dependencies [ac4faca]
+- Updated dependencies [ebae48c]
+- Updated dependencies [2b4deec]
+- Updated dependencies [989f399]
+- Updated dependencies [7d2dd00]
+- Updated dependencies [da95fc7]
+- Updated dependencies [b83a214]
+- Updated dependencies [65ebf9f]
+- Updated dependencies [8b21570]
+- Updated dependencies [d85dacd]
+- Updated dependencies [ec32d67]
+- Updated dependencies [3649573]
+- Updated dependencies [f4069bb]
+- Updated dependencies [f9b65f6]
+- Updated dependencies [37504c1]
+- Updated dependencies [2363da5]
+- Updated dependencies [0ef3ae3]
+- Updated dependencies [0815efb]
+  - @amykit/core@0.7.0
+  - @amykit/agent-kit@0.7.0
+  - @amykit/model-specs@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes
