@@ -134,6 +134,61 @@ when it is used, not when it is mounted — but a missing one is refused at boot
 with the list of what would have failed. See
 [Plugins and the registry](../concepts/plugins.md).
 
+## A plugin of your own
+
+A workflow publishes the ports it needs; which plugin answers each one is the
+installation's choice, and two profiles can choose differently. `amy add` takes
+a plugin into the selected profile in one of two ways:
+
+```sh
+amy add @amykit/plugin-linear              # the published package (the default)
+amy --workflow oncall add @amykit/plugin-linear --fork   # its source, yours to edit
+amy add 'git+https://github.com/acme/tools.git#v2&path:plugins/jira' --fork
+```
+
+A **fork** is the package's source, fetched from the repository its
+`package.json` names (`repository.url` and `repository.directory`), at the tag
+its installed version was released under, `<name>@<version>`. A git URL that
+names a directory with `#path:` forks the same way without asking the registry.
+A package with no `repository`, or a tag that is not there, is refused before
+anything is written.
+
+The fork keeps the package's name, so nothing names where it lives: the config
+still says `@amykit/plugin-linear`, and the profile's own npm root under
+`~/.amy/plugins/profiles/<profile>` maps that name to the fork — under
+`dependencies`, and under `overrides` for any installed workflow that imports
+it itself. Every other profile keeps the published package. The core and the
+command are never forked: every profile resolves them from amy's own root.
+
+| The profile drives | Where the fork goes |
+| :-- | :-- |
+| A workflow of your own | Inside its project, under `forks/`, outside what it publishes |
+| A workflow somebody published | `~/.amy/profiles/<profile>/forks/`, moved by `AMY_HOME` |
+
+`--to <dir>` puts one fork somewhere else, and two settings in `config.yaml`
+change the defaults:
+
+```yaml
+add: fork          # what `amy add <package>` does with no flag: fork | package
+forks: ~/forks     # where forks go, one directory per profile
+```
+
+Edit the fork and the next boot builds it with its own build script, and a
+running loop remounts it between two ticks — never during one. A build that
+fails refuses the boot by name, and a running loop keeps the mount it had.
+
+`amy update` merges the plugin's new release into the fork three ways — the
+version it was taken from, your fork, and the new one — so your edits stay and
+the release's changes arrive. A line you both changed stops the update for the
+whole machine before anything moves: the fork is left exactly as it was, and
+the marked merge is written beside it, at `<fork>.merge`. `amy remove` of a
+forked name gives the profile the published package back and leaves the fork's
+directory where it is.
+
+Every published package also carries a [shadcn](https://ui.shadcn.com)
+registry item under `registry/`, so `npx shadcn add` can copy the same source.
+It only copies: recording a base and merging the next release is amy's.
+
 ## Writing your own
 
 The point is the workflows that cannot be shared: a process that names your

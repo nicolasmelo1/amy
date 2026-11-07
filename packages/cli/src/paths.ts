@@ -29,6 +29,21 @@ export function paths(home: string) {
   };
 }
 
+/**
+ * The npm root one profile resolves its own packages through, nested inside
+ * the machine's: a name it does not hold walks up to `<home>/plugins`, which
+ * is how a profile root holds no core and still reaches the one the machine
+ * has.
+ */
+export function profileRoot(home: string, profile: string): string {
+  return path.join(paths(home).plugins, "profiles", profile);
+}
+
+/** Where the forks of a profile whose workflow is installed rather than yours live. */
+export function profileForks(home: string, profile: string): string {
+  return path.join(home, "profiles", profile, "forks");
+}
+
 /** The directories that belong to one profile and to nothing else. */
 export function profilePaths(home: string, profile: string | Profile) {
   return { ...paths(home), ...statePaths(home, profile) };

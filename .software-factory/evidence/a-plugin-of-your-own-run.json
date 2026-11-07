@@ -1,0 +1,13 @@
+{
+  "scenario": "a-plugin-of-your-own",
+  "status": "passed",
+  "goal": "I want two workflows on one machine to answer the same plugin differently — one with the published package, one with a fork of its source I can edit — without either naming a path, and to take the plugin's next release into my fork without losing what I changed.",
+  "artifact": { "package": "@amykit/cli", "entry": "the installed amy command, run by node", "built_by": "scripts/install.sh" },
+  "observed": {
+    "assertions_run": 12,
+    "assertions_failed": 0,
+    "forked": "@acme/plugin-pager",
+    "profiles": ["published", "own"]
+  },
+  "assertions": [{"type":"fork.a_package_is_forked_from_its_repository","status":"passed"},{"type":"fork.the_machine_boots_with_the_fork","status":"passed"},{"type":"fork.the_profile_root_overrides_the_name","status":"passed"},{"type":"fork.the_profile_root_holds_no_core","status":"passed"},{"type":"fork.an_installed_workflow_reaches_the_fork","status":"passed"},{"type":"fork.another_profile_keeps_the_published_package","status":"passed"},{"type":"fork.update_merges_the_release_into_the_fork","status":"passed"},{"type":"fork.update_keeps_the_edit","status":"passed"},{"type":"fork.update_takes_the_release","status":"passed"},{"type":"fork.the_merged_fork_mounts","status":"passed"},{"type":"fork.removing_a_fork_keeps_its_directory","status":"passed"},{"type":"fork.removing_a_fork_returns_the_published_package","status":"passed"}]
+}

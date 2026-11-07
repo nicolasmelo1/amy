@@ -148,6 +148,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 
 | Gate | What expires it | Assertions |
 | :-- | :-- | :-- |
+| `a-plugin-of-your-own` | `packages/cli/src/fork.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/remove.ts` | 4 |
 | `a-private-workflow-composes` | `packages/core/src/git.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/ports/CodeHost.ts`<br>`packages/core/src/ports/Conversation.ts`<br>`packages/core/src/ports/Notifier.ts`<br>`packages/core/src/ports/Queue.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`packages/core/src/operator.ts`<br>`packages/core/src/runtime.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd`<br>`plugins/linear/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**`<br>`plugins/file-queue/src/**` | 53 |
 | `a-question-is-not-an-answer` | `packages/core/src/ports/Conversation.ts`<br>`packages/core/src/actions.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd`<br>`plugins/slack/src/**`<br>`plugins/serial-engine/src/**` | 8 |
 | `a-workflow-calls-another` | `packages/core/src/calls.ts`<br>`packages/core/src/expand.ts`<br>`packages/core/src/define-workflow.ts`<br>`packages/core/src/diagram.ts`<br>`packages/workflow-pull-request/src/**`<br>`packages/workflow-pull-request/workflow.mmd`<br>`packages/cli/src/workflow-add.ts`<br>`packages/cli/src/workflow.ts`<br>`packages/cli/src/status-page.tsx` | 7 |

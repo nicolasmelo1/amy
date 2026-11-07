@@ -1,0 +1,19 @@
+{
+  "name": "@acme/workflow-paging",
+  "version": "1.0.0",
+  "description": "A published workflow that imports a plugin itself, by name.",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "workflow.mmd"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.6.0",
+    "@acme/plugin-pager": "^1.0.0"
+  }
+}

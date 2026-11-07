@@ -22,6 +22,8 @@ For what the two halves mean and why, see
 | `workflows` | `Record<string, WorkflowProfile>` | `{}` | The workflows this install can drive, by the name typed after `--workflow`. Merged over the shipped two, so naming one replaces it and naming a third adds it. |
 | `defaultWorkflow` | `string` | `""` | Which profile runs when nothing is named. Empty means the first. |
 | `extraPlugins` | `string[]` | `[]` | Plugins mounted under every profile, named here or added with `amy add`. A workflow's own plugins stay in its profile; this is the list for what somebody mounted on top, and it is kept apart so a profile left on the recommended set stays on it. |
+| `add` | `unknown` | `"package"` | What `amy add <package>` does with no flag: install the published package (`package`), or take its source as a fork the profile owns (`fork`). Read as written, so a mode amy does not know is refused naming this key. |
+| `forks` | `string` | `""` | Where forks go when `--to` names no place; empty means the default — the project of a workflow of your own, or the profile's directory in AMY_HOME. |
 | `autoUpdate` | `AutoUpdateConfig` | `DEFAULT_AUTO_UPDATE` | One machine-wide cadence, persisted separately for every profile. |
 | `autoUpdateSource` | `unknown` |  | A scalar/null source value retained so malformed YAML cannot become valid. |
 | `retentionDays` | `number` | `7` |  |

@@ -518,6 +518,26 @@ gates:
       - "plan.a_refused_draft_goes_back_to_the_agent"
 
 
+  # One machine answers one plugin two ways: a profile that forks a package
+  # mounts its source under the package's name, an installed workflow that
+  # imports the name reaches the fork, the other profile keeps the published
+  # copy, and an update merges the next release without losing an edit. It
+  # rests on npm's own `overrides` in a profile root, which only npm proves.
+  a-plugin-of-your-own:
+    activation:
+      - "packages/cli/src/fork.ts"
+      - "packages/cli/src/loader.ts"
+      - "packages/cli/src/paths.ts"
+      - "packages/cli/src/add.ts"
+      - "packages/cli/src/remove.ts"
+    evidence: ".software-factory/evidence/a-plugin-of-your-own.json"
+    plan: "docs/design/a-plugin-is-installed-into-a-workflow.md"
+    required_assertions:
+      - "fork.an_installed_workflow_reaches_the_fork"
+      - "fork.another_profile_keeps_the_published_package"
+      - "fork.the_profile_root_holds_no_core"
+      - "fork.update_keeps_the_edit"
+
   # One CLI adds or removes a mounted package; these are the paths that make
   # that promise true, so changing one expires the proof.
   amy-add-remove:

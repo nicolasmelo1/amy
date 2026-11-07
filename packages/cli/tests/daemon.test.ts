@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, isAlive, readDaemon, running, runningForWorkflow, writeDaemon } from "../src/daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, isAlive, readDaemon, runLoop, running, runningForWorkflow, writeDaemon } from "../src/daemon.js";
 
 describe("the loop that is running", () => {
   let home: string;
@@ -91,5 +91,62 @@ describe("the loop that is running", () => {
   it("knows this process is alive and a made-up one is not", () => {
     expect(isAlive(process.pid)).toBe(true);
     expect(isAlive(0x7fffffff)).toBe(false);
+  });
+});
+
+describe("the loop, when what it mounted changes", () => {
+  it("remounts after the tick in progress and never during one", async () => {
+    const said: string[] = [];
+    let changed = false;
+    let turns = 0;
+    let inTurn = false;
+
+    await runLoop({
+      idleMs: 1,
+      stopping: () => turns >= 3,
+      paused: () => false,
+      turn: async () => {
+        inTurn = true;
+        turns += 1;
+        said.push(`tick ${turns} starts`);
+        // A file in the fork is saved while this tick is still running.
+        if (turns === 1) changed = true;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        said.push(`tick ${turns} ends`);
+        inTurn = false;
+        return { idle: false };
+      },
+      changed: () => changed,
+      remount: async () => {
+        expect(inTurn).toBe(false);
+        changed = false;
+        said.push("remount");
+      },
+      sleep: async () => {},
+    });
+
+    expect(said).toEqual(["tick 1 starts", "tick 1 ends", "remount", "tick 2 starts", "tick 2 ends", "tick 3 starts", "tick 3 ends"]);
+  });
+
+  it("stops after a remount that replaced it, before another tick", async () => {
+    let stopping = false;
+    let turns = 0;
+
+    await runLoop({
+      idleMs: 1,
+      stopping: () => stopping,
+      paused: () => false,
+      turn: async () => {
+        turns += 1;
+        return { idle: true };
+      },
+      changed: () => true,
+      remount: async () => {
+        stopping = true;
+      },
+      sleep: async () => {},
+    });
+
+    expect(turns).toBe(0);
   });
 });

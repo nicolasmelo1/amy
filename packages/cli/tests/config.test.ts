@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   DEFAULT_CONFIG,
+  addModeFor,
   configuredAutoUpdateProblems,
   loadConfig,
   machineSchema,
@@ -211,5 +212,31 @@ describe("writing a profile's plugin list", () => {
 
   it("refuses a profile nobody declared, rather than inventing one", () => {
     expect(() => writeProfilePlugins(root, "oncall", [], loadConfig(root))).toThrow("oncall");
+  });
+});
+
+describe("what `amy add` does by default", () => {
+  it("follows the config's `add` with no flag, and a flag overrides it either way", () => {
+    expect(addModeFor(DEFAULT_CONFIG, {})).toBe("package");
+    expect(addModeFor({ add: "fork" }, {})).toBe("fork");
+    expect(addModeFor({ add: "fork" }, { package: true })).toBe("package");
+    expect(addModeFor({ add: "package" }, { fork: true })).toBe("fork");
+  });
+
+  it("reads `add` and `forks` from config.yaml", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-add-mode-"));
+    try {
+      fs.writeFileSync(path.join(home, "config.yaml"), "add: fork\nforks: ~/forks\n");
+      expect(addModeFor(loadConfig(home), {})).toBe("fork");
+      expect(loadConfig(home).forks).toBe("~/forks");
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a mode it does not know, naming the key, whatever the flags say", () => {
+    expect(() => addModeFor({ add: "copy" }, {})).toThrow("`add` in the config is `copy`, and it is `fork` or `package`");
+    expect(() => addModeFor({ add: "copy" }, { fork: true })).toThrow("`add` in the config is `copy`");
+    expect(() => addModeFor(DEFAULT_CONFIG, { fork: true, package: true })).toThrow("`--fork` and `--package` ask for opposite things");
   });
 });

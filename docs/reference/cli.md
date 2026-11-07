@@ -73,12 +73,18 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 Add a workflow or a plugin: install it, mount it, and check the machine boots
 
 ```sh
-amy add <spec>
+amy add [options] <spec>
 ```
 
 | Argument | Required | What it is |
 | :-- | :-- | :-- |
 | `<spec>` | yes | a package name, a URL, a git URL, or a path |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--fork` |  | take the package's source as a fork this profile owns, instead of the config's `add` |
+| `--package` |  | install the published package, instead of the config's `add` |
+| `--to <dir>` |  | the directory the fork goes into, instead of the config's `forks` |
 
 ### `amy brief`
 
