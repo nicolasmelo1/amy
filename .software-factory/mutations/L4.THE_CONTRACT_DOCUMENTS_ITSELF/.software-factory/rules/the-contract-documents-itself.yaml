@@ -1,0 +1,27 @@
+id: L4.THE_CONTRACT_DOCUMENTS_ITSELF
+layer: L4
+title: The contract documents itself
+severity: high
+statement: >-
+  Every operation in packages/services/openapi.json has an id, a summary, a
+  description and a domain; every schema property has a description; every
+  operation has an example of its input and its output; every error is the
+  envelope; every declared code is <domain>.<reason>; and every operation says
+  x-amy-local-only and x-amy-writes.
+why: >-
+  The contract is where --help, the OpenAPI document and the SDK's editor
+  hints all read their words, so no door documents itself by hand. A missing
+  description is a command nobody can learn, an example missing is a shape
+  nobody can see, and an error that is not the envelope is one every client
+  has to special-case. An agent writing an operation skips each of them first,
+  because nothing fails without them.
+fix: >-
+  Run `npm run build`, which writes the document from the contract, then
+  `npx tsx packages/services/gates/documents-itself.ts` and add what each line
+  names to the operation's declaration — never to openapi.json, which is
+  generated and locked. See docs/design/amy-speaks-in-domains.md.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/packages/services/gates/documents-itself.ts"'

@@ -46,6 +46,8 @@ held to a gate that is proven to work.
 | `L0.THE_CORE_NAMES_NO_VENDOR` | The core's code names no product (docs/design/an-agent-only-answers.md) |
 | `L0.THE_CORE_WORDS_NOTHING` | The core writes no title for anybody (docs/design/an-agent-only-answers.md) |
 | `L0.THE_HOST_NAMES_NO_ROSTER` | carried ceiling (`rosterBackoffMs`) is the config plan's to remove |
+| `L0.THE_SERVICES_KEEP_NO_DATABASE` | The ports are the truth: no driver, no filesystem outside a repository, every port call awaited (docs/design/amy-speaks-in-domains.md) |
+| `L0.THE_SERVICES_KEEP_THEIR_DOMAINS` | Each domain keeps its layout, and only a repository reaches a port (docs/design/amy-speaks-in-domains.md) |
 | `L1.COMMENT_STAYS_SUCCINCT` | A comment block stays under the line ceiling |
 | `L1.COMPLEXITY_CEILING` | No function exceeds the cyclomatic ceiling |
 | `L1.EVERY_RENDERER_HOLDS_THE_FRAME` | Every renderer in the workspace passes the frame's conformance script (docs/design/the-frame-is-closed.md) |
@@ -59,6 +61,8 @@ held to a gate that is proven to work.
 | `L2.GENERATED_FILES_ARE_LOCKED` | Generated artifacts are hash-locked and not hand-edited |
 | `L2.NO_PERMANENT_EXCEPTION` | Every frozen exception carries a future review date |
 | `L2.POLICY_ONLY_TIGHTENS` | The guardrail may be strengthened, never quietly weakened |
+| `L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE` | The contract breaks only when its major is raised (docs/design/amy-speaks-in-domains.md) |
+| `L3.EVERY_DECLARED_ERROR_IS_TESTED` | Every declared error is an outcome some test produced (docs/design/amy-speaks-in-domains.md) |
 | `L3.GATE_COVERS_THE_PLAN` | A gate requires every check its plan's criteria name |
 | `L3.GATE_HAS_FRESH_EVIDENCE` | A gate activated by touched paths needs digest-verified, non-stale evidence |
 | `L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE` | A delivered plan keeps no promise it did not prove |
@@ -70,6 +74,7 @@ held to a gate that is proven to work.
 | `L4.PLAN_IS_A_LINKED_DECLARATION` | A plan is a declaration where every line is tied to another |
 | `L4.ROOT_FILES_ARE_DECLARED` | New top-level files are declared before they appear |
 | `L4.RULE_PROSE_NAMES_A_REAL_COMMAND` | Every command a rule's prose quotes is one this `sf` accepts |
+| `L4.THE_CONTRACT_DOCUMENTS_ITSELF` | Every operation, property, example and error in the contract is documented (docs/design/amy-speaks-in-domains.md) |
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
 | `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` | Every property a plan cites is proven able to fail |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |

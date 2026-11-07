@@ -1,0 +1,118 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "amy",
+    "version": "1.0.0",
+    "description": "Every operation amy offers, at every door: the command line, the server, the SDK and a workflow."
+  },
+  "paths": {
+    "/notes/{id}": {
+      "get": {
+        "operationId": "notes.read-note",
+        "summary": "Reads one note.",
+        "tags": [
+          "notes"
+        ],
+        "x-amy-domain": "notes",
+        "x-amy-local-only": true,
+        "x-amy-writes": [],
+        "x-amy-examples": [],
+        "x-amy-cli": {
+          "words": [
+            "note",
+            "show"
+          ],
+          "positional": [
+            "id"
+          ]
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "the note's id",
+            "schema": {
+              "type": "string",
+              "description": "the note's id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reads one note.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "the note's id"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                "example": {
+                  "id": "n1",
+                  "text": "buy milk"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A declared error, an input the schema refused, or an internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "x-amy-errors": {
+                    "notes.not_found": {
+                      "description": "no note has that id"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "description": "Every failure, at every door.",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "`<domain>.<reason>` for a declared error, `amy.<reason>` for one the contract raised."
+          },
+          "message": {
+            "type": "string",
+            "description": "What went wrong, for a person."
+          },
+          "details": {
+            "description": "What the error carries beyond its message, when it carries anything."
+          }
+        }
+      }
+    }
+  }
+}

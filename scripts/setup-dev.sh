@@ -53,6 +53,13 @@ else
     --tag "v$sf_version" --locked --force
 fi
 
+# `sf check` runs L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE, which asks oasdiff
+# whether the services' contract broke. The script reads its version from the
+# toolchain lock, for the same reason sf's is read from the catalog lock.
+if ! ./scripts/install-oasdiff.sh; then
+  missing="$missing oasdiff"
+fi
+
 say "4/5  bun — only the end-to-end scenarios need it"
 # `npm run e2e` drives the single executable, and `bun build --compile` is
 # what makes one. The gate does not need it, so a machine without bun is

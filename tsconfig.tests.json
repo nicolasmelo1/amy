@@ -127,6 +127,9 @@
       ],
       "@amykit/ui-conformance": [
         "packages/ui-conformance/src/index.ts"
+      ],
+      "@amykit/services": [
+        "packages/services/src/index.ts"
       ]
     },
     "jsx": "react-jsx",
@@ -140,6 +143,8 @@
     "packages/*/src/**/*.tsx",
     "plugins/*/src/**/*.ts",
     "scripts/**/*.ts",
-    ".software-factory/evidence/**/*.ts"
+    ".software-factory/evidence/**/*.ts",
+    "packages/*/scripts/**/*.ts",
+    "packages/*/gates/**/*.ts"
   ]
 }

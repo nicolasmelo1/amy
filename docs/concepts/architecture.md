@@ -77,6 +77,7 @@ packages/
 ├── cli                  The amy command line: one install per machine, reached from any harness.
 ├── core                 Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.
 ├── model-specs          What each model costs per token, vendored and versioned.
+├── services             amy's own domains: every operation declared once, with its documentation, and the OpenAPI document every door is read from.
 ├── test-fixtures        Shared test builders and scripted doubles. Not published.
 ├── ui                   A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.
 ├── ui-conformance       The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.
@@ -130,6 +131,7 @@ this repository.
 | `@amykit/cli` | cli | `@amykit/core`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/ui` |
 | `@amykit/core` | library | _nothing_ |
 | `@amykit/model-specs` | library | `@amykit/core` |
+| `@amykit/services` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/ui` | library | _nothing_ |
 | `@amykit/ui-conformance` | library | `@amykit/ui` |

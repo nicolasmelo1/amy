@@ -388,6 +388,11 @@
           "description": ""
         },
         {
+          "title": "amy speaks in domains",
+          "path": "/design/amy-speaks-in-domains",
+          "description": ""
+        },
+        {
           "title": "Amy update",
           "path": "/design/amy-update",
           "description": ""
@@ -1101,6 +1106,11 @@
           "depth": 3,
           "title": "**The actions use the ports.** The errand, note-to-plan and ticket-to-qa write discover, observe, remember and every action as a function of the scope defineWorkflow hands it: scope.ports, scope.config, scope.policy, scope.checkouts, scope.ctx and scope.announce. errandRuntime, planRuntime and ticketRuntime are gone, with their …RuntimeDeps and …RuntimeConfig types; a test that built one mounts the declaration instead.",
           "slug": "the-actions-use-the-ports-the-errand-note-to-plan-and-ticket-to-qa-write-discover-observe-remember-and-every-action-as-a-function-of-the-scope-defineworkflow-hands-it-scopeports-scopeconfig-scopepolicy-scopecheckouts-scopectx-and-scopeannounce-errandruntime-planruntime-and-ticketruntime-are-gone-with-their-runtimedeps-and-runtimeconfig-types-a-test-that-built-one-mounts-the-declaration-instead"
+        },
+        {
+          "depth": 3,
+          "title": "An operation is declared once, and every door will run it the same way.",
+          "slug": "an-operation-is-declared-once-and-every-door-will-run-it-the-same-way"
         },
         {
           "depth": 3,
@@ -2754,6 +2764,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/amy-speaks-in-domains",
+      "file": "docs/design/amy-speaks-in-domains.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/amy-speaks-in-domains.md",
+      "title": "amy speaks in domains",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/amy-update",
@@ -4904,6 +4925,16 @@
           "slug": "l0thehostnamesnoroster"
         },
         {
+          "depth": 3,
+          "title": "L0.THE_SERVICES_KEEP_NO_DATABASE",
+          "slug": "l0theserviceskeepnodatabase"
+        },
+        {
+          "depth": 3,
+          "title": "L0.THE_SERVICES_KEEP_THEIR_DOMAINS",
+          "slug": "l0theserviceskeeptheirdomains"
+        },
+        {
           "depth": 2,
           "title": "L1 — Grain: how the code reads",
           "slug": "l1-grain-how-the-code-reads"
@@ -4979,9 +5010,19 @@
           "slug": "l2policyonlytightens"
         },
         {
+          "depth": 3,
+          "title": "L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE",
+          "slug": "l2thecontractonlybreaksonpurpose"
+        },
+        {
           "depth": 2,
           "title": "L3 — Effect: a real actor achieved the outcome",
           "slug": "l3-effect-a-real-actor-achieved-the-outcome"
+        },
+        {
+          "depth": 3,
+          "title": "L3.EVERY_DECLARED_ERROR_IS_TESTED",
+          "slug": "l3everydeclarederroristested"
         },
         {
           "depth": 3,
@@ -5042,6 +5083,11 @@
           "depth": 3,
           "title": "L4.RULE_PROSE_NAMES_A_REAL_COMMAND",
           "slug": "l4ruleprosenamesarealcommand"
+        },
+        {
+          "depth": 3,
+          "title": "L4.THE_CONTRACT_DOCUMENTS_ITSELF",
+          "slug": "l4thecontractdocumentsitself"
         },
         {
           "depth": 2,
@@ -8470,6 +8516,20 @@
         ]
       },
       {
+        "name": "@amykit/services",
+        "version": "0.6.0",
+        "kind": "library",
+        "description": "amy's own domains: every operation declared once, with its documentation, and the OpenAPI document every door is read from.",
+        "directory": "packages/services",
+        "npm": "https://www.npmjs.com/package/@amykit/services",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/services",
+        "readme": "packages/services/README.md",
+        "mounts": [],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
         "name": "@amykit/ui",
         "version": "0.6.0",
         "kind": "library",
@@ -9903,6 +9963,20 @@
         "reason": ""
       },
       {
+        "id": "L0.THE_SERVICES_KEEP_NO_DATABASE",
+        "enabled": true,
+        "settings": {},
+        "title": "The ports are the truth: no driver, no filesystem outside a repository, every port call awaited (docs/design/amy-speaks-in-domains.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_SERVICES_KEEP_THEIR_DOMAINS",
+        "enabled": true,
+        "settings": {},
+        "title": "Each domain keeps its layout, and only a repository reaches a port (docs/design/amy-speaks-in-domains.md)",
+        "reason": ""
+      },
+      {
         "id": "L1.COMMENT_STAYS_SUCCINCT",
         "enabled": true,
         "settings": {},
@@ -9988,7 +10062,8 @@
               "packages/core/events.json",
               "packages/ui/frame.yaml",
               "packages/ui/conformance/golden.json",
-              "packages/ui/conformance/config.yaml"
+              "packages/ui/conformance/config.yaml",
+              "packages/services/openapi.json"
             ]
           }
         },
@@ -10007,6 +10082,20 @@
         "enabled": true,
         "settings": {},
         "title": "The guardrail may be strengthened, never quietly weakened",
+        "reason": ""
+      },
+      {
+        "id": "L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE",
+        "enabled": true,
+        "settings": {},
+        "title": "The contract breaks only when its major is raised (docs/design/amy-speaks-in-domains.md)",
+        "reason": ""
+      },
+      {
+        "id": "L3.EVERY_DECLARED_ERROR_IS_TESTED",
+        "enabled": true,
+        "settings": {},
+        "title": "Every declared error is an outcome some test produced (docs/design/amy-speaks-in-domains.md)",
         "reason": ""
       },
       {
@@ -10099,6 +10188,13 @@
         "enabled": true,
         "settings": {},
         "title": "Every command a rule's prose quotes is one this `sf` accepts",
+        "reason": ""
+      },
+      {
+        "id": "L4.THE_CONTRACT_DOCUMENTS_ITSELF",
+        "enabled": true,
+        "settings": {},
+        "title": "Every operation, property, example and error in the contract is documented (docs/design/amy-speaks-in-domains.md)",
         "reason": ""
       },
       {
@@ -10893,6 +10989,22 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "amy-speaks-in-domains",
+        "title": "An operation is declared once, and every door will run it the same way.",
+        "body": "`defineOperation` in `@amykit/core` declares one operation: its id and domain,\nits summary and description, its input and output (or the named events it\nstreams), the errors it can return, its examples, whether it is local-only,\nwhat it writes, and how HTTP and the command line reach it. Input, output and\nevents are any schema implementing Standard Schema and Standard JSON Schema —\nZod 4.2+, ArkType, Valibot — whose interfaces the core copies, so the core\nstill installs no dependency. `invoke(contract, id, input, context)` is the one\nroad every door takes: it validates the input before the handler and the\noutput after it, answers a declared error as itself, and answers a throw, an\nundeclared code or an output the schema refuses as `amy.internal`, naming the\noperation. `contractDocument` writes the contract as OpenAPI 3.1.\n\n`@amykit/services` is the new home of amy's own domains. It ships none yet:\n`npm run build` writes its empty `openapi.json`, and five rules hold every\ndomain to come — a domain keeps its layout and reads no other, only a\nrepository reaches a port, no database or filesystem bypasses the ports, every\noperation and property is documented, every declared error is produced by a\ntest, and the document only breaks when `API_MAJOR` is raised (checked with\noasdiff, which `./scripts/setup-dev.sh` now installs).\n\nBefore, amy's rules lived inside 2844 lines of command-line handlers, so a\nserver or an SDK would have had to call into the CLI or copy it.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/services",
             "level": "minor"
           }
         ],

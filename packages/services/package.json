@@ -1,0 +1,38 @@
+{
+  "name": "@amykit/services",
+  "version": "0.6.0",
+  "description": "amy's own domains: every operation declared once, with its documentation, and the OpenAPI document every door is read from.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "packages/services"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./openapi.json": "./openapi.json"
+  },
+  "files": [
+    "dist",
+    "openapi.json"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.6.0"
+  },
+  "devDependencies": {
+    "@amykit/plugin-file-store": "^0.6.0"
+  }
+}

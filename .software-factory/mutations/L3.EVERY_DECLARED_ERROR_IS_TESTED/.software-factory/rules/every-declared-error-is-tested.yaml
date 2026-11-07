@@ -1,0 +1,24 @@
+id: L3.EVERY_DECLARED_ERROR_IS_TESTED
+layer: L3
+title: Every declared error is tested
+severity: high
+statement: >-
+  Every error code an operation in packages/services/openapi.json declares is
+  an outcome that some test under packages/services/tests produced through
+  invoke.
+why: >-
+  A declared error is a promise to every client that this is how the
+  operation fails. One no test ever produced is a promise nobody checked:
+  the handler may map the domain error to another code, or never reach it,
+  and the document still advertises it.
+fix: >-
+  Write a test that drives the operation into that error through the
+  services' own invoke helper (packages/services/tests/support/invoke.ts),
+  or stop declaring a code the operation cannot return. Run
+  `npx tsx packages/services/gates/every-error-tested.ts` to see what is
+  left. See docs/design/amy-speaks-in-domains.md.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/packages/services/gates/every-error-tested.ts"'

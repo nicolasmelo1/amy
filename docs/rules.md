@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**62 rules shipped**, 51 enabled here, 11 switched off, 51 carrying a mutation fixture, 1 violations frozen.
+**67 rules shipped**, 56 enabled here, 11 switched off, 56 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -19,11 +19,11 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:generated layer-index -->
 | | Layer | What it checks | Shipped | Enabled here |
 | :-- | :-- | :-- | --: | --: |
-| **L0** | Shape | where things live | 17 | 15 |
+| **L0** | Shape | where things live | 19 | 17 |
 | **L1** | Grain | how the code reads | 7 | 6 |
-| **L2** | Contract | no drift from the source of truth | 8 | 7 |
-| **L3** | Effect | a real actor achieved the outcome | 3 | 2 |
-| **L4** | Cadence | docs, plans and rules stay attached | 10 | 9 |
+| **L2** | Contract | no drift from the source of truth | 9 | 8 |
+| **L3** | Effect | a real actor achieved the outcome | 4 | 3 |
+| **L4** | Cadence | docs, plans and rules stay attached | 11 | 10 |
 | **L5** | Meta | the guardrail is proven to fire | 3 | 3 |
 | **L6** | Hazard | the defect classes this repository hunts | 14 | 9 |
 
@@ -181,6 +181,26 @@ No source under packages/cli/src spells the roster's name outside the `rosterBac
 
 **Fix.** Move the code into the workflow that owns it and give the host the mechanism instead, the way a plugin's own commands, checks and files work. A comment describing where something used to live describes the mechanism, not the name. See docs/design/the-roster-belongs-to-its-workflow.md.
 
+### L0.THE_SERVICES_KEEP_NO_DATABASE
+
+**The services keep no database**
+
+Nothing under packages/services imports a database driver or an ORM; nothing under packages/services/src touches the filesystem outside a repository; no domain names a file adapter; and a repository awaits every call it makes on a port.
+
+**Why.** What a port persists is the truth, files by default. A driver beside it is a second copy of the state that shows an untrue window the first time the two disagree; a service reading a file directly skips the port another machine's adapter would answer through; and a repository that does not await a synchronous port today breaks the day that port answers over a network.
+
+**Fix.** Run `npx tsx packages/services/gates/keep-no-database.ts` from the repository root. Read and write state only through the port a repository is handed, name its interface rather than its file adapter, and await every port call. State kept somewhere else is a plugin behind the same port. See docs/design/amy-speaks-in-domains.md.
+
+### L0.THE_SERVICES_KEEP_THEIR_DOMAINS
+
+**The services keep their domains**
+
+Every domain under packages/services/src/domains holds operations/, services/, exceptions.ts and index.ts; an operation file exports exactly one operation and nothing else; no domain imports another; no operation or service imports a port; no service imports an operation; and nothing under packages/services imports a transport.
+
+**Why.** amy's rules live in one contract so that every door runs the same code. That holds only while each piece stays in its place: an exported schema becomes a second contract another file starts depending on, a domain reading another can no longer change alone, an operation reaching a port skips the one place a store answering over a network is absorbed, and a transport imported here turns the services back into a command line or a server. Each is one import, and none of them fails a test the day it lands.
+
+**Fix.** Run `npx tsx packages/services/gates/keep-their-domains.ts` from the repository root and read what each line names. Keep schemas inside the operation file, read another domain's record through your own repository, reach a port only from repositories/, and leave transports to packages/cli, packages/server and packages/sdk. See docs/design/amy-speaks-in-domains.md.
+
 ## L1 — Grain: how the code reads
 
 ### L1.COMMENT_STAYS_SUCCINCT
@@ -315,7 +335,27 @@ Compared with the revision under review, no rule may be disabled or removed, no 
 
 **Fix.** Restore what was weakened. If the loosening is genuinely right — the rule was wrong, the exclusion is narrower than the alternative — that is a human's call to merge, with the reasoning in the pull request, not a line an agent slips into a diff about something else. To adopt a newly enabled rule, run `sf ratchet` once; do not add keys by hand.
 
+### L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE
+
+**The contract only breaks on purpose**
+
+A change to packages/services/openapi.json that oasdiff reports as breaking at ERR against the document at the merge-base with the default branch is refused unless the same change raises the contract's major.
+
+**Why.** Every door and every SDK built on the contract breaks when it does, and a removed field or a narrowed type looks like a small diff in one file. Making the break cost a deliberate raise of API_MAJOR is what turns an accident into a decision somebody signed, in the same commit.
+
+**Fix.** Run `npx tsx packages/services/gates/breaks-on-purpose.ts` to see what oasdiff reports. Make the change additive, or raise API_MAJOR in packages/services/src/contract.ts if the break is meant. oasdiff is pinned in .software-factory/toolchain.lock.json and ./scripts/setup-dev.sh installs it. See docs/design/amy-speaks-in-domains.md.
+
 ## L3 — Effect: a real actor achieved the outcome
+
+### L3.EVERY_DECLARED_ERROR_IS_TESTED
+
+**Every declared error is tested**
+
+Every error code an operation in packages/services/openapi.json declares is an outcome that some test under packages/services/tests produced through invoke.
+
+**Why.** A declared error is a promise to every client that this is how the operation fails. One no test ever produced is a promise nobody checked: the handler may map the domain error to another code, or never reach it, and the document still advertises it.
+
+**Fix.** Write a test that drives the operation into that error through the services' own invoke helper (packages/services/tests/support/invoke.ts), or stop declaring a code the operation cannot return. Run `npx tsx packages/services/gates/every-error-tested.ts` to see what is left. See docs/design/amy-speaks-in-domains.md.
 
 ### L3.GATE_COVERS_THE_PLAN
 
@@ -428,6 +468,16 @@ Every `sf ...` invocation quoted in an enabled rule's statement, why or fix name
 **Why.** A rule's `fix` is the only documentation an agent reliably reads, and it is read at the one moment somebody is trying to comply. An invocation that never existed sends that reader to a dead end and makes the rule itself look wrong, which is how a guardrail loses the argument it should win. This is not hypothetical: one L3 rule shipped telling people to regenerate evidence with a subcommand that was never implemented, and nothing noticed, because `L4.EVERY_RULE_HAS_A_WHY` checks that a rule id is cited, not that the text around the citation is still true. The same drift arrives from the other direction once rules travel: a rule written against a newer `sf` names a subcommand the binary in this repository does not have yet. The accepted surface is read out of the command-line definition itself, so it cannot become a second list somebody forgets to update.
 
 **Fix.** Correct the invocation where the rule defines it, in the catalog entry or in the `.software-factory/rules` file for a local rule, then run `sf docs` so the generated prose follows. If the command named is the one that ought to exist, that is a change to the tool and the prose is early rather than wrong.
+
+### L4.THE_CONTRACT_DOCUMENTS_ITSELF
+
+**The contract documents itself**
+
+Every operation in packages/services/openapi.json has an id, a summary, a description and a domain; every schema property has a description; every operation has an example of its input and its output; every error is the envelope; every declared code is <domain>.<reason>; and every operation says x-amy-local-only and x-amy-writes.
+
+**Why.** The contract is where --help, the OpenAPI document and the SDK's editor hints all read their words, so no door documents itself by hand. A missing description is a command nobody can learn, an example missing is a shape nobody can see, and an error that is not the envelope is one every client has to special-case. An agent writing an operation skips each of them first, because nothing fails without them.
+
+**Fix.** Run `npm run build`, which writes the document from the contract, then `npx tsx packages/services/gates/documents-itself.ts` and add what each line names to the operation's declaration — never to openapi.json, which is generated and locked. See docs/design/amy-speaks-in-domains.md.
 
 ## L5 — Meta: the guardrail is proven to fire
 

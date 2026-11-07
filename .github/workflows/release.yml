@@ -102,6 +102,10 @@ jobs:
       # nobody can take back. `npm run gate` is not used here on purpose: it
       # runs every rule, and the pull request that produced this commit
       # already did.
+      #
+      # The services' gate test runs oasdiff, which this clean runner lacks.
+      - name: Install oasdiff
+        run: ./scripts/install-oasdiff.sh
       - run: npm run build
       - run: npm test
       - uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
