@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BudgetLimits, DEFAULT_STOP_AT, Event } from "@amykit/core";
-import { budgetLines } from "../src/budget.js";
+import { budgetLines, budgetReport } from "../src/budget.js";
 
 const NOW = new Date("2026-09-07T12:00:00.000Z");
 
@@ -131,5 +131,24 @@ describe("budgetLines", () => {
     ] as Event[], limits(), NOW);
 
     expect(lines.join("\n")).toContain("1 prevented start(s)");
+  });
+});
+
+describe("budgetReport", () => {
+  it("reads the ledger at the moment the provider windows have answered, not before", async () => {
+    // A run five hours less one second before the inspection starts leaves the
+    // window while the account requests are still out.
+    let now = NOW;
+    const lines = await budgetReport({
+      limits: limits({ perFiveHours: { costUsd: 0.01 } }),
+      usage: async () => {
+        now = new Date(NOW.getTime() + 2000);
+        return [];
+      },
+      events: () => [run("reported", 1, 5 * 60 - 1 / 60)],
+      clock: () => now,
+    });
+    expect(lines.find((line) => line.startsWith("perFiveHours"))).toContain("0 run(s)");
+    expect(lines.join("\n")).toContain("new work: allowed");
   });
 });

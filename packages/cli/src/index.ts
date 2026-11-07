@@ -7,7 +7,6 @@ import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
 import type { TickResult } from "@amykit/plugin-serial-engine";
 import {
-  BUDGET_WINDOWS,
   BriefStore,
   Check,
   CommandRunner,
@@ -49,7 +48,7 @@ import {
   writeProfilePlugins,
   writeWorkflowProfile,
 } from "./config.js";
-import { budgetLines } from "./budget.js";
+import { budgetReport } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
@@ -1163,16 +1162,13 @@ program
 
     const profile = selected();
     const log = new FileEventLog(profilePaths(home, profile).log, undefined, build, false);
-    const now = new Date();
-    const usage = await subscriptionUsage(await assembleForInspection(profile));
-
-    // Read once, over the longest window any ceiling could be set on, rather
-    // than once per window: two reads of a growing file can disagree, and a
-    // report whose windows disagree is worse than a slower one.
-    const longest = Math.max(...BUDGET_WINDOWS.map((window) => window.ms));
-    const events = log.read(new Date(now.getTime() - longest));
-
-    for (const line of budgetLines(events, parsed.limits, now, usage)) console.log(line);
+    const lines = await budgetReport({
+      limits: parsed.limits,
+      usage: async () => await subscriptionUsage(await assembleForInspection(profile)),
+      events: (since) => log.read(since),
+      clock: () => new Date(),
+    });
+    for (const line of lines) console.log(line);
   });
 
 /**
