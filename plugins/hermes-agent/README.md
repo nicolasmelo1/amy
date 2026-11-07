@@ -52,6 +52,14 @@ silently never applied.
 
 - `hermes profile`
 
+## Environment
+
+This package reads the following, which `amy doctor` checks for you:
+
+| Variable |  |
+| :-- | :-- |
+| `OLLAMA_API_KEY` | required at mount |
+
 ## Where the reasoning is
 
 - [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)

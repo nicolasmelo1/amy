@@ -61,6 +61,7 @@ For what the two halves mean and why, see
 | `CLAUDE_CODE_OAUTH_TOKEN` | `@amykit/plugin-claude` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
+| `OLLAMA_API_KEY` | `@amykit/plugin-hermes-agent` |
 | `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
 | `VITEST` | `@amykit/test-fixtures` |
 

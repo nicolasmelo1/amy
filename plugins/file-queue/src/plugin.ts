@@ -11,6 +11,6 @@ export const plugin = definePlugin<typeof configSchema>({
     if (order !== "id" && order !== "priority") {
       throw new Error(`file-queue order must be "id" or "priority", not ${JSON.stringify(order)}`);
     }
-    registry.queue(new FileQueue(path.join(ctx.paths.state, ctx.config.directory), order));
+    registry.queue(new FileQueue(path.join(ctx.paths.state, ctx.config.directory), order, !ctx.readOnly));
   },
 });

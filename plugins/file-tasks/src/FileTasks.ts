@@ -34,8 +34,9 @@ export class FileTasks implements Tasks {
   constructor(
     private readonly root: string,
     private readonly config: FileTasksConfig,
+    create = true,
   ) {
-    fs.mkdirSync(this.root, { recursive: true });
+    if (create) fs.mkdirSync(this.root, { recursive: true });
   }
 
   add(task: NewTask, now: Date): Task {
@@ -43,6 +44,7 @@ export class FileTasks implements Tasks {
   }
 
   all(): Task[] {
+    if (!fs.existsSync(this.root)) return [];
     return fs
       .readdirSync(this.root)
       .filter((name) => name.endsWith(".md"))

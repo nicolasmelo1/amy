@@ -37,6 +37,7 @@ export interface HostServices {
   now: () => Date;
   log?: EventLog;
   paths: HostPaths;
+  readonly readOnly?: boolean;
 }
 
 export interface Mounted {
@@ -221,6 +222,7 @@ function contextFor(
     now: host.now,
     log: host.log,
     paths: host.paths,
+    readOnly: host.readOnly === true,
     contributions: (collection) => builds.collection(mounted.contributions.get(collection)),
     // This remains deferred until a workflow registers. A workflow plugin can
     // retain this view while it registers; it must never retain the raw port.

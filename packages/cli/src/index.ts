@@ -150,15 +150,16 @@ async function assemble(profile: Profile): Promise<Assembled> {
 
 /** Mounts a profile for a read-only inspection without preparing edited forks. */
 async function assembleForInspection(profile: Profile): Promise<Assembled> {
-  return assembleLoaded(profile, loadConfig(home));
+  return assembleLoaded(profile, loadConfig(home), true);
 }
 
-function assembleLoaded(profile: Profile, config: AmyConfig): Promise<Assembled> {
+function assembleLoaded(profile: Profile, config: AmyConfig, readOnly = false): Promise<Assembled> {
   return assembleProfile(home, config, profile, {
     runner,
     load: (specs) => loadMountable(specs, profile.name),
-    log: (file) => new FileEventLog(file, undefined, build),
+    log: (file) => new FileEventLog(file, undefined, build, !readOnly),
     host: [],
+    readOnly,
   });
 }
 
@@ -1037,7 +1038,7 @@ program
   .action(async (options: { json?: boolean; all?: boolean }) => {
     const profile = selected();
     const place = profilePaths(home, profile);
-    const queue = new FileQueue(place.queue);
+    const queue = new FileQueue(place.queue, "id", false);
     const now = new Date();
 
     // Mounted only to ask the workflow which of its states are waiting
@@ -1049,7 +1050,7 @@ program
     const waiting = workflow?.waitingStates;
     const terminal = workflow?.terminalStates;
 
-    const records = new FileStore<AnyRecord>(place.records)
+    const records = new FileStore<AnyRecord>(place.records, false)
       .all()
       .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -1161,7 +1162,7 @@ program
     }
 
     const profile = selected();
-    const log = new FileEventLog(profilePaths(home, profile).log, undefined, build);
+    const log = new FileEventLog(profilePaths(home, profile).log, undefined, build, false);
     const now = new Date();
     const usage = await subscriptionUsage(await assembleForInspection(profile));
 

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "the-event-log-can-be-watched",
-  "implementation_sha256": "5e3ec54a3485a59087fc9c61665445b08a12e847c5d7e523d2659b76992c2f05",
+  "implementation_sha256": "abc1981bf85a6aa7619e50d035ff24f5cefd2776b8a641c688c164e4a6a1d49c",
   "runs": [
     {
       "scenario": "the-event-log-can-be-watched",

@@ -35,7 +35,7 @@ describe("Claude account usage", () => {
   });
 
   it("returns unavailable without a token or a valid account response", async () => {
-    await expect(new ClaudeUsageReader(new ScriptedRunner(), { token: () => undefined }).read()).resolves.toEqual({
+    await expect(new ClaudeUsageReader(new ScriptedRunner(), { token: () => "" }).read()).resolves.toEqual({
       unavailable: "Claude usage is unavailable: no OAuth token is configured",
     });
     expect(parseClaudeUsage("not json")).toEqual({ unavailable: "Claude usage returned invalid JSON" });

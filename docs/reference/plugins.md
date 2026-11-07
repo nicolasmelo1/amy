@@ -410,7 +410,7 @@ Hermes as the agent, over its one-shot mode and usage report.
 | Source | `plugins/hermes-agent` |
 | Mounts | _nothing_ |
 | Contributes | `harness:hermes`, `usage:Hermes ()` |
-| Needs in the environment | _nothing_ |
+| Needs in the environment | `OLLAMA_API_KEY` |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml

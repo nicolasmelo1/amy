@@ -8,6 +8,6 @@ export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-file-brief-store",
   configSchema,
   register(registry, ctx) {
-    registry.port("brief", new FileBriefStore(path.join(ctx.paths.artifacts ?? ctx.paths.state, ctx.config.directory)));
+    registry.port("brief", new FileBriefStore(path.join(ctx.paths.artifacts ?? ctx.paths.state, ctx.config.directory), !ctx.readOnly));
   },
 });

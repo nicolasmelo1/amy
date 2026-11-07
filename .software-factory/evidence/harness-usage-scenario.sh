@@ -15,6 +15,43 @@ npx vitest run \
   packages/cli/tests/budget.test.ts \
   packages/cli/tests/status-page.test.ts >/dev/null
 
+# The built CLI must retain a working reader when another one rejects. A page
+# fixture alone cannot prove the command's exception boundary.
+world=$(mktemp -d)
+trap 'rm -rf "$world"' EXIT
+mkdir -p "$world/plugins/node_modules/@fixture/workflow" "$world/plugins/node_modules/@fixture/usage"
+core=$(node -p 'require("node:url").pathToFileURL(process.cwd() + "/packages/core/dist/index.js").href')
+kit=$(node -p 'require("node:url").pathToFileURL(process.cwd() + "/packages/agent-kit/dist/index.js").href')
+printf '{"name":"@fixture/workflow","type":"module","main":"./index.mjs"}\n' > "$world/plugins/node_modules/@fixture/workflow/package.json"
+printf 'stateDiagram-v2\n  [*] --> DONE\n  DONE --> [*]\n' > "$world/plugins/node_modules/@fixture/workflow/workflow.mmd"
+cat > "$world/plugins/node_modules/@fixture/workflow/index.mjs" <<EOF
+import { defineWorkflow, settled } from "$core";
+export const plugin = defineWorkflow({ name: "fixture-usage", configSchema: {}, policy: {}, needs: {}, record: () => ({}), decide: { DONE: () => settled("done") }, observe: async () => ({}), actions: {} });
+EOF
+printf '{"name":"@fixture/usage","type":"module","main":"./index.mjs"}\n' > "$world/plugins/node_modules/@fixture/usage/package.json"
+cat > "$world/plugins/node_modules/@fixture/usage/index.mjs" <<EOF
+import { definePlugin } from "$core";
+import { contributeUsage } from "$kit";
+export const plugin = definePlugin({ name: "fixture-usage-readers", register(registry) { registry.engine({ discover: async () => [], tick: async () => undefined }); contributeUsage(registry, { label: "Available", read: async () => ({ windows: [{ label: "Session", usedPercent: 12 }] }) }); contributeUsage(registry, { label: "Rejecting", read: async () => { throw new Error("reader failed"); } }); } });
+EOF
+cat > "$world/config.yaml" <<'EOF'
+workflows:
+  probe:
+    workflow: "@fixture/workflow"
+    plugins: ["@fixture/workflow", "@fixture/usage"]
+defaultWorkflow: probe
+EOF
+AMY_HOME="$world" node packages/cli/dist/index.js status --json > "$world/status.json"
+node - "$world/status.json" <<'NODE'
+const fs = require("node:fs");
+const usage = JSON.parse(fs.readFileSync(process.argv[2], "utf8")).usage;
+const available = usage.find((entry) => entry.subscription === "Available");
+const rejecting = usage.find((entry) => entry.subscription === "Rejecting");
+if (available?.result?.windows?.[0]?.usedPercent !== 12 || rejecting?.result?.unavailable !== "Rejecting usage is unavailable") {
+  throw new Error(`built CLI did not retain both reader results: ${JSON.stringify(usage)}`);
+}
+NODE
+
 node - "$report" <<'NODE'
 const fs = require("node:fs");
 const report = process.argv[2];

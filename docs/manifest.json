@@ -7451,6 +7451,10 @@
         "package": "@amykit/plugin-linear"
       },
       {
+        "variable": "OLLAMA_API_KEY",
+        "package": "@amykit/plugin-hermes-agent"
+      },
+      {
         "variable": "TELEGRAM_BOT_TOKEN",
         "package": "@amykit/plugin-telegram"
       },
@@ -8138,7 +8142,9 @@
             "description": "how long one agent call may run before it is given up on"
           }
         ],
-        "environment": []
+        "environment": [
+          "OLLAMA_API_KEY"
+        ]
       },
       {
         "name": "@amykit/plugin-linear",

@@ -22,6 +22,13 @@ describe("FileEventLog", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it("reads an absent log without creating it", () => {
+    const absent = path.join(root, "absent");
+
+    expect(new FileEventLog(absent, undefined, undefined, false).read()).toEqual([]);
+    expect(fs.existsSync(absent)).toBe(false);
+  });
+
   it("reads back what it appended, plus which build wrote it", () => {
     log.append({ at: DAY_ONE, kind: "run.claimed", workId: "W-1" });
 

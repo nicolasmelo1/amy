@@ -117,9 +117,37 @@ describe("Ollama Cloud account usage", () => {
     expect(runner.calls).toEqual([]);
   });
 
-  it("is unavailable when no injected client can make the undocumented request", async () => {
-    await expect(new HermesUsageReader(new ScriptedRunner(), { profile: "amy", provider: "ollama-cloud" }).read()).resolves.toEqual({
-      unavailable: "Ollama Cloud usage is unavailable: no usage client is configured",
+  it("reads the documented balance endpoint with an API key off argv", async () => {
+    const runner = new ScriptedRunner([
+      { match: (command) => command === "curl", result: { stdout: JSON.stringify({
+        included: {
+          balance_usd: 72.5,
+          allowance_usd: 100,
+          period: { from: "2026-09-15T09:30:00Z", until: "2026-10-15T09:30:00Z" },
+        },
+      }) } },
+    ]);
+
+    await expect(new HermesUsageReader(runner, {
+      profile: "amy", provider: "ollama-cloud", ollamaToken: () => "cloud-secret", timeoutMs: 12_000,
+    }).read()).resolves.toEqual({
+      windows: [{
+        label: "Included credits", usedPercent: 27.5,
+        startsAt: "2026-09-15T09:30:00Z", resetsAt: "2026-10-15T09:30:00Z",
+      }],
     });
+    expect(runner.argvFor("curl")).toEqual(["--fail", "--silent", "--show-error", "--config", "-", "https://ollama.com/api/balance"]);
+    expect(runner.callsTo("curl")[0]?.options).toMatchObject({ stdin: expect.stringContaining("cloud-secret"), timeoutMs: 12_000 });
+  });
+
+  it("does not make an Ollama request without an API key", async () => {
+    const runner = new ScriptedRunner();
+
+    await expect(new HermesUsageReader(runner, {
+      profile: "amy", provider: "ollama-cloud", ollamaToken: () => "",
+    }).read()).resolves.toEqual({
+      unavailable: "Ollama Cloud usage is unavailable: no API key is configured",
+    });
+    expect(runner.calls).toEqual([]);
   });
 });

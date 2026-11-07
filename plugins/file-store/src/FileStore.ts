@@ -5,8 +5,8 @@ import { WorkRecord } from "@amykit/core";
 
 /** One file per ticket, so a record can be read and edited by hand. */
 export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {
-  constructor(private readonly root: string) {
-    fs.mkdirSync(this.root, { recursive: true });
+  constructor(private readonly root: string, create = true) {
+    if (create) fs.mkdirSync(this.root, { recursive: true });
   }
 
   load(workId: string): R | null {
@@ -19,12 +19,14 @@ export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {
     // Written to a sibling and renamed, so a crash mid-write cannot leave a
     // half-written record that fails to parse on the next look.
     const file = this.file(record.id);
+
     const temporary = `${file}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(record, null, 2), "utf-8");
     fs.renameSync(temporary, file);
   }
 
   all(): R[] {
+    if (!fs.existsSync(this.root)) return [];
     return fs
       .readdirSync(this.root)
       .filter((name) => name.endsWith(".json"))

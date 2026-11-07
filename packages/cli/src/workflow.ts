@@ -307,6 +307,7 @@ function context(
   return {
     config: {}, runner, now,
     paths: { state: home },
+    readOnly: false,
     contributions: (collection) => builds.collection(contributions.get(collection)),
     port: () => undefined,
     checkouts: () => lendCheckouts(runner, { workspaceRoot: home, defaultBranch: BRANCH_SETTINGS.defaultBranch.default }),

@@ -21,6 +21,17 @@ describe("FileQueue", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it("does not create queue directories while inspecting", () => {
+    const absent = path.join(root, "absent");
+    const inspecting = new FileQueue(absent, "id", false);
+    expect(fs.existsSync(path.join(absent, "ready"))).toBe(false);
+    expect(inspecting.ready(NOW)).toEqual([]);
+
+    queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, NOW);
+
+    expect(fs.readdirSync(root).sort()).toEqual(["done", "ready", "running"]);
+  });
+
   it("hands out an item that is due immediately", () => {
     queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, NOW);
 

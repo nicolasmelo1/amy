@@ -22,7 +22,9 @@ export interface HermesUsageReaderOptions {
   readonly profile: string;
   readonly provider: HermesUsageProvider | string;
   readonly timeoutMs?: number;
+  /** Test seam for a custom Cloud client; production uses Ollama's API key. */
   readonly ollamaCloud?: OllamaCloudUsageClient;
+  readonly ollamaToken?: () => string | undefined;
 }
 
 /** Reads the account window for the Hermes provider the harness is configured for. */
@@ -37,14 +39,7 @@ export class HermesUsageReader implements UsageReader {
   }
 
   async read(): Promise<UsageResult> {
-    if (this.options.provider === "ollama-cloud") {
-      if (!this.options.ollamaCloud) return unavailable("Ollama Cloud usage is unavailable: no usage client is configured");
-      try {
-        return parseOllamaCloudUsage(await this.options.ollamaCloud.readUsage());
-      } catch {
-        return unavailable("Ollama Cloud usage is unavailable");
-      }
-    }
+    if (this.options.provider === "ollama-cloud") return await this.readOllamaCloud();
 
     if (!isHermesUsageProvider(this.options.provider)) {
       return unavailable(`Hermes does not provide usage windows for ${this.options.provider}`);
@@ -64,6 +59,35 @@ export class HermesUsageReader implements UsageReader {
     if (!result.ok) return unavailable("Hermes usage is unavailable");
     return parseHermesUsage(result.stdout);
   }
+
+  /** Reads the documented balance endpoint with the operator's API key. */
+  private async readOllamaCloud(): Promise<UsageResult> {
+    if (this.options.ollamaCloud) {
+      try {
+        return parseOllamaCloudUsage(await this.options.ollamaCloud.readUsage());
+      } catch {
+        return unavailable("Ollama Cloud usage is unavailable");
+      }
+    }
+
+    const token = this.options.ollamaToken?.() ?? process.env.OLLAMA_API_KEY;
+    if (!token) return unavailable("Ollama Cloud usage is unavailable: no API key is configured");
+
+    try {
+      const result = await this.runner.run(
+        "curl",
+        ["--fail", "--silent", "--show-error", "--config", "-", "https://ollama.com/api/balance"],
+        {
+          // Keep the bearer token off argv and process listings.
+          stdin: `header = "Authorization: Bearer ${token}"\n`,
+          timeoutMs: this.options.timeoutMs,
+        },
+      );
+      return result.ok ? parseOllamaCloudUsage(result.stdout) : unavailable("Ollama Cloud usage is unavailable");
+    } catch {
+      return unavailable("Ollama Cloud usage is unavailable");
+    }
+  }
 }
 
 /** Maps Hermes's documented snake_case report to the host's usage contract. */
@@ -81,21 +105,53 @@ export function parseHermesUsage(json: string): UsageResult {
 }
 
 /**
- * Maps Ollama's undocumented 0..1 account fractions. It deliberately supplies
- * no reset: that response does not publish one, so inventing its plan period
- * would make an unofficial result look more precise than it is.
+ * Maps Ollama Cloud's legacy fractions and current balance response. Both are
+ * provider-owned account measurements, so neither borrows Amy's ledger.
  */
 export function parseOllamaCloudUsage(value: unknown): UsageResult {
-  const limits = objectAt(value, "limits");
-  if (!limits) return unavailable("Ollama Cloud usage returned no limits");
+  const document = typeof value === "string" ? parseDocument(value) : value;
+  const included = objectAt(document, "included");
+  if (included) {
+    const windows = balanceWindows(included);
+    return windows.length > 0 ? { windows } : unavailable("Ollama Cloud usage returned no measured windows");
+  }
+  const windows = legacyWindows(document);
+  return windows.length > 0 ? { windows, unofficial: true } : unavailable("Ollama Cloud usage returned no measured windows");
+}
 
-  const windows = [
+function parseDocument(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Current API: one included-credit allowance with the provider's real period. */
+function balanceWindows(included: Record<string, unknown>): { label: string; usedPercent: number; startsAt?: string; resetsAt?: string }[] {
+  const balance = number(included.balance_usd);
+  const allowance = number(included.allowance_usd);
+  if (balance === undefined || allowance === undefined || allowance <= 0) return legacyWindows({ limits: included });
+  const period = objectAt(included, "period");
+  const startsAt = iso(period?.from);
+  const resetsAt = iso(period?.until);
+  return [{
+    label: "Included credits",
+    usedPercent: percentOf(balance, allowance),
+    ...(startsAt ? { startsAt } : {}),
+    ...(resetsAt ? { resetsAt } : {}),
+  }];
+}
+
+/** Legacy API responses use 0..1 fractions under session and weekly limits. */
+function legacyWindows(value: unknown): { label: string; usedPercent: number }[] {
+  const limits = objectAt(value, "limits");
+  if (!limits) return [];
+  return [
     unofficialWindow("Session", limits.session),
     unofficialWindow("Weekly", limits.weekly),
     unofficialWindow("Monthly", limits.monthly),
   ].flatMap((window) => (window ? [window] : []));
-
-  return windows.length > 0 ? { windows, unofficial: true } : unavailable("Ollama Cloud usage returned no measured windows");
 }
 
 function officialWindow(value: unknown): { label: string; usedPercent: number; startsAt?: string; resetsAt?: string }[] {
@@ -141,6 +197,14 @@ function percent(value: unknown): value is number {
 
 function iso(value: unknown): string | undefined {
   return typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : undefined;
+}
+
+function number(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function percentOf(balance: number, allowance: number): number {
+  return Math.round(clamp((1 - balance / allowance) * 100, 0, 100) * 1_000_000) / 1_000_000;
 }
 
 function clamp(value: number, min: number, max: number): number {

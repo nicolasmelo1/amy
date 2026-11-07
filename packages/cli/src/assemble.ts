@@ -15,6 +15,7 @@ export interface AssemblyServices {
   readonly log: (file: string) => EventLog;
   /** The host's own glue, mounted after everything the config asked for. */
   readonly host: readonly Plugin[];
+  readonly readOnly?: boolean;
 }
 
 export type Assembled = { ok: true; engine: Engine; mounted: Mounted; workflowPlugin?: Plugin } | { ok: false; problems: string[] };
@@ -76,6 +77,7 @@ async function assemble(
     now: () => new Date(),
     log: services.log(place.log),
     paths: hostPaths(place.base, profile),
+    readOnly: services.readOnly,
   }, requirements);
 
   if (!outcome.ok) return { ok: false, problems: outcome.problems };

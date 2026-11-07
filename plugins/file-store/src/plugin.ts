@@ -8,6 +8,6 @@ export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-file-store",
   configSchema,
   register(registry, ctx) {
-    registry.store(new FileStore(path.join(ctx.paths.state, ctx.config.directory)));
+    registry.store(new FileStore(path.join(ctx.paths.state, ctx.config.directory), !ctx.readOnly));
   },
 });

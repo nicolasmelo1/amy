@@ -11,7 +11,7 @@ export const plugin = definePlugin<typeof configSchema>({
   register(registry, ctx) {
     const notes = new FileNotes(path.join(ctx.paths.state, ctx.config.directory), {
       defaultRepo: ctx.config.repo,
-    });
+    }, !ctx.readOnly);
 
     registry.port("notes", notes);
 

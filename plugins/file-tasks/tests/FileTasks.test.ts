@@ -81,4 +81,11 @@ describe("tasks as a directory", () => {
 
     expect(fs.existsSync(directory)).toBe(true);
   });
+
+  it("inspects an absent directory without creating it", () => {
+    const absent = path.join(root, "absent");
+
+    expect(new FileTasks(absent, { defaultRepo: "" }, false).all()).toEqual([]);
+    expect(fs.existsSync(absent)).toBe(false);
+  });
 });
