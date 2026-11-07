@@ -35,8 +35,12 @@ sources:
   - { id: S33, kind: decision, said: "a UI check passes on structure first, the accessibility tree, then on pixels within a threshold against the planned design; what neither settles goes to an agent, and what it cannot settle is unsupported. Decided 2026-11-06" }
   - { id: S34, kind: decision, said: "an agent step that passes is kept as the operations it called; the next run replays them with no model, and the agent runs again only where the replay breaks. Decided 2026-11-06" }
   - { id: S35, kind: reference, ref: "https://github.com/flipbit03/terminal-use", said: "tu runs an interactive program in a session, types and presses keys, clicks on screen text, waits for a regex or a still screen, and answers in JSON when no terminal is attached" }
+  - { id: S36, kind: code, ref: "packages/workflow-ticket-to-qa/src/plugin.ts", said: "declares its brief and prove phases absent with reasons, as the errand and note-to-plan do; no directory in the repository is a brief/ or prove/ phase, so no whole project exists to copy" }
+  - { id: S37, kind: decision, said: "one example is a whole project, examples/a-whole-project/: brief/ calls feature-grooming, workflow/ calls ticket-to-qa, prove/ calls the proving plugin with a browser scenario. It ships with the proving plugin. Decided 2026-11-06" }
+  - { id: S38, kind: reference, ref: "plans/the-examples-are-not-the-machine.md", said: "the shipped workflows move to examples/ under their same package names" }
 touches:
   - plugins/prove/**
+  - examples/a-whole-project/**
   - plugins/agent-browser/**
   - plugins/agent-desktop/**
   - plugins/terminal/**
@@ -67,6 +71,7 @@ criteria:
   - { id: A17, statement: "the browser plugin opens, snapshots, acts on refs and diffs through agent-browser, the desktop plugin snapshots and acts through agent-desktop, and the terminal plugin runs a program, sends keys, waits for text and reads the screen through terminal-use", proof: "deferred:test:plugins/agent-browser/tests/operations.test.ts", sources: [S30, S32, S35] }
   - { id: A18, statement: "a UI check passes when the accessibility trees match and the pixels differ within the threshold, goes to an agent otherwise, and is unsupported when the agent cannot settle it or the sizes differ", proof: "deferred:test:plugins/agent-browser/tests/ui-check.test.ts", sources: [S31, S33] }
   - { id: A19, statement: "a passed agent step is replayed by the next run with no harness started, and a replay that breaks runs the agent from the step that broke", proof: "deferred:test:plugins/prove/tests/replay.test.ts", sources: [S34] }
+  - { id: A20, statement: "examples/a-whole-project mounts as one profile whose record walks BRIEF, WORK, PROVE and DONE, each phase a shipped workflow, its brief carrying a scenario the prove phase walks", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S36, S37, S38] }
 crosses:
   - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A12, A14; a run waiting for a lease or a person is a look, not an attempt" }
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A14" }
