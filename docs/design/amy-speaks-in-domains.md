@@ -95,6 +95,8 @@ deviations:
   - "README.md: its rule count is generated, and docs:generate counts the five new rules"
   - "registry/core.json: generated, rewritten because the core changed"
   - "registry/services.json: generated, the new package's registry item"
+  - ".gitleaks.toml: the locked openapi.json gives generated.lock.json a digest keyed by a path with api in it, which gitleaks reads as an API key; the hash locks are allowlisted by path"
+  - ".allowed-root-files: declares .gitleaks.toml"
   - "plans/next-steps.md: the delivered row leaves the board"
 exit: "with one example domain in a mutation fixture, sf verify shows each of five rules tripping on its fixture; the clean tree builds a document every rule accepts, and invoke runs a Zod and an ArkType operation alike"
 ---
