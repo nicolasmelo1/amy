@@ -402,19 +402,29 @@ function inPathOf(operation: Operation, name: string): boolean {
 function bodyOf(operation: Operation, input: Json): Json {
   const inPath = (name: string): boolean => inPathOf(operation, name);
   const parameters = parametersOf(operation, input, inPath);
-  const properties = Object.fromEntries(Object.entries((input.properties ?? {}) as Record<string, Json>).filter(([name]) => !inPath(name)));
-  const required = ((input.required ?? []) as string[]).filter((name) => !inPath(name));
+  const schema = bodySchemaOf(input, inPath);
   const example = operation.examples[0];
-  const exampleBody = example && typeof example.input === "object" && example.input !== null
-    ? Object.fromEntries(Object.entries(example.input as Record<string, unknown>).filter(([name]) => !inPath(name)))
-    : example?.input;
-  const schema = { ...input, properties, ...(required.length > 0 || input.required ? { required } : {}) };
+  const emptied = schema.properties !== undefined && Object.keys(schema.properties as Json).length === 0;
   return {
     ...(parameters.length > 0 ? { parameters } : {}),
-    ...(parameters.length > 0 && Object.keys(properties).length === 0
+    ...(parameters.length > 0 && emptied
       ? {}
-      : { requestBody: { required: true, content: { "application/json": { schema, ...(example ? { example: exampleBody } : {}) } } } }),
+      : { requestBody: { required: true, content: { "application/json": { schema, ...(example ? { example: exampleBodyOf(example.input, inPath) } : {}) } } } }),
   };
+}
+
+/** The input schema without the fields the path carries; a schema with no properties (an array, a scalar) is left as it is. */
+function bodySchemaOf(input: Json, inPath: (name: string) => boolean): Json {
+  if (input.properties === undefined) return input;
+  const properties = Object.fromEntries(Object.entries(input.properties as Record<string, Json>).filter(([name]) => !inPath(name)));
+  const required = ((input.required ?? []) as string[]).filter((name) => !inPath(name));
+  return { ...input, properties, ...(required.length > 0 || input.required ? { required } : {}) };
+}
+
+/** An example's input without the fields the path carries; anything but a plain object is left as it is. */
+function exampleBodyOf(input: unknown, inPath: (name: string) => boolean): unknown {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return input;
+  return Object.fromEntries(Object.entries(input as Record<string, unknown>).filter(([name]) => !inPath(name)));
 }
 
 /**

@@ -128,19 +128,42 @@ export function partOf(absolute: string): string | undefined {
  */
 export function portNames(): Set<string> {
   const names = new Set<string>();
+  const aliases: ts.TypeAliasDeclaration[] = [];
   for (const source of sourcesUnder(path.join(repository, "packages/core/src/ports"))) {
     for (const statement of source.ast.statements) {
-      const exported = ts.canHaveModifiers(statement) && ts.getModifiers(statement)?.some((one) => one.kind === ts.SyntaxKind.ExportKeyword);
-      if (exported && (ts.isInterfaceDeclaration(statement) || ts.isClassDeclaration(statement)) && statement.name && hasSomethingToCall(statement)) {
-        names.add(statement.name.text);
-      }
+      if (!isExported(statement)) continue;
+      if ((ts.isInterfaceDeclaration(statement) || ts.isClassDeclaration(statement)) && statement.name && hasSomethingToCall(statement.members)) names.add(statement.name.text);
+      if (ts.isTypeAliasDeclaration(statement)) aliases.push(statement);
     }
   }
+  addPortAliases(names, aliases);
   return names;
 }
 
-function hasSomethingToCall(declaration: ts.InterfaceDeclaration | ts.ClassDeclaration): boolean {
-  return (declaration.members as ts.NodeArray<ts.Node>).some(
+function isExported(statement: ts.Statement): boolean {
+  return ts.canHaveModifiers(statement) && (ts.getModifiers(statement)?.some((one) => one.kind === ts.SyntaxKind.ExportKeyword) ?? false);
+}
+
+/** An alias over ports is a port (`type Tracker = TrackerReads & TrackerWrites`); repeated until no alias is added, so an alias of an alias counts. */
+function addPortAliases(names: Set<string>, aliases: readonly ts.TypeAliasDeclaration[]): void {
+  let grew = true;
+  while (grew) {
+    const before = names.size;
+    for (const alias of aliases) if (callableType(alias.type, names)) names.add(alias.name.text);
+    grew = names.size > before;
+  }
+}
+
+/** A type a caller can call something on: a known port, a literal with a callable member, or an intersection or union holding one. */
+function callableType(node: ts.TypeNode, ports: ReadonlySet<string>): boolean {
+  if (ts.isParenthesizedTypeNode(node)) return callableType(node.type, ports);
+  if (ts.isIntersectionTypeNode(node) || ts.isUnionTypeNode(node)) return node.types.some((one) => callableType(one, ports));
+  if (ts.isTypeLiteralNode(node)) return hasSomethingToCall(node.members);
+  return ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName) && ports.has(node.typeName.text);
+}
+
+function hasSomethingToCall(members: ts.NodeArray<ts.Node>): boolean {
+  return members.some(
     (member) =>
       ts.isMethodSignature(member) ||
       ts.isMethodDeclaration(member) ||

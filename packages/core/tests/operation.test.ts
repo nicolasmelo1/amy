@@ -238,6 +238,20 @@ describe("what review found the contract missing", () => {
     expect(body.example).toEqual({ reason: "done" });
   });
 
+  it("keeps a body that is an array an array, in its schema and its example", () => {
+    const tag = defineOperation({
+      ...count,
+      id: "tags.add",
+      input: z.array(z.string().describe("a tag")).describe("the tags to add"),
+      http: { method: "post", path: "/tags" },
+      examples: [{ summary: "two", input: ["a", "b"], output: { doubled: 2 } }],
+    } as never);
+    const body = (contractDocument(defineContract([tag]), INFO) as { paths: Record<string, Record<string, Record<string, any>>> }).paths["/tags"]?.post?.requestBody.content["application/json"];
+    expect(body.example).toEqual(["a", "b"]);
+    expect(body.schema.type).toBe("array");
+    expect(body.schema.properties).toBeUndefined();
+  });
+
   it("keeps a recursive schema's $defs resolvable inside the document", () => {
     interface Node {
       name: string;

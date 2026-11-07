@@ -148,6 +148,17 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     expect(gate("keep-their-domains", tree)).toMatchObject({ status: 0 });
   });
 
+  it.each(["Tracker", "GroomingTracker"])("refuses a service naming %s, a port the core declares as an alias over ports", (port) => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-alias-"));
+    made.push(tree);
+    fs.cpSync(path.join(example, "packages"), path.join(tree, "packages"), { recursive: true });
+    const service = path.join(tree, "packages/services/src/domains/notes/services/read-note.ts");
+    fs.writeFileSync(service, `import type { ${port} } from "@amykit/core";\n${fs.readFileSync(service, "utf8")}\nexport type Held = ${port};\n`);
+    const { status, said } = gate("keep-their-domains", tree);
+    expect(status).toBe(1);
+    expect(said).toContain(`imports the port \`${port}\`: only a repository reaches a port`);
+  });
+
   it("refuses an undescribed property inside a tuple's prefixItems", () => {
     const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-tuple-"));
     made.push(tree);

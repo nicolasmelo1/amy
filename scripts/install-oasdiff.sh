@@ -4,7 +4,8 @@
 # and the services' gate test both run it, so every job that runs either one
 # calls this, and so does ./scripts/setup-dev.sh: one place reads the version.
 #
-# On GitHub Actions the directory is added to the job's PATH as well.
+# On GitHub Actions the directory is added to the job's PATH; anywhere else
+# the script fails, naming the line to add, while that directory is not on it.
 set -eu
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -38,5 +39,16 @@ curl -fsSL "$base/checksums.txt" -o "$work/checksums.txt"
 tar -xzf "$work/$asset" -C "$work" oasdiff
 mkdir -p "$target"
 mv "$work/oasdiff" "$target/oasdiff"
-[ -n "${GITHUB_PATH:-}" ] && echo "$target" >> "$GITHUB_PATH"
 "$target/oasdiff" --version
+if [ -n "${GITHUB_PATH:-}" ]; then
+  echo "$target" >> "$GITHUB_PATH"
+else
+  case ":$PATH:" in
+    *":$target:"*) ;;
+    *)
+      echo "oasdiff is in $target, which is not on your PATH; add it, then run this again:" >&2
+      echo "  export PATH=\"$target:\$PATH\"" >&2
+      exit 1
+      ;;
+  esac
+fi
