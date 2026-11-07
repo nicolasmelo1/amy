@@ -114,6 +114,9 @@
     },
     {
       "path": "plugins/ui-stub"
+    },
+    {
+      "path": "packages/services"
     }
   ]
 }

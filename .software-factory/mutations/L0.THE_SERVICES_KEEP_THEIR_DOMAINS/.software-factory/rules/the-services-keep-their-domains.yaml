@@ -1,0 +1,30 @@
+id: L0.THE_SERVICES_KEEP_THEIR_DOMAINS
+layer: L0
+title: The services keep their domains
+severity: high
+statement: >-
+  Every domain under packages/services/src/domains holds operations/,
+  services/, exceptions.ts and index.ts; an operation file exports exactly one
+  operation and nothing else; no domain imports another; no operation or
+  service imports a port; no service imports an operation; and nothing under
+  packages/services imports a transport.
+why: >-
+  amy's rules live in one contract so that every door runs the same code. That
+  holds only while each piece stays in its place: an exported schema becomes a
+  second contract another file starts depending on, a domain reading another
+  can no longer change alone, an operation reaching a port skips the one place
+  a store answering over a network is absorbed, and a transport imported here
+  turns the services back into a command line or a server. Each is one import,
+  and none of them fails a test the day it lands.
+fix: >-
+  Run `npx tsx packages/services/gates/keep-their-domains.ts` from the
+  repository root and read what each line names. Keep schemas inside the
+  operation file, read another domain's record through your own repository,
+  reach a port only from repositories/, and leave transports to
+  packages/cli, packages/server and packages/sdk. See
+  docs/design/amy-speaks-in-domains.md.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/packages/services/gates/keep-their-domains.ts"'

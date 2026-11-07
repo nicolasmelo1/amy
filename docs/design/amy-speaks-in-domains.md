@@ -57,21 +57,21 @@ touches:
   - .software-factory/rules/**
   - .software-factory/mutations/**
 criteria:
-  - { id: A1, statement: "an operation file exporting its output schema fails the build, naming the file and the export", proof: "deferred:test:mutation fixture for the-services-keep-their-domains", sources: [S10, S11, S23, S24] }
-  - { id: A2, statement: "a domain importing another domain fails the build, naming both", proof: "deferred:test:mutation fixture for the-services-keep-their-domains", sources: [S10, S15, S25] }
-  - { id: A3, statement: "a service or operation importing a port, or anything under packages/services importing commander, hono or node:http, fails the build", proof: "deferred:test:mutation fixture for the-services-keep-their-domains", sources: [S1, S4, S12, S13, S14, S25] }
-  - { id: A4, statement: "an operation without a description, or a property without one, fails the build naming the operation and the property", proof: "deferred:test:mutation fixture for the-contract-documents-itself", sources: [S2, S19, S26] }
-  - { id: A5, statement: "a declared error no test produced fails the build, naming the operation and the code", proof: "deferred:test:mutation fixture for every-declared-error-is-tested", sources: [S27] }
-  - { id: A6, statement: "a domain error no operation declared comes back from invoke as an internal error and fails the operation's test", proof: "deferred:test:packages/services/tests/errors.test.ts", sources: [S12, S20] }
-  - { id: A7, statement: "removing an output field without raising apiMajor fails the build, and raising it lets the change through", proof: "deferred:test:mutation fixture for the-contract-only-breaks-on-purpose", sources: [S28, S30] }
-  - { id: A8, statement: "importing a database driver or an ORM under packages/services, or touching node:fs outside a repository, fails the build", proof: "deferred:test:mutation fixture for the-services-keep-no-database", sources: [S16, S29] }
-  - { id: A9, statement: "a record the daemon rewrites on disk is what invoke answers next, with no restart and no cache in between", proof: "deferred:test:packages/services/tests/files-are-the-truth.test.ts", sources: [S17, S18] }
-  - { id: A10, statement: "an operation declared with a Zod schema and one declared with an ArkType schema both run through invoke and both appear in the document, and @amykit/core still has no runtime dependency", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S3, S5, S6, S7] }
-  - { id: A11, statement: "invoke refuses an input its schema rejects and an output its schema rejects, naming the operation, before and after the handler", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S22] }
-  - { id: A14, statement: "a workflow call state and a call(callee, binding) in errand still run as before, beside invoke, with both exported from @amykit/core", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S22] }
-  - { id: A15, statement: "a repository that calls a port without awaiting it, or a domain that imports a file adapter by name, fails the build", proof: "deferred:test:mutation fixture for the-services-keep-no-database", sources: [S33, S34, S35] }
-  - { id: A12, statement: "a streaming operation yields its named events through invoke in order, and each event schema is in the document", proof: "deferred:test:packages/core/tests/operation.test.ts", sources: [S8] }
-  - { id: A13, statement: "services with no domain build a valid OpenAPI 3.1 document, and one example domain adds exactly its operations to it", proof: "deferred:test:packages/services/tests/contract.test.ts", sources: [S9, S21, S31, S32] }
+  - { id: A1, statement: "an operation file exporting its output schema fails the build, naming the file and the export", proof: "test:packages/services/tests/gates.test.ts", sources: [S10, S11, S23, S24], done: true }
+  - { id: A2, statement: "a domain importing another domain fails the build, naming both", proof: "test:packages/services/tests/gates.test.ts", sources: [S10, S15, S25], done: true }
+  - { id: A3, statement: "a service or operation importing a port, or anything under packages/services importing commander, hono or node:http, fails the build", proof: "test:packages/services/tests/gates.test.ts", sources: [S1, S4, S12, S13, S14, S25], done: true }
+  - { id: A4, statement: "an operation without a description, or a property without one, fails the build naming the operation and the property", proof: "test:packages/services/tests/gates.test.ts", sources: [S2, S19, S26], done: true }
+  - { id: A5, statement: "a declared error no test produced fails the build, naming the operation and the code", proof: "test:packages/services/tests/gates.test.ts", sources: [S27], done: true }
+  - { id: A6, statement: "a domain error no operation declared comes back from invoke as an internal error and fails the operation's test", proof: "test:packages/services/tests/errors.test.ts", sources: [S12, S20], done: true }
+  - { id: A7, statement: "removing an output field without raising apiMajor fails the build, and raising it lets the change through", proof: "test:packages/services/tests/gates.test.ts", sources: [S28, S30], done: true }
+  - { id: A8, statement: "importing a database driver or an ORM under packages/services, or touching node:fs outside a repository, fails the build", proof: "test:packages/services/tests/gates.test.ts", sources: [S16, S29], done: true }
+  - { id: A9, statement: "a record the daemon rewrites on disk is what invoke answers next, with no restart and no cache in between", proof: "test:packages/services/tests/files-are-the-truth.test.ts", sources: [S17, S18], done: true }
+  - { id: A10, statement: "an operation declared with a Zod schema and one declared with an ArkType schema both run through invoke and both appear in the document, and @amykit/core still has no runtime dependency", proof: "test:packages/core/tests/operation.test.ts", sources: [S3, S5, S6, S7], done: true }
+  - { id: A11, statement: "invoke refuses an input its schema rejects and an output its schema rejects, naming the operation, before and after the handler", proof: "test:packages/core/tests/operation.test.ts", sources: [S22], done: true }
+  - { id: A14, statement: "a workflow call state and a call(callee, binding) in errand still run as before, beside invoke, with both exported from @amykit/core", proof: "test:packages/core/tests/operation.test.ts", sources: [S22], done: true }
+  - { id: A15, statement: "a repository that calls a port without awaiting it, or a domain that imports a file adapter by name, fails the build", proof: "test:packages/services/tests/gates.test.ts", sources: [S33, S34, S35], done: true }
+  - { id: A12, statement: "a streaming operation yields its named events through invoke in order, and each event schema is in the document", proof: "test:packages/core/tests/operation.test.ts", sources: [S8], done: true }
+  - { id: A13, statement: "services with no domain build a valid OpenAPI 3.1 document, and one example domain adds exactly its operations to it", proof: "test:packages/services/tests/contract.test.ts", sources: [S9, S21, S31, S32], done: true }
 crosses:
   - { mechanism: queue-and-store, answer: n/a, why: "a repository reaches file-store and file-queue only through their ports, whose claim, recovery and pruning are unchanged; this row ships no domain that writes" }
   - { mechanism: briefs, answer: n/a, why: "read only through the brief store's port; this row ships no domain that reads it" }
@@ -85,6 +85,17 @@ cut:
   - "Store, Queue and EventLog made asynchronous in the core: the row that brings the first adapter kept off this machine; repositories already await them (S34)"
   - "oRPC, tRPC or ts-rest underneath: refused (S3); a plugin's operations would depend on a third party's API"
   - "a transport in this row: the command line, the server and the SDK each read the contract in their own row"
+deviations:
+  - "L0.THE_SERVICES_KEEP_NO_DATABASE is a command over the compiler, not the text_pattern S29 named: A15's un-awaited port call needs the syntax tree, and one rule cannot be two kinds"
+  - "@amykit/services depends on @amykit/core alone: no domain ships in this row, so nothing imports @amykit/ui or zod yet, and knip refuses a dependency nothing imports; the first domain adds both"
+  - "domains sit under packages/services/src/domains/<domain>/, so the gates find a domain by where it is rather than by what it is called"
+  - "the document carries x-amy-examples on every operation, where L4.THE_CONTRACT_DOCUMENTS_ITSELF reads an input and an output example whatever the method"
+  - ".software-factory/toolchain.lock.json: the toolchain lock S28 named did not exist; it holds oasdiff's version, and CI and the setup script read it rather than quoting it"
+  - ".software-factory/locks/**, .software-factory/catalog.lock.json, .software-factory/evidence/**: sf lock after the five rules, and installed-binary and workflow-three-pieces re-run and re-sealed"
+  - "README.md: its rule count is generated, and docs:generate counts the five new rules"
+  - "registry/core.json: generated, rewritten because the core changed"
+  - "registry/services.json: generated, the new package's registry item"
+  - "plans/next-steps.md: the delivered row leaves the board"
 exit: "with one example domain in a mutation fixture, sf verify shows each of five rules tripping on its fixture; the clean tree builds a document every rule accepts, and invoke runs a Zod and an ArkType operation alike"
 ---
 # amy speaks in domains

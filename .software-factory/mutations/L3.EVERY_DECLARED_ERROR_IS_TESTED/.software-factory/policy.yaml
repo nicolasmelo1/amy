@@ -1,0 +1,11 @@
+# Mutation fixture for L3.EVERY_DECLARED_ERROR_IS_TESTED. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L3.EVERY_DECLARED_ERROR_IS_TESTED
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L3.EVERY_DECLARED_ERROR_IS_TESTED:
+    enabled: true

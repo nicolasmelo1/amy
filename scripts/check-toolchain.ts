@@ -93,6 +93,19 @@ for (const relative of QUOTES_THE_VERSION) {
   }
 }
 
+// oasdiff is held the other way round from sf: nothing quotes its version.
+// The toolchain lock is the one copy, and everything that installs it reads
+// the lock, so a literal version appearing anywhere is the drift starting.
+const TOOLCHAIN = ".software-factory/toolchain.lock.json";
+const oasdiff: string | undefined = JSON.parse(read(TOOLCHAIN)).oasdiff;
+if (!oasdiff) problems.push(`${TOOLCHAIN} names no oasdiff version`);
+for (const relative of [".github/workflows/software-factory.yml", SETUP]) {
+  const text = read(relative);
+  if (!text.includes("toolchain.lock.json")) problems.push(`${relative} installs oasdiff without reading ${TOOLCHAIN}`);
+  const literal = text.split("\n").findIndex((line) => /oasdiff[_@ /v-]+\d+\.\d+\.\d+/.test(line));
+  if (literal !== -1) problems.push(`${relative}:${literal + 1} hard-codes an oasdiff version; read it from ${TOOLCHAIN}`);
+}
+
 if (problems.length > 0) {
   console.error("The sf version is not the same everywhere it is written:\n");
   for (const problem of problems) console.error(`  ${problem}`);

@@ -53,6 +53,38 @@ else
     --tag "v$sf_version" --locked --force
 fi
 
+oasdiff_version=$(sed -n 's/.*"oasdiff": *"\([^"]*\)".*/\1/p' .software-factory/toolchain.lock.json)
+# `sf check` runs L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE, which asks oasdiff
+# whether the services' contract broke. Its version lives in the toolchain
+# lock, read here for the same reason sf's is read from the catalog lock.
+have_oasdiff=$(command -v oasdiff >/dev/null 2>&1 && oasdiff --version 2>/dev/null | awk '{print $3}' || echo "")
+if [ "$have_oasdiff" = "$oasdiff_version" ]; then
+  echo "oasdiff $oasdiff_version already installed"
+elif command -v gh >/dev/null 2>&1; then
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-*) asset="oasdiff_${oasdiff_version}_darwin_all.tar.gz" ;;
+    Linux-x86_64) asset="oasdiff_${oasdiff_version}_linux_amd64.tar.gz" ;;
+    Linux-aarch64|Linux-arm64) asset="oasdiff_${oasdiff_version}_linux_arm64.tar.gz" ;;
+    *) asset="" ;;
+  esac
+  if [ -n "$asset" ]; then
+    work=$(mktemp -d)
+    gh release download "v$oasdiff_version" -R oasdiff/oasdiff -p "$asset" -p checksums.txt -D "$work"
+    (cd "$work" && grep " $asset\$" checksums.txt | shasum -a 256 -c -)
+    tar -xzf "$work/$asset" -C "$work" oasdiff
+    mkdir -p "$HOME/.local/bin" && mv "$work/oasdiff" "$HOME/.local/bin/oasdiff"
+    rm -rf "$work"
+    echo "installed oasdiff $oasdiff_version into ~/.local/bin"
+  else
+    echo "  no oasdiff release for $(uname -s)-$(uname -m); install $oasdiff_version from https://github.com/oasdiff/oasdiff"
+    missing="$missing oasdiff"
+  fi
+else
+  echo "  oasdiff $oasdiff_version is needed by sf check, and gh is not here to fetch it."
+  echo "  Install it from https://github.com/oasdiff/oasdiff/releases, then run this script again."
+  missing="$missing oasdiff"
+fi
+
 say "4/5  bun — only the end-to-end scenarios need it"
 # `npm run e2e` drives the single executable, and `bun build --compile` is
 # what makes one. The gate does not need it, so a machine without bun is

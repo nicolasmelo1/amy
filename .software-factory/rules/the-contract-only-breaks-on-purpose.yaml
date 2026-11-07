@@ -1,0 +1,24 @@
+id: L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE
+layer: L2
+title: The contract only breaks on purpose
+severity: critical
+statement: >-
+  A change to packages/services/openapi.json that oasdiff reports as breaking
+  at ERR against the document at the merge-base with the default branch is
+  refused unless the same change raises the contract's major.
+why: >-
+  Every door and every SDK built on the contract breaks when it does, and a
+  removed field or a narrowed type looks like a small diff in one file. Making
+  the break cost a deliberate raise of API_MAJOR is what turns an accident
+  into a decision somebody signed, in the same commit.
+fix: >-
+  Run `npx tsx packages/services/gates/breaks-on-purpose.ts` to see what
+  oasdiff reports. Make the change additive, or raise API_MAJOR in
+  packages/services/src/contract.ts if the break is meant. oasdiff is pinned
+  in .software-factory/toolchain.lock.json and ./scripts/setup-dev.sh installs
+  it. See docs/design/amy-speaks-in-domains.md.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/packages/services/gates/breaks-on-purpose.ts"'
