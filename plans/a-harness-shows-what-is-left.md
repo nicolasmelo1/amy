@@ -1,5 +1,5 @@
 ---
-base: 9cb2378398c434b7ed241bf4551edd78f48da19d
+base: 93d59dea5bcd9a218a2e3f657bcfae8c26df5382
 sources:
   - { id: S1, kind: decision, said: "show each subscription's usage and limits the way tucano.sh does for Claude Code and Codex, and the same for Hermes by its provider; use what Hermes offers, and the provider only when it offers nothing. Decided 2026-11-05" }
   - { id: S2, kind: reference, ref: "https://github.com/eduwxyz/tucano", said: "tucano shows Claude's five-hour and seven-day windows, utilization and reset, read from the rate_limit_event of a stream-json run" }
