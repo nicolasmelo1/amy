@@ -5,7 +5,7 @@
 // (docs/design/amy-speaks-in-domains.md).
 import path from "node:path";
 import ts from "typescript";
-import { domainOf, importsOf, partOf, portNames, report, services, sourcesUnder, type Source } from "./read.js";
+import { domainOf, importsOf, partOf, portBindings, portNamedBy, portNames, report, services, sourcesUnder, type Source } from "./read.js";
 
 const DRIVERS = /^(better-sqlite3|sqlite3|pg|mysql2|prisma|@prisma\/client|drizzle-orm|typeorm|knex|level|lmdb)(\/|$)/;
 const FILESYSTEM = /^(node:)?fs(\/promises)?$/;
@@ -35,7 +35,7 @@ for (const source of sourcesUnder(path.join(services, "src"))) {
 
 /** Every call on a field or parameter typed as a port is awaited. */
 function checkAwaits(source: Source): void {
-  const held = portHolders(source.ast);
+  const held = portHolders(source);
   const visit = (node: ts.Node): void => {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
       const holder = holderName(node.expression.expression);
@@ -48,17 +48,17 @@ function checkAwaits(source: Source): void {
   visit(source.ast);
 }
 
-/** The names of parameters and properties whose declared type is a port. */
-function portHolders(file: ts.SourceFile): Set<string> {
+/** The names of parameters and properties whose declared type is a port, however the port was imported. */
+function portHolders(source: Source): Set<string> {
+  const bindings = portBindings(source, ports);
   const names = new Set<string>();
   const visit = (node: ts.Node): void => {
     if ((ts.isParameter(node) || ts.isPropertyDeclaration(node)) && node.type && ts.isIdentifier(node.name)) {
-      const typeName = ts.isTypeReferenceNode(node.type) ? node.type.typeName.getText(file) : undefined;
-      if (typeName !== undefined && ports.has(typeName)) names.add(node.name.text);
+      if (ts.isTypeReferenceNode(node.type) && portNamedBy(node.type.typeName, bindings, ports) !== undefined) names.add(node.name.text);
     }
     ts.forEachChild(node, visit);
   };
-  visit(file);
+  visit(source.ast);
   return names;
 }
 

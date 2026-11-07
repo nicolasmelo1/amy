@@ -198,3 +198,63 @@ describe("invoke beside call", () => {
     expect((await invoke(contract, "counting.count", { to: 1 }, context)).kind).toBe("output");
   });
 });
+
+describe("what review found the contract missing", () => {
+  const throwing = {
+    "~standard": {
+      version: 1 as const,
+      vendor: "test",
+      validate: () => {
+        throw new Error("the validator broke");
+      },
+      jsonSchema: { input: () => ({ type: "object" }), output: () => ({ type: "object" }) },
+    },
+  };
+
+  it("answers a validator that throws as internal, naming the operation, for a value and a stream alike", async () => {
+    const value = defineOperation({ ...count, id: "broken.value", input: throwing });
+    const stream = defineOperation({ ...ticks, id: "broken.stream", input: throwing, http: { method: "post", path: "/broken" } });
+    const broken = defineContract([value, stream]);
+    expect(await invoke(broken, "broken.value", {}, context)).toEqual({ kind: "internal", error: { code: "amy.internal", message: "`broken.value` threw: the validator broke" } });
+    expect(await invoke(broken, "broken.stream", {}, context)).toEqual({ kind: "internal", error: { code: "amy.internal", message: "`broken.stream` threw: the validator broke" } });
+  });
+
+  it("declares a path field of a body-taking method as a required path parameter, and leaves it out of the body", () => {
+    const lock = defineOperation({
+      ...greet,
+      id: "greeting.lock",
+      input: z.object({ id: z.string().describe("which greeting"), reason: z.string().describe("why") }),
+      http: { method: "post", path: "/greetings/{id}/lock" },
+      examples: [{ summary: "one", input: { id: "g1", reason: "done" }, output: { text: "locked" } }],
+      async handler() {
+        return { text: "locked" };
+      },
+    });
+    const operation = (contractDocument(defineContract([lock]), INFO) as { paths: Record<string, Record<string, Record<string, any>>> }).paths["/greetings/{id}/lock"]?.post;
+    expect(operation?.parameters).toEqual([{ name: "id", in: "path", required: true, description: "which greeting", schema: { type: "string", description: "which greeting" } }]);
+    const body = operation?.requestBody.content["application/json"];
+    expect(Object.keys(body.schema.properties)).toEqual(["reason"]);
+    expect(body.schema.required).toEqual(["reason"]);
+    expect(body.example).toEqual({ reason: "done" });
+  });
+
+  it("keeps a recursive schema's $defs resolvable inside the document", () => {
+    interface Node {
+      name: string;
+      children: Node[];
+    }
+    const node: z.ZodType<Node> = z.lazy(() => z.object({ name: z.string().describe("its name"), children: z.array(node).describe("what is under it") }));
+    const tree = defineOperation({
+      ...count,
+      id: "tree.read",
+      input: z.object({ root: node.describe("the tree") }),
+      http: { method: "post", path: "/tree" },
+      examples: [{ summary: "a leaf", input: { root: { name: "a", children: [] } }, output: { doubled: 0 } }],
+    } as never);
+    const schema = (contractDocument(defineContract([tree]), INFO) as { paths: Record<string, Record<string, Record<string, any>>> }).paths["/tree"]?.post?.requestBody.content["application/json"].schema;
+    const references = JSON.stringify(schema).match(/"\$ref":"#\/\$defs\/[^"]+"/g) ?? [];
+    expect(references.length).toBeGreaterThan(0);
+    expect(schema.$id).toBe("urn:amy:operation:tree.read/input");
+    expect(schema.$defs).toBeDefined();
+  });
+});

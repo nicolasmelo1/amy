@@ -14,3 +14,8 @@ export class ReadNote {
 }
 
 export type Held = Store;
+
+import * as core from "@amykit/core";
+
+export type Queued = core.Queue;
+export const later = () => import("@amykit/core");

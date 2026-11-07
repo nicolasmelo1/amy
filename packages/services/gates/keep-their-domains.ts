@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import { domainOf, domains, importsOf, landsAt, partOf, portNames, report, services, sourcesUnder, type Source } from "./read.js";
+import { domainOf, domains, importsOf, landsAt, partOf, portBindings, portNamedBy, portNames, report, services, sourcesUnder, type Source } from "./read.js";
 
 const REQUIRED = ["operations", "services", "exceptions.ts", "index.ts"];
 const TRANSPORTS = /^(commander|hono|express|fastify|koa|ws|node:(http|https|http2|net)|http|https|http2|net)(\/|$)/;
@@ -33,8 +33,8 @@ function checkImports(source: Source, domain: string, part: string | undefined):
   for (const one of importsOf(source)) {
     const target = landsAt(source, one.specifier);
     if (target !== undefined) checkReach(source, one.specifier, target, domain, part);
-    if ((part === "operations" || part === "services") && one.specifier === "@amykit/core") checkPorts(source, one.names);
   }
+  if (part === "operations" || part === "services") checkPorts(source);
 }
 
 /** A relative import stays in its own domain, and a service never reaches an operation. */
@@ -48,10 +48,21 @@ function checkReach(source: Source, specifier: string, target: string, domain: s
   }
 }
 
-function checkPorts(source: Source, names: readonly string[]): void {
-  for (const name of names.filter((imported) => ports.has(imported))) {
-    findings.push(`${source.file} imports the port \`${name}\`: only a repository reaches a port`);
-  }
+/** A port named outside a repository: by name, by alias, through a namespace, or behind an `import()`. */
+function checkPorts(source: Source): void {
+  const bindings = portBindings(source, ports);
+  for (const port of new Set(bindings.named.values())) findings.push(`${source.file} imports the port \`${port}\`: only a repository reaches a port`);
+  for (const line of bindings.dynamic) findings.push(`${source.file}:${line} loads @amykit/core dynamically: import what you use by name, and a port only from a repository`);
+  const seen = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    const port = ts.isQualifiedName(node) || ts.isPropertyAccessExpression(node) ? portNamedBy(node, bindings, ports) : undefined;
+    if (port !== undefined && !seen.has(port)) {
+      seen.add(port);
+      findings.push(`${source.file} reaches the port \`${port}\` through a namespace: only a repository reaches a port`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source.ast);
 }
 
 function checkOperationExports(source: Source): void {

@@ -3,7 +3,7 @@
   "files": {
     ".allowed-root-files": "e783727b84aead52027293662d8f34c556de1b311a142481d872e7075afabb4b",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
-    ".github/workflows/software-factory.yml": "75da6727c742891c0c64570667ae9abea4435a5dd5137e807f4bcbcdb162789c",
+    ".github/workflows/software-factory.yml": "639776324c3f7c8dbc632ecd53cb552b0415b1a8156e93d687bf18e52abd5be9",
     ".software-factory/policy.yaml": "37c326c08ce4d44b17f0390f3fcff8583e09544cb5ce14400c93cbff6b2e1094",
     ".software-factory/ratchet.yaml": "0651675579468787302ac0cc38d8ead6bdb3555a731819a80b0ef63a2fa86c0f",
     ".software-factory/rules/a-delivered-plan-keeps-no-promise.yaml": "79df6d01907a534d2d2c5a2e196ef1b6d4c2cc6f5d2150491e3e703d1600b0d4",

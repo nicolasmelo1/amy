@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 
 const repository = path.resolve(import.meta.dirname, "../../..");
@@ -30,6 +31,8 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     expect(said).toContain("imports the port `Store`: only a repository reaches a port");
     expect(said).toContain("src/serve.ts imports `hono`");
     expect(said).toContain("domain `tags` has no exceptions.ts");
+    expect(said).toContain("reaches the port `Queue` through a namespace");
+    expect(said).toContain("loads @amykit/core dynamically");
   });
 
   it("refuses a driver, the filesystem outside a repository, a file adapter by name and an un-awaited port call", () => {
@@ -39,6 +42,7 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     expect(said).toContain("services/read-note.ts imports `node:fs`");
     expect(said).toContain("names a file adapter (`@amykit/plugin-file-store`)");
     expect(said).toContain("calls `this.store.load` without awaiting it");
+    expect(said).toContain("aliased.ts:8 calls `this.held.save` without awaiting it");
   });
 
   it("refuses an operation and a property without a description, naming both", () => {
@@ -69,5 +73,26 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     document.info.version = "2.0.0";
     fs.writeFileSync(head, JSON.stringify(document));
     expect(gate("breaks-on-purpose", raised, "--base", "packages/services/openapi.base.json")).toMatchObject({ status: 0 });
+  });
+
+  it("reads the base from the merge-base with main when no base is named, and refuses the break there", () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-merge-base-"));
+    made.push(tree);
+    const git = (...args: string[]): string => execFileSync("git", ["-c", "user.name=amy", "-c", "user.email=amy@example.test", ...args], { cwd: tree, encoding: "utf8" });
+    git("init", "-q", "-b", "main");
+    fs.cpSync(path.join(example, "packages"), path.join(tree, "packages"), { recursive: true });
+    git("add", "-A");
+    git("commit", "-qm", "base");
+    git("checkout", "-qb", "work");
+    const head = path.join(tree, "packages/services/openapi.json");
+    const document = JSON.parse(fs.readFileSync(head, "utf8")) as { paths: Record<string, Record<string, any>> };
+    const answer = document.paths["/notes/{id}"]?.get?.responses["200"].content["application/json"].schema;
+    delete answer.properties.text;
+    answer.required = ["id"];
+    fs.writeFileSync(head, JSON.stringify(document));
+    git("commit", "-qam", "drop text");
+    const { status, said } = gate("breaks-on-purpose", tree);
+    expect(status).toBe(1);
+    expect(said).toContain("removed the required property `text`");
   });
 });

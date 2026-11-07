@@ -172,7 +172,12 @@ export async function invoke(contract: Contract, id: string, input: unknown, con
   const operation = contract.operations.get(id);
   if (!operation) return { kind: "refused", error: { code: "amy.unknown_operation", message: `no operation \`${id}\` is in the contract` } };
 
-  const accepted = await validate(operation.input, input);
+  let accepted: StandardResult<unknown>;
+  try {
+    accepted = await validate(operation.input, input);
+  } catch (error) {
+    return { kind: "internal", error: thrown(id, error) };
+  }
   if (accepted.issues) {
     return { kind: "refused", error: { code: "amy.input", message: `\`${id}\` refused its input: ${describe(accepted.issues)}`, details: plain(accepted.issues) } };
   }
@@ -186,7 +191,12 @@ export async function invoke(contract: Contract, id: string, input: unknown, con
   }
   if (isFailure(answered)) return declaredOrInternal(operation, answered.error);
 
-  const output = await validate(operation.output, answered);
+  let output: StandardResult<unknown>;
+  try {
+    output = await validate(operation.output, answered);
+  } catch (error) {
+    return { kind: "internal", error: thrown(id, error) };
+  }
   if (output.issues) {
     return { kind: "internal", error: { code: "amy.output", message: `\`${id}\` answered an output its schema refuses: ${describe(output.issues)}`, details: plain(output.issues) } };
   }
@@ -296,9 +306,8 @@ export function contractDocument(contract: Contract, info: DocumentInfo): Json {
 }
 
 function describeOperation(operation: Operation): Json {
-  const input = jsonSchema(operation.input, "input");
+  const input = jsonSchema(operation.input, "input", `${operation.id}/input`);
   const takesBody = operation.http.method !== "get" && operation.http.method !== "delete";
-  const example = operation.examples[0];
   return {
     operationId: operation.id,
     summary: operation.summary,
@@ -309,9 +318,7 @@ function describeOperation(operation: Operation): Json {
     "x-amy-writes": [...operation.writes],
     "x-amy-examples": operation.examples.map((one) => ({ summary: one.summary, input: one.input, output: one.output })),
     ...(operation.cli ? { "x-amy-cli": { words: [...operation.cli.words], positional: [...(operation.cli.positional ?? [])] } } : {}),
-    ...(takesBody
-      ? { requestBody: { required: true, content: { "application/json": { schema: input, ...(example ? { example: example.input } : {}) } } } }
-      : { parameters: parametersOf(operation, input) }),
+    ...(takesBody ? bodyOf(operation, input) : { parameters: parametersOf(operation, input, () => true) }),
     responses: {
       [String(operation.http.status ?? 200)]: answerOf(operation),
       default: {
@@ -325,7 +332,7 @@ function describeOperation(operation: Operation): Json {
 function answerOf(operation: Operation): Json {
   const example = operation.examples[0];
   if (isStream(operation)) {
-    const events = Object.fromEntries(Object.entries(operation.events).map(([name, schema]) => [name, jsonSchema(schema, "output")]));
+    const events = Object.fromEntries(Object.entries(operation.events).map(([name, schema]) => [name, jsonSchema(schema, "output", `${operation.id}/events/${name}`)]));
     return {
       description: `A stream of ${Object.keys(events).map((name) => `\`${name}\``).join(", ")} events.`,
       content: {
@@ -339,7 +346,7 @@ function answerOf(operation: Operation): Json {
   }
   return {
     description: operation.summary,
-    content: { "application/json": { schema: jsonSchema(operation.output, "output"), ...(example ? { example: example.output } : {}) } },
+    content: { "application/json": { schema: jsonSchema(operation.output, "output", `${operation.id}/output`), ...(example ? { example: example.output } : {}) } },
   };
 }
 
@@ -351,22 +358,57 @@ function errorsOf(operation: Operation): Json {
   };
 }
 
-function parametersOf(operation: Operation, input: Json): Json[] {
+/** The input fields as parameters: those `taken` says, in the path when the path names them, in the query otherwise. */
+function parametersOf(operation: Operation, input: Json, taken: (name: string) => boolean): Json[] {
   const properties = (input.properties ?? {}) as Record<string, Json>;
   const required = new Set((input.required ?? []) as string[]);
-  return Object.entries(properties).map(([name, schema]) => {
-    const inPath = operation.http.path.includes(`{${name}}`);
-    return {
-      name,
-      in: inPath ? "path" : "query",
-      required: inPath || required.has(name),
-      description: typeof schema.description === "string" ? schema.description : "",
-      schema,
-    };
-  });
+  return Object.entries(properties)
+    .filter(([name]) => taken(name))
+    .map(([name, schema]) => {
+      const inPath = inPathOf(operation, name);
+      return {
+        name,
+        in: inPath ? "path" : "query",
+        required: inPath || required.has(name),
+        description: typeof schema.description === "string" ? schema.description : "",
+        schema,
+      };
+    });
 }
 
-function jsonSchema(schema: OperationSchema, side: "input" | "output"): Json {
+function inPathOf(operation: Operation, name: string): boolean {
+  return operation.http.path.includes(`{${name}}`);
+}
+
+/**
+ * A method with a body: the fields its path names are path parameters, and
+ * every other field is the body, so a URL can be built and the body holds
+ * no field twice.
+ */
+function bodyOf(operation: Operation, input: Json): Json {
+  const inPath = (name: string): boolean => inPathOf(operation, name);
+  const parameters = parametersOf(operation, input, inPath);
+  const properties = Object.fromEntries(Object.entries((input.properties ?? {}) as Record<string, Json>).filter(([name]) => !inPath(name)));
+  const required = ((input.required ?? []) as string[]).filter((name) => !inPath(name));
+  const example = operation.examples[0];
+  const exampleBody = example && typeof example.input === "object" && example.input !== null
+    ? Object.fromEntries(Object.entries(example.input as Record<string, unknown>).filter(([name]) => !inPath(name)))
+    : example?.input;
+  const schema = { ...input, properties, ...(required.length > 0 || input.required ? { required } : {}) };
+  return {
+    ...(parameters.length > 0 ? { parameters } : {}),
+    ...(parameters.length > 0 && Object.keys(properties).length === 0
+      ? {}
+      : { requestBody: { required: true, content: { "application/json": { schema, ...(example ? { example: exampleBody } : {}) } } } }),
+  };
+}
+
+/**
+ * A schema as the library wrote it, without its dialect line. One carrying
+ * `$defs` gets an `$id`, so its `#/$defs/...` references resolve inside it
+ * rather than against the root of the OpenAPI document.
+ */
+function jsonSchema(schema: OperationSchema, side: "input" | "output", at: string): Json {
   const { $schema: _dialect, ...rest } = schema["~standard"].jsonSchema[side](TARGET);
-  return rest;
+  return rest.$defs && rest.$id === undefined ? { $id: `urn:amy:operation:${at}`, ...rest } : rest;
 }

@@ -8,7 +8,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { report, repository, root, services } from "./read.js";
+import { report, root, services } from "./read.js";
 
 const DOCUMENT = "packages/services/openapi.json";
 const findings: string[] = [];
@@ -39,13 +39,13 @@ function baseDocument(): string | undefined {
     return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : undefined;
   }
   const ref = ["origin/main", "main"].find((candidate) => git(["rev-parse", "--verify", "--quiet", candidate]) !== undefined);
-  const mergeBase = ref === undefined ? undefined : git(["merge-base", "HEAD", ref]);
+  const mergeBase = ref === undefined ? undefined : git(["merge-base", "HEAD", ref])?.trim();
   return mergeBase === undefined ? undefined : git(["show", `${mergeBase}:${DOCUMENT}`]);
 }
 
 function git(args: string[]): string | undefined {
   try {
-    return execFileSync("git", args, { cwd: repository, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   } catch {
     return undefined;
   }

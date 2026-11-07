@@ -132,6 +132,58 @@ export function portNames(): Set<string> {
   return names;
 }
 
+/** How a file binds the core's ports: local names for each port, and namespaces over the core. */
+export interface PortBindings {
+  /** Local name → the port it is, aliases included. */
+  readonly named: ReadonlyMap<string, string>;
+  /** Local names of `import * as x from "@amykit/core"`. */
+  readonly namespaces: ReadonlySet<string>;
+  /** Lines that load the core with `import()` or `require()`, whose exports nothing can see. */
+  readonly dynamic: readonly number[];
+}
+
+export function portBindings(source: Source, ports: ReadonlySet<string>): PortBindings {
+  const named = new Map<string, string>();
+  const namespaces = new Set<string>();
+  const dynamic: number[] = [];
+  const visit = (node: ts.Node): void => {
+    if (isCoreImport(node)) bindImport(node, ports, named, namespaces);
+    else if (isCoreLoad(node)) dynamic.push(source.ast.getLineAndCharacterOfPosition(node.getStart(source.ast)).line + 1);
+    ts.forEachChild(node, visit);
+  };
+  visit(source.ast);
+  return { named, namespaces, dynamic };
+}
+
+function isCoreImport(node: ts.Node): node is ts.ImportDeclaration {
+  return ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "@amykit/core";
+}
+
+function isCoreLoad(node: ts.Node): boolean {
+  if (!ts.isCallExpression(node) || !isDynamicLoad(node)) return false;
+  const first = node.arguments[0];
+  return first !== undefined && ts.isStringLiteralLike(first) && first.text === "@amykit/core";
+}
+
+function bindImport(node: ts.ImportDeclaration, ports: ReadonlySet<string>, named: Map<string, string>, namespaces: Set<string>): void {
+  const bindings = node.importClause?.namedBindings;
+  if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+  if (!bindings || !ts.isNamedImports(bindings)) return;
+  for (const one of bindings.elements) {
+    const imported = (one.propertyName ?? one.name).text;
+    if (ports.has(imported)) named.set(one.name.text, imported);
+  }
+}
+
+/** The port a type or value reference names — `Store`, `NoteStore` aliased to it, or `core.Store` — if any. */
+export function portNamedBy(node: ts.Node, bindings: PortBindings, ports: ReadonlySet<string>): string | undefined {
+  if (ts.isIdentifier(node)) return bindings.named.get(node.text);
+  const left = ts.isQualifiedName(node) ? node.left : ts.isPropertyAccessExpression(node) ? node.expression : undefined;
+  const right = ts.isQualifiedName(node) ? node.right : ts.isPropertyAccessExpression(node) ? node.name : undefined;
+  if (!left || !right || !ts.isIdentifier(left) || !ts.isIdentifier(right)) return undefined;
+  return bindings.namespaces.has(left.text) && ports.has(right.text) ? right.text : undefined;
+}
+
 /** Prints the findings and sets the exit code: the shape every gate answers in. */
 export function report(rule: string, findings: readonly string[]): void {
   if (findings.length === 0) {

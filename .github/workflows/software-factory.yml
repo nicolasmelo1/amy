@@ -32,21 +32,10 @@ jobs:
       - name: Install sf
         run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.4 --locked
       # L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE asks oasdiff whether the
-      # contract broke. The version is read from the toolchain lock rather
-      # than written here, so there is one copy of it; the archive is checked
-      # against the checksums the release publishes.
+      # contract broke. The script reads the version from the toolchain lock
+      # and checks the archive against the release's checksums.
       - name: Install oasdiff
-        run: |
-          version=$(jq -r .oasdiff .software-factory/toolchain.lock.json)
-          base="https://github.com/oasdiff/oasdiff/releases/download/v$version"
-          work=$(mktemp -d)
-          curl -fsSL "$base/oasdiff_${version}_linux_amd64.tar.gz" -o "$work/oasdiff.tar.gz"
-          curl -fsSL "$base/checksums.txt" -o "$work/checksums.txt"
-          (cd "$work" && grep " oasdiff_${version}_linux_amd64.tar.gz\$" checksums.txt | sed "s/oasdiff_${version}_linux_amd64.tar.gz/oasdiff.tar.gz/" | sha256sum -c -)
-          tar -xzf "$work/oasdiff.tar.gz" -C "$work" oasdiff
-          sudo mv "$work/oasdiff" /usr/local/bin/oasdiff
-          rm -rf "$work"
-          oasdiff --version
+        run: ./scripts/install-oasdiff.sh
       # L1.EVERY_RENDERER_HOLDS_THE_FRAME runs the conformance harness against
       # every renderer, so the frame package and the renderers are compiled
       # here. Only those: the rest of the build, and every check that needs
@@ -107,6 +96,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # The services' gate test runs oasdiff, and a binary installed in the
+      # factory job is not on this runner.
+      - name: Install oasdiff
+        run: ./scripts/install-oasdiff.sh
       - run: npm run build
       # The release configuration, before the tests: a package that fell out
       # of the version group is cheaper to hear about here than from a machine
