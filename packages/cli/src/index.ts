@@ -34,7 +34,7 @@ import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
 import { renderText } from "@amykit/ui";
 import { USAGE_COLLECTION, type UsageReader, type UsageResult } from "@amykit/agent-kit";
-import { statusView, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
+import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -1038,13 +1038,12 @@ program
     const profile = selected();
     const place = profilePaths(home, profile);
     const queue = new FileQueue(place.queue, "id", false);
-    const now = new Date();
 
     // Mounted only to ask the workflow which of its states are waiting
     // ones. A mount that will not come up is exactly when somebody wants to
     // look, so the records are still reported, without that column.
     const assembled = await assembleForInspection(profile);
-    const usage = await subscriptionUsage(assembled);
+    const { usage, now } = await usageThenNow(() => subscriptionUsage(assembled));
     const workflow = assembled.ok ? assembled.mounted.workflow : undefined;
     const waiting = workflow?.waitingStates;
     const terminal = workflow?.terminalStates;

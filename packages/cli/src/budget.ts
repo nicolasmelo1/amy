@@ -1,4 +1,4 @@
-import type { SubscriptionUsage } from "./status-page.js";
+import { usageThenNow, type SubscriptionUsage } from "./status-page.js";
 import {
   BUDGET_WINDOWS,
   BudgetLimits,
@@ -21,8 +21,7 @@ export async function budgetReport(input: {
   readonly events: (since: Date) => readonly Event[];
   readonly clock: () => Date;
 }): Promise<string[]> {
-  const usage = await input.usage();
-  const now = input.clock();
+  const { usage, now } = await usageThenNow(input.usage, input.clock);
   // Read once, over the longest window any ceiling could be set on, rather
   // than once per window: two reads of a growing file can disagree, and a
   // report whose windows disagree is worse than a slower one.
