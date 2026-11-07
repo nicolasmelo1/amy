@@ -1,4 +1,5 @@
 ---
+base: 05fe0b43f4b4efa0bea1093f70645e2acc78b667
 sources:
   - { id: S1, kind: decision, said: "name an edge for an action's outcome, as a call's edges are named for the callee's ends: the action declares its outcomes, the diagram draws one edge each, and that state needs no decision written" }
   - { id: S2, kind: decision, said: "a terminal state with no `decide` key settles on its own; a key written for one still wins" }
