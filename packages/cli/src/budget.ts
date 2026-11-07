@@ -1,3 +1,4 @@
+import type { SubscriptionUsage } from "./status-page.js";
 import {
   BUDGET_WINDOWS,
   BudgetLimits,
@@ -19,6 +20,7 @@ export function budgetLines(
   events: readonly Event[],
   limits: BudgetLimits,
   now: Date,
+  usage: readonly SubscriptionUsage[] = [],
 ): string[] {
   const lines: string[] = [];
 
@@ -49,6 +51,27 @@ export function budgetLines(
           `(room again in ${Math.round(decision.retryAfterMs / 60000)} min)`,
   );
 
+  lines.push(...usageLines(usage));
+  return lines;
+}
+
+/** Provider windows are shown beside, never folded into, Amy's own ledger. */
+function usageLines(usage: readonly SubscriptionUsage[]): string[] {
+  if (usage.length === 0) return [];
+  const lines = ["", "subscription usage:"];
+  for (const { subscription, result } of usage) {
+    if ("unavailable" in result) {
+      lines.push(`${subscription}: unavailable — ${result.unavailable}`);
+      continue;
+    }
+    const marker = result.unofficial ? " unofficial" : "";
+    for (const window of result.windows) {
+      const period = window.startsAt || window.resetsAt
+        ? [window.startsAt ? `starts ${window.startsAt}` : "", window.resetsAt ? `resets ${window.resetsAt}` : ""].filter(Boolean).join(", ")
+        : "period unknown";
+      lines.push(`${subscription}${marker} ${window.label}: ${window.usedPercent}% (${period})`);
+    }
+  }
   return lines;
 }
 

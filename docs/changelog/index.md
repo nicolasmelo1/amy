@@ -369,6 +369,12 @@ The `amy-update` gate stubbed out both of these with a stand-in npm that answere
 
 
 
+### Harness subscriptions report their account-usage windows through `amy status` and `amy budget`.
+
+`minor` · `@amykit/agent-kit`, `@amykit/cli`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-hermes-agent`
+
+
+
 ### The mutation fixtures `amy workflow new` writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still `index.js`, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so `sf verify` in an existing workflow is unaffected.
 
 `patch` · `@amykit/cli`

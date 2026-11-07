@@ -253,6 +253,11 @@
           "description": ""
         },
         {
+          "title": "A harness shows what is left",
+          "path": "/design/a-harness-shows-what-is-left",
+          "description": ""
+        },
+        {
           "title": "A mount builds once",
           "path": "/design/a-mount-builds-once",
           "description": ""
@@ -1114,6 +1119,11 @@
         },
         {
           "depth": 3,
+          "title": "Harness subscriptions report their account-usage windows through amy status and amy budget.",
+          "slug": "harness-subscriptions-report-their-account-usage-windows-through-amy-status-and-amy-budget"
+        },
+        {
+          "depth": 3,
           "title": "The mutation fixtures amy workflow new writes beside a workflow are TypeScript now, the same as the scaffold they guard. Two of the three were still index.js, so a workflow written in TypeScript proved its guardrails against a file in a language it does not use. The rules read both, so sf verify in an existing workflow is unaffected.",
           "slug": "the-mutation-fixtures-amy-workflow-new-writes-beside-a-workflow-are-typescript-now-the-same-as-the-scaffold-they-guard-two-of-the-three-were-still-indexjs-so-a-workflow-written-in-typescript-proved-its-guardrails-against-a-file-in-a-language-it-does-not-use-the-rules-read-both-so-sf-verify-in-an-existing-workflow-is-unaffected"
         },
@@ -1960,6 +1970,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-harness-shows-what-is-left",
+      "file": "docs/design/a-harness-shows-what-is-left.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-harness-shows-what-is-left.md",
+      "title": "A harness shows what is left",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-mount-builds-once",
@@ -7378,6 +7399,23 @@
         ]
       },
       {
+        "collection": "usage",
+        "contributors": [
+          {
+            "name": "Claude",
+            "package": "@amykit/plugin-claude"
+          },
+          {
+            "name": "Codex",
+            "package": "@amykit/plugin-codex"
+          },
+          {
+            "name": "Hermes ()",
+            "package": "@amykit/plugin-hermes-agent"
+          }
+        ]
+      },
+      {
         "collection": "workflow-runtime",
         "contributors": [
           {
@@ -7400,6 +7438,10 @@
       }
     ],
     "environment": [
+      {
+        "variable": "CLAUDE_CODE_OAUTH_TOKEN",
+        "package": "@amykit/plugin-claude"
+      },
       {
         "variable": "CODEX_HOME",
         "package": "@amykit/plugin-codex"
@@ -7547,6 +7589,10 @@
           {
             "collection": "harness",
             "name": "claude"
+          },
+          {
+            "collection": "usage",
+            "name": "Claude"
           }
         ],
         "settings": [
@@ -7572,7 +7618,9 @@
             "description": "how long one agent call may run before it is given up on"
           }
         ],
-        "environment": []
+        "environment": [
+          "CLAUDE_CODE_OAUTH_TOKEN"
+        ]
       },
       {
         "name": "@amykit/plugin-codex",
@@ -7588,6 +7636,10 @@
           {
             "collection": "harness",
             "name": "codex"
+          },
+          {
+            "collection": "usage",
+            "name": "Codex"
           }
         ],
         "settings": [
@@ -8043,6 +8095,10 @@
           {
             "collection": "harness",
             "name": "hermes"
+          },
+          {
+            "collection": "usage",
+            "name": "Hermes ()"
           }
         ],
         "settings": [
@@ -8066,6 +8122,13 @@
             "required": false,
             "default": "amy",
             "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot"
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "the Hermes provider whose account windows amy reads. Use openai-codex, anthropic, openrouter, or ollama-cloud; empty leaves the account usage unavailable rather than guessing"
           },
           {
             "name": "timeoutMs",
@@ -9379,6 +9442,33 @@
           "groom.history_names_the_commit_that_added_it"
         ],
         "scenario": ".software-factory/evidence/feature-grooming-scenario.sh"
+      },
+      {
+        "name": "harness-usage",
+        "activation": [
+          "packages/agent-kit/src/usage.ts",
+          "plugins/claude/src/usage.ts",
+          "plugins/claude/src/plugin.ts",
+          "plugins/codex/src/CodexHarness.ts",
+          "plugins/codex/src/usage.ts",
+          "plugins/codex/src/plugin.ts",
+          "plugins/hermes-agent/src/usage.ts",
+          "plugins/hermes-agent/src/plugin.ts",
+          "plugins/hermes-agent/src/config.ts",
+          "packages/cli/src/index.ts",
+          "packages/cli/src/status-page.tsx",
+          "packages/cli/src/budget.ts"
+        ],
+        "evidence": ".software-factory/evidence/harness-usage.json",
+        "plan": "docs/design/a-harness-shows-what-is-left.md",
+        "assertions": [
+          "usage.readers_are_product_neutral",
+          "usage.recorded_provider_windows_are_normalized",
+          "usage.ollama_is_unofficial_without_a_reset",
+          "usage.status_keeps_other_readers_after_one_fails",
+          "usage.budget_keeps_provider_windows_separate"
+        ],
+        "scenario": ".software-factory/evidence/harness-usage-scenario.sh"
       },
       {
         "name": "installed-binary",
@@ -10940,6 +11030,34 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "harness-usage",
+        "title": "Harness subscriptions report their account-usage windows through `amy status` and `amy budget`.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "no-javascript-left",

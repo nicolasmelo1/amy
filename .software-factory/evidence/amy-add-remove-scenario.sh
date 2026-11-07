@@ -90,8 +90,34 @@ for arg in "\$@"; do
 done
 # The artifact paths are made by this scenario, without spaces; eval expands
 # the tarball glob only after the package name above has become that path.
+# The scenario packs an unreleased fixed group at the same version as the
+# registry release. Pin every workspace package before npm resolves a plugin's
+# transitive dependencies, or npm pairs the new plugin tarball with the old
+# registry agent-kit. A released group has distinct versions and needs none.
+if [ -n "\$prefix" ] && [ -f "\$prefix/package.json" ]; then
+  node - "\$prefix/package.json" "$work/lib/packages" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+const [manifest, tarballs] = process.argv.slice(2);
+const body = JSON.parse(fs.readFileSync(manifest, "utf8"));
+body.overrides = Object.fromEntries(fs.readdirSync(tarballs).filter((file) => file.endsWith(".tgz")).map((file) => {
+  const name = file.replace(/-\d+\.\d+\.\d+.*\.tgz$/, "").replace(/^amykit-/, "@amykit/");
+  return [name, "file:" + path.join(tarballs, file)];
+}));
+fs.writeFileSync(manifest, JSON.stringify(body, null, 2) + "\\n");
+NODE
+  rm -rf "\$prefix/node_modules/@amykit/agent-kit"
+fi
 status=0
 eval "'$npm_real' \$args" || status=\$?
+# npm may retain the same-version nested registry copy under a new plugin. The
+# root override is the development install's one source of truth.
+if [ "\$status" = 0 ] && [ -n "\$prefix" ]; then
+  rm -rf "\$prefix/node_modules/@amykit/agent-kit"
+  mkdir -p "\$prefix/node_modules/@amykit/agent-kit"
+  tar xzf $work/lib/packages/amykit-agent-kit-*.tgz -C "\$prefix/node_modules/@amykit/agent-kit" --strip-components=1
+  find "\$prefix/node_modules" -mindepth 5 -path '*/node_modules/@amykit/agent-kit' -type d -prune -exec rm -rf {} +
+fi
 core="\$prefix/node_modules/@amykit/core"
 if [ "\$status" = 0 ] && [ -n "\$prefix" ] && [ -d "\$core" ]; then
   rm -rf "\$core" && mkdir -p "\$core"

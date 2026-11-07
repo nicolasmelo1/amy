@@ -1,0 +1,34 @@
+{
+  "scenario": "harness-usage",
+  "status": "passed",
+  "goal": "A person sees each mounted harness subscription's own account windows beside Amy's ledger, including an unavailable reader without hiding the rest.",
+  "artifact": {
+    "entry": "built workspace contracts for mounted usage readers, status and budget"
+  },
+  "observed": {
+    "assertions_run": 5,
+    "assertions_failed": 0
+  },
+  "assertions": [
+    {
+      "type": "usage.readers_are_product_neutral",
+      "status": "passed"
+    },
+    {
+      "type": "usage.recorded_provider_windows_are_normalized",
+      "status": "passed"
+    },
+    {
+      "type": "usage.ollama_is_unofficial_without_a_reset",
+      "status": "passed"
+    },
+    {
+      "type": "usage.status_keeps_other_readers_after_one_fails",
+      "status": "passed"
+    },
+    {
+      "type": "usage.budget_keeps_provider_windows_separate",
+      "status": "passed"
+    }
+  ]
+}

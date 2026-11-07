@@ -111,6 +111,19 @@ describe("budgetLines", () => {
     expect(lines.join("\n")).toContain("$5.00 of $150.00");
   });
 
+  it("keeps provider windows beside Amy's rolling totals", () => {
+    const lines = budgetLines([], limits(), NOW, [
+      { subscription: "Codex", result: { windows: [{ label: "five-hour", usedPercent: 24, resetsAt: "2026-11-07T14:00:00.000Z" }] } },
+      { subscription: "Hermes (ollama-cloud)", result: { windows: [{ label: "Weekly", usedPercent: 3 }], unofficial: true } },
+      { subscription: "Claude", result: { unavailable: "not signed in" } },
+    ]);
+
+    expect(lines.join("\n")).toContain("subscription usage:");
+    expect(lines.join("\n")).toContain("Codex five-hour: 24% (resets 2026-11-07T14:00:00.000Z)");
+    expect(lines.join("\n")).toContain("Hermes (ollama-cloud) unofficial Weekly: 3% (period unknown)");
+    expect(lines.join("\n")).toContain("Claude: unavailable — not signed in");
+  });
+
   it("reads prevented starts from progress events in the log", () => {
     const lines = budgetLines([
       { at: NOW.toISOString(), kind: "progress.parked", detail: { key: "implementation" } },

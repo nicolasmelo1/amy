@@ -101,6 +101,7 @@ const BASE: StatusSnapshot = {
   paused: null,
   notes: 0,
   needsInput: 0,
+  usage: [],
 };
 
 const MIXED = [
@@ -161,6 +162,21 @@ describe("amy status, as a view", () => {
     const snapshot = CORPUS[11]?.[1] as StatusSnapshot;
 
     expect(printedNow(structuredClone(snapshot), false)).toBe(printedNow(snapshot, false));
+  });
+
+  it("shows each subscription without mixing it into the work ledger", () => {
+    const page = printedNow({
+      ...BASE,
+      usage: [
+        { subscription: "Codex", result: { windows: [{ label: "five-hour", usedPercent: 24, resetsAt: "2026-11-07T14:00:00.000Z" }] } },
+        { subscription: "Hermes (ollama-cloud)", result: { windows: [{ label: "Weekly", usedPercent: 3 }], unofficial: true } },
+        { subscription: "Claude", result: { unavailable: "not signed in" } },
+      ],
+    }, false);
+
+    expect(page).toContain("Codex: five-hour 24% (resets 2026-11-07T14:00:00.000Z)");
+    expect(page).toContain("Hermes (ollama-cloud) unofficial: Weekly 3% (period unknown)");
+    expect(page).toContain("Claude: unavailable — not signed in");
   });
 
   it("shows the walked phase and each declared absence with its reason", () => {

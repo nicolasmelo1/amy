@@ -4,7 +4,7 @@
 
 The codex CLI as the agent, over its JSONL event stream.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `codex` in the `harness` collection.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `codex` in the `harness` collection and `Codex` in the `usage` collection.
 
 ## Install
 

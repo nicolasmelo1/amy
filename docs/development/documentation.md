@@ -74,8 +74,8 @@ A page is markdown with markers in it:
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
 | `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
-| `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude` |
-| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex` |
+| `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude`<br>`usage:Claude` |
+| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex`<br>`usage:Codex` |
 | `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
 | `@amykit/plugin-concurrent-engine` | Advances one work item per tick, moving every lane of a fork at once. | the engine |  |
@@ -86,7 +86,7 @@ A page is markdown with markers in it:
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
 | `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `workspace`<br>`worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
-| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes` |
+| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes`<br>`usage:Hermes ()` |
 | `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `feature`<br>`tracker` |  |
 | `@amykit/plugin-next-steps` | A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch. | `tracker` |  |
 | `@amykit/plugin-notify-fanout` | Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted. | `notifier` |  |

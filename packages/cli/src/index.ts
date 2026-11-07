@@ -34,7 +34,8 @@ import { FileEventLog } from "@amykit/plugin-file-log";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
 import { renderText } from "@amykit/ui";
-import { statusView, type StatusRecord, type StatusSnapshot } from "./status-page.js";
+import { USAGE_COLLECTION, type UsageReader, type UsageResult } from "@amykit/agent-kit";
+import { statusView, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -1034,6 +1035,7 @@ program
     // ones. A mount that will not come up is exactly when somebody wants to
     // look, so the records are still reported, without that column.
     const assembled = await assemble(profile);
+    const usage = await subscriptionUsage(assembled);
     const workflow = assembled.ok ? assembled.mounted.workflow : undefined;
     const waiting = workflow?.waitingStates;
     const terminal = workflow?.terminalStates;
@@ -1097,9 +1099,29 @@ program
         paused: held,
         notes,
         needsInput: asked,
+        usage,
       };
     }
   });
+
+/** Readers run only for inspection; one unavailable subscription leaves the others visible. */
+async function subscriptionUsage(assembled: Assembled): Promise<readonly SubscriptionUsage[]> {
+  if (!assembled.ok) return [];
+  const readers = [...(assembled.mounted.contributions.get(USAGE_COLLECTION)?.values() ?? [])] as UsageReader[];
+  return await Promise.all(readers.map(async (reader) => ({
+    subscription: reader.label,
+    result: await readUsage(reader),
+  })));
+}
+
+/** A reader's exception is a visible unavailable answer, never a failed status. */
+async function readUsage(reader: UsageReader): Promise<UsageResult> {
+  try {
+    return await reader.read();
+  } catch {
+    return { unavailable: `${reader.label} usage is unavailable` };
+  }
+}
 
 /** Where a record stands through the calls it is in, for a workflow that would mount. */
 function standingThroughCalls(workflow: Workflow | undefined, record: WorkRecord): Pick<StatusRecord, "calls" | "attention" | "waitingInACall" | "lanes"> {
@@ -1121,7 +1143,7 @@ function countIn(directory: string): number {
 program
   .command("budget")
   .description("What the agents have spent, and how close that is to the ceiling")
-  .action(() => {
+  .action(async () => {
     const parsed = parseBudget(configuredBudget());
     if (!parsed.ok) {
       for (const problem of parsed.problems) console.error(problem);
@@ -1129,8 +1151,10 @@ program
       return;
     }
 
-    const log = new FileEventLog(profilePaths(home, selected()).log, undefined, build);
+    const profile = selected();
+    const log = new FileEventLog(profilePaths(home, profile).log, undefined, build);
     const now = new Date();
+    const usage = await subscriptionUsage(await assemble(profile));
 
     // Read once, over the longest window any ceiling could be set on, rather
     // than once per window: two reads of a growing file can disagree, and a
@@ -1138,7 +1162,7 @@ program
     const longest = Math.max(...BUDGET_WINDOWS.map((window) => window.ms));
     const events = log.read(new Date(now.getTime() - longest));
 
-    for (const line of budgetLines(events, parsed.limits, now)) console.log(line);
+    for (const line of budgetLines(events, parsed.limits, now, usage)) console.log(line);
   });
 
 /**

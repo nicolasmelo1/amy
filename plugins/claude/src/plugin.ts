@@ -1,7 +1,8 @@
 import { definePlugin } from "@amykit/core";
-import { contributeTiers } from "@amykit/agent-kit";
+import { contributeTiers, contributeUsage } from "@amykit/agent-kit";
 import { ClaudeHarness } from "./ClaudeHarness.js";
 import { configSchema } from "./config.js";
+import { ClaudeUsageReader } from "./usage.js";
 
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-claude",
@@ -25,5 +26,6 @@ export const plugin = definePlugin<typeof configSchema>({
           timeoutMs: ctx.config.timeoutMs,
         }),
     });
+    contributeUsage(registry, new ClaudeUsageReader(ctx.runner, { timeoutMs: ctx.config.timeoutMs }));
   },
 });

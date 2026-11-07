@@ -1,7 +1,8 @@
 import { definePlugin } from "@amykit/core";
-import { contributeTiers } from "@amykit/agent-kit";
-import { CodexHarness } from "./CodexHarness.js";
+import { contributeTiers, contributeUsage } from "@amykit/agent-kit";
+import { CodexHarness, StdioCodexAppServer } from "./CodexHarness.js";
 import { configSchema } from "./config.js";
+import { CodexUsageReader } from "./usage.js";
 
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-codex",
@@ -30,6 +31,7 @@ export const plugin = definePlugin<typeof configSchema>({
           timeoutMs: ctx.config.timeoutMs,
         }),
     });
+    contributeUsage(registry, new CodexUsageReader(new StdioCodexAppServer({ timeoutMs: ctx.config.timeoutMs })));
   },
 });
 

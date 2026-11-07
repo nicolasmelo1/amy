@@ -58,6 +58,7 @@ For what the two halves mean and why, see
 
 | Variable | Read by |
 | :-- | :-- |
+| `CLAUDE_CODE_OAUTH_TOKEN` | `@amykit/plugin-claude` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 | `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |

@@ -115,6 +115,32 @@ gates:
       - "prompt.sends_the_agent_to_the_repository_not_the_tracker"
       - "prompt.carries_the_answers_to_its_own_questions"
 
+  # Account usage is an on-demand inspection: readers contribute a neutral
+  # window shape, adapters normalize provider answers, and status/budget never
+  # combine it with Amy's own rolling ledger.
+  harness-usage:
+    activation:
+      - "packages/agent-kit/src/usage.ts"
+      - "plugins/claude/src/usage.ts"
+      - "plugins/claude/src/plugin.ts"
+      - "plugins/codex/src/CodexHarness.ts"
+      - "plugins/codex/src/usage.ts"
+      - "plugins/codex/src/plugin.ts"
+      - "plugins/hermes-agent/src/usage.ts"
+      - "plugins/hermes-agent/src/plugin.ts"
+      - "plugins/hermes-agent/src/config.ts"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/status-page.tsx"
+      - "packages/cli/src/budget.ts"
+    evidence: ".software-factory/evidence/harness-usage.json"
+    plan: "docs/design/a-harness-shows-what-is-left.md"
+    required_assertions:
+      - "usage.readers_are_product_neutral"
+      - "usage.recorded_provider_windows_are_normalized"
+      - "usage.ollama_is_unofficial_without_a_reset"
+      - "usage.status_keeps_other_readers_after_one_fails"
+      - "usage.budget_keeps_provider_windows_separate"
+
   # The GitHub adapter owns the forge facts a stacked workflow reads. Its
   # scenario imports built dist and drives a server-shaped command runner.
   plugin-github:

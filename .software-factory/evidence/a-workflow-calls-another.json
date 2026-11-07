@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "a-workflow-calls-another",
-  "implementation_sha256": "090253a4e29b189b12b11efa245b698089b842f2e3a6f831b74f4a50696c8802",
+  "implementation_sha256": "f91ebb017e2d2fc8359ec035f21d97cfc0d6ccc64ebea363110789157dbc68a7",
   "runs": [
     {
       "scenario": "a-workflow-calls-another",

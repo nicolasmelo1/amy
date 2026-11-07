@@ -1,5 +1,6 @@
 import { Empty, Section, Stack, Table, Text, type Node } from "@amykit/ui";
 import type { Transition } from "@amykit/core";
+import type { UsageResult } from "@amykit/agent-kit";
 import { recordsToShow, standing } from "./status-view.js";
 
 /** One record as `amy status --json` reports it. */
@@ -73,6 +74,14 @@ export interface StatusSnapshot {
   readonly paused: string | null;
   readonly notes: number;
   readonly needsInput: number;
+  /** Each mounted harness subscription, read only for this inspection. */
+  readonly usage: readonly SubscriptionUsage[];
+}
+
+/** One reader's on-demand answer, kept beside the reader's stable label. */
+export interface SubscriptionUsage {
+  readonly subscription: string;
+  readonly result: UsageResult;
 }
 
 /** What the page is asked for beyond the snapshot: finished work too, and where the questions wait. */
@@ -152,6 +161,30 @@ function loopLine(snapshot: StatusSnapshot): string {
     : `loop:  not running${paused}`;
 }
 
+function Usage(props: { readonly usage: readonly SubscriptionUsage[] }): Node | null {
+  if (props.usage.length === 0) return null;
+  return (
+    <Section>
+      {props.usage.map(({ subscription, result }) => (
+        <Text>{usageLine(subscription, result)}</Text>
+      ))}
+    </Section>
+  );
+}
+
+/** One subscription stays separate from Amy's rolling ledger. */
+function usageLine(subscription: string, result: UsageResult): string {
+  if ("unavailable" in result) return `${subscription}: unavailable — ${result.unavailable}`;
+  const unofficial = result.unofficial ? " unofficial" : "";
+  const windows = result.windows.map((window) => {
+    const period = window.startsAt || window.resetsAt
+      ? [window.startsAt ? `starts ${window.startsAt}` : "", window.resetsAt ? `resets ${window.resetsAt}` : ""].filter(Boolean).join(", ")
+      : "period unknown";
+    return `${window.label} ${window.usedPercent}% (${period})`;
+  });
+  return `${subscription}${unofficial}: ${windows.join("; ")}`;
+}
+
 /**
  * `amy status`, as a view: a pure function from the snapshot `--json` prints
  * to a tree of primitives. The text renderer draws the page a terminal has
@@ -166,6 +199,7 @@ export function statusView(snapshot: StatusSnapshot, options: StatusOptions): No
       <Records snapshot={snapshot} all={options.all} />
       {records.finished > 0 && <Text tone="muted">{`${records.finished} finished, not shown. \`amy status --all\` lists them.`}</Text>}
       <Phases snapshot={snapshot} />
+      <Usage usage={snapshot.usage} />
       <Section>
         <Text>{`queue: ${queue.due} due, ${queue.pending} pending, ${queue.running} in flight, ${queue.finished} finished`}</Text>
         <Text>{loopLine(snapshot)}</Text>

@@ -19,8 +19,8 @@ maintains.
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
 | `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
-| `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude` |
-| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex` |
+| `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude`<br>`usage:Claude` |
+| `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex`<br>`usage:Codex` |
 | `@amykit/plugin-command` | Any command line tool, reached by a name the config allows. | `commands` |  |
 | `@amykit/plugin-command-gate` | A gate that runs the target repository's own commands. | `gate` |  |
 | `@amykit/plugin-concurrent-engine` | Advances one work item per tick, moving every lane of a fork at once. | the engine |  |
@@ -31,7 +31,7 @@ maintains.
 | `@amykit/plugin-file-tasks` | Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook. | `tasks` |  |
 | `@amykit/plugin-file-worktree` | One isolated checkout per piece of work, created or reused, pruned by retention. | `workspace`<br>`worktree` |  |
 | `@amykit/plugin-github` | GitHub as the code host, through the gh CLI. | `code-host` |  |
-| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes` |
+| `@amykit/plugin-hermes-agent` | Hermes as the agent, over its one-shot mode and usage report. |  | `harness:hermes`<br>`usage:Hermes ()` |
 | `@amykit/plugin-linear` | Linear as the tracker, over its GraphQL API. | `feature`<br>`tracker` |  |
 | `@amykit/plugin-next-steps` | A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch. | `tracker` |  |
 | `@amykit/plugin-notify-fanout` | Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted. | `notifier` |  |
@@ -91,8 +91,8 @@ The claude CLI as the agent, over its JSON envelope.
 | :-- | :-- |
 | Source | `plugins/claude` |
 | Mounts | _nothing_ |
-| Contributes | `harness:claude` |
-| Needs in the environment | _nothing_ |
+| Contributes | `harness:claude`, `usage:Claude` |
+| Needs in the environment | `CLAUDE_CODE_OAUTH_TOKEN` |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
@@ -117,7 +117,7 @@ The codex CLI as the agent, over its JSONL event stream.
 | :-- | :-- |
 | Source | `plugins/codex` |
 | Mounts | _nothing_ |
-| Contributes | `harness:codex` |
+| Contributes | `harness:codex`, `usage:Codex` |
 | Needs in the environment | `CODEX_HOME` |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
@@ -409,7 +409,7 @@ Hermes as the agent, over its one-shot mode and usage report.
 | :-- | :-- |
 | Source | `plugins/hermes-agent` |
 | Mounts | _nothing_ |
-| Contributes | `harness:hermes` |
+| Contributes | `harness:hermes`, `usage:Hermes ()` |
 | Needs in the environment | _nothing_ |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
@@ -419,6 +419,7 @@ plugins:
     model: ""
     models: []
     profile: amy
+    provider: ""
     timeoutMs: 1800000
 ```
 
@@ -427,6 +428,7 @@ plugins:
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
 | `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot |
+| `provider` | `string` | no | `""` | the Hermes provider whose account windows amy reads. Use openai-codex, anthropic, openrouter, or ollama-cloud; empty leaves the account usage unavailable rather than guessing |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 ### `@amykit/plugin-linear`
@@ -708,6 +710,7 @@ plugins:
 | :-- | :-- | :-- |
 | `harness` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox` | _whichever plugin reads it_ |
+| `usage` | `Claude` — `@amykit/plugin-claude`<br>`Codex` — `@amykit/plugin-codex`<br>`Hermes ()` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`pull-request` — `@amykit/workflow-pull-request`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
 
 <!-- amy:end collections -->
