@@ -4,6 +4,20 @@ import { CommandRunner, type ConfigSchema, Mounted, Plugin, mountedActions } fro
 import { classify } from "./spec.js";
 import { PLUGINS_ROOT_FLAGS, packageManager, shellCommand } from "./install.js";
 import { drawn } from "./drawn.js";
+import {
+  Forked,
+  NEVER_FORKED,
+  SourceAt,
+  buildFork,
+  forkPlace,
+  gitDirectory,
+  installProfileRoot,
+  profileForkDirectories,
+  sourceOfManifest,
+  takeFork,
+} from "./fork.js";
+import { paths } from "./paths.js";
+import { Profile } from "./profiles.js";
 
 /**
  * What one spec argument turns into, when the point is adding it.
@@ -361,4 +375,80 @@ function outputOf(result: { stdout: string; stderr: string }): string {
 /** What remains of the config's names after one goes, so the caller can refuse the one that breaks. */
 export function withoutSpec(specs: readonly string[], spec: string): string[] {
   return specs.filter((name) => name !== spec);
+}
+export interface ForkAdd {
+  readonly runner: CommandRunner;
+  readonly home: string;
+  readonly profile: Profile;
+  /** What the profile mounts once the fork is in, so what imports it lands beside it. */
+  readonly specs: readonly string[];
+  readonly spec: string;
+  readonly cwd: string;
+  /** The directory forks go into, from `--to`, then the config's `forks`. */
+  readonly to?: string;
+  readonly forks?: string;
+}
+
+/**
+ * Where a spec's source is (S12): a git URL that names a directory is its own
+ * answer and reaches no registry; a package name is read off the copy the
+ * machine has installed, or asked of the registry when it has none, and its
+ * `repository` field says the rest.
+ */
+async function forkSource(options: ForkAdd): Promise<SourceAt> {
+  const resolved = classify(options.spec, options.cwd);
+  if (resolved.kind === "git") {
+    const at = gitDirectory(options.spec);
+    if (!at) throw new Error(`${options.spec} names a repository, not a directory of one: fork it as <url>#path:<directory>, or <url>#<ref>&path:<directory>`);
+    return at;
+  }
+  if (resolved.kind === "path" || resolved.kind === "tarball") {
+    throw new Error(`${options.spec} is not forked: a fork is taken from a package's repository, and a ${resolved.kind} is source you already hold`);
+  }
+  const name = resolved.imported!;
+  if ((NEVER_FORKED as readonly string[]).includes(name)) throw new Error(`${name} is not forked: it resolves from amy's own install in every profile`);
+  const installed = resolved.kind === "name" ? installedManifest(paths(options.home).plugins, name) : undefined;
+  if (installed) return sourceOfManifest(installed, options.spec);
+  const asked = await options.runner.run(packageManager(), ["view", options.spec, "name", "version", "repository", "--json"]);
+  if (!asked.ok) throw new Error(`the registry does not answer for ${options.spec}: ${(asked.stderr || asked.stdout).trim()}`);
+  const parsed = JSON.parse(asked.stdout) as Record<string, unknown> | Record<string, unknown>[];
+  const manifest = Array.isArray(parsed) ? parsed.at(-1)! : parsed;
+  return sourceOfManifest(manifest, options.spec);
+}
+
+function installedManifest(pluginsRoot: string, name: string): Record<string, unknown> | undefined {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(pluginsRoot, "node_modules", ...name.split("/"), "package.json"), "utf-8")) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * `amy add <package> --fork`: takes the package's source into the place the
+ * profile's forks go, builds it, and installs the profile's root so the name
+ * resolves to it for this profile alone. A refusal anywhere leaves the root as
+ * it was and removes the fork it had just written, which nobody has edited yet.
+ */
+export async function addFork(options: ForkAdd): Promise<Forked> {
+  const at = await forkSource(options);
+  const pluginsRoot = paths(options.home).plugins;
+  const existing = profileForkDirectories(options.home, options.profile.name);
+  const forked = await takeFork(options.runner, at, options.spec, (name) => {
+    const held = existing.get(name);
+    const place = forkPlace(options.home, options.profile, name, { to: options.to, forks: options.forks });
+    if (held) throw new Error(`the profile \`${options.profile.name}\` already forks ${name} at ${held}; a second fork at ${place} would be two answers for one name`);
+    return place;
+  });
+  const undo = async (why: string): Promise<never> => {
+    fs.rmSync(forked.directory, { recursive: true, force: true });
+    await installProfileRoot(options.runner, options.home, pluginsRoot, options.profile.name, existing, options.specs);
+    throw new Error(why);
+  };
+  const built = await buildFork(options.runner, forked.directory);
+  if (!built.ok) return undo(`${forked.name}: the fork at ${forked.directory} does not build:\n${built.output || "its build said nothing"}`);
+  const forks = new Map([...existing, [forked.name, forked.directory]]);
+  const installed = await installProfileRoot(options.runner, options.home, pluginsRoot, options.profile.name, forks, [...options.specs, forked.name]);
+  if (!installed.ok) return undo(`${installed.command} failed:\n${installed.output || "it said nothing"}`);
+  return forked;
 }

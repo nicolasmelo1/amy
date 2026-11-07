@@ -7,6 +7,7 @@ import { CommandResult, CommandRunner } from "@amykit/core";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { addWorkflowInto, relativeImports } from "../src/workflow-add.js";
 import { checkWorkflow, exportWorkflow, inspectWorkflow, writeWorkflow } from "../src/workflow.js";
+import { ForkWorld, Upstream, installed } from "./fork-world.js";
 
 const REPOSITORY = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -157,17 +158,47 @@ export const plugin = defineWorkflow({
     expect(["src/fix/workflow.mmd", "src/fix/package.json", "src/fix/index.ts"].every((file) => fs.existsSync(path.join(directory, file)))).toBe(true);
   });
 
-  it("copies an installed package whose exports name only its root, entered where its exports say", async () => {
+  it("copies an installed package from its repository at the installed version, not from its dist", async () => {
     const plugins = path.join(home, "plugins");
-    const installed = path.join(plugins, "node_modules", "@acme", "workflow-review");
-    fs.mkdirSync(path.dirname(installed), { recursive: true });
-    fs.cpSync(reviewPackage(elsewhere, {}), installed, { recursive: true });
-    const manifest = JSON.parse(fs.readFileSync(path.join(installed, "package.json"), "utf-8")) as Record<string, unknown>;
-    fs.writeFileSync(path.join(installed, "package.json"), JSON.stringify({ ...manifest, exports: "./index.ts" }));
+    const source = reviewPackage(elsewhere, {});
+    const upstream = new Upstream(path.join(elsewhere, "upstream"));
+    const sourceFiles = (directory: string) => Object.fromEntries(
+      (fs.readdirSync(directory, { recursive: true }) as string[])
+        .filter((file) => fs.statSync(path.join(directory, file)).isFile())
+        .map((file) => [`workflows/review/${file}`, fs.readFileSync(path.join(directory, file), "utf-8")]),
+    );
+    const manifest = {
+      ...(JSON.parse(fs.readFileSync(path.join(source, "package.json"), "utf-8")) as Record<string, unknown>),
+      version: "1.2.0",
+      exports: { ".": { import: "./dist/index.js" } },
+      repository: { type: "git", url: upstream.url, directory: "workflows/review" },
+    };
+    fs.writeFileSync(path.join(source, "tsconfig.json"), JSON.stringify({ compilerOptions: { rootDir: ".", outDir: "dist" } }));
+    fs.writeFileSync(path.join(source, "package.json"), JSON.stringify(manifest, null, 2));
+    // The repository commits its build too: the copy still takes the source.
+    fs.mkdirSync(path.join(source, "dist"));
+    fs.writeFileSync(path.join(source, "dist", "index.js"), "export const plugin = 'compiled';\n");
+    upstream.release(sourceFiles(source), "@acme/workflow-review@1.2.0");
+    fs.appendFileSync(path.join(source, "index.ts"), "// written after 1.2.0 was released\n");
+    upstream.release(sourceFiles(source), "@acme/workflow-review@1.3.0");
+    installed(plugins, { ...manifest, name: "@acme/workflow-review" }, { "dist/index.js": "export const plugin = 'compiled';\n", "workflow.mmd": CALLEE_DIAGRAM });
 
-    const { entry } = await addWorkflowInto(home, "@acme/workflow-review", "oncall", { runner: new Npm([]), pluginsRoot: plugins });
+    const { entry, directory } = await addWorkflowInto(home, "@acme/workflow-review", "oncall", { runner: new ForkWorld(), pluginsRoot: plugins });
 
     expect(entry).toBe(path.join(home, "workflows", "oncall", "workflows", "review", "index.ts"));
+    expect(fs.existsSync(path.join(directory, "dist"))).toBe(false);
+    expect(fs.readFileSync(entry, "utf-8")).toContain("withDiagramBeside(defineWorkflow(");
+    expect(fs.readFileSync(entry, "utf-8")).not.toContain("written after 1.2.0");
+    expect(fs.existsSync(path.join(directory, "src", "words", "verdict.ts"))).toBe(true);
+  });
+
+  it("refuses an installed package that names no repository, before anything is written", async () => {
+    const plugins = path.join(home, "plugins");
+    installed(plugins, { name: "@acme/workflow-review", version: "1.0.0", exports: "./dist/index.js" }, { "dist/index.js": "" });
+
+    await expect(addWorkflowInto(home, "@acme/workflow-review", "oncall", { runner: new ForkWorld(), pluginsRoot: plugins }))
+      .rejects.toThrow("@acme/workflow-review@1.0.0 declares no `repository` in its package.json");
+    expect(fs.existsSync(path.join(home, "workflows", "oncall", "workflows"))).toBe(false);
   });
 
   it("installs nothing the caller already depends on", async () => {

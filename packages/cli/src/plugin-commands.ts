@@ -47,6 +47,16 @@ export interface Contribution {
   readonly checks: readonly PluginCheck[];
   readonly files: readonly PluginFile[];
   readonly setup: readonly PluginSetup[];
+  /**
+   * What each profile mounts under this name, when it is its own: a profile
+   * that forked the package gets the fork's commands, checks, files and setup.
+   */
+  readonly byProfile?: ReadonlyMap<string, Contribution>;
+}
+
+/** The implementation one profile mounts under a contribution's name. */
+export function forProfile(contribution: Contribution, profile: Pick<Profile, "name">): Contribution {
+  return contribution.byProfile?.get(profile.name) ?? contribution;
 }
 
 export interface Gathered {
@@ -67,32 +77,50 @@ export interface Gathered {
 export async function gather(
   config: AmyConfig,
   known: readonly Profile[],
-  load: (specs: readonly string[]) => Promise<LoadResult>,
+  load: (specs: readonly string[], profile?: string) => Promise<LoadResult>,
 ): Promise<Gathered> {
-  const byProfile = new Map<string, readonly string[]>(known.map((profile) => [profile.name, pluginList(config, profile)]));
-  const specs = [...new Set([...byProfile.values()].flat())];
-  const loaded = await load(specs);
-
+  // Each profile is read through its own resolver: a profile that forked a
+  // package mounts the fork, so what it contributes is the fork's.
   const contributions = new Map<string, Contribution>();
-  for (const spec of specs) {
-    const plugin = loaded.bySpec.get(spec);
-    if (!plugin) continue;
-
-    const mounted = known.filter((profile) => (byProfile.get(profile.name) ?? []).includes(spec));
-    const existing = contributions.get(plugin.name);
-    contributions.set(plugin.name, {
-      owner: plugin.name,
-      spec,
-      plugin,
-      profiles: [...(existing?.profiles ?? []), ...mounted],
-      commands: plugin.commands ?? existing?.commands ?? [],
-      checks: plugin.checks ?? existing?.checks ?? [],
-      files: plugin.files ?? existing?.files ?? [],
-      setup: plugin.setup ?? existing?.setup ?? [],
-    });
+  const byProfile = new Map<string, Map<string, Contribution>>();
+  for (const profile of known) {
+    const specs = pluginList(config, profile);
+    const loaded = await load(specs, profile.name);
+    for (const spec of specs) {
+      const plugin = loaded.bySpec.get(spec);
+      if (!plugin) continue;
+      const own = contributionOf(plugin, spec, [profile]);
+      const existing = contributions.get(plugin.name);
+      contributions.set(plugin.name, existing ? { ...merged(existing, own), profiles: [...existing.profiles, profile] } : own);
+      byProfile.set(plugin.name, (byProfile.get(plugin.name) ?? new Map()).set(profile.name, own));
+    }
   }
+  const all = [...contributions.values()].map((contribution) => ({ ...contribution, byProfile: byProfile.get(contribution.owner) }));
+  return { contributions: all, problems: conflicts(all) };
+}
 
-  return { contributions: [...contributions.values()], problems: conflicts([...contributions.values()]) };
+function contributionOf(plugin: Plugin, spec: string, profiles: readonly Profile[]): Contribution {
+  return {
+    owner: plugin.name,
+    spec,
+    plugin,
+    profiles,
+    commands: plugin.commands ?? [],
+    checks: plugin.checks ?? [],
+    files: plugin.files ?? [],
+    setup: plugin.setup ?? [],
+  };
+}
+
+/** Two profiles mounting one name: the first one's declarations, unless it brought none. */
+function merged(existing: Contribution, own: Contribution): Contribution {
+  return {
+    ...existing,
+    commands: existing.commands.length > 0 ? existing.commands : own.commands,
+    checks: existing.checks.length > 0 ? existing.checks : own.checks,
+    files: existing.files.length > 0 ? existing.files : own.files,
+    setup: existing.setup.length > 0 ? existing.setup : own.setup,
+  };
 }
 
 /** A command name belongs to one owner, and the host's names are not on offer. */
@@ -154,6 +182,7 @@ function declare(
   names: ReadonlyMap<string, string>,
   inheritedMount = false,
   inherited: Record<string, string | boolean | undefined> = {},
+  typed: readonly string[] = [],
 ): void {
   // A subcommand runs its own action, so `mount: true` on the parent has to
   // reach it: `amy worktrees list` is one command in two words.
@@ -169,12 +198,12 @@ function declare(
     // A parent's flags are the subcommand's context too: `amy worktrees list
     // --repo acme/api` is one sentence, and nobody reading it expects the
     // first word to be forgotten by the second.
-    declare(command, sub, contribution, env, names, mount, { ...inherited, ...(command.opts() as Record<string, string | boolean | undefined>) });
+    declare(command, sub, contribution, env, names, mount, { ...inherited, ...(command.opts() as Record<string, string | boolean | undefined>) }, [...typed, declaration.name]);
   }
 
   command.action(async (...passed: unknown[]) => {
     const invoked = passed[passed.length - 1] as Command;
-    await run(declaration, contribution, env, invoked, names, mount, inherited);
+    await run({ declaration, typed: [...typed, declaration.name] }, contribution, env, invoked, names, mount, inherited);
   });
 }
 
@@ -199,7 +228,7 @@ function withFlags(command: Command, declaration: PluginCommand): void {
 }
 
 async function run(
-  declaration: PluginCommand,
+  asked: { declaration: PluginCommand; typed: readonly string[] },
   contribution: Contribution,
   env: CommandEnvironment,
   invoked: Command,
@@ -207,7 +236,7 @@ async function run(
   mount: boolean,
   inherited: Record<string, string | boolean | undefined> = {},
 ): Promise<void> {
-  if (!declaration.run) {
+  if (!asked.declaration.run) {
     invoked.help();
     return;
   }
@@ -218,6 +247,14 @@ async function run(
     process.exitCode = 1;
     return;
   }
+  // The command the chosen profile's own implementation declares by this path.
+  const own = forProfile(contribution, chosen.profile);
+  const declaration = lookup([own], asked.typed)?.command;
+  if (!declaration?.run) {
+    env.out.error(`\`amy ${asked.typed.join(" ")}\` is not declared by the ${contribution.owner} that ${chosen.profile.name} mounts`);
+    process.exitCode = 1;
+    return;
+  }
 
   const ports = mount ? await mounted(declaration, chosen.profile, env) : undefined;
   if (mount && !ports) return;
@@ -225,7 +262,7 @@ async function run(
   const context: CommandContext = {
     state: stateDirectory(env.home, chosen.profile),
     home: env.home,
-    settings: settingsFor(contribution, chosen.profile, env.home, env.config, names),
+    settings: settingsFor(own, chosen.profile, env.home, env.config, names),
     args: invoked.args,
     options: { ...inherited, ...invoked.opts() },
     out: env.out,
@@ -275,18 +312,19 @@ export async function runNamed(
     ? namedProfile(found.contribution, profileName)
     : env.profileFor(found.contribution);
   if (!chosen.ok) throw new Error(chosen.problem);
+  const own = lookup([forProfile(found.contribution, chosen.profile)], typed) ?? found;
 
   const mount = mountAlong(contributions, typed);
-  const ports = mount ? await mounted(found.command, chosen.profile, env) : undefined;
+  const ports = mount ? await mounted(own.command, chosen.profile, env) : undefined;
   if (mount && !ports) return false;
 
   // The settings this profile carries land on the name the mount reads the
   // plugin by — what the config named, and what the module answered.
   const names = new Map(contributions.map((one) => [one.spec, one.owner]));
-  await found.command.run?.({
+  await own.command.run?.({
     state: stateDirectory(env.home, chosen.profile),
     home: env.home,
-    settings: settingsFor(found.contribution, chosen.profile, env.home, env.config, names),
+    settings: settingsFor(own.contribution, chosen.profile, env.home, env.config, names),
     args,
     options,
     out: env.out,
@@ -444,7 +482,9 @@ function contentOf(
 
 /** The contributions one profile actually mounts, and nobody else's. */
 function mountedBy(profile: Profile, contributions: readonly Contribution[]): Contribution[] {
-  return contributions.filter((contribution) => contribution.profiles.some((mounted) => mounted.name === profile.name));
+  return contributions
+    .filter((contribution) => contribution.profiles.some((mounted) => mounted.name === profile.name))
+    .map((contribution) => forProfile(contribution, profile));
 }
 
 /** Every plugin check for one profile, labelled with the package that brought it. */

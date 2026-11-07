@@ -104,6 +104,17 @@ export interface AmyConfig {
    * profile left on the recommended set stays on it.
    */
   extraPlugins: string[];
+  /**
+   * What `amy add <package>` does with no flag: install the published package
+   * (`package`), or take its source as a fork the profile owns (`fork`).
+   * Read as written, so a mode amy does not know is refused naming this key.
+   */
+  add: unknown;
+  /**
+   * Where forks go when `--to` names no place; empty means the default — the
+   * project of a workflow of your own, or the profile's directory in AMY_HOME.
+   */
+  forks: string;
   /** One machine-wide cadence, persisted separately for every profile. */
   autoUpdate: AutoUpdateConfig;
   /** A scalar/null source value retained so malformed YAML cannot become valid. */
@@ -162,6 +173,8 @@ export const DEFAULT_CONFIG: AmyConfig = {
   workflows: {},
   defaultWorkflow: "",
   extraPlugins: [],
+  add: "package",
+  forks: "",
   autoUpdate: DEFAULT_AUTO_UPDATE,
   retentionDays: 7,
   staleClaimMs: 30 * 60 * 1000,
@@ -205,6 +218,16 @@ export const machineSchema: ConfigSchema = {
     type: "string[]",
     description: "packages mounted under every profile, named here or added with `amy add`",
     default: [],
+  },
+  add: {
+    type: "string",
+    description: "what `amy add <package>` does with no flag: `package` installs it, `fork` takes its source for the profile to own",
+    default: "package",
+  },
+  forks: {
+    type: "string",
+    description: "where forks go, one directory per profile; empty puts them in the workflow's project, or under the profile in AMY_HOME",
+    default: "",
   },
   "autoUpdate.enabled": {
     type: "boolean",
@@ -284,6 +307,24 @@ export const machineSchema: ConfigSchema = {
     default: {},
   },
 };
+
+export type AddMode = "fork" | "package";
+
+/**
+ * What one `amy add` does (S13): the flag when one is given, the config's
+ * `add` otherwise. A mode the config names that amy does not know is refused
+ * naming the key, flag or not, because the next add without one would read it.
+ */
+export function addModeFor(config: Pick<AmyConfig, "add">, flags: { fork?: boolean; package?: boolean }): AddMode {
+  const configured = config.add ?? "package";
+  if (configured !== "fork" && configured !== "package") {
+    throw new Error(`\`add\` in the config is \`${String(configured)}\`, and it is \`fork\` or \`package\``);
+  }
+  if (flags.fork && flags.package) throw new Error("`--fork` and `--package` ask for opposite things; name one");
+  if (flags.fork) return "fork";
+  if (flags.package) return "package";
+  return configured;
+}
 
 /**
  * Parses one config document through the loader's own merge.

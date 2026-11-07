@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mount, withDiagramBeside, WORKFLOW_RUNTIME, type Plugin, type WorkflowRuntime } from "@amykit/core";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { localWorkflow, checkWorkflow, workflowSpecifier, workflowsDirectory, writeWorkflow } from "../src/workflow.js";
+import { addFork } from "../src/add.js";
+import { resolveProfile } from "../src/profiles.js";
+import { ForkWorld, Upstream } from "./fork-world.js";
 
 describe("a workflow of your own", () => {
   let home: string;
@@ -332,3 +335,35 @@ function tscIn(directory: string, ...args: string[]) {
   fs.symlinkSync(path.join(modules, "typescript"), path.join(directory, "node_modules", "typescript"), "dir");
   return spawnSync(process.execPath, [path.join(modules, "typescript", "bin", "tsc"), "-p", directory, ...args], { cwd: directory, encoding: "utf-8" });
 }
+
+describe("a workflow of your own that holds a fork", () => {
+  it("publishes none of the fork's files, and names no plugin as a dependency", async () => {
+    const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "amy-workflow-fork-")));
+    try {
+      const directory = writeWorkflow(home, "oncall", DEFAULT_CONFIG);
+      const upstream = new Upstream(path.join(home, "upstream"));
+      upstream.release({
+        "pager/package.json": JSON.stringify({ name: "@acme/plugin-pager", version: "1.0.0", type: "module", main: "./index.js" }),
+        "pager/index.js": "export const plugin = { name: \"@acme/plugin-pager\", register() {} };\n",
+      }, "@acme/plugin-pager@1.0.0");
+      const profile = resolveProfile(loadConfig(home), "oncall", home);
+      if (!profile.ok) throw new Error(profile.problem);
+
+      const forked = await addFork({
+        runner: new ForkWorld(), home, profile: profile.profile, specs: [], cwd: home,
+        spec: `${upstream.url}#@acme/plugin-pager@1.0.0&path:pager`,
+      });
+
+      expect(forked.directory).toBe(path.join(directory, "forks", "plugin-pager"));
+      const packed = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], { cwd: directory, encoding: "utf-8" });
+      expect(packed.status).toBe(0);
+      const [{ files }] = JSON.parse(packed.stdout) as [{ files: { path: string }[] }];
+      expect(files.map((file) => file.path).filter((file) => file.startsWith("forks"))).toEqual([]);
+      expect(files.map((file) => file.path)).toContain("package.json");
+      const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf-8")) as { dependencies: Record<string, string> };
+      expect(Object.keys(manifest.dependencies)).toEqual(["@amykit/core"]);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+});

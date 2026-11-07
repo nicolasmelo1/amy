@@ -1,11 +1,13 @@
 {
   "schema_version": 1,
   "files": {
+    ".software-factory/evidence/a-plugin-of-your-own/plugin-pager/package.json": "ae032ef8a4ab524debb1552de71681e715b56e6bca519ae2d9322c1c310d2cbd",
+    ".software-factory/evidence/a-plugin-of-your-own/workflow-paging/package.json": "ac1cae9821c64ed63c0a9587e98d3acbb9041333279168f8a627bde9d37124ed",
     ".software-factory/evidence/a-workspace-is-a-capability/workflow-support-inbox/package.json": "1ee09a150610bf5e25fb255441829a103bf2806a3bfa4bd74fdaa165f8311d1c",
     ".software-factory/evidence/amy-add-remove/plugin-extra/package.json": "fdf46ddf207e8cd09cf998cc6b9f41268b0e5485efd7e95db94438f9a04e7724",
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "6f3a4601268c34c70c795211852c518b8797623c08ce44cebffccc4fea858a7b",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "b024593c5ca92eec192c4b292c4a1b0c35b95cfdf9253eb297fe7d9ba3c8c270",
-    "package.json": "e92f0c828c90fe1de3c47acbaca2395702da66f79ed697b033382a7fb071fc44",
+    "package.json": "729f3bda54079a7e0becbe99e0ac6a7dfa36090f2b040949d250f3726a74518d",
     "packages/agent-kit/package.json": "d0933d431a84ca506e4c8129d8174f8f3b47f1caad1fcd7c4f76f823114a20a6",
     "packages/cli/package.json": "e8a4e1a0313d787fbde9c11bf2d004c301d317d81b11faf5cf41790399947c6c",
     "packages/core/package.json": "3c7f26da90f9263db1e922f91ef1660ddedfb19c37451d34b4841167ee5e16d3",

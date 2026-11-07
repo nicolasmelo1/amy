@@ -131,3 +131,37 @@ export function runningForWorkflow(file: string, workflow: string): DaemonRecord
   const record = running(file);
   return record?.workflow === workflow ? record : undefined;
 }
+
+/** What one loop needs from the process around it, so the order of its moves can be driven in a test. */
+export interface Loop {
+  readonly idleMs: number;
+  stopping(): boolean;
+  paused(): boolean;
+  /** One pass: discovery, then a tick. Idle when there was nothing to do. */
+  turn(): Promise<{ idle: boolean }>;
+  /** Whether a fork or a workflow of your own changed since it was mounted. */
+  changed(): boolean;
+  /** Mounts again from the config alone; only ever called between two turns. */
+  remount(): Promise<void>;
+  sleep(ms: number): Promise<void>;
+}
+
+/**
+ * The daemon's loop. A change to what is mounted is noticed at the top of a
+ * pass and answered there (S17): a tick in progress always finishes on the
+ * mount it started with, and the next one starts on the new mount.
+ */
+export async function runLoop(loop: Loop): Promise<void> {
+  while (!loop.stopping()) {
+    if (loop.paused()) {
+      await loop.sleep(loop.idleMs);
+      continue;
+    }
+    if (loop.changed()) {
+      await loop.remount();
+      if (loop.stopping()) break;
+    }
+    const { idle } = await loop.turn();
+    if (idle) await loop.sleep(loop.idleMs);
+  }
+}

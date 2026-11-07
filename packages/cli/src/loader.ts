@@ -5,6 +5,8 @@ import { Plugin } from "@amykit/core";
 import { drawn } from "./drawn.js";
 import { localWorkflow } from "./workflow.js";
 import { packageEntrySpecifier } from "./spec.js";
+import { heldByProfile } from "./fork.js";
+import { profileRoot } from "./paths.js";
 
 export interface LoadResult {
   plugins: Plugin[];
@@ -139,7 +141,7 @@ function read(directory: string): string[] {
  * arrive here already a specifier, because that is what the resolver contract
  * has always handed `import()`.
  */
-export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: string) => string {
+export function pluginsRootResolver(home: string, pluginsRoot: string, profile?: string): (spec: string) => string {
   return (spec: string) => {
     const local = localWorkflow(home, spec);
     if (local) return local;
@@ -153,7 +155,10 @@ export function pluginsRootResolver(home: string, pluginsRoot: string): (spec: s
     }
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(spec)) return spec;
 
-    const directory = packageDirectory(pluginsRoot, spec);
+    // A profile's own root answers first, for the names it holds: a fork,
+    // and what imports one. Everything else is the machine's.
+    const own = profile === undefined ? undefined : profileRoot(home, profile);
+    const directory = own && heldByProfile(home, profile!, spec) ? packageDirectory(own, spec) : packageDirectory(pluginsRoot, spec);
     if (!fs.existsSync(directory)) throw pluginNotInstalled(spec);
     return packageEntrySpecifier(directory);
   };

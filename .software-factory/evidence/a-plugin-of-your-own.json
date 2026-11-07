@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "gate": "a-plugin-of-your-own",
+  "implementation_sha256": "65514e2ca3641a6d99f98cea92e11a612060959c14fa7e159e4efbe32b7f26f4",
+  "runs": [
+    {
+      "scenario": "a-plugin-of-your-own",
+      "status": "passed",
+      "actor": "Claude (agent), installing the command onto a scratch machine with .software-factory/evidence/a-plugin-of-your-own-scenario.sh on macOS for Nicolas Melo",
+      "report": ".software-factory/evidence/a-plugin-of-your-own-run.json",
+      "report_sha256": "e42765e585ed5269b90a1091d3fcd003a748a2d228e448a314e0f8875cda7a59",
+      "required_assertions": [
+        "fork.an_installed_workflow_reaches_the_fork",
+        "fork.another_profile_keeps_the_published_package",
+        "fork.the_profile_root_holds_no_core",
+        "fork.update_keeps_the_edit"
+      ]
+    }
+  ]
+}

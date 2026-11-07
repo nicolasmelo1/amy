@@ -1,4 +1,7 @@
+import { CommandRunner } from "@amykit/core";
 import { AmyConfig } from "./config.js";
+import { installProfileRoot, profileForkDirectories } from "./fork.js";
+import { paths } from "./paths.js";
 import { withoutSpec } from "./add.js";
 import { Profile, profiles } from "./profiles.js";
 import { pluginList } from "./slices.js";
@@ -58,4 +61,24 @@ export function configWithout(config: AmyConfig, profile: Profile, spec: string,
 /** Whether any remaining profile still mounts this package, even by recommendation. */
 export function stillMounted(config: AmyConfig, spec: string): boolean {
   return Object.values(profiles(config)).some((candidate) => pluginList(config, candidate).includes(spec));
+}
+
+/**
+ * Drops a fork from a profile's root, so the name resolves to the machine's
+ * published copy again. The fork's directory is the person's source, and is
+ * never deleted here (A16).
+ */
+export async function dropFork(
+  runner: CommandRunner,
+  home: string,
+  profile: string,
+  name: string,
+  specs: readonly string[],
+): Promise<{ ok: true; directory: string } | { ok: false; problem: string }> {
+  const forks = profileForkDirectories(home, profile);
+  const directory = forks.get(name);
+  if (!directory) return { ok: false, problem: `the profile \`${profile}\` does not fork ${name}` };
+  forks.delete(name);
+  const installed = await installProfileRoot(runner, home, paths(home).plugins, profile, forks, specs);
+  return installed.ok ? { ok: true, directory } : { ok: false, problem: `${installed.command} failed:\n${installed.output || "it said nothing"}` };
 }

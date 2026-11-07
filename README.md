@@ -117,7 +117,7 @@ npm run gate
 
 This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **51 rules**, and `sf verify` proves every one fires against a deliberately broken fixture.
 
-**24 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
+**25 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 
 <!-- amy:end readme-factory -->
 

@@ -273,6 +273,13 @@ the next machine; nothing else in the block changes.
 A plugin named and not installed is refused at boot with the list of what is
 installed, so a typo is one line to find.
 
+A workflow ships the ports it needs and never a plugin: its `package.json`
+depends on `@amykit/core` and on no `@amykit/plugin-*`. Which plugin answers a
+port is the installation's choice — `amy add <plugin>` for the published
+package, `amy add <plugin> --fork` for its source under `forks/` in the
+workflow's project, which the workflow does not publish. A fork keeps the
+package's name, so the workflow's code never names a path.
+
 ## The test that is the point
 
 One walkthrough test driving the whole lifecycle against a fake world,

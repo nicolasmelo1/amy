@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
 import type { TickResult } from "@amykit/plugin-serial-engine";
@@ -39,6 +40,7 @@ import {
   EXAMPLE_CONFIG,
   configuredAutoUpdateProblems,
   loadConfig,
+  addModeFor,
   profileSettingsFrom,
   removeExtraPlugin,
   removeProfile,
@@ -61,6 +63,7 @@ import { PLUGINS_ROOT_FLAGS, ensurePluginsRoot, installIntoPluginsRoot, shellCom
 import {
   BootCheck,
   Picked,
+  addFork,
   importPluginBySpec,
   installedPackageNames,
   nameInstalledPackage,
@@ -73,13 +76,13 @@ import {
   workflowProfileConflict,
   workflowProfileName,
 } from "./add.js";
-import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, running, runningForWorkflow, writeDaemon } from "./daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runLoop, running, runningForWorkflow, writeDaemon } from "./daemon.js";
 import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profileDaemonPids, profilePaths } from "./paths.js";
 import { packageEntrySpecifier } from "./spec.js";
-import { Carrier, carriedBy, configWithout, stillMounted } from "./remove.js";
+import { Carrier, carriedBy, configWithout, dropFork, stillMounted } from "./remove.js";
 import { removeProfileAndState as forgetProfile } from "./removal.js";
 import {
   CommandEnvironment,
@@ -94,6 +97,7 @@ import {
 import { refreshPricesWhenStale } from "./prices.js";
 import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { addWorkflowInto } from "./workflow-add.js";
+import { ForkTarget, applyForkUpdates, treeDigest, forkTargets, mergeForks, prepareForks, profileForkDirectories, readRecord, readTree, writeMarkedMerges, writeRecord, writeTree } from "./fork.js";
 import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, migrateSettingsFile, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { recordWrite, writeSkills } from "./skills-record.js";
@@ -125,15 +129,24 @@ loadEnv(process.cwd());
  * one call site and not the others is what made `plugin list` report a
  * directory `amy workflow new` had just written as `FAIL`.
  */
-function loadMountable(specs: readonly string[]): Promise<LoadResult> {
-  return load(specs, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
+function loadMountable(specs: readonly string[], profile?: string): Promise<LoadResult> {
+  return load(specs, pluginsRootResolver(home, paths(home).plugins, profile), paths(home).plugins);
 }
 
-/** Assembles one profile with this process's runner, loader, log and host glue. */
-function assemble(profile: Profile): Promise<Assembled> {
-  return assembleProfile(home, loadConfig(home), profile, {
+/**
+ * Assembles one profile with this process's runner, loader, log and host glue.
+ *
+ * A fork whose source moved is built first, and its copy in the profile's
+ * root refreshed, so what mounts is what the fork says now; a fork that does
+ * not build refuses the boot by name.
+ */
+async function assemble(profile: Profile): Promise<Assembled> {
+  const config = loadConfig(home);
+  const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
+  if (!prepared.ok) return prepared;
+  return assembleProfile(home, config, profile, {
     runner,
-    load: loadMountable,
+    load: (specs) => loadMountable(specs, profile.name),
     log: (file) => new FileEventLog(file, undefined, build),
     host: [],
   });
@@ -324,7 +337,7 @@ program
  * install brought.
  */
 async function prepare(config: AmyConfig, known: readonly Profile[]): Promise<void> {
-  const gathered = await gather(config, known, loadMountable);
+  const gathered = await gatherBuilt(config, known);
   for (const profile of known) {
     writeFiles(home, config, profile, gathered.contributions, commandOut);
     await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
@@ -430,7 +443,7 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
   const mounted = assembled.ok ? assembled.mounted : undefined;
   const loaded = problem
     ? { plugins: [], problems: [] }
-    : await loadMountable(pluginList(config, profile));
+    : await loadMountable(pluginList(config, profile), profile.name);
 
   const checks = await diagnose({
     home,
@@ -718,26 +731,93 @@ program
 
       console.log(`${new Date().toISOString()} loop up, looking every ${idleMs / 1000}s`);
 
-      while (!stopping) {
-        if (stopSwitch.isRequested()) {
-          await sleep(idleMs);
-          continue;
-        }
-
-        // Discovery every pass, because work appears in the world rather than
-        // being handed over: a ticket moved into the working status while
-        // nothing was due is exactly what this loop exists to notice.
-        await engine.discover();
-        const result = (await engine.tick()) as TickResult;
-        report(result);
-
-        if (result.kind === "idle" || result.kind === "stopped") await sleep(idleMs);
-      }
+      let mountedAt = sourceDigest(profile);
+      await runLoop({
+        idleMs,
+        stopping: () => stopping,
+        paused: () => stopSwitch.isRequested(),
+        turn: async () => {
+          // Discovery every pass, because work appears in the world rather than
+          // being handed over: a ticket moved into the working status while
+          // nothing was due is exactly what this loop exists to notice.
+          await engine.discover();
+          const result = (await engine.tick()) as TickResult;
+          report(result);
+          return { idle: result.kind === "idle" || result.kind === "stopped" };
+        },
+        changed: () => sourceDigest(profile) !== mountedAt,
+        remount: async () => {
+          mountedAt = sourceDigest(profile);
+          if (await remountedElsewhere(profile, options)) stopping = true;
+        },
+        sleep,
+      });
 
       console.log(`${new Date().toISOString()} loop down`);
     };
     if (options.scheduled) await drive();
     else await visibleForegroundDaemon(profile, drive);
+  });
+
+/** One digest over what a profile mounts from source: its forks, and a workflow of your own. */
+function sourceDigest(profile: Profile): string {
+  const trees = [...profileForkDirectories(home, profile.name).values()];
+  const own = localWorkflow(home, profile.workflow);
+  if (own) trees.push(path.dirname(fileURLToPath(own)));
+  else if (profile.project) trees.push(profile.project.root);
+  else if (isFilesystemWorkflow(profile.workflow)) {
+    const resolved = path.resolve(profile.workflow);
+    trees.push(fs.statSync(resolved).isDirectory() ? resolved : path.dirname(resolved));
+  }
+  return trees.map((tree) => treeDigest(readTree(tree))).join(":");
+}
+
+/**
+ * Remounts a running daemon (S17): a changed fork is built and its copy
+ * refreshed, the new mount is assembled in a child first, and only a mount
+ * that boots replaces this process, which ends its loop for it. Modules are
+ * cached for the life of a process, so a new mount is a new process; a
+ * failing build or mount leaves this one on the mount it had.
+ */
+async function remountedElsewhere(profile: Profile, options: { every: string; scheduled?: boolean }): Promise<boolean> {
+  const config = loadConfig(home);
+  const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
+  if (!prepared.ok) {
+    console.error(`${new Date().toISOString()} the source changed and does not build; the loop keeps the mount it had:`);
+    for (const problem of prepared.problems) console.error(`  ${problem}`);
+    return false;
+  }
+  if (!options.scheduled) {
+    console.log(`${new Date().toISOString()} the source changed and is built; restart this loop to mount it`);
+    return false;
+  }
+  const checked = await runner.run(process.execPath, [process.argv[1]!, "--workflow", profile.name, "mount-check"], { timeoutMs: 10 * 60 * 1000 });
+  if (!checked.ok) {
+    console.error(`${new Date().toISOString()} the source changed and does not mount; the loop keeps the mount it had:`);
+    console.error(checked.stdout || checked.stderr);
+    return false;
+  }
+  const place = profilePaths(home, profile);
+  const out = fs.openSync(path.join(path.dirname(place.pid), "daemon.log"), "a");
+  const child = spawn(
+    process.execPath,
+    [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
+    { detached: true, stdio: ["ignore", out, out], env: process.env },
+  );
+  child.unref();
+  writeDaemon(place.pid, { pid: child.pid ?? 0, workflow: profile.name, startedAt: new Date().toISOString() });
+  console.log(`${new Date().toISOString()} the source changed: remounted as pid ${child.pid}`);
+  return true;
+}
+
+program
+  .command("mount-check", { hidden: true })
+  .description("Internal: whether the selected profile assembles, for a daemon about to remount")
+  .action(async () => {
+    const assembled = await assemble(selected());
+    if (assembled.ok) return;
+    for (const problem of assembled.problems) console.log(problem);
+    process.exitCode = 1;
   });
 
 /** Makes a directly invoked foreground daemon visible to concurrent update. */
@@ -804,7 +884,7 @@ async function finishAfterDaemonUpdate(schedule: { due: boolean; timing: "before
   finishDaemonUpdate(home, profile.name);
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 program
   .command("look")
@@ -1188,6 +1268,33 @@ async function addCommand(home: string, spec: string): Promise<void> {
   console.log("the machine boots: run `amy doctor`, then `amy tick`.");
 }
 
+/**
+ * `amy add --fork`: the package's source becomes this profile's to edit, under
+ * the package's own name (S11). The profile mounts the name if it did not
+ * already, and the machine is booted with the fork in it before this says so.
+ */
+async function forkCommand(home: string, config: AmyConfig, spec: string, to: string | undefined): Promise<void> {
+  const profile = selected(config);
+  const specs = pluginList(config, profile);
+  console.log(`forking ${spec} for the profile \`${profile.name}\`…`);
+  const forked = await addFork({ runner, home, profile, specs, spec, cwd: process.cwd(), to, forks: config.forks || undefined });
+  console.log(`forked ${forked.name}@${forked.record.base.version} into ${forked.directory}`);
+  if (!specs.includes(forked.name)) {
+    const own = profile.plugins.length > 0 ? profile.plugins : specs.filter((name) => !config.extraPlugins.includes(name));
+    writeProfilePlugins(home, profile.name, [...own, forked.name], config);
+    console.log(`the profile \`${profile.name}\` mounts ${forked.name}`);
+  }
+  const assembled = await assemble(selected(loadConfig(home)));
+  if (!assembled.ok) {
+    console.error("amy does not boot with the fork in it:");
+    for (const problem of assembled.problems) console.error(`  ${problem}`);
+    console.error(`Fix the fork at ${forked.directory}, or run \`amy remove ${forked.name}\` to go back to the published package.`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log("the machine boots with it: edit the fork, and the next boot builds it.");
+}
+
 /** The files the package just added brings, for every profile that mounts it. */
 async function writeAddedFiles(home: string, spec: string, profileName?: string): Promise<void> {
   const config = loadConfig(home);
@@ -1195,7 +1302,7 @@ async function writeAddedFiles(home: string, spec: string, profileName?: string)
   const mounting = known.filter((profile) =>
     profile.name === profileName || profile.workflow === spec || pluginList(config, profile).includes(spec),
   );
-  const gathered = await gather(config, mounting, loadMountable);
+  const gathered = await gatherBuilt(config, mounting);
   for (const profile of mounting) {
     writeFiles(home, config, profile, gathered.contributions, commandOut);
     await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
@@ -1378,7 +1485,7 @@ async function mountingWithout(
   for (const trialProfile of Object.values(profiles(trialConfig, home))) {
     const trialSlices = { ...pluginSlices(trialConfig, trialProfile, home) };
     delete trialSlices[spec];
-    const loaded = await loadMountable(pluginList(trialConfig, trialProfile));
+    const loaded = await loadMountable(pluginList(trialConfig, trialProfile), trialProfile.name);
     if (loaded.problems.length > 0) return { ok: false, problems: loaded.problems };
 
     const outcome = await mount(
@@ -1555,6 +1662,19 @@ async function removeCommand(home: string, spec: string, options: { keepState?: 
     return;
   }
   const profile = selected(config);
+  if (profileForkDirectories(home, profile.name).has(spec)) {
+    const dropped = await dropFork(runner, home, profile.name, spec, pluginList(config, profile));
+    if (!dropped.ok) {
+      console.error(dropped.problem);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`the profile \`${profile.name}\` resolves the published ${spec} again; the fork at ${dropped.directory} is yours and stays`);
+    if (!installedPlugins(paths(home).plugins).includes(spec)) {
+      console.log(`${spec} is not installed on this machine: \`amy add ${spec} --package\` installs it, or \`amy remove ${spec}\` again drops it from the profile`);
+    }
+    return;
+  }
   const carrier = carriedBy(config, profile, spec, home);
 
   const refusal = refuseRemoval(home, config, profile, spec, carrier);
@@ -1627,9 +1747,14 @@ program
   .command("add")
   .description("Add a workflow or a plugin: install it, mount it, and check the machine boots")
   .argument("<spec>", "a package name, a URL, a git URL, or a path")
-  .action(async (spec: string) => {
+  .option("--fork", "take the package's source as a fork this profile owns, instead of the config's `add`")
+  .option("--package", "install the published package, instead of the config's `add`")
+  .option("--to <dir>", "the directory the fork goes into, instead of the config's `forks`")
+  .action(async (spec: string, options: { fork?: boolean; package?: boolean; to?: string }) => {
     try {
-      await addCommand(home, spec);
+      const config = loadConfig(home);
+      if (addModeFor(config, options) === "fork") await forkCommand(home, config, spec, options.to);
+      else await addCommand(home, spec);
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
@@ -1750,13 +1875,13 @@ export async function updateCommand(
     if (unresolvedFailure !== undefined) return unresolvedFailure;
 
     const pinned = reportRelease(everything, moving, release);
-    if (check) return reportOnly(moving, pinned);
-    if (moving.length === 0) return nothingMoved(deps, pinned);
+    const targets = forkTargets(home, Object.keys(profiles(loadConfig(home), home)), versionAfterUpdate(moving, everything, release?.version));
+    if (check) return reportOnly(moving, pinned, targets);
 
-    return moveEverything(runner, where.plugins, installRoot, moving, deps, release === undefined ? undefined : {
+    return withForksMerged(runner, targets, () => moving.length === 0 ? nothingMoved(deps, pinned) : moveEverything(runner, where.plugins, installRoot, moving, deps, release === undefined ? undefined : {
       version: release.version,
       heldPast: new Set(everything.filter((one) => firstParty(one.name) && compareVersions(one.have, release.version) > 0).map((one) => one.name)),
-    });
+    }));
     } finally {
       release();
     }
@@ -1954,7 +2079,42 @@ function reportUnresolved(everything: readonly Held[], selected: (one: Held) => 
 }
 
 /** `--check`'s whole answer: what would move, and nothing does. */
-function reportOnly(moving: readonly Held[], pinned: boolean): number {
+/** The version a package is at once this update lands: where it moves, where it stays, or the release. */
+function versionAfterUpdate(moving: readonly Held[], everything: readonly Held[], release: string | undefined): (name: string) => string | undefined {
+  return (name) => moving.find((one) => one.name === name)?.want
+    ?? everything.find((one) => one.name === name)?.have
+    ?? (release !== undefined && firstParty(name) ? release : undefined);
+}
+
+/**
+ * Merges every fork before anything moves (S15). One conflict stops the whole
+ * install, with each fork untouched and its marked merge beside it; otherwise
+ * the merges are applied, and an update that then does not land puts every
+ * fork back, so a fork is never half a version ahead of what is installed.
+ */
+async function withForksMerged(runner: CommandRunner, targets: readonly ForkTarget[], move: () => Promise<number>): Promise<number> {
+  const merges = await mergeForks(runner, targets);
+  const stopped = writeMarkedMerges(merges);
+  if (stopped.length > 0) {
+    console.error("amy update stopped, and nothing moved:");
+    for (const line of stopped) console.error(`  ${line}`);
+    console.error("Resolve the marked merge into the fork, or keep the fork as it is, then run `amy update` again.");
+    return 1;
+  }
+  const held = merges.map((merge) => ({ fork: merge.fork, tree: readTree(merge.fork), record: readRecord(merge.fork) }));
+  applyForkUpdates(merges);
+  for (const merge of merges) console.log(`fork   ${merge.name} ${merge.from} → ${merge.to}, merged into ${merge.fork}`);
+  const moved = await move();
+  if (moved === 0) return 0;
+  for (const one of held) {
+    writeTree(one.fork, one.tree);
+    if (one.record) writeRecord(one.fork, one.record);
+  }
+  return moved;
+}
+
+function reportOnly(moving: readonly Held[], pinned: boolean, forks: readonly ForkTarget[] = []): number {
+    for (const fork of forks) console.log(`fork   ${fork.name} at ${fork.fork} would merge ${fork.version}`);
     if (moving.length === 0) {
       if (!pinned) console.log("nothing to move");
       return 0;
@@ -2218,7 +2378,7 @@ pluginCommand
 
     console.log(`${specs.length} plugin(s) to mount, from ${source}:\n`);
 
-    const loaded = await loadMountable(specs);
+    const loaded = await loadMountable(specs, profile.name);
     for (const spec of specs) {
       const found = loaded.bySpec.get(spec);
       const version = found ? pluginVersion(home, paths(home).plugins, spec) : undefined;
@@ -2563,11 +2723,24 @@ function report(result: TickResult): void {
  * neither. Read at startup so `amy --help` is the truth about
  * this install rather than a list of everything this repository publishes.
  */
+/**
+ * What the profiles contribute, read once their forks are built. A process
+ * keeps every module it imports, so a fork read here before its edit is built
+ * would be the fork every later mount in this process sees. A fork that does
+ * not build is the mount's to refuse, by name.
+ */
+async function gatherBuilt(config: AmyConfig, known: readonly Profile[]): Promise<Awaited<ReturnType<typeof gather>>> {
+  for (const profile of known) {
+    if (profileForkDirectories(home, profile.name).size > 0) await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
+  }
+  return gather(config, known, loadMountable);
+}
+
 async function pluginContributions(): Promise<readonly Contribution[]> {
   let gathered;
   try {
     const config = loadConfig(home);
-    gathered = await gather(config, Object.values(profiles(config, home)), loadMountable);
+    gathered = await gatherBuilt(config, Object.values(profiles(config, home)));
   } catch {
     // A config this process cannot read is `doctor`'s to report, not a reason
     // `amy --help` stops working: the command line that would say what is

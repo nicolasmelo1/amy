@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { CommandRunner, DIAGRAM_FILE } from "@amykit/core";
 import { packageEntrySpecifier } from "./spec.js";
 import { workflowsDirectory } from "./workflow.js";
+import { fetchSource, sourceOfManifest } from "./fork.js";
 
 interface Manifest {
   name?: string;
@@ -56,7 +57,15 @@ export async function addWorkflowInto(home: string, spec: string, into: string, 
   if (!fs.existsSync(callerManifest)) {
     throw new Error(`there is no workflow of your own called \`${into}\` under ${workflowsDirectory(home)}; write one with \`amy workflow new ${into}\``);
   }
-  const source = sourceOf(spec, options.pluginsRoot ?? path.join(home, "plugins"));
+  const located = await sourceOf(spec, options.pluginsRoot ?? path.join(home, "plugins"), options.runner);
+  try {
+    return await copyInto(caller, callerManifest, located.source, spec, options);
+  } finally {
+    located.dispose();
+  }
+}
+
+async function copyInto(caller: string, callerManifest: string, source: Source, spec: string, options: AddInto): Promise<AddedInto> {
   const name = copyName(source);
   const target = path.join(caller, "workflows", name);
   if (fs.existsSync(target)) throw new Error(`${target} already exists; it is yours to edit there, or remove it first`);
@@ -85,23 +94,63 @@ export async function addWorkflowInto(home: string, spec: string, into: string, 
   return { directory: target, entry };
 }
 
-/** A path to a directory or an entry, or a package installed where amy keeps its plugins. */
-function sourceOf(spec: string, pluginsRoot: string): Source {
+/**
+ * A path to a directory or an entry, or a package installed where amy keeps
+ * its plugins. An installed package is copied from its source, not its
+ * `dist`: the repository its manifest names, at the tag its installed version
+ * was released under (S12), so the copy is code a person reads and edits.
+ */
+async function sourceOf(spec: string, pluginsRoot: string, runner: CommandRunner): Promise<{ source: Source; dispose: () => void }> {
   const local = path.resolve(spec);
   if (fs.existsSync(local)) {
     const directory = fs.statSync(local).isDirectory();
     const root = directory ? local : packageRootOf(path.dirname(local)) ?? path.dirname(local);
     const manifest = manifestAt(root);
-    return { root, entry: directory ? entryOf(root, manifest) : local, manifest };
+    return { source: { root, entry: directory ? entryOf(root, manifest) : local, manifest }, dispose: () => {} };
   }
   // Read off the directory rather than resolved through the package: a
   // package whose `exports` names only `.` refuses `pkg/package.json`.
-  const root = path.join(pluginsRoot, "node_modules", ...spec.split("/"));
-  if (!fs.existsSync(path.join(root, "package.json"))) {
+  const installed = path.join(pluginsRoot, "node_modules", ...spec.split("/"));
+  if (!fs.existsSync(path.join(installed, "package.json"))) {
     throw new Error(`${spec} is neither a path nor a package installed under ${pluginsRoot}; \`amy add ${spec}\` installs it first`);
   }
-  const manifest = manifestAt(root);
-  return { root, entry: entryOf(root, manifest), manifest };
+  const fetched = await fetchSource(runner, sourceOfManifest(manifestAt(installed), spec), spec);
+  try {
+    const manifest = manifestAt(fetched.directory);
+    return { source: { root: fetched.directory, entry: sourceEntryOf(fetched.directory, manifest), manifest }, dispose: fetched.dispose };
+  } catch (error) {
+    fetched.dispose();
+    throw error;
+  }
+}
+
+/**
+ * The source file a package's built entry is compiled from: the declared
+ * entry when it is there, and otherwise the same path under the tsconfig's
+ * `rootDir` instead of its `outDir`, as TypeScript rather than JavaScript.
+ */
+function sourceEntryOf(root: string, manifest: Manifest): string {
+  if (manifest.exports === undefined && manifest.main === undefined) return entryOf(root, manifest);
+  // The source a declared entry is compiled from wins over the entry itself:
+  // a repository that also commits its build would otherwise hand out `dist`.
+  const declared = fileURLToPath(packageEntrySpecifier(root));
+  const options = tsconfigOptions(root);
+  const outDir = path.resolve(root, options.outDir ?? "dist");
+  const rootDir = path.resolve(root, options.rootDir ?? "src");
+  const relative = path.relative(outDir, declared);
+  const candidates = relative.startsWith("..") ? [] : [path.join(rootDir, relative.replace(/\.js$/, ".ts")), path.join(rootDir, relative)];
+  const entry = [...candidates, declared].find((candidate) => fs.existsSync(candidate));
+  if (!entry) throw new Error(`${root} declares ${path.relative(root, declared)} as its entry, and its source has neither it nor the file it is compiled from`);
+  return entry;
+}
+
+function tsconfigOptions(root: string): { outDir?: string; rootDir?: string } {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(root, "tsconfig.json"), "utf-8")) as { compilerOptions?: { outDir?: string; rootDir?: string } };
+    return parsed.compilerOptions ?? {};
+  } catch {
+    return {};
+  }
 }
 
 function manifestAt(root: string): Manifest {

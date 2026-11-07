@@ -263,6 +263,11 @@
           "description": ""
         },
         {
+          "title": "A plugin is installed into a workflow",
+          "path": "/design/a-plugin-is-installed-into-a-workflow",
+          "description": ""
+        },
+        {
           "title": "A private workflow composes the shipped one",
           "path": "/design/a-private-workflow-composes-the-shipped-one",
           "description": ""
@@ -1011,6 +1016,11 @@
           "depth": 3,
           "title": "**A command belongs to the package that means it.** A plugin declares commands, checks and files beside register, read after the module is imported and before anything mounts: amy --help lists amy roster beside the workflow that brought it, amy doctor runs the checks it brought, and amy init/amy add write the files it brought into the profile's state, once. A command that declares mount: true receives the mounted ports or a refusal naming why the machine did not come up; every other command answers on the machine that will not boot, which is when it matters.",
           "slug": "a-command-belongs-to-the-package-that-means-it-a-plugin-declares-commands-checks-and-files-beside-register-read-after-the-module-is-imported-and-before-anything-mounts-amy---help-lists-amy-roster-beside-the-workflow-that-brought-it-amy-doctor-runs-the-checks-it-brought-and-amy-initamy-add-write-the-files-it-brought-into-the-profiles-state-once-a-command-that-declares-mount-true-receives-the-mounted-ports-or-a-refusal-naming-why-the-machine-did-not-come-up-every-other-command-answers-on-the-machine-that-will-not-boot-which-is-when-it-matters"
+        },
+        {
+          "depth": 3,
+          "title": "A plugin is installed into a workflow, as a package or as a fork of its source.",
+          "slug": "a-plugin-is-installed-into-a-workflow-as-a-package-or-as-a-fork-of-its-source"
         },
         {
           "depth": 3,
@@ -1999,6 +2009,17 @@
           "slug": "acceptance"
         }
       ]
+    },
+    {
+      "path": "/design/a-plugin-is-installed-into-a-workflow",
+      "file": "docs/design/a-plugin-is-installed-into-a-workflow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-plugin-is-installed-into-a-workflow.md",
+      "title": "A plugin is installed into a workflow",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-private-workflow-composes-the-shipped-one",
@@ -5465,6 +5486,11 @@
         },
         {
           "depth": 2,
+          "title": "A plugin of your own",
+          "slug": "a-plugin-of-your-own"
+        },
+        {
+          "depth": 2,
           "title": "Writing your own",
           "slug": "writing-your-own"
         }
@@ -6624,7 +6650,20 @@
               "description": "a package name, a URL, a git URL, or a path"
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "flags": "--fork",
+              "description": "take the package's source as a fork this profile owns, instead of the config's `add`"
+            },
+            {
+              "flags": "--package",
+              "description": "install the published package, instead of the config's `add`"
+            },
+            {
+              "flags": "--to <dir>",
+              "description": "the directory the fork goes into, instead of the config's `forks`"
+            }
+          ],
           "isDefault": false,
           "hidden": false
         },
@@ -6775,6 +6814,16 @@
           "options": [],
           "isDefault": false,
           "hidden": false
+        },
+        {
+          "path": [
+            "mount-check"
+          ],
+          "description": "Internal: whether the selected profile assembles, for a daemon about to remount",
+          "arguments": [],
+          "options": [],
+          "isDefault": false,
+          "hidden": true
         },
         {
           "path": [
@@ -8950,6 +8999,25 @@
   "factory": {
     "gates": [
       {
+        "name": "a-plugin-of-your-own",
+        "activation": [
+          "packages/cli/src/fork.ts",
+          "packages/cli/src/loader.ts",
+          "packages/cli/src/paths.ts",
+          "packages/cli/src/add.ts",
+          "packages/cli/src/remove.ts"
+        ],
+        "evidence": ".software-factory/evidence/a-plugin-of-your-own.json",
+        "plan": "docs/design/a-plugin-is-installed-into-a-workflow.md",
+        "assertions": [
+          "fork.an_installed_workflow_reaches_the_fork",
+          "fork.another_profile_keeps_the_published_package",
+          "fork.the_profile_root_holds_no_core",
+          "fork.update_keeps_the_edit"
+        ],
+        "scenario": ".software-factory/evidence/a-plugin-of-your-own-scenario.sh"
+      },
+      {
         "name": "a-private-workflow-composes",
         "activation": [
           "packages/core/src/git.ts",
@@ -10413,6 +10481,18 @@
           },
           {
             "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-plugin-is-installed-into-a-workflow",
+        "title": "A plugin is installed into a workflow, as a package or as a fork of its source.",
+        "body": "`amy add <package> --fork` takes the package's source from the repository its\n`package.json` names, at the tag its installed version was released under, into\na place the selected profile owns: under `forks/` in the project of a workflow of\nyour own, or under `~/.amy/profiles/<profile>/forks/` for one somebody else\npublished. A git URL naming a directory (`<url>#path:<dir>`) forks the same way\nwithout the registry. The fork keeps the package's name, and a profile root of\nits own, `~/.amy/plugins/profiles/<profile>`, maps that name to it — so two\nprofiles on one machine can answer one plugin two ways, an installed workflow\nthat imports the name reaches the fork, and no config or code names a path.\n\nBefore, one machine had one npm root, so a name resolved to one place for every\nprofile, and the only way to change how a port was answered for one workflow was\na second plugin shipped inside that workflow.\n\nAn edited fork is built by its own build script on the next boot, and a running\nloop remounts it between ticks. `amy update` merges the plugin's next release\ninto the fork three ways and keeps every edit; a line both sides changed stops\nthe whole update before anything moves, with the marked merge written beside the\nfork. `amy remove` of a forked name goes back to the published package and keeps\nthe fork's directory. `config.yaml` gains `add: fork | package` and `forks:`;\n`--fork`, `--package` and `--to <dir>` override them for one command.\n\n`amy workflow add --into` now copies a callee's source from its repository at the\ninstalled version, rather than the compiled `dist` it was installed as. Every\npublished package also ships a shadcn registry item under `registry/`.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
             "level": "minor"
           }
         ],

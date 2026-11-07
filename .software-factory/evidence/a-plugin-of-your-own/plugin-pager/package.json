@@ -1,0 +1,21 @@
+{
+  "name": "@acme/plugin-pager",
+  "version": "1.0.0",
+  "description": "A plugin somebody else published, whose source is a directory of their repository.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "UPSTREAM",
+    "directory": "plugins/pager"
+  },
+  "dependencies": {
+    "@amykit/core": "^0.6.0"
+  }
+}
