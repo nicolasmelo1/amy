@@ -1,5 +1,5 @@
 ---
-base: 50f636cd5c6ebab5b127b65b22f5d8194d63ffb6
+base: ccd67f60c665bea1586ff5e978f9adfa60494048
 sources:
   - { id: S1, kind: decision, said: "packages/ holds amy itself: the core and what it needs to run. The workflows that ship as examples move to a directory of their own, examples/. Decided 2026-11-06" }
   - { id: S2, kind: code, ref: "packages/workflow-ticket-to-qa/package.json", said: "packages/ holds five workflows beside the machine: workflow-errand, workflow-feature-grooming, workflow-note-to-plan, workflow-pull-request and workflow-ticket-to-qa" }

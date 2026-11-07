@@ -1,5 +1,5 @@
 ---
-base: 50f636cd5c6ebab5b127b65b22f5d8194d63ffb6
+base: ccd67f60c665bea1586ff5e978f9adfa60494048
 sources:
   - { id: S1, kind: code, ref: "packages/core/src/commands.ts", said: "a PluginCommand takes args as strings and answers through out.line: it speaks to a terminal, with no typed input or output any other door could read" }
   - { id: S2, kind: decision, said: "a plugin declares operations, not commands: adding or removing a plugin adds or removes its route, its command and its SDK method at once. Decided 2026-11-04" }
