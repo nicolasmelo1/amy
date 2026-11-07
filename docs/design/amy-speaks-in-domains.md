@@ -96,6 +96,7 @@ deviations:
   - "registry/core.json: generated, rewritten because the core changed"
   - "registry/services.json: generated, the new package's registry item"
   - "scripts/install-oasdiff.sh: the one place that reads oasdiff's version and installs it, called by both CI jobs that run it and by the setup script"
+  - ".github/workflows/release.yml: the release runs the suite on a clean runner, and the services' gate test needs oasdiff there too"
   - ".gitleaks.toml: the locked openapi.json gives generated.lock.json a digest keyed by a path with api in it, which gitleaks reads as an API key; the hash locks are allowlisted by path"
   - ".allowed-root-files: declares .gitleaks.toml"
   - "plans/next-steps.md: the delivered row leaves the board"

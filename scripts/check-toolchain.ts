@@ -101,7 +101,7 @@ const oasdiff: string | undefined = JSON.parse(read(TOOLCHAIN)).oasdiff;
 if (!oasdiff) problems.push(`${TOOLCHAIN} names no oasdiff version`);
 const INSTALLS_OASDIFF = "scripts/install-oasdiff.sh";
 if (!read(INSTALLS_OASDIFF).includes("toolchain.lock.json")) problems.push(`${INSTALLS_OASDIFF} installs oasdiff without reading ${TOOLCHAIN}`);
-for (const relative of [".github/workflows/software-factory.yml", SETUP]) {
+for (const relative of [".github/workflows/software-factory.yml", ".github/workflows/release.yml", SETUP]) {
   const text = read(relative);
   if (/oasdiff/.test(text) && !text.includes(INSTALLS_OASDIFF)) problems.push(`${relative} installs oasdiff without ${INSTALLS_OASDIFF}, the one place that reads ${TOOLCHAIN}`);
   const literal = text.split("\n").findIndex((line) => /oasdiff[_@ /v-]+\d+\.\d+\.\d+/.test(line));

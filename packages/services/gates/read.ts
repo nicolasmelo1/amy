@@ -105,11 +105,12 @@ export function domains(): Domain[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** The domain a path sits in, if it sits in one. */
+/** The domain a path sits in, if it sits in one. A file beside the domains, such as their index, is in none. */
 export function domainOf(absolute: string): string | undefined {
   const relative = path.relative(domainsDir, absolute);
   if (relative.startsWith("..") || path.isAbsolute(relative)) return undefined;
-  return relative.split(path.sep)[0];
+  const segments = relative.split(path.sep);
+  return segments.length > 1 || fs.statSync(absolute, { throwIfNoEntry: false })?.isDirectory() ? segments[0] : undefined;
 }
 
 /** The part of a domain a path sits in: `operations`, `services`, `repositories`, or a file at its root. */

@@ -161,4 +161,15 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     expect(status).toBe(1);
     expect(said).toContain("output.pair property `left` has no description");
   });
+
+  it("lets the domains' own index register a domain, being in no domain itself", () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-barrel-"));
+    made.push(tree);
+    fs.cpSync(path.join(example, "packages"), path.join(tree, "packages"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tree, "packages/services/src/domains/index.ts"),
+      'import type { DeclaredOperation } from "@amykit/core";\nimport { notes } from "./notes/index.js";\n\nexport const operations: readonly DeclaredOperation[] = [...notes];\n',
+    );
+    expect(gate("keep-their-domains", tree)).toMatchObject({ status: 0 });
+  });
 });
