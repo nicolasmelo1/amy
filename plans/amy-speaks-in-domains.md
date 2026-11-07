@@ -1,14 +1,15 @@
 ---
+base: 93d59dea5bcd9a218a2e3f657bcfae8c26df5382
 sources:
   - { id: S1, kind: decision, said: "one core, three doors: amy's rules live in one contract, and the API, the SDK and the command line are read from it, so whichever door calls, the same code runs. Decided 2026-11-04" }
   - { id: S2, kind: decision, said: "documentation lives in the contract: an operation's summary and description are what amy --help, the OpenAPI document and the SDK's editor hints all print, so no door documents itself by hand. Decided 2026-11-04" }
   - { id: S3, kind: decision, said: "the contract is amy's own, small enough to write here: no oRPC, tRPC or ts-rest underneath, so a plugin's operations depend on @amykit/core and nothing else. Decided 2026-11-04" }
-  - { id: S4, kind: friction, ref: "packages/cli/src/index.ts", said: "the command line holds the rules today: 2671 lines of commander handlers doing the work inline, so a server would either call into a CLI or copy it" }
+  - { id: S4, kind: friction, ref: "packages/cli/src/index.ts", said: "the command line holds the rules today: 2844 lines of commander handlers doing the work inline, so a server would either call into a CLI or copy it" }
   - { id: S5, kind: decision, said: "defineOperation in @amykit/core declares one operation: id, domain, summary, description, input, output, declared errors, examples, localOnly, writes, mount, and an http binding (method, path, status) and an optional cli one" }
   - { id: S6, kind: decision, said: "input and output are typed against Standard Schema and Standard JSON Schema, interfaces copied into core with no runtime dependency, so core stays dependency-free and any library implementing them can declare an operation" }
   - { id: S7, kind: reference, ref: "https://standardschema.dev/json-schema", said: "Standard JSON Schema exposes ~standard.jsonSchema.input and output with a target such as draft-2020-12; Zod implements it from 4.2, ArkType and Valibot too" }
   - { id: S8, kind: decision, said: "an output is a value or a stream of named events: a stream is SSE over HTTP, an async iterator in the SDK, and one line per event on the command line (JSON Lines with --json)" }
-  - { id: S9, kind: decision, ref: "packages/services", said: "@amykit/services holds amy's own domains and depends on @amykit/core and @amykit/ui; it writes Zod 4.2+ schemas. Transports live elsewhere: packages/cli, packages/server, packages/sdk" }
+  - { id: S9, kind: decision, said: "@amykit/services holds amy's own domains and depends on @amykit/core and @amykit/ui; it writes Zod 4.2+ schemas. Transports live elsewhere: packages/cli, packages/server, packages/sdk" }
   - { id: S10, kind: decision, said: "a domain folder (e.g. work/) holds operations/ (poke-work.ts: one defineOperation), services/ (execute), repositories/ (only port access), constants/, exceptions.ts (its errors only), index.ts (exports its operations only)" }
   - { id: S11, kind: decision, said: "an operation file declares its input and output schemas in the same file and exports only the operation; types are inferred, never exported: alike operations declare two schemas, so changing one never changes the other" }
   - { id: S12, kind: decision, said: "its handler validates nothing by hand, calls one service and maps its domain errors to the errors it declared; it never sees a request, a status code, argv or a terminal" }
@@ -42,6 +43,16 @@ touches:
   - packages/core/tests/operation.test.ts
   - packages/services/**
   - package.json
+  - package-lock.json
+  - tsconfig.json
+  - tsconfig.tests.json
+  - vitest.config.ts
+  - .github/workflows/software-factory.yml
+  - scripts/check-toolchain.ts
+  - scripts/setup-dev.sh
+  - CONTRIBUTING.md
+  - docs/**
+  - .changeset/**
   - .software-factory/policy.yaml
   - .software-factory/rules/**
   - .software-factory/mutations/**
