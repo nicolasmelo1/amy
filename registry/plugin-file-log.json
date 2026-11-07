@@ -7,9 +7,7 @@
   "dependencies": [
     "@amykit/core@^0.6.0"
   ],
-  "devDependencies": [
-    "@amykit/test-fixtures@^0.1.0"
-  ],
+  "devDependencies": [],
   "files": [
     {
       "path": "plugins/file-log/README.md",

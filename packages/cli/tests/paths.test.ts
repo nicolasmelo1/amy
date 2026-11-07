@@ -53,4 +53,11 @@ describe("where a fork goes", () => {
     expect(forkPlace(home, profile("@acme/workflow-oncall"), "@amykit/plugin-linear", { to: "/srv/forks", forks: "/var/forks" })).toBe(path.join("/srv/forks", "plugin-linear"));
     expect(forkPlace(home, profile("@acme/workflow-oncall"), "@amykit/plugin-linear", { forks: "/var/forks" })).toBe(path.join("/var/forks", "oncall", "plugin-linear"));
   });
+
+  it("reads a leading `~` in `forks` and `--to` as the person's home, not a directory named `~`", () => {
+    const home = path.join(os.tmpdir(), "amy-fork-tilde");
+
+    expect(forkPlace(home, profile("@acme/workflow-oncall"), "@amykit/plugin-linear", { forks: "~/forks" })).toBe(path.join(os.homedir(), "forks", "oncall", "plugin-linear"));
+    expect(forkPlace(home, profile("@acme/workflow-oncall"), "@amykit/plugin-linear", { to: "~/mine" })).toBe(path.join(os.homedir(), "mine", "plugin-linear"));
+  });
 });

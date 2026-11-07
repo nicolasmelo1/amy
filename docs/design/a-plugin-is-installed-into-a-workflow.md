@@ -91,6 +91,7 @@ deviations:
   - ".allowed-root-files: declares registry/, the directory A15 writes at the repository root"
   - "plans/next-steps.md: the delivered row leaves the board"
   - "packages/test-fixtures/contracts/**: GitHub's REST description moved upstream and turned main red; refreshed so this change's CI can be green"
+  - "packages/cli/src/plugin-commands.ts: each profile's commands, checks, files and setup come from the implementation it mounts, so a fork's are its own (review)"
   - "README.md and docs/development/the-gate.md: their generated gate tables gain the new gate"
   - "packages/cli/src/fork.ts holds the three-way merge, the profile root and the build: one module for what a fork is, rather than a file per step"
   - "the profile root nests in ~/.amy/plugins as plugins/profiles/<profile>, so a name it does not hold, the core included, walks up to the machine's root"

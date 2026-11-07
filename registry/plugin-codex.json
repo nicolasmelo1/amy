@@ -9,9 +9,7 @@
     "@amykit/agent-kit@^0.6.0",
     "@amykit/model-specs@^0.6.0"
   ],
-  "devDependencies": [
-    "@amykit/test-fixtures@^0.1.0"
-  ],
+  "devDependencies": [],
   "files": [
     {
       "path": "plugins/codex/README.md",

@@ -8,9 +8,7 @@
     "@amykit/core@^0.6.0",
     "@amykit/plugin-notify-fanout@^0.6.0"
   ],
-  "devDependencies": [
-    "@amykit/test-fixtures@^0.1.0"
-  ],
+  "devDependencies": [],
   "files": [
     {
       "path": "plugins/notify-hermes/README.md",

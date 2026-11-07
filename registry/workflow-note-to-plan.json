@@ -10,7 +10,6 @@
     "@amykit/workflow-pull-request@^0.6.0"
   ],
   "devDependencies": [
-    "@amykit/test-fixtures@^0.1.0",
     "@amykit/workflow-testkit@^0.6.0"
   ],
   "files": [

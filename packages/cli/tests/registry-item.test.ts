@@ -33,6 +33,7 @@ describe("the registry items every published package ships", () => {
         name: "@acme/plugin-pager", version: "1.4.0", description: "pages",
         repository: { type: "git", url: "git+https://example.test/acme.git", directory: "plugins/pager" },
         dependencies: { "@amykit/core": "^0.6.0" },
+        devDependencies: { "secret": "^1.0.0", "fast-check": "^4.0.0" },
       }));
       fs.writeFileSync(path.join(pager, "src", "index.ts"), "export const said = 1;\n");
       fs.writeFileSync(path.join(pager, "tests", "index.test.ts"), "// not shipped\n");
@@ -54,6 +55,8 @@ describe("the registry items every published package ships", () => {
       ]);
       expect(item.files[1]!.content).toBe("export const said = 1;\n");
       expect(item.dependencies).toEqual(["@amykit/core@^0.6.0"]);
+      // `secret` is the workspace's private package: no client outside it could install it.
+      expect(item.devDependencies).toEqual(["fast-check@^4.0.0"]);
       expect(item.meta).toEqual({ package: "@acme/plugin-pager", version: "1.4.0", repository: "git+https://example.test/acme.git", directory: "plugins/pager", tag: "@acme/plugin-pager@1.4.0" });
     });
 

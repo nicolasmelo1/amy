@@ -137,4 +137,38 @@ describe("amy add --fork", () => {
     expect(fs.existsSync(profileRoot(home, "paging"))).toBe(false);
     expect(fs.readFileSync(path.join(forked.directory, "index.js"), "utf-8")).toContain("// mine");
   });
+
+  it("drops the workspace's private packages from what a fork installs, keeping what compiles it", async () => {
+    const workspace = new Upstream(path.join(home, "workspace"));
+    workspace.release({
+      "package.json": JSON.stringify({ name: "acme", private: true, devDependencies: { typescript: "^5.8.3" } }),
+      "tsconfig.base.json": JSON.stringify({ compilerOptions: { strict: true, composite: true } }),
+      "packages/fixtures/package.json": JSON.stringify({ name: "@acme/test-fixtures", private: true }),
+      "plugins/pager/package.json": JSON.stringify({
+        name: PAGER, version: "1.0.0", type: "module", main: "./dist/index.js",
+        dependencies: { "@amykit/core": "^0.6.0" },
+        devDependencies: { "@acme/test-fixtures": "^0.1.0" },
+      }),
+      "plugins/pager/tsconfig.json": JSON.stringify({ extends: "../../tsconfig.base.json", compilerOptions: { outDir: "dist" }, references: [{ path: "../../packages/fixtures" }] }),
+      "plugins/pager/src/index.ts": "export const said = 1;\n",
+    }, `${PAGER}@1.0.0`);
+    const world = new ForkWorld();
+    const built: string[] = [];
+    const recording = { run: async (command: string, args: readonly string[], options?: { cwd?: string }) => {
+      if (command === "npm" && args[0] === "run") {
+        built.push(options!.cwd!);
+        return { ok: true, exitCode: 0, stdout: "", stderr: "" };
+      }
+      return world.run(command, args, options);
+    } };
+
+    const forked = await addFork({ runner: recording, home, profile: PAGING, specs: [PAGER], spec: `${workspace.url}#${PAGER}@1.0.0&path:plugins/pager`, cwd: home });
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(forked.directory, "package.json"), "utf-8")) as { dependencies: object; devDependencies: object; scripts: object };
+    expect(manifest.devDependencies).toEqual({ typescript: "^5.8.3" });
+    expect(manifest.dependencies).toEqual({ "@amykit/core": "^0.6.0" });
+    expect(manifest.scripts).toEqual({ build: "tsc -p tsconfig.json" });
+    expect(JSON.parse(fs.readFileSync(path.join(forked.directory, "tsconfig.json"), "utf-8"))).toEqual({ compilerOptions: { strict: true, outDir: "dist" } });
+    expect(built).toEqual([forked.directory]);
+  });
 });

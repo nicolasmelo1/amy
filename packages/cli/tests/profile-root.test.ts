@@ -4,6 +4,10 @@ import path from "node:path";
 import { CommandResult, RunOptions } from "@amykit/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { addFork } from "../src/add.js";
+import { DEFAULT_CONFIG } from "../src/config.js";
+import { prepareForks, readRootManifest } from "../src/fork.js";
+import { load } from "../src/loader.js";
+import { forProfile, gather } from "../src/plugin-commands.js";
 import { pluginsRootResolver } from "../src/loader.js";
 import { profileRoot } from "../src/paths.js";
 import { Profile } from "../src/profiles.js";
@@ -81,5 +85,45 @@ describe("a profile root", () => {
     expect(cores).toEqual([]);
     expect(own.plugin.core).toBe(host.identity);
     expect(own.plugin.pager.core).toBe(host.identity);
+  });
+
+  it("hands each profile the commands of the implementation it mounts", async () => {
+    const forked = profile("forked");
+    await addFork({ runner: new NpmBringsACore(), home, profile: forked, specs: forked.plugins, spec: PAGER, cwd: home });
+    const published = profile("published");
+
+    const gathered = await gather(
+      { ...DEFAULT_CONFIG, workflows: { forked: { workflow: PAGING, plugins: [...forked.plugins] }, published: { workflow: PAGING, plugins: [...published.plugins] } } },
+      [forked, published],
+      (specs, name) => load(specs, pluginsRootResolver(home, plugins, name), plugins),
+    );
+
+    const pager = gathered.contributions.find((contribution) => contribution.owner === PAGER)!;
+    expect((forProfile(pager, forked).plugin as unknown as { said: string }).said).toBe("the fork");
+    expect((forProfile(pager, published).plugin as unknown as { said: string }).said).toBe("published");
+  });
+
+  it("refreshes the profile root when a new package that imports the fork is mounted, with no fork rebuilt", async () => {
+    const forked = profile("forked");
+    const world = new NpmBringsACore();
+    await addFork({ runner: world, home, profile: forked, specs: [PAGER], spec: PAGER, cwd: home });
+    expect(Object.keys(readRootManifest(home, "forked")!.dependencies)).toEqual([PAGER]);
+
+    await expect(prepareForks(world, home, plugins, "forked", forked.plugins)).resolves.toEqual({ ok: true });
+
+    expect((await mount("forked")).plugin.pager.said).toBe("the fork");
+  });
+
+  it("refreshes a copied consumer the machine's root has since updated", async () => {
+    const forked = profile("forked");
+    const world = new NpmBringsACore();
+    await addFork({ runner: world, home, profile: forked, specs: forked.plugins, spec: PAGER, cwd: home });
+    const manifest = path.join(plugins, "node_modules", ...PAGING.split("/"), "package.json");
+    fs.writeFileSync(manifest, JSON.stringify({ ...JSON.parse(fs.readFileSync(manifest, "utf-8")), version: "1.1.0" }));
+
+    await prepareForks(world, home, plugins, "forked", forked.plugins);
+
+    const copy = JSON.parse(fs.readFileSync(path.join(profileRoot(home, "forked"), "node_modules", ...PAGING.split("/"), "package.json"), "utf-8")) as { version: string };
+    expect(copy.version).toBe("1.1.0");
   });
 });

@@ -131,14 +131,15 @@ async function sourceOf(spec: string, pluginsRoot: string, runner: CommandRunner
  */
 function sourceEntryOf(root: string, manifest: Manifest): string {
   if (manifest.exports === undefined && manifest.main === undefined) return entryOf(root, manifest);
+  // The source a declared entry is compiled from wins over the entry itself:
+  // a repository that also commits its build would otherwise hand out `dist`.
   const declared = fileURLToPath(packageEntrySpecifier(root));
-  if (fs.existsSync(declared)) return declared;
   const options = tsconfigOptions(root);
   const outDir = path.resolve(root, options.outDir ?? "dist");
   const rootDir = path.resolve(root, options.rootDir ?? "src");
   const relative = path.relative(outDir, declared);
   const candidates = relative.startsWith("..") ? [] : [path.join(rootDir, relative.replace(/\.js$/, ".ts")), path.join(rootDir, relative)];
-  const entry = candidates.find((candidate) => fs.existsSync(candidate));
+  const entry = [...candidates, declared].find((candidate) => fs.existsSync(candidate));
   if (!entry) throw new Error(`${root} declares ${path.relative(root, declared)} as its entry, and its source has neither it nor the file it is compiled from`);
   return entry;
 }

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { privatePackages } from "./fork.js";
 
 /**
  * A shadcn registry item for one published package (S16): its source at its
@@ -44,7 +45,7 @@ interface PackageManifest {
  * relative to the repository root. The target is the place `amy add --fork`
  * puts a fork for a workflow of your own, so both clients agree on where.
  */
-export function registryItem(repository: string, directory: string, files: readonly string[]): RegistryItem {
+export function registryItem(repository: string, directory: string, files: readonly string[], unpublished: ReadonlySet<string> = privatePackages(repository)): RegistryItem {
   const manifest = JSON.parse(fs.readFileSync(path.join(repository, directory, "package.json"), "utf-8")) as PackageManifest;
   const name = manifest.name ?? directory;
   const unscoped = name.split("/").at(-1)!;
@@ -59,8 +60,10 @@ export function registryItem(repository: string, directory: string, files: reado
     type: "registry:lib",
     title: name,
     description: manifest.description ?? "",
-    dependencies: Object.entries(manifest.dependencies ?? {}).map(([dependency, range]) => `${dependency}@${range}`),
-    devDependencies: Object.entries(manifest.devDependencies ?? {}).map(([dependency, range]) => `${dependency}@${range}`),
+    // A workspace's private packages were never published, so no client
+    // outside it could install them.
+    dependencies: installable(manifest.dependencies, unpublished),
+    devDependencies: installable(manifest.devDependencies, unpublished),
     files: within.map((file) => ({
       path: file,
       type: "registry:file" as const,
@@ -69,6 +72,10 @@ export function registryItem(repository: string, directory: string, files: reado
     })),
     meta: { package: name, version: manifest.version ?? "", repository: url, directory: repositoryDirectory, tag: `${name}@${manifest.version ?? ""}` },
   };
+}
+
+function installable(dependencies: Record<string, string> | undefined, unpublished: ReadonlySet<string>): string[] {
+  return Object.entries(dependencies ?? {}).filter(([name]) => !unpublished.has(name)).map(([name, range]) => `${name}@${range}`);
 }
 
 /** The packages a registry item is generated for: every workspace package that is published. */

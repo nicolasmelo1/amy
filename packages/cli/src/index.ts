@@ -337,7 +337,7 @@ program
  * install brought.
  */
 async function prepare(config: AmyConfig, known: readonly Profile[]): Promise<void> {
-  const gathered = await gather(config, known, loadMountable);
+  const gathered = await gatherBuilt(config, known);
   for (const profile of known) {
     writeFiles(home, config, profile, gathered.contributions, commandOut);
     await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
@@ -1302,7 +1302,7 @@ async function writeAddedFiles(home: string, spec: string, profileName?: string)
   const mounting = known.filter((profile) =>
     profile.name === profileName || profile.workflow === spec || pluginList(config, profile).includes(spec),
   );
-  const gathered = await gather(config, mounting, loadMountable);
+  const gathered = await gatherBuilt(config, mounting);
   for (const profile of mounting) {
     writeFiles(home, config, profile, gathered.contributions, commandOut);
     await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
@@ -2723,11 +2723,24 @@ function report(result: TickResult): void {
  * neither. Read at startup so `amy --help` is the truth about
  * this install rather than a list of everything this repository publishes.
  */
+/**
+ * What the profiles contribute, read once their forks are built. A process
+ * keeps every module it imports, so a fork read here before its edit is built
+ * would be the fork every later mount in this process sees. A fork that does
+ * not build is the mount's to refuse, by name.
+ */
+async function gatherBuilt(config: AmyConfig, known: readonly Profile[]): Promise<Awaited<ReturnType<typeof gather>>> {
+  for (const profile of known) {
+    if (profileForkDirectories(home, profile.name).size > 0) await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
+  }
+  return gather(config, known, loadMountable);
+}
+
 async function pluginContributions(): Promise<readonly Contribution[]> {
   let gathered;
   try {
     const config = loadConfig(home);
-    gathered = await gather(config, Object.values(profiles(config, home)), loadMountable);
+    gathered = await gatherBuilt(config, Object.values(profiles(config, home)));
   } catch {
     // A config this process cannot read is `doctor`'s to report, not a reason
     // `amy --help` stops working: the command line that would say what is

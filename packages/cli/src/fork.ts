@@ -223,10 +223,15 @@ export function writeRecord(fork: string, record: ForkRecord): void {
  */
 export function forkPlace(home: string, profile: Profile, name: string, options: { to?: string; forks?: string } = {}): string {
   const unscoped = name.split("/").at(-1)!;
-  if (options.to) return path.join(path.resolve(options.to), unscoped);
-  if (options.forks) return path.join(path.resolve(home, options.forks), profile.name, unscoped);
+  if (options.to) return path.join(path.resolve(withHome(options.to)), unscoped);
+  if (options.forks) return path.join(path.resolve(home, withHome(options.forks)), profile.name, unscoped);
   const own = ownedDirectory(home, profile);
   return own ? path.join(own, "forks", unscoped) : path.join(profileForks(home, profile.name), unscoped);
+}
+
+/** A leading `~` is the person's home directory, the way a shell would have read it. */
+function withHome(place: string): string {
+  return place === "~" || place.startsWith("~/") ? path.join(os.homedir(), place.slice(1)) : place;
 }
 
 /** The project a workflow of your own lives in, or nothing for a published one. */
@@ -249,21 +254,53 @@ function ownedDirectory(home: string, profile: Profile): string | undefined {
  * keeps them the way it keeps anything else a person changed.
  */
 function standalone(fork: string, repositoryRoot: string, source: string): void {
+  const original = readManifest(fork) ?? {};
+  const manifest: Manifest = { ...original };
+  // A workspace's private packages were never published: a fork outside the
+  // workspace cannot install them, and what it needs to compile is public.
+  const unpublished = privatePackages(repositoryRoot);
+  if (manifest.devDependencies) {
+    manifest.devDependencies = Object.fromEntries(Object.entries(manifest.devDependencies).filter(([name]) => !unpublished.has(name)));
+  }
   const tsconfig = path.join(fork, "tsconfig.json");
-  if (!fs.existsSync(tsconfig)) return;
-  const flattened = flattenTsconfig(path.join(source, "tsconfig.json"), repositoryRoot);
-  delete flattened.references;
-  const options = (flattened.compilerOptions ?? {}) as Record<string, unknown>;
-  delete options.composite;
-  flattened.compilerOptions = options;
-  fs.writeFileSync(tsconfig, `${JSON.stringify(flattened, null, 2)}\n`, "utf-8");
-
-  const manifest = readManifest(fork) ?? {};
-  if (manifest.scripts?.build) return;
-  const typescript = readManifest(repositoryRoot)?.devDependencies?.typescript ?? "^5";
-  manifest.scripts = { ...manifest.scripts, build: "tsc -p tsconfig.json" };
-  manifest.devDependencies = { ...manifest.devDependencies, typescript: manifest.devDependencies?.typescript ?? typescript };
+  if (fs.existsSync(tsconfig)) {
+    const flattened = flattenTsconfig(path.join(source, "tsconfig.json"), repositoryRoot);
+    delete flattened.references;
+    const options = (flattened.compilerOptions ?? {}) as Record<string, unknown>;
+    delete options.composite;
+    flattened.compilerOptions = options;
+    fs.writeFileSync(tsconfig, `${JSON.stringify(flattened, null, 2)}\n`, "utf-8");
+    if (!manifest.scripts?.build) {
+      manifest.scripts = { ...manifest.scripts, build: "tsc -p tsconfig.json" };
+      const typescript = readManifest(repositoryRoot)?.devDependencies?.typescript ?? "^5";
+      manifest.devDependencies = { ...manifest.devDependencies, typescript: manifest.devDependencies?.typescript ?? typescript };
+    }
+  }
+  if (JSON.stringify(manifest) === JSON.stringify(original)) return;
   fs.writeFileSync(path.join(fork, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
+}
+
+/** The names of every package a repository marks private, two directories deep. */
+export function privatePackages(repositoryRoot: string): Set<string> {
+  const names = new Set<string>();
+  const visit = (directory: string, depth: number) => {
+    const manifest = readManifest(directory) as (Manifest & { private?: boolean }) | undefined;
+    if (manifest?.private && manifest.name) names.add(manifest.name);
+    if (depth === 0) return;
+    for (const entry of entriesOf(directory)) {
+      if (entry.isDirectory() && entry.name !== "node_modules" && !entry.name.startsWith(".")) visit(path.join(directory, entry.name), depth - 1);
+    }
+  };
+  visit(repositoryRoot, 2);
+  return names;
+}
+
+function entriesOf(directory: string): fs.Dirent[] {
+  try {
+    return fs.readdirSync(directory, { withFileTypes: true });
+  } catch {
+    return [];
+  }
 }
 
 /** A tsconfig with every relative `extends` inside the repository folded in. */
@@ -409,15 +446,7 @@ export async function installProfileRoot(
     fs.rmSync(root, { recursive: true, force: true });
     return { ok: true, command: "", output: "" };
   }
-  const dependencies: Record<string, string> = {};
-  const overrides: Record<string, string> = {};
-  for (const [name, directory] of [...forks].sort(([a], [b]) => a.localeCompare(b))) {
-    dependencies[name] = `file:${directory}`;
-    overrides[name] = `$${name}`;
-  }
-  for (const dependent of dependentsOf(pluginsRoot, specs, new Set(forks.keys())).sort()) {
-    dependencies[dependent] = `file:${path.join(pluginsRoot, "node_modules", ...dependent.split("/"))}`;
-  }
+  const { dependencies, overrides } = rootDeclaration(pluginsRoot, forks, specs);
   const manifest: RootManifest = { name: `amy-profile-${profile}`, private: true, dependencies, overrides };
   fs.mkdirSync(root, { recursive: true });
   fs.writeFileSync(path.join(root, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
@@ -432,6 +461,38 @@ export async function installProfileRoot(
   if (!ran.ok) return { ok: false, command, output };
   pruneHostPackages(path.join(root, "node_modules"));
   return { ok: true, command, output };
+}
+
+/** What a profile root declares: each fork and its override, and each installed package that imports one. */
+function rootDeclaration(pluginsRoot: string, forks: ReadonlyMap<string, string>, specs: readonly string[]): Pick<RootManifest, "dependencies" | "overrides"> {
+  const dependencies: Record<string, string> = {};
+  const overrides: Record<string, string> = {};
+  for (const [name, directory] of [...forks].sort(([a], [b]) => a.localeCompare(b))) {
+    dependencies[name] = `file:${directory}`;
+    overrides[name] = `$${name}`;
+  }
+  for (const dependent of dependentsOf(pluginsRoot, specs, new Set(forks.keys())).sort()) {
+    dependencies[dependent] = `file:${path.join(pluginsRoot, "node_modules", ...dependent.split("/"))}`;
+  }
+  return { dependencies, overrides };
+}
+
+/**
+ * Whether a profile root still says what the profile mounts: the same
+ * declaration, and every copy of an installed package at the version the
+ * machine's root holds now. A new consumer, or one the machine updated,
+ * makes it stale even when no fork moved.
+ */
+function rootIsCurrent(home: string, pluginsRoot: string, profile: string, forks: ReadonlyMap<string, string>, specs: readonly string[]): boolean {
+  const written = readRootManifest(home, profile);
+  const wanted = rootDeclaration(pluginsRoot, forks, specs);
+  if (JSON.stringify(written?.dependencies) !== JSON.stringify(wanted.dependencies)) return false;
+  if (JSON.stringify(written?.overrides) !== JSON.stringify(wanted.overrides)) return false;
+  const root = profileRoot(home, profile);
+  return Object.keys(wanted.dependencies).filter((name) => !forks.has(name)).every((name) => {
+    const copy = readManifest(path.join(root, "node_modules", ...name.split("/")))?.version;
+    return copy !== undefined && copy === readManifest(path.join(pluginsRoot, "node_modules", ...name.split("/")))?.version;
+  });
 }
 
 /** Removes every copy of the core and the cli a profile root's install put down, however deep. */
@@ -500,7 +561,7 @@ export async function prepareForks(
     if (!built.ok) return { ok: false, problems: [`${name}: the fork at ${fork} does not build:\n${built.output || "its build said nothing"}`] };
     rebuilt ||= built.ran;
   }
-  if (!rebuilt) return { ok: true };
+  if (!rebuilt && (forks.size === 0 || rootIsCurrent(home, pluginsRoot, profile, forks, specs))) return { ok: true };
   const installed = await installProfileRoot(runner, home, pluginsRoot, profile, forks, specs);
   return installed.ok ? { ok: true } : { ok: false, problems: [`${installed.command} failed:\n${installed.output || "it said nothing"}`] };
 }

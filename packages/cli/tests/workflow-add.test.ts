@@ -175,6 +175,9 @@ export const plugin = defineWorkflow({
     };
     fs.writeFileSync(path.join(source, "tsconfig.json"), JSON.stringify({ compilerOptions: { rootDir: ".", outDir: "dist" } }));
     fs.writeFileSync(path.join(source, "package.json"), JSON.stringify(manifest, null, 2));
+    // The repository commits its build too: the copy still takes the source.
+    fs.mkdirSync(path.join(source, "dist"));
+    fs.writeFileSync(path.join(source, "dist", "index.js"), "export const plugin = 'compiled';\n");
     upstream.release(sourceFiles(source), "@acme/workflow-review@1.2.0");
     fs.appendFileSync(path.join(source, "index.ts"), "// written after 1.2.0 was released\n");
     upstream.release(sourceFiles(source), "@acme/workflow-review@1.3.0");
