@@ -1,5 +1,5 @@
 ---
-base: 289227cafcb9743e3966532d896246cbceea304e
+base: 0dc5319c214126f161b0b576588db3a02f1c18ae
 sources:
   - { id: S1, kind: reference, ref: "docs/design/a-project-is-three-phases.md", said: "asks for the slot; this plan is what goes in the third, the phase that exists nowhere in amy today" }
   - { id: S2, kind: decision, said: "a workflow's walkthrough drives the lifecycle against a fake world in milliseconds: right for a state machine, silent on whether the produced work holds" }

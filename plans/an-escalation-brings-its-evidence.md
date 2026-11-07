@@ -1,5 +1,5 @@
 ---
-base: f813fba8dab5c8e54d430146fad2651d91f8396b
+base: 0dc5319c214126f161b0b576588db3a02f1c18ae
 sources:
   - { id: S1, kind: friction, said: "work escalated with \"the implementation did not come together in 3 attempts\"; the owner opened a separate agent session to learn why, and everything it found was already on disk" }
   - { id: S2, kind: friction, said: "the record held the gate's last output: four catch blocks with no evidence the case occurs, two untouched test files beside changed code; a stronger model approved twice, the gate refused twice on rules the reviewer never saw" }
