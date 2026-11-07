@@ -25,7 +25,11 @@ export interface Import {
   readonly names: readonly string[];
 }
 
-/** Every .ts file under a directory, skipping what a build or an install wrote. */
+/** Every extension the TypeScript build accepts as a source: .ts, .tsx, .mts and .cts. */
+const SOURCE = /\.(ts|tsx|mts|cts)$/;
+const DECLARATION = /\.d\.(ts|mts|cts)$/;
+
+/** Every TypeScript source under a directory, skipping what a build or an install wrote. */
 export function sourcesUnder(directory: string): Source[] {
   if (!fs.existsSync(directory)) return [];
   const found: Source[] = [];
@@ -33,7 +37,7 @@ export function sourcesUnder(directory: string): Source[] {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       if (entry.name !== "node_modules" && entry.name !== "dist") found.push(...sourcesUnder(absolute));
-    } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
+    } else if (SOURCE.test(entry.name) && !DECLARATION.test(entry.name)) {
       found.push(parse(absolute));
     }
   }
@@ -45,7 +49,7 @@ export function parse(absolute: string): Source {
   return {
     file: path.relative(root, absolute).split(path.sep).join("/"),
     absolute,
-    ast: ts.createSourceFile(absolute, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS),
+    ast: ts.createSourceFile(absolute, text, ts.ScriptTarget.Latest, true, absolute.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS),
   };
 }
 
@@ -83,7 +87,7 @@ function isDynamicLoad(node: ts.CallExpression): boolean {
 /** Where a relative import lands, as an absolute path without its extension. */
 export function landsAt(source: Source, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
-  return path.resolve(path.dirname(source.absolute), specifier).replace(/\.(js|ts)$/, "");
+  return path.resolve(path.dirname(source.absolute), specifier).replace(/\.(js|jsx|mjs|cjs|ts|tsx|mts|cts)$/, "");
 }
 
 /** One domain folder: its name and where it is. */

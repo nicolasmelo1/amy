@@ -30,6 +30,7 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     expect(said).toContain("from domain `notes`: domain `tags` reads no other domain");
     expect(said).toContain("imports the port `Store`: only a repository reaches a port");
     expect(said).toContain("src/serve.ts imports `hono`");
+    expect(said).toContain("src/listen.mts imports `node:http`");
     expect(said).toContain("domain `tags` has no exceptions.ts");
     expect(said).toContain("reaches the port `Queue` through a namespace");
     expect(said).toContain("loads @amykit/core dynamically");
