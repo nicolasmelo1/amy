@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "files": {
-    ".allowed-root-files": "fc1221d684f70f815385a25560aae6387fa44546c90daf5dc6336d688f4ea5d8",
+    ".allowed-root-files": "e783727b84aead52027293662d8f34c556de1b311a142481d872e7075afabb4b",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
-    ".github/workflows/software-factory.yml": "6e8cf4e0781948abf81e3ead3d59d126937c164a4f8f25e779d05b63139d3d33",
-    ".software-factory/policy.yaml": "ffb6766ca35038356b30ced0f632660b1b16328c4845986b5daa2914df4a44a2",
+    ".github/workflows/software-factory.yml": "b811ea08761e6c63f563ee10bb078fe4804f2188153ce02902bf8f7743d90c54",
+    ".software-factory/policy.yaml": "e607967c41ed02fdad78be434dc078d4d5c967febd3ad3510e7210a6d12e7f38",
     ".software-factory/ratchet.yaml": "0651675579468787302ac0cc38d8ead6bdb3555a731819a80b0ef63a2fa86c0f",
     ".software-factory/rules/a-delivered-plan-keeps-no-promise.yaml": "79df6d01907a534d2d2c5a2e196ef1b6d4c2cc6f5d2150491e3e703d1600b0d4",
     ".software-factory/rules/a-push-never-forces.yaml": "5ea760d7ad8a4f2637d49c6c6d8b4292bd14956527280ed811fe9e6767ae47e6",
@@ -16,13 +16,18 @@
     ".software-factory/rules/an-agent-never-touches-git.yaml": "eb88cffef2e9352dc8e00f2d7f0344728d54ea1288159c5b9da8befc1262c52b",
     ".software-factory/rules/branch-reset-loses-commits.yaml": "204b3806cb3b1b14b69d57e1a256efa9447a35f4e25b45d417c494d6aafd5101",
     ".software-factory/rules/core-stays-ignorant.yaml": "f49946b95bd97b7e075ef73d3241c3530d323607abb5b9b9a5558f8f216f2942",
+    ".software-factory/rules/every-declared-error-is-tested.yaml": "e1404bd87fbd4e1ac0fbf2b94fa354df61dee04edd10147b9c36cf0e13c3becb",
     ".software-factory/rules/every-renderer-holds-the-frame.yaml": "8388bdd27e64edafbef717f9881e400ec4656bf19ef63f89c3d02b0d062fd7cd",
     ".software-factory/rules/fixtures-name-nobody-real.yaml": "2f9e6738cf7c8fbe3152b89dc652474af494316e478407d63fab3343abc223b4",
     ".software-factory/rules/only-the-tracker-speaks-ticket.yaml": "5438e1d1bf830ecaa893fc9fc421bae2a085302eff4de022b4544de732896c48",
     ".software-factory/rules/ports-live-in-their-own-file.yaml": "c6fc07ea2228c09633d3b501b23cad81fe12289797eae767a889ad0238ed7c13",
     ".software-factory/rules/the-agent-port-only-asks.yaml": "f3d5fc64224fb3e0790743b12bf430f8bd9c52463a3b172a59095ea66798210e",
+    ".software-factory/rules/the-contract-documents-itself.yaml": "5a53abf28e226c61efc232babbee51a4ef191d68ea85b99ddb6dda71f15c4a2a",
+    ".software-factory/rules/the-contract-only-breaks-on-purpose.yaml": "43ceb0ca7075e7260c498b1adfd2aa06c178def558fa4e194b7072df7157d379",
     ".software-factory/rules/the-core-names-no-vendor.yaml": "9b26d6936f09403fa5cfa965157bf792e546054db5a174b69a737a8cd39cb6c7",
     ".software-factory/rules/the-core-words-nothing.yaml": "c54dcc9f8f1c572849ad02cd12c805132b98c517de05be0de6dbfbfc2810460f",
-    ".software-factory/rules/the-host-names-no-roster.yaml": "e164d09695c9d2ec1cbac95c18b6c6b7253611452660f5f1f0c11690f2983bb9"
+    ".software-factory/rules/the-host-names-no-roster.yaml": "e164d09695c9d2ec1cbac95c18b6c6b7253611452660f5f1f0c11690f2983bb9",
+    ".software-factory/rules/the-services-keep-no-database.yaml": "3ca4f3cefa89f67c4cb54977e4f77f58e95da3c3fbd45d984cf429e2b451661d",
+    ".software-factory/rules/the-services-keep-their-domains.yaml": "00055584efb5f05b8159b3587acb1453ad646dc539a96c4e61fda7d5568ac40c"
   }
 }

@@ -10,9 +10,10 @@ interface HermesUsageDocument {
 }
 
 /**
- * The undocumented Ollama Cloud response uses fractions, not percentages.
- * This client is deliberately injected: this plugin has a command port but no
- * HTTP credential transport, and must not guess at an API key or shell it out.
+ * A client that answers with Ollama Cloud's usage document, either the
+ * balance response or the legacy fractions. Injected only by tests; a mounted
+ * reader asks the balance endpoint with `OLLAMA_API_KEY` through the
+ * command runner, the key on stdin rather than argv.
  */
 export interface OllamaCloudUsageClient {
   readUsage(): Promise<unknown>;
@@ -111,11 +112,10 @@ export function parseHermesUsage(json: string): UsageResult {
 export function parseOllamaCloudUsage(value: unknown): UsageResult {
   const document = typeof value === "string" ? parseDocument(value) : value;
   const included = objectAt(document, "included");
-  if (included) {
-    const windows = balanceWindows(included);
-    return windows.length > 0 ? { windows } : unavailable("Ollama Cloud usage returned no measured windows");
-  }
-  const windows = legacyWindows(document);
+  const balance = included ? balanceWindows(included) : [];
+  if (balance.length > 0) return { windows: balance };
+  // No balance and allowance to measure against: whatever is left is the legacy fractions, wherever they sit.
+  const windows = included ? legacyWindows({ limits: included }) : legacyWindows(document);
   return windows.length > 0 ? { windows, unofficial: true } : unavailable("Ollama Cloud usage returned no measured windows");
 }
 
@@ -131,7 +131,7 @@ function parseDocument(value: string): unknown {
 function balanceWindows(included: Record<string, unknown>): { label: string; usedPercent: number; startsAt?: string; resetsAt?: string }[] {
   const balance = number(included.balance_usd);
   const allowance = number(included.allowance_usd);
-  if (balance === undefined || allowance === undefined || allowance <= 0) return legacyWindows({ limits: included });
+  if (balance === undefined || allowance === undefined || allowance <= 0) return [];
   const period = objectAt(included, "period");
   const startsAt = iso(period?.from);
   const resetsAt = iso(period?.until);

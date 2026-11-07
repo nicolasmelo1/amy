@@ -1,0 +1,26 @@
+id: L0.THE_SERVICES_KEEP_NO_DATABASE
+layer: L0
+title: The services keep no database
+severity: high
+statement: >-
+  Nothing under packages/services imports a database driver or an ORM; nothing
+  under packages/services/src touches the filesystem outside a repository; no
+  domain names a file adapter; and a repository awaits every call it makes on
+  a port.
+why: >-
+  What a port persists is the truth, files by default. A driver beside it is a
+  second copy of the state that shows an untrue window the first time the two
+  disagree; a service reading a file directly skips the port another machine's
+  adapter would answer through; and a repository that does not await a
+  synchronous port today breaks the day that port answers over a network.
+fix: >-
+  Run `npx tsx packages/services/gates/keep-no-database.ts` from the
+  repository root. Read and write state only through the port a repository is
+  handed, name its interface rather than its file adapter, and await every
+  port call. State kept somewhere else is a plugin behind the same port. See
+  docs/design/amy-speaks-in-domains.md.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/packages/services/gates/keep-no-database.ts"'

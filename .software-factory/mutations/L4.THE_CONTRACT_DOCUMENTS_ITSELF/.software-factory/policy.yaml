@@ -1,0 +1,11 @@
+# Mutation fixture for L4.THE_CONTRACT_DOCUMENTS_ITSELF. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L4.THE_CONTRACT_DOCUMENTS_ITSELF
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L4.THE_CONTRACT_DOCUMENTS_ITSELF:
+    enabled: true

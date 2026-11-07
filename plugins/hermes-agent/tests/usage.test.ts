@@ -101,6 +101,13 @@ describe("Ollama Cloud account usage", () => {
     });
   });
 
+  it("keeps legacy fractions nested under included unofficial", () => {
+    expect(parseOllamaCloudUsage({ included: { session: { usage: 0.03 } } })).toEqual({
+      windows: [{ label: "Session", usedPercent: 3 }],
+      unofficial: true,
+    });
+  });
+
   it("uses an injected client instead of guessing an HTTP credential transport", async () => {
     const client = { readUsage: vi.fn(async () => OLLAMA_USAGE) };
     const runner = new ScriptedRunner();

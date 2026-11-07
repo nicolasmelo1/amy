@@ -177,3 +177,24 @@ export type { Checkouts } from "./checkouts.js";
 export { WORKSPACE_PORT } from "./ports/Workspace.js";
 export type { Workspace } from "./ports/Workspace.js";
 export type { RepoLayout } from "./git.js";
+export { contractDocument, defineContract, defineOperation, fail, invoke, isStream } from "./operation.js";
+export type {
+  CliBinding,
+  Contract,
+  DeclaredError,
+  DeclaredOperation,
+  DocumentInfo,
+  ErrorEnvelope,
+  Failure,
+  HttpBinding,
+  HttpMethod,
+  Invocation,
+  Operation,
+  OperationContext,
+  OperationExample,
+  StreamEvent,
+  StreamItem,
+  StreamOperation,
+  ValueOperation,
+} from "./operation.js";
+export type { InferInput, InferOutput, OperationSchema, StandardIssue, StandardJSONSchemaV1, StandardResult, StandardSchemaV1, StandardTypedV1 } from "./standard-schema.js";

@@ -15,6 +15,41 @@ npx vitest run \
   packages/cli/tests/budget.test.ts \
   packages/cli/tests/status-page.test.ts >/dev/null
 
+# Recorded provider answers go through each plugin's built dist/index.js, in
+# another process: a barrel that forgot an export, or a dist nobody rebuilt,
+# fails here though every unit test above imports src.
+node --input-type=module - "$repo" <<'NODE'
+import { deepStrictEqual } from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const built = (name) => import(pathToFileURL(`${process.argv[2]}/plugins/${name}/dist/index.js`).href);
+const claude = await built("claude");
+const codex = await built("codex");
+const hermes = await built("hermes-agent");
+
+deepStrictEqual(claude.parseClaudeUsage(JSON.stringify({
+  five_hour: { utilization: 42, resets_at: "2026-11-07T15:00:00.000Z" },
+  seven_day: { utilization: 18, resets_at: "2026-11-12T12:00:00.000Z" },
+})), { windows: [
+  { label: "five-hour", usedPercent: 42, resetsAt: "2026-11-07T15:00:00.000Z" },
+  { label: "seven-day", usedPercent: 18, resetsAt: "2026-11-12T12:00:00.000Z" },
+] });
+
+deepStrictEqual(await new codex.CodexUsageReader({ readRateLimits: async () => ({ rateLimits: {
+  primary: { usedPercent: 24, windowDurationMins: 300, resetsAt: 1_800_000_000 },
+  secondary: { usedPercent: 61, windowDurationMins: 10_080, resetsAt: 1_800_604_800 },
+} }) }).read(), { windows: [
+  { label: "five-hour", usedPercent: 24, startsAt: "2027-01-15T03:00:00.000Z", resetsAt: "2027-01-15T08:00:00.000Z" },
+  { label: "weekly", usedPercent: 61, startsAt: "2027-01-15T08:00:00.000Z", resetsAt: "2027-01-22T08:00:00.000Z" },
+] });
+
+deepStrictEqual(hermes.parseHermesUsage(JSON.stringify({ provider: "openai-codex", windows: [
+  { label: "Session", used_percent: 37, resets_at: "2026-11-07T14:00:00.000Z" },
+] })), { windows: [{ label: "Session", usedPercent: 37, resetsAt: "2026-11-07T14:00:00.000Z" }] });
+
+deepStrictEqual(hermes.parseOllamaCloudUsage({ limits: { session: { usage: 0.03 } } }), { windows: [{ label: "Session", usedPercent: 3 }], unofficial: true });
+deepStrictEqual(hermes.parseOllamaCloudUsage({ included: { session: { usage: 0.03 } } }), { windows: [{ label: "Session", usedPercent: 3 }], unofficial: true });
+NODE
+
 # The built CLI must retain a working reader when another one rejects. A page
 # fixture alone cannot prove the command's exception boundary.
 world=$(mktemp -d)
@@ -66,7 +101,7 @@ fs.writeFileSync(report, `${JSON.stringify({
   scenario: "harness-usage",
   status: "passed",
   goal: "A person sees each mounted harness subscription's own account windows beside Amy's ledger, including an unavailable reader without hiding the rest.",
-  artifact: { entry: "built workspace contracts for mounted usage readers, status and budget" },
+  artifact: { entry: "the built Claude, Codex and Hermes plugins and the built CLI, each from its dist/index.js" },
   observed: { assertions_run: assertions.length, assertions_failed: 0 },
   assertions,
 }, null, 2)}\n`);

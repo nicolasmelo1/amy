@@ -1038,6 +1038,10 @@ rules:
         - "packages/ui/frame.yaml"
         - "packages/ui/conformance/golden.json"
         - "packages/ui/conformance/config.yaml"
+        # The contract every door is read from. Written by `npm run build`
+        # from packages/services; a hand edit here is a contract nobody
+        # declared (docs/design/amy-speaks-in-domains.md).
+        - "packages/services/openapi.json"
   # L2 — Every frozen exception carries a future review date
   L2.NO_PERMANENT_EXCEPTION:
     enabled: true
@@ -1085,6 +1089,21 @@ rules:
     enabled: true
   # L4 — A delivered plan keeps no promise it did not prove
   L4.A_DELIVERED_PLAN_KEEPS_NO_PROMISE:
+    enabled: true
+  # L0 — Each domain keeps its layout, and only a repository reaches a port (docs/design/amy-speaks-in-domains.md)
+  L0.THE_SERVICES_KEEP_THEIR_DOMAINS:
+    enabled: true
+  # L0 — The ports are the truth: no driver, no filesystem outside a repository, every port call awaited (docs/design/amy-speaks-in-domains.md)
+  L0.THE_SERVICES_KEEP_NO_DATABASE:
+    enabled: true
+  # L4 — Every operation, property, example and error in the contract is documented (docs/design/amy-speaks-in-domains.md)
+  L4.THE_CONTRACT_DOCUMENTS_ITSELF:
+    enabled: true
+  # L3 — Every declared error is an outcome some test produced (docs/design/amy-speaks-in-domains.md)
+  L3.EVERY_DECLARED_ERROR_IS_TESTED:
+    enabled: true
+  # L2 — The contract breaks only when its major is raised (docs/design/amy-speaks-in-domains.md)
+  L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE:
     enabled: true
   # L1 — A comment block stays under the line ceiling
   L1.COMMENT_STAYS_SUCCINCT:

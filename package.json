@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && tsx packages/services/scripts/openapi.ts",
     "clean": "tsc --build --clean",
     "dev": "npm run --workspace @amykit/cli dev",
     "test": "vitest run",
@@ -45,8 +45,11 @@
   "devDependencies": {
     "@changesets/cli": "^3.0.2",
     "@eslint/js": "^10.0.1",
+    "@hyperjump/browser": "^1.6.0",
+    "@hyperjump/json-schema": "^1.18.0",
     "@types/node": "^24.0.10",
     "@vitest/coverage-v8": "^4.1.11",
+    "arktype": "^2.2.9",
     "eslint": "^10.9.1",
     "eslint-plugin-security": "^4.0.1",
     "fast-check": "^4.10.2",
@@ -56,7 +59,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.69.0",
     "vitest": "4.1.11",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.1",
+    "zod": "^4.6.7"
   },
   "workspaces": [
     "packages/*",
@@ -66,7 +70,9 @@
     "ignore": [
       ".software-factory/**",
       "packages/cli/guardrails/mutations/**",
-      "scripts/write-install-manifest.ts"
+      "scripts/write-install-manifest.ts",
+      "packages/services/gates/**",
+      "packages/services/tests/example/generate.ts"
     ],
     "ignoreBinaries": [
       "sf",
