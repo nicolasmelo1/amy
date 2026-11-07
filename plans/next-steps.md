@@ -383,6 +383,7 @@ through the writer it adds.
 | 50 | [A decision model runs on this machine](a-decision-model-runs-on-this-machine.md) | With the network off, "why do you think that?" in the work thread is read as a discussion and "go with option B" as a decision, by a model on the machine, and the record says which model and how sure |
 | 51 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) | A decider whose threshold was never measured only records what it would have said; after `amy decide measure` it decides, and new weights put it back in shadow |
 | 52 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) | The same question is answered by a local model, Clef on Workers AI and OpenAI's Decisions API by changing only `config.yaml`, all pass one conformance suite, and a question declared `local` is refused a hosted rung at boot by name |
+| 53 | [An edge is named for an outcome](an-edge-is-named-for-an-outcome.md) | A state that only runs one action and goes where its result says is drawn, not written: its edges are named for the action's outcomes and checked at mount, and no workflow writes a decision for a state where its work ends |
 
 **Delivered:** *A run carries only what amy hands it* now lives at `docs/design/a-run-carries-only-what-amy-hands-it.md`, where Claude, Codex and Hermes each run apart from the operator's own setup, a Claude step is lent only the skill it names, and `amy init` creates the Hermes profile amy runs in.
 
