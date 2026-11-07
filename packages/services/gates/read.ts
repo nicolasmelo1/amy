@@ -116,20 +116,31 @@ export function partOf(absolute: string): string | undefined {
 }
 
 /**
- * Every name the core's ports export: what a repository wraps and nothing
- * else in a domain may name. Read from the repository the gate lives in, so a
- * fixture is judged against today's ports.
+ * Every port the core declares: an exported interface or class under
+ * packages/core/src/ports with something to call. Read from the repository
+ * the gate lives in, so a fixture is judged against today's ports. A plain
+ * value beside a port — a view, a result — is data, and any file may name it.
  */
 export function portNames(): Set<string> {
   const names = new Set<string>();
   for (const source of sourcesUnder(path.join(repository, "packages/core/src/ports"))) {
     for (const statement of source.ast.statements) {
       const exported = ts.canHaveModifiers(statement) && ts.getModifiers(statement)?.some((one) => one.kind === ts.SyntaxKind.ExportKeyword);
-      const named = ts.isInterfaceDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isTypeAliasDeclaration(statement);
-      if (exported && named && statement.name) names.add(statement.name.text);
+      if (exported && (ts.isInterfaceDeclaration(statement) || ts.isClassDeclaration(statement)) && statement.name && hasSomethingToCall(statement)) {
+        names.add(statement.name.text);
+      }
     }
   }
   return names;
+}
+
+function hasSomethingToCall(declaration: ts.InterfaceDeclaration | ts.ClassDeclaration): boolean {
+  return (declaration.members as ts.NodeArray<ts.Node>).some(
+    (member) =>
+      ts.isMethodSignature(member) ||
+      ts.isMethodDeclaration(member) ||
+      ((ts.isPropertySignature(member) || ts.isPropertyDeclaration(member)) && member.type !== undefined && ts.isFunctionTypeNode(member.type)),
+  );
 }
 
 /** How a file binds the core's ports: local names for each port, and namespaces over the core. */

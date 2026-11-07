@@ -43,6 +43,7 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     expect(said).toContain("names a file adapter (`@amykit/plugin-file-store`)");
     expect(said).toContain("calls `this.store.load` without awaiting it");
     expect(said).toContain("aliased.ts:8 calls `this.held.save` without awaiting it");
+    expect(said).toContain("aliased.ts:13 calls `local.save` without awaiting it");
   });
 
   it("refuses an operation and a property without a description, naming both", () => {
@@ -135,5 +136,28 @@ describe("the services' gates", { timeout: 60_000 }, () => {
     const { status, said } = gate("documents-itself", tree);
     expect(status).toBe(1);
     expect(said).toContain("output.$defs.Node property `name` has no description");
+  });
+
+  it("lets a service name a plain value the ports declare, which is data rather than a port", () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-view-"));
+    made.push(tree);
+    fs.cpSync(path.join(example, "packages"), path.join(tree, "packages"), { recursive: true });
+    const service = path.join(tree, "packages/services/src/domains/notes/services/read-note.ts");
+    fs.writeFileSync(service, `import type { BriefView } from "@amykit/core";\n${fs.readFileSync(service, "utf8")}\nexport type Shown = BriefView;\n`);
+    expect(gate("keep-their-domains", tree)).toMatchObject({ status: 0 });
+  });
+
+  it("refuses an undescribed property inside a tuple's prefixItems", () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-tuple-"));
+    made.push(tree);
+    fs.cpSync(path.join(example, "packages"), path.join(tree, "packages"), { recursive: true });
+    const file = path.join(tree, "packages/services/openapi.json");
+    const document = JSON.parse(fs.readFileSync(file, "utf8")) as { paths: Record<string, Record<string, any>> };
+    const answer = document.paths["/notes/{id}"]?.get?.responses["200"].content["application/json"].schema;
+    answer.properties.pair = { type: "array", description: "a pair", prefixItems: [{ type: "object", properties: { left: { type: "string" } } }] };
+    fs.writeFileSync(file, JSON.stringify(document));
+    const { status, said } = gate("documents-itself", tree);
+    expect(status).toBe(1);
+    expect(said).toContain("output.pair property `left` has no description");
   });
 });

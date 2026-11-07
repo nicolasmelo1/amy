@@ -48,12 +48,12 @@ function checkAwaits(source: Source): void {
   visit(source.ast);
 }
 
-/** The names of parameters and properties whose declared type is a port, however the port was imported. */
+/** The names of parameters, properties and variables whose declared type is a port, however the port was imported. */
 function portHolders(source: Source): Set<string> {
   const bindings = portBindings(source, ports);
   const names = new Set<string>();
   const visit = (node: ts.Node): void => {
-    if ((ts.isParameter(node) || ts.isPropertyDeclaration(node)) && node.type && ts.isIdentifier(node.name)) {
+    if ((ts.isParameter(node) || ts.isPropertyDeclaration(node) || ts.isVariableDeclaration(node)) && node.type && ts.isIdentifier(node.name)) {
       if (ts.isTypeReferenceNode(node.type) && portNamedBy(node.type.typeName, bindings, ports) !== undefined) names.add(node.name.text);
     }
     ts.forEachChild(node, visit);
