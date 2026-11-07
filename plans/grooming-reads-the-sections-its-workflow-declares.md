@@ -1,5 +1,5 @@
 ---
-base: ccd67f60c665bea1586ff5e978f9adfa60494048
+base: 260559f86e8beabedb31043fcd5dcfeefc6601eb
 sources:
   - { id: S1, kind: reference, ref: "docs/design/a-project-is-three-phases.md", said: "gave a project a brief/ phase; the brief port keeps the sections the workflow declared, in order (BriefRecord.sections, packages/core/src/ports/Brief.ts); amy brief <id> shows one" }
   - { id: S2, kind: friction, said: "nothing checks a brief: readiness — required sections present, every criterion naming its proof — is judged in each workflow's code, with no command to ask it" }
@@ -13,6 +13,7 @@ sources:
   - { id: S10, kind: decision, said: "in a project every phase may declare sections: prove/ declares its scenario. amy-groom asks the brief's own sections, then each later phase's in walk order, and amy brief check runs every phase's check. Decided 2026-11-06" }
   - { id: S11, kind: decision, said: "a brief check is handed the name and input schema of every operation the mounted plugins offer, so a section can be refused for naming one nothing offers. Decided 2026-11-06" }
   - { id: S12, kind: reference, ref: "plans/a-phase-is-proven-not-asserted.md", said: "the scenario is a section of the brief settled while grooming, and the brief check refuses a step naming an operation no mounted plugin offers" }
+  - { id: S14, kind: decision, said: "after a section, grooming moves on when every refusal left names a section it has not asked yet, and stops only when the whole check is green, every phase's included. Decided 2026-11-06" }
   - { id: S13, kind: reference, ref: "plans/a-plugin-brings-operations-not-commands.md", said: "a plugin declares operations with typed input and output, read before anything mounts" }
 touches:
   - packages/core/src/define-workflow.ts
@@ -29,7 +30,7 @@ criteria:
   - { id: A3, statement: "amy-groom names the sections it will ask about from the workflow's declaration, not from a list of its own", proof: "unspecified:a skill's behaviour is checked by a transcript run, and the harness for that is not designed", sources: [S7] }
   - { id: A4, statement: "a brief groomed through the skill is stored through the brief port and amy brief check is green on it", proof: "deferred:scenario through the installed executable, the skill driven by a recorded transcript", sources: [S8, S9] }
   - { id: A5, statement: "the shipped skill names no tracker, no team and no private workflow", proof: "deferred:test reading the skill's text", sources: [S3] }
-  - { id: A6, statement: "in a project whose prove/ declares a scenario section, amy brief check refuses a brief without it naming prove/ and the section, and amy-groom asks for it after the brief's own sections", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S10, S12] }
+  - { id: A6, statement: "when prove/ declares a scenario section, amy brief check refuses a brief without it, naming prove/; amy-groom moves past the brief's sections while that is the only refusal, asks it, and stops green once answered", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S8, S10, S12, S14] }
   - { id: A7, statement: "a phase's check sees every mounted operation's name and input schema, and refuses a section naming one no plugin offers", proof: "deferred:test:packages/cli/tests/brief-check.test.ts", sources: [S11, S13] }
 crosses:
   - { mechanism: calls, answer: n/a, why: "defineWorkflow gains an optional brief member; how one workflow calls another is unchanged" }
