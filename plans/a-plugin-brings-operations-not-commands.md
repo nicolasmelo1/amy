@@ -1,4 +1,5 @@
 ---
+base: ccd67f60c665bea1586ff5e978f9adfa60494048
 sources:
   - { id: S1, kind: code, ref: "packages/core/src/commands.ts", said: "a PluginCommand takes args as strings and answers through out.line: it speaks to a terminal, with no typed input or output any other door could read" }
   - { id: S2, kind: decision, said: "a plugin declares operations, not commands: adding or removing a plugin adds or removes its route, its command and its SDK method at once. Decided 2026-11-04" }
@@ -16,11 +17,15 @@ sources:
   - { id: S14, kind: decision, said: "amy btw (errand), amy note (note-to-plan), amy roster (ticket-to-qa), amy worktrees (file-worktree) and amy models (agent-relay) become operations in this row, keeping their words" }
   - { id: S16, kind: reference, ref: "plans/amy-speaks-in-domains.md", said: "no door is written by hand, and a plugin changes the contract: its operations reach every door when installed and leave every door when removed" }
   - { id: S15, kind: decision, said: "amy contract prints the install's whole contract, services and mounted plugins, as an OpenAPI document; amy contract --check refuses one that does not build" }
+  - { id: S17, kind: decision, said: "a workflow is one more door: an action calls a mounted plugin's operation by id with input its schema validates, and gets the output or the declared error, as the command line does. Decided 2026-11-06" }
+  - { id: S18, kind: reference, ref: "plans/a-phase-is-proven-not-asserted.md", said: "each step of a scenario calls an operation by name with its input; a driver is reached only through the operations it offers" }
 touches:
   - packages/core/src/commands.ts
   - packages/core/src/plugin.ts
   - packages/core/src/define-workflow.ts
   - packages/core/src/index.ts
+  - packages/core/src/action-ports.ts
+  - packages/core/tests/action-ports.test.ts
   - packages/cli/src/index.ts
   - packages/cli/src/plugin-commands.ts
   - packages/cli/src/operations/**
@@ -44,8 +49,9 @@ criteria:
   - { id: A7, statement: "two plugins claiming one operation id or one cli word are refused at load, naming both packages", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S12] }
   - { id: A8, statement: "a plugin operation that does not declare localOnly: false is local-only in amy contract", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S13] }
   - { id: A9, statement: "amy btw, note, roster, worktrees and models keep their words and their gate assertions, now as operations", proof: "deferred:assertion:lifecycle.a_workflow_command_is_its_own", sources: [S14] }
+  - { id: A10, statement: "an action calls another plugin's operation by id and receives its output; input the schema refuses, or an id no mounted plugin offers, is the declared error naming the id", proof: "deferred:test:packages/core/tests/action-ports.test.ts", sources: [S17, S18] }
 crosses:
-  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A3" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A3, A10" }
   - { mechanism: install-and-update, answer: works, proof: "deferred:A1" }
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:A9" }
   - { mechanism: calls, answer: n/a, why: "defineWorkflow gains operations beside its actions; how an action is called is unchanged" }
@@ -55,6 +61,7 @@ crosses:
   - { mechanism: config, answer: n/a, why: "an operation receives its plugin's settings slice exactly as a command did; the schema language is unchanged" }
 guarantee:
   - { holds: "a command, a route and an SDK method a plugin brings are one declaration, appearing and disappearing together", not_against: "a plugin a person removes by hand from ~/.amy/plugins without amy remove" }
+  - { holds: "an action reaches only the operations of plugins its profile mounts", not_against: "an operation writing to a service its own plugin reaches: a workflow's write claims cover the tracker and the code host, not every operation" }
 cut:
   - "keeping PluginCommand beside operations: refused, two ways to declare one thing is the drift this removes (S3)"
   - "an operation drawing its own terminal output: refused (S10)"
