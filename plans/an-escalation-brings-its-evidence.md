@@ -31,6 +31,7 @@ sources:
   - { id: S28, kind: decision, said: "each run keeps its trace: its turns, the assistant's messages, and every tool call with its arguments, result and timing, read from what the harness streams. Decided 2026-11-06" }
   - { id: S29, kind: code, ref: "packages/cli/src/paths.ts", said: "packaged profiles keep records and queue under <profile>/ and share daemon.pid and log at Amy home; a project keeps records, queue and log under projects/<hash>/<profile>/, its pid under profiles/<profile>/; auto-update sits under workflows/<profile>/" }
   - { id: S30, kind: decision, said: "a profile's state lives in one directory, workflows/<profile>/: records, queue, pid, log, auto-update, and the shared artifacts when it is a project; projects/<hash>/ and profiles/ go. Decided 2026-11-06" }
+  - { id: S31, kind: decision, said: "one directory per profile for everything it owns, its own daemon, pid and log included; what is the machine's (the Slack thread map, plugins, config, leases) stays at Amy home. Decided 2026-11-07" }
 touches:
   - packages/core/src/define-workflow.ts
   - packages/core/src/work.ts
@@ -58,6 +59,8 @@ touches:
   - packages/cli/src/update.ts
   - packages/cli/tests/update.test.ts
   - packages/cli/tests/state-move.property.test.ts
+  - packages/cli/src/daemon.ts
+  - packages/cli/tests/paths.test.ts
 criteria:
   - { id: A1, statement: "an advance that carries evidence stores it on the history entry it appends, and a second escalation of the same work shows only its own", proof: "deferred:property:packages/core/tests/history.property.test.ts#first_evidence_never_overwritten", sources: [S4, S8, S9] }
   - { id: A2, statement: "ticket-to-qa's red-gate, unconverged-review and unsettled-thread escalations carry the output that tripped them, and their announcement quotes it and names amy show", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S2, S3, S10, S11] }
@@ -71,8 +74,9 @@ criteria:
   - { id: A10, statement: "amy show prints each run's turn and tool-call counts beside its model and cost, and amy show <id> --run <runId> prints that run's trace turn by turn", proof: "deferred:test:packages/cli/tests/show.test.ts", sources: [S24, S25, S28] }
   - { id: A11, statement: "every file of one profile lives under workflows/<profile>/, and amy update moves an install's records, queue, pid, log and artifacts there from where S29 finds them, naming each move", proof: "deferred:test:packages/cli/tests/update.test.ts", sources: [S6, S29, S30] }
   - { id: A12, statement: "for any layout an older install left, a second amy update after the move moves nothing and changes no file", proof: "deferred:property:packages/cli/tests/state-move.property.test.ts#move_again", sources: [S29, S30] }
+  - { id: A13, statement: "after the move each packaged profile runs its own daemon with its pid and log in its directory, and the Slack thread map, plugins and config stay at Amy home, read by every profile", proof: "deferred:test:packages/cli/tests/paths.test.ts", sources: [S29, S31] }
 crosses:
-  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A11, A12; each profile keeps its own state, now under one directory" }
+  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A11, A12, A13; each profile keeps its own state, daemon included, under one directory" }
   - { mechanism: install-and-update, answer: works, proof: "deferred:A11, A12" }
   - { mechanism: record-migration, answer: works, proof: "deferred:A1; evidence is optional on an advance, so an older history entry without it still reads" }
   - { mechanism: calls, answer: n/a, why: "advance only gains an optional evidence list; nothing about one workflow calling another changes" }
