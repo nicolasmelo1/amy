@@ -147,6 +147,14 @@ describe("a plugin's operations, check and file", () => {
     expect(twice.problems.join("\n")).toContain("@acme/plugin-demo declares the operation `demo.same` twice");
   });
 
+  it("refuses a profile's fork declaring an id twice, even when the first profile declares it once", async () => {
+    const forked = demo({ operations: [greet, otherOperation("demo.greet", ["demo-again"])] });
+    const other: Profile = { ...WORK, name: "forked" };
+    const config = { ...CONFIG, workflows: { ...CONFIG.workflows, forked: { workflow: WORK.workflow, plugins: ["@acme/plugin-demo"] } } };
+    const gathered = await gather(config, [WORK, other], async (specs, profile) => loading(profile === "forked" ? forked : demo())(specs));
+    expect(gathered.problems.join("\n")).toContain("@acme/plugin-demo declares the operation `demo.greet` twice");
+  });
+
   it("keeps a plugin's operation local-only in amy contract unless it says otherwise", async () => {
     const gathered = await gather(CONFIG, [WORK], loading(demo({
       operations: [greet, otherOperation("demo.open", ["demo-open"], { localOnly: false })],

@@ -146,6 +146,16 @@ describe("an operation's input, from argv", () => {
     expect(await echoing(schema, ["--enabled"])).toEqual({ enabled: true });
     expect(await echoing(schema, ["--no-enabled"])).toEqual({ enabled: false });
   });
+
+  it("registers and runs an operation whose array items refer to themselves, without looping", async () => {
+    const tree = {
+      type: "object",
+      properties: { nodes: { type: "array", items: { $ref: "#/$defs/node" }, description: "nodes" } },
+      $defs: { node: { type: "array", items: { $ref: "#/$defs/node" } } },
+    };
+    const answered = (await echoing(tree, ["--nodes", "a"])) as { nodes: unknown[] };
+    expect(Array.isArray(answered.nodes)).toBe(true);
+  });
 });
 
 /** Runs an operation that answers its input, declared over a hand-written input schema. */

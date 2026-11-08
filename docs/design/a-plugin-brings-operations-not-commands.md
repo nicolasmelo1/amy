@@ -62,6 +62,7 @@ crosses:
 guarantee:
   - { holds: "a command, a route and an SDK method a plugin brings are one declaration, appearing and disappearing together", not_against: "a plugin a person removes by hand from ~/.amy/plugins without amy remove" }
   - { holds: "an action reaches only the operations of plugins its profile mounts", not_against: "an operation writing to a service its own plugin reaches: a workflow's write claims cover the tracker and the code host, not every operation" }
+  - { holds: "an operation an action calls runs with its own plugin's settings and scope", not_against: "a call binding that rebinds a port: the operation sees the ports of the call it was invoked from" }
 cut:
   - "keeping PluginCommand beside operations: refused, two ways to declare one thing is the drift this removes (S3)"
   - "an operation drawing its own terminal output: refused (S10)"

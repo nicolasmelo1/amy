@@ -38,10 +38,15 @@ function fieldsOf(operation: Operation): Field[] {
  * its array items' too: a field lifted out of the root no longer carries the
  * `$defs` a `#/$defs/...` item points at.
  */
-function inlined(schema: Json, root: Json): Json {
+function inlined(schema: Json, root: Json, followed: ReadonlySet<string> = new Set()): Json {
+  // A reference already followed on this path is a recursive schema: it is
+  // left as it is rather than followed again, so registering the command
+  // never loops, and a value under it passes as typed for the schema to judge.
+  const ref = typeof schema.$ref === "string" ? schema.$ref : undefined;
+  if (ref && followed.has(ref)) return {};
   const own = resolved(schema, root) ?? schema;
   if (!own.items || typeof own.items !== "object") return own;
-  return { ...own, items: inlined(own.items as Json, root) };
+  return { ...own, items: inlined(own.items as Json, root, ref ? new Set([...followed, ref]) : followed) };
 }
 
 /** What the help says beside a field: its description, its values, its default. */

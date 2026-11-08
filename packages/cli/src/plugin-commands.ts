@@ -100,7 +100,27 @@ export async function gather(
     }
   }
   const all = [...contributions.values()].map((contribution) => ({ ...contribution, byProfile: byProfile.get(contribution.owner) }));
-  return { contributions: all, problems: [...retired(all), ...conflicts(all)] };
+  return { contributions: all, problems: [...retired(all), ...declaredTwice(all), ...conflicts(all)] };
+}
+
+/**
+ * An id one implementation declares twice, read from each profile's own
+ * declarations before they are merged: the merge keeps one operation per id,
+ * so a fork declaring an id twice would otherwise pass unseen and run its
+ * first handler under the second's words.
+ */
+function declaredTwice(contributions: readonly Contribution[]): string[] {
+  const problems = new Set<string>();
+  for (const contribution of contributions) {
+    for (const own of [contribution, ...(contribution.byProfile?.values() ?? [])]) {
+      const seen = new Set<string>();
+      for (const operation of own.operations) {
+        if (seen.has(operation.id)) problems.add(`${contribution.owner} declares the operation \`${operation.id}\` twice; an id is one operation`);
+        seen.add(operation.id);
+      }
+    }
+  }
+  return [...problems];
 }
 
 /**
@@ -154,12 +174,7 @@ function conflicts(contributions: readonly Contribution[]): string[] {
   const problems: string[] = [];
 
   for (const contribution of contributions) {
-    const own = new Set<string>();
     for (const operation of contribution.operations) {
-      // One package declaring an id twice would run the first handler under
-      // the second's words.
-      if (own.has(operation.id)) problems.push(`${contribution.owner} declares the operation \`${operation.id}\` twice; an id is one operation`);
-      own.add(operation.id);
       const heldId = ids.get(operation.id);
       if (heldId && heldId !== contribution.owner) {
         problems.push(`the operation \`${operation.id}\` is declared by both ${heldId} and ${contribution.owner}; an id is owned once`);
