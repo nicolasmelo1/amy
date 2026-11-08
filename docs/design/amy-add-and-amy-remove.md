@@ -65,6 +65,9 @@ work, then removes it and drives nothing.
       (proof: assertion:add.a_path_becomes_a_workflow_that_runs)
 - [x] A machine-wide plugin can be added and removed before any workflow exists
       (proof: assertion:add.a_plugin_can_be_added_before_any_workflow)
+- [x] Adding a plugin installs none of a workflow's plugins: they arrive only
+      when the workflow's add asks for them
+      (proof: assertion:add.a_plugin_add_installs_no_unrelated_plugin)
 - [x] The same workflow added from a tarball URL is the same install
       (proof: test:packages/cli/tests/add.test.ts)
 - [x] Whether it was a workflow or a plugin is decided by mounting it

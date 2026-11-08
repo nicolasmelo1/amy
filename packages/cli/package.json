@@ -40,6 +40,7 @@
     "guardrails"
   ],
   "dependencies": {
+    "@amykit/agent-kit": "^0.6.0",
     "@amykit/core": "^0.6.0",
     "@amykit/plugin-file-log": "^0.6.0",
     "@amykit/plugin-file-notes": "^0.6.0",

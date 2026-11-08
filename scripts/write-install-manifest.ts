@@ -11,6 +11,7 @@
 // yet. An override is the one thing npm applies to a transitive resolution.
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const [tarballs, into, ...wanted] = process.argv.slice(2);
 
@@ -29,7 +30,8 @@ for (const file of fs.readdirSync(tarballs)) {
   packed.set(name, path.resolve(tarballs, file));
 }
 
-const install = wanted.length > 0 ? wanted : [...packed.keys()];
+const requested = wanted.length > 0 ? wanted : [...packed.keys()];
+const install = closureOf(requested, packed);
 const missing = install.filter((name) => !packed.has(name));
 
 if (missing.length > 0) {
@@ -54,6 +56,26 @@ const amyUpdateRanges = Object.fromEntries(
 const overrides = Object.fromEntries(
   [...packed].filter(([name]) => name !== "@amykit/cli").map(([name, file]) => [name, `file:${file}`]),
 );
+
+/** Includes only the packed @amykit dependencies the selected packages need. */
+function closureOf(requested: readonly string[], packages: ReadonlyMap<string, string>): string[] {
+  const seen = new Set<string>();
+  const pending = [...requested];
+  while (pending.length > 0) {
+    const name = pending.shift()!;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const tarball = packages.get(name);
+    if (!tarball) continue;
+    const manifest = JSON.parse(execFileSync("tar", ["-xOf", tarball, "package/package.json"], { encoding: "utf8" })) as {
+      dependencies?: Record<string, string>;
+    };
+    for (const dependency of Object.keys(manifest.dependencies ?? {})) {
+      if (packages.has(dependency)) pending.push(dependency);
+    }
+  }
+  return [...seen];
+}
 
 fs.mkdirSync(into, { recursive: true });
 fs.writeFileSync(

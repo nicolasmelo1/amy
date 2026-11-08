@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "amy-add-remove",
-  "implementation_sha256": "f96edbafcf04807f27f3a631154bd944ce03a7efd984d68985e97e05a960e4e3",
+  "implementation_sha256": "00e5808dfe851e6332b0f7d1593edb1ef117949772c967b0c261ee7377a8f7b3",
   "runs": [
     {
       "scenario": "amy-add-remove",
       "status": "passed",
       "actor": "Claude (agent), installing the command onto a scratch machine with .software-factory/evidence/amy-add-remove-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/amy-add-remove-run.json",
-      "report_sha256": "ebf83f3d2b8002ee33db92c30c8971b002b113396e6be4bfadde4a9da480c442",
+      "report_sha256": "954d1e93975ae1ef7f68b993a01f3b75ba2be55a3a54f0732c8bcf2afc294bfe",
       "required_assertions": [
         "add.a_path_becomes_a_workflow_that_runs",
         "add.adding_one_plugin_keeps_the_recommendation",

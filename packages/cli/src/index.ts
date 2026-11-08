@@ -7,7 +7,6 @@ import { Command } from "commander";
 // Type-only: the CLI reports what a tick returned and mounts no engine itself.
 import type { TickResult } from "@amykit/plugin-serial-engine";
 import {
-  BUDGET_WINDOWS,
   BriefStore,
   Check,
   CommandRunner,
@@ -34,7 +33,8 @@ import { FileEventLog } from "@amykit/plugin-file-log";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
 import { renderText } from "@amykit/ui";
-import { statusView, type StatusRecord, type StatusSnapshot } from "./status-page.js";
+import { USAGE_COLLECTION, type UsageReader, type UsageResult } from "@amykit/agent-kit";
+import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
 import {
   AmyConfig,
   EXAMPLE_CONFIG,
@@ -48,7 +48,7 @@ import {
   writeProfilePlugins,
   writeWorkflowProfile,
 } from "./config.js";
-import { budgetLines } from "./budget.js";
+import { budgetReport } from "./budget.js";
 import { loadEnv } from "./env.js";
 import { diagnose } from "./doctor.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
@@ -144,11 +144,21 @@ async function assemble(profile: Profile): Promise<Assembled> {
   const config = loadConfig(home);
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) return prepared;
+  return assembleLoaded(profile, config);
+}
+
+/** Mounts a profile for a read-only inspection without preparing edited forks. */
+async function assembleForInspection(profile: Profile): Promise<Assembled> {
+  return assembleLoaded(profile, loadConfig(home), true);
+}
+
+function assembleLoaded(profile: Profile, config: AmyConfig, readOnly = false): Promise<Assembled> {
   return assembleProfile(home, config, profile, {
     runner,
     load: (specs) => loadMountable(specs, profile.name),
-    log: (file) => new FileEventLog(file, undefined, build),
+    log: (file) => new FileEventLog(file, undefined, build, !readOnly),
     host: [],
+    readOnly,
   });
 }
 
@@ -1027,18 +1037,18 @@ program
   .action(async (options: { json?: boolean; all?: boolean }) => {
     const profile = selected();
     const place = profilePaths(home, profile);
-    const queue = new FileQueue(place.queue);
-    const now = new Date();
+    const queue = new FileQueue(place.queue, "id", false);
 
-    // Assembled only to ask the workflow which of its states are waiting
+    // Mounted only to ask the workflow which of its states are waiting
     // ones. A mount that will not come up is exactly when somebody wants to
     // look, so the records are still reported, without that column.
-    const assembled = await assemble(profile);
+    const assembled = await assembleForInspection(profile);
+    const { usage, now } = await usageThenNow(() => subscriptionUsage(assembled));
     const workflow = assembled.ok ? assembled.mounted.workflow : undefined;
     const waiting = workflow?.waitingStates;
     const terminal = workflow?.terminalStates;
 
-    const records = new FileStore<AnyRecord>(place.records)
+    const records = new FileStore<AnyRecord>(place.records, false)
       .all()
       .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -1097,9 +1107,29 @@ program
         paused: held,
         notes,
         needsInput: asked,
+        usage,
       };
     }
   });
+
+/** Readers run only for inspection; one unavailable subscription leaves the others visible. */
+async function subscriptionUsage(assembled: Assembled): Promise<readonly SubscriptionUsage[]> {
+  if (!assembled.ok) return [];
+  const readers = [...(assembled.mounted.contributions.get(USAGE_COLLECTION)?.values() ?? [])] as UsageReader[];
+  return await Promise.all(readers.map(async (reader) => ({
+    subscription: reader.label,
+    result: await readUsage(reader),
+  })));
+}
+
+/** A reader's exception is a visible unavailable answer, never a failed status. */
+async function readUsage(reader: UsageReader): Promise<UsageResult> {
+  try {
+    return await reader.read();
+  } catch {
+    return { unavailable: `${reader.label} usage is unavailable` };
+  }
+}
 
 /** Where a record stands through the calls it is in, for a workflow that would mount. */
 function standingThroughCalls(workflow: Workflow | undefined, record: WorkRecord): Pick<StatusRecord, "calls" | "attention" | "waitingInACall" | "lanes"> {
@@ -1121,7 +1151,7 @@ function countIn(directory: string): number {
 program
   .command("budget")
   .description("What the agents have spent, and how close that is to the ceiling")
-  .action(() => {
+  .action(async () => {
     const parsed = parseBudget(configuredBudget());
     if (!parsed.ok) {
       for (const problem of parsed.problems) console.error(problem);
@@ -1129,16 +1159,15 @@ program
       return;
     }
 
-    const log = new FileEventLog(profilePaths(home, selected()).log, undefined, build);
-    const now = new Date();
-
-    // Read once, over the longest window any ceiling could be set on, rather
-    // than once per window: two reads of a growing file can disagree, and a
-    // report whose windows disagree is worse than a slower one.
-    const longest = Math.max(...BUDGET_WINDOWS.map((window) => window.ms));
-    const events = log.read(new Date(now.getTime() - longest));
-
-    for (const line of budgetLines(events, parsed.limits, now)) console.log(line);
+    const profile = selected();
+    const log = new FileEventLog(profilePaths(home, profile).log, undefined, build, false);
+    const lines = await budgetReport({
+      limits: parsed.limits,
+      usage: async () => await subscriptionUsage(await assembleForInspection(profile)),
+      events: (since) => log.read(since),
+      clock: () => new Date(),
+    });
+    for (const line of lines) console.log(line);
   });
 
 /**

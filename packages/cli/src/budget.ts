@@ -1,3 +1,4 @@
+import { usageThenNow, type SubscriptionUsage } from "./status-page.js";
 import {
   BUDGET_WINDOWS,
   BudgetLimits,
@@ -7,6 +8,26 @@ import {
   ceilingFor,
   spendSince,
 } from "@amykit/core";
+
+/**
+ * `amy budget`'s report: the provider windows first, then the ledger read at
+ * the moment they have answered. An account request can take seconds, and a
+ * clock read before it would keep counting a run that left a window during
+ * the wait.
+ */
+export async function budgetReport(input: {
+  readonly limits: BudgetLimits;
+  readonly usage: () => Promise<readonly SubscriptionUsage[]>;
+  readonly events: (since: Date) => readonly Event[];
+  readonly clock: () => Date;
+}): Promise<string[]> {
+  const { usage, now } = await usageThenNow(input.usage, input.clock);
+  // Read once, over the longest window any ceiling could be set on, rather
+  // than once per window: two reads of a growing file can disagree, and a
+  // report whose windows disagree is worse than a slower one.
+  const longest = Math.max(...BUDGET_WINDOWS.map((window) => window.ms));
+  return budgetLines(input.events(new Date(now.getTime() - longest)), input.limits, now, usage);
+}
 
 /**
  * What `amy budget` prints, as lines, so the arithmetic is testable.
@@ -19,6 +40,7 @@ export function budgetLines(
   events: readonly Event[],
   limits: BudgetLimits,
   now: Date,
+  usage: readonly SubscriptionUsage[] = [],
 ): string[] {
   const lines: string[] = [];
 
@@ -49,6 +71,27 @@ export function budgetLines(
           `(room again in ${Math.round(decision.retryAfterMs / 60000)} min)`,
   );
 
+  lines.push(...usageLines(usage));
+  return lines;
+}
+
+/** Provider windows are shown beside, never folded into, Amy's own ledger. */
+function usageLines(usage: readonly SubscriptionUsage[]): string[] {
+  if (usage.length === 0) return [];
+  const lines = ["", "subscription usage:"];
+  for (const { subscription, result } of usage) {
+    if ("unavailable" in result) {
+      lines.push(`${subscription}: unavailable — ${result.unavailable}`);
+      continue;
+    }
+    const marker = result.unofficial ? " unofficial" : "";
+    for (const window of result.windows) {
+      const period = window.startsAt || window.resetsAt
+        ? [window.startsAt ? `starts ${window.startsAt}` : "", window.resetsAt ? `resets ${window.resetsAt}` : ""].filter(Boolean).join(", ")
+        : "period unknown";
+      lines.push(`${subscription}${marker} ${window.label}: ${window.usedPercent}% (${period})`);
+    }
+  }
   return lines;
 }
 

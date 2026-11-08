@@ -35,8 +35,9 @@ export class FileNotes implements Notes {
   constructor(
     private readonly root: string,
     private readonly config: FileNotesConfig,
+    create = true,
   ) {
-    fs.mkdirSync(this.root, { recursive: true });
+    if (create) fs.mkdirSync(this.root, { recursive: true });
   }
 
   write(note: NewNote, now: Date): Note {
@@ -44,6 +45,7 @@ export class FileNotes implements Notes {
   }
 
   all(): Note[] {
+    if (!fs.existsSync(this.root)) return [];
     return fs
       .readdirSync(this.root)
       .filter((name) => name.endsWith(".md"))

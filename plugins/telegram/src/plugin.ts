@@ -39,6 +39,7 @@ export const plugin = definePlugin<typeof configSchema>({
         // One reader of the bot's updates, whichever profile asks.
         // The bot's updates are the bot's, whoever the operator: one reader, routing them by chat.
         shared: path.join(ctx.paths.state, "telegram-bot", bot),
+        readOnly: ctx.readOnly,
       }),
     );
   },

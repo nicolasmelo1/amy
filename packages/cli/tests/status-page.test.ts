@@ -1,6 +1,6 @@
 import { renderText } from "@amykit/ui";
 import { describe, expect, it } from "vitest";
-import { statusView, type StatusRecord, type StatusSnapshot } from "../src/status-page.js";
+import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot } from "../src/status-page.js";
 import { recordsToShow, standing } from "../src/status-view.js";
 
 const INBOX = "/home/amy/profiles/default/needs-input";
@@ -101,6 +101,7 @@ const BASE: StatusSnapshot = {
   paused: null,
   notes: 0,
   needsInput: 0,
+  usage: [],
 };
 
 const MIXED = [
@@ -163,6 +164,21 @@ describe("amy status, as a view", () => {
     expect(printedNow(structuredClone(snapshot), false)).toBe(printedNow(snapshot, false));
   });
 
+  it("shows each subscription without mixing it into the work ledger", () => {
+    const page = printedNow({
+      ...BASE,
+      usage: [
+        { subscription: "Codex", result: { windows: [{ label: "five-hour", usedPercent: 24, resetsAt: "2026-11-07T14:00:00.000Z" }] } },
+        { subscription: "Hermes (ollama-cloud)", result: { windows: [{ label: "Weekly", usedPercent: 3 }], unofficial: true } },
+        { subscription: "Claude", result: { unavailable: "not signed in" } },
+      ],
+    }, false);
+
+    expect(page).toContain("Codex: five-hour 24% (resets 2026-11-07T14:00:00.000Z)");
+    expect(page).toContain("Hermes (ollama-cloud) unofficial: Weekly 3% (period unknown)");
+    expect(page).toContain("Claude: unavailable — not signed in");
+  });
+
   it("shows the walked phase and each declared absence with its reason", () => {
     const page = printedNow({
       ...BASE,
@@ -176,5 +192,16 @@ describe("amy status, as a view", () => {
     expect(page).toContain("phases: workflow");
     expect(page).toContain("brief is out: this work arrives already briefed");
     expect(page).toContain("prove is out: a person reviews this work");
+  });
+});
+
+describe("usageThenNow", () => {
+  it("reads the clock once the provider windows have answered, so status dates the queue after the wait", async () => {
+    let now = new Date("2026-11-07T12:00:00.000Z");
+    const read = await usageThenNow(async () => {
+      now = new Date("2026-11-07T12:00:02.000Z");
+      return [];
+    }, () => now);
+    expect(read.now.toISOString()).toBe("2026-11-07T12:00:02.000Z");
   });
 });

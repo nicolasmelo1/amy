@@ -88,10 +88,69 @@ for arg in "\$@"; do
   if [ "\$previous" = "--prefix" ]; then prefix="\$arg"; fi
   previous="\$arg"
 done
-# The artifact paths are made by this scenario, without spaces; eval expands
-# the tarball glob only after the package name above has become that path.
+# Paths here have no spaces; eval expands a tarball glob once a name has
+# become its path. The packed group shares the registry's version, so the
+# packages an install reaches are pinned, or npm pairs a new plugin with the
+# registry's agent-kit. Only what is reached: the root's own dependencies, what
+# the command asks for, and their packed closure, so a workflow's plugins
+# arrive only when amy asks for them.
+if [ -n "\$prefix" ] && [ -f "\$prefix/package.json" ]; then
+  node - "\$prefix/package.json" "$work/lib/packages" "$work" "\$@" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+const { execFileSync } = require("node:child_process");
+const [manifest, tarballs, work, ...asked] = process.argv.slice(2);
+const body = JSON.parse(fs.readFileSync(manifest, "utf8"));
+const packed = Object.fromEntries(fs.readdirSync(tarballs).filter((file) => file.endsWith(".tgz")).map((file) => {
+  const name = file.replace(/-\d+\.\d+\.\d+.*\.tgz$/, "").replace(/^amykit-/, "@amykit/");
+  return [name, path.join(tarballs, file)];
+}));
+const manifestOf = (place) => place.endsWith(".tgz")
+  ? JSON.parse(execFileSync("tar", ["-xzOf", place, "package/package.json"], { encoding: "utf8" }))
+  : JSON.parse(fs.readFileSync(path.join(place, "package.json"), "utf8"));
+const needs = (place) => {
+  const one = manifestOf(place);
+  return Object.keys({ ...one.dependencies, ...one.peerDependencies });
+};
+// The same names the stand-in maps to artifacts above, read for what they depend on.
+const thirdParty = { "@acme/workflow-oncall": path.join(work, "third-party"), "@acme/plugin-extra": path.join(work, "plugin-extra") };
+const seeds = Object.keys(body.dependencies ?? {});
+for (const arg of asked) {
+  if (packed[arg]) seeds.push(arg);
+  else if (thirdParty[arg]) seeds.push(...needs(thirdParty[arg]));
+  else if (arg.startsWith("https://example.test/")) {
+    for (const file of fs.readdirSync(path.join(work, "tarballs"))) seeds.push(...needs(path.join(work, "tarballs", file)));
+  }
+}
+const reached = new Set();
+const visit = (name) => {
+  if (!packed[name] || reached.has(name)) return;
+  reached.add(name);
+  needs(packed[name]).forEach(visit);
+};
+seeds.forEach(visit);
+// What the invocation names, npm writes into the manifest itself, as a path
+// relative to the root; an absolute pin for the same name conflicts with it.
+const pinned = Object.fromEntries([...reached].filter((name) => !asked.includes(name)).map((name) => [name, "file:" + packed[name]]));
+// npm 11 accepts an override only when the same direct dependency names the
+// identical file spec. Installing a tarball positionally leaves the manifest
+// without that match and silently omits the fixed workspace graph.
+body.dependencies = { ...body.dependencies, ...pinned };
+body.overrides = { ...body.overrides, ...pinned };
+fs.writeFileSync(manifest, JSON.stringify(body, null, 2) + "\n");
+NODE
+  rm -rf "\$prefix/node_modules/@amykit/agent-kit"
+fi
 status=0
 eval "'$npm_real' \$args" || status=\$?
+# npm may retain the same-version nested registry copy under a new plugin. The
+# root override is the development install's one source of truth.
+if [ "\$status" = 0 ] && [ -n "\$prefix" ]; then
+  rm -rf "\$prefix/node_modules/@amykit/agent-kit"
+  mkdir -p "\$prefix/node_modules/@amykit/agent-kit"
+  tar xzf $work/lib/packages/amykit-agent-kit-*.tgz -C "\$prefix/node_modules/@amykit/agent-kit" --strip-components=1
+  find "\$prefix/node_modules" -mindepth 5 -path '*/node_modules/@amykit/agent-kit' -type d -prune -exec rm -rf {} +
+fi
 core="\$prefix/node_modules/@amykit/core"
 if [ "\$status" = 0 ] && [ -n "\$prefix" ] && [ -d "\$core" ]; then
   rm -rf "\$core" && mkdir -p "\$core"
@@ -131,6 +190,15 @@ if grep -q "@acme/plugin-extra" .amy/config.yaml; then
   record add.a_bare_plugin_removal_clears_its_extra 1
 else
   record add.a_bare_plugin_removal_clears_its_extra 0
+fi
+
+# plugin-extra depends on nothing, so adding and removing it installs no
+# workflow plugin: the engine, queue and store below arrive only because the
+# workflow's add asks for them, and an add that forgot to would not boot.
+if grep -q '"@amykit/plugin-' .amy/plugins/package.json || [ -d .amy/plugins/node_modules/@amykit/plugin-file-queue ]; then
+  record add.a_plugin_add_installs_no_unrelated_plugin 1
+else
+  record add.a_plugin_add_installs_no_unrelated_plugin 0
 fi
 
 # 2. A workflow added from a path: installed, mounted, named a profile, and

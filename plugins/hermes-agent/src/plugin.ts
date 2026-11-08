@@ -1,8 +1,9 @@
 import { NodeCommandRunner, definePlugin } from "@amykit/core";
-import { contributeTiers } from "@amykit/agent-kit";
+import { contributeTiers, contributeUsage } from "@amykit/agent-kit";
 import { HermesHarness } from "./HermesHarness.js";
 import { configSchema } from "./config.js";
 import { checkProfile, prepareProfile } from "./profile.js";
+import { HermesUsageReader } from "./usage.js";
 
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-hermes-agent",
@@ -43,5 +44,14 @@ export const plugin = definePlugin<typeof configSchema>({
           profile: ctx.config.profile,
         }),
     });
+
+    contributeUsage(
+      registry,
+      new HermesUsageReader(ctx.runner, {
+        profile: ctx.config.profile,
+        provider: ctx.config.provider,
+        timeoutMs: ctx.config.timeoutMs,
+      }),
+    );
   },
 });

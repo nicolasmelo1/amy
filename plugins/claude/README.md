@@ -4,7 +4,7 @@
 
 The claude CLI as the agent, over its JSON envelope.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `claude` in the `harness` collection.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `claude` in the `harness` collection and `Claude` in the `usage` collection.
 
 ## Install
 
@@ -41,6 +41,14 @@ plugins:
 Every field is checked at boot against the schema this package declares. A key that is
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
+
+## Environment
+
+This package reads the following, which `amy doctor` checks for you:
+
+| Variable |  |
+| :-- | :-- |
+| `CLAUDE_CODE_OAUTH_TOKEN` | required at mount |
 
 ## Where the reasoning is
 

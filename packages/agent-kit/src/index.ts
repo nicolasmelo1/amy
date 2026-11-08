@@ -13,3 +13,5 @@ export { everyRung, oneLadder, rungsFor } from "./ladders.js";
 export type { Ladders } from "./ladders.js";
 export { contributeTiers, tierName } from "./tiers.js";
 export type { TierOptions } from "./tiers.js";
+export { contributeUsage, USAGE_COLLECTION } from "./usage.js";
+export type { UsageAvailable, UsageReader, UsageResult, UsageUnavailable, UsageWindow } from "./usage.js";

@@ -21,6 +21,7 @@ function snapshot(records: StatusRecord[]): StatusSnapshot {
     paused: null,
     notes: 0,
     needsInput: 0,
+    usage: [],
   };
 }
 

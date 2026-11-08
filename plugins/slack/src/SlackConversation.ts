@@ -29,6 +29,8 @@ export interface SlackConversationOptions {
    * policy reads it.
    */
   marks?: { decision: string; discussion: string };
+  /** Inspection reads existing state but never creates or changes it. */
+  readOnly?: boolean;
   now?: () => Date;
 }
 
@@ -107,12 +109,13 @@ export class SlackConversation implements Conversation {
     this.threads = new ThreadMap(options.directory, {
       maxWaitMs: options.lockWaitMs,
       leaseMs: options.leaseMs,
+      readOnly: options.readOnly,
       // A root replaced in another channel takes its downloads with it.
       onDisplaced: (ts) => this.dropFiles(ts),
     });
     this.filesDirectory = path.join(options.directory, "files");
     // The operator's screenshots, fetched with the bot's token: private.
-    privateDirectory(this.filesDirectory);
+    if (!options.readOnly) privateDirectory(this.filesDirectory);
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {

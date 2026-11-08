@@ -16,8 +16,8 @@ import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
 export class FileBriefStore implements BriefStore {
   private static readonly heldLocks = new Set<string>();
 
-  constructor(private readonly root: string) {
-    fs.mkdirSync(this.root, { recursive: true });
+  constructor(private readonly root: string, create = true) {
+    if (create) fs.mkdirSync(this.root, { recursive: true });
   }
 
   async get(id: BriefId): Promise<BriefRecord | null> {

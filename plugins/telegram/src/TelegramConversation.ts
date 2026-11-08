@@ -23,6 +23,8 @@ export interface TelegramConversationOptions {
   lockWaitMs?: number;
   /** How long a hold on the bot lasts without being renewed. */
   leaseMs?: number;
+  /** An inspection may read existing state but must not initialize it. */
+  readOnly?: boolean;
 }
 
 /** What `amy doctor` prints for this plugin, one line per question. */
@@ -130,10 +132,12 @@ export class TelegramConversation implements Conversation {
     private readonly api: BotApi,
     private readonly options: TelegramConversationOptions,
   ) {
-    privateDirectory(options.directory);
-    privateDirectory(this.shared());
+    if (!options.readOnly) {
+      privateDirectory(options.directory);
+      privateDirectory(this.shared());
+    }
     this.operator = normalisedId(options.operator);
-    this.identity = identityOf(options.directory);
+    this.identity = options.readOnly ? readIdentity(options.directory) ?? "" : identityOf(options.directory);
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {

@@ -11,7 +11,7 @@ export const plugin = definePlugin<typeof configSchema>({
       "tasks",
       new FileTasks(path.join(ctx.paths.state, ctx.config.directory), {
         defaultRepo: ctx.config.repo,
-      }),
+      }, !ctx.readOnly),
     );
   },
 });

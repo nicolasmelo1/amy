@@ -2,6 +2,12 @@ import { ConfigSchema } from "@amykit/core";
 
 /** What this plugin needs told to it, and nothing more. */
 export const configSchema = {
+  provider: {
+    type: "string",
+    description:
+      "the Hermes provider whose account windows amy reads. Use openai-codex, anthropic, openrouter, or ollama-cloud; empty leaves the account usage unavailable rather than guessing",
+    default: "",
+  },
   model: {
     type: "string",
     description: "passed to the CLI as --model. Empty leaves the choice to hermes",

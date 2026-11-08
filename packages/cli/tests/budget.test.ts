@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BudgetLimits, DEFAULT_STOP_AT, Event } from "@amykit/core";
-import { budgetLines } from "../src/budget.js";
+import { budgetLines, budgetReport } from "../src/budget.js";
 
 const NOW = new Date("2026-09-07T12:00:00.000Z");
 
@@ -111,6 +111,19 @@ describe("budgetLines", () => {
     expect(lines.join("\n")).toContain("$5.00 of $150.00");
   });
 
+  it("keeps provider windows beside Amy's rolling totals", () => {
+    const lines = budgetLines([], limits(), NOW, [
+      { subscription: "Codex", result: { windows: [{ label: "five-hour", usedPercent: 24, resetsAt: "2026-11-07T14:00:00.000Z" }] } },
+      { subscription: "Hermes (ollama-cloud)", result: { windows: [{ label: "Weekly", usedPercent: 3 }], unofficial: true } },
+      { subscription: "Claude", result: { unavailable: "not signed in" } },
+    ]);
+
+    expect(lines.join("\n")).toContain("subscription usage:");
+    expect(lines.join("\n")).toContain("Codex five-hour: 24% (resets 2026-11-07T14:00:00.000Z)");
+    expect(lines.join("\n")).toContain("Hermes (ollama-cloud) unofficial Weekly: 3% (period unknown)");
+    expect(lines.join("\n")).toContain("Claude: unavailable — not signed in");
+  });
+
   it("reads prevented starts from progress events in the log", () => {
     const lines = budgetLines([
       { at: NOW.toISOString(), kind: "progress.parked", detail: { key: "implementation" } },
@@ -118,5 +131,24 @@ describe("budgetLines", () => {
     ] as Event[], limits(), NOW);
 
     expect(lines.join("\n")).toContain("1 prevented start(s)");
+  });
+});
+
+describe("budgetReport", () => {
+  it("reads the ledger at the moment the provider windows have answered, not before", async () => {
+    // A run five hours less one second before the inspection starts leaves the
+    // window while the account requests are still out.
+    let now = NOW;
+    const lines = await budgetReport({
+      limits: limits({ perFiveHours: { costUsd: 0.01 } }),
+      usage: async () => {
+        now = new Date(NOW.getTime() + 2000);
+        return [];
+      },
+      events: () => [run("reported", 1, 5 * 60 - 1 / 60)],
+      clock: () => now,
+    });
+    expect(lines.find((line) => line.startsWith("perFiveHours"))).toContain("0 run(s)");
+    expect(lines.join("\n")).toContain("new work: allowed");
   });
 });

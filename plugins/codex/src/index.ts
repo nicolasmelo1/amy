@@ -2,3 +2,5 @@ export { CodexHarness, StdioCodexAppServer, classify, isLimited, messageOfTurn, 
 export type { CodexAppServer, CodexAppServerOptions, CodexHarnessConfig, CodexRateLimits, CodexTurn, CodexUsage } from "./CodexHarness.js";
 export { configSchema } from "./config.js";
 export { plugin } from "./plugin.js";
+export { CodexUsageReader } from "./usage.js";
+export type { CodexUsageSource } from "./usage.js";

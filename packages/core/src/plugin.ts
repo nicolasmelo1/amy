@@ -144,6 +144,8 @@ export interface PluginContext<Config extends Record<string, unknown> = Record<s
   readonly now: () => Date;
   readonly log?: EventLog;
   readonly paths: HostPaths;
+  /** This mount may inspect existing state but must not create it. */
+  readonly readOnly: boolean;
   /** Everything contributed to a named collection, read when asked. */
   contributions(collection: string): ReadonlyMap<string, object>;
   /** A mounted port, read when asked. */

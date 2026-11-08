@@ -4,7 +4,7 @@
 
 Hermes as the agent, over its one-shot mode and usage report.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `hermes` in the `harness` collection.
+A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `hermes` in the `harness` collection and `Hermes ()` in the `usage` collection.
 
 ## Install
 
@@ -30,6 +30,7 @@ plugins:
     model: ""
     models: []
     profile: "amy"
+    provider: ""
     timeoutMs: 1800000
 ```
 
@@ -38,6 +39,7 @@ plugins:
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
 | `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot |
+| `provider` | `string` | no | `""` | the Hermes provider whose account windows amy reads. Use openai-codex, anthropic, openrouter, or ollama-cloud; empty leaves the account usage unavailable rather than guessing |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 Every field is checked at boot against the schema this package declares. A key that is
@@ -49,6 +51,14 @@ silently never applied.
 `amy doctor` runs, after its own checks, every check this package names:
 
 - `hermes profile`
+
+## Environment
+
+This package reads the following, which `amy doctor` checks for you:
+
+| Variable |  |
+| :-- | :-- |
+| `OLLAMA_API_KEY` | required at mount |
 
 ## Where the reasoning is
 

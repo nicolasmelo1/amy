@@ -45,6 +45,7 @@ export const plugin = definePlugin<typeof configSchema>({
           decision: (ctx.config.decisionReaction) ?? DEFAULT_MARKS.decision,
           discussion: (ctx.config.discussionReaction) ?? DEFAULT_MARKS.discussion,
         },
+        readOnly: ctx.readOnly,
         now: ctx.now,
       }),
     );

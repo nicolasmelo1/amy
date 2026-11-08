@@ -62,6 +62,13 @@ describe("notes on disk", () => {
   it("has nothing to say about a note nobody wrote", () => {
     expect(notes.get("note-nobody-wrote")).toBeNull();
   });
+
+  it("inspects an absent directory without creating it", () => {
+    const absent = path.join(root, "absent");
+
+    expect(new FileNotes(absent, { defaultRepo: "" }, false).all()).toEqual([]);
+    expect(fs.existsSync(absent)).toBe(false);
+  });
 });
 
 describe("a note somebody wrote by hand", () => {

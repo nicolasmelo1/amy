@@ -11,6 +11,15 @@ import { plugin as records } from "../../file-store/src/plugin.js";
 const NOW = new Date("2026-09-03T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 
+it("reads an absent brief directory without creating it", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-inspection-"));
+  const absent = path.join(root, "absent");
+
+  await expect(new FileBriefStore(absent, false).get("brief-1")).resolves.toBeNull();
+  expect(fs.existsSync(absent)).toBe(false);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 /** Drive real built code in another process, where in-memory serialization cannot help. */
 function appendFromAnotherProcess(root: string, prefix: string): Promise<void> {
   const entry = pathToFileURL(path.join(process.cwd(), "plugins/file-brief-store/dist/index.js")).href;

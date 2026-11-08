@@ -37,10 +37,9 @@ export class FileQueue implements Queue {
   constructor(
     private readonly root: string,
     private readonly order: QueueOrder = "id",
+    create = true,
   ) {
-    for (const dir of [READY, RUNNING, DONE]) {
-      fs.mkdirSync(path.join(this.root, dir), { recursive: true });
-    }
+    if (create) this.ensureDirectories();
   }
 
   enqueue(request: EnqueueRequest, now: Date): QueueItem {
@@ -317,7 +316,14 @@ export class FileQueue implements Queue {
   }
 
   private write(dir: string, item: QueueItem): void {
+    this.ensureDirectories();
     fs.writeFileSync(this.file(dir, item), JSON.stringify(item, null, 2), "utf-8");
+  }
+
+  private ensureDirectories(): void {
+    for (const directory of [READY, RUNNING, DONE]) {
+      fs.mkdirSync(path.join(this.root, directory), { recursive: true });
+    }
   }
 
   private move(from: string, to: string, item: QueueItem): void {

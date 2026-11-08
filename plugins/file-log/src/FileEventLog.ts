@@ -15,8 +15,9 @@ export class FileEventLog implements EventLog {
     private readonly directory: string,
     private readonly now: () => Date = () => new Date(),
     private readonly build: string = stampId(stampFrom({})),
+    create = true,
   ) {
-    fs.mkdirSync(this.directory, { recursive: true });
+    if (create) fs.mkdirSync(this.directory, { recursive: true });
   }
 
   append(event: Event): void {
@@ -43,6 +44,7 @@ export class FileEventLog implements EventLog {
    * resubscribing; a timer drains too, for filesystems that drop events.
    */
   watch(since: Date, onEvent: (event: Event) => void): () => void {
+    fs.mkdirSync(this.directory, { recursive: true });
     const cutoff = since.getTime();
     const offsets = new Map<string, number>();
     let stopped = false;

@@ -1,18 +1,21 @@
 import { definePlugin } from "@amykit/core";
-import { contributeTiers } from "@amykit/agent-kit";
-import { CodexHarness } from "./CodexHarness.js";
+import { contributeTiers, contributeUsage } from "@amykit/agent-kit";
+import { CodexHarness, StdioCodexAppServer } from "./CodexHarness.js";
 import { configSchema } from "./config.js";
+import { CodexUsageReader } from "./usage.js";
 
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-codex",
   configSchema,
   async register(registry, ctx) {
-    const version = await ctx.runner.run("codex", ["--version"]);
-    const reported = version.stdout.trim() || version.stderr.trim() || "unknown";
-    if (!version.ok || !isCompatibleVersion(reported)) {
-      throw new Error(
-        `codex app-server protocol ${reported} is incompatible; expected codex-cli 0.166.x`,
-      );
+    if (!ctx.readOnly) {
+      const version = await ctx.runner.run("codex", ["--version"]);
+      const reported = version.stdout.trim() || version.stderr.trim() || "unknown";
+      if (!version.ok || !isCompatibleVersion(reported)) {
+        throw new Error(
+          `codex app-server protocol ${reported} is incompatible; expected codex-cli 0.166.x`,
+        );
+      }
     }
     const tiers = ctx.config.models;
 
@@ -30,6 +33,10 @@ export const plugin = definePlugin<typeof configSchema>({
           timeoutMs: ctx.config.timeoutMs,
         }),
     });
+    contributeUsage(registry, new CodexUsageReader(new StdioCodexAppServer({
+      runner: ctx.runner,
+      timeoutMs: ctx.config.timeoutMs,
+    })));
   },
 });
 

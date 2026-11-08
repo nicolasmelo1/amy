@@ -36,8 +36,16 @@ export interface CodexTurn {
 }
 export interface CodexRateLimits {
   rateLimits?: {
-    primary?: { resetsAt?: number | null };
-    secondary?: { resetsAt?: number | null };
+    primary?: {
+      usedPercent?: number | null;
+      windowDurationMins?: number | null;
+      resetsAt?: number | null;
+    } | null;
+    secondary?: {
+      usedPercent?: number | null;
+      windowDurationMins?: number | null;
+      resetsAt?: number | null;
+    } | null;
   };
 }
 export interface CodexAppServer {
@@ -156,6 +164,45 @@ export class StdioCodexAppServer implements CodexAppServer {
       }
     } catch (error) {
       return { turn: failedTurn(error, stderr) };
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  }
+
+  /** Reads account limits only; it never starts a thread or a turn. */
+  async readRateLimits(): Promise<CodexRateLimits> {
+    const home = isolatedHome(this.options);
+    try {
+      if (!this.options.runner?.spawn) {
+        throw new Error(
+          "codex app-server requires a command runner with managed spawn support",
+        );
+      }
+      const child = this.options.runner.spawn(
+        this.options.command,
+        [...(this.options.args ?? []), "app-server"],
+        {
+          cwd: process.cwd(),
+          env: { ...process.env, ...this.options.env, CODEX_HOME: home },
+        },
+      );
+      const session = new RpcSession(
+        child,
+        this.options.timeoutMs,
+        this.options.shutdownGraceMs ?? 250,
+      );
+      try {
+        await session.request("initialize", {
+          clientInfo: { name: "amy", version: "0" },
+          capabilities: {},
+        });
+        return (await session.request(
+          "account/rateLimits/read",
+          {},
+        )) as CodexRateLimits;
+      } finally {
+        await session.close();
+      }
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

@@ -115,6 +115,29 @@ gates:
       - "prompt.sends_the_agent_to_the_repository_not_the_tracker"
       - "prompt.carries_the_answers_to_its_own_questions"
 
+  # Account usage is an on-demand inspection: readers contribute a neutral
+  # window shape, adapters normalize provider answers, and status/budget never
+  # combine it with Amy's own rolling ledger.
+  harness-usage:
+    activation:
+      # The scenario imports each plugin's and agent-kit's built dist/index.js,
+      # so any source behind those barrels can change what it proves.
+      - "packages/agent-kit/src/**"
+      - "plugins/claude/src/**"
+      - "plugins/codex/src/**"
+      - "plugins/hermes-agent/src/**"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/status-page.tsx"
+      - "packages/cli/src/budget.ts"
+    evidence: ".software-factory/evidence/harness-usage.json"
+    plan: "docs/design/a-harness-shows-what-is-left.md"
+    required_assertions:
+      - "usage.readers_are_product_neutral"
+      - "usage.recorded_provider_windows_are_normalized"
+      - "usage.ollama_is_unofficial_without_a_reset"
+      - "usage.status_keeps_other_readers_after_one_fails"
+      - "usage.budget_keeps_provider_windows_separate"
+
   # The GitHub adapter owns the forge facts a stacked workflow reads. Its
   # scenario imports built dist and drives a server-shaped command runner.
   plugin-github:
@@ -553,6 +576,7 @@ gates:
     required_assertions:
       - "add.a_path_becomes_a_workflow_that_runs"
       - "add.a_plugin_can_be_added_before_any_workflow"
+      - "add.a_plugin_add_installs_no_unrelated_plugin"
       - "add.adding_one_plugin_keeps_the_recommendation"
       - "add.removing_keeps_the_state"
       - "add.a_removal_that_would_not_boot_is_refused"
