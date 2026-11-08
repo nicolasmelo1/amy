@@ -19,6 +19,8 @@ touches:
   - plugins/hermes-agent/src/**
   - plugins/hermes-agent/tests/**
   - plugins/hermes-agent/README.md
+  - plugins/telegram/src/**
+  - plugins/telegram/tests/plugin.test.ts
   - plugins/file-log/src/**
   - plugins/file-log/tests/**
   - plugins/file-queue/src/**
@@ -38,7 +40,7 @@ touches:
   - packages/cli/package.json
   - packages/core/src/{mount,plugin}.ts
   - package-lock.json
-  - registry/{agent-kit,cli,core,plugin-claude,plugin-codex,plugin-file-brief-store,plugin-file-log,plugin-file-notes,plugin-file-queue,plugin-file-store,plugin-file-tasks,plugin-hermes-agent}.json
+  - registry/{agent-kit,cli,core,plugin-claude,plugin-codex,plugin-file-brief-store,plugin-file-log,plugin-file-notes,plugin-file-queue,plugin-file-store,plugin-file-tasks,plugin-hermes-agent,plugin-telegram}.json
   - scripts/write-install-manifest.ts
   - .software-factory/policy.yaml
   - .software-factory/evidence/harness-usage-scenario.sh

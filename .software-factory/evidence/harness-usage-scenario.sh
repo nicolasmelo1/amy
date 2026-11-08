@@ -15,6 +15,27 @@ npx vitest run \
   packages/cli/tests/budget.test.ts \
   packages/cli/tests/status-page.test.ts >/dev/null
 
+# The gate's normalizers must be the published provider exports, not source
+# aliases that a packed installation never loads.
+node --input-type=module <<'NODE'
+import { pathToFileURL } from "node:url";
+
+const root = process.cwd();
+const claude = await import(pathToFileURL(`${root}/plugins/claude/dist/index.js`).href);
+const codex = await import(pathToFileURL(`${root}/plugins/codex/dist/index.js`).href);
+const hermes = await import(pathToFileURL(`${root}/plugins/hermes-agent/dist/index.js`).href);
+
+const claudeUsage = claude.parseClaudeUsage(JSON.stringify({ five_hour: { utilization: 42 } }));
+const codexUsage = await new codex.CodexUsageReader({
+  readRateLimits: async () => ({ rateLimits: { primary: { usedPercent: 18, windowDurationMins: 300 } } }),
+}).read();
+const hermesUsage = hermes.parseHermesUsage(JSON.stringify({ windows: [{ label: "Session", used_percent: 37 }] }));
+
+if (claudeUsage.windows?.[0]?.usedPercent !== 42 || codexUsage.windows?.[0]?.usedPercent !== 18 || hermesUsage.windows?.[0]?.usedPercent !== 37) {
+  throw new Error(`built provider exports did not normalize recorded usage: ${JSON.stringify({ claudeUsage, codexUsage, hermesUsage })}`);
+}
+NODE
+
 # The built CLI must retain a working reader when another one rejects. A page
 # fixture alone cannot prove the command's exception boundary.
 world=$(mktemp -d)

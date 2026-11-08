@@ -113,7 +113,9 @@ export function parseOllamaCloudUsage(value: unknown): UsageResult {
   const included = objectAt(document, "included");
   if (included) {
     const windows = balanceWindows(included);
-    return windows.length > 0 ? { windows } : unavailable("Ollama Cloud usage returned no measured windows");
+    if (windows.length > 0) return { windows };
+    const legacy = legacyWindows({ limits: included });
+    return legacy.length > 0 ? { windows: legacy, unofficial: true } : unavailable("Ollama Cloud usage returned no measured windows");
   }
   const windows = legacyWindows(document);
   return windows.length > 0 ? { windows, unofficial: true } : unavailable("Ollama Cloud usage returned no measured windows");
@@ -131,7 +133,7 @@ function parseDocument(value: string): unknown {
 function balanceWindows(included: Record<string, unknown>): { label: string; usedPercent: number; startsAt?: string; resetsAt?: string }[] {
   const balance = number(included.balance_usd);
   const allowance = number(included.allowance_usd);
-  if (balance === undefined || allowance === undefined || allowance <= 0) return legacyWindows({ limits: included });
+  if (balance === undefined || allowance === undefined || allowance <= 0) return [];
   const period = objectAt(included, "period");
   const startsAt = iso(period?.from);
   const resetsAt = iso(period?.until);
