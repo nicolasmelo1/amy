@@ -16,7 +16,9 @@ them wait, which are terminal, and the actions it says it can emit.
 
 | Workflow | Profile name | States | What it does |
 | :-- | :-- | :-- | :-- |
+| `@amykit/plugin-prove` | `prove` | 7 | Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer. |
 | `@amykit/workflow-errand` | `errand` | 5 | Something said in passing becomes work: capture it, do it, say what happened. |
+| `@amykit/workflow-feature-grooming` | `feature-grooming` | 2 | Feature grooming against read-only base-branch source snapshots. |
 | `@amykit/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
 | `@amykit/workflow-pull-request` | `pull-request` | 3 | A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted. |
 | `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 19 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
@@ -26,6 +28,29 @@ them wait, which are terminal, and the actions it says it can emit.
 ## In detail
 
 <!-- amy:generated workflow-states -->
+
+### `@amykit/plugin-prove`
+
+Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.
+
+|  |  |
+| :-- | :-- |
+| Profile name | `prove` |
+| Source | `plugins/prove` |
+| Starts in | `READING` |
+| Terminal | `refused`, `PROVEN` |
+| Waits in | `READING`, `LEASING`, `ASKING` |
+| Actions it emits | `ask`, `escalate`, `finish`, `lease`, `prepare`, `renew`, `run-step` |
+
+| # | State | Kind |
+| :-- | :-- | :-- |
+| 1 | `READING` | initial, waiting |
+| 2 | `LEASING` | waiting |
+| 3 | `PREPARING` | working |
+| 4 | `refused` | terminal |
+| 5 | `RUNNING` | working |
+| 6 | `ASKING` | waiting |
+| 7 | `PROVEN` | terminal |
 
 ### `@amykit/workflow-errand`
 
@@ -47,6 +72,24 @@ Something said in passing becomes work: capture it, do it, say what happened.
 | 3 | `PR_OPEN` | working |
 | 4 | `DONE` | terminal |
 | 5 | `DECLINED` | terminal |
+
+### `@amykit/workflow-feature-grooming`
+
+Feature grooming against read-only base-branch source snapshots.
+
+|  |  |
+| :-- | :-- |
+| Profile name | `feature-grooming` |
+| Source | `packages/workflow-feature-grooming` |
+| Starts in | `GROOMING` |
+| Terminal | `BRIEFED` |
+| Waits in | `GROOMING` |
+| Actions it emits |  |
+
+| # | State | Kind |
+| :-- | :-- | :-- |
+| 1 | `GROOMING` | initial, waiting |
+| 2 | `BRIEFED` | terminal |
 
 ### `@amykit/workflow-note-to-plan`
 

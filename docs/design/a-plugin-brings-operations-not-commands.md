@@ -19,7 +19,7 @@ sources:
   - { id: S15, kind: decision, said: "amy contract prints the install's whole contract, services and mounted plugins, as an OpenAPI document; amy contract --check refuses one that does not build" }
   - { id: S17, kind: decision, said: "a workflow is one more door: an action calls a mounted plugin's operation by id with input its schema validates, and gets the output or the declared error, as the command line does. Decided 2026-11-06" }
   - { id: S19, kind: decision, said: "an agent an operation reaches through operate() is billed to the work that called it, so its run reaches the budget's ceiling. Decided 2026-11-08" }
-  - { id: S18, kind: reference, ref: "plans/a-phase-is-proven-not-asserted.md", said: "each step of a scenario calls an operation by name with its input; a driver is reached only through the operations it offers" }
+  - { id: S18, kind: reference, ref: "docs/design/a-phase-is-proven-not-asserted.md", said: "each step of a scenario calls an operation by name with its input; a driver is reached only through the operations it offers" }
 touches:
   - packages/core/src/commands.ts
   - packages/core/src/plugin.ts

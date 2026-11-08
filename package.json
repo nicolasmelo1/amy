@@ -64,7 +64,8 @@
   },
   "workspaces": [
     "packages/*",
-    "plugins/*"
+    "plugins/*",
+    "examples/*"
   ],
   "knip": {
     "ignore": [

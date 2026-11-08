@@ -40,6 +40,7 @@ sources:
   - { id: S38, kind: reference, ref: "plans/the-examples-are-not-the-machine.md", said: "the shipped workflows move to examples/ under their same package names" }
   - { id: S39, kind: decision, said: "leases are the machine's, kept under Amy home and shared by every project and profile: one account is one resource however many projects reach it. Decided 2026-11-07" }
   - { id: S40, kind: code, ref: "packages/cli/src/profiles.ts", symbol: "artifactDirectory", said: "each project's artifact root is its own, so a lease kept there would be invisible to another project needing the same account" }
+  - { id: S42, kind: decision, said: "feature-grooming mounts no port of its own: a workflow that registers ports is mounted, never called, and nothing read grooming-source or grooming-tracker; groomFeature stays for a caller that hands it a source and a tracker. Decided 2026-11-08" }
   - { id: S41, kind: decision, said: "feature-grooming becomes a workflow a project's brief/ calls: a defineWorkflow declaring the brief's sections and check, returning the criteria it settled, and still mounting the ports it mounted. Decided 2026-11-08" }
 touches:
   - plugins/prove/**
@@ -56,36 +57,36 @@ touches:
 untouched:
   - "packages/core/src/**: proving is a plugin, and the core learns no scenario, step, resource or driver (S17)"
 criteria:
-  - { id: A1, statement: "a brief whose scenario section is missing cannot leave grooming, and its check names the unit", proof: "deferred:test:plugins/prove/tests/scenario.test.ts", sources: [S5, S9, S16, S19] }
-  - { id: A2, statement: "a scenario runs against the real system rather than the walkthrough's fake world, and a scenario whose only actor is the fake world is refused", proof: "deferred:test:plugins/prove/tests/scenario.test.ts", sources: [S1, S2, S3, S4, S6, S7, S8] }
-  - { id: A3, statement: "an assertion the run cannot evaluate blocks completion, naming the assertion and why, rather than counting as a pass", proof: "deferred:test:plugins/prove/tests/steps.test.ts", sources: [S7, S10] }
-  - { id: A4, statement: "a proof is a record in the project's artifact root, written by the proving phase and read by the others, with no phase reading another's records or queue", proof: "deferred:test:plugins/prove/tests/proof-record.test.ts", sources: [S11, S12] }
-  - { id: A5, statement: "a person can record a manual run as the proof, naming who ran it and each assertion's status", proof: "deferred:test:plugins/prove/tests/proof-record.test.ts", sources: [S13] }
-  - { id: A6, statement: "a proof whose code digest or brief revision no longer matches what it certified stops counting, and the unit it proved is unproven again", proof: "deferred:test:plugins/prove/tests/proof-record.test.ts", sources: [S14] }
-  - { id: A7, statement: "the proving plugin mounts on an install with no repository and proves a scenario whose steps check a published page and a sent message, and no file under packages/core changes for it", proof: "deferred:test:plugins/prove/tests/domains.test.ts", sources: [S17, S18] }
-  - { id: A8, statement: "the brief check refuses a step naming an operation no mounted plugin offers, or an input its schema refuses, naming the step and the operation", proof: "deferred:test:plugins/prove/tests/scenario.test.ts", sources: [S19, S30] }
-  - { id: A9, statement: "two briefs, one with a single request and one with two apps, a fixture and a human step, walk the same proving diagram; no diagram is written per task", proof: "deferred:test:plugins/prove/tests/scenario.test.ts", sources: [S20, S21] }
-  - { id: A10, statement: "a deterministic step runs no harness, an agent step runs one, and a wait-until step passes when its check holds before the deadline and fails naming the check after it", proof: "deferred:test:plugins/prove/tests/steps.test.ts", sources: [S22] }
-  - { id: A11, statement: "a fixture whose state already holds performs nothing, one that differs acts only on the difference, and one that cannot reach its state asks a person", proof: "deferred:test:plugins/prove/tests/fixtures.test.ts", sources: [S23] }
-  - { id: A12, statement: "for any number of runs and any order of claims and releases, a resource is never held by more runs than its capacity, a waiting run spends no attempt, and a released seat goes to the highest priority waiting", proof: "deferred:property:plugins/prove/tests/lease.property.test.ts#a_seat_held_twice", sources: [S24, S25] }
-  - { id: A13, statement: "a lease whose holder stops renewing expires, and the run it belonged to goes back to waiting", proof: "deferred:test:plugins/prove/tests/lease.test.ts", sources: [S25] }
-  - { id: A14, statement: "a human step keeps its run's leases while it waits, asks in the work's thread, and the notifier names the step and the resources held; an answer resumes it, and its deadline escalates and releases them", proof: "deferred:test:plugins/prove/tests/human-step.test.ts", sources: [S26] }
-  - { id: A15, statement: "a resource is brought up, checked and taken down only by the commands its config names, through the commands port; one with no check is refused at mount, naming it", proof: "deferred:test:plugins/prove/tests/resources.test.ts", sources: [S27, S28] }
-  - { id: A16, statement: "the documented web example brings two worktrees' apps up side by side with portless, and no file in the proving plugin names portless", proof: "deferred:test:plugins/prove/tests/resources.test.ts", sources: [S27, S29] }
-  - { id: A17, statement: "the browser plugin opens, snapshots, acts on refs and diffs through agent-browser, the desktop plugin snapshots and acts through agent-desktop, and the terminal plugin runs a program, sends keys, waits for text and reads the screen through terminal-use", proof: "deferred:test:plugins/agent-browser/tests/operations.test.ts", sources: [S30, S32, S35] }
-  - { id: A18, statement: "a UI check passes when the accessibility trees match and the pixels differ within the threshold, goes to an agent otherwise, and is unsupported when the agent cannot settle it or the sizes differ", proof: "deferred:test:plugins/agent-browser/tests/ui-check.test.ts", sources: [S31, S33] }
-  - { id: A19, statement: "a passed agent step is replayed by the next run with no harness started, and a replay that breaks runs the agent from the step that broke", proof: "deferred:test:plugins/prove/tests/replay.test.ts", sources: [S34] }
-  - { id: A20, statement: "examples/a-whole-project mounts as one profile whose record walks BRIEF, WORK, PROVE and DONE, each phase a shipped workflow, its brief carrying a scenario the prove phase walks", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S36, S37, S38, S41] }
-  - { id: A21, statement: "two runs from different projects needing the same resource never hold it past its capacity, and the one waiting starts when the other releases", proof: "deferred:test:plugins/prove/tests/lease.test.ts", sources: [S39, S40] }
+  - { id: A1, statement: "a brief whose scenario section is missing cannot leave grooming, and its check names the unit", proof: "test:plugins/prove/tests/scenario.test.ts", sources: [S5, S9, S16, S19], done: true }
+  - { id: A2, statement: "a scenario runs against the real system rather than the walkthrough's fake world, and a scenario whose only actor is the fake world is refused", proof: "test:plugins/prove/tests/scenario.test.ts", sources: [S1, S2, S3, S4, S6, S7, S8], done: true }
+  - { id: A3, statement: "an assertion the run cannot evaluate blocks completion, naming the assertion and why, rather than counting as a pass", proof: "test:plugins/prove/tests/steps.test.ts", sources: [S7, S10], done: true }
+  - { id: A4, statement: "a proof is a record in the project's artifact root, written by the proving phase and read by the others, with no phase reading another's records or queue", proof: "test:plugins/prove/tests/proof-record.test.ts", sources: [S11, S12], done: true }
+  - { id: A5, statement: "a person can record a manual run as the proof, naming who ran it and each assertion's status", proof: "test:plugins/prove/tests/proof-record.test.ts", sources: [S13], done: true }
+  - { id: A6, statement: "a proof whose code digest or brief revision no longer matches what it certified stops counting, and the unit it proved is unproven again", proof: "test:plugins/prove/tests/proof-record.test.ts", sources: [S14], done: true }
+  - { id: A7, statement: "the proving plugin mounts on an install with no repository and proves a scenario whose steps check a published page and a sent message, and no file under packages/core changes for it", proof: "test:plugins/prove/tests/domains.test.ts", sources: [S17, S18], done: true }
+  - { id: A8, statement: "the brief check refuses a step naming an operation no mounted plugin offers, or an input its schema refuses, naming the step and the operation", proof: "test:plugins/prove/tests/scenario.test.ts", sources: [S19, S30], done: true }
+  - { id: A9, statement: "two briefs, one with a single request and one with two apps, a fixture and a human step, walk the same proving diagram; no diagram is written per task", proof: "test:plugins/prove/tests/scenario.test.ts", sources: [S20, S21], done: true }
+  - { id: A10, statement: "a deterministic step runs no harness, an agent step runs one, and a wait-until step passes when its check holds before the deadline and fails naming the check after it", proof: "test:plugins/prove/tests/steps.test.ts", sources: [S22], done: true }
+  - { id: A11, statement: "a fixture whose state already holds performs nothing, one that differs acts only on the difference, and one that cannot reach its state asks a person", proof: "test:plugins/prove/tests/fixtures.test.ts", sources: [S23], done: true }
+  - { id: A12, statement: "for any number of runs and any order of claims and releases, a resource is never held by more runs than its capacity, a waiting run spends no attempt, and a released seat goes to the highest priority waiting", proof: "property:plugins/prove/tests/lease.property.test.ts#a_seat_held_twice", sources: [S24, S25], done: true }
+  - { id: A13, statement: "a lease whose holder stops renewing expires, and the run it belonged to goes back to waiting", proof: "test:plugins/prove/tests/lease.test.ts", sources: [S25], done: true }
+  - { id: A14, statement: "a human step keeps its run's leases while it waits, asks in the work's thread, and the notifier names the step and the resources held; an answer resumes it, and its deadline escalates and releases them", proof: "test:plugins/prove/tests/human-step.test.ts", sources: [S26], done: true }
+  - { id: A15, statement: "a resource is brought up, checked and taken down only by the commands its config names, through the commands port; one with no check is refused at mount, naming it", proof: "test:plugins/prove/tests/resources.test.ts", sources: [S27, S28], done: true }
+  - { id: A16, statement: "the documented web example brings two worktrees' apps up side by side with portless, and no file in the proving plugin names portless", proof: "test:plugins/prove/tests/resources.test.ts", sources: [S27, S29], done: true }
+  - { id: A17, statement: "the browser plugin opens, snapshots, acts on refs and diffs through agent-browser, the desktop plugin snapshots and acts through agent-desktop, and the terminal plugin runs a program, sends keys, waits for text and reads the screen through terminal-use", proof: "test:plugins/agent-browser/tests/operations.test.ts", sources: [S30, S32, S35], done: true }
+  - { id: A18, statement: "a UI check passes when the accessibility trees match and the pixels differ within the threshold, goes to an agent otherwise, and is unsupported when the agent cannot settle it or the sizes differ", proof: "test:plugins/agent-browser/tests/ui-check.test.ts", sources: [S31, S33], done: true }
+  - { id: A19, statement: "a passed agent step is replayed by the next run with no harness started, and a replay that breaks runs the agent from the step that broke", proof: "test:plugins/prove/tests/replay.test.ts", sources: [S34], done: true }
+  - { id: A20, statement: "examples/a-whole-project mounts as one profile whose record walks BRIEF, WORK, PROVE and DONE, each phase a shipped workflow, its brief carrying a scenario the prove phase walks", proof: "test:examples/a-whole-project/tests/project.test.ts", sources: [S36, S37, S38, S41, S42], done: true }
+  - { id: A21, statement: "two runs from different projects needing the same resource never hold it past its capacity, and the one waiting starts when the other releases", proof: "test:plugins/prove/tests/lease.test.ts", sources: [S39, S40], done: true }
 crosses:
-  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A12, A14; a run waiting for a lease or a person is a look, not an attempt" }
-  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A14" }
-  - { mechanism: briefs, answer: works, proof: "deferred:A1, A8; the scenario is one more section of the brief the store keeps" }
-  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A7, A15" }
+  - { mechanism: attempts-and-waits, answer: works, proof: "A12, A14; a run waiting for a lease or a person is a look, not an attempt" }
+  - { mechanism: events-and-notifications, answer: works, proof: "A14" }
+  - { mechanism: briefs, answer: works, proof: "A1, A8; the scenario is one more section of the brief the store keeps" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "A7, A15" }
   - { mechanism: calls, answer: n/a, why: "the proving workflow is called as the project's PROVE phase like any phase; a scenario is its input, not a call" }
   - { mechanism: checkouts-and-leases, answer: n/a, why: "a resource lease is the proving plugin's own, kept under Amy home; branch leases and lent revisions are unchanged" }
-  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A21; the lease directory is the machine's, like the Slack thread map, and no profile's own state is written" }
-  - { mechanism: diagram, answer: works, proof: "deferred:A20; feature-grooming gains a workflow.mmd, read and refused at mount like every other" }
+  - { mechanism: profiles-and-state, answer: works, proof: "A21; the lease directory is the machine's, like the Slack thread map, and no profile's own state is written" }
+  - { mechanism: diagram, answer: works, proof: "A20; feature-grooming gains a workflow.mmd, read and refused at mount like every other" }
   - { mechanism: record-migration, answer: n/a, why: "feature-grooming was never a workflow, so no record of it was ever saved to migrate" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "a proof writes project artifacts and asks through the conversation; no tracker or code-host write is added" }
 guarantee:
@@ -107,6 +108,23 @@ cut:
   - "amy doctor naming what an absent prove/ loses: a-project-is-brief-work-and-proof delivered the absent phase's reason in amy status"
   - "judging whether the work is any good: this proves a scenario holds"
   - "replacing the walkthrough: the state machine keeps its fast fake-world test; two tests, two subjects"
+deviations:
+  - "packages/workflow-feature-grooming: it no longer mounts `grooming-source` and `grooming-tracker` (S42): the core refuses to call a workflow that registers ports with `extend`, and nothing read them"
+  - "feature-grooming's retry is `policy.briefLookMs` and the proving plugin's `policy.seatRetryMs`: a project's phases share one config, and refuse a key that means two things"
+  - "the proving workflow ends at `PROVEN` and `refused`: the project's composition sends an end named `refused` back to the phase before it, and every other end to PROOF_COMPLETE"
+  - "neither feature-grooming nor the proving plugin declares `phases:`: a project's anchor declaring a phase absent beside its present folder is refused, and either can be the anchor"
+  - "A2's fake world is a scenario that calls no operation at all: the brief check refuses it, and a run only ever reaches the world through a mounted plugin's operation, never through the walkthrough"
+  - "a run holding seats never waits past half a seat's life between looks, or the look that renews a seat would come after it ran out"
+  - "a resource whose `up` ran and whose check then failed is taken down at the end of the run like one that came up"
+  - "`prove.record` and `prove.show` find the proofs from the profile directory an operation is handed, a project's profile living beside its artifact root; plugins/prove/tests/proof-record.test.ts holds that to the CLI's own paths"
+  - "plugins/prove/tests import the CLI's project composition and paths from its source, test-only, to check briefs and paths as the CLI does"
+  - "vitest.config.ts, tsconfig.tests.json: the example's tests run and typecheck, and the new packages resolve to their source"
+  - ".changeset/config.json: the private example is ignored by the release, as the test fixtures are"
+  - ".allowed-root-files: `examples/` is a directory of the repository root"
+  - ".software-factory/policy.yaml: the feature-grooming gate is activated by the workflow.mmd it now has, as every shipped workflow's gate is"
+  - ".software-factory/evidence/**, .software-factory/locks/**: the activated gates re-run and re-sealed, and sf lock for the new packages"
+  - "registry/plugin-prove.json, registry/plugin-agent-browser.json, registry/plugin-agent-desktop.json, registry/plugin-terminal.json, registry/workflow-feature-grooming.json: generated registry items"
+  - "plans/next-steps.md, plans/one-real-ticket-walks-the-lifecycle.md: the delivered row leaves the board, and the plan citing this one cites where it lives now"
 exit: "a brief with no scenario cannot leave grooming; a curl and a two-app scenario with a human step walk one proving workflow; two tickets needing one account take turns; the core is unchanged"
 ---
 # A phase is proven, not asserted

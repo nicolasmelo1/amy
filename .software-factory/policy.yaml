@@ -677,6 +677,7 @@ gates:
   feature-grooming:
     activation:
       - "packages/workflow-feature-grooming/src/**"
+      - "packages/workflow-feature-grooming/workflow.mmd"
       - "packages/core/src/ports/BaseSource.ts"
       - "packages/core/src/ports/Ticketing.ts"
       - "plugins/linear/src/**"

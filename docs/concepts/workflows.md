@@ -247,6 +247,29 @@ detached at the caller's commit, read-only. See
 
 <!-- amy:generated workflow-states -->
 
+### `@amykit/plugin-prove`
+
+Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.
+
+|  |  |
+| :-- | :-- |
+| Profile name | `prove` |
+| Source | `plugins/prove` |
+| Starts in | `READING` |
+| Terminal | `refused`, `PROVEN` |
+| Waits in | `READING`, `LEASING`, `ASKING` |
+| Actions it emits | `ask`, `escalate`, `finish`, `lease`, `prepare`, `renew`, `run-step` |
+
+| # | State | Kind |
+| :-- | :-- | :-- |
+| 1 | `READING` | initial, waiting |
+| 2 | `LEASING` | waiting |
+| 3 | `PREPARING` | working |
+| 4 | `refused` | terminal |
+| 5 | `RUNNING` | working |
+| 6 | `ASKING` | waiting |
+| 7 | `PROVEN` | terminal |
+
 ### `@amykit/workflow-errand`
 
 Something said in passing becomes work: capture it, do it, say what happened.
@@ -267,6 +290,24 @@ Something said in passing becomes work: capture it, do it, say what happened.
 | 3 | `PR_OPEN` | working |
 | 4 | `DONE` | terminal |
 | 5 | `DECLINED` | terminal |
+
+### `@amykit/workflow-feature-grooming`
+
+Feature grooming against read-only base-branch source snapshots.
+
+|  |  |
+| :-- | :-- |
+| Profile name | `feature-grooming` |
+| Source | `packages/workflow-feature-grooming` |
+| Starts in | `GROOMING` |
+| Terminal | `BRIEFED` |
+| Waits in | `GROOMING` |
+| Actions it emits |  |
+
+| # | State | Kind |
+| :-- | :-- | :-- |
+| 1 | `GROOMING` | initial, waiting |
+| 2 | `BRIEFED` | terminal |
 
 ### `@amykit/workflow-note-to-plan`
 

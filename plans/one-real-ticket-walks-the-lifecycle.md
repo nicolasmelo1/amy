@@ -3,7 +3,7 @@ sources:
   - { id: S1, kind: reference, ref: "docs/design/the-lifecycle-is-proven-end-to-end.md", said: "drives the installed executable through every state against stand-ins, twice, no credential, no network; its last criterion, one real ticket, was carried deferred in a delivered plan, and lives here since delivered notes stopped promising" }
   - { id: S2, kind: decision, said: "the stand-ins are held to Linear's and GitHub's vendored contracts, and a contract is not the service: it cannot show a renamed status, a permission the token lacks, or a reviewer never getting the request" }
   - { id: S3, kind: decision, said: "one ticket moved into the real tracker's working status is picked up by the installed amy on a real repository, implemented, gated, given a roster reviewer who reviews it, merged and handed to QA; nothing stood in" }
-  - { id: S4, kind: reference, ref: "plans/a-phase-is-proven-not-asserted.md", said: "lets a person record a manual run as the proof, naming who ran it and when, locked to the code it ran against; this row comes after it, since a run no check can read is a claim" }
+  - { id: S4, kind: reference, ref: "docs/design/a-phase-is-proven-not-asserted.md", said: "lets a person record a manual run as the proof, naming who ran it and when, locked to the code it ran against; this row comes after it, since a run no check can read is a claim" }
   - { id: S5, kind: decision, said: "the record keeps what the run shows: the states passed, the moves and their why, the pull request's number; no ticket text, customer or colleague's name: those belong to the tracker, and this repository is public" }
 touches:
   - packages/cli/tests/manual-proof.test.ts

@@ -117,6 +117,18 @@
     },
     {
       "path": "packages/services"
+    },
+    {
+      "path": "plugins/prove"
+    },
+    {
+      "path": "plugins/agent-browser"
+    },
+    {
+      "path": "plugins/agent-desktop"
+    },
+    {
+      "path": "plugins/terminal"
     }
   ]
 }

@@ -39,3 +39,6 @@ plugins
 # whole workspace, not about one package in it.
 scripts
 tsconfig.base.json
+# A whole project amy walks, brief, work and proof, each phase a shipped
+# workflow: an example of using amy, not a package of it.
+examples
