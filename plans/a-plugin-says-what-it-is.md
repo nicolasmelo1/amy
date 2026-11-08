@@ -14,6 +14,8 @@ sources:
   - { id: S11, kind: decision, said: "the loader refuses a package whose amy.kinds names a value outside the set, at mount, naming the package and the value" }
   - { id: S12, kind: decision, said: "the docs reference groups plugins by primary kind, and the docs check fails when a declared kind has none of the registrations S10 names for it" }
   - { id: S13, kind: decision, said: "every plugin and workflow package this repository ships declares its kinds; libraries (core, cli, agent-kit, ui, file-log, the testkit) declare none" }
+  - { id: S14, kind: decision, said: "an amy.kinds that is empty or names one kind twice, and an amy field that is not an object, are refused at mount like an unknown kind, naming the package and what is wrong. Decided 2026-11-08" }
+  - { id: S15, kind: decision, said: "a package the docs probe cannot import fails the docs check, naming it; it is never counted as having no registrations to compare, so the check is never green on a package it did not read. Decided 2026-11-08" }
 touches:
   - packages/core/src/plugin-kind.ts
   - packages/core/src/index.ts
@@ -33,6 +35,8 @@ criteria:
   - { id: A3, statement: "for any declared list, the primary is its first entry and the docs group the package under it alone", proof: "deferred:property:scripts/docs/tests/packages.test.ts#primary_is_not_first", sources: [S8, S12] }
   - { id: A4, statement: "a package declaring conversation without mounting a conversation port fails the docs check, naming both", proof: "deferred:test:scripts/docs/tests/packages.test.ts", sources: [S5, S10, S12] }
   - { id: A5, statement: "every shipped plugin and workflow manifest has amy.kinds and every library has none, and the docs check is green on it", proof: "deferred:test:scripts/docs/tests/packages.test.ts", sources: [S4, S9, S13] }
+  - { id: A6, statement: "an amy.kinds of [], one naming a kind twice, and an amy field that is not an object are each refused at mount, naming the package", proof: "deferred:test:packages/cli/tests/loader.test.ts", sources: [S14] }
+  - { id: A7, statement: "a shipped package whose module throws on import fails the docs check naming it, and is not reported as matching its declared kinds", proof: "deferred:test:scripts/docs/tests/packages.test.ts", sources: [S15] }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:A2; the loader reads amy.kinds from the manifest it already reads" }
   - { mechanism: rendering, answer: n/a, why: "ui-stub's manifest only gains amy.kinds beside its conformance entry; nothing it draws changes" }
@@ -41,7 +45,8 @@ guarantee:
   - { holds: "a kind is written in one place, the manifest, and every reader takes it from there", not_against: "a third-party package that declares no kinds, which is accepted and listed ungrouped" }
   - { holds: "a declared kind the package does not register fails this repository's docs check", not_against: "a third-party package, whose registrations this repository never probes" }
 failures:
-  - { step: mount, when: "amy.kinds is not an array of strings", goes_to: "refused at mount, naming the package" }
+  - { step: mount, when: "amy.kinds is not an array of strings, is empty, or names a kind twice; or amy is not an object", goes_to: "refused at mount, naming the package" }
+  - { step: docs check, when: "the probe cannot import a shipped package", goes_to: "the check fails naming the package; it is never read as a package with no registrations" }
 cut:
   - "a kinds member on definePlugin: refused, it would say the same thing twice (S2)"
   - "free-text categories or keywords as kinds: refused (S1)"

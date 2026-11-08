@@ -34,6 +34,9 @@ sources:
   - { id: S31, kind: reference, said: "a product page draws a process as cards joined by lines, each card showing that step's own live data: a booking, a message thread, a payout" }
   - { id: S32, kind: reference, ref: "plans/a-workflow-learns-from-its-mistakes.md", said: "amy budget breaks spend down by step and model, from the agent.run events alone" }
   - { id: S33, kind: friction, said: "one install's 715 agent.run events: SELF_REVIEW on Opus was 73% of the spend, 0.71 US$ a run against 0.21 for IMPLEMENTING on Sonnet, and 524 triage runs were abandoned in about 2 ms; nothing showed either" }
+  - { id: S34, kind: decision, said: "one state's card, and one nav 1 section, has one contributing plugin: two are refused at mount naming both, and a card for a state the workflow lacks is refused naming plugin and state. Decided 2026-11-08" }
+  - { id: S35, kind: decision, said: "a Settings save whose assemble fails other than by a mount() refusal (a plugin that will not import, a full disk) is an internal error, never a refusal, and the old file stays. Decided 2026-11-08" }
+  - { id: S36, kind: decision, said: "the same profile or record id on two connected servers is two entries, each shown under its own server's name; nothing merges them. Decided 2026-11-08" }
 touches:
   - plugins/ui-desktop/**
   - packages/server/surface.yaml
@@ -69,9 +72,12 @@ criteria:
   - { id: A19, statement: "a workflow's canvas draws one card per state its diagram declares, placed by the diagram's layout and joined by its edges, each showing the records in that state and its last log entry", proof: "deferred:assertion:window.every_state_is_a_card", sources: [S8, S29, S31] }
   - { id: A20, statement: "a state's card counts runs and cost by model exactly as amy budget does for that step", proof: "deferred:assertion:window.a_card_counts_what_budget_counts", sources: [S29, S32, S33] }
   - { id: A21, statement: "a plugin written outside this repository draws the card of one state, only that card changes, and removing the plugin brings the default card back", proof: "deferred:assertion:window.a_plugin_draws_a_state", sources: [S30] }
+  - { id: A22, statement: "two plugins contributing one state's card, or one nav 1 section, are refused at mount naming both; a card for a state the workflow does not declare is refused naming the plugin and the state", proof: "deferred:test:packages/cli/tests/ui-config.test.ts", sources: [S3, S30, S34] }
+  - { id: A23, statement: "a Settings save whose assemble throws for any reason but a mount() refusal keeps the old file and is shown as an internal error, not as a refusal", proof: "deferred:test:packages/cli/tests/ui-config.test.ts", sources: [S12, S35] }
+  - { id: A24, statement: "two servers holding the same profile and record id list it twice, each under its server's name", proof: "deferred:assertion:window.the_list_is_amy_status", sources: [S4, S36] }
 crosses:
-  - { mechanism: config, answer: works, proof: "deferred:A6, A7, A13" }
-  - { mechanism: rendering, answer: works, proof: "deferred:A2, A3, A9, A19, A21" }
+  - { mechanism: config, answer: works, proof: "deferred:A6, A7, A13, A23" }
+  - { mechanism: rendering, answer: works, proof: "deferred:A2, A3, A9, A19, A21, A22" }
   - { mechanism: diagram, answer: works, proof: "deferred:A8" }
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:A8" }
   - { mechanism: queue-and-store, answer: works, proof: "deferred:A15" }
@@ -80,6 +86,7 @@ crosses:
 guarantee:
   - { holds: "a config.yaml or diagram saved over a newer revision is refused as stale, never overwritten", not_against: "the running daemon, which reads a saved config.yaml or diagram at its next start, not mid-run" }
   - { holds: "a record the daemon advances moves in the open window within a second of its event", not_against: "the server restarting under an open window, which shows it away by name until it answers again" }
+  - { holds: "every card and nav 1 section has one owner, and a save is refused only by what mount() refuses", not_against: "a plugin that draws its card wrongly, which only a person looking sees" }
   - { holds: "the global shortcut is off unless configured, and one the system already owns is refused", not_against: "an app registering the same shortcut after amy, which macOS arbitrates" }
   - { holds: "amy ui build desktop produces a macOS app that opens on the machine that built it", not_against: "Gatekeeper on another Mac: the app is neither signed nor notarised" }
   - { holds: "the window is built and measured on macOS", not_against: "Windows and Linux builds, which no gate measures yet" }

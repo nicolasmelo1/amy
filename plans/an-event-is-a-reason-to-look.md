@@ -25,6 +25,10 @@ sources:
   - { id: S23, kind: reference, ref: "plans/amy-speaks-in-domains.md", said: "webhooks arrive at routes the server generates from the events domain's operations, POST /v1/events/github and POST /v1/events/linear" }
   - { id: S24, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "a label is prose, with one exception this plan adds: a label naming a published event is read" }
   - { id: S25, kind: reference, ref: "plans/a-question-carries-its-answers.md", said: "with Socket Mode on, plugin-slack posts an ask as Block Kit buttons (checkboxes and a Send button for choices) and reads the block_actions payload into the same answer the reactions give; with it off, reactions stay. Decided 2026-11-05" }
+  - { id: S26, kind: decision, said: "each adapter lists the event types and actions it accepts; anything else validly signed (a ping, an unlisted action, no resolvable work, a non-JSON body) gets 2xx and a log line, enqueuing nothing. Decided 2026-11-08" }
+  - { id: S27, kind: decision, said: "a source whose webhook secret is not configured refuses every delivery; it never accepts one unverified. Decided 2026-11-08" }
+  - { id: S28, kind: decision, said: "an event label is a whole edge label exactly equal to a published event name; a label that only contains one is prose. Decided 2026-11-08" }
+  - { id: S29, kind: decision, said: "amy doctor says a source's events arrive only after at least one verified delivery from it; a source that has had none says polling only, however it is configured. Decided 2026-11-08" }
 touches:
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/tests/Worker.test.ts
@@ -42,6 +46,7 @@ touches:
   - plugins/slack/tests/SlackConversation.asks.test.ts
   - packages/server/src/**
   - packages/cli/src/doctor.ts
+  - packages/cli/tests/doctor.test.ts
   - .software-factory/evidence/ticket-to-qa/**
   - .software-factory/policy.yaml
   - docs/build/receive-events.md
@@ -55,6 +60,10 @@ criteria:
   - { id: A6, statement: "in the ticket-to-qa scenario a signed review webhook moves its record before the backoff, a signed Linear webhook gets a new ticket picked up, a badly signed payload is refused and moves nothing", proof: "deferred:assertion:lifecycle.an_event_moves_its_record_before_the_backoff", sources: [S18, S19, S20] }
   - { id: A7, statement: "Receive events sets up each source with only what the page says, and every command on it runs in the docs check", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S14, S21, S22] }
   - { id: A8, statement: "with Socket Mode on, an ask is posted as Block Kit buttons and a recorded block_actions payload from the operator comes back from replies as the same answer the reactions give; one from anybody else is not an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S25] }
+  - { id: A9, statement: "a validly signed ping, an unlisted action, a payload naming no resolvable work and a non-JSON body each get 2xx and a log line, and enqueue nothing", proof: "deferred:test:plugins/github/tests/events.test.ts", sources: [S26] }
+  - { id: A10, statement: "with no webhook secret configured, a delivery is refused whatever its signature, and nothing is enqueued", proof: "deferred:test:plugins/github/tests/events.test.ts", sources: [S27] }
+  - { id: A11, statement: "an edge label equal to a published event name wakes on it; a label that only contains one is read as prose", proof: "deferred:test:packages/core/tests/diagram.test.ts", sources: [S11, S28] }
+  - { id: A12, statement: "amy doctor says polling only for a configured source that has had no verified delivery, and says events arrive after one", proof: "deferred:test:packages/cli/tests/doctor.test.ts", sources: [S12, S29] }
 crosses:
   - { mechanism: engines, answer: works, proof: "deferred:test:plugins/serial-engine/tests/Worker.test.ts; the concurrent engine is the serial engine's Worker" }
   - { mechanism: budget-and-evidence, answer: works, proof: "deferred:A2; one chain of looks per work, so an event never makes a second chain spend an agent" }
@@ -66,9 +75,11 @@ crosses:
 guarantee:
   - { holds: "one chain of looks per piece of work", not_against: "however many events arrive for it" }
   - { holds: "a record acts on the world observe reads", not_against: "an event payload delivered twice, out of order or late" }
+  - { holds: "only a verified delivery of a type and action its adapter lists enqueues a look", not_against: "a delivery the source never sent, which discovery and the backoff find at the polling cadence" }
   - { holds: "amy stays synchronous: one move per look, one look per item, the same claim and the same record", not_against: "events, which change only when a look happens" }
 failures:
-  - { step: webhook receive, when: "a bad signature", goes_to: "refused; nothing moves" }
+  - { step: webhook receive, when: "a bad signature, or no secret configured for the source", goes_to: "refused; nothing moves" }
+  - { step: webhook receive, when: "validly signed but not an accepted type or action, naming no resolvable work, or not JSON", goes_to: "2xx and a log line; nothing enqueued" }
   - { step: event delivery, when: "laptop asleep, daemon stopped or tunnel down", goes_to: "discovery and the slow backoff find the work at the polling cadence" }
 cut:
   - "a new event-source plugin: not needed; the existing github, linear and slack plugins are the sources"

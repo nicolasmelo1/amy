@@ -15,6 +15,9 @@ sources:
   - { id: S11, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "the frame fixes regions, order and keys, and is measured against a golden; pixels are not gated, because fonts and engines differ by machine" }
   - { id: S12, kind: decision, said: "the frame stays the core's, one file for every renderer: a plugin changes how a section is seen and how it looks, never where the regions are. Decided 2026-11-04" }
   - { id: S15, kind: decision, said: "a device too small for the window, a phone, gets a surface of its own in frame.yaml, owned by the core like the window and the menu bar. Decided 2026-11-04" }
+  - { id: S16, kind: decision, said: "amy reads color, dimension, fontFamily, fontWeight, number and strokeStyle tokens, and an alias followed one level; a group, a composite $type, an alias to an alias or another $type is refused at load, naming the token. Decided 2026-11-08" }
+  - { id: S17, kind: decision, said: "a theme's override must keep the token's $type; an override whose $type differs from the file's, or whose aliases form a cycle, is refused at load, naming the theme and the token. Decided 2026-11-08" }
+  - { id: S18, kind: decision, said: "a word given to the design command that is neither a platform nor a primitive is refused, naming the platforms and the primitives it could have been; nothing opens. Decided 2026-11-08" }
 touches:
   - packages/ui/tokens.json
   - packages/ui/design/**
@@ -30,11 +33,16 @@ criteria:
   - { id: A4, statement: "`npm run design -- terminal Badge` draws every Badge example through the text renderer and nothing else", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S3, S9, S14] }
   - { id: A6, statement: "the design command draws nothing outside the frame's surfaces and reads no frame but packages/ui/frame.yaml", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S11, S12, S15] }
   - { id: A5, statement: "with no webview renderer built, `npm run design` opens the terminal catalogue and says web and desktop arrive with amy-has-a-window, and exits zero", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S10, S13] }
+  - { id: A7, statement: "a tokens file or theme holding a composite $type, a $type outside the read subset, or an alias to an alias is refused at load naming the token", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S6, S16] }
+  - { id: A8, statement: "a theme override whose $type differs from the file's, or whose aliases form a cycle, is refused at load naming the theme and the token", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S7, S17] }
+  - { id: A9, statement: "`npm run design -- terminal Bdage` opens nothing and names every platform and primitive", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S9, S18] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A1, A4" }
 guarantee:
   - { holds: "every primitive a screen can hold has been looked at on its own, in every renderer that exists, through the same examples", not_against: "how it looks on a machine whose fonts differ; pixels are reviewed by a person, never gated" }
+  - { holds: "a token is read only in the declared subset of the 2025.10 format, and a theme changes a token's value, never its type", not_against: "a token valid in the full format that amy does not read, which is refused rather than half-read" }
 cut:
+  - "the full 2025.10 format, groups and composite types included: refused until a look needs one (S16)"
   - "Storybook, or any other catalogue tool: refused; the vocabulary is closed and small, and the examples are data a renderer already draws"
   - "a lock recording which example a person approved on which platform: later, once there is more than one renderer to disagree"
   - "a plugin shipping a frame.yaml of its own: refused; the frame is the core's (S12)"

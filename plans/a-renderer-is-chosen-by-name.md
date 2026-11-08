@@ -10,6 +10,8 @@ sources:
   - { id: S8, kind: decision, said: "a built app carries the contract hash it was built for, and the server tells it when it is out of date" }
   - { id: S9, kind: decision, said: "views are computed on the server and arrive as data, so a build never needs view plugins; only a plugin changing how something is drawn asks for a rebuild, and the build says which it took" }
   - { id: S10, kind: decision, said: "ui-frame finds every renderer by name through ui-renderer, not a list in the script, so an installed renderer cannot escape the gate; ui-window gains the command" }
+  - { id: S11, kind: decision, said: "a renderer's name is [a-z][a-z0-9-]*, and neither list nor build, the words amy ui keeps for itself; any other name, one starting with - included, is refused at mount, naming the plugin and the name. Decided 2026-11-08" }
+  - { id: S12, kind: decision, said: "a ui.default naming no installed renderer is refused at boot, naming it and the installed list, not when amy ui opens. Decided 2026-11-08" }
 touches:
   - packages/cli/src/index.ts
   - packages/cli/src/ui/**
@@ -30,12 +32,15 @@ criteria:
   - { id: A6, statement: "every installed renderer is driven by the frame's script, found through ui-renderer", proof: "deferred:assertion:frame.every_installed_renderer_is_measured", sources: [S10] }
   - { id: A7, statement: "a built app shows a view-only plugin installed on the server after the build, without rebuilding", proof: "deferred:assertion:window.a_view_needs_no_rebuild", sources: [S8, S9] }
   - { id: A8, statement: "amy ui build names the drawing plugins it took", proof: "deferred:test:packages/cli/tests/ui-build.test.ts", sources: [S7, S9] }
+  - { id: A9, statement: "a renderer named list, build, -x or anything outside [a-z][a-z0-9-]* is refused at mount naming the plugin and the name", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S4, S11] }
+  - { id: A10, statement: "a config.yaml whose ui.default names no installed renderer is refused at boot with the installed list, before amy ui is run", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S5, S12] }
 crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A4, A5" }
-  - { mechanism: config, answer: works, proof: "deferred:A1" }
+  - { mechanism: config, answer: works, proof: "deferred:A1, A10" }
   - { mechanism: rendering, answer: works, proof: "deferred:A6, A7" }
 guarantee:
   - { holds: "amy ui opens only a renderer an installed plugin contributes by name, and refuses any other name", not_against: "an installed renderer itself, which runs with the person's rights as every plugin does" }
+  - { holds: "every renderer name amy ui accepts is one it can spell without meeting its own words", not_against: "a renderer's name meaning something to a person it does not mean to amy" }
   - { holds: "a view-only plugin installed after a build shows in the built app without a rebuild", not_against: "a plugin changing how something is drawn, which asks for amy ui build again" }
   - { holds: "text opens on a bare install with no display", not_against: "a renderer needing a display or toolchain the machine lacks: its start or build fails as that tool does" }
 cut:

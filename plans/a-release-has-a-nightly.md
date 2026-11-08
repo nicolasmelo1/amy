@@ -13,6 +13,7 @@ sources:
   - { id: S10, kind: decision, said: "autoUpdate.channel: stable | nightly, default stable; nightly resolves both the nightly and latest tags and takes the newer. Decided 2026-11-05" }
   - { id: S11, kind: decision, said: "leaving nightly never downgrades: the machine holds its nightly until a stable passes it; an explicit pin is the only way back sooner" }
   - { id: S12, kind: decision, said: "amy update --channel stable|nightly writes the setting and updates on it" }
+  - { id: S13, kind: decision, said: "only npm's own answer that the nightly tag does not exist means there is no nightly; any other npm view failure (network, registry error, output it cannot read) fails the update and installs nothing. Decided 2026-11-08" }
 touches:
   - .github/workflows/nightly.yml
   - .changeset/config.json
@@ -35,6 +36,7 @@ criteria:
   - { id: A3, statement: "on channel nightly the update takes the newer of the nightly and latest tags; on stable only latest", proof: "deferred:test:packages/cli/tests/update.test.ts", sources: [S9, S10] }
   - { id: A4, statement: "for any installed version and any pair of tags, switching to stable never installs a lower version than the one held", proof: "deferred:property:packages/cli/tests/update.property.test.ts#leaving_nightly_downgrades", sources: [S11] }
   - { id: A5, statement: "amy update --channel nightly writes autoUpdate.channel and the next auto-update follows it", proof: "deferred:test:packages/cli/tests/auto-update.test.ts", sources: [S12] }
+  - { id: A6, statement: "on channel nightly, an npm view that fails for any reason but a missing nightly tag fails the update naming it and installs nothing; a missing tag takes latest", proof: "deferred:test:packages/cli/tests/update.test.ts", sources: [S10, S13] }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:A3, A4, A5" }
   - { mechanism: config, answer: works, proof: "deferred:A5; channel is a typed key of autoUpdate, refused when it is neither value" }
@@ -44,6 +46,7 @@ guarantee:
 failures:
   - { step: nightly, when: "the build or tests fail", goes_to: "nothing is published; the next window tries again" }
   - { step: update, when: "the nightly tag does not exist yet", goes_to: "the nightly channel takes latest" }
+  - { step: update, when: "npm view fails for any other reason", goes_to: "the update fails naming npm's error and installs nothing; the next due update tries again" }
 cut:
   - "unpublishing old nightlies: npm allows it for 72 hours only; they stay"
   - "a nightly on every push: refused (S3)"

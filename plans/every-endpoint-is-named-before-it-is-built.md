@@ -58,6 +58,11 @@ sources:
   - { id: S45, kind: decision, said: "getConfig GET /v1/settings/config → { text, revision (digest) }, local-only because a config names paths and channels" }
   - { id: S46, kind: decision, said: "the window draws Settings by subscribing to settings.config — an Input named text, intent saveConfig with the revision in args, last refusals as a List beneath — so no renderer builds the editor" }
   - { id: S85, kind: reference, ref: "plans/the-command-line-holds-no-rule.md", said: "the built-ins that row moves are listed here as planned, with their cli words and local-only where it says, so the registry lands before them and that row flips them to delivered" }
+  - { id: S87, kind: friction, said: "PR 178 took eleven review rounds: the command line translated any JSON Schema a plugin wrote and refused bad cases one by one ($ref, allOf, recursion, --no- booleans, colliding names), so each fix exposed the next round's finding" }
+  - { id: S88, kind: decision, said: "a plugin's operation input and output, argsSchema and paramsSchema are accepted only as a flat root object whose fields are string, number, integer, boolean, string enum or an array of those, optional or defaulted. Decided 2026-11-08" }
+  - { id: S89, kind: decision, said: "a $ref of the form #/$defs/x at the root or on a field is followed once, and its target must itself be in the accepted set; nothing else is resolved. Decided 2026-11-08" }
+  - { id: S90, kind: decision, said: "refused at mount, naming plugin and field: a $ref to a $ref or outside the document, allOf, anyOf, oneOf, nesting, recursion, a no-* boolean, two fields normalising to one name, a door's own name (--json, --help, invoke). Decided 2026-11-08" }
+  - { id: S91, kind: decision, said: "the command line, amy setup, the HTTP routes and the SDK read this one rule; no door accepts a schema another door refuses, and none keeps its own list. Decided 2026-11-08" }
   - { id: S86, kind: reference, ref: "plans/a-question-carries-its-answers.md", said: "getThread's transcript entries carry ask? { id, prompt, form, answers } and answer? { ask, chosen }; addThreadTurn takes { answer } in place of text, always a decision; 409 threads.ask_answered once answered. Decided 2026-11-05" }
   - { id: S47, kind: decision, said: "saveConfig PUT /v1/settings/config { text, baseRevision }: assembles like a boot, saves only if it mounts; 200 { revision }; 409 settings.stale_revision { current }; 422 settings.would_not_mount { refusals[] }; local-only; writes config.yaml" }
   - { id: S48, kind: decision, said: "listActions GET /v1/actions → every mounted ui-action { action, title, appliesTo, argsSchema, writes[], localOnly }; a local-only action is listed only on the socket" }
@@ -91,6 +96,8 @@ touches:
   - packages/services/tests/surface.test.ts
   - .software-factory/policy.yaml
   - .software-factory/mutations/**
+  - packages/cli/src/operations/schema.ts
+  - packages/cli/tests/operations/schema.test.ts
 untouched:
   - packages/ui/src/vocabulary.ts
 criteria:
@@ -110,6 +117,8 @@ criteria:
   - { id: A14, statement: "listDevices, unpairDevice and setRemoteAccess are absent over TCP and answer on the socket, and unpairDevice ends that device's sessions", proof: "deferred:assertion:server.the_devices_are_the_owners_to_manage", sources: [S80, S81, S82] }
   - { id: A15, statement: "a pairing request is approved on the socket only with its matching code, and a device approved read-only pokes only after setDeviceActing grants it, in the same session", proof: "deferred:assertion:server.approving_and_granting_are_the_owners", sources: [S83, S84] }
   - { id: A16, statement: "surface.yaml lists getThread with ask and answer on its transcript and addThreadTurn taking an answer, and an answer to an ask already answered is 409 threads.ask_answered", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S86] }
+  - { id: A17, statement: "a plugin whose operation input is a root object of the accepted field types, with a #/$defs ref followed once, mounts and every door spells it", proof: "deferred:test:packages/cli/tests/operations/schema.test.ts", sources: [S88, S89, S91] }
+  - { id: A18, statement: "each shape S90 refuses is refused at mount, naming the plugin and the field, every refusal in one list", proof: "deferred:test:packages/cli/tests/operations/schema.test.ts", sources: [S87, S90] }
 crosses:
   - { mechanism: mount-and-capabilities, answer: n/a, why: "an operation's writes are checked against the server's registry, not a workflow's claimed capabilities; mount and actions are unchanged" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "surface.yaml only names operations, and none writes to a tracker or forge (cut)" }
@@ -117,7 +126,9 @@ crosses:
 guarantee:
   - { holds: "a local-only operation or view is reached only on the local socket", not_against: "a TCP connection from 127.0.0.1, a tunnel included" }
   - { holds: "only the two webhook routes answer without amy's token", not_against: "a valid tool signature, which authenticates those two" }
+  - { holds: "a plugin schema outside the accepted set never reaches a door: it is refused at mount, naming the plugin and the field", not_against: "a schema inside the set whose meaning a door renders poorly, such as a long enum in the help or a large array in a query string" }
 cut:
+  - "translating any JSON Schema a plugin writes and refusing known-bad cases one by one: refused, the accepted set is closed and everything outside it is refused (S87)"
   - "a database behind the server: there is none"
   - "a change to the intent vocabulary"
   - "a write to a tracker or forge from any operation"

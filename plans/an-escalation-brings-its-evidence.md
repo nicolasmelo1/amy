@@ -32,6 +32,9 @@ sources:
   - { id: S29, kind: code, ref: "packages/cli/src/paths.ts", said: "packaged profiles keep records and queue under <profile>/ and share daemon.pid and log at Amy home; a project keeps records, queue and log under projects/<hash>/<profile>/, its pid under profiles/<profile>/; auto-update sits under workflows/<profile>/" }
   - { id: S30, kind: decision, said: "a profile's state lives in one directory, workflows/<profile>/: records, queue, pid, log, auto-update, and the shared artifacts when it is a project; projects/<hash>/ and profiles/ go. Decided 2026-11-06" }
   - { id: S31, kind: decision, said: "one directory per profile for everything it owns, its own daemon, pid and log included; what is the machine's (the Slack thread map, plugins, config, leases) stays at Amy home. Decided 2026-11-07" }
+  - { id: S32, kind: decision, said: "a trace records the event types the harness plugin knows; a stream line of an unknown type, or one that does not parse, is dropped, never fatal and never the run's outcome. Decided 2026-11-08" }
+  - { id: S33, kind: decision, said: "when the move finds the same workId under two old roots, the most recently modified record wins and the other is archived under workflows/<profile>/archived/, named in the move's output. Decided 2026-11-08" }
+  - { id: S34, kind: decision, said: "a move whose I/O fails partway leaves the old layout in place and is an internal error, never reported as moved. Decided 2026-11-08" }
 touches:
   - packages/core/src/define-workflow.ts
   - packages/core/src/work.ts
@@ -75,6 +78,9 @@ criteria:
   - { id: A11, statement: "every file of one profile lives under workflows/<profile>/, and amy update moves an install's records, queue, pid, log and artifacts there from where S29 finds them, naming each move", proof: "deferred:test:packages/cli/tests/update.test.ts", sources: [S6, S29, S30] }
   - { id: A12, statement: "for any layout an older install left, a second amy update after the move moves nothing and changes no file", proof: "deferred:property:packages/cli/tests/state-move.property.test.ts#move_again", sources: [S29, S30] }
   - { id: A13, statement: "after the move each packaged profile runs its own daemon with its pid and log in its directory, and the Slack thread map, plugins and config stay at Amy home, read by every profile", proof: "deferred:test:packages/cli/tests/paths.test.ts", sources: [S29, S31] }
+  - { id: A14, statement: "a stream holding a line that does not parse and an event of a type the plugin does not know yields the same run outcome and trace as the stream without them", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S28, S32] }
+  - { id: A15, statement: "the same workId under two old roots moves the newer record and archives the older under workflows/<profile>/archived/, naming both", proof: "deferred:test:packages/cli/tests/update.test.ts", sources: [S29, S33] }
+  - { id: A16, statement: "for any layout, a write that fails partway through the move leaves every old file where it was and exits as an internal error", proof: "deferred:property:packages/cli/tests/state-move.property.test.ts#a_failed_move_moves_nothing", sources: [S30, S34] }
 crosses:
   - { mechanism: profiles-and-state, answer: works, proof: "deferred:A11, A12, A13; each profile keeps its own state, daemon included, under one directory" }
   - { mechanism: install-and-update, answer: works, proof: "deferred:A11, A12" }
@@ -87,9 +93,11 @@ crosses:
   - { mechanism: tracker-and-host-writes, answer: refused, by: "amy ask is read-only: it never commits, pushes or reaches a mutating port (S18)" }
 guarantee:
   - { holds: "amy update moves a profile's state without losing a record or a queued item", not_against: "another process writing the old directories while the move runs" }
+  - { holds: "a workId found twice keeps both records, the newer in place and the older archived", not_against: "two records whose modification times are equal: the move picks one by root order and archives the other" }
   - { holds: "each escalation shows only its own evidence", not_against: "a second escalation of the same work" }
   - { holds: "amy ask writes nothing outside its own file", not_against: "--run resuming the failed run's session" }
   - { holds: "keeping a run's trace never changes what the run answered", not_against: "a stream that ends before its result, recorded as the outcome it reached with the trace up to there" }
+  - { holds: "a vendor event the plugin does not know never fails a run", not_against: "what that event said: a dropped line is not in the trace" }
 cut:
   - "a viewer: not this row; the window draws this once amy has a window lands"
   - "changing when work escalates: refused; the ceilings stay where they are, only what an escalation says changes"
