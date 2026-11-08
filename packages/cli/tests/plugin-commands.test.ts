@@ -165,6 +165,8 @@ describe("a plugin's operations, check and file", () => {
       .toContain("spells its field `fooBar` as `--foo-bar`, which its field `foo_bar` already takes");
     expect(await refused({ type: "object", properties: { JSON: { type: "string" } } }))
       .toContain("spells its field `JSON` as `--json`, which the command line itself already takes");
+    expect(await refused({ type: "array", items: { type: "string" } }))
+      .toContain("`demo.spelled` takes an input that is not an object");
     expect(await refused({ type: "object", properties: { noCache: { type: "boolean" } } }))
       .toContain("spells its boolean field `noCache` as `--no-cache`, which the command line reads as a negation");
     expect(await refused({ $ref: "#/$defs/input", $defs: { input: { type: "object", properties: { json: { type: "boolean" } }, required: ["json"] } } }))

@@ -87,4 +87,30 @@ describe("an operation with --json", () => {
     expect(process.exitCode).toBe(70);
     expect(JSON.parse(heard.errors[0]!)).toMatchObject({ code: "amy.internal" });
   });
+
+  it("answers an output with no JSON at all as the internal envelope, exit 70, rather than an empty line", async () => {
+    const nothing = defineOperation({
+      id: "demo.nothing",
+      domain: "demo",
+      summary: "Answers nothing at all",
+      description: "Answers undefined under an unknown output. Changes nothing.",
+      input: z.object({}),
+      output: z.unknown(),
+      writes: [],
+      http: { method: "get", path: "/demo/nothing" },
+      cli: { words: ["nothing"] },
+      examples: [{ summary: "nothing", input: {}, output: null }],
+      async handler() {
+        return undefined;
+      },
+    });
+    const gathered = await gather(CONFIG, [WORK], loading(demo({ operations: [nothing] })));
+    const heard = spoken();
+    const made = program().program;
+    register(made, gathered.contributions, environment(heard.out));
+    await made.parseAsync(["node", "amy", "nothing", "--json"]);
+    expect(process.exitCode).toBe(70);
+    expect(heard.said).toEqual([]);
+    expect(JSON.parse(heard.errors[0]!)).toMatchObject({ code: "amy.internal" });
+  });
 });

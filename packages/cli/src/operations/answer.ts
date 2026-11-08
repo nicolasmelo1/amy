@@ -59,7 +59,7 @@ async function speak(operation: Operation, ran: Invocation, manner: Manner, out:
 }
 
 function printed(operation: Operation, output: unknown, manner: Manner, out: Speaker): number {
-  if (manner.json) out.line(JSON.stringify(output, null, 2));
+  if (manner.json) out.line(asJson(output));
   else for (const line of draw(output, outputSchemaOf(operation), manner.color)) out.line(line);
   return EXIT.output;
 }
@@ -68,10 +68,21 @@ function printed(operation: Operation, output: unknown, manner: Manner, out: Spe
 async function streamed(operation: Operation, events: AsyncIterable<StreamItem>, manner: Manner, out: Speaker): Promise<number> {
   for await (const item of events) {
     if (item.kind !== "event") return refuse(item.error, item.kind === "error" ? EXIT.error : EXIT.internal, manner, out);
-    if (manner.json) out.line(JSON.stringify({ event: item.event, data: item.data }));
+    if (manner.json) out.line(asJson({ event: item.event, data: item.data }, 0));
     else for (const line of drawEvent(item.event, item.data, eventSchemaOf(operation, item.event), manner.color)) out.line(line);
   }
   return EXIT.output;
+}
+
+/**
+ * A value as JSON, or a throw when it has none: `JSON.stringify` answers
+ * `undefined` for an `undefined`, which would print an empty line a reader
+ * of --json cannot parse, under exit 0.
+ */
+function asJson(value: unknown, indent = 2): string {
+  const text = JSON.stringify(value, null, indent);
+  if (typeof text !== "string") throw new Error("it has no JSON representation");
+  return text;
 }
 
 /** Writes an error, as the envelope or as its message, and answers its exit code. */

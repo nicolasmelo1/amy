@@ -206,9 +206,8 @@ const RESERVED = new Set(["--json", "--no-json", "--help"]);
 export function spellingProblems(operation: Operation): string[] {
   const whole = inputSchemaOf(operation);
   const root = resolved(whole, whole) ?? whole;
-  if (root.properties === undefined && ["allOf", "anyOf", "oneOf"].some((key) => Array.isArray(root[key]))) {
-    return [`\`${operation.id}\` takes an input composed with allOf, anyOf or oneOf, which the command line cannot spell; declare its fields on one object`];
-  }
+  const shape = shapeProblem(operation.id, root);
+  if (shape) return [shape];
   const problems: string[] = [];
   const taken = new Map<string, string>();
   for (const field of fieldsOf(operation).filter((one) => one.position === undefined)) {
@@ -227,6 +226,20 @@ export function spellingProblems(operation: Operation): string[] {
     }
   }
   return problems;
+}
+
+/**
+ * Why an input's shape has no fields to spell: one composed with allOf,
+ * anyOf or oneOf, or one that is not an object at all — an array, a string —
+ * which would leave a command that can never be given its input.
+ */
+function shapeProblem(id: string, root: Json): string | undefined {
+  if (root.properties !== undefined) return undefined;
+  if (["allOf", "anyOf", "oneOf"].some((key) => Array.isArray(root[key]))) {
+    return `\`${id}\` takes an input composed with allOf, anyOf or oneOf, which the command line cannot spell; declare its fields on one object`;
+  }
+  if (typeOf(root) !== "object") return `\`${id}\` takes an input that is not an object, which the command line cannot spell; declare its input as an object of fields`;
+  return undefined;
 }
 
 /** How a field is typed on this operation's command line: `<text>` or `--repo`. */
