@@ -18,6 +18,7 @@ sources:
   - { id: S16, kind: reference, ref: "docs/design/amy-speaks-in-domains.md", said: "no door is written by hand, and a plugin changes the contract: its operations reach every door when installed and leave every door when removed" }
   - { id: S15, kind: decision, said: "amy contract prints the install's whole contract, services and mounted plugins, as an OpenAPI document; amy contract --check refuses one that does not build" }
   - { id: S17, kind: decision, said: "a workflow is one more door: an action calls a mounted plugin's operation by id with input its schema validates, and gets the output or the declared error, as the command line does. Decided 2026-11-06" }
+  - { id: S19, kind: decision, said: "an agent an operation reaches through operate() is billed to the work that called it, so its run reaches the budget's ceiling. Decided 2026-11-08" }
   - { id: S18, kind: reference, ref: "plans/a-phase-is-proven-not-asserted.md", said: "each step of a scenario calls an operation by name with its input; a driver is reached only through the operations it offers" }
 touches:
   - packages/core/src/commands.ts
@@ -49,7 +50,7 @@ criteria:
   - { id: A7, statement: "two plugins claiming one operation id or one cli word are refused at load, naming both packages", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S12], done: true }
   - { id: A8, statement: "a plugin operation that does not declare localOnly: false is local-only in amy contract", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S13], done: true }
   - { id: A9, statement: "amy btw, note, roster, worktrees and models keep their words and their gate assertions, now as operations", proof: "assertion:lifecycle.a_workflow_command_is_its_own", sources: [S14], done: true }
-  - { id: A10, statement: "an action calls another plugin's operation by id and receives its output; input the schema refuses, or an id no mounted plugin offers, is the declared error naming the id", proof: "test:packages/core/tests/action-ports.test.ts", sources: [S17, S18], done: true }
+  - { id: A10, statement: "an action calls another plugin's operation by id and receives its output; input the schema refuses, or an id no mounted plugin offers, is the declared error naming the id", proof: "test:packages/core/tests/action-ports.test.ts", sources: [S17, S18, S19], done: true }
 crosses:
   - { mechanism: mount-and-capabilities, answer: works, proof: "A3, A10" }
   - { mechanism: install-and-update, answer: works, proof: "A1" }

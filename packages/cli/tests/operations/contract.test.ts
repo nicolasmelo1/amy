@@ -24,4 +24,17 @@ describe("amy contract --check", () => {
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
+
+  it("refuses an install naming a plugin that will not import, rather than certifying a contract without it", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-contract-"));
+    fs.writeFileSync(path.join(home, "config.yaml"), 'workflows:\n  work:\n    workflow: "@acme/workflow-nowhere"\n');
+    try {
+      const checked = amy(home, "contract", "--check");
+      expect(checked.status).toBe(1);
+      expect(checked.stderr).toContain("@acme/workflow-nowhere: not installed");
+      expect(amy(home, "--help").status).toBe(0);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
 });

@@ -64,6 +64,12 @@ export function forProfile(contribution: Contribution, profile: Pick<Profile, "n
 export interface Gathered {
   readonly contributions: readonly Contribution[];
   /**
+   * What the loader could not import or read a plugin from. Not refused
+   * here — one broken package must not take `--help` down with it — and
+   * refused by whatever has to speak for the whole install, `amy contract`.
+   */
+  readonly unloaded: readonly string[];
+  /**
    * Names two owners both claim, and a plugin still declaring the commands
    * amy no longer reads: refused before anything runs.
    */
@@ -87,10 +93,12 @@ export async function gather(
   // Each profile is read through its own resolver: a profile that forked a
   // package mounts the fork, so what it contributes is the fork's.
   const contributions = new Map<string, Contribution>();
+  const unloaded = new Set<string>();
   const byProfile = new Map<string, Map<string, Contribution>>();
   for (const profile of known) {
     const specs = pluginList(config, profile);
     const loaded = await load(specs, profile.name);
+    for (const problem of loaded.problems) unloaded.add(problem);
     for (const spec of specs) {
       const plugin = loaded.bySpec.get(spec);
       if (!plugin) continue;
@@ -101,7 +109,7 @@ export async function gather(
     }
   }
   const all = [...contributions.values()].map((contribution) => ({ ...contribution, byProfile: byProfile.get(contribution.owner) }));
-  return { contributions: all, problems: [...retired(all), ...declaredTwice(all), ...conflicts(all)] };
+  return { contributions: all, unloaded: [...unloaded], problems: [...retired(all), ...declaredTwice(all), ...conflicts(all)] };
 }
 
 /**

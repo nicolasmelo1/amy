@@ -73,8 +73,11 @@ export function actionPorts<P extends object>(
   const attended: Record<string, unknown> = { ...(ports as Record<string, unknown>) };
   const { agent, notifier } = attended;
 
-  if (hasMethod(agent, "ask")) {
-    attended.agent = withMethod(agent, "ask", (ask) => async (...args: unknown[]) => {
+  // Every agent run is written against this work, whether the action asked
+  // the agent itself or an operation it called did: a run the log never sees
+  // is spending the budget's ceiling never counts.
+  const billed = (port: unknown): unknown => (hasMethod(port, "ask")
+    ? withMethod(port, "ask", (ask) => async (...args: unknown[]) => {
       const reply = (await ask(...args)) as HarnessReply;
       if (reply?.run) {
         const { run } = reply;
@@ -89,8 +92,10 @@ export function actionPorts<P extends object>(
         });
       }
       return reply;
-    });
-  }
+    })
+    : port);
+
+  if (hasMethod(agent, "ask")) attended.agent = billed(agent);
 
   return {
     ports: attended as P,
@@ -102,17 +107,18 @@ export function actionPorts<P extends object>(
         append("notify.failed", { error: error instanceof Error ? error.message : String(error), text });
       }
     },
-    operate: (id, input) => operate(operations, id, input),
+    operate: (id, input) => operate(operations, id, input, billed),
   };
 }
 
-async function operate(operations: OperationLookup, id: string, input: unknown): Promise<Operated> {
+async function operate(operations: OperationLookup, id: string, input: unknown, billed: (port: unknown) => unknown): Promise<Operated> {
   const offered = operations(id);
   if (!offered) {
     return { ok: false, error: { code: "amy.unknown_operation", message: `no plugin this profile mounts offers the operation \`${id}\`` } };
   }
   const contract: Contract = defineContract([offered.operation]);
-  const ran = await invoke(contract, id, input, { port: offered.port, plugin: offered.scope });
+  const port = (name: string): unknown => (name === "agent" ? billed(offered.port(name)) : offered.port(name));
+  const ran = await invoke(contract, id, input, { port, plugin: offered.scope });
   switch (ran.kind) {
     case "output":
       return { ok: true, output: ran.output };

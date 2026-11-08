@@ -2852,7 +2852,10 @@ program
     try {
       const config = loadConfig(home);
       const gathered = await gatherBuilt(config, Object.values(profiles(config, home)));
-      if (gathered.problems.length > 0) throw new Error(gathered.problems.join("; "));
+      // A plugin that would not import is missing from the contract, so a
+      // contract built without it is not the install's.
+      const unread = [...gathered.problems, ...gathered.unloaded];
+      if (unread.length > 0) throw new Error(unread.join("; "));
       document = installContract(gathered.contributions);
     } catch (error) {
       console.error(`the contract does not build: ${error instanceof Error ? error.message : String(error)}`);

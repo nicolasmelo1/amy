@@ -213,6 +213,12 @@ export function spellingProblems(operation: Operation): string[] {
   const taken = new Map<string, string>();
   for (const field of fieldsOf(operation).filter((one) => one.position === undefined)) {
     const flag = flagOf(field.name);
+    // Commander reads any `--no-` flag as the negation of what follows it, so
+    // a boolean spelled that way could never be set true.
+    if (typeOf(field.schema) === "boolean" && flag.startsWith("--no-")) {
+      problems.push(`\`${operation.id}\` spells its boolean field \`${field.name}\` as \`${flag}\`, which the command line reads as a negation; name it for what it turns on`);
+      continue;
+    }
     const spellings = typeOf(field.schema) === "boolean" ? [flag, `--no-${flag.slice(2)}`] : [flag];
     for (const spelling of spellings) {
       const held = RESERVED.has(spelling) ? "the command line itself" : taken.get(spelling);

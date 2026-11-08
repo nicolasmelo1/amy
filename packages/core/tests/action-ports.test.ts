@@ -87,10 +87,27 @@ const double = defineOperation({
   },
 });
 
+/** Another plugin's operation that asks the agent itself. */
+const consult = defineOperation({
+  id: "numbers.consult",
+  domain: "numbers",
+  summary: "Asks the agent",
+  description: "Answers what the agent replied. Changes nothing.",
+  input: z.object({}),
+  output: z.object({ text: z.string().describe("reply") }),
+  writes: [],
+  http: { method: "post", path: "/numbers/consult" },
+  examples: [{ summary: "a reply", input: {}, output: { text: "done" } }],
+  async handler(_input, context) {
+    const reply = await (context.port("agent") as Harness).ask("think", "/work");
+    return { text: reply.text };
+  },
+});
+
 const numbers: Plugin = {
   name: "@acme/plugin-numbers",
   configSchema: { label: { type: "string", description: "what it calls a doubling", default: "twice" } },
-  operations: [double],
+  operations: [double, consult],
   register() {},
 };
 
@@ -247,5 +264,16 @@ describe("an action calling another plugin's operation", () => {
     const again: Plugin = { ...numbers, name: "@acme/plugin-more-numbers" };
     await expect(runtimeWith(new FixtureHarness(async () => REPLY), quiet, logged(), [numbers, again]))
       .rejects.toThrow("the operation `numbers.double` is declared by both @acme/plugin-numbers and @acme/plugin-more-numbers");
+  });
+
+  it("bills an agent run an operation makes to the work that called it, so the budget sees it", async () => {
+    const log = logged();
+    const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), quiet, log, [numbers]);
+    operated.length = 0;
+
+    await ask(runtime, "numbers.consult", {});
+
+    expect(operated).toEqual([{ ok: true, output: { text: "done" } }]);
+    expect(log.lines.map((line) => [line.kind, line.workId, line.state])).toEqual([["agent.run", "W-1", "WORKING"]]);
   });
 });

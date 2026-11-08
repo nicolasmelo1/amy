@@ -165,8 +165,16 @@ describe("a plugin's operations, check and file", () => {
       .toContain("spells its field `fooBar` as `--foo-bar`, which its field `foo_bar` already takes");
     expect(await refused({ type: "object", properties: { JSON: { type: "string" } } }))
       .toContain("spells its field `JSON` as `--json`, which the command line itself already takes");
+    expect(await refused({ type: "object", properties: { noCache: { type: "boolean" } } }))
+      .toContain("spells its boolean field `noCache` as `--no-cache`, which the command line reads as a negation");
     expect(await refused({ $ref: "#/$defs/input", $defs: { input: { type: "object", properties: { json: { type: "boolean" } }, required: ["json"] } } }))
       .toContain("spells its field `json` as `--json`");
+  });
+
+  it("keeps what the loader could not import, so the contract can refuse an install it did not read whole", async () => {
+    const gathered = await gather(CONFIG, [WORK], async () => ({ plugins: [], problems: ["@acme/plugin-demo: could not be imported"], bySpec: new Map() }));
+    expect(gathered.problems).toEqual([]);
+    expect(gathered.unloaded).toEqual(["@acme/plugin-demo: could not be imported"]);
   });
 
   it("keeps a plugin's operation local-only in amy contract unless it says otherwise", async () => {
