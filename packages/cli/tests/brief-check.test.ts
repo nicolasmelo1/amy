@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { BriefRecord, HostServices, Plugin } from "@amykit/core";
 import { defineOperation, defineWorkflow, mount, withDiagram } from "@amykit/core";
-import { briefsOf, checkBrief, operationsOffered } from "../src/project.js";
+import { asksForABrief, briefMoved, briefsOf, checkBrief, operationsOffered, withSection } from "../src/project.js";
 import { shipped } from "../src/skills.js";
 
 /**
@@ -204,5 +204,35 @@ describe("the shipped amy-groom", () => {
     for (const name of ["linear", "jira", "github", "gitlab", "slack", "ticket-to-qa", "feature-grooming"]) {
       expect(body).not.toContain(name);
     }
+  });
+});
+
+describe("a workflow that asks for no brief", () => {
+  it("is not one amy brief check can be green on: a project with brief/ declared absent and no phase declaring sections", () => {
+    expect(asksForABrief([{ phase: "workflow", workflow: "workflow-work" }])).toBe(false);
+    expect(asksForABrief([])).toBe(false);
+  });
+
+  it("still asks when a brief/ phase is present with no declaration, so its missing check is refused", async () => {
+    const briefs = [{ phase: "brief" as const, workflow: "workflow-brief" }, { phase: "workflow" as const, workflow: "workflow-work" }];
+
+    expect(asksForABrief(briefs)).toBe(true);
+    const result = await checkBrief(briefs, "invoice-currency", null, []);
+    expect(result.refusals.map((one) => one.rule)).toEqual([expect.stringContaining("declares no brief check")]);
+  });
+});
+
+describe("amy brief write", () => {
+  const stored = brief(READY);
+
+  it("writes nothing when the same answer is written again with the same membership", () => {
+    const again = withSection(briefsOf(groomed), stored, "Goal", READY.Goal);
+
+    expect(briefMoved(stored, again, stored.explains)).toBe(false);
+  });
+
+  it("writes when the answer or the membership moved", () => {
+    expect(briefMoved(stored, withSection(briefsOf(groomed), stored, "Goal", "Two currencies."), stored.explains)).toBe(true);
+    expect(briefMoved(stored, withSection(briefsOf(groomed), stored, "Goal", READY.Goal), ["BILL-1", "BILL-2"])).toBe(true);
   });
 });

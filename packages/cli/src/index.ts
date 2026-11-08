@@ -56,7 +56,7 @@ import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, assembleProfile } from "./assemble.js";
-import { PhaseBrief, briefsOf, checkBrief, operationsOffered, phasesOf, sectionsOf, withSection } from "./project.js";
+import { PhaseBrief, asksForABrief, briefMoved, briefsOf, checkBrief, operationsOffered, phasesOf, sectionsOf, withSection } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
@@ -1082,12 +1082,14 @@ brief
     const explains = options.explains !== undefined
       ? options.explains.split(",").map((one) => one.trim()).filter((one) => one !== "")
       : stored?.explains ?? [];
-    const written = await opened.store.write({
-      id,
-      sections: withSection(opened.briefs, stored, section, body.replace(/\s+$/, "")),
-      explains,
-      at: new Date().toISOString(),
-    });
+    const sections = withSection(opened.briefs, stored, section, body.replace(/\s+$/, ""));
+    // A brief is written only when its text moved: the same answer again
+    // keeps its revision, and its age for retirement.
+    if (stored && !briefMoved(stored, sections, explains)) {
+      console.log(`\`${section}\` already says that in ${stored.id}, revision ${stored.revision}: nothing written`);
+      return;
+    }
+    const written = await opened.store.write({ id, sections, explains, at: new Date().toISOString() });
     console.log(`wrote \`${section}\` to ${written.id}, revision ${written.revision}`);
   });
 
@@ -1128,7 +1130,7 @@ async function openBrief(
   const store = assembled.mounted.ports.get("brief") as BriefStore | undefined;
   if (!store) return { ok: false, why: "nothing mounted the `brief` port" };
   const briefs = briefsOf(await workflowPluginOf(profile, assembled));
-  if (briefs.length === 0) {
+  if (!asksForABrief(briefs)) {
     return { ok: false, why: `the ${profile.name} workflow declares no brief: there are no sections to answer and no check to run` };
   }
   return { ok: true, store, briefs, mounted: assembled.mounted };

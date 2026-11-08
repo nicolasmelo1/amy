@@ -588,3 +588,24 @@ export function withSection(
     ...(stored?.sections ?? []).filter((one) => !declared.includes(one.name)),
   ];
 }
+
+/**
+ * Whether the workflow asks for a brief at all: a phase declares sections,
+ * or a project carries a `brief/` phase — which, declaring no check, is
+ * refused rather than read as a brief with nothing to answer.
+ */
+export function asksForABrief(briefs: readonly PhaseBrief[]): boolean {
+  return briefs.some((one) => one.declaration !== undefined || one.phase === "brief");
+}
+
+/** Whether writing these sections and this membership would change what the stored brief says. */
+export function briefMoved(
+  stored: Pick<BriefRecord, "sections" | "explains">,
+  sections: readonly { readonly name: string; readonly body: string }[],
+  explains: readonly string[],
+): boolean {
+  const same = <T>(one: readonly T[], other: readonly T[], equal: (a: T, b: T) => boolean) =>
+    one.length === other.length && one.every((item, at) => equal(item, other[at]!));
+  return !same(stored.sections, sections, (a, b) => a.name === b.name && a.body === b.body)
+    || !same(stored.explains, explains, (a, b) => a === b);
+}
