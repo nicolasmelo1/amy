@@ -37,8 +37,12 @@ from a phone.
 ## What the workflow asks for
 
 ```sh
-amy brief sections --json            # add --workflow <name> when there is more than one
+amy brief sections --json
 ```
+
+On a machine with more than one workflow, put `--workflow <name>` on this and
+**every** `amy brief` command after it: each command picks the default
+workflow on its own, and a write without it lands in that workflow's store.
 
 answers the sections in the order grooming asks them: in a project, the
 brief's own sections first, then each later phase's in walk order — a

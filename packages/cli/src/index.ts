@@ -1101,7 +1101,13 @@ brief
   .action(async (id: string, options: { json?: boolean }) => {
     const opened = await openBrief(selected());
     if (!opened.ok) return refuseBrief(opened.why);
-    const result = await checkBrief(opened.briefs, id, await opened.store.get(id), operationsOffered(opened.mounted));
+    let operations: ReturnType<typeof operationsOffered>;
+    try {
+      operations = operationsOffered(opened.mounted);
+    } catch (error) {
+      return refuseBrief((error as Error).message);
+    }
+    const result = await checkBrief(opened.briefs, id, await opened.store.get(id), operations);
     if (result.refusals.length > 0) process.exitCode = 1;
     if (options.json) {
       console.log(JSON.stringify({ ...result, ok: result.refusals.length === 0 }, null, 2));

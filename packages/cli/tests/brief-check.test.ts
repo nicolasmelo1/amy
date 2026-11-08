@@ -107,6 +107,15 @@ describe("amy brief check", () => {
     expect(result.refusals[0]!.rule).toContain("declares no brief check");
   });
 
+  it("reports a check that throws something other than an Error with what it threw", async () => {
+    const thrown = (value: unknown) => ({ name: "workflow-odd", brief: { sections: ["Goal"], check: () => { throw value; } } });
+
+    for (const [value, said] of [[null, "null"], [undefined, "undefined"], ["the parser broke", "the parser broke"]] as const) {
+      const result = await checkBrief(briefsOf(thrown(value)), "invoice-currency", brief(READY), open);
+      expect(result.refusals.map((one) => one.rule)).toEqual([`the workflow-odd workflow's check threw: ${said}`]);
+    }
+  });
+
   it("reports a check that throws as a refusal naming the workflow", async () => {
     const throwing = { name: "workflow-throwing", brief: { sections: ["Goal"], check: () => { throw new Error("the parser broke"); } } };
 
@@ -148,6 +157,14 @@ describe("a brief check sees what the mounted plugins offer", () => {
     paths: { state: "/state" },
   };
 
+  it("refuses, naming the operation, when a mounted operation's input schema cannot be read, rather than handing a check one that accepts anything", async () => {
+    const unreadable = { ...openPage, id: "browser.unreadable", http: { method: "post" as const, path: "/browser/unreadable" }, input: { "~standard": { ...openPage.input["~standard"], jsonSchema: { input: () => { throw new Error("no JSON Schema"); }, output: () => ({}) } } } };
+    const outcome = await mount([{ name: "@acme/plugin-unreadable", operations: [unreadable], register() {} } as Plugin], {}, host);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(() => operationsOffered(outcome.mounted)).toThrow("the operation `browser.unreadable` offers no input schema a brief check can read: no JSON Schema");
+  });
+
   it("hands the check every mounted operation's id and input schema, and refuses a section naming one no plugin offers", async () => {
     const outcome = await mount([browser], {}, host);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
@@ -188,6 +205,7 @@ describe("the shipped amy-groom", () => {
     expect(body).toContain("amy brief sections --json");
     expect(body).toContain("amy brief check <id> --json");
     expect(body).toContain("amy brief write <id>");
+    expect(body).toContain("put `--workflow <name>` on this and\n**every** `amy brief` command");
     // No numbered or headed list of sections of its own: every question is
     // about the section the check names next.
     const headed = body.split("\n").map((line) => line.replace(/^(\d+\.|#+|-) \**/, "")).filter((line, at) => line !== body.split("\n")[at]);

@@ -457,18 +457,23 @@ export function operationsOffered(mounted: Pick<Mounted, "contributions"> | unde
   const offered = mounted?.contributions.get(OPERATIONS_COLLECTION);
   if (!offered) return [];
   return [...offered.entries()]
-    .map(([id, entry]) => ({ id, input: inputOf((entry as MountedOperation).operation) }))
+    .map(([id, entry]) => ({ id, input: inputOf(id, (entry as MountedOperation).operation) }))
     .sort((one, other) => one.id.localeCompare(other.id));
 }
 
-function inputOf(operation: MountedOperation["operation"]): Readonly<Record<string, unknown>> {
+function inputOf(id: string, operation: MountedOperation["operation"]): Readonly<Record<string, unknown>> {
   try {
     return inputSchemaOf(operation as unknown as Operation);
-  } catch {
-    // An operation whose library cannot write its input as JSON Schema is
-    // still offered: a check can match it by id, it just sees no fields.
-    return {};
+  } catch (error) {
+    // A stand-in schema would accept every input, so a check validating a
+    // section against it would pass what the operation refuses.
+    throw new Error(`the operation \`${id}\` offers no input schema a brief check can read: ${messageOf(error)}`, { cause: error });
   }
+}
+
+/** What was thrown, as words: an Error's message, anything else as it prints. */
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** One refusal as `amy brief check` reports it: which phase asked, about which section, and why. */
@@ -544,7 +549,7 @@ async function judged(
     const refused = await one.declaration.check(record, { operations });
     for (const refusal of refused) refusals.push({ phase: one.phase, workflow: one.workflow, section: refusal.section, rule: refusal.rule });
   } catch (error) {
-    refusals.push({ phase: one.phase, workflow: one.workflow, rule: `${where(one)}'s check threw: ${(error as Error).message}` });
+    refusals.push({ phase: one.phase, workflow: one.workflow, rule: `${where(one)}'s check threw: ${messageOf(error)}` });
   }
   return refusals;
 }
