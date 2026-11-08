@@ -186,6 +186,35 @@ function json(raw: unknown): Parsed {
   }
 }
 
+/** The flags the command line keeps for itself on every operation's command. */
+const RESERVED = new Set(["--json", "--no-json", "--help"]);
+
+/**
+ * Why an operation's input cannot be spelled on the command line, read before
+ * its command is registered: an input whose fields sit in a composition it
+ * cannot enumerate, or two fields, or a field and a flag the command keeps,
+ * that would be typed as one flag.
+ */
+export function spellingProblems(operation: Operation): string[] {
+  const whole = inputSchemaOf(operation);
+  const root = resolved(whole, whole) ?? whole;
+  if (root.properties === undefined && ["allOf", "anyOf", "oneOf"].some((key) => Array.isArray(root[key]))) {
+    return [`\`${operation.id}\` takes an input composed with allOf, anyOf or oneOf, which the command line cannot spell; declare its fields on one object`];
+  }
+  const problems: string[] = [];
+  const taken = new Map<string, string>();
+  for (const field of fieldsOf(operation).filter((one) => one.position === undefined)) {
+    const flag = flagOf(field.name);
+    const spellings = typeOf(field.schema) === "boolean" ? [flag, `--no-${flag.slice(2)}`] : [flag];
+    for (const spelling of spellings) {
+      const held = RESERVED.has(spelling) ? "the command line itself" : taken.get(spelling);
+      if (held) problems.push(`\`${operation.id}\` spells its field \`${field.name}\` as \`${spelling}\`, which ${RESERVED.has(spelling) ? held : `its field \`${held}\``} already takes`);
+      else taken.set(spelling, field.name);
+    }
+  }
+  return problems;
+}
+
 /** How a field is typed on this operation's command line: `<text>` or `--repo`. */
 export function spelledAs(operation: Operation, field: string): string {
   const position = (operation.cli?.positional ?? []).indexOf(field);

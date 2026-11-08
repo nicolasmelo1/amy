@@ -14,6 +14,7 @@ import {
   validateConfig,
 } from "@amykit/core";
 import { AmyConfig } from "./config.js";
+import { spellingProblems } from "./operations/argv.js";
 import { LoadResult } from "./loader.js";
 import { Profile, directoriesFor } from "./profiles.js";
 import { pluginList, pluginSlices } from "./slices.js";
@@ -221,9 +222,7 @@ function spellings(contribution: Contribution): string[] {
       if (before) problems.push(`${contribution.owner} makes both \`${before}\` and \`${operation.id}\` the default of \`amy ${group}\`; a group has one`);
       defaults.set(group, operation.id);
     }
-    if (inputFieldsOf(operation).includes("json")) {
-      problems.push(`\`${operation.id}\` takes an input field named \`json\`, which every command keeps for --json`);
-    }
+    problems.push(...spellingProblems(operation));
   }
   for (const operation of spelled) {
     const path = operation.cli!.words.join(" ");
@@ -233,14 +232,6 @@ function spellings(contribution: Contribution): string[] {
   return problems;
 }
 
-function inputFieldsOf(operation: Operation): string[] {
-  try {
-    const schema = operation.input["~standard"].jsonSchema.input({ target: "draft-2020-12" });
-    return Object.keys((schema.properties ?? {}) as Record<string, unknown>);
-  } catch {
-    return [];
-  }
-}
 
 /** What a command needs from the process that registered it. */
 export interface CommandEnvironment {

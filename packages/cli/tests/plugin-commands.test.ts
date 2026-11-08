@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { defineOperation } from "@amykit/core";
-import type { Plugin } from "@amykit/core";
+import type { OperationSchema, Plugin } from "@amykit/core";
 import { BUILT_IN_COMMANDS, checks, gather, migrateRootFiles, runSetup, writeFiles } from "../src/plugin-commands.js";
 import { register } from "../src/operations/commands.js";
 import { installContract } from "../src/operations/contract.js";
@@ -153,6 +153,20 @@ describe("a plugin's operations, check and file", () => {
     const config = { ...CONFIG, workflows: { ...CONFIG.workflows, forked: { workflow: WORK.workflow, plugins: ["@acme/plugin-demo"] } } };
     const gathered = await gather(config, [WORK, other], async (specs, profile) => loading(profile === "forked" ? forked : demo())(specs));
     expect(gathered.problems.join("\n")).toContain("@acme/plugin-demo declares the operation `demo.greet` twice");
+  });
+
+  it("refuses at load an input the command line cannot spell: a composed object, two fields one flag, or a field taking --json", async () => {
+    const refused = async (input: Record<string, unknown>) =>
+      (await gather(CONFIG, [WORK], loading(demo({ operations: [spelledOver(input)] })))).problems.join("\n");
+
+    expect(await refused({ allOf: [{ type: "object", properties: { count: { type: "number" } } }, { type: "object", properties: { verbose: { type: "boolean" } } }] }))
+      .toContain("`demo.spelled` takes an input composed with allOf, anyOf or oneOf");
+    expect(await refused({ type: "object", properties: { foo_bar: { type: "string" }, fooBar: { type: "string" } } }))
+      .toContain("spells its field `fooBar` as `--foo-bar`, which its field `foo_bar` already takes");
+    expect(await refused({ type: "object", properties: { JSON: { type: "string" } } }))
+      .toContain("spells its field `JSON` as `--json`, which the command line itself already takes");
+    expect(await refused({ $ref: "#/$defs/input", $defs: { input: { type: "object", properties: { json: { type: "boolean" } }, required: ["json"] } } }))
+      .toContain("spells its field `json` as `--json`");
   });
 
   it("keeps a plugin's operation local-only in amy contract unless it says otherwise", async () => {
@@ -390,3 +404,25 @@ describe("the host carries the command line, not the commands", () => {
     for (const plugin of [errand, plans, tickets, worktrees, relay]) expect((plugin as { commands?: unknown }).commands).toBeUndefined();
   });
 });
+
+/** An operation over a hand-written input schema, so its shape is exactly the one under test. */
+function spelledOver(input: Record<string, unknown>) {
+  const schema = {
+    "~standard": { version: 1, vendor: "test", validate: (value: unknown) => ({ value }), jsonSchema: { input: () => input, output: () => ({ type: "object" }) } },
+  } as unknown as OperationSchema;
+  return defineOperation({
+    id: "demo.spelled",
+    domain: "demo",
+    summary: "Spelled over a schema",
+    description: "Answers its input. Changes nothing.",
+    input: schema,
+    output: schema,
+    writes: [],
+    http: { method: "post", path: "/demo/spelled" },
+    cli: { words: ["spelled"] },
+    examples: [{ summary: "anything", input: {}, output: {} }],
+    async handler(given) {
+      return given;
+    },
+  });
+}
