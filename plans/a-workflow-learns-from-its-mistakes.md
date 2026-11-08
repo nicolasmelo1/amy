@@ -20,6 +20,9 @@ sources:
   - { id: S17, kind: decision, said: "amy records spend per step and per model and shows it: runs, cost, duration, output tokens and runs not completed, read from the agent.run events it already writes. Decided 2026-11-06" }
   - { id: S18, kind: reference, ref: "plans/an-escalation-brings-its-evidence.md", said: "each agent run keeps its trace beside the record: turns, messages, and every tool call with its arguments, result and timing" }
   - { id: S19, kind: reference, ref: "https://www.deepseek.com/en/harness/", said: "a run's trajectory shows its duration, turn and tool-call counts, its input, model and tools, each turn's messages, and each tool call's payload, result, schema and timing" }
+  - { id: S20, kind: decision, said: "an evidence signature is the source's first line verbatim, with no normalisation; this replaces S8's 'normalised', so two lines differing in a path, a line number or an id are two signatures. Decided 2026-11-08" }
+  - { id: S21, kind: decision, said: "the lessons file is a YAML list of { signature: { step, agent, key }, lesson, state, at } entries and nothing else: lesson non-empty, at an ISO instant, state proposed, approved, rejected or removal-proposed. Decided 2026-11-08" }
+  - { id: S22, kind: decision, said: "the lessons file is read all or nothing: one entry that fails S21 makes the whole file unreadable; a distilling reply is malformed when its lesson would fail S21. Decided 2026-11-08" }
 touches:
   - packages/core/src/ports/Lessons.ts
   - packages/core/src/index.ts
@@ -49,6 +52,9 @@ criteria:
   - { id: A9, statement: "amy budget breaks spend down by step and model, with runs, cost, duration, output tokens and runs not completed, from the agent.run events alone", proof: "deferred:test:packages/cli/tests/budget.test.ts", sources: [S16, S17] }
   - { id: A10, statement: "runs of one step and agent that end not completed are a signature, so a step abandoned in hundreds of runs is one proposal, not none", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S8, S16] }
   - { id: A11, statement: "the same tool call failing in the same step across the window's settled records is a signature, read from the runs' traces", proof: "deferred:property:packages/agent-kit/tests/lessons.property.test.ts#tool_failures_merge_across_steps", sources: [S18, S19] }
+  - { id: A12, statement: "two evidence first lines that differ only in a path, a line number or an id are two signatures, each counted on its own", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S20] }
+  - { id: A13, statement: "a lessons file with one entry that fails the schema puts no lesson in any prompt, and amy doctor names the file and the entry", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S21, S22] }
+  - { id: A14, statement: "a distilling reply whose lesson would not be a valid entry writes nothing to the file and is counted as no lesson", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S21] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A2; an empty or malformed distilling reply writes no lesson" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "distilling is a read-only run outside any record; it charges no attempt and gives none back" }
@@ -57,10 +63,13 @@ crosses:
 guarantee:
   - { holds: "no lesson reaches a prompt without the operator's approval", not_against: "a person writing a lesson into the file by hand" }
   - { holds: "learning never changes decide(), the diagram, a ladder or a policy", not_against: "a recommendation the operator turns into code through an amy note" }
+  - { holds: "a lesson reaches a prompt only from a lessons file whose every entry is valid", not_against: "a valid entry whose lesson text is wrong, which only the operator's approval and the recurrence count judge" }
+  - { holds: "one signature is one exact first line, step and agent", not_against: "the same mistake reported with a volatile detail, which counts as many signatures and may never reach three" }
   - { holds: "no finding's human verdict or evidence is written by distilling", not_against: "the operator adjudicating a finding through its own boundary" }
 failures:
   - { step: distil, when: "the distilling run fails or returns no lesson", goes_to: "nothing proposed; the window is read again at the next trigger" }
-  - { step: ask, when: "the lessons file is unreadable", goes_to: "the prompt goes as it would without lessons, and amy doctor names the file" }
+  - { step: distil, when: "the distilling reply's lesson would not be a valid entry", goes_to: "no lesson written for that signature; nothing else in the file changes" }
+  - { step: ask, when: "the lessons file is unreadable, or any one entry fails its schema", goes_to: "the prompt goes as it would without lessons, and amy doctor names the file" }
 cut:
   - "measured A/B of prompts, models or graphs on replayed work: later, a benchmarks plan"
   - "a lesson applied without approval"

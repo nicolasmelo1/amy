@@ -47,6 +47,9 @@ sources:
   - { id: S45, kind: decision, said: "amy sdk generate <dir> writes an SDK typed for this install's contract, mounted plugins included, so a product built on amy gets types for the plugins it runs" }
   - { id: S47, kind: decision, said: "a plugin's operations extend the contract without changing its hash: getCompatibility lists each mounted plugin with its own digest, and a client lacking its types reaches it through the SDK's untyped invoke(id, input)" }
   - { id: S48, kind: decision, said: "every response about work names the instance holding it, from config.yaml, defaulting to the host name; an instance with no server, whose state another machine reads through ports, is one more name, not a new shape. Decided 2026-11-05" }
+  - { id: S50, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "a plugin's operation input and output are a flat root object of primitive, string-enum or array fields, a #/$defs ref followed once; the rest is refused at mount, and routes and the SDK read it" }
+  - { id: S51, kind: decision, said: "a plugin's route, OpenAPI entry and SDK types are generated only from schemas inside the shared set; a plugin with any schema outside it is refused at mount and nothing of it is generated. Decided 2026-11-08" }
+  - { id: S52, kind: decision, said: "a plugin operation whose id or path collides with a services operation, another plugin's, or an SDK member such as invoke is refused at mount, naming both. Decided 2026-11-08" }
   - { id: S49, kind: decision, said: "with no name configured an instance is <host>:<amy home path>, so two homes on one host differ; a client gathering two instances of one name refuses the second, naming both. Decided 2026-11-05" }
   - { id: S46, kind: decision, said: "the-doors-are-generated (layer 0, command) refuses, under packages/server and packages/sdk, a route registered or a method written outside the generator, and a literal equal to an operation id" }
 touches:
@@ -109,6 +112,8 @@ criteria:
   - { id: A34, statement: "every work response and event names its instance, and two servers' TBO-1 are told apart by it in every renderer", proof: "deferred:assertion:server.every_record_names_its_instance", sources: [S48] }
   - { id: A35, statement: "two homes on one host with no name configured get different instance names, and two servers configured with the same name are refused by the client naming both", proof: "deferred:assertion:server.two_instances_are_never_one_name", sources: [S49] }
   - { id: A32, statement: "a route registered by hand in packages/server, or an SDK method written by hand, fails the build naming the file", proof: "deferred:test:mutation fixture for the-doors-are-generated", sources: [S6, S9, S46] }
+  - { id: A36, statement: "a plugin with one operation whose input lies outside the shared accepted set is refused at mount, and the server, GET /v1/contract and the generated SDK carry none of that plugin's operations", proof: "deferred:test:packages/sdk/tests/generate.test.ts", sources: [S44, S50, S51] }
+  - { id: A37, statement: "a plugin operation whose id or path collides with a services operation, another plugin's, or an SDK member such as invoke is refused at mount, naming both", proof: "deferred:test:packages/sdk/tests/generate.test.ts", sources: [S47, S52] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server" }
   - { mechanism: profiles-and-state, answer: works, proof: "deferred:assertion:server.it_listens_on_its_socket_by_default; token and serve.sock live under amy's home" }
@@ -117,6 +122,7 @@ guarantee:
   - { holds: "nothing answers without the token on the socket, or a pairing over TCP", not_against: "the two webhook receivers, which verify a signature instead" }
   - { holds: "local-only operations do not exist on TCP", not_against: "a person who forwards serve.sock on purpose, handing out their shell on purpose" }
   - { holds: "a client is never a second road to a write", not_against: "an intent, which runs through invoke on the operation its command runs" }
+  - { holds: "a plugin reaches the server and the SDK whole or not at all: every route and type generated from a schema inside the shared set", not_against: "a schema inside the set whose values a query string carries poorly, such as a long array" }
 failures:
   - { step: handshake, when: "the SDK's contract hash differs", goes_to: "refused by name, telling the client to update" }
   - { step: handshake, when: "a mounted view uses a primitive the client lacks", goes_to: "refused naming the primitive" }

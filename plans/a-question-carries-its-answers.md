@@ -26,6 +26,9 @@ sources:
   - { id: S23, kind: reference, ref: "plugins/serial-engine/src/Worker.ts", said: "a look reads replies before the budget check, the triage run and the save; a look that fails or is parked is retried from the same since" }
   - { id: S24, kind: decision, said: "replies is a function of the thread and since: a retry from the same since gets the accepted answer again, and only a different later answer is dropped. Decided 2026-11-05" }
   - { id: S25, kind: decision, said: "an adapter keeps no accepted answer in memory: it recomputes it from the thread on every call, and Telegram writes each press to its state directory when it arrives, since getUpdates keeps updates 24 hours. Decided 2026-11-05" }
+  - { id: S26, kind: decision, said: "an ask's answers are 2 to 10 distinct, non-empty strings, each within the medium's button-label limit; anything else, from triage or any caller, is posted and read as a plain question. Decided 2026-11-08" }
+  - { id: S27, kind: decision, said: "only a keycap within range, ✅ or ❌ on an approval, and ✅ on a choices ask are marks; any other reaction (7️⃣ on three answers, ✅ on a single choice) is ignored and competes with nothing. Decided 2026-11-08" }
+  - { id: S28, kind: decision, said: "an accepted answer is sticky: Slack writes it to its state directory as Telegram writes each press, so a mark removed later does not undo it; S25's recompute stops once an ask is answered. Decided 2026-11-08" }
 touches:
   - .software-factory/evidence/ticket-to-qa/**
   - .software-factory/policy.yaml
@@ -68,7 +71,10 @@ criteria:
   - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S1, S2, S17, S18, S19] }
   - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17] }
   - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "deferred:assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21] }
-  - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, after an adapter restart too, in Slack and Telegram alike", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25] }
+  - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, after an adapter restart too, in Slack and Telegram alike, a mark removed after the answer was accepted included", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25, S28] }
+  - { id: A14, statement: "an ask whose answers are fewer than 2, more than 10, repeated, empty or longer than the medium's button label is posted as a plain question with no marks or keyboard", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S26] }
+  - { id: A15, statement: "in Slack a keycap outside the ask's range, and ✅ on a single choice, are ignored: neither answers nor competes with an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S27] }
+  - { id: A16, statement: "in Slack, a reaction removed after a look accepted its answer leaves that answer returned, after an adapter restart too", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S28] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "Conversation.ts gains an optional ask on post and an optional answer on Reply; with no conversation mounted, ask-question comments the numbered list on the tracker exactly as it comments the questions today" }
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A2, A3, A4" }
@@ -79,6 +85,8 @@ crosses:
 guarantee:
   - { holds: "only the configured operator's press or reaction is an answer, as only their reply is one today", not_against: "a person holding the operator's own Slack or Telegram account" }
   - { holds: "one ask has one answer, the first complete one a look read; a change of mind after it is a new reply in the thread, read by policy", not_against: "the order of reactions made between two looks, which polling cannot see" }
+  - { holds: "an ask is shown as a form only with 2 to 10 distinct, non-empty answers that fit a button; every other ask is a plain question", not_against: "two answers that differ only in a way the person cannot see, such as trailing spaces or look-alike characters" }
+  - { holds: "only a keycap within range, ✅ or ❌ on an approval, or ✅ on choices, is a mark; once accepted, an answer survives its mark being removed", not_against: "a mark removed before any look read it, which polling cannot see" }
   - { holds: "a form never stops the typed reply: the person can always answer in words, and it reads as it reads today", not_against: "a workflow whose own code ignores text replies to a question it asked as a form" }
 failures:
   - { step: replies, when: "one look sees competing marks on an ask: ✅ and ❌, or two keycaps on a choice", goes_to: "no answer; amy says once in the thread which marks it saw, and the next look reads again" }

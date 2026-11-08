@@ -26,6 +26,10 @@ sources:
   - { id: S23, kind: decision, said: "when the window (desktop or terminal) exists, setup is connected to it so the person gets a nicer experience: the window draws the same asks, and the workflow does not change for it. Decided 2026-11-05" }
   - { id: S24, kind: reference, ref: "plans/a-workflow-starts-on-an-event.md", said: "a workflow may begin on an event and end once dealt with; each such event starts one record" }
   - { id: S25, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "the window's right panel holds the work thread of a record waiting on its owner, and a turn from it goes through the conversation port" }
+  - { id: S26, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "a plugin's operation input is accepted only as a root object of string, number, integer, boolean, enum or array-of-those fields, a #/$defs ref followed once; everything else is refused at mount, and every door, setup included, reads this one rule" }
+  - { id: S27, kind: code, ref: "packages/core/src/config-schema.ts", said: "a plugin's configSchema is amy's own closed format, not JSON Schema: five types, string, number, boolean, string[] and record, and a dotted key names a leaf of a group" }
+  - { id: S28, kind: decision, said: "setup asks a string, number, boolean or string[] field; a plugin whose configSchema has a record field is refused by amy setup, naming the field, and no config for it is written. Decided 2026-11-08" }
+  - { id: S29, kind: decision, said: "a failure is a success, a declared refusal or an internal error, and nothing reads as green unread: a config.yaml that cannot be read or written stops the walk at STOPPED naming it, never read as nothing set. Decided 2026-11-08" }
 touches:
   - packages/workflow-setup/**
   - plugins/terminal/**
@@ -52,6 +56,9 @@ criteria:
   - { id: A8, statement: "the terminal conversation answers an ask with the chosen answer, through the same port and reply shape Slack and Telegram return", proof: "deferred:test:plugins/terminal/tests/terminal.test.ts", sources: [S11, S16, S22] }
   - { id: A9, statement: "amy setup starts one record in the setup profile, the store keeps it as any record, and once it reaches [*] nothing looks at it again", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S6, S15, S22, S24] }
   - { id: A10, statement: "the whole walk reaches DONE with the testkit's fake conversation in place of the terminal, and no setup step reads stdin or writes stdout itself, so a window conversation answers it unchanged", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S16, S23, S25] }
+  - { id: A11, statement: "choosing a plugin whose configSchema has a record field is refused by amy setup naming the field, and no config for it is written", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S27, S28] }
+  - { id: A12, statement: "a config.yaml that does not parse, or cannot be written, stops the walk at STOPPED naming the file; no ask offers an empty default because of it", proof: "deferred:test:packages/cli/tests/setup.test.ts", sources: [S21, S29] }
+  - { id: A13, statement: "an operation setup reaches takes only input inside the shared accepted set, and A6's property runs over that set alone", proof: "deferred:property:packages/cli/tests/setup.test.ts#flags_skip_a_question", sources: [S9, S26] }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:A2, A5; the walk installs through amy add's path" }
   - { mechanism: config, answer: works, proof: "deferred:A6; every write goes through the typed config writers amy add uses" }
@@ -62,7 +69,11 @@ crosses:
 guarantee:
   - { holds: "only the harness, workflow and plugins the person chose are installed", not_against: "a chosen plugin's own dependencies, which npm installs with it" }
   - { holds: "a re-run never overwrites a value the person did not answer anew", not_against: "a hand edit to config.yaml made while setup is running" }
+  - { holds: "every field setup asks or spells as a flag is one of the four askable configSchema types", not_against: "a plugin that validates a field further in its own register, which setup reports as that plugin's refusal" }
 failures:
+  - { step: read-config, when: "config.yaml does not parse or cannot be read", goes_to: "STOPPED naming the file and the parser's first error; never read as nothing set" }
+  - { step: write-config, when: "config.yaml cannot be written (ENOSPC, permissions)", goes_to: "STOPPED naming the file, as an internal error, not a refusal" }
+  - { step: choose-plugin, when: "the chosen plugin's configSchema has a record field", goes_to: "refused naming the plugin and the field; no config for it is written" }
   - { step: install, when: "npm cannot install the chosen plugin", goes_to: "STOPPED naming the package and npm's first error line" }
   - { step: ping, when: "a model the ladder names does not answer", goes_to: "STOPPED naming the model; amy setup <harness> resumes from that plugin" }
 cut:

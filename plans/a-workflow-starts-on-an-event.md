@@ -13,6 +13,10 @@ sources:
   - { id: S11, kind: decision, said: "ticket-to-qa ends when the PR is open; merge and QA handoff are a third short workflow started by code-host.pull-request.merged" }
   - { id: S12, kind: decision, said: "the ticket-to-qa scenario drives all three through the installed executable with signed webhooks posted to amy serve on loopback, asserting two reviews a minute apart make one round and amy show tells the whole story; its gate requires both" }
   - { id: S13, kind: decision, said: "a mid-work wait stays a state an event wakes (CLARIFYING waiting on a reply); a workflow starts on an event only when what follows is new work. Both shapes stay valid; docs say which to reach for" }
+  - { id: S14, kind: decision, said: "an event whose key throws, or resolves no ticket (a pull request naming none), is dropped with a log line and starts no run. Decided 2026-11-08" }
+  - { id: S15, kind: decision, said: "discovery and an event finding the same key make one run: the first to claim the key starts it, and the other wakes it as S8 does. Decided 2026-11-08" }
+  - { id: S16, kind: decision, said: "an event for a key whose run has already ended starts a new run, the next round in its lineage. Decided 2026-11-08" }
+  - { id: S17, kind: decision, said: "a ticket-to-qa record saved in PR_OPEN through RE_REVIEW before the split is refused by name at load, naming the record and its state; it is not migrated into the review-round workflow. Decided 2026-11-08" }
 touches:
   - packages/core/src/diagram.ts
   - packages/core/src/define-workflow.ts
@@ -23,6 +27,7 @@ touches:
   - packages/workflow-ticket-to-qa/workflow.mmd
   - packages/workflow-ticket-to-qa/src/machine.ts
   - packages/workflow-ticket-to-qa/src/record.ts
+  - packages/workflow-ticket-to-qa/tests/record.test.ts
   - packages/workflow-review-round/**
   - packages/workflow-testkit/src/**
   - packages/workflow-testkit/tests/triggers.test.ts
@@ -36,8 +41,12 @@ criteria:
   - { id: A3, statement: "amy show <key> lists every run of every workflow with that key, in order, with each one's history and evidence", proof: "deferred:test:packages/cli/tests/show.test.ts", sources: [S9] }
   - { id: A4, statement: "in the ticket-to-qa scenario the ticket's work runs as three event-started workflows, two reviews a minute apart make one round, and amy show tells the story across all three", proof: "deferred:assertion:lifecycle.a_review_round_is_its_own_workflow", sources: [S1, S10, S11, S12] }
   - { id: A5, statement: "a workflow whose [*] edge names no event is discovered exactly as before", proof: "assertion:plan.a_refused_draft_goes_back_to_the_agent", sources: [S4, S13] }
+  - { id: A6, statement: "an event whose key throws or resolves no ticket starts no run and leaves a log line naming the event", proof: "deferred:property:plugins/serial-engine/tests/triggers.property.test.ts#an_unkeyed_event_starts_a_run", sources: [S5, S14] }
+  - { id: A7, statement: "for any interleaving of discovery and events finding one key, at most one run of that workflow is going for it", proof: "deferred:property:plugins/serial-engine/tests/triggers.property.test.ts#discovery_and_event_start_two_runs", sources: [S4, S8, S15] }
+  - { id: A8, statement: "an event for a key whose run has ended starts a new run in the same lineage, not a wake of the ended one", proof: "deferred:test:packages/core/tests/lineage.test.ts", sources: [S7, S16] }
+  - { id: A9, statement: "a ticket-to-qa record saved in any of PR_OPEN..RE_REVIEW is refused at load naming the record and its state", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/record.test.ts", sources: [S10, S17] }
 crosses:
-  - { mechanism: record-migration, answer: works, proof: "deferred:not specified by the plan; a ticket-to-qa record saved in PR_OPEN..RE_REVIEW before the split must still be read" }
+  - { mechanism: record-migration, answer: refused, by: "a ticket-to-qa record saved in PR_OPEN..RE_REVIEW before the split is refused by name at load, not migrated (S17, A9)" }
   - { mechanism: calls, answer: n/a, why: "runs share a lineage by key; no workflow calls another" }
   - { mechanism: hooks, answer: n/a, why: "key is a new defineWorkflow field; before, after and interrupt are unchanged" }
   - { mechanism: diagram, answer: works, proof: "deferred:test:packages/workflow-testkit/tests/triggers.test.ts" }
@@ -46,6 +55,8 @@ crosses:
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:test:packages/workflow-testkit/tests/triggers.test.ts" }
 guarantee:
   - { holds: "one run per key per workflow at a time", not_against: "two events for the same key; the second wakes the running one" }
+  - { holds: "one run per key per workflow at a time, however the key was found", not_against: "a key function that maps two different events of one piece of work to two different keys" }
+  - { holds: "an event that resolves no key starts nothing", not_against: "work the key cannot find, which discovery still finds as today" }
   - { holds: "a run reads its lineage's earlier records only", not_against: "a write to an earlier run's record, which is refused" }
 cut:
   - "splitting a mid-work wait into its own workflow: refused; CLARIFYING waiting on a reply stays part of the run that asked (S13)"
